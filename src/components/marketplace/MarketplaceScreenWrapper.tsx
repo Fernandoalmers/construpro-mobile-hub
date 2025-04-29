@@ -4,6 +4,7 @@ import MarketplaceScreen from './MarketplaceScreen';
 import ErrorBoundary from '../common/ErrorBoundary';
 import LoadingState from '../common/LoadingState';
 import ListEmptyState from '../common/ListEmptyState';
+import ErrorState from '../common/ErrorState';
 import { Package } from 'lucide-react';
 import produtos from '../../data/produtos.json';
 
