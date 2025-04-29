@@ -1,9 +1,9 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
@@ -14,9 +14,9 @@ import LoginScreen from "./components/LoginScreen";
 import SignupScreen from "./components/SignupScreen";
 import BottomTabNavigator from "./components/layout/BottomTabNavigator";
 
-// Main screens
-import HomeScreen from "./components/home/HomeScreen";
-import MarketplaceScreen from "./components/marketplace/MarketplaceScreen";
+// Main screens with wrappers
+import HomeScreenWrapper from "./components/home/HomeScreenWrapper";
+import MarketplaceScreenWrapper from "./components/marketplace/MarketplaceScreenWrapper";
 import ProdutoDetailScreen from "./components/marketplace/ProdutoDetailScreen";
 import CartScreen from "./components/marketplace/CartScreen";
 import CheckoutScreen from "./components/marketplace/CheckoutScreen";
@@ -29,44 +29,123 @@ import ProfileScreen from "./components/profile/ProfileScreen";
 // Vendor screens
 import VendorHomeScreen from "./components/vendor/VendorHomeScreen";
 import AjustePontosVendorScreen from "./components/vendor/AjustePontosVendorScreen";
+import ErrorBoundary from "./components/common/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
+// Protected route component
+const ProtectedRoute = ({ children, requiredRoles = [], redirectTo = '/login' }) => {
+  const { user, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return null;
+  }
+  
+  if (!user) {
+    return <Navigate to={redirectTo} />;
+  }
+  
+  if (requiredRoles.length > 0 && !requiredRoles.includes(user.papel)) {
+    return user.papel === 'lojista' 
+      ? <Navigate to="/vendor" /> 
+      : <Navigate to="/home" />;
+  }
+  
+  return children;
+};
+
+// Role-specific routes
+const AppRoutes = () => {
+  const { user } = useAuth();
+  
+  return (
+    <ErrorBoundary>
+      <Routes>
+        <Route path="/" element={<SplashScreen />} />
+        <Route path="/onboarding" element={<OnboardingScreen />} />
+        <Route path="/login" element={<LoginScreen />} />
+        <Route path="/signup" element={<SignupScreen />} />
+        
+        <Route path="/home" element={
+          <ProtectedRoute requiredRoles={['consumidor', 'profissional']}>
+            <HomeScreenWrapper />
+          </ProtectedRoute>
+        } />
+        <Route path="/marketplace" element={
+          <ProtectedRoute requiredRoles={['consumidor', 'profissional']}>
+            <MarketplaceScreenWrapper />
+          </ProtectedRoute>
+        } />
+        <Route path="/produto/:id" element={
+          <ProtectedRoute requiredRoles={['consumidor', 'profissional']}>
+            <ProdutoDetailScreen />
+          </ProtectedRoute>
+        } />
+        <Route path="/cart" element={
+          <ProtectedRoute requiredRoles={['consumidor', 'profissional']}>
+            <CartScreen />
+          </ProtectedRoute>
+        } />
+        <Route path="/checkout" element={
+          <ProtectedRoute requiredRoles={['consumidor', 'profissional']}>
+            <CheckoutScreen />
+          </ProtectedRoute>
+        } />
+        <Route path="/resgates" element={
+          <ProtectedRoute requiredRoles={['consumidor', 'profissional']}>
+            <ResgatesScreen />
+          </ProtectedRoute>
+        } />
+        <Route path="/historico-resgates" element={
+          <ProtectedRoute requiredRoles={['consumidor', 'profissional']}>
+            <HistoricoResgatesScreen />
+          </ProtectedRoute>
+        } />
+        <Route path="/chat" element={
+          <ProtectedRoute requiredRoles={['consumidor', 'profissional', 'lojista']}>
+            <ChatScreen />
+          </ProtectedRoute>
+        } />
+        <Route path="/chat/:id" element={
+          <ProtectedRoute requiredRoles={['consumidor', 'profissional', 'lojista']}>
+            <ChatDetailScreen />
+          </ProtectedRoute>
+        } />
+        <Route path="/profile" element={
+          <ProtectedRoute requiredRoles={['consumidor', 'profissional', 'lojista']}>
+            <ProfileScreen />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/vendor" element={
+          <ProtectedRoute requiredRoles={['lojista']}>
+            <VendorHomeScreen />
+          </ProtectedRoute>
+        } />
+        <Route path="/vendor/ajuste-pontos" element={
+          <ProtectedRoute requiredRoles={['lojista']}>
+            <AjustePontosVendorScreen />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </ErrorBoundary>
+  );
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          {/* Auth Flow */}
-          <Route path="/" element={<SplashScreen />} />
-          <Route path="/onboarding" element={<OnboardingScreen />} />
-          <Route path="/login" element={<LoginScreen />} />
-          <Route path="/signup" element={<SignupScreen />} />
-          
-          {/* Main Flow */}
-          <Route path="/home" element={<HomeScreen />} />
-          <Route path="/marketplace" element={<MarketplaceScreen />} />
-          <Route path="/produto/:id" element={<ProdutoDetailScreen />} />
-          <Route path="/cart" element={<CartScreen />} />
-          <Route path="/checkout" element={<CheckoutScreen />} />
-          <Route path="/resgates" element={<ResgatesScreen />} />
-          <Route path="/historico-resgates" element={<HistoricoResgatesScreen />} />
-          <Route path="/chat" element={<ChatScreen />} />
-          <Route path="/chat/:id" element={<ChatDetailScreen />} />
-          <Route path="/profile" element={<ProfileScreen />} />
-          
-          {/* Vendor Flow */}
-          <Route path="/vendor" element={<VendorHomeScreen />} />
-          <Route path="/vendor/ajuste-pontos" element={<AjustePontosVendorScreen />} />
-          
-          {/* Fallback */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-        <BottomTabNavigator />
-      </BrowserRouter>
-    </TooltipProvider>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AppRoutes />
+          <BottomTabNavigator />
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 

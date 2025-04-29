@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import Card from '../common/Card';
@@ -6,6 +5,7 @@ import CustomButton from '../common/CustomButton';
 import { ArrowUpRight, Package, Users, CreditCard, Settings } from 'lucide-react';
 import pedidos from '../../data/pedidos.json';
 import ajustes from '../../data/ajustes.json';
+import clientes from '../../data/clientes.json';
 
 const VendorHomeScreen: React.FC = () => {
   const navigate = useNavigate();

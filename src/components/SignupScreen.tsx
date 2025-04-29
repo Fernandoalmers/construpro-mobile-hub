@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArrowLeft, Check } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 const SignupScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -14,6 +15,7 @@ const SignupScreen: React.FC = () => {
     email: '',
     senha: '',
     confirmaSenha: '',
+    papel: 'profissional', // default value
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -21,11 +23,19 @@ const SignupScreen: React.FC = () => {
     setSignupData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleRoleChange = (value: string) => {
+    setSignupData((prev) => ({ ...prev, papel: value }));
+  };
+
   const handleSignup = (e: React.FormEvent) => {
     e.preventDefault();
     // In a real app, this would register the user with a backend
-    // For now, just navigate to the login screen
-    navigate('/login');
+    // For now, just navigate to the appropriate screen based on role
+    if (signupData.papel === 'lojista') {
+      navigate('/vendor');
+    } else {
+      navigate('/login');
+    }
   };
 
   const goBack = () => {
@@ -141,6 +151,36 @@ const SignupScreen: React.FC = () => {
                 className="w-full"
                 required
               />
+            </div>
+
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-600 mb-2">
+                Tipo de conta
+              </label>
+              <RadioGroup 
+                value={signupData.papel}
+                onValueChange={handleRoleChange}
+                className="flex flex-col space-y-2"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="consumidor" id="consumidor" />
+                  <label htmlFor="consumidor" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Consumidor
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="profissional" id="profissional" />
+                  <label htmlFor="profissional" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Profissional
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="lojista" id="lojista" />
+                  <label htmlFor="lojista" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Lojista
+                  </label>
+                </div>
+              </RadioGroup>
             </div>
 
             <div className="mt-4 flex items-start gap-3">
