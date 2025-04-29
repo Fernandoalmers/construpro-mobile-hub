@@ -1,0 +1,63 @@
+
+[
+  {
+    "id": "1",
+    "nome": "João Silva",
+    "cpf": "123.456.789-00",
+    "codigo": "CONST12345",
+    "saldoPontos": 5000,
+    "nivel": "Ouro",
+    "pontosParaProximoNivel": 0,
+    "email": "joao.silva@email.com",
+    "telefone": "(11) 98765-4321",
+    "avatar": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80"
+  },
+  {
+    "id": "2",
+    "nome": "Maria Oliveira",
+    "cpf": "987.654.321-00",
+    "codigo": "CONST54321",
+    "saldoPontos": 2500,
+    "nivel": "Prata",
+    "pontosParaProximoNivel": 2500,
+    "email": "maria.oliveira@email.com",
+    "telefone": "(11) 91234-5678",
+    "avatar": "https://images.unsplash.com/photo-1542206395-9feb3edaa68d?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80"
+  },
+  {
+    "id": "3",
+    "nome": "Carlos Pereira",
+    "cpf": "456.789.123-00",
+    "codigo": "CONST67890",
+    "saldoPontos": 800,
+    "nivel": "Bronze",
+    "pontosParaProximoNivel": 1200,
+    "email": "carlos.pereira@email.com",
+    "telefone": "(11) 95555-9999",
+    "avatar": "https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80"
+  },
+  {
+    "id": "4",
+    "nome": "Ana Santos",
+    "cpf": "321.654.987-00",
+    "codigo": "CONST24680",
+    "saldoPontos": 1500,
+    "nivel": "Bronze",
+    "pontosParaProximoNivel": 500,
+    "email": "ana.santos@email.com",
+    "telefone": "(11) 97777-8888",
+    "avatar": "https://images.unsplash.com/photo-1580489944761-15a19d654956?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80"
+  },
+  {
+    "id": "5",
+    "nome": "Pedro Costa",
+    "cpf": "789.123.456-00",
+    "codigo": "CONST13579",
+    "saldoPontos": 3200,
+    "nivel": "Prata",
+    "pontosParaProximoNivel": 1800,
+    "email": "pedro.costa@email.com",
+    "telefone": "(11) 94444-3333",
+    "avatar": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=300&h=300&q=80"
+  }
+]

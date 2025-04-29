@@ -1,0 +1,76 @@
+
+[
+  {
+    "id": "1",
+    "clienteId": "1",
+    "itens": [
+      {"produtoId": "1", "quantidade": 1},
+      {"produtoId": "2", "quantidade": 1}
+    ],
+    "status": "Entregue",
+    "data": "2025-04-01T10:30:00",
+    "valorTotal": 649.80,
+    "pontosGanhos": 1300,
+    "formaPagamento": "Cartão de Crédito",
+    "enderecoEntrega": "Av. Paulista, 1000, São Paulo - SP",
+    "rastreio": "BR123456789"
+  },
+  {
+    "id": "2",
+    "clienteId": "1",
+    "itens": [
+      {"produtoId": "3", "quantidade": 2}
+    ],
+    "status": "Em Separação",
+    "data": "2025-04-27T14:15:00",
+    "valorTotal": 799.80,
+    "pontosGanhos": 1600,
+    "formaPagamento": "Boleto",
+    "enderecoEntrega": "Av. Paulista, 1000, São Paulo - SP",
+    "rastreio": null
+  },
+  {
+    "id": "3",
+    "clienteId": "2",
+    "itens": [
+      {"produtoId": "5", "quantidade": 1},
+      {"produtoId": "7", "quantidade": 2}
+    ],
+    "status": "Em Trânsito",
+    "data": "2025-04-20T09:45:00",
+    "valorTotal": 279.70,
+    "pontosGanhos": 560,
+    "formaPagamento": "Cartão de Débito",
+    "enderecoEntrega": "Rua das Flores, 250, São Paulo - SP",
+    "rastreio": "BR987654321"
+  },
+  {
+    "id": "4",
+    "clienteId": "3",
+    "itens": [
+      {"produtoId": "4", "quantidade": 1}
+    ],
+    "status": "Entregue",
+    "data": "2025-03-15T11:20:00",
+    "valorTotal": 1299.90,
+    "pontosGanhos": 2600,
+    "formaPagamento": "Pix",
+    "enderecoEntrega": "Av. Brasil, 500, Rio de Janeiro - RJ",
+    "rastreio": "BR456789123"
+  },
+  {
+    "id": "5",
+    "clienteId": "4",
+    "itens": [
+      {"produtoId": "6", "quantidade": 5},
+      {"produtoId": "8", "quantidade": 1}
+    ],
+    "status": "Confirmado",
+    "data": "2025-04-28T08:30:00",
+    "valorTotal": 599.40,
+    "pontosGanhos": 1200,
+    "formaPagamento": "Cartão de Crédito",
+    "enderecoEntrega": "Rua das Palmas, 100, Belo Horizonte - MG",
+    "rastreio": null
+  }
+]

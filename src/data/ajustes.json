@@ -1,0 +1,51 @@
+
+[
+  {
+    "id": "1",
+    "clienteId": "1",
+    "pontos": 500,
+    "motivo": "Compra na loja física - NF 12345",
+    "data": "2025-04-01T10:30:00",
+    "vendedor": "Carlos Mendes"
+  },
+  {
+    "id": "2",
+    "clienteId": "1",
+    "pontos": 300,
+    "motivo": "Indicação de cliente",
+    "data": "2025-04-10T14:15:00",
+    "vendedor": "Amanda Costa"
+  },
+  {
+    "id": "3",
+    "clienteId": "2",
+    "pontos": 800,
+    "motivo": "Compra na loja física - NF 23456",
+    "data": "2025-04-05T09:45:00",
+    "vendedor": "Roberto Alves"
+  },
+  {
+    "id": "4",
+    "clienteId": "3",
+    "pontos": -200,
+    "motivo": "Ajuste por estorno de compra",
+    "data": "2025-04-15T11:20:00",
+    "vendedor": "Sistema"
+  },
+  {
+    "id": "5",
+    "clienteId": "4",
+    "pontos": 450,
+    "motivo": "Compra na loja física - NF 34567",
+    "data": "2025-04-20T16:30:00",
+    "vendedor": "Marcos Souza"
+  },
+  {
+    "id": "6",
+    "clienteId": "5",
+    "pontos": 1000,
+    "motivo": "Bônus fidelidade - 1 ano de cliente",
+    "data": "2025-03-25T15:45:00",
+    "vendedor": "Sistema"
+  }
+]

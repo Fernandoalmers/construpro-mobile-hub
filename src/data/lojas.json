@@ -1,0 +1,53 @@
+
+[
+  {
+    "id": "1",
+    "nome": "Casa do Construtor",
+    "logoUrl": "https://images.unsplash.com/photo-1611486212557-88be5ff6f941?w=150&h=150&fit=crop&q=80",
+    "avaliacao": 4.7,
+    "endereco": "Av. Paulista, 1500, São Paulo - SP",
+    "descricao": "Materiais de construção de alta qualidade para profissionais exigentes.",
+    "contato": "(11) 3333-4444",
+    "categorias": ["Ferramentas", "Materiais", "Elétrica"]
+  },
+  {
+    "id": "2",
+    "nome": "Tintas & Tintas",
+    "logoUrl": "https://images.unsplash.com/photo-1580844946486-f8b5be6c3833?w=150&h=150&fit=crop&q=80",
+    "avaliacao": 4.5,
+    "endereco": "Rua Augusta, 800, São Paulo - SP",
+    "descricao": "Especializada em tintas e acabamentos para construção civil.",
+    "contato": "(11) 2222-3333",
+    "categorias": ["Tintas", "Acabamentos"]
+  },
+  {
+    "id": "3",
+    "nome": "Ferramentas Brasil",
+    "logoUrl": "https://images.unsplash.com/photo-1518709414768-a88981a4515d?w=150&h=150&fit=crop&q=80",
+    "avaliacao": 4.8,
+    "endereco": "Av. Rio Branco, 500, Rio de Janeiro - RJ",
+    "descricao": "A maior loja de ferramentas profissionais do Brasil.",
+    "contato": "(21) 9999-8888",
+    "categorias": ["Ferramentas", "Máquinas", "EPI"]
+  },
+  {
+    "id": "4",
+    "nome": "ABC Materiais",
+    "logoUrl": "https://images.unsplash.com/photo-1581235720704-06d3acfcb36f?w=150&h=150&fit=crop&q=80",
+    "avaliacao": 4.2,
+    "endereco": "Rua das Flores, 100, Belo Horizonte - MG",
+    "descricao": "Sua loja completa de materiais para construção e reforma.",
+    "contato": "(31) 3333-2222",
+    "categorias": ["Materiais", "Hidráulica", "Elétrica"]
+  },
+  {
+    "id": "5",
+    "nome": "Super Construção",
+    "logoUrl": "https://images.unsplash.com/photo-1565766046621-5548ffba4635?w=150&h=150&fit=crop&q=80",
+    "avaliacao": 4.6,
+    "endereco": "Av. Brasil, 2000, Brasília - DF",
+    "descricao": "Produtos e serviços para construção civil com os melhores preços.",
+    "contato": "(61) 4444-5555",
+    "categorias": ["Materiais", "Acabamentos", "Ferramentas"]
+  }
+]
