@@ -3,6 +3,7 @@ import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Home, ShoppingBag, Gift, MessageSquare, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toast } from "@/components/ui/sonner";
 
 const BottomTabNavigator: React.FC = () => {
   const navigate = useNavigate();
@@ -53,6 +54,13 @@ const BottomTabNavigator: React.FC = () => {
     return false;
   };
 
+  const handleNavigation = (path: string) => {
+    // Add a slight delay to make the transition feel more natural
+    setTimeout(() => {
+      navigate(path);
+    }, 50);
+  };
+
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-white shadow-lg border-t border-gray-200">
       <div className="flex justify-around items-center h-16">
@@ -64,13 +72,26 @@ const BottomTabNavigator: React.FC = () => {
             <button
               key={tab.path}
               className={cn(
-                "flex flex-col items-center justify-center w-full h-full",
-                active ? "text-construPro-orange" : "text-gray-500"
+                "flex flex-col items-center justify-center w-full h-full transition-all",
+                active ? "text-construPro-orange" : "text-gray-500 hover:text-gray-700"
               )}
-              onClick={() => navigate(tab.path)}
+              onClick={() => handleNavigation(tab.path)}
             >
-              <Icon size={20} />
-              <span className="text-xs mt-1">{tab.label}</span>
+              <div className={cn(
+                "flex items-center justify-center",
+                active ? "scale-110 transition-transform" : ""
+              )}>
+                <Icon size={20} />
+              </div>
+              <span className={cn(
+                "text-xs mt-1",
+                active ? "font-medium" : ""
+              )}>
+                {tab.label}
+              </span>
+              {active && (
+                <div className="h-1 w-8 bg-construPro-orange rounded-full absolute -bottom-0.5 animate-fade-in" />
+              )}
             </button>
           );
         })}
