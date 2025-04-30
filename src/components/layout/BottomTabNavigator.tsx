@@ -4,11 +4,13 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Home, ShoppingBag, Gift, MessageSquare, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from "@/components/ui/sonner";
+import { useAuth } from '../../context/AuthContext';
 
 const BottomTabNavigator: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const pathname = location.pathname;
+  const { user } = useAuth();
   
   const tabs = [
     { path: '/home', label: 'Início', icon: Home },
@@ -55,6 +57,13 @@ const BottomTabNavigator: React.FC = () => {
   };
 
   const handleNavigation = (path: string) => {
+    // Para rotas que exigem autenticação e o usuário não está logado
+    if (['/resgates', '/chat', '/profile'].includes(path) && !user) {
+      toast.info("Faça login para acessar esta funcionalidade");
+      navigate('/login');
+      return;
+    }
+
     // Add a slight delay to make the transition feel more natural
     setTimeout(() => {
       navigate(path);

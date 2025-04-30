@@ -1,8 +1,9 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -35,7 +36,13 @@ const queryClient = new QueryClient();
 
 // Protected route component
 const ProtectedRoute = ({ children, requiredRoles = [], redirectTo = '/login' }) => {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isPublicRoute } = useAuth();
+  const location = useLocation();
+  
+  // Se a rota for pública, não é necessária autenticação
+  if (isPublicRoute(location.pathname)) {
+    return children;
+  }
   
   if (isLoading) {
     return null;

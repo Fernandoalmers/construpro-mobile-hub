@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import clientes from '../data/clientes.json';
+import { toast } from "@/components/ui/sonner";
 
 // Define types
 type UserRole = 'consumidor' | 'profissional' | 'lojista';
@@ -23,7 +24,19 @@ interface AuthContextType {
   signup: (userData: Partial<User> & { senha: string }) => Promise<void>;
   logout: () => void;
   updateUser: (data: Partial<User>) => void;
+  isPublicRoute: (pathname: string) => boolean;
 }
+
+// Lista de rotas públicas que não necessitam de autenticação
+const publicRoutes = [
+  '/',
+  '/login',
+  '/signup',
+  '/onboarding',
+  '/home',
+  '/marketplace',
+  '/produto',
+];
 
 // Create context
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -43,6 +56,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         
         if (savedUser) {
           setUser(JSON.parse(savedUser));
+        } else {
+          // Criar um usuário simulado para demonstração
+          const demoUser = clientes[0];
+          const simulatedUser: User = {
+            ...demoUser,
+            papel: 'profissional',
+            saldoPontos: 1250,
+          };
+          localStorage.setItem('construProUser', JSON.stringify(simulatedUser));
+          setUser(simulatedUser);
+          console.log("Usuário de demonstração criado para navegação");
         }
       } catch (err) {
         console.error('Auth verification failed', err);
@@ -53,6 +77,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     checkAuth();
   }, []);
+
+  // Função para verificar se uma rota é pública
+  const isPublicRoute = (pathname: string): boolean => {
+    return publicRoutes.some(route => pathname === route || pathname.startsWith(route));
+  };
 
   const login = async (email: string, senha: string) => {
     setIsLoading(true);
@@ -75,13 +104,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const userWithRole: User = {
         ...foundUser,
         papel: 'profissional', // For demo purposes
+        saldoPontos: 1250,
       };
       
       // Save to local storage for persistence
       localStorage.setItem('construProUser', JSON.stringify(userWithRole));
       setUser(userWithRole);
+      toast.success("Login realizado com sucesso!");
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao fazer login');
+      toast.error(err instanceof Error ? err.message : 'Erro ao fazer login');
       throw err;
     } finally {
       setIsLoading(false);
@@ -118,6 +150,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const logout = () => {
     localStorage.removeItem('construProUser');
     setUser(null);
+    toast.info("Sessão encerrada");
   };
 
   const updateUser = (data: Partial<User>) => {
@@ -136,7 +169,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       login, 
       signup, 
       logout, 
-      updateUser 
+      updateUser,
+      isPublicRoute
     }}>
       {children}
     </AuthContext.Provider>

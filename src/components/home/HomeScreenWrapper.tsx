@@ -23,9 +23,9 @@ const HomeScreenWrapper: React.FC = () => {
       
       try {
         // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 800));
+        await new Promise(resolve => setTimeout(resolve, 600));
         
-        // Find user data in the mock data
+        // Find user data in the mock data or use the demo user
         if (user) {
           console.log("User found in auth context:", user.id);
           const clienteData = clientes.find(cliente => cliente.id === user.id);
@@ -38,8 +38,14 @@ const HomeScreenWrapper: React.FC = () => {
             setUserData(user);
           }
         } else {
-          console.log("No user in auth context");
-          throw new Error("Usuário não autenticado");
+          // Se não houver usuário autenticado, use o primeiro cliente do arquivo de dados
+          console.log("No user in auth context, using demo user");
+          const demoUser = clientes[0];
+          setUserData({
+            ...demoUser,
+            saldoPontos: 1250,
+            papel: 'profissional'
+          });
         }
       } catch (err) {
         console.error("Error fetching user data:", err);
@@ -65,11 +71,17 @@ const HomeScreenWrapper: React.FC = () => {
         setUserData(clienteData || user);
         toast.success("Dados atualizados com sucesso");
       } else {
-        setError(new Error("Usuário não autenticado"));
-        toast.error("Erro ao carregar dados do usuário");
+        // Usar o primeiro cliente como demonstração
+        const demoUser = clientes[0];
+        setUserData({
+          ...demoUser,
+          saldoPontos: 1250,
+          papel: 'profissional'
+        });
+        toast.success("Dados de demonstração carregados com sucesso");
       }
       setLoading(false);
-    }, 800);
+    }, 600);
   };
 
   return (
