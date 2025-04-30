@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, ShoppingBag, Gift, MessageSquare, User } from 'lucide-react';
+import { Home, ShoppingBag, Gift, MessageSquare, User, Briefcase } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from "@/components/ui/sonner";
 import { useAuth } from '../../context/AuthContext';
@@ -15,6 +15,7 @@ const BottomTabNavigator: React.FC = () => {
   const tabs = [
     { path: '/home', label: 'Início', icon: Home },
     { path: '/marketplace', label: 'Loja', icon: ShoppingBag },
+    { path: '/services', label: 'Serviços', icon: Briefcase },
     { path: '/resgates', label: 'Resgates', icon: Gift },
     { path: '/chat', label: 'Chat', icon: MessageSquare },
     { path: '/profile', label: 'Perfil', icon: User },
@@ -42,6 +43,11 @@ const BottomTabNavigator: React.FC = () => {
         pathname === '/cart' ||
         pathname === '/checkout';
     }
+    if (path === '/services') {
+      return pathname === '/services' || 
+        pathname.startsWith('/services/') ||
+        pathname.includes('professional');
+    }
     if (path === '/resgates') {
       return pathname === '/resgates' || 
         pathname.startsWith('/resgate') || 
@@ -58,7 +64,7 @@ const BottomTabNavigator: React.FC = () => {
 
   const handleNavigation = (path: string) => {
     // Para rotas que exigem autenticação e o usuário não está logado
-    if (['/resgates', '/chat', '/profile'].includes(path) && !user) {
+    if (['/resgates', '/chat', '/profile', '/services'].includes(path) && !user) {
       toast.info("Faça login para acessar esta funcionalidade");
       navigate('/login');
       return;

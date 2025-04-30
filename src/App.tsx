@@ -27,6 +27,13 @@ import ChatScreen from "./components/chat/ChatScreen";
 import ChatDetailScreen from "./components/chat/ChatDetailScreen";
 import ProfileScreen from "./components/profile/ProfileScreen";
 
+// Service screens
+import ServicesTabNavigator from "./components/services/ServicesTabNavigator";
+import ServiceRequestDetailScreen from "./components/services/ServiceRequestDetailScreen";
+import ProjectDetailScreen from "./components/services/ProjectDetailScreen";
+import ProfessionalProfileScreen from "./components/services/ProfessionalProfileScreen";
+import ProfessionalRegistrationScreen from "./components/services/ProfessionalRegistrationScreen";
+
 // Vendor screens
 import VendorHomeScreen from "./components/vendor/VendorHomeScreen";
 import AjustePontosVendorScreen from "./components/vendor/AjustePontosVendorScreen";
@@ -121,6 +128,33 @@ const AppRoutes = () => {
         <Route path="/profile" element={
           <ProtectedRoute requiredRoles={['consumidor', 'profissional', 'lojista']}>
             <ProfileScreen />
+          </ProtectedRoute>
+        } />
+        
+        {/* Services Routes */}
+        <Route path="/services" element={
+          <ProtectedRoute requiredRoles={['consumidor', 'profissional']}>
+            <ServicesTabNavigator />
+          </ProtectedRoute>
+        } />
+        <Route path="/services/request/:id" element={
+          <ProtectedRoute requiredRoles={['consumidor', 'profissional']}>
+            <ServiceRequestDetailScreen />
+          </ProtectedRoute>
+        } />
+        <Route path="/services/project/:id" element={
+          <ProtectedRoute requiredRoles={['consumidor', 'profissional']}>
+            <ProjectDetailScreen />
+          </ProtectedRoute>
+        } />
+        <Route path="/services/professional/:id" element={
+          <ProtectedRoute requiredRoles={['consumidor', 'profissional']}>
+            <ProfessionalProfileScreen />
+          </ProtectedRoute>
+        } />
+        <Route path="/services/register-professional" element={
+          <ProtectedRoute requiredRoles={['consumidor', 'profissional']}>
+            <ProfessionalRegistrationScreen />
           </ProtectedRoute>
         } />
         
