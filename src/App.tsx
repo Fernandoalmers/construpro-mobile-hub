@@ -37,6 +37,9 @@ import ProfessionalRegistrationScreen from "./components/services/ProfessionalRe
 // Vendor screens
 import VendorHomeScreen from "./components/vendor/VendorHomeScreen";
 import AjustePontosVendorScreen from "./components/vendor/AjustePontosVendorScreen";
+import ClientesVendorScreen from "./components/vendor/ClientesVendorScreen";
+import ProdutosVendorScreen from "./components/vendor/ProdutosVendorScreen";
+import ConfiguracoesVendorScreen from "./components/vendor/ConfiguracoesVendorScreen";
 import ErrorBoundary from "./components/common/ErrorBoundary";
 
 const queryClient = new QueryClient();
@@ -158,6 +161,7 @@ const AppRoutes = () => {
           </ProtectedRoute>
         } />
         
+        {/* Vendor Routes */}
         <Route path="/vendor" element={
           <ProtectedRoute requiredRoles={['lojista']}>
             <VendorHomeScreen />
@@ -166,6 +170,26 @@ const AppRoutes = () => {
         <Route path="/vendor/ajuste-pontos" element={
           <ProtectedRoute requiredRoles={['lojista']}>
             <AjustePontosVendorScreen />
+          </ProtectedRoute>
+        } />
+        <Route path="/vendor/clientes" element={
+          <ProtectedRoute requiredRoles={['lojista']}>
+            <ClientesVendorScreen />
+          </ProtectedRoute>
+        } />
+        <Route path="/vendor/clientes/:id/extrato" element={
+          <ProtectedRoute requiredRoles={['lojista']}>
+            <ClientesVendorScreen />
+          </ProtectedRoute>
+        } />
+        <Route path="/vendor/produtos" element={
+          <ProtectedRoute requiredRoles={['lojista']}>
+            <ProdutosVendorScreen />
+          </ProtectedRoute>
+        } />
+        <Route path="/vendor/configuracoes" element={
+          <ProtectedRoute requiredRoles={['lojista']}>
+            <ConfiguracoesVendorScreen />
           </ProtectedRoute>
         } />
         
