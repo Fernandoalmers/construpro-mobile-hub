@@ -9,7 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 const ServicesTabNavigator: React.FC = () => {
   const { user } = useAuth();
   const isProfessional = user?.papel === 'profissional';
-  const isVendor = user?.papel === 'vendedor';
+  const isVendor = user?.papel === 'lojista';
 
   return (
     <div className="flex flex-col h-full pb-16">
