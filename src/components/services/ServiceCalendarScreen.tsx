@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { format, addDays, startOfWeek, getDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -14,27 +13,29 @@ import {
 } from "@/components/ui/popover";
 import { toast } from '@/components/ui/sonner';
 
+type EventType = 'visit' | 'delivery' | 'completion' | 'meeting';
+
 // Mock calendar events
 const mockCalendarEvents = [
   { 
     id: '1', 
     title: 'Visita técnica - João Silva', 
     date: new Date('2025-05-03T10:00:00'), 
-    type: 'visit', 
+    type: 'visit' as EventType, 
     address: 'Rua das Flores, 123 - Centro'
   },
   { 
     id: '2', 
     title: 'Entrega de material', 
     date: new Date('2025-05-04T14:30:00'), 
-    type: 'delivery',
+    type: 'delivery' as EventType,
     address: 'Av. Paulista, 1000 - Bela Vista'
   },
   { 
     id: '3', 
     title: 'Finalização de obra - Maria Oliveira', 
     date: new Date('2025-05-06T09:00:00'), 
-    type: 'completion',
+    type: 'completion' as EventType,
     address: 'Rua dos Pinheiros, 500 - Pinheiros'
   },
 ];
@@ -43,7 +44,7 @@ type CalendarEvent = {
   id: string;
   title: string;
   date: Date;
-  type: 'visit' | 'delivery' | 'completion' | 'meeting';
+  type: EventType;
   address?: string;
 };
 
@@ -102,7 +103,7 @@ const ServiceCalendarScreen: React.FC = () => {
   };
   
   // Get event type color class
-  const getEventTypeColor = (type: string) => {
+  const getEventTypeColor = (type: EventType) => {
     switch (type) {
       case 'visit':
         return 'bg-blue-100 text-blue-800 border-blue-200';
@@ -118,7 +119,7 @@ const ServiceCalendarScreen: React.FC = () => {
   };
   
   // Translate event type to Portuguese
-  const getEventTypeLabel = (type: string) => {
+  const getEventTypeLabel = (type: EventType) => {
     switch (type) {
       case 'visit':
         return 'Visita';

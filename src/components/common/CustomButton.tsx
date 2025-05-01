@@ -2,6 +2,7 @@
 import React, { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { Loader2 } from 'lucide-react';
 
 interface CustomButtonProps {
   children: ReactNode;
@@ -14,6 +15,7 @@ interface CustomButtonProps {
   type?: "button" | "submit" | "reset";
   icon?: ReactNode;
   iconPosition?: 'left' | 'right';
+  loading?: boolean;
 }
 
 const CustomButton: React.FC<CustomButtonProps> = ({ 
@@ -26,7 +28,8 @@ const CustomButton: React.FC<CustomButtonProps> = ({
   fullWidth,
   type = "button",
   icon,
-  iconPosition = 'left'
+  iconPosition = 'left',
+  loading = false
 }) => {
   // Map our custom variants to the button variants and styles
   const variantClassMap = {
@@ -47,7 +50,7 @@ const CustomButton: React.FC<CustomButtonProps> = ({
     <Button
       type={type}
       onClick={onClick}
-      disabled={disabled}
+      disabled={disabled || loading}
       variant={variant === 'primary' || variant === 'secondary' ? 'default' : variant === 'outline' ? 'outline' : variant === 'link' ? 'link' : 'default'}
       className={cn(
         variantClassMap[variant],
@@ -57,9 +60,13 @@ const CustomButton: React.FC<CustomButtonProps> = ({
         className
       )}
     >
-      {icon && iconPosition === 'left' && icon}
+      {loading ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        icon && iconPosition === 'left' && icon
+      )}
       {children}
-      {icon && iconPosition === 'right' && icon}
+      {!loading && icon && iconPosition === 'right' && icon}
     </Button>
   );
 };
