@@ -27,7 +27,9 @@ const mockReferralData = {
 const ReferralsScreen: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const currentUser = user || { codigo: mockReferralData.code };
+  
+  // Get the referral code with fallback
+  const referralCode = user?.codigo || mockReferralData.code;
   
   // Format date
   const formatDate = (dateString: string) => {
@@ -35,12 +37,12 @@ const ReferralsScreen: React.FC = () => {
   };
   
   const handleCopyCode = () => {
-    navigator.clipboard.writeText(currentUser.codigo || mockReferralData.code);
+    navigator.clipboard.writeText(referralCode);
     toast.success("Código copiado para a área de transferência");
   };
   
   const handleShareWhatsApp = () => {
-    const message = `Venha para a ConstruPro! Use meu código ${currentUser.codigo || mockReferralData.code} e ganhe 300 pontos na primeira compra. https://construpro.com/convite`;
+    const message = `Venha para a ConstruPro! Use meu código ${referralCode} e ganhe 300 pontos na primeira compra. https://construpro.com/convite`;
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   };
@@ -63,7 +65,7 @@ const ReferralsScreen: React.FC = () => {
           <h3 className="font-medium mb-1">Seu código de indicação</h3>
           <div className="bg-gray-50 rounded-md p-3 flex items-center justify-between mb-4">
             <span className="text-xl font-bold tracking-wider">
-              {currentUser.codigo || mockReferralData.code}
+              {referralCode}
             </span>
             <button 
               className="text-construPro-blue"

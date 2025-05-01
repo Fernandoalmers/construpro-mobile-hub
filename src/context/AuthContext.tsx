@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import clientes from '../data/clientes.json';
 import { toast } from "@/components/ui/sonner";
@@ -14,6 +13,8 @@ interface User {
   telefone?: string;
   papel: UserRole;
   saldoPontos?: number;
+  avatar?: string;
+  codigo?: string;
 }
 
 interface AuthContextType {
@@ -63,6 +64,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             ...demoUser,
             papel: 'profissional',
             saldoPontos: 1250,
+            codigo: demoUser.codigo,
+            avatar: demoUser.avatar
           };
           localStorage.setItem('construProUser', JSON.stringify(simulatedUser));
           setUser(simulatedUser);
@@ -100,11 +103,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       // In a real app, we would verify the password here
       
-      // Add role to user data (default to 'profissional' for mock data)
+      // Add role and other properties to user data
       const userWithRole: User = {
         ...foundUser,
         papel: 'profissional', // For demo purposes
         saldoPontos: 1250,
+        codigo: foundUser.codigo,
+        avatar: foundUser.avatar
       };
       
       // Save to local storage for persistence
@@ -134,6 +139,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         telefone: userData.telefone,
         papel: userData.papel as UserRole || 'profissional',
         saldoPontos: 0,
+        avatar: userData.avatar,
+        codigo: userData.codigo
       };
       
       // Save to local storage for persistence
