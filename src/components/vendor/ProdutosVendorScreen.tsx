@@ -35,19 +35,11 @@ const ProdutosVendorScreen: React.FC = () => {
   });
 
   const handleNewProduct = () => {
-    // In a real app, navigate to product form
-    toast({
-      title: "Funcionalidade em desenvolvimento",
-      description: "O formulário de adição de produtos será implementado em breve."
-    });
+    navigate('/vendor/produtos/novo');
   };
   
   const handleEditProduct = (productId: string) => {
-    // In a real app, navigate to product form with product ID
-    toast({
-      title: "Funcionalidade em desenvolvimento",
-      description: "O formulário de edição de produtos será implementado em breve."
-    });
+    navigate(`/vendor/produtos/editar/${productId}`);
   };
   
   const handleArchiveProduct = (productId: string, productName: string) => {
