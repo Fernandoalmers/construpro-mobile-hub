@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, CircleDollarSign, Filter, ShoppingBag, Users, Gift, Receipt } from 'lucide-react';
+import { ChevronLeft, CircleDollarSign, Filter, ShoppingBag, Users, Gift, Receipt, Briefcase } from 'lucide-react';
 import Card from '../common/Card';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
@@ -67,6 +67,25 @@ const generatePointsTransactions = (userId: string) => {
     referencia: 'nf-1234'
   });
   
+  // Adicionar pontos de serviços para profissionais
+  transactions.push({
+    id: 'serv-1',
+    tipo: 'servico',
+    pontos: 350,
+    data: '2025-04-18T09:15:00',
+    descricao: 'Serviço concluído - Pintura residencial',
+    referencia: 'project-123'
+  });
+  
+  transactions.push({
+    id: 'serv-2',
+    tipo: 'servico',
+    pontos: 420,
+    data: '2025-04-05T11:30:00',
+    descricao: 'Serviço concluído - Instalação elétrica',
+    referencia: 'project-456'
+  });
+  
   // Ordenar por data (mais recente primeiro)
   return transactions.sort((a, b) => 
     new Date(b.data).getTime() - new Date(a.data).getTime()
@@ -79,7 +98,9 @@ const PointsHistoryScreen: React.FC = () => {
   const userId = user?.id || "1"; // Default to first client if no user
   
   const [typeFilter, setTypeFilter] = useState<string>("todos");
+  const [originFilter, setOriginFilter] = useState<string>("todos");
   const [periodFilter, setPeriodFilter] = useState<string>("todos");
+  const [showFilters, setShowFilters] = useState(false);
   
   // Generate transactions
   const allTransactions = generatePointsTransactions(userId);
@@ -87,9 +108,16 @@ const PointsHistoryScreen: React.FC = () => {
   // Apply filters
   let filteredTransactions = [...allTransactions];
   
-  // Apply type filter
-  if (typeFilter !== "todos") {
-    filteredTransactions = filteredTransactions.filter(t => t.tipo === typeFilter);
+  // Apply type filter (ganho/resgate)
+  if (typeFilter === "ganho") {
+    filteredTransactions = filteredTransactions.filter(t => t.pontos > 0);
+  } else if (typeFilter === "resgate") {
+    filteredTransactions = filteredTransactions.filter(t => t.pontos < 0);
+  }
+  
+  // Apply origin filter
+  if (originFilter !== "todos") {
+    filteredTransactions = filteredTransactions.filter(t => t.tipo === originFilter);
   }
   
   // Apply period filter
@@ -119,6 +147,15 @@ const PointsHistoryScreen: React.FC = () => {
   // Calculate total points
   const totalPoints = allTransactions.reduce((sum, t) => sum + t.pontos, 0);
   
+  // Calculate points statistics
+  const totalEarned = allTransactions
+    .filter(t => t.pontos > 0)
+    .reduce((sum, t) => sum + t.pontos, 0);
+    
+  const totalRedeemed = allTransactions
+    .filter(t => t.pontos < 0)
+    .reduce((sum, t) => sum + Math.abs(t.pontos), 0);
+  
   // Get icon for transaction type
   const getTransactionIcon = (type: string) => {
     switch(type) {
@@ -130,6 +167,8 @@ const PointsHistoryScreen: React.FC = () => {
         return <Users size={18} className="text-blue-600" />;
       case 'loja-fisica':
         return <Receipt size={18} className="text-purple-600" />;
+      case 'servico':
+        return <Briefcase size={18} className="text-orange-600" />;
       default:
         return <CircleDollarSign size={18} className="text-gray-600" />;
     }
@@ -161,6 +200,19 @@ const PointsHistoryScreen: React.FC = () => {
             <span className="text-3xl font-bold">{totalPoints}</span>
             <span className="ml-1 text-gray-600">pontos</span>
           </div>
+          
+          <Separator className="my-3" />
+          
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <p className="text-gray-500">Total ganho</p>
+              <p className="font-medium text-green-600">+{totalEarned} pontos</p>
+            </div>
+            <div>
+              <p className="text-gray-500">Total resgatado</p>
+              <p className="font-medium text-red-600">-{totalRedeemed} pontos</p>
+            </div>
+          </div>
         </Card>
       </div>
       
@@ -168,38 +220,59 @@ const PointsHistoryScreen: React.FC = () => {
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-medium">Extrato de pontos</h2>
-          <Button variant="outline" size="sm" className="flex items-center">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex items-center"
+            onClick={() => setShowFilters(!showFilters)}
+          >
             <Filter size={14} className="mr-1" />
             Filtros
           </Button>
         </div>
         
-        <div className="flex gap-3 mb-4">
-          <Select defaultValue="todos" onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Tipo" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos os tipos</SelectItem>
-              <SelectItem value="compra">Compras app</SelectItem>
-              <SelectItem value="loja-fisica">Compras físicas</SelectItem>
-              <SelectItem value="resgate">Resgates</SelectItem>
-              <SelectItem value="indicacao">Indicações</SelectItem>
-            </SelectContent>
-          </Select>
-          
-          <Select defaultValue="todos" onValueChange={setPeriodFilter}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Período" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todo período</SelectItem>
-              <SelectItem value="30dias">Últimos 30 dias</SelectItem>
-              <SelectItem value="90dias">Últimos 90 dias</SelectItem>
-              <SelectItem value="6meses">Últimos 6 meses</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        {showFilters && (
+          <div className="bg-gray-50 p-3 rounded-md mb-4 space-y-3">
+            <div className="flex gap-3 mb-1">
+              <Select defaultValue="todos" onValueChange={setTypeFilter}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os tipos</SelectItem>
+                  <SelectItem value="ganho">Ganhos</SelectItem>
+                  <SelectItem value="resgate">Resgates</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Select defaultValue="todos" onValueChange={setOriginFilter}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Origem" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todas origens</SelectItem>
+                  <SelectItem value="compra">Compras app</SelectItem>
+                  <SelectItem value="loja-fisica">Compras físicas</SelectItem>
+                  <SelectItem value="servico">Serviços</SelectItem>
+                  <SelectItem value="indicacao">Indicações</SelectItem>
+                  <SelectItem value="resgate">Resgates</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <Select defaultValue="todos" onValueChange={setPeriodFilter}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Período" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todo período</SelectItem>
+                <SelectItem value="30dias">Últimos 30 dias</SelectItem>
+                <SelectItem value="90dias">Últimos 90 dias</SelectItem>
+                <SelectItem value="6meses">Últimos 6 meses</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         
         {/* Transactions */}
         <Card className="overflow-hidden">

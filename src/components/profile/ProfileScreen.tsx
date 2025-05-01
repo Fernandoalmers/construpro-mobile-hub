@@ -188,7 +188,10 @@ const ProfileScreen: React.FC = () => {
         
         <Card className="overflow-hidden">
           <div className="divide-y divide-gray-100">
-            <div className="p-4 flex items-center justify-between">
+            <div 
+              className="p-4 flex items-center justify-between cursor-pointer"
+              onClick={() => navigate('/profile/user-data')}
+            >
               <div className="flex items-center">
                 <User className="text-construPro-blue mr-3" size={20} />
                 <span>Dados pessoais</span>
@@ -196,7 +199,7 @@ const ProfileScreen: React.FC = () => {
               <ChevronRight className="text-gray-400" size={18} />
             </div>
             
-            <div className="p-4 flex items-center justify-between">
+            <div className="p-4 flex items-center justify-between cursor-pointer">
               <div className="flex items-center">
                 <Lock className="text-construPro-blue mr-3" size={20} />
                 <span>Alterar senha</span>
@@ -204,7 +207,10 @@ const ProfileScreen: React.FC = () => {
               <ChevronRight className="text-gray-400" size={18} />
             </div>
             
-            <div className="p-4 flex items-center justify-between">
+            <div 
+              className="p-4 flex items-center justify-between cursor-pointer"
+              onClick={() => navigate('/profile/settings')}
+            >
               <div className="flex items-center">
                 <Settings className="text-construPro-blue mr-3" size={20} />
                 <span>Configurações</span>

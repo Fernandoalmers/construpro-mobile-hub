@@ -35,6 +35,8 @@ import PhysicalPurchasesScreen from "./components/profile/PhysicalPurchasesScree
 import FavoritesScreen from "./components/profile/FavoritesScreen";
 import ReferralsScreen from "./components/profile/ReferralsScreen";
 import ReviewsScreen from "./components/profile/ReviewsScreen";
+import SettingsScreen from "./components/profile/SettingsScreen";
+import UserDataScreen from "./components/profile/UserDataScreen";
 
 // Service screens
 import ServicesTabNavigator from "./components/services/ServicesTabNavigator";
@@ -177,6 +179,16 @@ const AppRoutes = () => {
         <Route path="/profile/reviews" element={
           <ProtectedRoute requiredRoles={['consumidor', 'profissional']}>
             <ReviewsScreen />
+          </ProtectedRoute>
+        } />
+        <Route path="/profile/settings" element={
+          <ProtectedRoute requiredRoles={['consumidor', 'profissional']}>
+            <SettingsScreen />
+          </ProtectedRoute>
+        } />
+        <Route path="/profile/user-data" element={
+          <ProtectedRoute requiredRoles={['consumidor', 'profissional']}>
+            <UserDataScreen />
           </ProtectedRoute>
         } />
         
