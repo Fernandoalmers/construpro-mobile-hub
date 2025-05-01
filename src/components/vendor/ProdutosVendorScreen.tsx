@@ -127,7 +127,7 @@ const ProdutosVendorScreen: React.FC = () => {
                   <div className="flex">
                     <div 
                       className="w-20 h-20 bg-gray-200 rounded-md mr-4 flex-shrink-0 bg-center bg-cover"
-                      style={{ backgroundImage: `url(${produto.imagens?.[0] || ''})` }}
+                      style={{ backgroundImage: `url(${produto.imagemUrl || ''})` }}
                     />
                     
                     <div className="flex-1">
@@ -175,7 +175,7 @@ const ProdutosVendorScreen: React.FC = () => {
                         <div className="bg-construPro-orange/10 text-construPro-orange px-2 py-1 rounded flex items-center">
                           <Tag size={14} className="mr-1" />
                           <span>Pontos: </span>
-                          <span className="ml-1">{produto.pontosProfissional} / {produto.pontosConsumidor}</span>
+                          <span className="ml-1">{produto.pontos}</span>
                         </div>
                       </div>
                     </div>
