@@ -57,7 +57,7 @@ const BottomTabNavigator: React.FC = () => {
       return pathname === '/chat' || pathname.startsWith('/chat/');
     }
     if (path === '/profile') {
-      return pathname === '/profile';
+      return pathname === '/profile' || pathname.startsWith('/profile/');
     }
     return false;
   };

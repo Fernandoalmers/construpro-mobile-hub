@@ -7,13 +7,30 @@ import ProgressBar from '../common/ProgressBar';
 import CustomButton from '../common/CustomButton';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Award, User, Lock, Settings, Bell, LogOut, ChevronRight } from 'lucide-react';
+import { 
+  Award, 
+  User, 
+  Lock, 
+  Settings, 
+  Bell, 
+  LogOut, 
+  ChevronRight, 
+  ShoppingBag, 
+  CircleDollarSign, 
+  Receipt, 
+  Bookmark, 
+  Users, 
+  MessageSquare 
+} from 'lucide-react';
 import clientes from '../../data/clientes.json';
+import { useAuth } from '../../context/AuthContext';
 
 const ProfileScreen: React.FC = () => {
   const navigate = useNavigate();
-  // Use the first client as the logged in user for demo
-  const currentUser = clientes[0];
+  const { user: authUser, logout } = useAuth();
+  
+  // Use the first client as the logged in user for demo if no auth user
+  const currentUser = authUser || clientes[0];
   
   const [notifications, setNotifications] = useState(true);
   const [vendorMode, setVendorMode] = useState(false);
@@ -60,9 +77,43 @@ const ProfileScreen: React.FC = () => {
   };
 
   const handleLogout = () => {
-    // In a real app, this would clear auth state
+    logout();
     navigate('/login');
   };
+
+  // Profile menu sections
+  const profileSections = [
+    {
+      title: "Pedidos Realizados",
+      icon: <ShoppingBag className="text-construPro-blue mr-3" size={20} />,
+      path: "/profile/orders"
+    },
+    {
+      title: "Pontos e Extrato",
+      icon: <CircleDollarSign className="text-construPro-blue mr-3" size={20} />,
+      path: "/profile/points"
+    },
+    {
+      title: "Compras Físicas",
+      icon: <Receipt className="text-construPro-blue mr-3" size={20} />,
+      path: "/profile/physical-purchases"
+    },
+    {
+      title: "Favoritos",
+      icon: <Bookmark className="text-construPro-blue mr-3" size={20} />,
+      path: "/profile/favorites"
+    },
+    {
+      title: "Indique e Ganhe",
+      icon: <Users className="text-construPro-blue mr-3" size={20} />,
+      path: "/profile/referrals"
+    },
+    {
+      title: "Avaliações Feitas",
+      icon: <MessageSquare className="text-construPro-blue mr-3" size={20} />,
+      path: "/profile/reviews"
+    }
+  ];
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
@@ -115,8 +166,26 @@ const ProfileScreen: React.FC = () => {
         </Card>
       </div>
 
-      {/* Settings */}
+      {/* Profile Sections */}
       <div className="p-6 space-y-4">
+        <Card className="overflow-hidden">
+          <div className="divide-y divide-gray-100">
+            {profileSections.map((section, index) => (
+              <div 
+                key={index} 
+                className="p-4 flex items-center justify-between cursor-pointer"
+                onClick={() => navigate(section.path)}
+              >
+                <div className="flex items-center">
+                  {section.icon}
+                  <span>{section.title}</span>
+                </div>
+                <ChevronRight className="text-gray-400" size={18} />
+              </div>
+            ))}
+          </div>
+        </Card>
+        
         <Card className="overflow-hidden">
           <div className="divide-y divide-gray-100">
             <div className="p-4 flex items-center justify-between">

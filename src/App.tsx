@@ -27,6 +27,15 @@ import ChatScreen from "./components/chat/ChatScreen";
 import ChatDetailScreen from "./components/chat/ChatDetailScreen";
 import ProfileScreen from "./components/profile/ProfileScreen";
 
+// Profile section screens
+import OrdersScreen from "./components/profile/OrdersScreen";
+import OrderDetailScreen from "./components/profile/OrderDetailScreen";
+import PointsHistoryScreen from "./components/profile/PointsHistoryScreen";
+import PhysicalPurchasesScreen from "./components/profile/PhysicalPurchasesScreen";
+import FavoritesScreen from "./components/profile/FavoritesScreen";
+import ReferralsScreen from "./components/profile/ReferralsScreen";
+import ReviewsScreen from "./components/profile/ReviewsScreen";
+
 // Service screens
 import ServicesTabNavigator from "./components/services/ServicesTabNavigator";
 import ServiceRequestDetailScreen from "./components/services/ServiceRequestDetailScreen";
@@ -131,6 +140,43 @@ const AppRoutes = () => {
         <Route path="/profile" element={
           <ProtectedRoute requiredRoles={['consumidor', 'profissional', 'lojista']}>
             <ProfileScreen />
+          </ProtectedRoute>
+        } />
+        
+        {/* Profile Section Routes */}
+        <Route path="/profile/orders" element={
+          <ProtectedRoute requiredRoles={['consumidor', 'profissional']}>
+            <OrdersScreen />
+          </ProtectedRoute>
+        } />
+        <Route path="/profile/orders/:id" element={
+          <ProtectedRoute requiredRoles={['consumidor', 'profissional']}>
+            <OrderDetailScreen />
+          </ProtectedRoute>
+        } />
+        <Route path="/profile/points" element={
+          <ProtectedRoute requiredRoles={['consumidor', 'profissional']}>
+            <PointsHistoryScreen />
+          </ProtectedRoute>
+        } />
+        <Route path="/profile/physical-purchases" element={
+          <ProtectedRoute requiredRoles={['consumidor', 'profissional']}>
+            <PhysicalPurchasesScreen />
+          </ProtectedRoute>
+        } />
+        <Route path="/profile/favorites" element={
+          <ProtectedRoute requiredRoles={['consumidor', 'profissional']}>
+            <FavoritesScreen />
+          </ProtectedRoute>
+        } />
+        <Route path="/profile/referrals" element={
+          <ProtectedRoute requiredRoles={['consumidor', 'profissional']}>
+            <ReferralsScreen />
+          </ProtectedRoute>
+        } />
+        <Route path="/profile/reviews" element={
+          <ProtectedRoute requiredRoles={['consumidor', 'profissional']}>
+            <ReviewsScreen />
           </ProtectedRoute>
         } />
         
