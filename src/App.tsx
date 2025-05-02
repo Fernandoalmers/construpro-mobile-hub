@@ -1,7 +1,8 @@
+
 import React from 'react';
 import { Suspense, lazy } from 'react';
 import { Route, Routes, Navigate } from 'react-router-dom';
-import { Toaster } from 'sonner';
+// Removed duplicate Toaster import from sonner
 import SplashScreen from './components/SplashScreen';
 import OnboardingScreen from './components/OnboardingScreen';
 import LoginScreen from './components/LoginScreen';
