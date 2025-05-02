@@ -7,6 +7,7 @@ import { ArrowLeft, Check, Eye, EyeOff } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '../context/AuthContext';
 import { toast } from "@/components/ui/sonner";
+import type { UserRole } from '../context/AuthContext';
 
 const SignupScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -23,11 +24,16 @@ const SignupScreen: React.FC = () => {
     email: '',
     senha: '',
     confirmaSenha: '',
+    tipo_perfil: 'consumidor' as UserRole
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setSignupData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleTipoPerfilChange = (value: UserRole) => {
+    setSignupData(prev => ({ ...prev, tipo_perfil: value }));
   };
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -54,11 +60,12 @@ const SignupScreen: React.FC = () => {
         telefone: signupData.telefone,
         email: signupData.email,
         senha: signupData.senha,
+        tipo_perfil: signupData.tipo_perfil
       });
       
       toast.success("Cadastro realizado com sucesso!");
-      // Navigate to profile selection screen
-      navigate('/auth/profile-selection');
+      // Navigate to login screen
+      navigate('/login');
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Erro ao criar conta';
       toast.error(errorMsg);
@@ -154,6 +161,30 @@ const SignupScreen: React.FC = () => {
                 required
                 disabled={isSubmitting}
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">
+                Tipo de perfil
+              </label>
+              <RadioGroup 
+                value={signupData.tipo_perfil} 
+                onValueChange={(val) => handleTipoPerfilChange(val as UserRole)}
+                className="flex flex-col space-y-2"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="consumidor" id="consumidor" />
+                  <label htmlFor="consumidor">Consumidor</label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="profissional" id="profissional" />
+                  <label htmlFor="profissional">Profissional</label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="vendedor" id="vendedor" />
+                  <label htmlFor="vendedor">Vendedor</label>
+                </div>
+              </RadioGroup>
             </div>
 
             <div>

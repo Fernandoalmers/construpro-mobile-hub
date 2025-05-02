@@ -31,12 +31,10 @@ const LoginScreen: React.FC = () => {
     try {
       // Call the auth context login function
       await login(loginData.email, loginData.password);
-      toast.success("Login realizado com sucesso!");
       navigate('/home');
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Erro ao fazer login';
       setError(errorMsg);
-      toast.error(errorMsg);
     }
   };
 

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, User, Save } from 'lucide-react';
 import Card from '../common/Card';
@@ -32,14 +32,14 @@ const specialtyOptions = [
 
 const UserDataScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { user, updateUser } = useAuth();
+  const { profile, updateProfile } = useAuth();
   
   // Form state
   const [formData, setFormData] = useState({
-    nome: user?.nome || '',
-    email: user?.email || '',
-    cpfCnpj: user?.cpf || '',
-    telefone: user?.telefone || '',
+    nome: '',
+    email: '',
+    cpf: '',
+    telefone: '',
     endereco: '',
     cidade: '',
     estado: '',
@@ -47,6 +47,22 @@ const UserDataScreen: React.FC = () => {
   });
   
   const [loading, setLoading] = useState(false);
+
+  // Carregar dados do perfil quando o componente montar
+  useEffect(() => {
+    if (profile) {
+      setFormData({
+        nome: profile.nome || '',
+        email: profile.email || '',
+        cpf: profile.cpf || '',
+        telefone: profile.telefone || '',
+        endereco: profile.endereco_principal?.logradouro || '',
+        cidade: profile.endereco_principal?.cidade || '',
+        estado: profile.endereco_principal?.estado || '',
+        especialidade: '',
+      });
+    }
+  }, [profile]);
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -68,26 +84,27 @@ const UserDataScreen: React.FC = () => {
     setLoading(true);
     
     try {
-      // In a real app, this would be an API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      updateUser({
+      await updateProfile({
         nome: formData.nome,
-        email: formData.email,
-        cpf: formData.cpfCnpj,
+        cpf: formData.cpf,
         telefone: formData.telefone,
+        endereco_principal: {
+          logradouro: formData.endereco,
+          cidade: formData.cidade,
+          estado: formData.estado
+        }
       });
       
-      toast.success('Dados atualizados com sucesso!');
       navigate('/profile');
     } catch (error) {
       toast.error('Erro ao atualizar dados. Tente novamente.');
+      console.error(error);
     } finally {
       setLoading(false);
     }
   };
   
-  const isProfessional = user?.papel === 'profissional';
+  const isProfessional = profile?.tipo_perfil === 'profissional';
   
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
@@ -129,16 +146,20 @@ const UserDataScreen: React.FC = () => {
                 type="email"
                 value={formData.email}
                 onChange={handleChange}
+                disabled={true}
                 required
               />
+              <p className="text-xs text-gray-500 mt-1">
+                O e-mail não pode ser alterado.
+              </p>
             </div>
             
             <div>
-              <Label htmlFor="cpfCnpj">CPF/CNPJ</Label>
+              <Label htmlFor="cpf">CPF/CNPJ</Label>
               <CustomInput
-                id="cpfCnpj"
-                name="cpfCnpj"
-                value={formData.cpfCnpj}
+                id="cpf"
+                name="cpf"
+                value={formData.cpf}
                 onChange={handleChange}
                 required
               />

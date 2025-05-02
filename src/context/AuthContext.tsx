@@ -1,35 +1,56 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import clientes from '../data/clientes.json';
 import { toast } from "@/components/ui/sonner";
 import { supabase } from '@/integrations/supabase/client';
+import { Session, User } from '@supabase/supabase-js';
 
 // Define types
-type UserRole = 'consumidor' | 'profissional' | 'lojista';
+export type UserRole = 'consumidor' | 'profissional' | 'vendedor';
 
-interface User {
+export interface Profile {
   id: string;
   nome: string;
-  cpf: string;
+  cpf?: string;
   email?: string;
   telefone?: string;
-  papel: UserRole;
-  saldoPontos?: number;
+  tipo_perfil: UserRole;
+  status: string;
+  saldo_pontos: number;
   avatar?: string;
-  codigo?: string;
   is_admin?: boolean;
+  endereco_principal?: {
+    logradouro?: string;
+    numero?: string;
+    complemento?: string;
+    bairro?: string;
+    cidade?: string;
+    estado?: string;
+    cep?: string;
+  };
 }
 
 interface AuthContextType {
   user: User | null;
+  profile: Profile | null;
+  session: Session | null;
   isLoading: boolean;
   error: string | null;
   login: (email: string, senha: string) => Promise<void>;
-  signup: (userData: Partial<User> & { senha: string }) => Promise<void>;
+  signup: (userData: SignupData) => Promise<void>;
   logout: () => void;
-  updateUser: (data: Partial<User>) => void;
+  updateProfile: (data: Partial<Profile>) => Promise<void>;
   isPublicRoute: (pathname: string) => boolean;
   checkIsAdmin: () => Promise<boolean>;
+  refreshProfile: () => Promise<void>;
+}
+
+interface SignupData {
+  email: string;
+  senha: string;
+  nome: string;
+  cpf?: string;
+  telefone?: string;
+  tipo_perfil: UserRole;
 }
 
 // Lista de rotas públicas que não necessitam de autenticação
@@ -41,6 +62,7 @@ const publicRoutes = [
   '/home',
   '/marketplace',
   '/produto',
+  '/auth/recuperar-senha',
 ];
 
 // Create context
@@ -49,59 +71,79 @@ const AuthContext = createContext<AuthContextType | null>(null);
 // Provider component
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Check for saved user on initial load
+  // Função para buscar o perfil do usuário
+  const fetchProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error('Erro ao buscar perfil:', error);
+        return null;
+      }
+
+      return data as Profile;
+    } catch (err) {
+      console.error('Erro ao buscar perfil:', err);
+      return null;
+    }
+  };
+
+  // Atualizar perfil do usuário atual
+  const refreshProfile = async () => {
+    if (!user) return;
+    
+    const profileData = await fetchProfile(user.id);
+    if (profileData) {
+      setProfile(profileData);
+    }
+  };
+
+  // Configurar listener para mudanças na autenticação
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        // In a real app, this would verify a token with the backend
-        const savedUser = localStorage.getItem('construProUser');
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, currentSession) => {
+        setSession(currentSession);
+        setUser(currentSession?.user || null);
         
-        if (savedUser) {
-          // Get user from localStorage
-          const parsedUser = JSON.parse(savedUser);
-          
-          // Check Supabase for admin status if connected
-          try {
-            const { data, error } = await supabase
-              .from('profiles')
-              .select('is_admin')
-              .eq('id', parsedUser.id)
-              .single();
-            
-            if (!error && data) {
-              parsedUser.is_admin = data.is_admin;
-            }
-          } catch (e) {
-            console.error("Error checking admin status", e);
-          }
-          
-          setUser(parsedUser);
+        if (currentSession?.user) {
+          const profileData = await fetchProfile(currentSession.user.id);
+          setProfile(profileData);
         } else {
-          // Criar um usuário simulado para demonstração
-          const demoUser = clientes[0];
-          const simulatedUser: User = {
-            ...demoUser,
-            papel: 'profissional',
-            saldoPontos: 1250,
-            codigo: demoUser.codigo,
-            avatar: demoUser.avatar,
-            is_admin: false
-          };
-          localStorage.setItem('construProUser', JSON.stringify(simulatedUser));
-          setUser(simulatedUser);
-          console.log("Usuário de demonstração criado para navegação");
+          setProfile(null);
         }
-      } catch (err) {
-        console.error('Auth verification failed', err);
-      } finally {
+        
         setIsLoading(false);
       }
+    );
+
+    // Verificar sessão atual
+    const initializeAuth = async () => {
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      setSession(currentSession);
+      setUser(currentSession?.user || null);
+      
+      if (currentSession?.user) {
+        const profileData = await fetchProfile(currentSession.user.id);
+        setProfile(profileData);
+      }
+      
+      setIsLoading(false);
     };
 
-    checkAuth();
+    initializeAuth();
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
   // Função para verificar se uma rota é pública
@@ -114,159 +156,104 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setError(null);
     
     try {
-      // Mock login - in real app this would call an API
-      // Just for demonstration, let's find a user by email or CPF
-      const foundUser = clientes.find(cliente => 
-        cliente.email === email || cliente.cpf === email
-      );
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password: senha,
+      });
       
-      if (!foundUser) {
-        throw new Error('Usuário não encontrado');
+      if (error) throw error;
+      
+      // Após login bem-sucedido, busca o perfil
+      if (data.user) {
+        const profileData = await fetchProfile(data.user.id);
+        setProfile(profileData);
       }
       
-      // In a real app, we would verify the password here
-      
-      // Add role and other properties to user data
-      const userWithRole: User = {
-        ...foundUser,
-        papel: 'profissional', // For demo purposes
-        saldoPontos: 1250,
-        codigo: foundUser.codigo,
-        avatar: foundUser.avatar,
-        is_admin: false // Default to non-admin
-      };
-      
-      // Check Supabase for admin status
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('id', userWithRole.id)
-          .single();
-        
-        if (!error && data) {
-          userWithRole.is_admin = data.is_admin;
-        } else {
-          // Create profile if it doesn't exist
-          await supabase
-            .from('profiles')
-            .insert({
-              id: userWithRole.id,
-              nome: userWithRole.nome,
-              email: userWithRole.email,
-              cpf: userWithRole.cpf,
-              telefone: userWithRole.telefone,
-              papel: userWithRole.papel,
-              saldo_pontos: userWithRole.saldoPontos,
-              avatar: userWithRole.avatar,
-              codigo: userWithRole.codigo,
-              is_admin: false
-            })
-            .select();
-        }
-      } catch (e) {
-        console.error("Error checking/creating profile", e);
-      }
-      
-      // Save to local storage for persistence
-      localStorage.setItem('construProUser', JSON.stringify(userWithRole));
-      setUser(userWithRole);
       toast.success("Login realizado com sucesso!");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao fazer login');
-      toast.error(err instanceof Error ? err.message : 'Erro ao fazer login');
+    } catch (err: any) {
+      setError(err.message);
+      toast.error(err.message);
       throw err;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const signup = async (userData: Partial<User> & { senha: string }) => {
+  const signup = async (userData: SignupData) => {
     setIsLoading(true);
     setError(null);
     
     try {
-      // Mock signup - in real app this would call an API
-      const newUser: User = {
-        id: `user-${Date.now()}`,
-        nome: userData.nome || '',
-        cpf: userData.cpf || '',
-        email: userData.email,
-        telefone: userData.telefone,
-        papel: userData.papel as UserRole || 'profissional',
-        saldoPontos: 0,
-        avatar: userData.avatar,
-        codigo: userData.codigo,
-        is_admin: false // Default to non-admin
-      };
+      // Chamar a função Edge para cadastro
+      const response = await fetch(`${window.location.origin}/api/auth-signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: userData.email,
+          password: userData.senha,
+          nome: userData.nome,
+          cpf: userData.cpf,
+          telefone: userData.telefone,
+          tipo_perfil: userData.tipo_perfil
+        })
+      });
       
-      // Create profile in Supabase
-      try {
-        await supabase
-          .from('profiles')
-          .insert({
-            id: newUser.id,
-            nome: newUser.nome,
-            email: newUser.email,
-            cpf: newUser.cpf,
-            telefone: newUser.telefone,
-            papel: newUser.papel,
-            saldo_pontos: newUser.saldoPontos || 0,
-            avatar: newUser.avatar,
-            codigo: newUser.codigo,
-            is_admin: false
-          });
-      } catch (e) {
-        console.error("Error creating profile", e);
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Erro no cadastro');
       }
       
-      // Save to local storage for persistence
-      localStorage.setItem('construProUser', JSON.stringify(newUser));
-      setUser(newUser);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao criar conta');
+      toast.success("Cadastro realizado com sucesso! Você será redirecionado para o login.");
+    } catch (err: any) {
+      setError(err.message);
+      toast.error(err.message);
       throw err;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('construProUser');
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
+    setProfile(null);
+    setSession(null);
     toast.info("Sessão encerrada");
   };
 
-  const updateUser = async (data: Partial<User>) => {
+  const updateProfile = async (data: Partial<Profile>) => {
     if (!user) return;
     
-    const updatedUser = { ...user, ...data };
-    
-    // Update in Supabase if connected
-    if (user.id) {
-      try {
-        await supabase
-          .from('profiles')
-          .update({
-            nome: updatedUser.nome,
-            email: updatedUser.email,
-            cpf: updatedUser.cpf,
-            telefone: updatedUser.telefone,
-            papel: updatedUser.papel,
-            saldo_pontos: updatedUser.saldoPontos,
-            avatar: updatedUser.avatar,
-            codigo: updatedUser.codigo,
-            is_admin: updatedUser.is_admin
-          })
-          .eq('id', user.id);
-      } catch (e) {
-        console.error("Error updating profile", e);
+    try {
+      const token = session?.access_token;
+      
+      if (!token) {
+        throw new Error("Usuário não autenticado");
       }
+      
+      const response = await fetch(`${window.location.origin}/api/profile-update`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Erro na atualização do perfil');
+      }
+      
+      // Atualiza o perfil na memória
+      setProfile(prev => prev ? { ...prev, ...data } : null);
+      toast.success("Perfil atualizado com sucesso!");
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao atualizar perfil');
+      throw err;
     }
-    
-    // Update in localStorage
-    localStorage.setItem('construProUser', JSON.stringify(updatedUser));
-    setUser(updatedUser);
   };
   
   // Check if user is admin
@@ -291,14 +278,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   return (
     <AuthContext.Provider value={{ 
       user, 
+      profile,
+      session,
       isLoading, 
       error, 
       login, 
       signup, 
       logout, 
-      updateUser,
+      updateProfile,
       isPublicRoute,
-      checkIsAdmin
+      checkIsAdmin,
+      refreshProfile
     }}>
       {children}
     </AuthContext.Provider>
