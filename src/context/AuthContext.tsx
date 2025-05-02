@@ -96,7 +96,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return null;
       }
 
-      // Convert database structure to Profile type
+      // Convert database structure to Profile type with type assertion to handle missing fields
       const profileData: Profile = {
         id: data.id,
         nome: data.nome,
