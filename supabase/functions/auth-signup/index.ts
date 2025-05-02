@@ -1,111 +1,112 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+type UserRole = 'consumidor' | 'profissional' | 'lojista' | 'vendedor';
 
-interface SignupRequest {
+interface SignupData {
   email: string;
   password: string;
   nome: string;
   cpf?: string;
   telefone?: string;
-  tipo_perfil: "consumidor" | "profissional" | "vendedor" | "lojista";
+  tipo_perfil: UserRole;
 }
 
 serve(async (req) => {
-  // Handle CORS
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+  // Set CORS headers
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'authorization, content-type',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Content-Type': 'application/json'
   }
 
+  // Handle OPTIONS request for CORS
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers, status: 204 })
+  }
+  
+  // Check if method is POST
+  if (req.method !== 'POST') {
+    return new Response(
+      JSON.stringify({ error: 'Method not allowed' }),
+      { status: 405, headers }
+    )
+  }
+  
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-    const { email, password, nome, cpf, telefone, tipo_perfil } = await req.json() as SignupRequest;
-
+    // Parse request body
+    const userData: SignupData = await req.json()
+    
     // Validate required fields
-    if (!email || !password || !nome || !tipo_perfil) {
+    if (!userData.email || !userData.password || !userData.nome) {
       return new Response(
-        JSON.stringify({ 
-          error: "Campos obrigatórios não fornecidos" 
-        }), 
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
-        }
-      );
+        JSON.stringify({ error: 'Email, senha e nome são obrigatórios' }),
+        { status: 400, headers }
+      )
     }
-
-    // Check if tipo_perfil is valid
-    if (!["consumidor", "profissional", "vendedor", "lojista"].includes(tipo_perfil)) {
-      return new Response(
-        JSON.stringify({ 
-          error: "Tipo de perfil inválido" 
-        }), 
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
-        }
-      );
+    
+    // Set default role if not provided
+    if (!userData.tipo_perfil) {
+      userData.tipo_perfil = 'consumidor';
     }
-
-    // Create user account with Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          nome,
-          tipo_perfil,
-          papel: tipo_perfil, // Adicionando papel para compatibilidade
-          cpf,
-          telefone,
-          status: 'aguardando_aprovacao'
-        }
+    
+    // Initialize Supabase client with service role
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+    
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
       }
-    });
-
-    if (authError) {
-      console.error("Erro ao criar usuário:", authError);
+    })
+    
+    // Create user with metadata
+    const { data, error } = await supabaseAdmin.auth.admin.createUser({
+      email: userData.email,
+      password: userData.password,
+      email_confirm: true,
+      user_metadata: {
+        nome: userData.nome,
+        cpf: userData.cpf,
+        telefone: userData.telefone,
+        tipo_perfil: userData.tipo_perfil,
+        papel: userData.tipo_perfil,
+        status: 'ativo'
+      }
+    })
+    
+    if (error) {
+      let statusCode = 500
+      let errorMessage = error.message
+      
+      // Handle specific error cases
+      if (error.message.includes('already registered')) {
+        statusCode = 409
+        errorMessage = 'Este email já está cadastrado'
+      }
+      
       return new Response(
-        JSON.stringify({ 
-          error: authError.message 
-        }), 
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
-        }
-      );
+        JSON.stringify({ error: errorMessage }),
+        { status: statusCode, headers }
+      )
     }
-
-    // O perfil será criado automaticamente pelo trigger 'handle_new_user'
-
+    
+    // Return success response
     return new Response(
       JSON.stringify({
-        message: "Usuário criado com sucesso. Aguardando aprovação.",
-        user: authData.user
+        success: true,
+        user: data.user
       }),
-      { 
-        status: 201, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
-      }
-    );
+      { status: 201, headers }
+    )
+    
   } catch (error) {
-    console.error("Erro no servidor:", error);
     return new Response(
-      JSON.stringify({ 
-        error: "Erro interno do servidor" 
-      }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
-      }
-    );
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers }
+    )
   }
-});
+})

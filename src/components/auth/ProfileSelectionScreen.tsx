@@ -6,9 +6,10 @@ import { Check, Store, User, Wrench } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from "@/components/ui/sonner";
+import { UserRole } from '@/context/AuthContext';
 
 interface ProfileOption {
-  id: string;
+  id: UserRole;
   title: string;
   description: string;
   icon: React.ReactNode;
@@ -17,7 +18,7 @@ interface ProfileOption {
 const ProfileSelectionScreen: React.FC = () => {
   const navigate = useNavigate();
   const { updateUser } = useAuth();
-  const [selectedProfiles, setSelectedProfiles] = useState<string[]>(['consumidor']);
+  const [selectedProfiles, setSelectedProfiles] = useState<UserRole[]>(['consumidor']);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const profileOptions: ProfileOption[] = [
@@ -41,7 +42,7 @@ const ProfileSelectionScreen: React.FC = () => {
     },
   ];
 
-  const handleProfileToggle = (profileId: string) => {
+  const handleProfileToggle = (profileId: UserRole) => {
     setSelectedProfiles(prev => {
       // Always keep consumidor profile
       if (profileId === 'consumidor') return prev;
@@ -63,8 +64,8 @@ const ProfileSelectionScreen: React.FC = () => {
     try {
       // Update user with selected roles
       await updateUser({ 
-        papel: selectedProfiles[0] as any,
-        tipo_perfil: selectedProfiles[0] as any
+        papel: selectedProfiles[0],
+        tipo_perfil: selectedProfiles[0]
       });
       
       if (selectedProfiles.includes('profissional') && selectedProfiles.includes('lojista')) {

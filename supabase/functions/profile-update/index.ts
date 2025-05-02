@@ -1,18 +1,23 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+type UserRole = 'consumidor' | 'profissional' | 'lojista' | 'vendedor';
 
-interface ProfileUpdateRequest {
+interface Profile {
+  id?: string;
   nome?: string;
+  email?: string;
   cpf?: string;
   telefone?: string;
-  papel?: "consumidor" | "profissional" | "vendedor" | "lojista";
-  tipo_perfil?: "consumidor" | "profissional" | "vendedor" | "lojista";
+  papel?: UserRole;
+  tipo_perfil?: UserRole;
+  saldo_pontos?: number;
+  status?: string;
+  avatar?: string;
+  codigo?: string;
+  created_at?: string;
+  updated_at?: string;
   endereco_principal?: {
     logradouro?: string;
     numero?: string;
@@ -25,81 +30,138 @@ interface ProfileUpdateRequest {
 }
 
 serve(async (req) => {
-  // Handle CORS
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    // Set CORS headers
+    const headers = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'authorization, content-type',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Content-Type': 'application/json'
+    }
     
-    // Verificar autenticação
-    const authHeader = req.headers.get('Authorization');
+    // Handle OPTIONS request for CORS
+    if (req.method === 'OPTIONS') {
+      return new Response(null, { headers, status: 204 })
+    }
+
+    // Verify request method
+    if (req.method !== 'POST') {
+      return new Response(
+        JSON.stringify({ error: 'Method not allowed' }),
+        { status: 405, headers }
+      )
+    }
+    
+    // Get authorization token
+    const authHeader = req.headers.get('authorization')
     if (!authHeader) {
       return new Response(
-        JSON.stringify({ error: "Não autorizado" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+        JSON.stringify({ error: 'No authorization header' }),
+        { status: 401, headers }
+      )
     }
     
-    // Extrair token JWT
-    const token = authHeader.replace('Bearer ', '');
-    
-    // Verificar sessão
-    const { data: { user }, error: sessionError } = await supabase.auth.getUser(token);
-    if (sessionError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Sessão inválida" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    const token = authHeader.replace('Bearer ', '')
 
-    // Obter dados para atualização
-    const updateData = await req.json() as ProfileUpdateRequest;
+    // Initialize Supabase client with service role
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || ''
     
-    // Verificar se há dados para atualizar
+    // Client with JWT token (from user)
+    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    })
+    
+    // Verify user token and get user ID
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: authError?.message || 'Unauthorized' }),
+        { status: 401, headers }
+      )
+    }
+    
+    // Get update data from request body
+    const requestData: Profile = await req.json()
+    
+    // Create a clean update object (preventing unauthorized updates)
+    const updateData: Record<string, any> = {}
+    
+    // Only allow certain fields to be updated
+    const allowedFields = [
+      'nome', 'cpf', 'telefone', 'papel', 'tipo_perfil', 'avatar', 'status', 'codigo'
+    ]
+    
+    allowedFields.forEach(field => {
+      if (field in requestData) {
+        updateData[field] = requestData[field]
+      }
+    })
+    
+    // Handle nested endereco_principal
+    if (requestData.endereco_principal) {
+      updateData.endereco_principal = requestData.endereco_principal
+    }
+    
+    // Ensure tipo_perfil and papel are in sync
+    if (requestData.papel && !requestData.tipo_perfil) {
+      updateData.tipo_perfil = requestData.papel
+    }
+    
+    if (requestData.tipo_perfil && !requestData.papel) {
+      updateData.papel = requestData.tipo_perfil
+    }
+    
+    // If no valid data to update
     if (Object.keys(updateData).length === 0) {
       return new Response(
-        JSON.stringify({ error: "Nenhum dado fornecido para atualização" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+        JSON.stringify({ error: 'No valid fields to update' }),
+        { status: 400, headers }
+      )
     }
-
-    // Se papel foi fornecido, atualizar também tipo_perfil para manter consistência
-    if (updateData.papel && !updateData.tipo_perfil) {
-      updateData.tipo_perfil = updateData.papel;
-    }
-
-    // Atualizar perfil
-    const { data, error } = await supabase
+    
+    // Update profile
+    const { data: profile, error: updateError } = await supabaseClient
       .from('profiles')
       .update(updateData)
       .eq('id', user.id)
       .select()
-      .single();
-
-    if (error) {
-      console.error("Erro ao atualizar perfil:", error);
+      .single()
+      
+    if (updateError) {
       return new Response(
-        JSON.stringify({ error: error.message }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+        JSON.stringify({ error: updateError.message }),
+        { status: 500, headers }
+      )
     }
-
+    
+    // Return updated profile
     return new Response(
-      JSON.stringify({ 
-        message: "Perfil atualizado com sucesso", 
-        profile: data 
+      JSON.stringify({
+        success: true,
+        data: profile
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+      { status: 200, headers }
+    )
+    
   } catch (error) {
-    console.error("Erro no servidor:", error);
     return new Response(
-      JSON.stringify({ error: "Erro interno do servidor" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+      JSON.stringify({ error: error.message }),
+      { 
+        status: 500, 
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        } 
+      }
+    )
   }
-});
+})

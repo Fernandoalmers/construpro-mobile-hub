@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { toast } from "@/components/ui/sonner";
 import { supabase } from '@/integrations/supabase/client';
@@ -102,8 +103,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         cpf: data.cpf,
         email: data.email,
         telefone: data.telefone,
-        tipo_perfil: data.tipo_perfil || data.papel || 'consumidor',
-        papel: data.papel || data.tipo_perfil || 'consumidor',
+        tipo_perfil: (data.tipo_perfil || data.papel || 'consumidor') as UserRole,
+        papel: (data.papel || data.tipo_perfil || 'consumidor') as UserRole,
         saldo_pontos: data.saldo_pontos || 0,
         saldoPontos: data.saldo_pontos || 0, // for backward compatibility
         status: data.status || 'ativo',
@@ -276,7 +277,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       // Se o campo papel foi atualizado, também define tipo_perfil com o mesmo valor
       if (data.papel && profile) {
-        const updatedProfile = { ...profile, ...data, tipo_perfil: data.papel as UserRole };
+        const updatedProfile = { 
+          ...profile, 
+          ...data, 
+          tipo_perfil: data.papel 
+        };
         setProfile(updatedProfile);
       }
       
