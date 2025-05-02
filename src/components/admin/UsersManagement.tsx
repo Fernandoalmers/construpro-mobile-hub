@@ -57,12 +57,15 @@ const UsersManagement: React.FC = () => {
 
         // Combine data sources
         const combinedData = profilesData.map((profile: any) => {
+          // Find matching mock data
           const mockUser = mockData.find(mock => mock.id === profile.id);
+          
+          // Return combined object with appropriate defaults
           return {
             ...mockUser,
             ...profile,
             nome: profile.nome || mockUser?.nome || 'Usuário',
-            papel: profile.papel || mockUser?.papel || 'consumidor',
+            papel: profile.papel || 'consumidor', // Default to consumidor if papel doesn't exist
             saldoPontos: profile.saldo_pontos || mockUser?.saldoPontos || 0,
             status: 'ativo' // Default status
           };
