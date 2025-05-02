@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MapPin, Calendar, Clock, User, DollarSign, Message, FileText, CheckCircle, SendHorizontal } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, Clock, User, DollarSign, MessageSquare, FileText, CheckCircle, SendHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import { Avatar } from '@/components/ui/avatar';
@@ -57,7 +58,7 @@ const ServiceRequestDetailScreen: React.FC = () => {
           <div className="flex items-center space-x-4">
             <Avatar className="h-10 w-10" />
             <div>
-              <h3 className="font-semibold">{service.cliente}</h3>
+              <h3 className="font-semibold">{service.nomeCliente}</h3>
               <p className="text-sm text-gray-500">
                 <MapPin className="inline-block mr-1" size={14} /> {service.localizacao}
               </p>
@@ -95,7 +96,7 @@ const ServiceRequestDetailScreen: React.FC = () => {
 
           <div>
             <h4 className="text-sm font-medium text-gray-600 flex items-center">
-              <Message className="mr-2" size={16} /> Informações Adicionais
+              <MessageSquare className="mr-2" size={16} /> Informações Adicionais
             </h4>
             <p className="text-gray-800">{service.informacoesAdicionais}</p>
           </div>
@@ -119,7 +120,12 @@ const ServiceRequestDetailScreen: React.FC = () => {
                     <SendHorizontal className="mr-2" size={16} /> Enviar Proposta
                   </Button>
                 </DialogTrigger>
-                <SendProposalModal serviceId={service.id} />
+                <SendProposalModal 
+                  serviceId={service.id} 
+                  open={false} 
+                  onOpenChange={() => {}} 
+                  serviceTitulo={service.titulo}
+                />
               </Dialog>
             ) : (
               <Button disabled>

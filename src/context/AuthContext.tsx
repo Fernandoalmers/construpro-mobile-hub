@@ -14,12 +14,13 @@ export interface Profile {
   email?: string;
   telefone?: string;
   tipo_perfil: UserRole;
+  papel?: UserRole;
   status: string;
   saldo_pontos: number;
+  saldoPontos?: number; // for backward compatibility
   avatar?: string;
   is_admin?: boolean;
   codigo?: string;
-  papel?: UserRole;
   created_at?: string;
   updated_at?: string;
   endereco_principal?: {
@@ -96,12 +97,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       // Convert database structure to Profile type
-      return {
+      const profileData: Profile = {
         ...data,
-        tipo_perfil: data.tipo_perfil || data.papel,
+        tipo_perfil: data.tipo_perfil || data.papel || 'consumidor',
+        papel: data.papel || data.tipo_perfil || 'consumidor',
         saldo_pontos: data.saldo_pontos || 0,
+        saldoPontos: data.saldo_pontos || 0, // for backward compatibility
         status: data.status || 'ativo'
-      } as Profile;
+      };
+      
+      return profileData;
     } catch (err) {
       console.error('Erro ao buscar perfil:', err);
       return null;

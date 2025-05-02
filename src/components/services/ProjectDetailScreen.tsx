@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, CheckCircle, Clock, DollarSign, MessageCircle, Tool, User, X, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Calendar, CheckCircle, Clock, DollarSign, MessageCircle, Wrench, User, X, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import Avatar from '../common/Avatar';
@@ -152,11 +153,11 @@ const ProjectDetailScreen: React.FC = () => {
             
             <div className="flex items-center">
               <DollarSign className="text-construPro-blue mr-2" size={18} />
-              <span className="text-sm">Valor: {formatCurrency(project.valor)}</span>
+              <span className="text-sm">Valor: {typeof project.valor === 'number' ? formatCurrency(project.valor) : project.valor}</span>
             </div>
             
             <div className="flex items-center">
-              <Tool className="text-construPro-blue mr-2" size={18} />
+              <Wrench className="text-construPro-blue mr-2" size={18} />
               <span className="text-sm">Categoria: {project.categoria}</span>
             </div>
           </div>
@@ -169,18 +170,18 @@ const ProjectDetailScreen: React.FC = () => {
           </h3>
           <div className="flex items-center">
             <Avatar 
-              src={isProfessional ? project.cliente.avatar : project.profissional.avatar}
-              alt={isProfessional ? project.cliente.nome : project.profissional.nome}
-              fallback={isProfessional ? project.cliente.nome.charAt(0) : project.profissional.nome.charAt(0)}
+              src={isProfessional ? project.cliente?.avatar : project.profissional?.avatar}
+              alt={isProfessional ? project.cliente?.nome : project.profissional?.nome}
+              fallback={isProfessional ? (project.cliente?.nome?.charAt(0) || 'C') : (project.profissional?.nome?.charAt(0) || 'P')}
               size="md"
             />
             <div className="ml-3">
-              <p className="font-medium">{isProfessional ? project.cliente.nome : project.profissional.nome}</p>
+              <p className="font-medium">{isProfessional ? project.cliente?.nome : project.profissional?.nome}</p>
               <div className="flex items-center text-sm text-gray-500">
                 <User size={14} className="mr-1" />
                 <span>
                   {isProfessional ? 'Cliente' : 'Profissional'} desde {
-                    formatDate(isProfessional ? project.cliente.dataCadastro : project.profissional.dataCadastro)
+                    formatDate(isProfessional ? project.cliente?.dataCadastro : project.profissional?.dataCadastro)
                   }
                 </span>
               </div>
@@ -220,11 +221,7 @@ const ProjectDetailScreen: React.FC = () => {
                 </DialogTrigger>
                 <RateProjectModal 
                   projectId={project.id} 
-                  professionalName={project.profissional.nome}
-                  onRateComplete={() => {
-                    toast.success("Avaliação enviada com sucesso!");
-                    navigate('/services');
-                  }}
+                  professionalName={project.profissional?.nome} 
                 />
               </Dialog>
             )}
@@ -250,11 +247,7 @@ const ProjectDetailScreen: React.FC = () => {
             </DialogTrigger>
             <RateProjectModal 
               projectId={project.id} 
-              professionalName={project.profissional.nome}
-              onRateComplete={() => {
-                toast.success("Avaliação enviada com sucesso!");
-                navigate('/services');
-              }}
+              professionalName={project.profissional?.nome} 
             />
           </Dialog>
         )}

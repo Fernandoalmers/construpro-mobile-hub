@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import MyServicesScreen from './MyServicesScreen';
@@ -44,16 +45,16 @@ const ServicesTabNavigator: React.FC = () => {
       {showProfessionalTabs && (
         <>
           <TabsContent value="my-services">
-            <MyServicesScreen />
+            <MyServicesScreen isProfessional={isProfessional} />
           </TabsContent>
           <TabsContent value="my-proposals">
             <MyProposalsScreen />
           </TabsContent>
           <TabsContent value="contracted">
-            <ContractedProjectsScreen />
+            <ContractedProjectsScreen isProfessional={isProfessional} />
           </TabsContent>
           <TabsContent value="completed">
-            <CompletedServicesScreen />
+            <CompletedServicesScreen isProfessional={isProfessional} />
           </TabsContent>
           <TabsContent value="calendar">
             <ServiceCalendarScreen />

@@ -65,7 +65,8 @@ serve(async (req) => {
           tipo_perfil,
           papel: tipo_perfil, // Adicionando papel para compatibilidade
           cpf,
-          telefone
+          telefone,
+          status: 'aguardando_aprovacao'
         }
       }
     });

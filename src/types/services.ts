@@ -1,16 +1,22 @@
-
 export type ServiceRequest = {
   id: string;
   titulo: string;
   descricao: string;
   categoria: string;
   endereco: string;
+  localizacao: string;
+  data: string;
+  horario: string;
   orcamento: string | null;
   status: 'aberto' | 'em_negociacao' | 'contratado' | 'concluido';
   dataCriacao: string;
   clienteId: string;
+  cliente: string;
   nomeCliente: string;
   contatoCliente: string;
+  requisitos: string[];
+  detalhesCliente: string;
+  informacoesAdicionais: string;
   propostas: Proposal[];
 };
 
@@ -32,9 +38,12 @@ export type Project = {
   titulo: string;
   descricao: string;
   valor: string;
+  categoria: string;
   dataInicio: string;
   dataEstimada: string;
   dataConclusao?: string;
+  dataTermino?: string;
+  duracaoEstimada: number;
   endereco: string;
   status: string;
   concluido: boolean;
@@ -48,6 +57,18 @@ export type Project = {
   comentariosFinais?: string;
   etapas: ProjectStep[];
   imagens: ProjectImage[];
+  cliente: {
+    id: string;
+    nome: string;
+    avatar?: string;
+    dataCadastro: string;
+  };
+  profissional: {
+    id: string;
+    nome: string;
+    avatar?: string;
+    dataCadastro: string;
+  };
 };
 
 export type ProjectStep = {
