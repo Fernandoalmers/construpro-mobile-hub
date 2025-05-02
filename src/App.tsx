@@ -54,6 +54,12 @@ import ServiceCalendarScreen from './components/services/ServiceCalendarScreen';
 import { Toaster } from '@/components/ui/sonner';
 import BottomTabNavigator from './components/layout/BottomTabNavigator';
 
+// Admin Dashboard Components
+import AdminDashboard from './components/admin/AdminDashboard';
+import UsersManagement from './components/admin/UsersManagement';
+import ProductsManagement from './components/admin/ProductsManagement';
+import AdminLogs from './components/admin/AdminLogs';
+
 function App() {
   // Define a default value for isProfessional
   const defaultProfessionalValue = false;
@@ -131,6 +137,12 @@ function App() {
           {/* Chat */}
           <Route path="/chat" element={<ChatScreen />} />
           <Route path="/chat/:id" element={<ChatDetailScreen />} />
+          
+          {/* Admin Dashboard Routes - New */}
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/users" element={<UsersManagement />} />
+          <Route path="/admin/products" element={<ProductsManagement />} />
+          <Route path="/admin/logs" element={<AdminLogs />} />
           
           {/* Default redirect */}
           <Route path="*" element={<Navigate to="/home" replace />} />

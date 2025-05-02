@@ -1,6 +1,8 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import clientes from '../data/clientes.json';
 import { toast } from "@/components/ui/sonner";
+import { supabase } from '@/integrations/supabase/client';
 
 // Define types
 type UserRole = 'consumidor' | 'profissional' | 'lojista';
@@ -15,6 +17,7 @@ interface User {
   saldoPontos?: number;
   avatar?: string;
   codigo?: string;
+  is_admin?: boolean;
 }
 
 interface AuthContextType {
@@ -26,6 +29,7 @@ interface AuthContextType {
   logout: () => void;
   updateUser: (data: Partial<User>) => void;
   isPublicRoute: (pathname: string) => boolean;
+  checkIsAdmin: () => Promise<boolean>;
 }
 
 // Lista de rotas públicas que não necessitam de autenticação
@@ -56,7 +60,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const savedUser = localStorage.getItem('construProUser');
         
         if (savedUser) {
-          setUser(JSON.parse(savedUser));
+          // Get user from localStorage
+          const parsedUser = JSON.parse(savedUser);
+          
+          // Check Supabase for admin status if connected
+          try {
+            const { data, error } = await supabase
+              .from('profiles')
+              .select('is_admin')
+              .eq('id', parsedUser.id)
+              .single();
+            
+            if (!error && data) {
+              parsedUser.is_admin = data.is_admin;
+            }
+          } catch (e) {
+            console.error("Error checking admin status", e);
+          }
+          
+          setUser(parsedUser);
         } else {
           // Criar um usuário simulado para demonstração
           const demoUser = clientes[0];
@@ -65,7 +87,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             papel: 'profissional',
             saldoPontos: 1250,
             codigo: demoUser.codigo,
-            avatar: demoUser.avatar
+            avatar: demoUser.avatar,
+            is_admin: false
           };
           localStorage.setItem('construProUser', JSON.stringify(simulatedUser));
           setUser(simulatedUser);
@@ -109,8 +132,41 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         papel: 'profissional', // For demo purposes
         saldoPontos: 1250,
         codigo: foundUser.codigo,
-        avatar: foundUser.avatar
+        avatar: foundUser.avatar,
+        is_admin: false // Default to non-admin
       };
+      
+      // Check Supabase for admin status
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', userWithRole.id)
+          .single();
+        
+        if (!error && data) {
+          userWithRole.is_admin = data.is_admin;
+        } else {
+          // Create profile if it doesn't exist
+          await supabase
+            .from('profiles')
+            .insert({
+              id: userWithRole.id,
+              nome: userWithRole.nome,
+              email: userWithRole.email,
+              cpf: userWithRole.cpf,
+              telefone: userWithRole.telefone,
+              papel: userWithRole.papel,
+              saldo_pontos: userWithRole.saldoPontos,
+              avatar: userWithRole.avatar,
+              codigo: userWithRole.codigo,
+              is_admin: false
+            })
+            .select();
+        }
+      } catch (e) {
+        console.error("Error checking/creating profile", e);
+      }
       
       // Save to local storage for persistence
       localStorage.setItem('construProUser', JSON.stringify(userWithRole));
@@ -140,8 +196,29 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         papel: userData.papel as UserRole || 'profissional',
         saldoPontos: 0,
         avatar: userData.avatar,
-        codigo: userData.codigo
+        codigo: userData.codigo,
+        is_admin: false // Default to non-admin
       };
+      
+      // Create profile in Supabase
+      try {
+        await supabase
+          .from('profiles')
+          .insert({
+            id: newUser.id,
+            nome: newUser.nome,
+            email: newUser.email,
+            cpf: newUser.cpf,
+            telefone: newUser.telefone,
+            papel: newUser.papel,
+            saldo_pontos: newUser.saldoPontos || 0,
+            avatar: newUser.avatar,
+            codigo: newUser.codigo,
+            is_admin: false
+          });
+      } catch (e) {
+        console.error("Error creating profile", e);
+      }
       
       // Save to local storage for persistence
       localStorage.setItem('construProUser', JSON.stringify(newUser));
@@ -160,12 +237,55 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     toast.info("Sessão encerrada");
   };
 
-  const updateUser = (data: Partial<User>) => {
+  const updateUser = async (data: Partial<User>) => {
     if (!user) return;
     
     const updatedUser = { ...user, ...data };
+    
+    // Update in Supabase if connected
+    if (user.id) {
+      try {
+        await supabase
+          .from('profiles')
+          .update({
+            nome: updatedUser.nome,
+            email: updatedUser.email,
+            cpf: updatedUser.cpf,
+            telefone: updatedUser.telefone,
+            papel: updatedUser.papel,
+            saldo_pontos: updatedUser.saldoPontos,
+            avatar: updatedUser.avatar,
+            codigo: updatedUser.codigo,
+            is_admin: updatedUser.is_admin
+          })
+          .eq('id', user.id);
+      } catch (e) {
+        console.error("Error updating profile", e);
+      }
+    }
+    
+    // Update in localStorage
     localStorage.setItem('construProUser', JSON.stringify(updatedUser));
     setUser(updatedUser);
+  };
+  
+  // Check if user is admin
+  const checkIsAdmin = async (): Promise<boolean> => {
+    if (!user) return false;
+    
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', user.id)
+        .single();
+      
+      if (error) throw error;
+      return data?.is_admin || false;
+    } catch (error) {
+      console.error('Error checking admin status:', error);
+      return false;
+    }
   };
 
   return (
@@ -177,7 +297,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       signup, 
       logout, 
       updateUser,
-      isPublicRoute
+      isPublicRoute,
+      checkIsAdmin
     }}>
       {children}
     </AuthContext.Provider>

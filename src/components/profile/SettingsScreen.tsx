@@ -1,165 +1,141 @@
 
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Bell, Globe, Mail } from 'lucide-react';
-import Card from '../common/Card';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { toast } from '@/components/ui/sonner';
 import { useAuth } from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { Settings, ChevronLeft, LogOut, AlertTriangle, Smartphone, Bell, Eye, Shield, HelpCircle } from 'lucide-react';
+import { toast } from "@/components/ui/sonner";
+import { Switch } from "@/components/ui/switch";
+import AdminActivation from './AdminActivation'; // Import the new component
 
 const SettingsScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  
-  // Notification settings
-  const [pushEnabled, setPushEnabled] = useState(true);
-  const [emailEnabled, setEmailEnabled] = useState(true);
-  const [promotionsEnabled, setPromotionsEnabled] = useState(true);
-  const [serviceUpdatesEnabled, setServiceUpdatesEnabled] = useState(true);
-  
-  // Language settings
-  const [language, setLanguage] = useState('pt-br');
-  
-  // Campaign preferences
-  const [campaignPreference, setCampaignPreference] = useState('personalized');
-  
-  const handleSave = () => {
-    // In a real app, this would send the settings to an API
-    toast.success('Configurações salvas com sucesso!');
+  const { logout } = useAuth();
+  const [notifications, setNotifications] = useState(true);
+  const [marketing, setMarketing] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+
+  const handleLogout = () => {
+    logout();
+    toast.info("Sessão encerrada");
+    navigate('/login');
   };
   
+  const handleDeleteAccount = () => {
+    if (confirm('Tem certeza que deseja excluir sua conta? Esta ação não pode ser desfeita.')) {
+      toast.error("Funcionalidade não implementada");
+    }
+  };
+
+  const toggleNotifications = () => {
+    setNotifications(!notifications);
+    toast.info(notifications ? "Notificações desativadas" : "Notificações ativadas");
+  };
+
+  const toggleMarketing = () => {
+    setMarketing(!marketing);
+    toast.info(marketing ? "E-mails de marketing desativados" : "E-mails de marketing ativados");
+  };
+
+  const toggleDarkMode = () => {
+    setDarkMode(!darkMode);
+    toast.info(darkMode ? "Modo claro ativado" : "Modo escuro ativado");
+  };
+
   return (
-    <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
-      {/* Header */}
-      <div className="bg-construPro-blue p-6 pt-12">
-        <div className="flex items-center mb-4">
-          <button onClick={() => navigate('/profile')} className="text-white">
-            <ChevronLeft size={24} />
-          </button>
-          <h1 className="text-xl font-bold text-white ml-2">Configurações</h1>
+    <div className="bg-white min-h-screen pb-16">
+      <div className="bg-construPro-blue px-4 py-6 flex items-center text-white shadow-md">
+        <button 
+          onClick={() => navigate(-1)}
+          className="p-1 rounded-full hover:bg-blue-700 mr-3"
+        >
+          <ChevronLeft size={24} />
+        </button>
+        <div>
+          <h1 className="text-xl font-semibold">Configurações</h1>
         </div>
       </div>
-      
-      {/* Settings Sections */}
-      <div className="p-6 space-y-6">
-        <Card className="p-4">
-          <h2 className="font-medium mb-4 flex items-center">
-            <Bell size={18} className="mr-2 text-construPro-blue" />
-            Notificações
-          </h2>
-          
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="push-notifications" className="font-medium">Notificações push</Label>
-                <p className="text-sm text-gray-500">Receber notificações no dispositivo</p>
+
+      <div className="p-4 space-y-6">
+        <div>
+          <h3 className="text-gray-500 uppercase text-xs font-semibold mb-2 px-1">Notificações</h3>
+          <div className="bg-white rounded-lg shadow">
+            <div className="p-4 border-b flex items-center justify-between">
+              <div className="flex items-center">
+                <Bell size={20} className="text-construPro-blue mr-3" />
+                <div>
+                  <p className="font-medium">Notificações push</p>
+                  <p className="text-sm text-gray-500">Receber notificações em seu dispositivo</p>
+                </div>
               </div>
-              <Switch 
-                id="push-notifications" 
-                checked={pushEnabled} 
-                onCheckedChange={setPushEnabled} 
-              />
+              <Switch checked={notifications} onCheckedChange={toggleNotifications} />
             </div>
-            
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="email-notifications" className="font-medium">Notificações por e-mail</Label>
-                <p className="text-sm text-gray-500">Receber atualizações por e-mail</p>
+            <div className="p-4 flex items-center justify-between">
+              <div className="flex items-center">
+                <Smartphone size={20} className="text-construPro-blue mr-3" />
+                <div>
+                  <p className="font-medium">E-mails de marketing</p>
+                  <p className="text-sm text-gray-500">Receba ofertas e novidades</p>
+                </div>
               </div>
-              <Switch 
-                id="email-notifications" 
-                checked={emailEnabled} 
-                onCheckedChange={setEmailEnabled} 
-              />
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="promo-notifications" className="font-medium">Promoções e ofertas</Label>
-                <p className="text-sm text-gray-500">Receber informações sobre promoções</p>
-              </div>
-              <Switch 
-                id="promo-notifications" 
-                checked={promotionsEnabled} 
-                onCheckedChange={setPromotionsEnabled} 
-              />
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="service-notifications" className="font-medium">Atualizações de serviços</Label>
-                <p className="text-sm text-gray-500">Receber atualizações de solicitações e projetos</p>
-              </div>
-              <Switch 
-                id="service-notifications" 
-                checked={serviceUpdatesEnabled} 
-                onCheckedChange={setServiceUpdatesEnabled} 
-              />
+              <Switch checked={marketing} onCheckedChange={toggleMarketing} />
             </div>
           </div>
-        </Card>
-        
-        <Card className="p-4">
-          <h2 className="font-medium mb-4 flex items-center">
-            <Globe size={18} className="mr-2 text-construPro-blue" />
-            Preferência de Idioma
-          </h2>
-          
-          <RadioGroup value={language} onValueChange={setLanguage}>
-            <div className="flex items-center space-x-2 mb-2">
-              <RadioGroupItem value="pt-br" id="pt-br" />
-              <Label htmlFor="pt-br">Português (Brasil)</Label>
+        </div>
+
+        <div>
+          <h3 className="text-gray-500 uppercase text-xs font-semibold mb-2 px-1">Aparência</h3>
+          <div className="bg-white rounded-lg shadow">
+            <div className="p-4 flex items-center justify-between">
+              <div className="flex items-center">
+                <Eye size={20} className="text-construPro-blue mr-3" />
+                <div>
+                  <p className="font-medium">Modo escuro</p>
+                  <p className="text-sm text-gray-500">Ativar tema escuro</p>
+                </div>
+              </div>
+              <Switch checked={darkMode} onCheckedChange={toggleDarkMode} />
             </div>
-            <div className="flex items-center space-x-2 mb-2">
-              <RadioGroupItem value="en" id="en" />
-              <Label htmlFor="en">English (US)</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="es" id="es" />
-              <Label htmlFor="es">Español</Label>
-            </div>
-          </RadioGroup>
-        </Card>
-        
-        <Card className="p-4">
-          <h2 className="font-medium mb-4 flex items-center">
-            <Mail size={18} className="mr-2 text-construPro-blue" />
-            Preferências de Campanhas
-          </h2>
-          
-          <RadioGroup value={campaignPreference} onValueChange={setCampaignPreference}>
-            <div className="flex items-center space-x-2 mb-2">
-              <RadioGroupItem value="personalized" id="personalized" />
+          </div>
+        </div>
+
+        {/* Admin Activation Component - NEW */}
+        <div>
+          <h3 className="text-gray-500 uppercase text-xs font-semibold mb-2 px-1">Suporte</h3>
+          <AdminActivation />
+        </div>
+
+        <div>
+          <h3 className="text-gray-500 uppercase text-xs font-semibold mb-2 px-1">Conta</h3>
+          <div className="bg-white rounded-lg shadow">
+            <div className="p-4 border-b flex items-center">
+              <HelpCircle size={20} className="text-construPro-blue mr-3" />
               <div>
-                <Label htmlFor="personalized" className="font-medium">Conteúdo personalizado</Label>
-                <p className="text-sm text-gray-500">Receber campanhas baseadas no seu perfil</p>
+                <p className="font-medium">Ajuda e suporte</p>
+                <p className="text-sm text-gray-500">Entre em contato conosco</p>
               </div>
             </div>
-            <div className="flex items-center space-x-2 mb-2">
-              <RadioGroupItem value="all" id="all" />
+            <div 
+              className="p-4 border-b flex items-center cursor-pointer"
+              onClick={handleLogout}
+            >
+              <LogOut size={20} className="text-amber-600 mr-3" />
               <div>
-                <Label htmlFor="all" className="font-medium">Todas as campanhas</Label>
-                <p className="text-sm text-gray-500">Receber todas as campanhas disponíveis</p>
+                <p className="font-medium">Sair</p>
+                <p className="text-sm text-gray-500">Encerrar sessão</p>
               </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="none" id="none" />
+            <div 
+              className="p-4 flex items-center cursor-pointer"
+              onClick={handleDeleteAccount}
+            >
+              <AlertTriangle size={20} className="text-red-600 mr-3" />
               <div>
-                <Label htmlFor="none" className="font-medium">Não receber</Label>
-                <p className="text-sm text-gray-500">Não receber campanhas promocionais</p>
+                <p className="font-medium text-red-600">Excluir conta</p>
+                <p className="text-sm text-gray-500">Apagar todos os dados</p>
               </div>
             </div>
-          </RadioGroup>
-        </Card>
-        
-        <button 
-          className="w-full bg-construPro-blue text-white rounded-md py-3 font-medium hover:bg-blue-700 transition-colors"
-          onClick={handleSave}
-        >
-          Salvar configurações
-        </button>
+          </div>
+        </div>
       </div>
     </div>
   );

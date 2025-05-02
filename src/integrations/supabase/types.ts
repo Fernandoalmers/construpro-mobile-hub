@@ -9,13 +9,99 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      admin_logs: {
+        Row: {
+          action: string
+          admin_id: string
+          created_at: string
+          details: Json | null
+          entity_id: string
+          entity_type: string
+          id: string
+        }
+        Insert: {
+          action: string
+          admin_id: string
+          created_at?: string
+          details?: Json | null
+          entity_id: string
+          entity_type: string
+          id?: string
+        }
+        Update: {
+          action?: string
+          admin_id?: string
+          created_at?: string
+          details?: Json | null
+          entity_id?: string
+          entity_type?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar: string | null
+          codigo: string | null
+          cpf: string | null
+          created_at: string
+          email: string | null
+          id: string
+          is_admin: boolean | null
+          nome: string | null
+          papel: string | null
+          saldo_pontos: number | null
+          telefone: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar?: string | null
+          codigo?: string | null
+          cpf?: string | null
+          created_at?: string
+          email?: string | null
+          id: string
+          is_admin?: boolean | null
+          nome?: string | null
+          papel?: string | null
+          saldo_pontos?: number | null
+          telefone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar?: string | null
+          codigo?: string | null
+          cpf?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_admin?: boolean | null
+          nome?: string | null
+          papel?: string | null
+          saldo_pontos?: number | null
+          telefone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      log_admin_action: {
+        Args: {
+          action: string
+          entity_type: string
+          entity_id: string
+          details?: Json
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
