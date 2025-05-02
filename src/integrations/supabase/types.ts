@@ -984,6 +984,42 @@ export type Database = {
           },
         ]
       }
+      stores: {
+        Row: {
+          contato: string | null
+          created_at: string
+          descricao: string | null
+          endereco: Json | null
+          id: string
+          logo_url: string | null
+          nome: string
+          owner_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          contato?: string | null
+          created_at?: string
+          descricao?: string | null
+          endereco?: Json | null
+          id?: string
+          logo_url?: string | null
+          nome: string
+          owner_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          contato?: string | null
+          created_at?: string
+          descricao?: string | null
+          endereco?: Json | null
+          id?: string
+          logo_url?: string | null
+          nome?: string
+          owner_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_addresses: {
         Row: {
           bairro: string
@@ -1057,6 +1093,10 @@ export type Database = {
           details?: Json
         }
         Returns: string
+      }
+      update_user_points: {
+        Args: { user_id: string; points_to_add: number }
+        Returns: undefined
       }
     }
     Enums: {

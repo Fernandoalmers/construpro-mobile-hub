@@ -25,6 +25,7 @@ interface SignupParams {
 }
 
 type AuthContextType = AuthState & {
+  isAuthenticated: boolean; // Add this property to the type
   login: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signup: (params: SignupParams) => Promise<{ error: AuthError | null, data: any }>;
   logout: () => Promise<void>;
@@ -44,6 +45,9 @@ export function AuthProvider({ children }: ProviderProps) {
     isLoading: true,
     error: null,
   });
+
+  // Compute isAuthenticated based on session existence
+  const isAuthenticated = !!state.session && !!state.user;
 
   // Function to fetch user profile from profiles table
   const getProfile = async () => {
@@ -210,6 +214,7 @@ export function AuthProvider({ children }: ProviderProps) {
     <AuthContext.Provider
       value={{
         ...state,
+        isAuthenticated, // Add isAuthenticated property
         login,
         signup,
         logout,
