@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -61,7 +62,10 @@ const ProfileSelectionScreen: React.FC = () => {
 
     try {
       // Update user with selected roles
-      await updateUser({ papel: selectedProfiles[0] as any });
+      await updateUser({ 
+        papel: selectedProfiles[0] as any,
+        tipo_perfil: selectedProfiles[0] as any
+      });
       
       if (selectedProfiles.includes('profissional') && selectedProfiles.includes('lojista')) {
         navigate('/auth/complete-profile', { 

@@ -108,7 +108,7 @@ const ServiceRequestDetailScreen: React.FC = () => {
               <FileText className="mr-2" size={16} /> Requisitos
             </h4>
             <ul className="list-disc pl-5 text-gray-800">
-              {service.requisitos.map((requisito, index) => (
+              {service.requisitos?.map((requisito, index) => (
                 <li key={index}>{requisito}</li>
               ))}
             </ul>
