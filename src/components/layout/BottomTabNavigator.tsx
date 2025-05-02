@@ -39,6 +39,7 @@ const BottomTabNavigator: React.FC = () => {
     }
     if (path === '/marketplace') {
       return pathname === '/marketplace' || 
+        pathname === '/marketplace/products' ||
         pathname.startsWith('/produto') || 
         pathname === '/cart' ||
         pathname === '/checkout';

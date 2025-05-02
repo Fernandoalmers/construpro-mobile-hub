@@ -101,7 +101,14 @@ const AppRoutes = () => {
             <HomeScreenWrapper />
           </ProtectedRoute>
         } />
+        
+        {/* Marketplace Routes */}
         <Route path="/marketplace" element={
+          <ProtectedRoute requiredRoles={['consumidor', 'profissional']}>
+            <MarketplaceScreenWrapper />
+          </ProtectedRoute>
+        } />
+        <Route path="/marketplace/products" element={
           <ProtectedRoute requiredRoles={['consumidor', 'profissional']}>
             <MarketplaceScreenWrapper />
           </ProtectedRoute>
@@ -121,6 +128,7 @@ const AppRoutes = () => {
             <CheckoutScreen />
           </ProtectedRoute>
         } />
+        
         <Route path="/resgates" element={
           <ProtectedRoute requiredRoles={['consumidor', 'profissional']}>
             <ResgatesScreen />

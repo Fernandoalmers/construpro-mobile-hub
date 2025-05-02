@@ -1,17 +1,16 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import CustomInput from '../common/CustomInput';
 import FilterChips from '../common/FilterChips';
-import Card from '../common/Card';
-import ListEmptyState from '../common/ListEmptyState';
-import { Pagination, PaginationContent, PaginationItem } from "@/components/ui/pagination";
-import { Search, ShoppingBag, Star, ChevronDown, Package, Tag, CircleDollarSign } from 'lucide-react';
+import { ArrowLeft, Search, ShoppingBag, Star, ChevronDown, Package, Tag, CircleDollarSign } from 'lucide-react';
 import produtos from '../../data/produtos.json';
 import lojas from '../../data/lojas.json';
 import ProdutoCard from './ProdutoCard';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Badge } from '@/components/ui/badge';
 
 interface FilterOption {
   id: string;
@@ -20,6 +19,7 @@ interface FilterOption {
 
 const MarketplaceScreen: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const isMobile = useIsMobile();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -28,11 +28,22 @@ const MarketplaceScreen: React.FC = () => {
   const [selectedVolumes, setSelectedVolumes] = useState<string[]>([]);
   const [hideHeader, setHideHeader] = useState(false);
   const [lastScrollY, setLastScrollY] = useState(0);
+  const [scrollDirection, setScrollDirection] = useState<'up' | 'down'>('up');
   const [page, setPage] = useState(1);
   const [displayedProducts, setDisplayedProducts] = useState<typeof produtos>([]);
   const [hasMore, setHasMore] = useState(true);
   const loadMoreRef = useRef(null);
   const itemsPerPage = 8;
+  
+  // Parse query parameters on component mount
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const categoryParam = searchParams.get('categoria');
+    
+    if (categoryParam) {
+      setSelectedCategories([categoryParam]);
+    }
+  }, [location.search]);
   
   // Extract unique categories from products
   const allCategories = Array.from(new Set(produtos.map(produto => produto.categoria)))
@@ -94,11 +105,15 @@ const MarketplaceScreen: React.FC = () => {
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
+      
       if (currentScrollY > lastScrollY + 10) {
+        setScrollDirection('down');
         setHideHeader(true);
       } else if (currentScrollY < lastScrollY - 10) {
+        setScrollDirection('up');
         setHideHeader(false);
       }
+      
       setLastScrollY(currentScrollY);
     };
 
@@ -142,6 +157,20 @@ const MarketplaceScreen: React.FC = () => {
     setPage(1); // Reset pagination when search changes
   };
 
+  const handleLojaClick = (lojaId: string) => {
+    // Toggle selection
+    if (selectedLojas.includes(lojaId)) {
+      setSelectedLojas(selectedLojas.filter(id => id !== lojaId));
+    } else {
+      setSelectedLojas([...selectedLojas, lojaId]);
+    }
+    setPage(1); // Reset pagination
+  };
+
+  const handleBackClick = () => {
+    navigate('/marketplace');
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 pb-20">
       {/* Header with search and filters */}
@@ -155,7 +184,15 @@ const MarketplaceScreen: React.FC = () => {
         transition={{ duration: 0.3 }}
       >
         <div className="bg-construPro-blue p-4 pt-8">
-          <h1 className="text-2xl font-bold text-white mb-4">Marketplace</h1>
+          <div className="flex items-center mb-4">
+            <button 
+              onClick={handleBackClick}
+              className="mr-3 text-white hover:bg-white/10 p-1 rounded-full"
+            >
+              <ArrowLeft size={24} />
+            </button>
+            <h1 className="text-2xl font-bold text-white">Produtos</h1>
+          </div>
           
           <CustomInput
             isSearch
@@ -165,63 +202,160 @@ const MarketplaceScreen: React.FC = () => {
             className="mb-4"
           />
 
-          <div className="space-y-4 pb-2">
-            <div>
-              <p className="text-white text-sm mb-2">Lojas</p>
-              <div className="overflow-x-auto">
-                <div className="inline-flex pb-2">
-                  <FilterChips
-                    items={lojasOptions}
-                    selectedIds={selectedLojas}
-                    onChange={setSelectedLojas}
-                    allowMultiple
-                  />
+          <div className="flex space-x-2 overflow-x-auto pb-4">
+            <Dialog>
+              <DialogTrigger asChild>
+                <button className="flex items-center gap-1 bg-white text-gray-800 px-3 py-1.5 rounded-full text-sm whitespace-nowrap">
+                  Loja <ChevronDown size={16} />
+                </button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Filtrar por Loja</DialogTitle>
+                </DialogHeader>
+                <div className="grid grid-cols-1 gap-2 mt-4">
+                  {lojasOptions.map(loja => (
+                    <label key={loja.id} className="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50">
+                      <input 
+                        type="checkbox"
+                        className="mr-2" 
+                        checked={selectedLojas.includes(loja.id)} 
+                        onChange={() => handleLojaClick(loja.id)}
+                      />
+                      {loja.label}
+                    </label>
+                  ))}
                 </div>
-              </div>
-            </div>
-            
-            <div>
-              <p className="text-white text-sm mb-2">Categorias</p>
-              <div className="overflow-x-auto">
-                <div className="inline-flex pb-2">
-                  <FilterChips
-                    items={allCategories}
-                    selectedIds={selectedCategories}
-                    onChange={setSelectedCategories}
-                    allowMultiple
-                  />
+              </DialogContent>
+            </Dialog>
+
+            <Dialog>
+              <DialogTrigger asChild>
+                <button className="flex items-center gap-1 bg-white text-gray-800 px-3 py-1.5 rounded-full text-sm whitespace-nowrap">
+                  Categoria <ChevronDown size={16} />
+                </button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Filtrar por Categoria</DialogTitle>
+                </DialogHeader>
+                <div className="grid grid-cols-1 gap-2 mt-4">
+                  {allCategories.map(category => (
+                    <label key={category.id} className="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50">
+                      <input 
+                        type="checkbox"
+                        className="mr-2" 
+                        checked={selectedCategories.includes(category.id)} 
+                        onChange={() => {
+                          if (selectedCategories.includes(category.id)) {
+                            setSelectedCategories(selectedCategories.filter(id => id !== category.id));
+                          } else {
+                            setSelectedCategories([...selectedCategories, category.id]);
+                          }
+                        }}
+                      />
+                      {category.label}
+                    </label>
+                  ))}
                 </div>
-              </div>
-            </div>
-            
-            <div>
-              <p className="text-white text-sm mb-2">Avaliação</p>
-              <div className="overflow-x-auto">
-                <div className="inline-flex pb-2">
-                  <FilterChips
-                    items={ratingOptions}
-                    selectedIds={selectedRatings}
-                    onChange={setSelectedRatings}
-                    allowMultiple={false}
-                  />
+              </DialogContent>
+            </Dialog>
+
+            <Dialog>
+              <DialogTrigger asChild>
+                <button className="flex items-center gap-1 bg-white text-gray-800 px-3 py-1.5 rounded-full text-sm whitespace-nowrap">
+                  Avaliação <ChevronDown size={16} />
+                </button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Filtrar por Avaliação</DialogTitle>
+                </DialogHeader>
+                <div className="grid grid-cols-1 gap-2 mt-4">
+                  {ratingOptions.map(rating => (
+                    <label key={rating.id} className="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50">
+                      <input 
+                        type="checkbox"
+                        className="mr-2" 
+                        checked={selectedRatings.includes(rating.id)} 
+                        onChange={() => {
+                          if (selectedRatings.includes(rating.id)) {
+                            setSelectedRatings(selectedRatings.filter(id => id !== rating.id));
+                          } else {
+                            setSelectedRatings([rating.id]);
+                          }
+                        }}
+                      />
+                      <span className="flex items-center">
+                        {rating.label} <Star size={16} className="ml-1 fill-yellow-400 text-yellow-400" />
+                      </span>
+                    </label>
+                  ))}
                 </div>
-              </div>
-            </div>
-            
-            <div>
-              <p className="text-white text-sm mb-2">Unidade/Volume</p>
-              <div className="overflow-x-auto">
-                <div className="inline-flex pb-2">
-                  <FilterChips
-                    items={volumeOptions}
-                    selectedIds={selectedVolumes}
-                    onChange={setSelectedVolumes}
-                    allowMultiple
-                  />
-                </div>
-              </div>
-            </div>
+              </DialogContent>
+            </Dialog>
           </div>
+          
+          {/* Selected filters */}
+          {(selectedCategories.length > 0 || selectedLojas.length > 0 || selectedRatings.length > 0) && (
+            <div className="flex flex-wrap gap-2 mb-2">
+              {selectedCategories.map(categoryId => {
+                const category = allCategories.find(c => c.id === categoryId);
+                return (
+                  <Badge key={categoryId} variant="secondary" className="bg-white text-gray-800 flex items-center gap-1">
+                    {category?.label}
+                    <button 
+                      onClick={() => setSelectedCategories(selectedCategories.filter(id => id !== categoryId))}
+                      className="ml-1 text-gray-500 hover:text-gray-800"
+                    >
+                      ×
+                    </button>
+                  </Badge>
+                );
+              })}
+              
+              {selectedLojas.map(lojaId => {
+                const loja = lojasOptions.find(l => l.id === lojaId);
+                return (
+                  <Badge key={lojaId} variant="secondary" className="bg-white text-gray-800 flex items-center gap-1">
+                    {loja?.label}
+                    <button 
+                      onClick={() => setSelectedLojas(selectedLojas.filter(id => id !== lojaId))}
+                      className="ml-1 text-gray-500 hover:text-gray-800"
+                    >
+                      ×
+                    </button>
+                  </Badge>
+                );
+              })}
+              
+              {selectedRatings.map(ratingId => {
+                const rating = ratingOptions.find(r => r.id === ratingId);
+                return (
+                  <Badge key={ratingId} variant="secondary" className="bg-white text-gray-800 flex items-center gap-1">
+                    {rating?.label}
+                    <button 
+                      onClick={() => setSelectedRatings(selectedRatings.filter(id => id !== ratingId))}
+                      className="ml-1 text-gray-500 hover:text-gray-800"
+                    >
+                      ×
+                    </button>
+                  </Badge>
+                );
+              })}
+              
+              <button 
+                onClick={() => {
+                  setSelectedCategories([]);
+                  setSelectedLojas([]);
+                  setSelectedRatings([]);
+                }}
+                className="text-white text-sm underline"
+              >
+                Limpar filtros
+              </button>
+            </div>
+          )}
         </div>
       </motion.div>
       
@@ -244,6 +378,10 @@ const MarketplaceScreen: React.FC = () => {
                     produto={produto}
                     loja={loja}
                     onClick={() => navigate(`/produto/${produto.id}`)}
+                    onLojaClick={(lojaId) => {
+                      setSelectedLojas([lojaId]);
+                      setPage(1);
+                    }}
                   />
                 );
               })}
@@ -260,21 +398,23 @@ const MarketplaceScreen: React.FC = () => {
             )}
           </>
         ) : (
-          <ListEmptyState
-            title="Nenhum produto encontrado"
-            description="Tente mudar os filtros ou buscar por outro termo."
-            icon={<ShoppingBag size={40} />}
-            action={{
-              label: "Limpar filtros",
-              onClick: () => {
+          <div className="flex flex-col items-center justify-center py-12">
+            <ShoppingBag size={48} className="text-gray-400 mb-4" />
+            <h3 className="font-bold text-xl mb-2">Nenhum produto encontrado</h3>
+            <p className="text-gray-500 text-center mb-6">Tente mudar os filtros ou buscar por outro termo.</p>
+            <button 
+              className="bg-construPro-blue text-white px-4 py-2 rounded-md"
+              onClick={() => {
                 setSearchTerm('');
                 setSelectedCategories([]);
                 setSelectedLojas([]);
                 setSelectedRatings([]);
                 setSelectedVolumes([]);
-              }
-            }}
-          />
+              }}
+            >
+              Limpar filtros
+            </button>
+          </div>
         )}
       </div>
     </div>

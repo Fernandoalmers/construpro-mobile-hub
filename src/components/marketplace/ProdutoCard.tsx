@@ -148,12 +148,7 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
             </div>
           </div>
           
-          {/* Category as a small tag */}
-          <div className="text-xs">
-            <span className="bg-gray-100 px-2 py-0.5 rounded text-gray-600">
-              {produto.categoria}
-            </span>
-          </div>
+          {/* Remove duplicate category tag since we already show it in the unit info */}
         </div>
       </div>
     </Card>

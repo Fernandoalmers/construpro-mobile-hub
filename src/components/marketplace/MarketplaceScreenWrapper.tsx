@@ -1,6 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import MarketplaceScreen from './MarketplaceScreen';
+import MarketplaceHomeScreen from './MarketplaceHomeScreen';
 import ErrorBoundary from '../common/ErrorBoundary';
 import LoadingState from '../common/LoadingState';
 import ListEmptyState from '../common/ListEmptyState';
@@ -12,6 +14,10 @@ const MarketplaceScreenWrapper: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [data, setData] = useState<typeof produtos | null>(null);
+  const location = useLocation();
+  
+  // Check if we should show products or home screen
+  const showProducts = location.pathname === '/marketplace/products';
 
   useEffect(() => {
     const fetchData = async () => {
@@ -57,10 +63,12 @@ const MarketplaceScreenWrapper: React.FC = () => {
     return (
       <div className="bg-gray-50 min-h-screen">
         <div className="p-4 pt-8 bg-construPro-blue">
-          <h1 className="text-2xl font-bold text-white mb-4">Marketplace</h1>
+          <h1 className="text-2xl font-bold text-white mb-4">
+            {showProducts ? 'Produtos' : 'Loja'}
+          </h1>
           <div className="h-10 w-full bg-white/20 rounded-md animate-pulse mb-4"></div>
         </div>
-        <LoadingState type="skeleton" text="Carregando produtos..." count={6} />
+        <LoadingState type="skeleton" text="Carregando..." count={6} />
       </div>
     );
   }
@@ -91,8 +99,8 @@ const MarketplaceScreenWrapper: React.FC = () => {
     );
   }
 
-  // Show the actual screen with data
-  return <MarketplaceScreen />;
+  // Conditionally render home or product screen
+  return showProducts ? <MarketplaceScreen /> : <MarketplaceHomeScreen />;
 };
 
 export default MarketplaceScreenWrapper;
