@@ -7,7 +7,6 @@ import LoginScreen from './components/LoginScreen';
 import SignupScreen from './components/SignupScreen';
 import HomeScreenWrapper from './components/home/HomeScreenWrapper';
 import ProfileSelectionScreen from './components/auth/ProfileSelectionScreen';
-import ProfessionalProfileScreen from './components/auth/ProfessionalProfileScreen';
 import VendorProfileScreen from './components/auth/VendorProfileScreen';
 import ForgotPasswordScreen from './components/auth/ForgotPasswordScreen';
 import ProfileScreen from './components/profile/ProfileScreen';
@@ -55,6 +54,9 @@ import ServiceCalendarScreen from './components/services/ServiceCalendarScreen';
 import { Toaster } from '@/components/ui/sonner';
 
 function App() {
+  // Define a default value for isProfessional
+  const defaultProfessionalValue = false;
+
   return (
     <AuthProvider>
       <Router>
@@ -95,18 +97,18 @@ function App() {
           
           {/* Services */}
           <Route path="/services/*" element={<ServicesTabNavigator />}>
-            <Route path="" element={<ServicesAvailableScreen />} />
-            <Route path="available" element={<ServicesAvailableScreen />} />
-            <Route path="my-services" element={<MyServicesScreen />} />
+            <Route path="" element={<ServicesAvailableScreen isProfessional={defaultProfessionalValue} />} />
+            <Route path="available" element={<ServicesAvailableScreen isProfessional={defaultProfessionalValue} />} />
+            <Route path="my-services" element={<MyServicesScreen isProfessional={defaultProfessionalValue} />} />
             <Route path="my-proposals" element={<MyProposalsScreen />} />
             <Route path="calendar" element={<ServiceCalendarScreen />} />
-            <Route path="completed" element={<CompletedServicesScreen />} />
+            <Route path="completed" element={<CompletedServicesScreen isProfessional={defaultProfessionalValue} />} />
           </Route>
           <Route path="/services/request/:id" element={<ServiceRequestDetailScreen />} />
           <Route path="/services/create" element={<CreateServiceRequestScreen />} />
           <Route path="/services/professional-profile" element={<ProfessionalProfileScreen />} />
           <Route path="/services/project/:id" element={<ProjectDetailScreen />} />
-          <Route path="/services/contracted" element={<ContractedProjectsScreen />} />
+          <Route path="/services/contracted" element={<ContractedProjectsScreen isProfessional={defaultProfessionalValue} />} />
           
           {/* Rewards */}
           <Route path="/resgates" element={<ResgatesScreen />} />
