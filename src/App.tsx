@@ -52,6 +52,7 @@ import CompletedServicesScreen from './components/services/CompletedServicesScre
 import ContractedProjectsScreen from './components/services/ContractedProjectsScreen';
 import ServiceCalendarScreen from './components/services/ServiceCalendarScreen';
 import { Toaster } from '@/components/ui/sonner';
+import BottomTabNavigator from './components/layout/BottomTabNavigator';
 
 function App() {
   // Define a default value for isProfessional
@@ -134,6 +135,7 @@ function App() {
           {/* Default redirect */}
           <Route path="*" element={<Navigate to="/home" replace />} />
         </Routes>
+        <BottomTabNavigator />
       </Router>
       <Toaster />
     </AuthProvider>
