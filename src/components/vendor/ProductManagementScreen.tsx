@@ -10,7 +10,12 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import produtos from '../../data/produtos.json';
 
-interface ProdutoVendor extends typeof produtos[0] {
+interface ProdutoVendor {
+  id: string;
+  nome: string;
+  preco: number;
+  estoque: number;
+  imagemUrl: string;
   status: 'ativo' | 'inativo' | 'pendente';
 }
 
