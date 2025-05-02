@@ -1,16 +1,17 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MapPin, Calendar, Clock, User, DollarSign, MessageSquare, FileText, CheckCircle, SendHorizontal } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, Clock, User, DollarSign, MessageCircle, FileText, CheckCircle, SendHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/ui/avatar';
+import { AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import Card from '../common/Card';
 import SendProposalModal from './SendProposalModal';
 import { serviceRequestsMock } from '@/data/serviceRequests';
+import { ServiceRequest } from '@/types/services';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from '@/components/ui/sonner';
-import { ServiceRequest } from '@/types/services';
-import Card from '../common/Card';
 
 const ServiceRequestDetailScreen: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -96,7 +97,7 @@ const ServiceRequestDetailScreen: React.FC = () => {
 
           <div>
             <h4 className="text-sm font-medium text-gray-600 flex items-center">
-              <MessageSquare className="mr-2" size={16} /> Informações Adicionais
+              <MessageCircle className="mr-2" size={16} /> Informações Adicionais
             </h4>
             <p className="text-gray-800">{service.informacoesAdicionais}</p>
           </div>

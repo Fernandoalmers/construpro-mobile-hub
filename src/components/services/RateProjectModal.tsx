@@ -11,11 +11,11 @@ import { toast } from '@/components/ui/sonner';
 import { Star } from 'lucide-react';
 
 interface RateProjectModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
   projectId: string;
   professionalName: string;
-  professionalId: string;
+  professionalId?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 const formSchema = z.object({
@@ -24,11 +24,11 @@ const formSchema = z.object({
 });
 
 const RateProjectModal: React.FC<RateProjectModalProps> = ({ 
-  open, 
-  onOpenChange,
   projectId,
   professionalName,
-  professionalId
+  professionalId,
+  open,
+  onOpenChange = () => {}
 }) => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),

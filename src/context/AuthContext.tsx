@@ -98,12 +98,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // Convert database structure to Profile type
       const profileData: Profile = {
-        ...data,
+        id: data.id,
+        nome: data.nome,
+        cpf: data.cpf,
+        email: data.email,
+        telefone: data.telefone,
         tipo_perfil: data.tipo_perfil || data.papel || 'consumidor',
         papel: data.papel || data.tipo_perfil || 'consumidor',
         saldo_pontos: data.saldo_pontos || 0,
         saldoPontos: data.saldo_pontos || 0, // for backward compatibility
-        status: data.status || 'ativo'
+        status: data.status || 'ativo',
+        avatar: data.avatar,
+        is_admin: data.is_admin,
+        codigo: data.codigo,
+        created_at: data.created_at,
+        updated_at: data.updated_at
       };
       
       return profileData;

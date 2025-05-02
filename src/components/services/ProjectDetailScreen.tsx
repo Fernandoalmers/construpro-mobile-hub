@@ -18,6 +18,7 @@ const ProjectDetailScreen: React.FC = () => {
   const { profile } = useAuth();
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [rateModalOpen, setRateModalOpen] = useState(false);
 
   useEffect(() => {
     // In a real app, we would fetch from an API
@@ -148,17 +149,17 @@ const ProjectDetailScreen: React.FC = () => {
             
             <div className="flex items-center">
               <Clock className="text-construPro-blue mr-2" size={18} />
-              <span className="text-sm">Duração estimada: {project.duracaoEstimada} dias</span>
+              <span className="text-sm">Duração estimada: {project.duracaoEstimada || 0} dias</span>
             </div>
             
             <div className="flex items-center">
               <DollarSign className="text-construPro-blue mr-2" size={18} />
-              <span className="text-sm">Valor: {typeof project.valor === 'number' ? formatCurrency(project.valor) : project.valor}</span>
+              <span className="text-sm">Valor: {project.valor}</span>
             </div>
             
             <div className="flex items-center">
               <Wrench className="text-construPro-blue mr-2" size={18} />
-              <span className="text-sm">Categoria: {project.categoria}</span>
+              <span className="text-sm">Categoria: {project.categoria || 'Não especificado'}</span>
             </div>
           </div>
         </Card>
@@ -172,16 +173,16 @@ const ProjectDetailScreen: React.FC = () => {
             <Avatar 
               src={isProfessional ? project.cliente?.avatar : project.profissional?.avatar}
               alt={isProfessional ? project.cliente?.nome : project.profissional?.nome}
-              fallback={isProfessional ? (project.cliente?.nome?.charAt(0) || 'C') : (project.profissional?.nome?.charAt(0) || 'P')}
+              fallback={isProfessional ? ((project.cliente?.nome?.charAt(0) || 'C')) : ((project.profissional?.nome?.charAt(0) || 'P'))}
               size="md"
             />
             <div className="ml-3">
-              <p className="font-medium">{isProfessional ? project.cliente?.nome : project.profissional?.nome}</p>
+              <p className="font-medium">{isProfessional ? (project.cliente?.nome || 'Cliente') : (project.profissional?.nome || 'Profissional')}</p>
               <div className="flex items-center text-sm text-gray-500">
                 <User size={14} className="mr-1" />
                 <span>
                   {isProfessional ? 'Cliente' : 'Profissional'} desde {
-                    formatDate(isProfessional ? project.cliente?.dataCadastro : project.profissional?.dataCadastro)
+                    formatDate(isProfessional ? (project.cliente?.dataCadastro || '') : (project.profissional?.dataCadastro || ''))
                   }
                 </span>
               </div>
@@ -210,7 +211,7 @@ const ProjectDetailScreen: React.FC = () => {
                 Marcar como concluído
               </Button>
             ) : (
-              <Dialog>
+              <Dialog open={rateModalOpen} onOpenChange={setRateModalOpen}>
                 <DialogTrigger asChild>
                   <Button 
                     className="w-full bg-green-600 hover:bg-green-700"
@@ -221,7 +222,10 @@ const ProjectDetailScreen: React.FC = () => {
                 </DialogTrigger>
                 <RateProjectModal 
                   projectId={project.id} 
-                  professionalName={project.profissional?.nome} 
+                  professionalName={project.profissional?.nome || 'Profissional'}
+                  professionalId={project.profissionalId}
+                  open={rateModalOpen}
+                  onOpenChange={setRateModalOpen}
                 />
               </Dialog>
             )}
@@ -238,7 +242,7 @@ const ProjectDetailScreen: React.FC = () => {
         )}
         
         {project.status === 'concluido' && !isProfessional && !project.avaliado && (
-          <Dialog>
+          <Dialog open={rateModalOpen} onOpenChange={setRateModalOpen}>
             <DialogTrigger asChild>
               <Button className="w-full">
                 <CheckCircle size={16} className="mr-2" />
@@ -247,7 +251,10 @@ const ProjectDetailScreen: React.FC = () => {
             </DialogTrigger>
             <RateProjectModal 
               projectId={project.id} 
-              professionalName={project.profissional?.nome} 
+              professionalName={project.profissional?.nome || 'Profissional'} 
+              professionalId={project.profissionalId}
+              open={rateModalOpen}
+              onOpenChange={setRateModalOpen}
             />
           </Dialog>
         )}
