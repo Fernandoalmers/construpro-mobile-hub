@@ -30,7 +30,7 @@ export const addressService = {
   
   async getAddress(addressId: string): Promise<Address> {
     const { data, error } = await supabase.functions.invoke('address-management', {
-      query: { id: addressId }
+      body: { id: addressId }
     });
     
     if (error) {
@@ -58,8 +58,7 @@ export const addressService = {
   async updateAddress(addressId: string, addressData: Partial<Address>): Promise<Address> {
     const { data, error } = await supabase.functions.invoke('address-management', {
       method: 'PUT',
-      query: { id: addressId },
-      body: addressData
+      body: { id: addressId, ...addressData }
     });
     
     if (error) {
@@ -73,7 +72,7 @@ export const addressService = {
   async deleteAddress(addressId: string): Promise<void> {
     const { error } = await supabase.functions.invoke('address-management', {
       method: 'DELETE',
-      query: { id: addressId }
+      body: { id: addressId }
     });
     
     if (error) {

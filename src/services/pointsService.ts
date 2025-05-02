@@ -93,8 +93,7 @@ export const referralService = {
   async approveReferral(referralId: string, pontos: number = 300): Promise<void> {
     const { error } = await supabase.functions.invoke('referral-processing', {
       method: 'PUT',
-      query: { id: referralId },
-      body: { status: 'aprovado', pontos }
+      body: { id: referralId, status: 'aprovado', pontos }
     });
     
     if (error) {
@@ -106,8 +105,7 @@ export const referralService = {
   async rejectReferral(referralId: string): Promise<void> {
     const { error } = await supabase.functions.invoke('referral-processing', {
       method: 'PUT',
-      query: { id: referralId },
-      body: { status: 'rejeitado' }
+      body: { id: referralId, status: 'rejeitado' }
     });
     
     if (error) {

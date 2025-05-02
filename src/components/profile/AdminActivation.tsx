@@ -49,8 +49,16 @@ const AdminActivation: React.FC = () => {
       // Update local state
       setIsAdmin(newAdminStatus);
       
-      // Update user in context
-      updateUser({ ...user, is_admin: newAdminStatus });
+      // Update user in context - we need to add is_admin as an additional property
+      // since it's not part of the original type
+      if (user) {
+        // Use type assertion to add the is_admin property
+        updateUser({ 
+          ...user, 
+          // @ts-ignore - We know is_admin exists in the database even if not in the type
+          is_admin: newAdminStatus 
+        });
+      }
 
       toast.success(newAdminStatus 
         ? 'Permissões administrativas ativadas'

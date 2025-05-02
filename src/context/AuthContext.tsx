@@ -18,11 +18,17 @@ type AuthState = {
   error: string | null;
 };
 
+interface SignupParams {
+  email: string;
+  password: string;
+  userData: any;
+}
+
 type AuthContextType = AuthState & {
   login: (email: string, password: string) => Promise<{ error: AuthError | null }>;
-  signup: (email: string, password: string, userData: any) => Promise<{ error: AuthError | null, data: any }>;
+  signup: (params: SignupParams) => Promise<{ error: AuthError | null, data: any }>;
   logout: () => Promise<void>;
-  updateUser: (data: Partial<{ papel: UserRole, tipo_perfil: UserRole }>) => Promise<void>;
+  updateUser: (data: any) => Promise<void>;
   updateProfile: (data: any) => Promise<void>;
   getProfile: () => Promise<any>;
 };
@@ -64,20 +70,12 @@ export function AuthProvider({ children }: ProviderProps) {
   };
 
   // Function to update user metadata
-  const updateUser = async (data: Partial<{ papel: UserRole, tipo_perfil: UserRole }>) => {
+  const updateUser = async (data: any) => {
     try {
-      // Ensure papel and tipo_perfil are synchronized
-      const updateData = { ...data };
-      if (data.papel && !data.tipo_perfil) {
-        updateData.tipo_perfil = data.papel;
-      } else if (data.tipo_perfil && !data.papel) {
-        updateData.papel = data.tipo_perfil;
-      }
-      
       // Update profile table
       const { error } = await supabase
         .from('profiles')
-        .update(updateData)
+        .update(data)
         .eq('id', state.user?.id);
 
       if (error) throw error;
@@ -179,8 +177,8 @@ export function AuthProvider({ children }: ProviderProps) {
     }
   };
 
-  // Signup function
-  const signup = async (email: string, password: string, userData: any) => {
+  // Signup function - updated to use the new params structure
+  const signup = async ({ email, password, userData }: SignupParams) => {
     try {
       const { data: signupData, error: signupError } = await supabase.functions.invoke('auth-signup', {
         body: {

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -53,14 +52,16 @@ const SignupScreen: React.FC = () => {
     setIsSubmitting(true);
     
     try {
-      // Register the user
+      // Register the user - fix the signup call to include all required arguments
       await signup({
-        nome: signupData.nome,
-        cpf: signupData.cpf,
-        telefone: signupData.telefone,
-        email: signupData.email,
-        senha: signupData.senha,
-        tipo_perfil: signupData.tipo_perfil
+        email: signupData.email, 
+        password: signupData.senha,
+        userData: {
+          nome: signupData.nome,
+          cpf: signupData.cpf,
+          telefone: signupData.telefone,
+          tipo_perfil: signupData.tipo_perfil
+        }
       });
       
       toast.success("Cadastro realizado com sucesso!");
