@@ -9,4 +9,5 @@ export interface UserData {
   saldoPontos: number;
   status?: string;
   avatar?: string;
+  codigo?: string;
 }

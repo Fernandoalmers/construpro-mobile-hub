@@ -11,6 +11,8 @@ interface ProfileUpdateRequest {
   nome?: string;
   cpf?: string;
   telefone?: string;
+  papel?: string;
+  tipo_perfil?: string;
   endereco_principal?: {
     logradouro?: string;
     numero?: string;
@@ -63,6 +65,11 @@ serve(async (req) => {
         JSON.stringify({ error: "Nenhum dado fornecido para atualização" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Se papel foi fornecido, atualizar também tipo_perfil para manter consistência
+    if (updateData.papel && !updateData.tipo_perfil) {
+      updateData.tipo_perfil = updateData.papel;
     }
 
     // Atualizar perfil

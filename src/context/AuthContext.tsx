@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { toast } from "@/components/ui/sonner";
 import { supabase } from '@/integrations/supabase/client';
@@ -18,6 +17,8 @@ export interface Profile {
   saldo_pontos: number;
   avatar?: string;
   is_admin?: boolean;
+  codigo?: string;
+  papel?: UserRole;
   endereco_principal?: {
     logradouro?: string;
     numero?: string;
@@ -39,6 +40,7 @@ interface AuthContextType {
   signup: (userData: SignupData) => Promise<void>;
   logout: () => void;
   updateProfile: (data: Partial<Profile>) => Promise<void>;
+  updateUser: (data: Partial<Profile>) => Promise<void>; // Adicionando updateUser como alias para updateProfile
   isPublicRoute: (pathname: string) => boolean;
   checkIsAdmin: () => Promise<boolean>;
   refreshProfile: () => Promise<void>;
@@ -249,12 +251,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       // Atualiza o perfil na memória
       setProfile(prev => prev ? { ...prev, ...data } : null);
+      
+      // Se o campo papel foi atualizado, também define tipo_perfil com o mesmo valor
+      if (data.papel && profile) {
+        const updatedProfile = { ...profile, ...data, tipo_perfil: data.papel as UserRole };
+        setProfile(updatedProfile);
+      }
+      
       toast.success("Perfil atualizado com sucesso!");
     } catch (err: any) {
       toast.error(err.message || 'Erro ao atualizar perfil');
       throw err;
     }
   };
+  
+  // Alias para updateProfile para manter compatibilidade com componentes existentes
+  const updateUser = updateProfile;
   
   // Check if user is admin
   const checkIsAdmin = async (): Promise<boolean> => {
@@ -286,6 +298,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       signup, 
       logout, 
       updateProfile,
+      updateUser,
       isPublicRoute,
       checkIsAdmin,
       refreshProfile

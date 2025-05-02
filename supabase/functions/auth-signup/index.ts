@@ -63,6 +63,7 @@ serve(async (req) => {
         data: {
           nome,
           tipo_perfil,
+          papel: tipo_perfil, // Adicionando papel para compatibilidade
           cpf,
           telefone
         }
