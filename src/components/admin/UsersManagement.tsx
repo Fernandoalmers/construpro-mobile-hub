@@ -25,7 +25,7 @@ interface UserData {
   nome: string;
   email?: string;
   cpf?: string;
-  papel: string;
+  papel?: string; // Made optional as it might not exist in all data sources
   saldoPontos: number;
   status?: string;
   avatar?: string;
@@ -264,7 +264,7 @@ const UsersManagement: React.FC = () => {
                         </TableCell>
                         <TableCell>{user.cpf || '-'}</TableCell>
                         <TableCell>
-                          <Badge className={getRoleBadgeColor(user.papel)}>
+                          <Badge className={getRoleBadgeColor(user.papel || 'consumidor')}>
                             {user.papel === 'profissional' ? 'Profissional' : 
                              user.papel === 'lojista' ? 'Lojista' : 'Consumidor'}
                           </Badge>
