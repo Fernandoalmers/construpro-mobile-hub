@@ -1,23 +1,12 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search, Plus, Filter, Tag, Box, ShoppingBag } from 'lucide-react';
-import Card from '../common/Card';
-import CustomInput from '../common/CustomInput';
-import ListEmptyState from '../common/ListEmptyState';
-import CustomButton from '../common/CustomButton';
-import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
+import { ArrowLeft, ShoppingBag } from 'lucide-react';
 import produtos from '../../data/produtos.json';
-
-interface ProdutoVendor {
-  id: string;
-  nome: string;
-  preco: number;
-  estoque: number;
-  imagemUrl: string;
-  status: 'ativo' | 'inativo' | 'pendente';
-}
+import { ProdutoVendor } from './ProductItem';
+import ProductFilters from './ProductFilters';
+import ProductList from './ProductList';
+import ProductActions from './ProductActions';
 
 const ProductManagementScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -57,17 +46,9 @@ const ProductManagementScreen: React.FC = () => {
     );
   };
 
-  const getStatusBadge = (status: string) => {
-    switch(status) {
-      case 'ativo':
-        return <Badge className="bg-green-100 text-green-800">Ativo</Badge>;
-      case 'inativo':
-        return <Badge className="bg-gray-100 text-gray-800">Inativo</Badge>;
-      case 'pendente':
-        return <Badge className="bg-amber-100 text-amber-800">Pendente aprovação</Badge>;
-      default:
-        return null;
-    }
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setFilterStatus(null);
   };
 
   return (
@@ -81,128 +62,22 @@ const ProductManagementScreen: React.FC = () => {
         <h1 className="text-xl font-bold text-white">Gerenciar Produtos</h1>
       </div>
       
-      {/* Filters */}
+      {/* Content */}
       <div className="p-6 space-y-4">
-        <CustomInput
-          isSearch
-          placeholder="Buscar produtos"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+        <ProductFilters
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          filterStatus={filterStatus}
+          setFilterStatus={setFilterStatus}
         />
         
-        <div className="flex gap-2 overflow-x-auto pb-2">
-          <CustomButton
-            variant={filterStatus === null ? 'primary' : 'outline'}
-            size="sm"
-            onClick={() => setFilterStatus(null)}
-          >
-            Todos
-          </CustomButton>
-          <CustomButton
-            variant={filterStatus === 'ativo' ? 'primary' : 'outline'}
-            size="sm"
-            onClick={() => setFilterStatus('ativo')}
-          >
-            Ativos
-          </CustomButton>
-          <CustomButton
-            variant={filterStatus === 'inativo' ? 'primary' : 'outline'}
-            size="sm"
-            onClick={() => setFilterStatus('inativo')}
-          >
-            Inativos
-          </CustomButton>
-          <CustomButton
-            variant={filterStatus === 'pendente' ? 'primary' : 'outline'}
-            size="sm"
-            onClick={() => setFilterStatus('pendente')}
-          >
-            Pendentes
-          </CustomButton>
-        </div>
+        <ProductActions />
         
-        <CustomButton
-          variant="primary"
-          icon={<Plus size={18} />}
-          onClick={() => navigate('/vendor/product-form')}
-          fullWidth
-        >
-          Adicionar novo produto
-        </CustomButton>
-
-        <CustomButton
-          variant="outline"
-          icon={<Box size={18} />}
-          onClick={() => navigate('/vendor/product-clone')}
-          fullWidth
-        >
-          Clonar produto existente
-        </CustomButton>
-        
-        {/* Products List */}
-        {filteredProducts.length === 0 ? (
-          <ListEmptyState
-            title="Nenhum produto encontrado"
-            description="Tente mudar os filtros ou buscar por outro termo."
-            icon={<ShoppingBag size={40} />}
-            action={{
-              label: "Limpar filtros",
-              onClick: () => {
-                setSearchTerm('');
-                setFilterStatus(null);
-              }
-            }}
-          />
-        ) : (
-          <div className="space-y-4 mt-4">
-            {filteredProducts.map(produto => (
-              <Card key={produto.id} className="p-4">
-                <div className="flex gap-3">
-                  <div className="w-16 h-16 bg-gray-200 rounded-md overflow-hidden">
-                    <img 
-                      src={produto.imagemUrl}
-                      alt={produto.nome}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  
-                  <div className="flex-1">
-                    <div className="flex justify-between">
-                      <h3 className="font-medium line-clamp-1">{produto.nome}</h3>
-                      {produto.status !== 'pendente' && (
-                        <Switch
-                          checked={produto.status === 'ativo'}
-                          onCheckedChange={() => handleToggleStatus(produto.id)}
-                        />
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center gap-2 mt-1">
-                      {getStatusBadge(produto.status)}
-                      <span className="text-sm text-gray-500">
-                        <Tag size={12} className="inline mr-1" />
-                        R$ {produto.preco.toFixed(2)}
-                      </span>
-                    </div>
-                    
-                    <div className="mt-2 flex justify-between items-center">
-                      <span className="text-xs text-gray-500">
-                        Estoque: {produto.estoque} unid.
-                      </span>
-                      <CustomButton
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate(`/vendor/product-edit/${produto.id}`)}
-                      >
-                        Editar
-                      </CustomButton>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
+        <ProductList
+          products={filteredProducts}
+          onToggleStatus={handleToggleStatus}
+          onClearFilters={handleClearFilters}
+        />
       </div>
     </div>
   );
