@@ -7,10 +7,10 @@ import {
   Search, 
   Box, 
   Plug, 
-  Water, 
+  Droplet, 
   GlassWater, 
   Hammer, 
-  Tool, 
+  Wrench, 
   UserPlus, 
   ShoppingBag,
   Construction
@@ -32,7 +32,7 @@ const categoryBlocks = [
   {
     id: 'hidraulica',
     name: 'Hidráulica',
-    icon: <Water size={24} />,
+    icon: <Droplet size={24} />,
     filter: { categoria: 'Hidráulica' }
   },
   {
@@ -56,13 +56,13 @@ const categoryBlocks = [
   {
     id: 'ferramentas',
     name: 'Ferramentas e Máquinas',
-    icon: <Tool size={24} />,
+    icon: <Wrench size={24} />,
     filter: { categoria: 'Ferramentas' }
   },
   {
     id: 'aluguel',
     name: 'Aluguel de Equipamentos',
-    icon: <Tool size={24} />,
+    icon: <Hammer size={24} />,
     filter: { categoria: 'Aluguel' }
   },
   {
