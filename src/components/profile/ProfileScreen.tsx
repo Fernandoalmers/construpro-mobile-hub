@@ -28,10 +28,10 @@ import {
   MapPin
 } from 'lucide-react';
 import clientes from '../../data/clientes.json';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth, UserRole } from '../../context/AuthContext';
 import { toast } from "@/components/ui/sonner";
 
-// Define a type for the user that includes papel
+// Define a type for the user that includes all required properties
 interface ExtendedUser {
   id: string;
   nome: string;
@@ -43,18 +43,18 @@ interface ExtendedUser {
   email: string;
   telefone: string;
   avatar: string;
-  papel?: 'consumidor' | 'profissional' | 'lojista';
+  papel?: UserRole;
 }
 
 const ProfileScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { user: authUser, logout, updateUser } = useAuth();
+  const { user: authUser, profile, logout, updateUser } = useAuth();
   
-  // Use the first client as the logged in user for demo if no auth user
-  const currentUser = authUser || clientes[0] as ExtendedUser;
+  // Use profile data if available, otherwise fallback to client data
+  const currentUser = profile || clientes[0] as ExtendedUser;
   
   // Initialize with default papel if not present
-  const userPapel = currentUser.papel || 'consumidor';
+  const userPapel = profile?.papel || profile?.tipo_perfil || 'consumidor';
   
   const [notifications, setNotifications] = useState(true);
   const [vendorMode, setVendorMode] = useState(userPapel === 'lojista');
@@ -73,18 +73,21 @@ const ProfileScreen: React.FC = () => {
   let currentProgress = 0;
   let maxProgress = 2000;
   
-  if (currentUser.saldoPontos >= levelPoints.gold.min) {
+  // Get saldo_pontos from profile or saldoPontos from client data
+  const userPoints = profile ? profile.saldo_pontos : currentUser.saldoPontos;
+  
+  if (userPoints >= levelPoints.gold.min) {
     currentLevel = 'gold';
     nextLevel = '';
     currentProgress = 5000;
     maxProgress = 5000;
-  } else if (currentUser.saldoPontos >= levelPoints.silver.min) {
+  } else if (userPoints >= levelPoints.silver.min) {
     currentLevel = 'silver';
     nextLevel = 'gold';
-    currentProgress = currentUser.saldoPontos - levelPoints.silver.min;
+    currentProgress = userPoints - levelPoints.silver.min;
     maxProgress = levelPoints.gold.min - levelPoints.silver.min;
   } else {
-    currentProgress = currentUser.saldoPontos;
+    currentProgress = userPoints;
     maxProgress = levelPoints.silver.min;
   }
   
@@ -133,6 +136,12 @@ const ProfileScreen: React.FC = () => {
     navigate('/login');
   };
 
+  // Get user display name and email safely
+  const userName = profile?.nome || currentUser.nome;
+  const userEmail = profile?.email || currentUser.email;
+  const userAvatar = profile?.avatar || currentUser.avatar;
+  const userCode = profile?.codigo || currentUser.codigo;
+
   // Profile menu sections
   const profileSections = [
     {
@@ -173,17 +182,17 @@ const ProfileScreen: React.FC = () => {
       <div className="bg-construPro-blue p-6 pt-12 rounded-b-3xl">
         <div className="flex flex-col items-center mb-4">
           <Avatar 
-            src={currentUser.avatar} 
-            alt={currentUser.nome}
-            fallback={currentUser.nome}
+            src={userAvatar} 
+            alt={userName}
+            fallback={userName}
             size="xl" 
             className="border-4 border-white mb-3"
           />
-          <h1 className="text-xl font-bold text-white">{currentUser.nome}</h1>
-          <p className="text-white text-opacity-70">{currentUser.email}</p>
+          <h1 className="text-xl font-bold text-white">{userName}</h1>
+          <p className="text-white text-opacity-70">{userEmail}</p>
           <div className="mt-2 bg-white px-4 py-1 rounded-full text-sm">
             <span className="font-medium text-construPro-blue">Código: </span>
-            <span>{currentUser.codigo}</span>
+            <span>{userCode}</span>
           </div>
           
           <Button

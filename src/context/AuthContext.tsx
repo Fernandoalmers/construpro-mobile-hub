@@ -1,10 +1,11 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { toast } from "@/components/ui/sonner";
 import { supabase } from '@/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
 
 // Define types
-export type UserRole = 'consumidor' | 'profissional' | 'vendedor';
+export type UserRole = 'consumidor' | 'profissional' | 'lojista' | 'vendedor';
 
 export interface Profile {
   id: string;
@@ -19,6 +20,8 @@ export interface Profile {
   is_admin?: boolean;
   codigo?: string;
   papel?: UserRole;
+  created_at?: string;
+  updated_at?: string;
   endereco_principal?: {
     logradouro?: string;
     numero?: string;
@@ -92,7 +95,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return null;
       }
 
-      return data as Profile;
+      // Convert database structure to Profile type
+      return {
+        ...data,
+        tipo_perfil: data.tipo_perfil || data.papel,
+        saldo_pontos: data.saldo_pontos || 0,
+        status: data.status || 'ativo'
+      } as Profile;
     } catch (err) {
       console.error('Erro ao buscar perfil:', err);
       return null;

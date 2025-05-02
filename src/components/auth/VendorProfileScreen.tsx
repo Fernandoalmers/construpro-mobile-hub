@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -8,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { ArrowLeft, Camera, Clock, MapPin, Truck, Upload } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from "@/components/ui/sonner";
-import { useAuth } from '../../context/AuthContext';
+import { useAuth, UserRole } from '../../context/AuthContext';
 
 interface DeliveryMethod {
   id: string;
@@ -79,7 +78,7 @@ const VendorProfileScreen: React.FC = () => {
       
       // Update user with vendor data
       await updateUser({ 
-        papel: 'lojista'
+        papel: 'lojista' as UserRole
         // Add vendor data in a real app
       });
       

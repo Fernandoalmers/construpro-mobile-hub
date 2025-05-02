@@ -11,8 +11,8 @@ interface ProfileUpdateRequest {
   nome?: string;
   cpf?: string;
   telefone?: string;
-  papel?: string;
-  tipo_perfil?: string;
+  papel?: "consumidor" | "profissional" | "vendedor" | "lojista";
+  tipo_perfil?: "consumidor" | "profissional" | "vendedor" | "lojista";
   endereco_principal?: {
     logradouro?: string;
     numero?: string;

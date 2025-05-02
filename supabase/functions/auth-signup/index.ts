@@ -13,7 +13,7 @@ interface SignupRequest {
   nome: string;
   cpf?: string;
   telefone?: string;
-  tipo_perfil: "consumidor" | "profissional" | "vendedor";
+  tipo_perfil: "consumidor" | "profissional" | "vendedor" | "lojista";
 }
 
 serve(async (req) => {
@@ -43,7 +43,7 @@ serve(async (req) => {
     }
 
     // Check if tipo_perfil is valid
-    if (!["consumidor", "profissional", "vendedor"].includes(tipo_perfil)) {
+    if (!["consumidor", "profissional", "vendedor", "lojista"].includes(tipo_perfil)) {
       return new Response(
         JSON.stringify({ 
           error: "Tipo de perfil inválido" 

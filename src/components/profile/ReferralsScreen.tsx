@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Users, Share2, Copy, UserCheck, Award } from 'lucide-react';
@@ -26,10 +25,10 @@ const mockReferralData = {
 
 const ReferralsScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { profile } = useAuth();
   
   // Get the referral code with fallback
-  const referralCode = user?.codigo || mockReferralData.code;
+  const referralCode = profile?.codigo || mockReferralData.code;
   
   // Format date
   const formatDate = (dateString: string) => {
