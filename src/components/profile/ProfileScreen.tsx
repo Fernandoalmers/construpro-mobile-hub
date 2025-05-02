@@ -20,20 +20,26 @@ import {
   Receipt, 
   Bookmark, 
   Users, 
-  MessageSquare 
+  MessageSquare,
+  Store,
+  Wrench,
+  RefreshCw
 } from 'lucide-react';
 import clientes from '../../data/clientes.json';
 import { useAuth } from '../../context/AuthContext';
+import { toast } from "@/components/ui/sonner";
 
 const ProfileScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { user: authUser, logout } = useAuth();
+  const { user: authUser, logout, updateUser } = useAuth();
   
   // Use the first client as the logged in user for demo if no auth user
   const currentUser = authUser || clientes[0];
   
   const [notifications, setNotifications] = useState(true);
-  const [vendorMode, setVendorMode] = useState(false);
+  const [vendorMode, setVendorMode] = useState(currentUser.papel === 'lojista');
+  const [professionalMode, setProfessionalMode] = useState(currentUser.papel === 'profissional');
+  const [showModeSwitch, setShowModeSwitch] = useState(false);
 
   // Calculate level info
   const levelPoints = {
@@ -69,10 +75,36 @@ const ProfileScreen: React.FC = () => {
   };
 
   const toggleVendorMode = () => {
-    setVendorMode(!vendorMode);
     if (!vendorMode) {
-      // In a real app, this would redirect to vendor dashboard
+      // Switching to vendor mode
+      updateUser({ papel: 'lojista' });
+      setProfessionalMode(false);
+      setVendorMode(true);
+      toast.success("Modo Vendedor ativado!");
       navigate('/vendor');
+    } else {
+      // Switching back to consumer mode
+      updateUser({ papel: 'consumidor' });
+      setVendorMode(false);
+      toast.success("Modo Consumidor ativado!");
+      navigate('/home');
+    }
+  };
+
+  const toggleProfessionalMode = () => {
+    if (!professionalMode) {
+      // Switching to professional mode
+      updateUser({ papel: 'profissional' });
+      setVendorMode(false);
+      setProfessionalMode(true);
+      toast.success("Modo Profissional ativado!");
+      navigate('/services');
+    } else {
+      // Switching back to consumer mode
+      updateUser({ papel: 'consumidor' });
+      setProfessionalMode(false);
+      toast.success("Modo Consumidor ativado!");
+      navigate('/home');
     }
   };
 
@@ -133,8 +165,69 @@ const ProfileScreen: React.FC = () => {
             <span className="font-medium text-construPro-blue">Código: </span>
             <span>{currentUser.codigo}</span>
           </div>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-3 bg-white text-construPro-blue border-white"
+            onClick={() => setShowModeSwitch(!showModeSwitch)}
+          >
+            <RefreshCw size={16} className="mr-2" />
+            {showModeSwitch ? 'Ocultar modos' : 'Alternar modo'}
+          </Button>
         </div>
       </div>
+      
+      {/* Mode switcher */}
+      {showModeSwitch && (
+        <div className="px-6 -mt-4 mb-2">
+          <Card className="p-4 bg-white">
+            <h3 className="font-medium mb-3">Alternar entre modos</h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <User className="text-construPro-blue mr-3" size={20} />
+                  <span>Modo Consumidor</span>
+                </div>
+                <Switch
+                  checked={!vendorMode && !professionalMode}
+                  onCheckedChange={() => {
+                    if (vendorMode || professionalMode) {
+                      updateUser({ papel: 'consumidor' });
+                      setVendorMode(false);
+                      setProfessionalMode(false);
+                      toast.success("Modo Consumidor ativado!");
+                      navigate('/home');
+                    }
+                  }}
+                />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Wrench className="text-construPro-blue mr-3" size={20} />
+                  <span>Modo Profissional</span>
+                </div>
+                <Switch
+                  checked={professionalMode}
+                  onCheckedChange={toggleProfessionalMode}
+                />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Store className="text-construPro-blue mr-3" size={20} />
+                  <span>Modo Vendedor</span>
+                </div>
+                <Switch
+                  checked={vendorMode}
+                  onCheckedChange={toggleVendorMode}
+                />
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
       
       {/* Level Card */}
       <div className="px-6 -mt-6">
@@ -228,21 +321,6 @@ const ProfileScreen: React.FC = () => {
                 onCheckedChange={setNotifications}
               />
             </div>
-          </div>
-        </Card>
-        
-        <Card className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-medium">Modo Vendedor</h3>
-              <p className="text-sm text-gray-500">
-                Acesse o painel de lojista
-              </p>
-            </div>
-            <Switch
-              checked={vendorMode}
-              onCheckedChange={toggleVendorMode}
-            />
           </div>
         </Card>
         

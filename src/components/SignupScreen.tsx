@@ -3,11 +3,19 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Check } from 'lucide-react';
+import { ArrowLeft, Check, Eye, EyeOff } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { useAuth } from '../context/AuthContext';
+import { toast } from "@/components/ui/sonner";
 
 const SignupScreen: React.FC = () => {
   const navigate = useNavigate();
+  const { signup } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  
   const [signupData, setSignupData] = useState({
     nome: '',
     cpf: '',
@@ -15,7 +23,6 @@ const SignupScreen: React.FC = () => {
     email: '',
     senha: '',
     confirmaSenha: '',
-    papel: 'profissional', // default value
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -23,18 +30,40 @@ const SignupScreen: React.FC = () => {
     setSignupData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleRoleChange = (value: string) => {
-    setSignupData((prev) => ({ ...prev, papel: value }));
-  };
-
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, this would register the user with a backend
-    // For now, just navigate to the appropriate screen based on role
-    if (signupData.papel === 'lojista') {
-      navigate('/vendor');
-    } else {
-      navigate('/login');
+    
+    // Validation
+    if (signupData.senha !== signupData.confirmaSenha) {
+      toast.error("As senhas não conferem");
+      return;
+    }
+    
+    if (!termsAccepted) {
+      toast.error("Você precisa aceitar os termos de uso");
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    try {
+      // Register the user
+      await signup({
+        nome: signupData.nome,
+        cpf: signupData.cpf,
+        telefone: signupData.telefone,
+        email: signupData.email,
+        senha: signupData.senha,
+      });
+      
+      toast.success("Cadastro realizado com sucesso!");
+      // Navigate to profile selection screen
+      navigate('/auth/profile-selection');
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Erro ao criar conta';
+      toast.error(errorMsg);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -70,12 +99,13 @@ const SignupScreen: React.FC = () => {
                 placeholder="Seu nome completo"
                 className="w-full"
                 required
+                disabled={isSubmitting}
               />
             </div>
 
             <div>
               <label htmlFor="cpf" className="block text-sm font-medium text-gray-600 mb-1">
-                CPF/CNPJ
+                CPF
               </label>
               <Input
                 id="cpf"
@@ -83,10 +113,13 @@ const SignupScreen: React.FC = () => {
                 type="text"
                 value={signupData.cpf}
                 onChange={handleChange}
-                placeholder="Seu CPF ou CNPJ"
+                placeholder="Seu CPF"
                 className="w-full"
-                required
+                disabled={isSubmitting}
               />
+              <p className="text-xs text-gray-500 mt-1">
+                Seu CPF é importante para acumular pontos em compras físicas
+              </p>
             </div>
 
             <div>
@@ -102,6 +135,7 @@ const SignupScreen: React.FC = () => {
                 placeholder="(00) 00000-0000"
                 className="w-full"
                 required
+                disabled={isSubmitting}
               />
             </div>
 
@@ -118,6 +152,7 @@ const SignupScreen: React.FC = () => {
                 placeholder="seu@email.com"
                 className="w-full"
                 required
+                disabled={isSubmitting}
               />
             </div>
 
@@ -125,68 +160,60 @@ const SignupScreen: React.FC = () => {
               <label htmlFor="senha" className="block text-sm font-medium text-gray-600 mb-1">
                 Senha
               </label>
-              <Input
-                id="senha"
-                name="senha"
-                type="password"
-                value={signupData.senha}
-                onChange={handleChange}
-                placeholder="Crie uma senha"
-                className="w-full"
-                required
-              />
+              <div className="relative">
+                <Input
+                  id="senha"
+                  name="senha"
+                  type={showPassword ? "text" : "password"}
+                  value={signupData.senha}
+                  onChange={handleChange}
+                  placeholder="Crie uma senha"
+                  className="w-full"
+                  required
+                  disabled={isSubmitting}
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
+                  onClick={() => setShowPassword(!showPassword)}
+                  disabled={isSubmitting}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             <div>
               <label htmlFor="confirmaSenha" className="block text-sm font-medium text-gray-600 mb-1">
                 Confirmar senha
               </label>
-              <Input
-                id="confirmaSenha"
-                name="confirmaSenha"
-                type="password"
-                value={signupData.confirmaSenha}
-                onChange={handleChange}
-                placeholder="Confirme sua senha"
-                className="w-full"
-                required
-              />
-            </div>
-
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-600 mb-2">
-                Tipo de conta
-              </label>
-              <RadioGroup 
-                value={signupData.papel}
-                onValueChange={handleRoleChange}
-                className="flex flex-col space-y-2"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="consumidor" id="consumidor" />
-                  <label htmlFor="consumidor" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                    Consumidor
-                  </label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="profissional" id="profissional" />
-                  <label htmlFor="profissional" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                    Profissional
-                  </label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="lojista" id="lojista" />
-                  <label htmlFor="lojista" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                    Lojista
-                  </label>
-                </div>
-              </RadioGroup>
+              <div className="relative">
+                <Input
+                  id="confirmaSenha"
+                  name="confirmaSenha"
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={signupData.confirmaSenha}
+                  onChange={handleChange}
+                  placeholder="Confirme sua senha"
+                  className="w-full"
+                  required
+                  disabled={isSubmitting}
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  disabled={isSubmitting}
+                >
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             <div className="mt-4 flex items-start gap-3">
-              <div className="min-w-fit mt-1">
-                <div className="h-4 w-4 border border-construPro-orange rounded-sm flex items-center justify-center bg-construPro-orange">
-                  <Check size={14} className="text-white" />
+              <div className="min-w-fit mt-1 cursor-pointer" onClick={() => setTermsAccepted(!termsAccepted)}>
+                <div className={`h-4 w-4 border rounded-sm flex items-center justify-center ${termsAccepted ? 'border-construPro-orange bg-construPro-orange' : 'border-gray-300'}`}>
+                  {termsAccepted && <Check size={14} className="text-white" />}
                 </div>
               </div>
               <p className="text-sm text-gray-600">
@@ -197,8 +224,9 @@ const SignupScreen: React.FC = () => {
             <Button 
               type="submit" 
               className="w-full mt-6 bg-construPro-orange hover:bg-orange-600 text-white"
+              disabled={isSubmitting}
             >
-              Criar conta
+              {isSubmitting ? 'Criando conta...' : 'Criar conta'}
             </Button>
           </form>
         </div>
@@ -209,6 +237,7 @@ const SignupScreen: React.FC = () => {
             onClick={() => navigate('/login')} 
             variant="link" 
             className="text-construPro-blue font-medium"
+            disabled={isSubmitting}
           >
             Entrar
           </Button>

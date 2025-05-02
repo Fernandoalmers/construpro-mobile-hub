@@ -13,6 +13,10 @@ import SplashScreen from "./components/SplashScreen";
 import OnboardingScreen from "./components/OnboardingScreen";
 import LoginScreen from "./components/LoginScreen";
 import SignupScreen from "./components/SignupScreen";
+import ForgotPasswordScreen from "./components/auth/ForgotPasswordScreen";
+import ProfileSelectionScreen from "./components/auth/ProfileSelectionScreen";
+import ProfessionalProfileScreen from "./components/auth/ProfessionalProfileScreen";
+import VendorProfileScreen from "./components/auth/VendorProfileScreen";
 import BottomTabNavigator from "./components/layout/BottomTabNavigator";
 
 // Main screens with wrappers
@@ -95,6 +99,10 @@ const AppRoutes = () => {
         <Route path="/onboarding" element={<OnboardingScreen />} />
         <Route path="/login" element={<LoginScreen />} />
         <Route path="/signup" element={<SignupScreen />} />
+        <Route path="/recuperar-senha" element={<ForgotPasswordScreen />} />
+        <Route path="/auth/profile-selection" element={<ProfileSelectionScreen />} />
+        <Route path="/auth/professional-profile" element={<ProfessionalProfileScreen />} />
+        <Route path="/auth/vendor-profile" element={<VendorProfileScreen />} />
         
         <Route path="/home" element={
           <ProtectedRoute requiredRoles={['consumidor', 'profissional']}>
