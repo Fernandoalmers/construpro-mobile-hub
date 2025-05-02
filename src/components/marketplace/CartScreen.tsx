@@ -1,122 +1,165 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import CustomButton from '../common/CustomButton';
-import Card from '../common/Card';
-import ListEmptyState from '../common/ListEmptyState';
 import { ArrowLeft, ShoppingBag, Trash2, Plus, Minus, Ticket } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import produtos from '../../data/produtos.json';
-import lojas from '../../data/lojas.json';
-import { toast } from '@/hooks/use-toast';
-
-// Update product types to include precoAnterior
-const mockCartItems = [
-  { produtoId: '1', quantidade: 1 },
-  { produtoId: '3', quantidade: 2 },
-];
+import { toast } from 'sonner';
+import { cartService, Cart, CartItem } from '@/services/cartService';
+import CustomButton from '../common/CustomButton';
+import Card from '../common/Card';
+import ListEmptyState from '../common/ListEmptyState';
+import LoadingState from '../common/LoadingState';
+import ErrorState from '../common/ErrorState';
+import { useAuth } from '@/context/AuthContext';
 
 const CartScreen: React.FC = () => {
   const navigate = useNavigate();
-  const [cartItems, setCartItems] = useState(mockCartItems);
+  const { isAuthenticated } = useAuth();
+  const [cart, setCart] = useState<Cart | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<{code: string, discount: number} | null>(null);
+  const [processingItem, setProcessingItem] = useState<string | null>(null);
 
-  const cartProducts = cartItems.map(item => {
-    const produto = produtos.find(p => p.id === item.produtoId);
-    const loja = produto ? lojas.find(l => l.id === produto.lojaId) : undefined;
-    return {
-      ...item,
-      produto,
-      loja,
-    };
-  }).filter(item => item.produto && item.loja);
-
-  // Group items by store
-  const itemsByStore = cartProducts.reduce((groups, item) => {
-    const storeId = item.loja?.id;
-    if (!storeId) return groups;
-    
-    if (!groups[storeId]) {
-      groups[storeId] = {
-        loja: item.loja,
-        items: []
-      };
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login', { state: { from: '/cart' } });
+      return;
     }
     
-    groups[storeId].items.push(item);
-    return groups;
-  }, {} as Record<string, { loja: any, items: typeof cartProducts }>);
+    fetchCart();
+  }, [isAuthenticated, navigate]);
 
-  const updateQuantity = (produtoId: string, newQuantity: number) => {
+  const fetchCart = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const cartData = await cartService.getCart();
+      setCart(cartData);
+    } catch (err) {
+      console.error('Failed to fetch cart:', err);
+      setError('Falha ao carregar o carrinho. Por favor, tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateQuantity = async (item: CartItem, newQuantity: number) => {
     if (newQuantity < 1) return;
     
-    const produto = produtos.find(p => p.id === produtoId);
-    if (!produto || newQuantity > produto.estoque) return;
-    
-    setCartItems(prev => 
-      prev.map(item => 
-        item.produtoId === produtoId ? { ...item, quantidade: newQuantity } : item
-      )
-    );
+    if (newQuantity > (item.produto?.estoque || 0)) {
+      toast.error('Quantidade solicitada não disponível em estoque');
+      return;
+    }
+
+    try {
+      setProcessingItem(item.id);
+      const updatedCart = await cartService.updateCartItemQuantity(item.id, newQuantity);
+      setCart(updatedCart);
+      toast.success('Carrinho atualizado com sucesso');
+    } catch (err) {
+      console.error('Failed to update quantity:', err);
+      toast.error('Erro ao atualizar quantidade');
+    } finally {
+      setProcessingItem(null);
+    }
   };
 
-  const removeItem = (produtoId: string) => {
-    setCartItems(prev => prev.filter(item => item.produtoId !== produtoId));
+  const removeItem = async (itemId: string) => {
+    try {
+      setProcessingItem(itemId);
+      const updatedCart = await cartService.removeFromCart(itemId);
+      setCart(updatedCart);
+      toast.success('Item removido do carrinho');
+    } catch (err) {
+      console.error('Failed to remove item:', err);
+      toast.error('Erro ao remover item do carrinho');
+    } finally {
+      setProcessingItem(null);
+    }
   };
 
-  // Apply coupon code
   const applyCoupon = () => {
     if (!couponCode) {
-      toast({
-        title: "Erro",
-        description: "Digite um cupom válido",
-        variant: "destructive"
-      });
+      toast.error('Digite um cupom válido');
       return;
     }
 
     // Mock coupon validation
     if (couponCode.toUpperCase() === 'CONSTRUPROMO') {
       setAppliedCoupon({ code: couponCode, discount: 10 });
-      toast({
-        title: "Cupom aplicado!",
-        description: "Desconto de 10% aplicado ao seu pedido."
-      });
+      toast.success('Cupom aplicado! Desconto de 10% aplicado ao seu pedido.');
     } else {
-      toast({
-        title: "Cupom inválido",
-        description: "O cupom informado não é válido ou expirou.",
-        variant: "destructive"
-      });
+      toast.error('O cupom informado não é válido ou expirou.');
     }
   };
 
   const removeCoupon = () => {
     setAppliedCoupon(null);
     setCouponCode('');
+    toast.success('Cupom removido');
   };
 
-  // Calculate totals
-  const subtotal = cartProducts.reduce((sum, item) => {
-    return sum + (item.produto?.preco || 0) * item.quantidade;
-  }, 0);
-  
+  if (loading) {
+    return (
+      <div className="flex flex-col min-h-screen bg-gray-100">
+        <div className="bg-white p-4 flex items-center shadow-sm">
+          <button onClick={() => navigate(-1)} className="mr-4">
+            <ArrowLeft size={24} />
+          </button>
+          <h1 className="text-xl font-bold">Carrinho de Compras</h1>
+        </div>
+        <LoadingState type="spinner" text="Carregando seu carrinho..." count={3} />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col min-h-screen bg-gray-100">
+        <div className="bg-white p-4 flex items-center shadow-sm">
+          <button onClick={() => navigate(-1)} className="mr-4">
+            <ArrowLeft size={24} />
+          </button>
+          <h1 className="text-xl font-bold">Carrinho de Compras</h1>
+        </div>
+        <ErrorState 
+          title="Erro ao carregar o carrinho" 
+          message={error} 
+          onRetry={fetchCart} 
+        />
+      </div>
+    );
+  }
+
+  const cartItems = cart?.items || [];
+  const cartIsEmpty = cartItems.length === 0;
+
   // Calculate discounts from coupon
+  const subtotal = cart?.summary.subtotal || 0;
   const discount = appliedCoupon ? (subtotal * appliedCoupon.discount / 100) : 0;
-  
-  const totalPoints = cartProducts.reduce((sum, item) => {
-    return sum + (item.produto?.pontos || 0) * item.quantidade;
-  }, 0);
-  
-  // Calculate shipping per store
-  const storeShipping = Object.values(itemsByStore).map(store => ({
-    lojaId: store.loja.id,
-    frete: 15.90
-  }));
-  
-  const totalShipping = storeShipping.reduce((sum, store) => sum + store.frete, 0);
-  const total = subtotal + totalShipping - discount;
+  const shipping = cart?.summary.shipping || 0;
+  const total = subtotal + shipping - discount;
+  const totalPoints = cart?.summary.totalPoints || 0;
+
+  // Group items by store
+  const itemsByStore = cartItems.reduce((groups: Record<string, { loja: any, items: CartItem[] }>, item) => {
+    const storeId = item.produto?.loja_id;
+    if (!storeId) return groups;
+    
+    if (!groups[storeId]) {
+      const store = cart?.stores?.find(s => s.id === storeId);
+      groups[storeId] = {
+        loja: store || { id: storeId, nome: 'Loja' },
+        items: []
+      };
+    }
+    
+    groups[storeId].items.push(item);
+    return groups;
+  }, {});
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
@@ -128,7 +171,7 @@ const CartScreen: React.FC = () => {
         <h1 className="text-xl font-bold">Carrinho de Compras</h1>
       </div>
 
-      {cartItems.length === 0 ? (
+      {cartIsEmpty ? (
         <div className="p-6 flex-1 flex items-center justify-center">
           <ListEmptyState
             title="Seu carrinho está vazio"
@@ -149,7 +192,7 @@ const CartScreen: React.FC = () => {
                 <div key={store.loja.id}>
                   <div className="flex items-center mb-3">
                     <img 
-                      src={store.loja.logoUrl} 
+                      src={store.loja.logo_url || 'https://via.placeholder.com/30'} 
                       alt={store.loja.nome} 
                       className="w-6 h-6 rounded-full object-cover mr-2"
                     />
@@ -158,10 +201,10 @@ const CartScreen: React.FC = () => {
                   
                   <Card className="divide-y divide-gray-100">
                     {store.items.map(item => (
-                      <div key={item.produtoId} className="p-4 flex gap-4">
+                      <div key={item.id} className="p-4 flex gap-4">
                         <div className="w-20 h-20 bg-gray-100 rounded-md overflow-hidden">
                           <img 
-                            src={item.produto?.imagemUrl} 
+                            src={item.produto?.imagem_url || 'https://via.placeholder.com/80'} 
                             alt={item.produto?.nome} 
                             className="w-full h-full object-cover"
                           />
@@ -172,35 +215,40 @@ const CartScreen: React.FC = () => {
                           <div className="flex justify-between mt-2">
                             <div>
                               <p className="text-construPro-blue font-bold">
-                                R$ {((item.produto?.preco || 0) * item.quantidade).toFixed(2)}
+                                R$ {item.subtotal.toFixed(2)}
                               </p>
                               <p className="text-xs text-gray-500">
-                                {item.quantidade} x R$ {item.produto?.preco.toFixed(2)}
+                                {item.quantidade} x R$ {item.preco.toFixed(2)}
                               </p>
                               <div className="bg-construPro-orange/10 text-construPro-orange text-xs rounded-full px-2 py-0.5 inline-block mt-1">
-                                {(item.produto?.pontos || 0) * item.quantidade} pontos
+                                {item.pontos} pontos
                               </div>
                             </div>
                             
                             <div className="flex flex-col items-end">
                               <button 
-                                onClick={() => removeItem(item.produtoId)} 
+                                onClick={() => removeItem(item.id)} 
                                 className="text-red-500 mb-2"
+                                disabled={processingItem === item.id}
                               >
                                 <Trash2 size={16} />
                               </button>
                               
                               <div className="flex items-center border border-gray-300 rounded-md">
                                 <button
-                                  onClick={() => updateQuantity(item.produtoId, item.quantidade - 1)}
+                                  onClick={() => updateQuantity(item, item.quantidade - 1)}
                                   className="w-8 h-8 flex items-center justify-center text-gray-600"
+                                  disabled={processingItem === item.id || item.quantidade <= 1}
                                 >
                                   <Minus size={14} />
                                 </button>
-                                <span className="w-8 text-center">{item.quantidade}</span>
+                                <span className="w-8 text-center">
+                                  {processingItem === item.id ? "..." : item.quantidade}
+                                </span>
                                 <button
-                                  onClick={() => updateQuantity(item.produtoId, item.quantidade + 1)}
+                                  onClick={() => updateQuantity(item, item.quantidade + 1)}
                                   className="w-8 h-8 flex items-center justify-center text-gray-600"
+                                  disabled={processingItem === item.id || item.quantidade >= (item.produto?.estoque || 0)}
                                 >
                                   <Plus size={14} />
                                 </button>
@@ -262,7 +310,7 @@ const CartScreen: React.FC = () => {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Frete</span>
-                <span>R$ {totalShipping.toFixed(2)}</span>
+                <span>R$ {shipping.toFixed(2)}</span>
               </div>
               {discount > 0 && (
                 <div className="flex justify-between text-green-600">

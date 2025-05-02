@@ -22,3 +22,6 @@ verify_jwt = true
 
 [functions.db-utils]
 verify_jwt = true
+
+[functions.marketplace-management]
+verify_jwt = true

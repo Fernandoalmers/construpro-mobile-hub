@@ -45,6 +45,7 @@ import ConfiguracoesVendorScreen from './components/vendor/ConfiguracoesVendorSc
 import ChatScreen from './components/chat/ChatScreen';
 import ChatDetailScreen from './components/chat/ChatDetailScreen';
 import { AuthProvider } from './context/AuthContext';
+import { CartProvider } from './hooks/use-cart';
 import ProfessionalRegistrationScreen from './components/services/ProfessionalRegistrationScreen';
 import ProfessionalProfileScreen from './components/services/ProfessionalProfileScreen';
 import ProjectDetailScreen from './components/services/ProjectDetailScreen';
@@ -66,88 +67,90 @@ function App() {
 
   return (
     <AuthProvider>
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/" element={<SplashScreen />} />
-        <Route path="/onboarding" element={<OnboardingScreen />} />
-        <Route path="/login" element={<LoginScreen />} />
-        <Route path="/signup" element={<SignupScreen />} />
-        <Route path="/forgot-password" element={<ForgotPasswordScreen />} />
-        
-        {/* Auth Routes */}
-        <Route path="/auth/profile-selection" element={<ProfileSelectionScreen />} />
-        <Route path="/auth/professional-profile" element={<ProfessionalRegistrationScreen />} />
-        <Route path="/auth/vendor-profile" element={<VendorProfileScreen />} />
-        
-        {/* Home */}
-        <Route path="/home/*" element={<HomeScreenWrapper />} />
-        
-        {/* Profile */}
-        <Route path="/profile" element={<ProfileScreen />} />
-        <Route path="/profile/user-data" element={<UserDataScreen />} />
-        <Route path="/profile/addresses" element={<AddressScreen />} />
-        <Route path="/profile/orders" element={<OrdersScreen />} />
-        <Route path="/profile/order/:id" element={<OrderDetailScreen />} />
-        <Route path="/profile/physical-purchases" element={<PhysicalPurchasesScreen />} />
-        <Route path="/profile/points" element={<PointsHistoryScreen />} />
-        <Route path="/profile/favorites" element={<FavoritesScreen />} />
-        <Route path="/profile/referrals" element={<ReferralsScreen />} />
-        <Route path="/profile/reviews" element={<ReviewsScreen />} />
-        <Route path="/profile/settings" element={<SettingsScreen />} />
-        
-        {/* Marketplace */}
-        <Route path="/marketplace/*" element={<MarketplaceScreenWrapper />} />
-        <Route path="/produto/:id" element={<ProdutoDetailScreen />} />
-        <Route path="/cart" element={<CartScreen />} />
-        <Route path="/checkout" element={<CheckoutScreen />} />
-        
-        {/* Services */}
-        <Route path="/services/*" element={<ServicesTabNavigator />}>
-          <Route path="" element={<ServicesAvailableScreen isProfessional={defaultProfessionalValue} />} />
-          <Route path="available" element={<ServicesAvailableScreen isProfessional={defaultProfessionalValue} />} />
-          <Route path="my-services" element={<MyServicesScreen isProfessional={defaultProfessionalValue} />} />
-          <Route path="my-proposals" element={<MyProposalsScreen />} />
-          <Route path="calendar" element={<ServiceCalendarScreen />} />
-          <Route path="completed" element={<CompletedServicesScreen isProfessional={defaultProfessionalValue} />} />
-        </Route>
-        <Route path="/services/request/:id" element={<ServiceRequestDetailScreen />} />
-        <Route path="/services/create" element={<CreateServiceRequestScreen />} />
-        <Route path="/services/professional-profile" element={<ProfessionalProfileScreen />} />
-        <Route path="/services/project/:id" element={<ProjectDetailScreen />} />
-        <Route path="/services/contracted" element={<ContractedProjectsScreen isProfessional={defaultProfessionalValue} />} />
-        
-        {/* Rewards */}
-        <Route path="/resgates" element={<ResgatesScreen />} />
-        <Route path="/resgate/:id" element={<ResgateDetailScreen />} />
-        <Route path="/historico-resgates" element={<HistoricoResgatesScreen />} />
-        
-        {/* Vendor Mode */}
-        <Route path="/vendor" element={<VendorModeScreen />} />
-        <Route path="/vendor/home" element={<VendorHomeScreen />} />
-        <Route path="/vendor/adjust-points" element={<AjustePontosVendorScreen />} />
-        <Route path="/vendor/products" element={<ProductManagementScreen />} />
-        <Route path="/vendor/product-form" element={<ProductFormScreen />} />
-        <Route path="/vendor/product-edit/:id" element={<ProductFormScreen />} />
-        <Route path="/vendor/product-clone" element={<ProductFormScreen />} />
-        <Route path="/vendor/customers" element={<ClientesVendorScreen />} />
-        <Route path="/vendor/store-config" element={<ConfiguracoesVendorScreen />} />
-        <Route path="/vendor/orders" element={<ProdutosVendorScreen />} />
-        
-        {/* Chat */}
-        <Route path="/chat" element={<ChatScreen />} />
-        <Route path="/chat/:id" element={<ChatDetailScreen />} />
-        
-        {/* Admin Dashboard Routes - New */}
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/admin/users" element={<UsersManagement />} />
-        <Route path="/admin/products" element={<ProductsManagement />} />
-        <Route path="/admin/logs" element={<AdminLogs />} />
-        
-        {/* Default redirect */}
-        <Route path="*" element={<Navigate to="/home" replace />} />
-      </Routes>
-      <BottomTabNavigator />
-      <Toaster />
+      <CartProvider>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/" element={<SplashScreen />} />
+          <Route path="/onboarding" element={<OnboardingScreen />} />
+          <Route path="/login" element={<LoginScreen />} />
+          <Route path="/signup" element={<SignupScreen />} />
+          <Route path="/forgot-password" element={<ForgotPasswordScreen />} />
+          
+          {/* Auth Routes */}
+          <Route path="/auth/profile-selection" element={<ProfileSelectionScreen />} />
+          <Route path="/auth/professional-profile" element={<ProfessionalRegistrationScreen />} />
+          <Route path="/auth/vendor-profile" element={<VendorProfileScreen />} />
+          
+          {/* Home */}
+          <Route path="/home/*" element={<HomeScreenWrapper />} />
+          
+          {/* Profile */}
+          <Route path="/profile" element={<ProfileScreen />} />
+          <Route path="/profile/user-data" element={<UserDataScreen />} />
+          <Route path="/profile/addresses" element={<AddressScreen />} />
+          <Route path="/profile/orders" element={<OrdersScreen />} />
+          <Route path="/profile/order/:id" element={<OrderDetailScreen />} />
+          <Route path="/profile/physical-purchases" element={<PhysicalPurchasesScreen />} />
+          <Route path="/profile/points" element={<PointsHistoryScreen />} />
+          <Route path="/profile/favorites" element={<FavoritesScreen />} />
+          <Route path="/profile/referrals" element={<ReferralsScreen />} />
+          <Route path="/profile/reviews" element={<ReviewsScreen />} />
+          <Route path="/profile/settings" element={<SettingsScreen />} />
+          
+          {/* Marketplace */}
+          <Route path="/marketplace/*" element={<MarketplaceScreenWrapper />} />
+          <Route path="/produto/:id" element={<ProdutoDetailScreen />} />
+          <Route path="/cart" element={<CartScreen />} />
+          <Route path="/checkout" element={<CheckoutScreen />} />
+          
+          {/* Services */}
+          <Route path="/services/*" element={<ServicesTabNavigator />}>
+            <Route path="" element={<ServicesAvailableScreen isProfessional={defaultProfessionalValue} />} />
+            <Route path="available" element={<ServicesAvailableScreen isProfessional={defaultProfessionalValue} />} />
+            <Route path="my-services" element={<MyServicesScreen isProfessional={defaultProfessionalValue} />} />
+            <Route path="my-proposals" element={<MyProposalsScreen />} />
+            <Route path="calendar" element={<ServiceCalendarScreen />} />
+            <Route path="completed" element={<CompletedServicesScreen isProfessional={defaultProfessionalValue} />} />
+          </Route>
+          <Route path="/services/request/:id" element={<ServiceRequestDetailScreen />} />
+          <Route path="/services/create" element={<CreateServiceRequestScreen />} />
+          <Route path="/services/professional-profile" element={<ProfessionalProfileScreen />} />
+          <Route path="/services/project/:id" element={<ProjectDetailScreen />} />
+          <Route path="/services/contracted" element={<ContractedProjectsScreen isProfessional={defaultProfessionalValue} />} />
+          
+          {/* Rewards */}
+          <Route path="/resgates" element={<ResgatesScreen />} />
+          <Route path="/resgate/:id" element={<ResgateDetailScreen />} />
+          <Route path="/historico-resgates" element={<HistoricoResgatesScreen />} />
+          
+          {/* Vendor Mode */}
+          <Route path="/vendor" element={<VendorModeScreen />} />
+          <Route path="/vendor/home" element={<VendorHomeScreen />} />
+          <Route path="/vendor/adjust-points" element={<AjustePontosVendorScreen />} />
+          <Route path="/vendor/products" element={<ProductManagementScreen />} />
+          <Route path="/vendor/product-form" element={<ProductFormScreen />} />
+          <Route path="/vendor/product-edit/:id" element={<ProductFormScreen />} />
+          <Route path="/vendor/product-clone" element={<ProductFormScreen />} />
+          <Route path="/vendor/customers" element={<ClientesVendorScreen />} />
+          <Route path="/vendor/store-config" element={<ConfiguracoesVendorScreen />} />
+          <Route path="/vendor/orders" element={<ProdutosVendorScreen />} />
+          
+          {/* Chat */}
+          <Route path="/chat" element={<ChatScreen />} />
+          <Route path="/chat/:id" element={<ChatDetailScreen />} />
+          
+          {/* Admin Dashboard Routes - New */}
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/users" element={<UsersManagement />} />
+          <Route path="/admin/products" element={<ProductsManagement />} />
+          <Route path="/admin/logs" element={<AdminLogs />} />
+          
+          {/* Default redirect */}
+          <Route path="*" element={<Navigate to="/home" replace />} />
+        </Routes>
+        <BottomTabNavigator />
+        <Toaster />
+      </CartProvider>
     </AuthProvider>
   );
 }
