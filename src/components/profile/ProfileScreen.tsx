@@ -24,7 +24,8 @@ import {
   MessageSquare,
   Store,
   Wrench,
-  RefreshCw
+  RefreshCw,
+  MapPin
 } from 'lucide-react';
 import clientes from '../../data/clientes.json';
 import { useAuth } from '../../context/AuthContext';
@@ -307,6 +308,17 @@ const ProfileScreen: React.FC = () => {
               <div className="flex items-center">
                 <User className="text-construPro-blue mr-3" size={20} />
                 <span>Dados pessoais</span>
+              </div>
+              <ChevronRight className="text-gray-400" size={18} />
+            </div>
+            
+            <div 
+              className="p-4 flex items-center justify-between cursor-pointer"
+              onClick={() => navigate('/profile/addresses')}
+            >
+              <div className="flex items-center">
+                <MapPin className="text-construPro-blue mr-3" size={20} />
+                <span>Meus endereços</span>
               </div>
               <ChevronRight className="text-gray-400" size={18} />
             </div>
