@@ -21,7 +21,14 @@ const MarketplaceScreenWrapper: React.FC = () => {
       try {
         // Simulate API call with timeout
         await new Promise(resolve => setTimeout(resolve, 1000));
-        setData(produtos);
+        
+        // Add ratings to products if they don't have them (for demo purposes)
+        const enhancedProducts = produtos.map(product => ({
+          ...product,
+          avaliacao: product.avaliacao || Math.random() * 2 + 3 // Random rating between 3-5
+        }));
+        
+        setData(enhancedProducts);
       } catch (err) {
         setError(err instanceof Error ? err : new Error('Failed to fetch data'));
       } finally {
@@ -47,7 +54,15 @@ const MarketplaceScreenWrapper: React.FC = () => {
 
   // Show loading state
   if (loading) {
-    return <LoadingState type="skeleton" text="Carregando produtos..." count={5} />;
+    return (
+      <div className="bg-gray-50 min-h-screen">
+        <div className="p-4 pt-8 bg-construPro-blue">
+          <h1 className="text-2xl font-bold text-white mb-4">Marketplace</h1>
+          <div className="h-10 w-full bg-white/20 rounded-md animate-pulse mb-4"></div>
+        </div>
+        <LoadingState type="skeleton" text="Carregando produtos..." count={6} />
+      </div>
+    );
   }
 
   // Show error state

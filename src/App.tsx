@@ -50,6 +50,8 @@ import VendorHomeScreen from "./components/vendor/VendorHomeScreen";
 import AjustePontosVendorScreen from "./components/vendor/AjustePontosVendorScreen";
 import ClientesVendorScreen from "./components/vendor/ClientesVendorScreen";
 import ProdutosVendorScreen from "./components/vendor/ProdutosVendorScreen";
+import ProdutoFormScreen from "./components/vendor/ProdutoFormScreen";
+import ProdutoEditScreen from "./components/vendor/ProdutoEditScreen";
 import ConfiguracoesVendorScreen from "./components/vendor/ConfiguracoesVendorScreen";
 import ErrorBoundary from "./components/common/ErrorBoundary";
 
@@ -243,6 +245,16 @@ const AppRoutes = () => {
         <Route path="/vendor/produtos" element={
           <ProtectedRoute requiredRoles={['lojista']}>
             <ProdutosVendorScreen />
+          </ProtectedRoute>
+        } />
+        <Route path="/vendor/produtos/novo" element={
+          <ProtectedRoute requiredRoles={['lojista']}>
+            <ProdutoFormScreen />
+          </ProtectedRoute>
+        } />
+        <Route path="/vendor/produtos/editar/:id" element={
+          <ProtectedRoute requiredRoles={['lojista']}>
+            <ProdutoEditScreen />
           </ProtectedRoute>
         } />
         <Route path="/vendor/configuracoes" element={
