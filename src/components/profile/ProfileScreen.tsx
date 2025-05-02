@@ -5,6 +5,7 @@ import Avatar from '../common/Avatar';
 import Card from '../common/Card';
 import ProgressBar from '../common/ProgressBar';
 import CustomButton from '../common/CustomButton';
+import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { 
@@ -29,16 +30,34 @@ import clientes from '../../data/clientes.json';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from "@/components/ui/sonner";
 
+// Define a type for the user that includes papel
+interface ExtendedUser {
+  id: string;
+  nome: string;
+  cpf: string;
+  codigo: string;
+  saldoPontos: number;
+  nivel: string;
+  pontosParaProximoNivel: number;
+  email: string;
+  telefone: string;
+  avatar: string;
+  papel?: 'consumidor' | 'profissional' | 'lojista';
+}
+
 const ProfileScreen: React.FC = () => {
   const navigate = useNavigate();
   const { user: authUser, logout, updateUser } = useAuth();
   
   // Use the first client as the logged in user for demo if no auth user
-  const currentUser = authUser || clientes[0];
+  const currentUser = authUser || clientes[0] as ExtendedUser;
+  
+  // Initialize with default papel if not present
+  const userPapel = currentUser.papel || 'consumidor';
   
   const [notifications, setNotifications] = useState(true);
-  const [vendorMode, setVendorMode] = useState(currentUser.papel === 'lojista');
-  const [professionalMode, setProfessionalMode] = useState(currentUser.papel === 'profissional');
+  const [vendorMode, setVendorMode] = useState(userPapel === 'lojista');
+  const [professionalMode, setProfessionalMode] = useState(userPapel === 'profissional');
   const [showModeSwitch, setShowModeSwitch] = useState(false);
 
   // Calculate level info

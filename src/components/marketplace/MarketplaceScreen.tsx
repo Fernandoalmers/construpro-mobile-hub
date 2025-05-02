@@ -42,6 +42,11 @@ const MarketplaceScreen: React.FC = () => {
     setPage(1);
   };
 
+  // Adapter function to convert the event to string
+  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleSearchChange(e.target.value);
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 pb-20">
       {/* Header with search and filters */}
@@ -53,7 +58,7 @@ const MarketplaceScreen: React.FC = () => {
         selectedRatings={selectedRatings}
         allCategories={allCategories}
         ratingOptions={ratingOptions}
-        onSearchChange={handleSearchChange}
+        onSearchChange={handleSearchInputChange}
         onLojaClick={handleLojaClick}
         onCategoryClick={handleCategoryClick}
         onRatingClick={handleRatingClick}

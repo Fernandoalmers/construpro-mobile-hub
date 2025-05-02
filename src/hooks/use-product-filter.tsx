@@ -60,11 +60,11 @@ export function useProductFilter({ initialCategories = [], pageSize = 12 }: Prod
       const matchesLoja = selectedLojas.length === 0 || 
         (produto.lojaId && selectedLojas.includes(produto.lojaId));
       
-      // Rating filter
+      // Rating filter - use avaliacao instead of rating
       const matchesRating = selectedRatings.length === 0 || 
         selectedRatings.some(rating => {
           const minRating = parseInt(rating, 10);
-          return produto.rating >= minRating;
+          return produto.avaliacao >= minRating;
         });
       
       return matchesSearch && matchesCategory && matchesLoja && matchesRating;

@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -46,7 +45,7 @@ import UserDataScreen from "./components/profile/UserDataScreen";
 import ServicesTabNavigator from "./components/services/ServicesTabNavigator";
 import ServiceRequestDetailScreen from "./components/services/ServiceRequestDetailScreen";
 import ProjectDetailScreen from "./components/services/ProjectDetailScreen";
-import ProfessionalProfileScreen from "./components/services/ProfessionalProfileScreen";
+import ServiceProfessionalProfileScreen from "./components/services/ProfessionalProfileScreen";
 import ProfessionalRegistrationScreen from "./components/services/ProfessionalRegistrationScreen";
 
 // Vendor screens
@@ -228,7 +227,7 @@ const AppRoutes = () => {
         } />
         <Route path="/services/professional/:id" element={
           <ProtectedRoute requiredRoles={['consumidor', 'profissional']}>
-            <ProfessionalProfileScreen />
+            <ServiceProfessionalProfileScreen />
           </ProtectedRoute>
         } />
         <Route path="/services/register-professional" element={
