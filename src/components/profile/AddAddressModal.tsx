@@ -1,61 +1,51 @@
 
-import React from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import React, { useState, useEffect } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import CustomButton from '../common/CustomButton';
-import CustomModal from '../common/CustomModal';
-import { toast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { toast } from '@/components/ui/sonner';
+import { Address } from '@/services/addressService';
 
 interface AddAddressModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (data: any) => void;
-  initialData?: any;
+  onSave: (address: Address) => void;
+  initialData?: Address | null;
 }
 
-const formSchema = z.object({
-  nome: z.string().min(1, 'Nome é obrigatório'),
-  cep: z.string().min(8, 'CEP inválido').max(9, 'CEP inválido'),
-  logradouro: z.string().min(1, 'Endereço é obrigatório'),
-  numero: z.string().min(1, 'Número é obrigatório'),
-  complemento: z.string().optional(),
-  bairro: z.string().min(1, 'Bairro é obrigatório'),
-  cidade: z.string().min(1, 'Cidade é obrigatória'),
-  estado: z.string().min(2, 'Estado é obrigatório').max(2, 'Use a sigla do estado')
-});
-
-const AddAddressModal: React.FC<AddAddressModalProps> = ({ 
-  open, 
+const AddAddressModal: React.FC<AddAddressModalProps> = ({
+  open,
   onOpenChange,
   onSave,
   initialData
 }) => {
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: initialData || {
-      nome: '',
-      cep: '',
-      logradouro: '',
-      numero: '',
-      complemento: '',
-      bairro: '',
-      cidade: '',
-      estado: ''
-    },
+  const [formData, setFormData] = useState<Address>({
+    nome: '',
+    cep: '',
+    logradouro: '',
+    numero: '',
+    complemento: '',
+    bairro: '',
+    cidade: '',
+    estado: '',
+    principal: false
   });
-
-  const [isLoading, setIsLoading] = React.useState(false);
-
-  // Reset form when initialData changes
-  React.useEffect(() => {
+  
+  const [isLoading, setIsLoading] = useState(false);
+  
+  useEffect(() => {
     if (initialData) {
-      form.reset(initialData);
+      setFormData(initialData);
     } else {
-      form.reset({
+      setFormData({
         nome: '',
         cep: '',
         logradouro: '',
@@ -63,210 +53,185 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
         complemento: '',
         bairro: '',
         cidade: '',
-        estado: ''
+        estado: '',
+        principal: false
       });
     }
-  }, [initialData, form]);
-
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    onSave(values);
+  }, [initialData, open]);
+  
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
-
-  const searchCEP = async () => {
-    const cep = form.getValues('cep').replace('-', '');
+  
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     
-    if (cep.length !== 8) {
-      toast({
-        title: "CEP inválido",
-        description: "Digite um CEP válido com 8 dígitos",
-        variant: "destructive",
-      });
+    // Simple validation
+    const requiredFields: (keyof Address)[] = ['nome', 'cep', 'logradouro', 'numero', 'bairro', 'cidade', 'estado'];
+    const missingFields = requiredFields.filter(field => !formData[field]);
+    
+    if (missingFields.length > 0) {
+      toast.error(`Por favor, preencha os campos obrigatórios: ${missingFields.join(', ')}`);
       return;
     }
     
     setIsLoading(true);
     
     try {
-      const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-      const data = await response.json();
-      
-      if (data.erro) {
-        toast({
-          title: "CEP não encontrado",
-          description: "Verifique o CEP digitado",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      form.setValue('logradouro', data.logradouro);
-      form.setValue('bairro', data.bairro);
-      form.setValue('cidade', data.localidade);
-      form.setValue('estado', data.uf);
-      
+      await onSave(formData);
     } catch (error) {
-      toast({
-        title: "Erro ao buscar CEP",
-        description: "Ocorreu um erro ao buscar o CEP",
-        variant: "destructive",
-      });
+      console.error('Error saving address:', error);
+      toast.error('Erro ao salvar endereço. Tente novamente.');
     } finally {
       setIsLoading(false);
     }
   };
-
+  
   return (
-    <CustomModal
-      open={open}
-      onOpenChange={onOpenChange}
-      title={initialData ? "Editar endereço" : "Adicionar endereço"}
-      description="Preencha os dados do endereço"
-    >
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-4">
-          <FormField
-            control={form.control}
-            name="nome"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Nome do endereço</FormLabel>
-                <FormControl>
-                  <Input placeholder="Ex: Casa, Trabalho" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <div className="flex gap-2 items-end">
-            <FormField
-              control={form.control}
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>
+            {initialData ? 'Editar Endereço' : 'Adicionar Endereço'}
+          </DialogTitle>
+        </DialogHeader>
+        
+        <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+          <div className="space-y-2">
+            <Label htmlFor="nome">Nome do endereço</Label>
+            <Input
+              id="nome"
+              name="nome"
+              placeholder="Ex: Casa, Trabalho"
+              value={formData.nome}
+              onChange={handleChange}
+              required
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="cep">CEP</Label>
+            <Input
+              id="cep"
               name="cep"
-              render={({ field }) => (
-                <FormItem className="flex-1">
-                  <FormLabel>CEP</FormLabel>
-                  <FormControl>
-                    <Input placeholder="00000-000" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              placeholder="00000-000"
+              value={formData.cep}
+              onChange={handleChange}
+              required
             />
-            <CustomButton
-              type="button"
-              variant="outline"
-              onClick={searchCEP}
-              disabled={isLoading}
-              className="mb-[2px]"
-            >
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Buscar'}
-            </CustomButton>
           </div>
-
-          <FormField
-            control={form.control}
-            name="logradouro"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Logradouro</FormLabel>
-                <FormControl>
-                  <Input placeholder="Rua, Avenida, etc" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
+          
+          <div className="space-y-2">
+            <Label htmlFor="logradouro">Logradouro</Label>
+            <Input
+              id="logradouro"
+              name="logradouro"
+              placeholder="Rua, Avenida, etc"
+              value={formData.logradouro}
+              onChange={handleChange}
+              required
+            />
+          </div>
+          
           <div className="grid grid-cols-2 gap-3">
-            <FormField
-              control={form.control}
-              name="numero"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Número</FormLabel>
-                  <FormControl>
-                    <Input placeholder="123" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="complemento"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Complemento</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Apto, Sala, etc" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+            <div className="space-y-2">
+              <Label htmlFor="numero">Número</Label>
+              <Input
+                id="numero"
+                name="numero"
+                placeholder="123"
+                value={formData.numero}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="complemento">Complemento</Label>
+              <Input
+                id="complemento"
+                name="complemento"
+                placeholder="Apto, Bloco, etc"
+                value={formData.complemento}
+                onChange={handleChange}
+              />
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="bairro">Bairro</Label>
+            <Input
+              id="bairro"
+              name="bairro"
+              placeholder="Bairro"
+              value={formData.bairro}
+              onChange={handleChange}
+              required
             />
           </div>
-
-          <FormField
-            control={form.control}
-            name="bairro"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Bairro</FormLabel>
-                <FormControl>
-                  <Input placeholder="Bairro" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
+          
           <div className="grid grid-cols-2 gap-3">
-            <FormField
-              control={form.control}
-              name="cidade"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Cidade</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Cidade" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="estado"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Estado</FormLabel>
-                  <FormControl>
-                    <Input placeholder="UF" {...field} maxLength={2} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="space-y-2">
+              <Label htmlFor="cidade">Cidade</Label>
+              <Input
+                id="cidade"
+                name="cidade"
+                placeholder="Cidade"
+                value={formData.cidade}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="estado">Estado</Label>
+              <Input
+                id="estado"
+                name="estado"
+                placeholder="UF"
+                value={formData.estado}
+                onChange={handleChange}
+                required
+              />
+            </div>
           </div>
-
-          <div className="pt-4 flex justify-end gap-2">
+          
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="principal"
+              checked={formData.principal}
+              onCheckedChange={(checked) => 
+                setFormData(prev => ({ ...prev, principal: checked }))
+              }
+            />
+            <Label htmlFor="principal">Definir como endereço principal</Label>
+          </div>
+          
+          <DialogFooter className="pt-4">
             <CustomButton
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
+              disabled={isLoading}
             >
               Cancelar
             </CustomButton>
-            <CustomButton 
-              type="submit" 
+            
+            <CustomButton
+              type="submit"
               variant="primary"
+              loading={isLoading}
             >
-              Salvar
+              {initialData ? 'Salvar' : 'Adicionar'}
             </CustomButton>
-          </div>
+          </DialogFooter>
         </form>
-      </Form>
-    </CustomModal>
+      </DialogContent>
+    </Dialog>
   );
 };
 

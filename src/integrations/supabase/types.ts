@@ -39,6 +39,298 @@ export type Database = {
         }
         Relationships: []
       }
+      favorites: {
+        Row: {
+          data_adicionado: string | null
+          id: string
+          produto_id: string
+          user_id: string
+        }
+        Insert: {
+          data_adicionado?: string | null
+          id?: string
+          produto_id: string
+          user_id: string
+        }
+        Update: {
+          data_adicionado?: string | null
+          id?: string
+          produto_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "favorites_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "favorites_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_items: {
+        Row: {
+          created_at: string | null
+          id: string
+          order_id: string
+          preco_unitario: number
+          produto_id: string
+          quantidade: number
+          subtotal: number
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          order_id: string
+          preco_unitario: number
+          produto_id: string
+          quantidade: number
+          subtotal: number
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          order_id?: string
+          preco_unitario?: number
+          produto_id?: string
+          quantidade?: number
+          subtotal?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          cliente_id: string
+          created_at: string | null
+          data_criacao: string | null
+          endereco_entrega: Json
+          forma_pagamento: string
+          id: string
+          pontos_ganhos: number
+          rastreio: string | null
+          status: string
+          updated_at: string | null
+          valor_total: number
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string | null
+          data_criacao?: string | null
+          endereco_entrega: Json
+          forma_pagamento: string
+          id?: string
+          pontos_ganhos?: number
+          rastreio?: string | null
+          status: string
+          updated_at?: string | null
+          valor_total: number
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string | null
+          data_criacao?: string | null
+          endereco_entrega?: Json
+          forma_pagamento?: string
+          id?: string
+          pontos_ganhos?: number
+          rastreio?: string | null
+          status?: string
+          updated_at?: string | null
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      physical_purchases: {
+        Row: {
+          cliente_id: string
+          created_at: string | null
+          data: string | null
+          id: string
+          itens: Json
+          loja_id: string
+          loja_nome: string
+          numero_nf: string
+          pontos: number
+          valor: number
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string | null
+          data?: string | null
+          id?: string
+          itens: Json
+          loja_id: string
+          loja_nome: string
+          numero_nf: string
+          pontos?: number
+          valor: number
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string | null
+          data?: string | null
+          id?: string
+          itens?: Json
+          loja_id?: string
+          loja_nome?: string
+          numero_nf?: string
+          pontos?: number
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "physical_purchases_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      points_transactions: {
+        Row: {
+          created_at: string | null
+          data: string | null
+          descricao: string
+          id: string
+          pontos: number
+          referencia_id: string | null
+          tipo: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          data?: string | null
+          descricao: string
+          id?: string
+          pontos: number
+          referencia_id?: string | null
+          tipo: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          data?: string | null
+          descricao?: string
+          id?: string
+          pontos?: number
+          referencia_id?: string | null
+          tipo?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "points_transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_reviews: {
+        Row: {
+          cliente_id: string
+          comentario: string | null
+          created_at: string | null
+          data: string | null
+          id: string
+          nota: number
+          produto_id: string
+        }
+        Insert: {
+          cliente_id: string
+          comentario?: string | null
+          created_at?: string | null
+          data?: string | null
+          id?: string
+          nota: number
+          produto_id: string
+        }
+        Update: {
+          cliente_id?: string
+          comentario?: string | null
+          created_at?: string | null
+          data?: string | null
+          id?: string
+          nota?: number
+          produto_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_reviews_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          avaliacao: number | null
+          categoria: string
+          created_at: string | null
+          descricao: string
+          estoque: number
+          id: string
+          imagem_url: string | null
+          loja_id: string
+          nome: string
+          preco: number
+          updated_at: string | null
+        }
+        Insert: {
+          avaliacao?: number | null
+          categoria: string
+          created_at?: string | null
+          descricao: string
+          estoque?: number
+          id?: string
+          imagem_url?: string | null
+          loja_id: string
+          nome: string
+          preco: number
+          updated_at?: string | null
+        }
+        Update: {
+          avaliacao?: number | null
+          categoria?: string
+          created_at?: string | null
+          descricao?: string
+          estoque?: number
+          id?: string
+          imagem_url?: string | null
+          loja_id?: string
+          nome?: string
+          preco?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       professional_reviews: {
         Row: {
           cliente_id: string | null
@@ -163,6 +455,9 @@ export type Database = {
           cpf: string | null
           created_at: string
           email: string | null
+          endereco_principal: Json | null
+          favoritos: string[] | null
+          historico_navegacao: string[] | null
           id: string
           is_admin: boolean | null
           nome: string | null
@@ -179,6 +474,9 @@ export type Database = {
           cpf?: string | null
           created_at?: string
           email?: string | null
+          endereco_principal?: Json | null
+          favoritos?: string[] | null
+          historico_navegacao?: string[] | null
           id: string
           is_admin?: boolean | null
           nome?: string | null
@@ -195,6 +493,9 @@ export type Database = {
           cpf?: string | null
           created_at?: string
           email?: string | null
+          endereco_principal?: Json | null
+          favoritos?: string[] | null
+          historico_navegacao?: string[] | null
           id?: string
           is_admin?: boolean | null
           nome?: string | null
@@ -424,6 +725,90 @@ export type Database = {
           },
         ]
       }
+      recently_viewed: {
+        Row: {
+          data_visualizacao: string | null
+          id: string
+          produto_id: string
+          user_id: string
+        }
+        Insert: {
+          data_visualizacao?: string | null
+          id?: string
+          produto_id: string
+          user_id: string
+        }
+        Update: {
+          data_visualizacao?: string | null
+          id?: string
+          produto_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recently_viewed_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recently_viewed_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referrals: {
+        Row: {
+          created_at: string | null
+          data: string | null
+          id: string
+          pontos: number
+          referred_id: string
+          referrer_id: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          data?: string | null
+          id?: string
+          pontos?: number
+          referred_id: string
+          referrer_id: string
+          status: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          data?: string | null
+          id?: string
+          pontos?: number
+          referred_id?: string
+          referrer_id?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_referred_id_fkey"
+            columns: ["referred_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_referrer_id_fkey"
+            columns: ["referrer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_requests: {
         Row: {
           categoria: string
@@ -486,6 +871,100 @@ export type Database = {
           {
             foreignKeyName: "service_requests_cliente_id_fkey"
             columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_reviews: {
+        Row: {
+          cliente_id: string
+          comentario: string | null
+          created_at: string | null
+          data: string | null
+          id: string
+          loja_id: string
+          nota: number
+        }
+        Insert: {
+          cliente_id: string
+          comentario?: string | null
+          created_at?: string | null
+          data?: string | null
+          id?: string
+          loja_id: string
+          nota: number
+        }
+        Update: {
+          cliente_id?: string
+          comentario?: string | null
+          created_at?: string | null
+          data?: string | null
+          id?: string
+          loja_id?: string
+          nota?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_reviews_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_addresses: {
+        Row: {
+          bairro: string
+          cep: string
+          cidade: string
+          complemento: string | null
+          created_at: string | null
+          estado: string
+          id: string
+          logradouro: string
+          nome: string
+          numero: string
+          principal: boolean
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          bairro: string
+          cep: string
+          cidade: string
+          complemento?: string | null
+          created_at?: string | null
+          estado: string
+          id?: string
+          logradouro: string
+          nome: string
+          numero: string
+          principal?: boolean
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          bairro?: string
+          cep?: string
+          cidade?: string
+          complemento?: string | null
+          created_at?: string | null
+          estado?: string
+          id?: string
+          logradouro?: string
+          nome?: string
+          numero?: string
+          principal?: boolean
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_addresses_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]

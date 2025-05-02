@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Users, Share2, Copy, UserCheck, Award } from 'lucide-react';
@@ -5,30 +6,21 @@ import Card from '../common/Card';
 import CustomButton from '../common/CustomButton';
 import { toast } from "@/components/ui/sonner";
 import { useAuth } from '../../context/AuthContext';
-
-// Mock referral data
-const mockReferralData = {
-  code: "AMIGO25",
-  totalReferrals: 7,
-  pendingReferrals: 2,
-  pointsEarned: 2100,
-  referredFriends: [
-    { id: "ref1", name: "João Silva", date: "2025-04-15T10:30:00", status: "aprovado", points: 300 },
-    { id: "ref2", name: "Maria Santos", date: "2025-04-12T14:45:00", status: "aprovado", points: 300 },
-    { id: "ref3", name: "Pedro Lima", date: "2025-04-05T09:20:00", status: "aprovado", points: 300 },
-    { id: "ref4", name: "Ana Costa", date: "2025-03-28T16:10:00", status: "aprovado", points: 300 },
-    { id: "ref5", name: "Carlos Oliveira", date: "2025-03-22T11:35:00", status: "aprovado", points: 300 },
-    { id: "ref6", name: "Lúcia Martins", date: "2025-04-18T08:50:00", status: "pendente", points: 0 },
-    { id: "ref7", name: "Roberto Souza", date: "2025-04-20T15:25:00", status: "pendente", points: 0 }
-  ]
-};
+import { useQuery } from '@tanstack/react-query';
+import { referralService, ReferralInfo } from '@/services/pointsService';
 
 const ReferralsScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { profile } = useAuth();
   
-  // Get the referral code with fallback
-  const referralCode = profile?.codigo || mockReferralData.code;
+  // Fetch referral data from our backend
+  const { 
+    data: referralData, 
+    isLoading, 
+    error 
+  } = useQuery<ReferralInfo>({
+    queryKey: ['referrals'],
+    queryFn: () => referralService.getReferralInfo(),
+  });
   
   // Format date
   const formatDate = (dateString: string) => {
@@ -36,15 +28,23 @@ const ReferralsScreen: React.FC = () => {
   };
   
   const handleCopyCode = () => {
-    navigator.clipboard.writeText(referralCode);
-    toast.success("Código copiado para a área de transferência");
+    if (referralData?.codigo) {
+      navigator.clipboard.writeText(referralData.codigo);
+      toast.success("Código copiado para a área de transferência");
+    }
   };
   
   const handleShareWhatsApp = () => {
-    const message = `Venha para a ConstruPro! Use meu código ${referralCode} e ganhe 300 pontos na primeira compra. https://construpro.com/convite`;
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
+    if (referralData?.codigo) {
+      const message = `Venha para a ConstruPro! Use meu código ${referralData.codigo} e ganhe 300 pontos na primeira compra. https://construpro.com/convite`;
+      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+      window.open(whatsappUrl, '_blank');
+    }
   };
+
+  if (error) {
+    toast.error(`Erro ao carregar dados de referência: ${(error as Error).message}`);
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
@@ -61,38 +61,46 @@ const ReferralsScreen: React.FC = () => {
       {/* Referral Code Card */}
       <div className="px-6 -mt-6">
         <Card className="p-4">
-          <h3 className="font-medium mb-1">Seu código de indicação</h3>
-          <div className="bg-gray-50 rounded-md p-3 flex items-center justify-between mb-4">
-            <span className="text-xl font-bold tracking-wider">
-              {referralCode}
-            </span>
-            <button 
-              className="text-construPro-blue"
-              onClick={handleCopyCode}
-            >
-              <Copy size={18} />
-            </button>
-          </div>
-          
-          <div className="space-y-3">
-            <CustomButton 
-              variant="primary" 
-              fullWidth
-              onClick={handleShareWhatsApp}
-              icon={<Share2 size={18} />}
-            >
-              Compartilhar via WhatsApp
-            </CustomButton>
-            
-            <CustomButton 
-              variant="outline" 
-              fullWidth
-              onClick={handleCopyCode}
-              icon={<Copy size={18} />}
-            >
-              Copiar link de convite
-            </CustomButton>
-          </div>
+          {isLoading ? (
+            <div className="flex justify-center py-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-construPro-blue"></div>
+            </div>
+          ) : (
+            <>
+              <h3 className="font-medium mb-1">Seu código de indicação</h3>
+              <div className="bg-gray-50 rounded-md p-3 flex items-center justify-between mb-4">
+                <span className="text-xl font-bold tracking-wider">
+                  {referralData?.codigo || 'Carregando...'}
+                </span>
+                <button 
+                  className="text-construPro-blue"
+                  onClick={handleCopyCode}
+                >
+                  <Copy size={18} />
+                </button>
+              </div>
+              
+              <div className="space-y-3">
+                <CustomButton 
+                  variant="primary" 
+                  fullWidth
+                  onClick={handleShareWhatsApp}
+                  icon={<Share2 size={18} />}
+                >
+                  Compartilhar via WhatsApp
+                </CustomButton>
+                
+                <CustomButton 
+                  variant="outline" 
+                  fullWidth
+                  onClick={handleCopyCode}
+                  icon={<Copy size={18} />}
+                >
+                  Copiar link de convite
+                </CustomButton>
+              </div>
+            </>
+          )}
         </Card>
       </div>
       
@@ -103,7 +111,7 @@ const ReferralsScreen: React.FC = () => {
             <div className="flex flex-col items-center">
               <Users size={24} className="text-construPro-orange mb-2" />
               <span className="text-sm text-gray-600">Pessoas indicadas</span>
-              <span className="text-xl font-bold">{mockReferralData.totalReferrals}</span>
+              <span className="text-xl font-bold">{isLoading ? '...' : referralData?.total_referrals || 0}</span>
             </div>
           </Card>
           
@@ -111,7 +119,7 @@ const ReferralsScreen: React.FC = () => {
             <div className="flex flex-col items-center">
               <Award size={24} className="text-construPro-orange mb-2" />
               <span className="text-sm text-gray-600">Pontos ganhos</span>
-              <span className="text-xl font-bold">{mockReferralData.pointsEarned}</span>
+              <span className="text-xl font-bold">{isLoading ? '...' : referralData?.points_earned || 0}</span>
             </div>
           </Card>
         </div>
@@ -147,7 +155,11 @@ const ReferralsScreen: React.FC = () => {
         </Card>
         
         <h2 className="font-medium mb-3">Amigos indicados</h2>
-        {mockReferralData.referredFriends.length === 0 ? (
+        {isLoading ? (
+          <div className="flex justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-construPro-blue"></div>
+          </div>
+        ) : referralData?.referrals.length === 0 ? (
           <Card className="p-4">
             <div className="text-center py-6">
               <Users className="mx-auto text-gray-400 mb-3" size={40} />
@@ -158,14 +170,14 @@ const ReferralsScreen: React.FC = () => {
         ) : (
           <Card className="overflow-hidden">
             <div className="divide-y divide-gray-100">
-              {mockReferralData.referredFriends.map((friend) => (
+              {referralData?.referrals.map((friend) => (
                 <div key={friend.id} className="p-4">
                   <div className="flex justify-between items-start">
                     <div className="flex">
                       <UserCheck size={20} className={friend.status === 'aprovado' ? 'text-green-600' : 'text-yellow-600'} />
                       <div className="ml-3">
-                        <p className="font-medium">{friend.name}</p>
-                        <p className="text-xs text-gray-500">Indicado em {formatDate(friend.date)}</p>
+                        <p className="font-medium">{friend.profiles.nome}</p>
+                        <p className="text-xs text-gray-500">Indicado em {formatDate(friend.data)}</p>
                       </div>
                     </div>
                     <div className="flex flex-col items-end">
@@ -174,9 +186,9 @@ const ReferralsScreen: React.FC = () => {
                       }`}>
                         {friend.status === 'aprovado' ? 'Aprovado' : 'Pendente'}
                       </span>
-                      {friend.points > 0 && (
+                      {friend.pontos > 0 && (
                         <span className="text-sm font-medium text-green-600 mt-1">
-                          +{friend.points} pts
+                          +{friend.pontos} pts
                         </span>
                       )}
                     </div>

@@ -1,344 +1,233 @@
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { toast } from "@/components/ui/sonner";
-import { supabase } from '@/integrations/supabase/client';
-import { Session, User } from '@supabase/supabase-js';
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from "@/integrations/supabase/client";
+import { Session, User, AuthError } from '@supabase/supabase-js';
 
-// Define types
 export type UserRole = 'consumidor' | 'profissional' | 'lojista' | 'vendedor';
 
-export interface Profile {
-  id: string;
-  nome: string;
-  cpf?: string;
-  email?: string;
-  telefone?: string;
-  tipo_perfil: UserRole;
-  papel?: UserRole;
-  status: string;
-  saldo_pontos: number;
-  saldoPontos?: number; // for backward compatibility
-  avatar?: string;
-  is_admin?: boolean;
-  codigo?: string;
-  created_at?: string;
-  updated_at?: string;
-  endereco_principal?: {
-    logradouro?: string;
-    numero?: string;
-    complemento?: string;
-    bairro?: string;
-    cidade?: string;
-    estado?: string;
-    cep?: string;
-  };
-}
+type ProviderProps = {
+  children: ReactNode;
+};
 
-interface AuthContextType {
-  user: User | null;
-  profile: Profile | null;
+type AuthState = {
   session: Session | null;
+  user: User | null;
+  profile: any | null; // User profile from profiles table
   isLoading: boolean;
   error: string | null;
-  login: (email: string, senha: string) => Promise<void>;
-  signup: (userData: SignupData) => Promise<void>;
-  logout: () => void;
-  updateProfile: (data: Partial<Profile>) => Promise<void>;
-  updateUser: (data: Partial<Profile>) => Promise<void>; // Adicionando updateUser como alias para updateProfile
-  isPublicRoute: (pathname: string) => boolean;
-  checkIsAdmin: () => Promise<boolean>;
-  refreshProfile: () => Promise<void>;
-}
+};
 
-interface SignupData {
-  email: string;
-  senha: string;
-  nome: string;
-  cpf?: string;
-  telefone?: string;
-  tipo_perfil: UserRole;
-}
+type AuthContextType = AuthState & {
+  login: (email: string, password: string) => Promise<{ error: AuthError | null }>;
+  signup: (email: string, password: string, userData: any) => Promise<{ error: AuthError | null, data: any }>;
+  logout: () => Promise<void>;
+  updateUser: (data: Partial<{ papel: UserRole, tipo_perfil: UserRole }>) => Promise<void>;
+  updateProfile: (data: any) => Promise<void>;
+  getProfile: () => Promise<any>;
+};
 
-// Lista de rotas públicas que não necessitam de autenticação
-const publicRoutes = [
-  '/',
-  '/login',
-  '/signup',
-  '/onboarding',
-  '/home',
-  '/marketplace',
-  '/produto',
-  '/auth/recuperar-senha',
-];
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Create context
-const AuthContext = createContext<AuthContextType | null>(null);
+export function AuthProvider({ children }: ProviderProps) {
+  const navigate = useNavigate();
+  const [state, setState] = useState<AuthState>({
+    session: null,
+    user: null,
+    profile: null,
+    isLoading: true,
+    error: null,
+  });
 
-// Provider component
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Função para buscar o perfil do usuário
-  const fetchProfile = async (userId: string) => {
+  // Function to fetch user profile from profiles table
+  const getProfile = async () => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (error) {
-        console.error('Erro ao buscar perfil:', error);
-        return null;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        
+        if (error) {
+          console.error('Error fetching profile:', error);
+        }
+        
+        return data;
       }
-
-      // Convert database structure to Profile type with type assertion to handle missing fields
-      const profileData: Profile = {
-        id: data.id,
-        nome: data.nome,
-        cpf: data.cpf,
-        email: data.email,
-        telefone: data.telefone,
-        tipo_perfil: (data.tipo_perfil || data.papel || 'consumidor') as UserRole,
-        papel: (data.papel || data.tipo_perfil || 'consumidor') as UserRole,
-        saldo_pontos: data.saldo_pontos || 0,
-        saldoPontos: data.saldo_pontos || 0, // for backward compatibility
-        status: data.status || 'ativo',
-        avatar: data.avatar,
-        is_admin: data.is_admin,
-        codigo: data.codigo,
-        created_at: data.created_at,
-        updated_at: data.updated_at
-      };
-      
-      return profileData;
-    } catch (err) {
-      console.error('Erro ao buscar perfil:', err);
+      return null;
+    } catch (error) {
+      console.error('Error in getProfile:', error);
       return null;
     }
   };
 
-  // Atualizar perfil do usuário atual
-  const refreshProfile = async () => {
-    if (!user) return;
-    
-    const profileData = await fetchProfile(user.id);
-    if (profileData) {
-      setProfile(profileData);
+  // Function to update user metadata
+  const updateUser = async (data: Partial<{ papel: UserRole, tipo_perfil: UserRole }>) => {
+    try {
+      // Ensure papel and tipo_perfil are synchronized
+      const updateData = { ...data };
+      if (data.papel && !data.tipo_perfil) {
+        updateData.tipo_perfil = data.papel;
+      } else if (data.tipo_perfil && !data.papel) {
+        updateData.papel = data.tipo_perfil;
+      }
+      
+      // Update profile table
+      const { error } = await supabase
+        .from('profiles')
+        .update(updateData)
+        .eq('id', state.user?.id);
+
+      if (error) throw error;
+
+      // Update state with new profile data
+      const profile = await getProfile();
+      setState(prev => ({ ...prev, profile }));
+      
+    } catch (error) {
+      console.error('Error updating user data:', error);
+      throw error;
     }
   };
 
-  // Configurar listener para mudanças na autenticação
-  useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
-        setSession(currentSession);
-        setUser(currentSession?.user || null);
-        
-        if (currentSession?.user) {
-          const profileData = await fetchProfile(currentSession.user.id);
-          setProfile(profileData);
-        } else {
-          setProfile(null);
-        }
-        
-        setIsLoading(false);
-      }
-    );
+  // Function to update user profile in profiles table and in Supabase auth
+  const updateProfile = async (data: any) => {
+    try {
+      const { data: updatedProfile, error } = await supabase.functions.invoke('profile-update', {
+        body: data
+      });
 
-    // Verificar sessão atual
+      if (error) throw error;
+
+      // Update state with new profile
+      setState(prev => ({ ...prev, profile: updatedProfile?.data || prev.profile }));
+      return updatedProfile;
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      throw error;
+    }
+  };
+
+  // Initialize auth state
+  useEffect(() => {
     const initializeAuth = async () => {
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      setSession(currentSession);
-      setUser(currentSession?.user || null);
+      setState(prev => ({ ...prev, isLoading: true }));
       
-      if (currentSession?.user) {
-        const profileData = await fetchProfile(currentSession.user.id);
-        setProfile(profileData);
+      try {
+        // Get current session
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          setState(prev => ({ ...prev, error: error.message, isLoading: false }));
+          return;
+        }
+
+        if (session) {
+          // Get user profile
+          const profile = await getProfile();
+          setState({ session, user: session.user, profile, isLoading: false, error: null });
+        } else {
+          setState({ session: null, user: null, profile: null, isLoading: false, error: null });
+        }
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+        setState(prev => ({ 
+          ...prev, 
+          error: error instanceof Error ? error.message : 'Unknown error', 
+          isLoading: false 
+        }));
       }
-      
-      setIsLoading(false);
     };
 
     initializeAuth();
+    
+    // Set up auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session) {
+        const profile = await getProfile();
+        setState({ session, user: session.user, profile, isLoading: false, error: null });
+      } else {
+        setState({ session: null, user: null, profile: null, isLoading: false, error: null });
+      }
+    });
 
     return () => {
-      authListener.subscription.unsubscribe();
+      subscription.unsubscribe();
     };
   }, []);
 
-  // Função para verificar se uma rota é pública
-  const isPublicRoute = (pathname: string): boolean => {
-    return publicRoutes.some(route => pathname === route || pathname.startsWith(route));
-  };
-
-  const login = async (email: string, senha: string) => {
-    setIsLoading(true);
-    setError(null);
-    
+  // Login function
+  const login = async (email: string, password: string) => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        password: senha,
+        password,
       });
       
-      if (error) throw error;
-      
-      // Após login bem-sucedido, busca o perfil
-      if (data.user) {
-        const profileData = await fetchProfile(data.user.id);
-        setProfile(profileData);
+      if (error) {
+        return { error };
       }
       
-      toast.success("Login realizado com sucesso!");
-    } catch (err: any) {
-      setError(err.message);
-      toast.error(err.message);
-      throw err;
-    } finally {
-      setIsLoading(false);
+      const profile = await getProfile();
+      setState({ session: data.session, user: data.user, profile, isLoading: false, error: null });
+      return { error: null };
+    } catch (error) {
+      console.error('Login error:', error);
+      return { error: error instanceof AuthError ? error : new AuthError('Unknown error') };
     }
   };
 
-  const signup = async (userData: SignupData) => {
-    setIsLoading(true);
-    setError(null);
-    
+  // Signup function
+  const signup = async (email: string, password: string, userData: any) => {
     try {
-      // Chamar a função Edge para cadastro
-      const response = await fetch(`${window.location.origin}/api/auth-signup`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: userData.email,
-          password: userData.senha,
-          nome: userData.nome,
-          cpf: userData.cpf,
-          telefone: userData.telefone,
-          tipo_perfil: userData.tipo_perfil
-        })
+      const { data: signupData, error: signupError } = await supabase.functions.invoke('auth-signup', {
+        body: {
+          email,
+          password,
+          ...userData
+        }
       });
       
-      const result = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(result.error || 'Erro no cadastro');
+      if (signupError) {
+        return { error: signupError, data: null };
       }
       
-      toast.success("Cadastro realizado com sucesso! Você será redirecionado para o login.");
-    } catch (err: any) {
-      setError(err.message);
-      toast.error(err.message);
-      throw err;
-    } finally {
-      setIsLoading(false);
+      return { error: null, data: signupData };
+    } catch (error) {
+      console.error('Signup error:', error);
+      return { error: error instanceof AuthError ? error : new AuthError('Unknown error'), data: null };
     }
   };
 
+  // Logout function
   const logout = async () => {
     await supabase.auth.signOut();
-    setUser(null);
-    setProfile(null);
-    setSession(null);
-    toast.info("Sessão encerrada");
-  };
-
-  const updateProfile = async (data: Partial<Profile>) => {
-    if (!user) return;
-    
-    try {
-      const token = session?.access_token;
-      
-      if (!token) {
-        throw new Error("Usuário não autenticado");
-      }
-      
-      const response = await fetch(`${window.location.origin}/api/profile-update`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(data)
-      });
-      
-      const result = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(result.error || 'Erro na atualização do perfil');
-      }
-      
-      // Atualiza o perfil na memória
-      setProfile(prev => prev ? { ...prev, ...data } : null);
-      
-      // Se o campo papel foi atualizado, também define tipo_perfil com o mesmo valor
-      if (data.papel && profile) {
-        const updatedProfile = { 
-          ...profile, 
-          ...data, 
-          tipo_perfil: data.papel 
-        };
-        setProfile(updatedProfile);
-      }
-      
-      toast.success("Perfil atualizado com sucesso!");
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao atualizar perfil');
-      throw err;
-    }
-  };
-  
-  // Alias para updateProfile para manter compatibilidade com componentes existentes
-  const updateUser = updateProfile;
-  
-  // Check if user is admin
-  const checkIsAdmin = async (): Promise<boolean> => {
-    if (!user) return false;
-    
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', user.id)
-        .single();
-      
-      if (error) throw error;
-      return data?.is_admin || false;
-    } catch (error) {
-      console.error('Error checking admin status:', error);
-      return false;
-    }
+    setState({ session: null, user: null, profile: null, isLoading: false, error: null });
+    navigate('/');
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      profile,
-      session,
-      isLoading, 
-      error, 
-      login, 
-      signup, 
-      logout, 
-      updateProfile,
-      updateUser,
-      isPublicRoute,
-      checkIsAdmin,
-      refreshProfile
-    }}>
+    <AuthContext.Provider
+      value={{
+        ...state,
+        login,
+        signup,
+        logout,
+        updateUser,
+        updateProfile,
+        getProfile,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
-};
+}
 
-// Custom hook to use the auth context
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;

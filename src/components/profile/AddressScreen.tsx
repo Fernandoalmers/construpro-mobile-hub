@@ -1,72 +1,93 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, MapPin, Plus, Edit2, Trash2 } from 'lucide-react';
 import Card from '../common/Card';
 import CustomButton from '../common/CustomButton';
 import ListEmptyState from '../common/ListEmptyState';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/sonner';
 import { useAuth } from '../../context/AuthContext';
 import AddAddressModal from './AddAddressModal';
-
-// Mock addresses for demonstration
-const mockAddresses = [
-  {
-    id: '1',
-    nome: 'Casa',
-    cep: '01310-200',
-    logradouro: 'Av. Paulista',
-    numero: '1000',
-    complemento: 'Apto 123',
-    bairro: 'Bela Vista',
-    cidade: 'São Paulo',
-    estado: 'SP',
-    principal: true,
-  },
-  {
-    id: '2',
-    nome: 'Trabalho',
-    cep: '04538-132',
-    logradouro: 'Av. Brigadeiro Faria Lima',
-    numero: '3477',
-    complemento: '5º andar',
-    bairro: 'Itaim Bibi',
-    cidade: 'São Paulo',
-    estado: 'SP',
-    principal: false,
-  }
-];
+import { addressService, Address } from '@/services/addressService';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const AddressScreen: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [addresses, setAddresses] = useState(mockAddresses);
+  const queryClient = useQueryClient();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [editingAddress, setEditingAddress] = useState<any>(null);
+  const [editingAddress, setEditingAddress] = useState<Address | null>(null);
+
+  // Fetch addresses
+  const { 
+    data: addresses = [], 
+    isLoading, 
+    error 
+  } = useQuery({
+    queryKey: ['addresses'],
+    queryFn: () => addressService.getAddresses(),
+  });
+
+  // Delete address mutation
+  const deleteAddressMutation = useMutation({
+    mutationFn: (addressId: string) => addressService.deleteAddress(addressId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['addresses'] });
+      toast.success("Endereço removido com sucesso");
+    },
+    onError: (error) => {
+      toast.error(`Erro ao remover endereço: ${error.message}`);
+    }
+  });
+
+  // Set primary address mutation
+  const setPrimaryAddressMutation = useMutation({
+    mutationFn: (addressId: string) => addressService.setPrimaryAddress(addressId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['addresses'] });
+      toast.success("Endereço principal atualizado com sucesso");
+    },
+    onError: (error) => {
+      toast.error(`Erro ao atualizar endereço principal: ${error.message}`);
+    }
+  });
+
+  // Save address mutation
+  const saveAddressMutation = useMutation({
+    mutationFn: (data: { address: Address, isEdit: boolean }) => {
+      if (data.isEdit && data.address.id) {
+        return addressService.updateAddress(data.address.id, data.address);
+      } else {
+        return addressService.addAddress(data.address);
+      }
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['addresses'] });
+      toast.success(
+        variables.isEdit 
+          ? "Endereço atualizado com sucesso" 
+          : "Endereço adicionado com sucesso"
+      );
+      setIsAddModalOpen(false);
+    },
+    onError: (error) => {
+      toast.error(`Erro ao salvar endereço: ${error.message}`);
+    }
+  });
 
   const handleSetDefaultAddress = (addressId: string) => {
-    setAddresses(addresses.map(address => ({
-      ...address,
-      principal: address.id === addressId
-    })));
-    toast({
-      title: "Endereço principal alterado",
-      description: "O endereço foi definido como principal com sucesso.",
-    });
+    setPrimaryAddressMutation.mutate(addressId);
   };
 
-  const handleEditAddress = (address: any) => {
+  const handleEditAddress = (address: Address) => {
     setEditingAddress(address);
     setIsAddModalOpen(true);
   };
 
   const handleDeleteAddress = (addressId: string) => {
-    setAddresses(addresses.filter(address => address.id !== addressId));
-    toast({
-      title: "Endereço removido",
-      description: "O endereço foi removido com sucesso.",
-      variant: "destructive",
-    });
+    if (window.confirm('Tem certeza que deseja remover este endereço?')) {
+      deleteAddressMutation.mutate(addressId);
+    }
   };
 
   const handleAddAddress = () => {
@@ -74,31 +95,16 @@ const AddressScreen: React.FC = () => {
     setIsAddModalOpen(true);
   };
 
-  const handleSaveAddress = (address: any) => {
-    if (editingAddress) {
-      // Update existing address
-      setAddresses(addresses.map(a => 
-        a.id === editingAddress.id ? { ...address, id: editingAddress.id } : a
-      ));
-      toast({
-        title: "Endereço atualizado",
-        description: "O endereço foi atualizado com sucesso.",
-      });
-    } else {
-      // Add new address
-      const newAddress = {
-        ...address,
-        id: `address-${Date.now()}`,
-        principal: addresses.length === 0 // First address is default
-      };
-      setAddresses([...addresses, newAddress]);
-      toast({
-        title: "Endereço adicionado",
-        description: "O endereço foi adicionado com sucesso.",
-      });
-    }
-    setIsAddModalOpen(false);
+  const handleSaveAddress = (address: Address) => {
+    saveAddressMutation.mutate({ 
+      address, 
+      isEdit: Boolean(editingAddress) 
+    });
   };
+
+  if (error) {
+    toast.error(`Erro ao carregar endereços: ${(error as Error).message}`);
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
@@ -124,7 +130,11 @@ const AddressScreen: React.FC = () => {
           Adicionar novo endereço
         </CustomButton>
 
-        {addresses.length === 0 ? (
+        {isLoading ? (
+          <div className="flex justify-center my-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-construPro-blue"></div>
+          </div>
+        ) : addresses.length === 0 ? (
           <ListEmptyState
             title="Nenhum endereço cadastrado"
             description="Adicione um endereço para receber suas compras e resgates."
@@ -155,7 +165,7 @@ const AddressScreen: React.FC = () => {
                       <Edit2 size={16} />
                     </button>
                     <button
-                      onClick={() => handleDeleteAddress(address.id)}
+                      onClick={() => handleDeleteAddress(address.id!)}
                       className="text-gray-500 hover:text-red-500"
                       disabled={address.principal}
                     >
@@ -177,7 +187,7 @@ const AddressScreen: React.FC = () => {
                   <CustomButton
                     variant="outline"
                     size="sm"
-                    onClick={() => handleSetDefaultAddress(address.id)}
+                    onClick={() => handleSetDefaultAddress(address.id!)}
                     className="mt-3"
                   >
                     Definir como principal

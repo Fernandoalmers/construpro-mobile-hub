@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/select';
 import { toast } from '@/components/ui/sonner';
 import { useAuth } from '../../context/AuthContext';
+import { useMutation } from '@tanstack/react-query';
 
 // Opções de especialidade para profissionais
 const specialtyOptions = [
@@ -40,10 +41,16 @@ const UserDataScreen: React.FC = () => {
     email: '',
     cpf: '',
     telefone: '',
-    endereco: '',
-    cidade: '',
-    estado: '',
     especialidade: '',
+    endereco: {
+      logradouro: '',
+      numero: '',
+      complemento: '',
+      bairro: '',
+      cidade: '',
+      estado: '',
+      cep: ''
+    }
   });
   
   const [loading, setLoading] = useState(false);
@@ -56,20 +63,51 @@ const UserDataScreen: React.FC = () => {
         email: profile.email || '',
         cpf: profile.cpf || '',
         telefone: profile.telefone || '',
-        endereco: profile.endereco_principal?.logradouro || '',
-        cidade: profile.endereco_principal?.cidade || '',
-        estado: profile.endereco_principal?.estado || '',
         especialidade: '',
+        endereco: {
+          logradouro: profile.endereco_principal?.logradouro || '',
+          numero: profile.endereco_principal?.numero || '',
+          complemento: profile.endereco_principal?.complemento || '',
+          bairro: profile.endereco_principal?.bairro || '',
+          cidade: profile.endereco_principal?.cidade || '',
+          estado: profile.endereco_principal?.estado || '',
+          cep: profile.endereco_principal?.cep || ''
+        }
       });
     }
   }, [profile]);
   
+  const updateProfileMutation = useMutation({
+    mutationFn: (data: any) => updateProfile(data),
+    onSuccess: () => {
+      toast.success('Dados atualizados com sucesso');
+      navigate('/profile');
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao atualizar dados: ${error.message}`);
+      console.error(error);
+    }
+  });
+  
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    
+    // Check if it's an address field
+    if (name.startsWith('endereco.')) {
+      const addressField = name.split('.')[1];
+      setFormData(prev => ({
+        ...prev,
+        endereco: {
+          ...prev.endereco,
+          [addressField]: value
+        }
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
   
   const handleSelectChange = (name: string, value: string) => {
@@ -81,27 +119,21 @@ const UserDataScreen: React.FC = () => {
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     
-    try {
-      await updateProfile({
-        nome: formData.nome,
-        cpf: formData.cpf,
-        telefone: formData.telefone,
-        endereco_principal: {
-          logradouro: formData.endereco,
-          cidade: formData.cidade,
-          estado: formData.estado
-        }
-      });
-      
-      navigate('/profile');
-    } catch (error) {
-      toast.error('Erro ao atualizar dados. Tente novamente.');
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
+    updateProfileMutation.mutate({
+      nome: formData.nome,
+      cpf: formData.cpf,
+      telefone: formData.telefone,
+      endereco_principal: {
+        logradouro: formData.endereco.logradouro,
+        numero: formData.endereco.numero,
+        complemento: formData.endereco.complemento,
+        bairro: formData.endereco.bairro,
+        cidade: formData.endereco.cidade,
+        estado: formData.endereco.estado,
+        cep: formData.endereco.cep
+      }
+    });
   };
   
   const isProfessional = profile?.tipo_perfil === 'profissional';
@@ -177,34 +209,75 @@ const UserDataScreen: React.FC = () => {
             </div>
             
             <div>
-              <Label htmlFor="endereco">Endereço</Label>
+              <Label htmlFor="endereco.logradouro">Endereço</Label>
               <CustomInput
-                id="endereco"
-                name="endereco"
-                value={formData.endereco}
+                id="endereco.logradouro"
+                name="endereco.logradouro"
+                value={formData.endereco.logradouro}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="endereco.numero">Número</Label>
+                <CustomInput
+                  id="endereco.numero"
+                  name="endereco.numero"
+                  value={formData.endereco.numero}
+                  onChange={handleChange}
+                />
+              </div>
+              <div>
+                <Label htmlFor="endereco.complemento">Complemento</Label>
+                <CustomInput
+                  id="endereco.complemento"
+                  name="endereco.complemento"
+                  value={formData.endereco.complemento}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="endereco.bairro">Bairro</Label>
+              <CustomInput
+                id="endereco.bairro"
+                name="endereco.bairro"
+                value={formData.endereco.bairro}
                 onChange={handleChange}
               />
             </div>
             
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label htmlFor="cidade">Cidade</Label>
+                <Label htmlFor="endereco.cidade">Cidade</Label>
                 <CustomInput
-                  id="cidade"
-                  name="cidade"
-                  value={formData.cidade}
+                  id="endereco.cidade"
+                  name="endereco.cidade"
+                  value={formData.endereco.cidade}
                   onChange={handleChange}
                 />
               </div>
               <div>
-                <Label htmlFor="estado">Estado</Label>
+                <Label htmlFor="endereco.estado">Estado</Label>
                 <CustomInput
-                  id="estado"
-                  name="estado"
-                  value={formData.estado}
+                  id="endereco.estado"
+                  name="endereco.estado"
+                  value={formData.endereco.estado}
                   onChange={handleChange}
                 />
               </div>
+            </div>
+
+            <div>
+              <Label htmlFor="endereco.cep">CEP</Label>
+              <CustomInput
+                id="endereco.cep"
+                name="endereco.cep"
+                value={formData.endereco.cep}
+                onChange={handleChange}
+              />
             </div>
             
             {isProfessional && (
@@ -232,7 +305,7 @@ const UserDataScreen: React.FC = () => {
               type="submit"
               variant="primary"
               fullWidth
-              loading={loading}
+              loading={updateProfileMutation.isPending}
               icon={<Save size={18} />}
             >
               Salvar alterações
