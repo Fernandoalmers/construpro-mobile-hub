@@ -4,11 +4,14 @@ import { useNavigate } from 'react-router-dom';
 import CustomButton from '../common/CustomButton';
 import Card from '../common/Card';
 import ListEmptyState from '../common/ListEmptyState';
-import { ArrowLeft, ShoppingBag, Trash2, Plus, Minus } from 'lucide-react';
+import { ArrowLeft, ShoppingBag, Trash2, Plus, Minus, Ticket } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import produtos from '../../data/produtos.json';
 import lojas from '../../data/lojas.json';
+import { toast } from '@/components/ui/toast';
 
-// Mock cart items - in a real app, this would come from a cart state or context
+// Update product types to include precoAnterior
 const mockCartItems = [
   { produtoId: '1', quantidade: 1 },
   { produtoId: '3', quantidade: 2 },
@@ -17,6 +20,8 @@ const mockCartItems = [
 const CartScreen: React.FC = () => {
   const navigate = useNavigate();
   const [cartItems, setCartItems] = useState(mockCartItems);
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<{code: string, discount: number} | null>(null);
 
   const cartProducts = cartItems.map(item => {
     const produto = produtos.find(p => p.id === item.produtoId);
@@ -61,17 +66,58 @@ const CartScreen: React.FC = () => {
     setCartItems(prev => prev.filter(item => item.produtoId !== produtoId));
   };
 
+  // Apply coupon code
+  const applyCoupon = () => {
+    if (!couponCode) {
+      toast({
+        title: "Erro",
+        description: "Digite um cupom válido",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Mock coupon validation
+    if (couponCode.toUpperCase() === 'CONSTRUPROMO') {
+      setAppliedCoupon({ code: couponCode, discount: 10 });
+      toast({
+        title: "Cupom aplicado!",
+        description: "Desconto de 10% aplicado ao seu pedido."
+      });
+    } else {
+      toast({
+        title: "Cupom inválido",
+        description: "O cupom informado não é válido ou expirou.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode('');
+  };
+
   // Calculate totals
   const subtotal = cartProducts.reduce((sum, item) => {
     return sum + (item.produto?.preco || 0) * item.quantidade;
   }, 0);
   
+  // Calculate discounts from coupon
+  const discount = appliedCoupon ? (subtotal * appliedCoupon.discount / 100) : 0;
+  
   const totalPoints = cartProducts.reduce((sum, item) => {
     return sum + (item.produto?.pontos || 0) * item.quantidade;
   }, 0);
   
-  const frete = 15.90;
-  const total = subtotal + frete;
+  // Calculate shipping per store
+  const storeShipping = Object.values(itemsByStore).map(store => ({
+    lojaId: store.loja.id,
+    frete: 15.90
+  }));
+  
+  const totalShipping = storeShipping.reduce((sum, store) => sum + store.frete, 0);
+  const total = subtotal + totalShipping - discount;
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
@@ -165,9 +211,46 @@ const CartScreen: React.FC = () => {
                         </div>
                       </div>
                     ))}
+                    
+                    {/* Store shipping */}
+                    <div className="p-3 bg-gray-50">
+                      <div className="flex justify-between text-sm">
+                        <span>Frete para esta loja</span>
+                        <span>R$ 15,90</span>
+                      </div>
+                    </div>
                   </Card>
                 </div>
               ))}
+              
+              {/* Coupon code section */}
+              <Card className="p-4">
+                <h3 className="text-sm font-medium mb-3">Cupom de desconto</h3>
+                {appliedCoupon ? (
+                  <div className="flex items-center justify-between bg-green-50 p-3 rounded-md">
+                    <div className="flex items-center">
+                      <Ticket size={18} className="text-green-600 mr-2" />
+                      <div>
+                        <p className="text-sm font-medium">{appliedCoupon.code.toUpperCase()}</p>
+                        <p className="text-xs text-green-600">Desconto de {appliedCoupon.discount}% aplicado</p>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={removeCoupon} className="h-8">
+                      Remover
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Digite seu cupom"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button onClick={applyCoupon}>Aplicar</Button>
+                  </div>
+                )}
+              </Card>
             </div>
           </div>
           
@@ -180,8 +263,14 @@ const CartScreen: React.FC = () => {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Frete</span>
-                <span>R$ {frete.toFixed(2)}</span>
+                <span>R$ {totalShipping.toFixed(2)}</span>
               </div>
+              {discount > 0 && (
+                <div className="flex justify-between text-green-600">
+                  <span>Desconto</span>
+                  <span>-R$ {discount.toFixed(2)}</span>
+                </div>
+              )}
               <div className="flex justify-between font-bold">
                 <span>Total</span>
                 <span>R$ {total.toFixed(2)}</span>

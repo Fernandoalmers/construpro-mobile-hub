@@ -7,10 +7,8 @@ import {
   Search, 
   Box, 
   Plug, 
-  Droplet, 
   GlassWater, 
   Hammer, 
-  Wrench, 
   UserPlus, 
   ShoppingBag,
   Construction
@@ -20,16 +18,14 @@ import {
 const categoryImages = {
   'materiais-construcao': '/lovable-uploads/1b629f74-0778-46a1-bb6a-4c30301e733e.png',
   'materiais-eletricos': 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=300',
-  'hidraulica': 'https://images.unsplash.com/photo-1584679109597-c656b19974c9?auto=format&fit=crop&w=300',
   'vidracaria': 'https://images.unsplash.com/photo-1496307653780-42ee777d4833?auto=format&fit=crop&w=300',
-  'marcenaria': 'https://images.unsplash.com/photo-1565115021788-6d3f1ede4980?auto=format&fit=crop&w=300',
   'marmoraria': 'https://images.unsplash.com/photo-1466442929976-97f336a657be?auto=format&fit=crop&w=300',
-  'ferramentas': 'https://images.unsplash.com/photo-1590959651373-a3db0f38a961?auto=format&fit=crop&w=300',
   'aluguel': 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&w=300',
   'profissionais': 'https://images.unsplash.com/photo-1521791055366-0d553872125f?auto=format&fit=crop&w=300',
   'todos': 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=300'
 };
 
+// Updated category blocks list (removed Hidráulica and Ferramentas)
 const categoryBlocks = [
   {
     id: 'materiais-construcao',
@@ -39,15 +35,9 @@ const categoryBlocks = [
   },
   {
     id: 'materiais-eletricos',
-    name: 'Materiais Elétricos',
+    name: 'Material Elétrico',
     icon: <Plug size={24} />,
     filter: { categoria: 'Materiais Elétricos' }
-  },
-  {
-    id: 'hidraulica',
-    name: 'Hidráulica',
-    icon: <Droplet size={24} />,
-    filter: { categoria: 'Hidráulica' }
   },
   {
     id: 'vidracaria',
@@ -56,22 +46,10 @@ const categoryBlocks = [
     filter: { categoria: 'Vidraçaria' }
   },
   {
-    id: 'marcenaria',
-    name: 'Marcenaria/MDF',
-    icon: <Box size={24} />,
-    filter: { categoria: 'Marcenaria' }
-  },
-  {
     id: 'marmoraria',
     name: 'Marmoraria',
     icon: <Box size={24} />,
     filter: { categoria: 'Marmoraria' }
-  },
-  {
-    id: 'ferramentas',
-    name: 'Ferramentas e Máquinas',
-    icon: <Wrench size={24} />,
-    filter: { categoria: 'Ferramentas' }
   },
   {
     id: 'aluguel',
@@ -81,13 +59,13 @@ const categoryBlocks = [
   },
   {
     id: 'profissionais',
-    name: 'Profissionais Cadastrados',
+    name: 'Profissionais',
     icon: <UserPlus size={24} />,
     filter: { type: 'professionals' }
   },
   {
     id: 'todos',
-    name: 'Ver todos os produtos',
+    name: 'Ver todos',
     icon: <ShoppingBag size={24} />,
     filter: {}
   }

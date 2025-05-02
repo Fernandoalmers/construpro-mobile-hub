@@ -2,18 +2,37 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import CustomButton from '../common/CustomButton';
-import { ArrowLeft, ShoppingCart, Gift, Star, ChevronLeft, ChevronRight, Plus, Minus } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, Star, ChevronLeft, ChevronRight, Plus, Minus, MapPin, ChevronDown, X, Check } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { toast } from '@/components/ui/toast';
 import produtos from '../../data/produtos.json';
 import lojas from '../../data/lojas.json';
+import { useScrollBehavior } from '@/hooks/use-scroll-behavior';
 
 const ProdutoDetailScreen: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [quantidade, setQuantidade] = useState(1);
   const [activeImage, setActiveImage] = useState(0);
+  const [cepModalOpen, setCepModalOpen] = useState(false);
+  const [cep, setCep] = useState('01310-100'); // Default CEP
+  const [cidade, setCidade] = useState('São Paulo');
+  const [newCep, setNewCep] = useState('');
+  const { hideHeader } = useScrollBehavior();
 
   const produto = produtos.find(p => p.id === id);
   const loja = produto ? lojas.find(l => l.id === produto.lojaId) : undefined;
+  
+  // Mock delivery dates
+  const today = new Date();
+  const deliveryDate = new Date(today);
+  deliveryDate.setDate(today.getDate() + 4);
+  
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  };
 
   if (!produto || !loja) {
     return (
@@ -46,13 +65,38 @@ const ProdutoDetailScreen: React.FC = () => {
   };
 
   const handleComprar = () => {
-    // In a real app, this would add the product to the cart
-    navigate('/cart');
+    // Add to cart
+    toast({
+      title: "Produto adicionado ao carrinho",
+      description: `${produto.nome} foi adicionado ao seu carrinho.`,
+      action: (
+        <Button onClick={() => navigate('/cart')}>Ver carrinho</Button>
+      )
+    });
+  };
+  
+  const handleChangeCep = () => {
+    setCepModalOpen(true);
   };
 
-  const handleResgatar = () => {
-    // In a real app, this would check if user has enough points and proceed
-    navigate('/resgates');
+  const confirmCepChange = () => {
+    if (newCep && newCep.length >= 8) {
+      setCep(newCep);
+      // Mock city update based on CEP
+      const cities = ['São Paulo', 'Rio de Janeiro', 'Belo Horizonte', 'Brasília', 'Curitiba'];
+      setCidade(cities[Math.floor(Math.random() * cities.length)]);
+      setCepModalOpen(false);
+      toast({
+        title: "CEP atualizado",
+        description: `Seu CEP foi atualizado para ${newCep}.`,
+      });
+    } else {
+      toast({
+        title: "CEP inválido",
+        description: "Por favor, digite um CEP válido.",
+        variant: "destructive"
+      });
+    }
   };
 
   const nextImage = () => {
@@ -72,15 +116,37 @@ const ProdutoDetailScreen: React.FC = () => {
       />
     ));
   };
+  
+  // Calculate discount percentage if there's a previous price
+  const getDiscountPercentage = () => {
+    if (produto.precoAnterior && produto.precoAnterior > produto.preco) {
+      const discount = ((produto.precoAnterior - produto.preco) / produto.precoAnterior) * 100;
+      return Math.round(discount);
+    }
+    return null;
+  };
+  
+  const discountPercentage = getDiscountPercentage();
+  const isOnSale = !!discountPercentage;
 
   return (
     <div className="flex flex-col min-h-screen bg-white pb-20">
-      {/* Header */}
-      <div className="bg-white p-4 flex items-center">
+      {/* Header - hidden on scroll down */}
+      <div className={`bg-white p-4 flex items-center sticky top-0 z-10 shadow-sm transition-transform duration-300 ${hideHeader ? '-translate-y-full' : 'translate-y-0'}`}>
         <button onClick={() => navigate(-1)} className="mr-4">
           <ArrowLeft size={24} />
         </button>
         <h1 className="text-xl font-bold flex-1 truncate">Detalhes do Produto</h1>
+        
+        {/* CEP Selection */}
+        <button 
+          onClick={handleChangeCep}
+          className="flex items-center text-sm text-gray-600 border border-gray-300 rounded-full px-3 py-1"
+        >
+          <MapPin size={14} className="mr-1" />
+          <span>{cep.substring(0, 5)}-XXX</span>
+          <ChevronDown size={14} className="ml-1" />
+        </button>
       </div>
 
       {/* Image Carousel */}
@@ -130,7 +196,7 @@ const ProdutoDetailScreen: React.FC = () => {
             </div>
             <div className="flex items-center">
               {renderStars(produto.avaliacao)}
-              <span className="ml-1 text-sm text-gray-600">{produto.avaliacao}</span>
+              <span className="ml-1 text-sm text-gray-600">{produto.avaliacao} (143)</span>
             </div>
           </div>
 
@@ -138,10 +204,29 @@ const ProdutoDetailScreen: React.FC = () => {
           
           <div className="flex items-center justify-between mb-4">
             <div>
-              <p className="text-2xl font-bold text-construPro-blue">
-                R$ {produto.preco.toFixed(2)}
-              </p>
-              <span className="text-sm text-gray-600">Em até 12x sem juros</span>
+              {isOnSale ? (
+                <div className="flex flex-col">
+                  <div className="flex items-baseline">
+                    <p className="text-2xl font-bold text-construPro-blue">
+                      R$ {produto.preco.toFixed(2)}
+                    </p>
+                    <p className="text-sm text-gray-500 line-through ml-2">
+                      R$ {produto.precoAnterior?.toFixed(2)}
+                    </p>
+                    <span className="ml-2 bg-construPro-orange text-white text-xs px-2 py-1 rounded-sm">
+                      {discountPercentage}% OFF
+                    </span>
+                  </div>
+                  <span className="text-sm text-gray-600">Em até 12x sem juros</span>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-2xl font-bold text-construPro-blue">
+                    R$ {produto.preco.toFixed(2)}
+                  </p>
+                  <span className="text-sm text-gray-600">Em até 12x sem juros</span>
+                </div>
+              )}
             </div>
             <div className="bg-construPro-orange/10 text-construPro-orange rounded-full px-3 py-1 text-sm font-medium">
               {produto.pontos} pontos
@@ -151,6 +236,17 @@ const ProdutoDetailScreen: React.FC = () => {
           <p className="bg-gray-100 inline-block px-2 py-1 rounded text-sm text-gray-700 mb-4">
             {produto.categoria}
           </p>
+          
+          {/* Delivery information */}
+          <div className="bg-blue-50 p-3 rounded-lg mb-4">
+            <div className="flex items-start">
+              <MapPin size={16} className="text-construPro-blue mt-0.5 mr-2" />
+              <div>
+                <p className="text-sm font-medium">Entrega para {cidade} - {cep}</p>
+                <p className="text-xs text-gray-600">Chegará entre {formatDate(today)} e {formatDate(deliveryDate)}</p>
+              </div>
+            </div>
+          </div>
 
           <p className="text-gray-700 mb-4">{produto.descricao}</p>
         </div>
@@ -203,19 +299,41 @@ const ProdutoDetailScreen: React.FC = () => {
             onClick={handleComprar}
             icon={<ShoppingCart size={18} />}
           >
-            Comprar
-          </CustomButton>
-          
-          <CustomButton
-            variant="outline"
-            fullWidth
-            onClick={handleResgatar}
-            icon={<Gift size={18} />}
-          >
-            Resgatar com pontos
+            Adicionar ao carrinho
           </CustomButton>
         </div>
       </div>
+      
+      {/* CEP Modal */}
+      <Dialog open={cepModalOpen} onOpenChange={setCepModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Selecione onde quer receber seu pedido</DialogTitle>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <label className="text-sm font-medium mb-1 block">Digite seu CEP:</label>
+            <Input 
+              value={newCep} 
+              onChange={(e) => setNewCep(e.target.value)} 
+              placeholder="00000-000" 
+              className="mt-1"
+            />
+            <p className="text-sm text-gray-500 mt-2">
+              O CEP determina quais produtos e lojas estarão disponíveis para você.
+            </p>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCepModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={confirmCepChange}>
+              Confirmar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

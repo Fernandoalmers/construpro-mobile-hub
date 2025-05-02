@@ -9,6 +9,7 @@ interface Produto {
   nome: string;
   imagemUrl: string;
   preco: number;
+  precoAnterior?: number; // Added for promotions
   pontos: number;
   categoria: string;
   avaliacao?: number;
@@ -71,8 +72,19 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
     return produto.avaliacao.toFixed(1);
   };
   
-  // Check if product is on sale (simplified mock logic)
-  const isOnSale = produto.id === '3' || produto.id === '7'; // Mock data for demo
+  // Calculate discount percentage if there's a previous price
+  const getDiscountPercentage = () => {
+    if (produto.precoAnterior && produto.precoAnterior > produto.preco) {
+      const discount = ((produto.precoAnterior - produto.preco) / produto.precoAnterior) * 100;
+      return Math.round(discount);
+    }
+    return null;
+  };
+  
+  const discountPercentage = getDiscountPercentage();
+  
+  // Check if product is on sale based on having a previous price
+  const isOnSale = !!discountPercentage;
   
   // Check if product is best seller (simplified mock logic)
   const isBestSeller = produto.id === '1' || produto.id === '9'; // Mock data for demo
@@ -97,7 +109,7 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
           
           {isOnSale && (
             <span className="bg-construPro-orange text-white text-xs px-2 py-1 rounded-sm font-medium">
-              Promoção
+              {discountPercentage}% OFF
             </span>
           )}
         </div>
@@ -136,15 +148,22 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
         
         <div className="mt-auto pt-2">
           {/* Price - fixed layout to prevent breaking */}
-          <div className="flex items-center justify-between">
-            <p className="text-base font-bold text-construPro-blue whitespace-nowrap">
-              R$ {produto.preco.toFixed(2)}
-            </p>
-            
-            {/* Points */}
-            <div className="flex items-center text-xs bg-construPro-orange/10 text-construPro-orange rounded-full px-2 py-0.5">
-              <CircleDollarSign size={12} className="mr-0.5 flex-shrink-0" />
-              <span className="whitespace-nowrap">{produto.pontos} pts</span>
+          <div className="flex flex-col">
+            <div className="flex items-center justify-between">
+              {isOnSale && (
+                <p className="text-xs text-gray-500 line-through mr-1">
+                  R$ {produto.precoAnterior?.toFixed(2)}
+                </p>
+              )}
+              <p className="text-base font-bold text-construPro-blue whitespace-nowrap">
+                R$ {produto.preco.toFixed(2)}
+              </p>
+              
+              {/* Points */}
+              <div className="flex items-center text-xs bg-construPro-orange/10 text-construPro-orange rounded-full px-2 py-0.5">
+                <CircleDollarSign size={12} className="mr-0.5 flex-shrink-0" />
+                <span className="whitespace-nowrap">{produto.pontos} pts</span>
+              </div>
             </div>
           </div>
         </div>
