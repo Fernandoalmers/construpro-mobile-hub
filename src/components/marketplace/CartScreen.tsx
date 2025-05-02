@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CustomButton from '../common/CustomButton';
@@ -9,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import produtos from '../../data/produtos.json';
 import lojas from '../../data/lojas.json';
-import { toast } from '@/components/ui/toast';
+import { toast } from '@/hooks/use-toast';
 
 // Update product types to include precoAnterior
 const mockCartItems = [

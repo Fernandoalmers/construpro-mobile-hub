@@ -6,7 +6,7 @@ import { ArrowLeft, ShoppingCart, Star, ChevronLeft, ChevronRight, Plus, Minus, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { toast } from '@/components/ui/toast';
+import { toast } from '@/hooks/use-toast';
 import produtos from '../../data/produtos.json';
 import lojas from '../../data/lojas.json';
 import { useScrollBehavior } from '@/hooks/use-scroll-behavior';
