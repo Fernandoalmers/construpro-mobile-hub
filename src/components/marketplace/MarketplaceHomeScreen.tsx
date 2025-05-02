@@ -16,6 +16,20 @@ import {
   Construction
 } from 'lucide-react';
 
+// Imagens de fundo para as categorias
+const categoryImages = {
+  'materiais-construcao': '/lovable-uploads/1b629f74-0778-46a1-bb6a-4c30301e733e.png',
+  'materiais-eletricos': 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=300',
+  'hidraulica': 'https://images.unsplash.com/photo-1584679109597-c656b19974c9?auto=format&fit=crop&w=300',
+  'vidracaria': 'https://images.unsplash.com/photo-1496307653780-42ee777d4833?auto=format&fit=crop&w=300',
+  'marcenaria': 'https://images.unsplash.com/photo-1565115021788-6d3f1ede4980?auto=format&fit=crop&w=300',
+  'marmoraria': 'https://images.unsplash.com/photo-1466442929976-97f336a657be?auto=format&fit=crop&w=300',
+  'ferramentas': 'https://images.unsplash.com/photo-1590959651373-a3db0f38a961?auto=format&fit=crop&w=300',
+  'aluguel': 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&w=300',
+  'profissionais': 'https://images.unsplash.com/photo-1521791055366-0d553872125f?auto=format&fit=crop&w=300',
+  'todos': 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=300'
+};
+
 const categoryBlocks = [
   {
     id: 'materiais-construcao',
@@ -113,22 +127,39 @@ const MarketplaceHomeScreen: React.FC = () => {
         />
       </div>
       
-      {/* Category blocks */}
+      {/* Category blocks - redesigned for more elegance */}
       <div className="p-4">
         <h2 className="font-bold text-lg mb-3">Categorias</h2>
         
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           {categoryBlocks.map((category) => (
-            <Card 
+            <div 
               key={category.id}
-              className="p-4 flex flex-col items-center justify-center h-28 cursor-pointer hover:shadow-md transition-shadow"
+              className="cursor-pointer"
               onClick={() => handleCategoryClick(category.filter)}
             >
-              <div className="w-12 h-12 bg-construPro-blue/10 text-construPro-blue rounded-full flex items-center justify-center mb-2">
-                {category.icon}
+              <div 
+                className="relative h-40 rounded-lg overflow-hidden shadow-md"
+                style={{ 
+                  backgroundImage: `url(${categoryImages[category.id as keyof typeof categoryImages]})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center'
+                }}
+              >
+                {/* Gradient overlay for better text visibility */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                
+                {/* Content positioned at bottom */}
+                <div className="absolute bottom-0 left-0 right-0 p-3 flex flex-col items-start">
+                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center mb-2 shadow-md">
+                    <span className="text-construPro-blue">
+                      {category.icon}
+                    </span>
+                  </div>
+                  <span className="text-white font-medium">{category.name}</span>
+                </div>
               </div>
-              <span className="text-sm font-medium text-center">{category.name}</span>
-            </Card>
+            </div>
           ))}
         </div>
       </div>

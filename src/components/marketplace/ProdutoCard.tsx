@@ -1,7 +1,7 @@
 
 import React from 'react';
 import Card from '../common/Card';
-import { Star, Package, Tag, CircleDollarSign } from 'lucide-react';
+import { Star, Package, CircleDollarSign } from 'lucide-react';
 
 interface Produto {
   id: string;
@@ -57,12 +57,12 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
       );
       
       if (volumeSpec) {
-        return volumeSpec.split(':')[1] || volumeSpec;
+        return volumeSpec.split(':')[1]?.trim() || volumeSpec;
       }
     }
     
-    // Default case: return the category as fallback
-    return produto.categoria;
+    // Default case: don't return category as fallback (removed to fix duplication)
+    return 'Unidade';
   };
   
   // Format rating display
@@ -88,7 +88,7 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
         />
         
         {/* Badges (best seller, promo) */}
-        <div className="absolute top-0 left-0 p-1.5 flex flex-col gap-1">
+        <div className="absolute top-2 left-2 flex flex-col gap-1">
           {isBestSeller && (
             <span className="bg-construPro-blue text-white text-xs px-2 py-1 rounded-sm font-medium">
               Mais Vendido
@@ -107,7 +107,7 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
         {/* Store name */}
         {loja && (
           <div 
-            className="text-xs text-gray-500 mb-1 cursor-pointer hover:underline"
+            className="text-xs text-gray-500 mb-1 cursor-pointer hover:underline truncate"
             onClick={handleLojaClick}
           >
             {loja.nome}
@@ -115,7 +115,7 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
         )}
         
         {/* Product name - max 2 lines */}
-        <h3 className="font-medium text-sm text-gray-900 mb-1 line-clamp-2">
+        <h3 className="font-medium text-sm text-gray-900 mb-1 line-clamp-2 h-10">
           {produto.nome}
         </h3>
         
@@ -131,24 +131,22 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
         {/* Volume/Unit info */}
         <div className="flex items-center text-xs text-gray-500 mb-2">
           <Package size={12} className="mr-1" />
-          <span>{getUnitInfo()}</span>
+          <span className="truncate">{getUnitInfo()}</span>
         </div>
         
-        <div className="mt-auto">
-          {/* Price */}
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-base font-bold text-construPro-blue">
+        <div className="mt-auto pt-2">
+          {/* Price - fixed layout to prevent breaking */}
+          <div className="flex items-center justify-between">
+            <p className="text-base font-bold text-construPro-blue whitespace-nowrap">
               R$ {produto.preco.toFixed(2)}
             </p>
             
             {/* Points */}
             <div className="flex items-center text-xs bg-construPro-orange/10 text-construPro-orange rounded-full px-2 py-0.5">
-              <CircleDollarSign size={12} className="mr-0.5" />
-              <span>{produto.pontos} pts</span>
+              <CircleDollarSign size={12} className="mr-0.5 flex-shrink-0" />
+              <span className="whitespace-nowrap">{produto.pontos} pts</span>
             </div>
           </div>
-          
-          {/* Remove duplicate category tag since we already show it in the unit info */}
         </div>
       </div>
     </Card>
