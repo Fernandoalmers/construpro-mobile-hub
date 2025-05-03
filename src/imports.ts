@@ -30,6 +30,11 @@ import SettingsScreen from './components/profile/SettingsScreen';
 import NotFoundScreen from './pages/NotFound';
 import MarketplaceScreenWrapper from './components/marketplace/MarketplaceScreenWrapper';
 
+// Profile Related Components
+import PhysicalPurchasesScreen from './components/profile/PhysicalPurchasesScreen';
+import PointsHistoryScreen from './components/profile/PointsHistoryScreen';
+import AddressScreen from './components/profile/AddressScreen';
+
 // Vendor Components
 import VendorDashboardScreen from './components/vendor/VendorHomeScreen';
 import VendorProductsScreen from './components/vendor/ProdutosVendorScreen';

@@ -36,9 +36,18 @@ const BottomTabNavigator: React.FC = () => {
   
   // Extract the first part of the path
   useEffect(() => {
-    const pathBase = '/' + (location.pathname.split('/')[1] || 'home');
-    setCurrentPath(pathBase);
-    console.log("Bottom navigation current path:", pathBase);
+    // Look for exact matches first, then fallback to path base
+    const exactPaths = ['/home', '/marketplace', '/rewards', '/chat', '/vendor-dashboard', '/services', '/profile'];
+    
+    if (exactPaths.includes(location.pathname)) {
+      setCurrentPath(location.pathname);
+    } else {
+      // For nested paths, highlight the parent menu item
+      const pathBase = '/' + (location.pathname.split('/')[1] || 'home');
+      setCurrentPath(pathBase);
+    }
+    
+    console.log("Bottom navigation current path:", location.pathname, "-> Highlighted:", currentPath);
   }, [location.pathname]);
 
   // User role
@@ -48,11 +57,12 @@ const BottomTabNavigator: React.FC = () => {
   useEffect(() => {
     console.log("BottomTabNavigator rendering:", { 
       path: location.pathname,
+      currentPath,
       userRole,
       isAuthenticated: !!user,
       isLoading
     });
-  }, [location.pathname, userRole, user, isLoading]);
+  }, [location.pathname, currentPath, userRole, user, isLoading]);
 
   // Menu Items
   const menuItems: MenuItem[] = [
@@ -137,6 +147,13 @@ const BottomTabNavigator: React.FC = () => {
     return null;
   }
 
+  const handleNavigation = (path: string) => {
+    // Only navigate if we're not already on this path
+    if (location.pathname !== path) {
+      navigate(path);
+    }
+  };
+
   return (
     <>
       {/* Cart Popup */}
@@ -153,7 +170,7 @@ const BottomTabNavigator: React.FC = () => {
                       "flex flex-col items-center justify-center w-full h-full cursor-pointer px-2", 
                       currentPath === item.path ? "text-construPro-blue" : "text-gray-500"
                     )}
-                    onClick={() => navigate(item.path)}
+                    onClick={() => handleNavigation(item.path)}
                   >
                     <div className="relative">
                       {item.icon}

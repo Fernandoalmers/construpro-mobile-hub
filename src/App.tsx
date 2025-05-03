@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
@@ -17,6 +16,9 @@ import {
 import { useAuth } from './context/AuthContext';
 import BottomTabNavigator from './components/layout/BottomTabNavigator';
 import LoadingState from './components/common/LoadingState';
+import PhysicalPurchasesScreen from './components/profile/PhysicalPurchasesScreen';
+import PointsHistoryScreen from './components/profile/PointsHistoryScreen';
+import AddressScreen from './components/profile/AddressScreen';
 
 function App() {
   const location = useLocation();
@@ -65,27 +67,46 @@ function App() {
         <Route path="/" element={<ProtectedRoute><HomeScreen /></ProtectedRoute>} />
         <Route path="/home" element={<ProtectedRoute><HomeScreen /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><ProfileScreen /></ProtectedRoute>} />
+        
+        {/* Profile related routes */}
+        <Route path="/profile/orders" element={<ProtectedRoute><OrdersScreen /></ProtectedRoute>} />
+        <Route path="/profile/orders/:id" element={<ProtectedRoute><OrderDetailScreen /></ProtectedRoute>} />
+        <Route path="/profile/addresses" element={<ProtectedRoute><AddressScreen /></ProtectedRoute>} />
+        <Route path="/profile/physical-purchases" element={<ProtectedRoute><PhysicalPurchasesScreen /></ProtectedRoute>} />
+        <Route path="/profile/points-history" element={<ProtectedRoute><PointsHistoryScreen /></ProtectedRoute>} />
+        <Route path="/profile/favorites" element={<ProtectedRoute><FavoritesScreen /></ProtectedRoute>} />
+        <Route path="/profile/settings" element={<ProtectedRoute><SettingsScreen /></ProtectedRoute>} />
+        
+        {/* Rewards related routes */}
         <Route path="/rewards" element={<ProtectedRoute><RewardsScreen /></ProtectedRoute>} />
         <Route path="/rewards/detail/:id" element={<ProtectedRoute><RewardDetailScreen /></ProtectedRoute>} />
+        
+        {/* Store and Product routes */}
         <Route path="/store/:storeId" element={<ProtectedRoute><StoreDetailScreen /></ProtectedRoute>} />
         <Route path="/product/:productId" element={<ProtectedRoute><ProductDetailScreen /></ProtectedRoute>} />
+        <Route path="/produto/:id" element={<ProtectedRoute><ProductDetailScreen /></ProtectedRoute>} />
+        
+        {/* Cart and Checkout routes */}
         <Route path="/cart" element={<ProtectedRoute><CartScreen /></ProtectedRoute>} />
         <Route path="/checkout" element={<ProtectedRoute><CheckoutScreen /></ProtectedRoute>} />
         <Route path="/orders" element={<ProtectedRoute><OrdersScreen /></ProtectedRoute>} />
         <Route path="/order/:orderId" element={<ProtectedRoute><OrderDetailScreen /></ProtectedRoute>} />
+        
+        {/* Other user routes */}
         <Route path="/favorites" element={<ProtectedRoute><FavoritesScreen /></ProtectedRoute>} />
         <Route path="/chat/:chatId" element={<ProtectedRoute><ChatScreen /></ProtectedRoute>} />
         <Route path="/chat" element={<ProtectedRoute><ChatScreen /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><SettingsScreen /></ProtectedRoute>} />
+        
+        {/* Vendor routes */}
         <Route path="/vendor-dashboard" element={<ProtectedRoute><VendorDashboardScreen /></ProtectedRoute>} />
         <Route path="/vendor/products" element={<ProtectedRoute><VendorProductsScreen /></ProtectedRoute>} />
         <Route path="/vendor/customers" element={<ProtectedRoute><VendorCustomersScreen /></ProtectedRoute>} />
-        <Route path="/settings" element={<ProtectedRoute><SettingsScreen /></ProtectedRoute>} />
         
         {/* Marketplace routes */}
         <Route path="/marketplace" element={<ProtectedRoute><MarketplaceScreenWrapper /></ProtectedRoute>} />
         <Route path="/marketplace/products" element={<ProtectedRoute><MarketplaceScreenWrapper /></ProtectedRoute>} />
-        <Route path="/produto/:id" element={<ProtectedRoute><ProductDetailScreen /></ProtectedRoute>} />
-
+        
         {/* Admin routes - using ProtectedRoute with requireAdmin flag */}
         <Route path="/admin" element={<ProtectedRoute requireAdmin={true}><AdminDashboard /></ProtectedRoute>} />
         <Route path="/admin/users" element={<ProtectedRoute requireAdmin={true}><UsersManagement /></ProtectedRoute>} />

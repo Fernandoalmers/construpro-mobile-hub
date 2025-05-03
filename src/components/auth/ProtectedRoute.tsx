@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Navigate, useLocation, Outlet } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
 import LoadingState from '../common/LoadingState';
@@ -40,7 +40,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     loadProfile();
   }, [isAuthenticated, profile, refreshProfile, isLoading]);
 
-  // Show logging for debugging
+  // Show debug logging
   useEffect(() => {
     console.log("ProtectedRoute state:", {
       path: location.pathname,
@@ -55,7 +55,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     });
   }, [location.pathname, isAuthenticated, isLoading, profileLoading, requireAuth, requireAdmin, profile, adminCheckLoading, isAdmin]);
 
-  // Show loading while checking authentication or loading profile
+  // Only show loading when data is actually being fetched
   if (isLoading || profileLoading || (requireAdmin && adminCheckLoading)) {
     console.log("ProtectedRoute: Showing loading state for:", location.pathname);
     return <LoadingState text="Verificando autenticação..." />;
@@ -74,7 +74,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // If user is authenticated and trying to access auth pages, redirect to home
-  if (isAuthenticated && ['/login', '/signup'].includes(location.pathname)) {
+  if (isAuthenticated && ['/login', '/signup', '/auth/login', '/auth/signup'].includes(location.pathname)) {
     console.log("User is authenticated. Redirecting from auth page to home");
     return <Navigate to="/home" replace />;
   }
