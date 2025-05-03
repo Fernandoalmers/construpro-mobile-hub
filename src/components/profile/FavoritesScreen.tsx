@@ -37,11 +37,11 @@ interface FavoriteItem {
   produto: Product; // Joined product data
 }
 
-// New interface for frequently bought items
+// Updated FrequentlyBoughtItem interface to match what we're getting from the database
 interface FrequentlyBoughtItem {
   produto_id: string;
   count: number;
-  produto: Product;
+  produto: Product | null; // Making produto nullable since it might have an error
 }
 
 const FavoritesScreen: React.FC = () => {
@@ -171,25 +171,69 @@ const FavoritesScreen: React.FC = () => {
     queryKey: ['frequentlyBought'],
     queryFn: async () => {
       try {
-        // This is a simplified implementation. In a real app, this would
-        // fetch from order history or a dedicated table of frequently bought items
-        const { data, error } = await supabase
+        // Fetch product IDs and counts from order items
+        const { data: orderItems, error: orderItemsError } = await supabase
           .from('order_items')
-          .select(`
-            produto_id,
-            produto:produto_id (
-              id, nome, preco, imagem_url, avaliacao, categoria, descricao,
-              loja_id
-            ),
-            count
-          `)
+          .select('produto_id, count(*)')
           .eq('order_id', user?.id || '')
           .limit(8);
+          
+        if (orderItemsError) throw orderItemsError;
         
-        if (error) throw error;
+        // If we have order items, fetch the product details separately
+        if (orderItems && orderItems.length > 0) {
+          const productIds = orderItems.map(item => item.produto_id);
+          
+          const { data: products, error: productsError } = await supabase
+            .from('products')
+            .select(`
+              id, nome, preco, imagem_url, avaliacao, categoria, descricao, 
+              loja_id
+            `)
+            .in('id', productIds);
+          
+          if (productsError) throw productsError;
+          
+          // Map product details to order items
+          const enrichedItems = orderItems.map(item => {
+            const matchingProduct = products?.find(p => p.id === item.produto_id) || null;
+            return {
+              produto_id: item.produto_id,
+              count: item.count,
+              produto: matchingProduct
+            };
+          }).filter(item => item.produto !== null); // Filter out items where product wasn't found
+          
+          // Fetch store names for products with loja_id
+          const lojaIds = enrichedItems
+            .filter(item => item.produto && item.produto.loja_id)
+            .map(item => item.produto?.loja_id)
+            .filter(Boolean) as string[];
+          
+          if (lojaIds.length > 0) {
+            const { data: lojas, error: lojasError } = await supabase
+              .from('stores')
+              .select('id, nome')
+              .in('id', lojaIds);
+            
+            if (!lojasError && lojas) {
+              const lojaMap = Object.fromEntries(lojas.map(loja => [loja.id, loja.nome]));
+              
+              // Add store names to products
+              return enrichedItems.map(item => ({
+                ...item,
+                produto: item.produto ? {
+                  ...item.produto,
+                  loja_nome: item.produto.loja_id ? lojaMap[item.produto.loja_id] : undefined
+                } : null
+              }));
+            }
+          }
+          
+          return enrichedItems;
+        }
         
-        // For brevity, this part is simplified
-        return data || [];
+        return [];
       } catch (error) {
         console.error('Error fetching frequently bought products:', error);
         return [];
@@ -524,7 +568,7 @@ const FavoritesScreen: React.FC = () => {
                 
                 <div className="grid grid-cols-2 gap-4">
                   {frequentlyBought.length > 0 ? (
-                    frequentlyBought.map(item => renderProductCard(item as FrequentlyBoughtItem))
+                    frequentlyBought.filter(item => item.produto !== null).map(item => renderProductCard(item))
                   ) : (
                     <div className="col-span-2 text-center py-10">
                       <ShoppingBag className="mx-auto text-gray-400 mb-3" size={40} />
