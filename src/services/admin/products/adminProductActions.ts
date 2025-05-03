@@ -1,7 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
-import { logAdminAction } from '@/services/admin/adminLogsService';
+import { logAdminAction } from '@/services/adminService';
 
 /**
  * Approve a product by ID
@@ -26,7 +26,11 @@ export const approveProduct = async (productId: string): Promise<boolean> => {
     
     // Log the admin action
     try {
-      await logAdminAction('approve', 'product', productId);
+      await logAdminAction({
+        action: 'approve',
+        entityType: 'product',
+        entityId: productId
+      });
     } catch (logError) {
       console.error('[AdminProductActions] Error logging admin action:', logError);
       // Non-blocking error - product was still approved
@@ -63,7 +67,11 @@ export const rejectProduct = async (productId: string): Promise<boolean> => {
     
     // Log the admin action
     try {
-      await logAdminAction('reject', 'product', productId);
+      await logAdminAction({
+        action: 'reject',
+        entityType: 'product',
+        entityId: productId
+      });
     } catch (logError) {
       console.error('[AdminProductActions] Error logging admin action:', logError);
       // Non-blocking error - product was still rejected
