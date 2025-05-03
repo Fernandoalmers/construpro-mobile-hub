@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -200,25 +199,40 @@ const ProductForm: React.FC<ProductFormProps> = ({ productId, initialData }) => 
     
     try {
       const productData: ProductFormData = {
-        ...values,
-        id: productId
+        ...(productId ? { id: productId } : {}),
+        nome: values.nome,
+        descricao: values.descricao,
+        segmento: values.segmento,
+        categoria: values.categoria,
+        codigo_barras: values.codigo_barras,
+        sku: values.sku,
+        preco: values.preco,
+        preco_anterior: values.preco_anterior,
+        unidade_venda: values.unidade_venda,
+        m2_por_caixa: values.m2_por_caixa,
+        estoque: values.estoque,
+        pontos: values.pontos,
+        pontos_profissional: values.pontos_profissional,
+        status: values.status,
+        loja_id: values.loja_id
       };
       
-      // Determine what to save for images (Files for new uploads, URLs for existing ones)
-      const imagesToSave: (File | string)[] = [];
+      // Prepare images array to upload
+      const imagesToUpload: (File | string)[] = [];
       
-      images.forEach((file, index) => {
-        imagesToSave.push(file);
+      // Add new image files
+      images.forEach(file => {
+        imagesToUpload.push(file);
       });
       
-      // Add any image URLs that weren't replaced
+      // Add existing image URLs that weren't replaced
       imageUrls.forEach(url => {
         if (!url.startsWith('blob:')) {
-          imagesToSave.push(url);
+          imagesToUpload.push(url);
         }
       });
       
-      const result = await saveProduct(productData, imagesToSave);
+      const result = await saveProduct(productData, imagesToUpload);
       
       if (result.success) {
         toast({

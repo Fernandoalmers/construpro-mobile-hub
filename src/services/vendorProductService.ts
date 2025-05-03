@@ -19,6 +19,7 @@ export interface ProductFormData {
   pontos_profissional: number;
   status: 'pendente' | 'aprovado' | 'inativo';
   loja_id: string;
+  images?: ProductImage[];
 }
 
 export interface ProductImage {
@@ -156,7 +157,7 @@ export const getProductById = async (id: string) => {
 };
 
 // Save product
-export const saveProduct = async (productData: ProductFormData, images: File[] | string[]) => {
+export const saveProduct = async (productData: ProductFormData, imagesToUpload: (File | string)[]) => {
   try {
     // Save or update product
     const isUpdate = !!productData.id;
@@ -215,7 +216,7 @@ export const saveProduct = async (productData: ProductFormData, images: File[] |
     // If existing product, delete old images if replaced
     if (isUpdate) {
       // Only delete images if we have new image files
-      const hasNewImageFiles = images.some(img => img instanceof File);
+      const hasNewImageFiles = imagesToUpload.some(img => img instanceof File);
       
       if (hasNewImageFiles) {
         const { error: deleteError } = await supabase
@@ -232,8 +233,8 @@ export const saveProduct = async (productData: ProductFormData, images: File[] |
     // Upload new images or save existing image URLs
     const savedImages = [];
     
-    for (let i = 0; i < images.length; i++) {
-      const image = images[i];
+    for (let i = 0; i < imagesToUpload.length; i++) {
+      const image = imagesToUpload[i];
       
       if (image instanceof File) {
         // Upload new file
