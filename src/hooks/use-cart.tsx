@@ -1,147 +1,395 @@
 
-import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
-import { Cart, getCart, addToCart, updateCartItemQuantity, removeFromCart, clearCart } from '@/services/cartService';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/sonner';
 import { useAuth } from '@/context/AuthContext';
-import { toast } from 'sonner';
+
+// Types for cart data
+export type CartItem = {
+  id: string;
+  produto_id: string;
+  quantidade: number;
+  preco: number;
+  subtotal: number;
+  produto?: {
+    id: string;
+    nome: string;
+    preco: number;
+    imagem_url: string;
+    estoque: number;
+    loja_id: string;
+    pontos: number;
+  };
+};
+
+export type Cart = {
+  id: string;
+  user_id: string;
+  items: CartItem[];
+  summary: {
+    subtotal: number;
+    shipping: number;
+    totalItems: number;
+    totalPoints: number;
+  };
+  stores?: {
+    id: string;
+    nome: string;
+    logo_url: string;
+  }[];
+};
 
 interface CartContextType {
   cart: Cart | null;
   cartCount: number;
-  loading: boolean;
-  error: string | null;
-  refreshCart: () => Promise<void>;
-  addToCart: (productId: string, quantity?: number) => Promise<void>;
-  updateQuantity: (itemId: string, quantity: number) => Promise<void>;
-  removeItem: (itemId: string) => Promise<void>;
+  isLoading: boolean;
+  addToCart: (productId: string, quantity: number) => Promise<void>;
+  updateQuantity: (cartItemId: string, newQuantity: number) => Promise<void>;
+  removeItem: (cartItemId: string) => Promise<void>;
   clearCart: () => Promise<void>;
-  showCartPopup: boolean;
-  setShowCartPopup: (show: boolean) => void;
+  refreshCart: () => Promise<void>;
 }
 
-const CartContext = createContext<CartContextType | null>(null);
+const CartContext = createContext<CartContextType | undefined>(undefined);
 
-export const CartProvider = ({ children }: { children: ReactNode }) => {
+export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<Cart | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const [showCartPopup, setShowCartPopup] = useState<boolean>(false);
-  const { isAuthenticated } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
+  const { isAuthenticated, user } = useAuth();
 
-  const refreshCart = async () => {
-    if (!isAuthenticated) {
+  // Load cart when user is authenticated
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      refreshCart();
+    } else {
       setCart(null);
-      setLoading(false);
+      setIsLoading(false);
+    }
+  }, [isAuthenticated, user]);
+
+  // Get current cart
+  const refreshCart = async () => {
+    if (!user) {
+      setCart(null);
+      setIsLoading(false);
       return;
     }
 
     try {
-      setLoading(true);
-      setError(null);
-      const cartData = await getCart();
-      setCart(cartData);
-    } catch (err) {
-      console.error('Failed to fetch cart:', err);
-      setError('Falha ao carregar o carrinho');
-    } finally {
-      setLoading(false);
-    }
-  };
+      setIsLoading(true);
+      const { data: cartData, error: cartError } = await supabase
+        .from('carts')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .single();
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      refreshCart();
-    } else {
-      setCart(null);
-      setLoading(false);
-    }
-  }, [isAuthenticated]);
+      if (cartError) {
+        if (cartError.code !== 'PGRST116') { // Not found error
+          console.error('Error fetching cart:', cartError);
+          toast.error('Erro ao carregar o carrinho');
+        }
+        setCart(null);
+        setIsLoading(false);
+        return null;
+      }
 
-  const addItemToCart = async (productId: string, quantity: number = 1) => {
-    try {
-      setLoading(true);
-      const updatedCart = await addToCart(productId, quantity);
-      setCart(updatedCart);
-      toast.success('Produto adicionado ao carrinho');
+      if (!cartData) {
+        setCart(null);
+        setIsLoading(false);
+        return null;
+      }
+
+      // Fetch cart items
+      const { data: cartItems, error: itemsError } = await supabase
+        .from('cart_items')
+        .select(`
+          id,
+          product_id as produto_id,
+          quantity as quantidade,
+          price_at_add as preco,
+          products:product_id (
+            id,
+            nome,
+            preco,
+            imagem_url,
+            estoque,
+            loja_id,
+            pontos
+          )
+        `)
+        .eq('cart_id', cartData.id);
+
+      if (itemsError) {
+        console.error('Error fetching cart items:', itemsError);
+        setCart(null);
+        setIsLoading(false);
+        return null;
+      }
+
+      // Calculate summary
+      const items = cartItems.map((item: any) => ({
+        ...item,
+        produto: item.products,
+        subtotal: item.quantidade * item.preco
+      }));
+
+      const subtotal = items.reduce((sum: number, item: any) => sum + (item.quantidade * item.preco), 0);
+      const totalItems = items.reduce((sum: number, item: any) => sum + item.quantidade, 0);
+      const totalPoints = items.reduce((sum: number, item: any) => sum + ((item.produto?.pontos || 0) * item.quantidade), 0);
+      const shipping = 15.90; // Fixed shipping for now
+
+      // Get unique store information
+      const storeIds = [...new Set(items.map((item: any) => item.produto?.loja_id).filter(Boolean))];
       
-      // Show cart popup for 4 seconds
-      setShowCartPopup(true);
-    } catch (err: any) {
-      console.error('Failed to add to cart:', err);
-      toast.error(err.message || 'Erro ao adicionar ao carrinho');
-      throw err;
+      let stores = [];
+      if (storeIds.length > 0) {
+        const { data: storesData } = await supabase
+          .from('stores')
+          .select('id, nome, logo_url')
+          .in('id', storeIds);
+          
+        stores = storesData || [];
+      }
+
+      const fullCart: Cart = {
+        ...cartData,
+        items,
+        stores,
+        summary: {
+          subtotal,
+          shipping,
+          totalItems,
+          totalPoints
+        }
+      };
+
+      setCart(fullCart);
+      return fullCart;
+    } catch (error) {
+      console.error('Error in refreshCart:', error);
+      toast.error('Erro ao atualizar o carrinho');
+      return null;
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const updateQuantity = async (itemId: string, quantity: number) => {
+  // Add product to cart
+  const addToCart = async (productId: string, quantity: number) => {
+    if (!user) {
+      toast.error('Faça login para adicionar produtos ao carrinho');
+      return;
+    }
+
     try {
-      setLoading(true);
-      const updatedCart = await updateCartItemQuantity(itemId, quantity);
-      setCart(updatedCart);
-    } catch (err: any) {
-      console.error('Failed to update quantity:', err);
-      toast.error(err.message || 'Erro ao atualizar quantidade');
-      throw err;
+      setIsLoading(true);
+
+      // Get the product price
+      const { data: product, error: productError } = await supabase
+        .from('products')
+        .select('preco, estoque')
+        .eq('id', productId)
+        .single();
+
+      if (productError || !product) {
+        toast.error('Produto não encontrado');
+        return;
+      }
+
+      if (product.estoque < quantity) {
+        toast.error('Quantidade solicitada não disponível em estoque');
+        return;
+      }
+
+      // Get or create a cart
+      let cartId;
+      const { data: existingCart, error: cartError } = await supabase
+        .from('carts')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .single();
+
+      if (cartError && cartError.code !== 'PGRST116') { // Not "not found" error
+        toast.error('Erro ao verificar o carrinho');
+        return;
+      }
+
+      if (!existingCart) {
+        // Create new cart
+        const { data: newCart, error: createError } = await supabase
+          .from('carts')
+          .insert([{ user_id: user.id, status: 'active' }])
+          .select('id')
+          .single();
+
+        if (createError || !newCart) {
+          toast.error('Erro ao criar o carrinho');
+          return;
+        }
+        
+        cartId = newCart.id;
+      } else {
+        cartId = existingCart.id;
+
+        // Check if product already exists in cart
+        const { data: existingItem, error: existingItemError } = await supabase
+          .from('cart_items')
+          .select('id, quantity')
+          .eq('cart_id', cartId)
+          .eq('product_id', productId)
+          .single();
+
+        if (!existingItemError && existingItem) {
+          // Update existing item
+          const newQuantity = existingItem.quantity + quantity;
+          
+          if (product.estoque < newQuantity) {
+            toast.error('Quantidade solicitada excede o estoque disponível');
+            return;
+          }
+          
+          const { error: updateError } = await supabase
+            .from('cart_items')
+            .update({ quantity: newQuantity })
+            .eq('id', existingItem.id);
+
+          if (updateError) {
+            toast.error('Erro ao atualizar o carrinho');
+            return;
+          }
+          
+          await refreshCart();
+          return;
+        }
+      }
+
+      // Add new item to cart
+      const { error: addError } = await supabase
+        .from('cart_items')
+        .insert([{
+          cart_id: cartId,
+          product_id: productId,
+          quantity: quantity,
+          price_at_add: product.preco
+        }]);
+
+      if (addError) {
+        toast.error('Erro ao adicionar ao carrinho');
+        return;
+      }
+
+      await refreshCart();
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      toast.error('Erro ao adicionar ao carrinho');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const removeItem = async (itemId: string) => {
+  // Update item quantity
+  const updateQuantity = async (cartItemId: string, newQuantity: number) => {
+    if (!cart) return;
+
     try {
-      setLoading(true);
-      const updatedCart = await removeFromCart(itemId);
-      setCart(updatedCart);
-      toast.success('Item removido do carrinho');
-    } catch (err) {
-      console.error('Failed to remove item:', err);
+      setIsLoading(true);
+      
+      const { error } = await supabase
+        .from('cart_items')
+        .update({ quantity: newQuantity })
+        .eq('id', cartItemId);
+
+      if (error) {
+        toast.error('Erro ao atualizar quantidade');
+        return;
+      }
+
+      await refreshCart();
+    } catch (error) {
+      console.error('Error updating quantity:', error);
+      toast.error('Erro ao atualizar quantidade');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Remove item from cart
+  const removeItem = async (cartItemId: string) => {
+    if (!cart) return;
+
+    try {
+      setIsLoading(true);
+      
+      const { error } = await supabase
+        .from('cart_items')
+        .delete()
+        .eq('id', cartItemId);
+
+      if (error) {
+        toast.error('Erro ao remover item do carrinho');
+        return;
+      }
+
+      await refreshCart();
+    } catch (error) {
+      console.error('Error removing item:', error);
       toast.error('Erro ao remover item');
-      throw err;
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const clearCartItems = async () => {
+  // Clear entire cart
+  const clearCart = async () => {
+    if (!cart) return;
+
     try {
-      setLoading(true);
-      await clearCart();
-      setCart(null);
-      toast.success('Carrinho esvaziado');
-    } catch (err) {
-      console.error('Failed to clear cart:', err);
-      toast.error('Erro ao limpar carrinho');
-      throw err;
+      setIsLoading(true);
+      
+      const { error } = await supabase
+        .from('cart_items')
+        .delete()
+        .eq('cart_id', cart.id);
+
+      if (error) {
+        toast.error('Erro ao limpar o carrinho');
+        return;
+      }
+
+      await refreshCart();
+    } catch (error) {
+      console.error('Error clearing cart:', error);
+      toast.error('Erro ao limpar o carrinho');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   // Calculate total items in cart
-  const cartCount = cart?.items?.length || 0;
+  const cartCount = cart?.summary.totalItems || 0;
 
   const value = {
     cart,
     cartCount,
-    loading,
-    error,
-    refreshCart,
-    addToCart: addItemToCart,
+    isLoading,
+    addToCart,
     updateQuantity,
     removeItem,
-    clearCart: clearCartItems,
-    showCartPopup,
-    setShowCartPopup,
+    clearCart,
+    refreshCart
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
-};
+}
 
-export const useCart = () => {
+export function useCart() {
   const context = useContext(CartContext);
-  if (context === null) {
+  
+  if (context === undefined) {
     throw new Error('useCart must be used within a CartProvider');
   }
+  
   return context;
-};
+}

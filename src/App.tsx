@@ -11,7 +11,8 @@ import {
   CartScreen, CheckoutScreen, OrdersScreen, OrderDetailScreen,
   FavoritesScreen, ChatScreen, SettingsScreen,
   NotFoundScreen, VendorDashboardScreen, VendorProductsScreen,
-  VendorCustomersScreen, AuthProvider, ProtectedRoute
+  VendorCustomersScreen, AuthProvider, ProtectedRoute,
+  MarketplaceScreenWrapper
 } from './imports';
 import { useAuth } from './context/AuthContext';
 import BottomTabNavigator from './components/layout/BottomTabNavigator';
@@ -74,10 +75,16 @@ function App() {
         <Route path="/order/:orderId" element={<ProtectedRoute><OrderDetailScreen /></ProtectedRoute>} />
         <Route path="/favorites" element={<ProtectedRoute><FavoritesScreen /></ProtectedRoute>} />
         <Route path="/chat/:chatId" element={<ProtectedRoute><ChatScreen /></ProtectedRoute>} />
+        <Route path="/chat" element={<ProtectedRoute><ChatScreen /></ProtectedRoute>} />
         <Route path="/vendor-dashboard" element={<ProtectedRoute><VendorDashboardScreen /></ProtectedRoute>} />
         <Route path="/vendor/products" element={<ProtectedRoute><VendorProductsScreen /></ProtectedRoute>} />
         <Route path="/vendor/customers" element={<ProtectedRoute><VendorCustomersScreen /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><SettingsScreen /></ProtectedRoute>} />
+        
+        {/* Marketplace routes */}
+        <Route path="/marketplace" element={<ProtectedRoute><MarketplaceScreenWrapper /></ProtectedRoute>} />
+        <Route path="/marketplace/products" element={<ProtectedRoute><MarketplaceScreenWrapper /></ProtectedRoute>} />
+        <Route path="/produto/:id" element={<ProtectedRoute><ProductDetailScreen /></ProtectedRoute>} />
 
         {/* Admin routes - using ProtectedRoute with requireAdmin flag */}
         <Route path="/admin" element={<ProtectedRoute requireAdmin={true}><AdminDashboard /></ProtectedRoute>} />

@@ -28,6 +28,7 @@ import FavoritesScreen from './components/profile/FavoritesScreen';
 import ChatScreen from './components/chat/ChatScreen';
 import SettingsScreen from './components/profile/SettingsScreen';
 import NotFoundScreen from './pages/NotFound';
+import MarketplaceScreenWrapper from './components/marketplace/MarketplaceScreenWrapper';
 
 // Vendor Components
 import VendorDashboardScreen from './components/vendor/VendorHomeScreen';
@@ -68,6 +69,7 @@ export {
   ChatScreen,
   SettingsScreen,
   NotFoundScreen,
+  MarketplaceScreenWrapper,
   
   // Vendor Components
   VendorDashboardScreen,

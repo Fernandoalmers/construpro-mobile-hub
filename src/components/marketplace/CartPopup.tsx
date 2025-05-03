@@ -1,78 +1,67 @@
 
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingBag, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { ShoppingCart, X } from 'lucide-react';
 import { useCart } from '@/hooks/use-cart';
-import { cn } from '@/lib/utils';
 
-interface CartPopupProps {
-  className?: string;
-}
-
-const CartPopup: React.FC<CartPopupProps> = ({ className }) => {
+const CartPopup: React.FC = () => {
+  const [show, setShow] = useState(false);
+  const { cart, cartCount = 0, isLoading } = useCart();
   const navigate = useNavigate();
-  const { cart, showCartPopup, setShowCartPopup } = useCart();
-
-  // Auto-hide the cart popup after 4 seconds
+  
+  // Show popup briefly when cart is updated
   useEffect(() => {
-    let timeout: NodeJS.Timeout;
-    
-    if (showCartPopup) {
-      timeout = setTimeout(() => {
-        setShowCartPopup(false);
-      }, 4000);
+    if (cartCount && cartCount > 0) {
+      setShow(true);
+      const timer = setTimeout(() => {
+        setShow(false);
+      }, 3000);
+      
+      return () => clearTimeout(timer);
     }
-    
-    return () => {
-      if (timeout) clearTimeout(timeout);
-    };
-  }, [showCartPopup, setShowCartPopup]);
-
-  if (!showCartPopup || !cart) return null;
-
-  const totalItems = cart.items?.length || 0;
-  const subtotal = cart.summary?.subtotal || 0;
+  }, [cartCount]);
+  
+  // Don't show anything while loading or if cart is empty
+  if (isLoading || !cart || cartCount === 0) {
+    return null;
+  }
+  
+  if (!show) return null;
 
   return (
-    <div 
-      className={cn(
-        "fixed bottom-20 left-1/2 transform -translate-x-1/2 w-5/6 bg-white rounded-lg shadow-lg z-50 p-4 animate-fade-in border border-gray-200",
-        className
-      )}
-    >
-      <div className="flex justify-between items-center mb-3">
+    <div className="fixed bottom-20 right-4 bg-white rounded-lg shadow-lg z-50 w-72 overflow-hidden">
+      <div className="p-3 bg-construPro-blue text-white flex justify-between items-center">
         <div className="flex items-center">
-          <ShoppingBag size={18} className="text-green-600 mr-2" />
-          <span className="font-medium">Produto adicionado ao carrinho</span>
+          <ShoppingCart size={18} className="mr-2" />
+          <span className="font-medium">Item adicionado ao carrinho</span>
         </div>
-        <button 
-          onClick={() => setShowCartPopup(false)} 
-          className="text-gray-500 hover:bg-gray-100 rounded-full p-1"
-        >
+        <button onClick={() => setShow(false)} className="text-white">
           <X size={18} />
         </button>
       </div>
-
-      <div className="flex justify-between text-sm mb-2">
-        <span className="text-gray-600">Total:</span>
-        <span className="font-bold text-base">R$ {subtotal.toFixed(2)}</span>
-      </div>
       
-      <div className="flex justify-between text-sm mb-3">
-        <span className="text-gray-600">Itens:</span>
-        <span>{totalItems} {totalItems === 1 ? 'item' : 'itens'}</span>
+      <div className="p-4">
+        <div className="mb-3">
+          <span className="text-sm text-gray-600">Itens no carrinho:</span>
+          <span className="font-bold ml-2">{cartCount}</span>
+        </div>
+        
+        <div className="flex justify-between items-center">
+          <button 
+            onClick={() => navigate('/cart')}
+            className="bg-construPro-orange hover:bg-construPro-orange/90 text-white px-4 py-2 rounded text-sm"
+          >
+            Ver carrinho
+          </button>
+          
+          <button 
+            onClick={() => navigate('/checkout')}
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm"
+          >
+            Finalizar compra
+          </button>
+        </div>
       </div>
-      
-      <Button 
-        className="w-full bg-green-600 hover:bg-green-700 font-medium"
-        onClick={() => {
-          navigate('/cart');
-          setShowCartPopup(false);
-        }}
-      >
-        Ver Carrinho
-      </Button>
     </div>
   );
 };
