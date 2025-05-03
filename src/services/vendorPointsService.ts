@@ -52,7 +52,7 @@ export const getPointAdjustments = async (userId?: string): Promise<PointAdjustm
     // Safely process the data handling potential errors with cliente data
     const safeAdjustments = data.map(item => ({
       ...item,
-      cliente: item.cliente && typeof item.cliente === 'object' ? {
+      cliente: item.cliente ? {
         id: String(item.cliente?.id || ''),
         vendedor_id: vendorProfile.id,
         usuario_id: item.usuario_id,

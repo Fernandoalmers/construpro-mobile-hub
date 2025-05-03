@@ -78,8 +78,8 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
           return { 
             ...order, 
             itens: [],
-            // Safely handle potentially missing cliente data
-            cliente: order.cliente && typeof order.cliente === 'object' ? {
+            // Safely handle potentially missing cliente data with null checks
+            cliente: order.cliente ? {
               id: String(order.cliente?.id || ''),
               vendedor_id: vendorProfile.id,
               usuario_id: order.usuario_id,
@@ -94,8 +94,8 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
         return { 
           ...order, 
           itens: itemsData || [],
-          // Safely handle potentially missing cliente data
-          cliente: order.cliente && typeof order.cliente === 'object' ? {
+          // Safely handle potentially missing cliente data with null checks
+          cliente: order.cliente ? {
             id: String(order.cliente?.id || ''),
             vendedor_id: vendorProfile.id,
             usuario_id: order.usuario_id,
