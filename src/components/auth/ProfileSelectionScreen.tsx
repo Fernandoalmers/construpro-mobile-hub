@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Check, Store, User, Wrench } from 'lucide-react';
@@ -17,10 +17,18 @@ interface ProfileOption {
 
 const ProfileSelectionScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { updateUser } = useAuth();
+  const { updateUser, user, profile, isAuthenticated } = useAuth();
   const [selectedProfiles, setSelectedProfiles] = useState<UserRole[]>(['consumidor']);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
+  // Check if user is authenticated and redirect if not
+  useEffect(() => {
+    if (!isAuthenticated) {
+      // User is not authenticated, redirect to login
+      navigate('/login');
+    }
+  }, [isAuthenticated, navigate]);
+
   const profileOptions: ProfileOption[] = [
     {
       id: 'consumidor',
@@ -67,6 +75,8 @@ const ProfileSelectionScreen: React.FC = () => {
         papel: selectedProfiles[0],
         tipo_perfil: selectedProfiles[0]
       });
+      
+      toast.success("Perfil atualizado com sucesso!");
       
       if (selectedProfiles.includes('profissional') && selectedProfiles.includes('lojista')) {
         navigate('/auth/complete-profile', { 

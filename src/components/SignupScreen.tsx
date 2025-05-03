@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -52,8 +53,8 @@ const SignupScreen: React.FC = () => {
     setIsSubmitting(true);
     
     try {
-      // Register the user - fix the signup call to include all required arguments
-      await signup({
+      // Register the user
+      const { error, data } = await signup({
         email: signupData.email, 
         password: signupData.senha,
         userData: {
@@ -64,13 +65,19 @@ const SignupScreen: React.FC = () => {
         }
       });
       
+      if (error) {
+        toast.error(error.message || "Erro ao criar conta");
+        setIsSubmitting(false);
+        return;
+      }
+      
       toast.success("Cadastro realizado com sucesso!");
-      // Navigate to login screen
-      navigate('/login');
+      
+      // Redirecionar para seleção de perfil em vez da tela de login
+      navigate('/auth/profile-selection');
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Erro ao criar conta';
       toast.error(errorMsg);
-    } finally {
       setIsSubmitting(false);
     }
   };

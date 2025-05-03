@@ -25,7 +25,7 @@ interface SignupParams {
 }
 
 type AuthContextType = AuthState & {
-  isAuthenticated: boolean; // Add this property to the type
+  isAuthenticated: boolean; 
   login: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signup: (params: SignupParams) => Promise<{ error: AuthError | null, data: any }>;
   logout: () => Promise<void>;
@@ -147,7 +147,9 @@ export function AuthProvider({ children }: ProviderProps) {
     
     // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, session);
       if (session) {
+        // Need to fetch the profile after auth state changes
         const profile = await getProfile();
         setState({ session, user: session.user, profile, isLoading: false, error: null });
       } else {
@@ -163,12 +165,15 @@ export function AuthProvider({ children }: ProviderProps) {
   // Login function
   const login = async (email: string, password: string) => {
     try {
+      setState(prev => ({ ...prev, isLoading: true }));
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
       if (error) {
+        setState(prev => ({ ...prev, error: error.message, isLoading: false }));
         return { error };
       }
       
@@ -177,6 +182,7 @@ export function AuthProvider({ children }: ProviderProps) {
       return { error: null };
     } catch (error) {
       console.error('Login error:', error);
+      setState(prev => ({ ...prev, isLoading: false, error: error instanceof Error ? error.message : 'Unknown error' }));
       return { error: error instanceof AuthError ? error : new AuthError('Unknown error') };
     }
   };
@@ -184,6 +190,8 @@ export function AuthProvider({ children }: ProviderProps) {
   // Signup function - updated to use the new params structure
   const signup = async ({ email, password, userData }: SignupParams) => {
     try {
+      setState(prev => ({ ...prev, isLoading: true }));
+      
       const { data: signupData, error: signupError } = await supabase.functions.invoke('auth-signup', {
         body: {
           email,
@@ -193,12 +201,15 @@ export function AuthProvider({ children }: ProviderProps) {
       });
       
       if (signupError) {
+        setState(prev => ({ ...prev, isLoading: false, error: signupError.message }));
         return { error: signupError, data: null };
       }
       
+      setState(prev => ({ ...prev, isLoading: false, error: null }));
       return { error: null, data: signupData };
     } catch (error) {
       console.error('Signup error:', error);
+      setState(prev => ({ ...prev, isLoading: false, error: error instanceof Error ? error.message : 'Unknown error' }));
       return { error: error instanceof AuthError ? error : new AuthError('Unknown error'), data: null };
     }
   };
@@ -207,14 +218,14 @@ export function AuthProvider({ children }: ProviderProps) {
   const logout = async () => {
     await supabase.auth.signOut();
     setState({ session: null, user: null, profile: null, isLoading: false, error: null });
-    navigate('/');
+    navigate('/login');
   };
 
   return (
     <AuthContext.Provider
       value={{
         ...state,
-        isAuthenticated, // Add isAuthenticated property
+        isAuthenticated,
         login,
         signup,
         logout,

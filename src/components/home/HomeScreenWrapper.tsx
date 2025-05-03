@@ -11,23 +11,37 @@ import { toast } from "@/components/ui/sonner";
 import clientes from '../../data/clientes.json';
 
 const HomeScreenWrapper: React.FC = () => {
-  const { user } = useAuth();
+  const { user, profile, isLoading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [userData, setUserData] = useState<any>(null);
 
   useEffect(() => {
     const fetchUserData = async () => {
+      // Don't fetch if auth is still loading
+      if (authLoading) return;
+      
       setLoading(true);
       setError(null);
       
       try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 600));
+        console.log("Auth state in HomeScreenWrapper:", { user, profile });
         
-        // Find user data in the mock data or use the demo user
+        // If we have a profile from auth context, use it
+        if (profile) {
+          console.log("Using profile from auth context:", profile);
+          setUserData({
+            ...profile,
+            // Ensure we have saldoPontos for display
+            saldoPontos: profile.saldo_pontos || 0,
+          });
+          setLoading(false);
+          return;
+        }
+        
+        // Fallback to mock data if no profile
         if (user) {
-          console.log("User found in auth context:", user.id);
+          console.log("User found in auth context, looking for data in clientes:", user.id);
           const clienteData = clientes.find(cliente => cliente.id === user.id);
           
           if (clienteData) {
@@ -35,7 +49,11 @@ const HomeScreenWrapper: React.FC = () => {
             setUserData(clienteData);
           } else {
             console.log("User data not found in clientes, using auth user");
-            setUserData(user);
+            setUserData({
+              ...user,
+              saldoPontos: 0,
+              papel: 'consumidor'
+            });
           }
         } else {
           // Se não houver usuário autenticado, use o primeiro cliente do arquivo de dados
@@ -57,7 +75,7 @@ const HomeScreenWrapper: React.FC = () => {
     };
 
     fetchUserData();
-  }, [user]);
+  }, [user, profile, authLoading]);
 
   const handleRetry = () => {
     // Reset and fetch again
@@ -66,9 +84,19 @@ const HomeScreenWrapper: React.FC = () => {
     setError(null);
     
     setTimeout(() => {
-      if (user) {
+      if (profile) {
+        setUserData({
+          ...profile,
+          saldoPontos: profile.saldo_pontos || 0,
+        });
+        toast.success("Dados atualizados com sucesso");
+      } else if (user) {
         const clienteData = clientes.find(cliente => cliente.id === user.id);
-        setUserData(clienteData || user);
+        setUserData(clienteData || {
+          ...user,
+          saldoPontos: 0,
+          papel: 'consumidor'
+        });
         toast.success("Dados atualizados com sucesso");
       } else {
         // Usar o primeiro cliente como demonstração
@@ -84,29 +112,41 @@ const HomeScreenWrapper: React.FC = () => {
     }, 600);
   };
 
+  // Show loading state if auth or data is loading
+  if (authLoading || loading) {
+    return <LoadingState text="Carregando dados do usuário..." />;
+  }
+  
+  // Show error state if there was an error
+  if (error) {
+    return (
+      <ErrorState 
+        title="Erro ao carregar dados" 
+        message={error.message} 
+        onRetry={handleRetry} 
+      />
+    );
+  }
+
+  // Show empty state if no user data
+  if (!userData) {
+    return (
+      <ListEmptyState
+        title="Dados não encontrados"
+        description="Não foi possível carregar seus dados. Por favor, tente novamente."
+        icon={<Home size={48} />}
+        action={{
+          label: "Tentar novamente",
+          onClick: handleRetry,
+        }}
+      />
+    );
+  }
+  
+  // If we have user data, render the home screen
   return (
     <ErrorBoundary>
-      {loading ? (
-        <LoadingState text="Carregando dados do usuário..." />
-      ) : error ? (
-        <ErrorState 
-          title="Erro ao carregar dados" 
-          message={error.message} 
-          onRetry={handleRetry} 
-        />
-      ) : !userData ? (
-        <ListEmptyState
-          title="Dados não encontrados"
-          description="Não foi possível carregar seus dados. Por favor, tente novamente."
-          icon={<Home size={48} />}
-          action={{
-            label: "Tentar novamente",
-            onClick: handleRetry,
-          }}
-        />
-      ) : (
-        <HomeScreen />
-      )}
+      <HomeScreen />
     </ErrorBoundary>
   );
 };

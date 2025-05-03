@@ -58,6 +58,9 @@ import { Toaster } from '@/components/ui/sonner';
 import BottomTabNavigator from './components/layout/BottomTabNavigator';
 import QRCodeScreen from './components/QRCodeScreen';
 
+// Import Protected Route
+import ProtectedRoute from './components/auth/ProtectedRoute';
+
 // Admin Dashboard Components
 import AdminDashboard from './components/admin/AdminDashboard';
 import UsersManagement from './components/admin/UsersManagement';
@@ -80,36 +83,120 @@ function App() {
             <Route path="/signup" element={<SignupScreen />} />
             <Route path="/forgot-password" element={<ForgotPasswordScreen />} />
             
-            {/* Auth Routes */}
-            <Route path="/auth/profile-selection" element={<ProfileSelectionScreen />} />
-            <Route path="/auth/professional-profile" element={<ProfessionalRegistrationScreen />} />
-            <Route path="/auth/vendor-profile" element={<VendorProfileScreen />} />
+            {/* Auth Routes - Protected to ensure proper profile selection flow */}
+            <Route path="/auth/profile-selection" element={
+              <ProtectedRoute requireAuth={true}>
+                <ProfileSelectionScreen />
+              </ProtectedRoute>
+            } />
+            <Route path="/auth/professional-profile" element={
+              <ProtectedRoute requireAuth={true}>
+                <ProfessionalRegistrationScreen />
+              </ProtectedRoute>
+            } />
+            <Route path="/auth/vendor-profile" element={
+              <ProtectedRoute requireAuth={true}>
+                <VendorProfileScreen />
+              </ProtectedRoute>
+            } />
             
-            {/* Home */}
-            <Route path="/home/*" element={<HomeScreenWrapper />} />
-            <Route path="/qrcode" element={<QRCodeScreen />} />
+            {/* Home - Protected */}
+            <Route path="/home/*" element={
+              <ProtectedRoute requireAuth={true}>
+                <HomeScreenWrapper />
+              </ProtectedRoute>
+            } />
+            <Route path="/qrcode" element={
+              <ProtectedRoute requireAuth={true}>
+                <QRCodeScreen />
+              </ProtectedRoute>
+            } />
             
-            {/* Profile */}
-            <Route path="/profile" element={<ProfileScreen />} />
-            <Route path="/profile/user-data" element={<UserDataScreen />} />
-            <Route path="/profile/addresses" element={<AddressScreen />} />
-            <Route path="/profile/orders" element={<OrdersScreen />} />
-            <Route path="/profile/order/:id" element={<OrderDetailScreen />} />
-            <Route path="/profile/physical-purchases" element={<PhysicalPurchasesScreen />} />
-            <Route path="/profile/points" element={<PointsHistoryScreen />} />
-            <Route path="/profile/favorites" element={<FavoritesScreen />} />
-            <Route path="/profile/referrals" element={<ReferralsScreen />} />
-            <Route path="/profile/reviews" element={<ReviewsScreen />} />
-            <Route path="/profile/settings" element={<SettingsScreen />} />
+            {/* Profile - Protected */}
+            <Route path="/profile" element={
+              <ProtectedRoute requireAuth={true}>
+                <ProfileScreen />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile/user-data" element={
+              <ProtectedRoute requireAuth={true}>
+                <UserDataScreen />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile/addresses" element={
+              <ProtectedRoute requireAuth={true}>
+                <AddressScreen />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile/orders" element={
+              <ProtectedRoute requireAuth={true}>
+                <OrdersScreen />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile/order/:id" element={
+              <ProtectedRoute requireAuth={true}>
+                <OrderDetailScreen />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile/physical-purchases" element={
+              <ProtectedRoute requireAuth={true}>
+                <PhysicalPurchasesScreen />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile/points" element={
+              <ProtectedRoute requireAuth={true}>
+                <PointsHistoryScreen />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile/favorites" element={
+              <ProtectedRoute requireAuth={true}>
+                <FavoritesScreen />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile/referrals" element={
+              <ProtectedRoute requireAuth={true}>
+                <ReferralsScreen />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile/reviews" element={
+              <ProtectedRoute requireAuth={true}>
+                <ReviewsScreen />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile/settings" element={
+              <ProtectedRoute requireAuth={true}>
+                <SettingsScreen />
+              </ProtectedRoute>
+            } />
             
-            {/* Marketplace */}
-            <Route path="/marketplace/*" element={<MarketplaceScreenWrapper />} />
-            <Route path="/produto/:id" element={<ProdutoDetailScreen />} />
-            <Route path="/cart" element={<CartScreen />} />
-            <Route path="/checkout" element={<CheckoutScreen />} />
+            {/* Marketplace - Protected */}
+            <Route path="/marketplace/*" element={
+              <ProtectedRoute requireAuth={true}>
+                <MarketplaceScreenWrapper />
+              </ProtectedRoute>
+            } />
+            <Route path="/produto/:id" element={
+              <ProtectedRoute requireAuth={true}>
+                <ProdutoDetailScreen />
+              </ProtectedRoute>
+            } />
+            <Route path="/cart" element={
+              <ProtectedRoute requireAuth={true}>
+                <CartScreen />
+              </ProtectedRoute>
+            } />
+            <Route path="/checkout" element={
+              <ProtectedRoute requireAuth={true}>
+                <CheckoutScreen />
+              </ProtectedRoute>
+            } />
             
-            {/* Services */}
-            <Route path="/services/*" element={<ServicesTabNavigator />}>
+            {/* Services - Protected */}
+            <Route path="/services/*" element={
+              <ProtectedRoute requireAuth={true}>
+                <ServicesTabNavigator />
+              </ProtectedRoute>
+            }>
               <Route path="" element={<ServicesAvailableScreen isProfessional={defaultProfessionalValue} />} />
               <Route path="available" element={<ServicesAvailableScreen isProfessional={defaultProfessionalValue} />} />
               <Route path="my-services" element={<MyServicesScreen isProfessional={defaultProfessionalValue} />} />
@@ -117,38 +204,134 @@ function App() {
               <Route path="calendar" element={<ServiceCalendarScreen />} />
               <Route path="completed" element={<CompletedServicesScreen isProfessional={defaultProfessionalValue} />} />
             </Route>
-            <Route path="/services/request/:id" element={<ServiceRequestDetailScreen />} />
-            <Route path="/services/create" element={<CreateServiceRequestScreen />} />
-            <Route path="/services/professional-profile" element={<ProfessionalProfileScreen />} />
-            <Route path="/services/project/:id" element={<ProjectDetailScreen />} />
-            <Route path="/services/contracted" element={<ContractedProjectsScreen isProfessional={defaultProfessionalValue} />} />
+            <Route path="/services/request/:id" element={
+              <ProtectedRoute requireAuth={true}>
+                <ServiceRequestDetailScreen />
+              </ProtectedRoute>
+            } />
+            <Route path="/services/create" element={
+              <ProtectedRoute requireAuth={true}>
+                <CreateServiceRequestScreen />
+              </ProtectedRoute>
+            } />
+            <Route path="/services/professional-profile" element={
+              <ProtectedRoute requireAuth={true}>
+                <ProfessionalProfileScreen />
+              </ProtectedRoute>
+            } />
+            <Route path="/services/project/:id" element={
+              <ProtectedRoute requireAuth={true}>
+                <ProjectDetailScreen />
+              </ProtectedRoute>
+            } />
+            <Route path="/services/contracted" element={
+              <ProtectedRoute requireAuth={true}>
+                <ContractedProjectsScreen isProfessional={defaultProfessionalValue} />
+              </ProtectedRoute>
+            } />
             
-            {/* Rewards */}
-            <Route path="/resgates" element={<ResgatesScreen />} />
-            <Route path="/resgate/:id" element={<ResgateDetailScreen />} />
-            <Route path="/historico-resgates" element={<HistoricoResgatesScreen />} />
+            {/* Rewards - Protected */}
+            <Route path="/resgates" element={
+              <ProtectedRoute requireAuth={true}>
+                <ResgatesScreen />
+              </ProtectedRoute>
+            } />
+            <Route path="/resgate/:id" element={
+              <ProtectedRoute requireAuth={true}>
+                <ResgateDetailScreen />
+              </ProtectedRoute>
+            } />
+            <Route path="/historico-resgates" element={
+              <ProtectedRoute requireAuth={true}>
+                <HistoricoResgatesScreen />
+              </ProtectedRoute>
+            } />
             
-            {/* Vendor Mode */}
-            <Route path="/vendor" element={<VendorModeScreen />} />
-            <Route path="/vendor/home" element={<VendorHomeScreen />} />
-            <Route path="/vendor/adjust-points" element={<AjustePontosVendorScreen />} />
-            <Route path="/vendor/products" element={<ProductManagementScreen />} />
-            <Route path="/vendor/product-form" element={<ProductFormScreen />} />
-            <Route path="/vendor/product-edit/:id" element={<ProductFormScreen />} />
-            <Route path="/vendor/product-clone" element={<ProductFormScreen />} />
-            <Route path="/vendor/customers" element={<ClientesVendorScreen />} />
-            <Route path="/vendor/store-config" element={<ConfiguracoesVendorScreen />} />
-            <Route path="/vendor/orders" element={<ProdutosVendorScreen />} />
+            {/* Vendor Mode - Protected */}
+            <Route path="/vendor" element={
+              <ProtectedRoute requireAuth={true}>
+                <VendorModeScreen />
+              </ProtectedRoute>
+            } />
+            <Route path="/vendor/home" element={
+              <ProtectedRoute requireAuth={true}>
+                <VendorHomeScreen />
+              </ProtectedRoute>
+            } />
+            <Route path="/vendor/adjust-points" element={
+              <ProtectedRoute requireAuth={true}>
+                <AjustePontosVendorScreen />
+              </ProtectedRoute>
+            } />
+            <Route path="/vendor/products" element={
+              <ProtectedRoute requireAuth={true}>
+                <ProductManagementScreen />
+              </ProtectedRoute>
+            } />
+            <Route path="/vendor/product-form" element={
+              <ProtectedRoute requireAuth={true}>
+                <ProductFormScreen />
+              </ProtectedRoute>
+            } />
+            <Route path="/vendor/product-edit/:id" element={
+              <ProtectedRoute requireAuth={true}>
+                <ProductFormScreen />
+              </ProtectedRoute>
+            } />
+            <Route path="/vendor/product-clone" element={
+              <ProtectedRoute requireAuth={true}>
+                <ProductFormScreen />
+              </ProtectedRoute>
+            } />
+            <Route path="/vendor/customers" element={
+              <ProtectedRoute requireAuth={true}>
+                <ClientesVendorScreen />
+              </ProtectedRoute>
+            } />
+            <Route path="/vendor/store-config" element={
+              <ProtectedRoute requireAuth={true}>
+                <ConfiguracoesVendorScreen />
+              </ProtectedRoute>
+            } />
+            <Route path="/vendor/orders" element={
+              <ProtectedRoute requireAuth={true}>
+                <ProdutosVendorScreen />
+              </ProtectedRoute>
+            } />
             
-            {/* Chat */}
-            <Route path="/chat" element={<ChatScreen />} />
-            <Route path="/chat/:id" element={<ChatDetailScreen />} />
+            {/* Chat - Protected */}
+            <Route path="/chat" element={
+              <ProtectedRoute requireAuth={true}>
+                <ChatScreen />
+              </ProtectedRoute>
+            } />
+            <Route path="/chat/:id" element={
+              <ProtectedRoute requireAuth={true}>
+                <ChatDetailScreen />
+              </ProtectedRoute>
+            } />
             
-            {/* Admin Dashboard Routes - New */}
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/admin/users" element={<UsersManagement />} />
-            <Route path="/admin/products" element={<ProductsManagement />} />
-            <Route path="/admin/logs" element={<AdminLogs />} />
+            {/* Admin Dashboard Routes - Protected with admin requirement */}
+            <Route path="/admin" element={
+              <ProtectedRoute requireAuth={true} requireAdmin={true}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/users" element={
+              <ProtectedRoute requireAuth={true} requireAdmin={true}>
+                <UsersManagement />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/products" element={
+              <ProtectedRoute requireAuth={true} requireAdmin={true}>
+                <ProductsManagement />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/logs" element={
+              <ProtectedRoute requireAuth={true} requireAdmin={true}>
+                <AdminLogs />
+              </ProtectedRoute>
+            } />
             
             {/* Default redirect */}
             <Route path="*" element={<Navigate to="/home" replace />} />

@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArrowRight, Eye, EyeOff, AlertCircle } from 'lucide-react';
@@ -9,13 +9,23 @@ import { toast } from "@/components/ui/sonner";
 
 const LoginScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { login, isLoading } = useAuth();
+  const location = useLocation();
+  const { login, isAuthenticated, isLoading } = useAuth();
   const [loginData, setLoginData] = useState({
     email: '',
     password: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loggingIn, setLoggingIn] = useState(false);
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated && !isLoading) {
+      const from = location.state?.from?.pathname || '/home';
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, isLoading, navigate, location.state]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -27,14 +37,25 @@ const LoginScreen: React.FC = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setLoggingIn(true);
     
     try {
       // Call the auth context login function
-      await login(loginData.email, loginData.password);
-      navigate('/home');
+      const { error } = await login(loginData.email, loginData.password);
+      
+      if (error) {
+        setError(error.message);
+        setLoggingIn(false);
+        return;
+      }
+
+      // Login successful, navigate to home
+      // Note: We don't need to navigate here as the useEffect above will handle it
+      toast.success("Login realizado com sucesso!");
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Erro ao fazer login';
       setError(errorMsg);
+      setLoggingIn(false);
     }
   };
 
