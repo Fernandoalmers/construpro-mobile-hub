@@ -1,18 +1,19 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Heart, ShoppingBag, Star, Truck, Shield, Clock, Plus, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { cartService } from '@/services/cartService';
+import { useCart } from '@/hooks/use-cart';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import produtos from '../../data/produtos.json';
 import lojas from '../../data/lojas.json';
+import { cartService } from '@/services/cartService';
 
 const ProdutoDetailScreen: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
+  const { addToCart, cartCount } = useCart();
   
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -58,7 +59,7 @@ const ProdutoDetailScreen: React.FC = () => {
 
     try {
       setAddingToCart(true);
-      await cartService.addToCart(produto.id, quantity);
+      await addToCart(produto.id, quantity);
       toast.success("Produto adicionado ao carrinho!");
     } catch (error) {
       console.error("Erro ao adicionar ao carrinho:", error);
@@ -81,6 +82,7 @@ const ProdutoDetailScreen: React.FC = () => {
 
     try {
       setAddingToFavorites(true);
+      // Existing code for adding to favorites
       await cartService.addToFavorites(produto.id);
       toast.success("Adicionado aos favoritos!");
     } catch (error) {
@@ -88,6 +90,16 @@ const ProdutoDetailScreen: React.FC = () => {
       toast.error("Não foi possível adicionar aos favoritos");
     } finally {
       setAddingToFavorites(false);
+    }
+  };
+
+  // Search functionality
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchTerm.trim()) {
+      navigate(`/marketplace?search=${encodeURIComponent(searchTerm.trim())}`);
     }
   };
 
@@ -112,12 +124,35 @@ const ProdutoDetailScreen: React.FC = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
-      {/* Header */}
-      <div className="bg-white p-4 flex items-center">
-        <button onClick={() => navigate(-1)} className="mr-4">
-          <ArrowLeft size={24} />
-        </button>
-        <h1 className="text-xl font-medium">Detalhes do Produto</h1>
+      {/* Header with search and cart */}
+      <div className="bg-white p-3 shadow-sm sticky top-0 z-10">
+        <div className="flex items-center gap-2">
+          <button onClick={() => navigate(-1)} className="flex-shrink-0">
+            <ArrowLeft size={22} />
+          </button>
+          
+          <form onSubmit={handleSearch} className="flex-1 mx-2">
+            <input
+              type="text"
+              placeholder="Buscar produtos..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-sm focus:outline-none"
+            />
+          </form>
+          
+          <button 
+            onClick={() => navigate('/cart')} 
+            className="relative flex-shrink-0"
+          >
+            <ShoppingBag size={22} />
+            {cartCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs">
+                {cartCount}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Product Image */}
