@@ -322,4 +322,18 @@ export const subscribeToAdminStoreUpdates = (
   };
 };
 
+/**
+ * Fetch pending stores for admin approval
+ */
+export const fetchPendingStores = async (): Promise<AdminStore[]> => {
+  try {
+    const stores = await fetchAdminStores();
+    return stores.filter(store => store.status === 'pendente');
+  } catch (error) {
+    console.error('Error fetching pending stores:', error);
+    toast.error('Erro ao carregar lojas pendentes');
+    throw error;
+  }
+};
+
 export { type AdminStore };
