@@ -80,12 +80,12 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
             itens: [],
             // Safely handle potentially missing cliente data
             cliente: order.cliente && typeof order.cliente === 'object' ? {
-              id: ((order.cliente as any)?.id as string) || '',
+              id: String(order.cliente?.id || ''),
               vendedor_id: vendorProfile.id,
               usuario_id: order.usuario_id,
-              nome: ((order.cliente as any)?.nome as string) || 'Cliente',
-              telefone: ((order.cliente as any)?.telefone as string) || '',
-              email: ((order.cliente as any)?.email as string) || '',
+              nome: String(order.cliente?.nome || 'Cliente'),
+              telefone: String(order.cliente?.telefone || ''),
+              email: String(order.cliente?.email || ''),
               total_gasto: 0
             } : undefined
           };
@@ -96,12 +96,12 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
           itens: itemsData || [],
           // Safely handle potentially missing cliente data
           cliente: order.cliente && typeof order.cliente === 'object' ? {
-            id: ((order.cliente as any)?.id as string) || '',
+            id: String(order.cliente?.id || ''),
             vendedor_id: vendorProfile.id,
             usuario_id: order.usuario_id,
-            nome: ((order.cliente as any)?.nome as string) || 'Cliente',
-            telefone: ((order.cliente as any)?.telefone as string) || '',
-            email: ((order.cliente as any)?.email as string) || '',
+            nome: String(order.cliente?.nome || 'Cliente'),
+            telefone: String(order.cliente?.telefone || ''),
+            email: String(order.cliente?.email || ''),
             total_gasto: 0
           } : undefined
         };

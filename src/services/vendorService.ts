@@ -7,7 +7,8 @@ import {
   saveVendorProduct,
   deleteVendorProduct,
   updateProductStatus,
-  uploadProductImage 
+  uploadProductImage,
+  updateProductImages
 } from './vendorProductsService';
 import { 
   getVendorOrders,
@@ -45,6 +46,7 @@ export {
   deleteVendorProduct,
   updateProductStatus,
   uploadProductImage,
+  updateProductImages,
   
   // Orders
   getVendorOrders,

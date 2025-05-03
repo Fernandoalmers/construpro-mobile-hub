@@ -186,6 +186,7 @@ export const uploadProductImage = async (
     
     if (uploadError) {
       console.error('Error uploading product image:', uploadError);
+      toast.error('Erro ao fazer upload da imagem');
       return null;
     }
     
@@ -196,6 +197,24 @@ export const uploadProductImage = async (
     return data.publicUrl;
   } catch (error) {
     console.error('Error in uploadProductImage:', error);
+    toast.error('Erro ao processar imagem');
     return null;
+  }
+};
+
+// New function to update product images
+export const updateProductImages = async (productId: string, imageUrls: string[]): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('produtos')
+      .update({ imagens: imageUrls })
+      .eq('id', productId);
+    
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('Error updating product images:', error);
+    toast.error('Erro ao atualizar imagens do produto');
+    return false;
   }
 };

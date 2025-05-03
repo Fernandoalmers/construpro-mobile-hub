@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Image as ImageIcon, Save, Trash } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -10,7 +11,13 @@ import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/components/ui/sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getVendorProduct, saveVendorProduct, uploadProductImage, VendorProduct } from '@/services/vendorService';
+import { 
+  getVendorProduct, 
+  saveVendorProduct,
+  uploadProductImage,
+  updateProductImages,
+  VendorProduct 
+} from '@/services/vendorService';
 import LoadingState from '../common/LoadingState';
 
 interface ProductFormScreenProps {
@@ -47,6 +54,7 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({ isEditing, produc
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [previewImages, setPreviewImages] = useState<string[]>([]);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   
   // Categories (could be fetched from an API in the future)
   const categories = [
@@ -81,8 +89,8 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({ isEditing, produc
       toast.success(isEditing ? 'Produto atualizado com sucesso!' : 'Produto criado com sucesso!');
       navigate('/vendor/products');
     },
-    onError: (error) => {
-      toast.error('Erro ao salvar produto');
+    onError: (error: any) => {
+      toast.error(`Erro ao salvar produto: ${error.message || 'Verifique os campos e tente novamente'}`);
       console.error('Error saving product:', error);
     }
   });
@@ -113,12 +121,30 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({ isEditing, produc
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Clear error when field is being edited
+    if (formErrors[name]) {
+      setFormErrors(prev => ({ ...prev, [name]: '' }));
+    }
   };
   
   const handleNumberInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    const numValue = parseFloat(value) || 0;
-    setFormData(prev => ({ ...prev, [name]: numValue }));
+    
+    // Allow empty values in input (will be handled during validation before submit)
+    if (value === '') {
+      setFormData(prev => ({ ...prev, [name]: undefined }));
+    } else {
+      const numValue = parseFloat(value);
+      if (!isNaN(numValue)) {
+        setFormData(prev => ({ ...prev, [name]: numValue }));
+      }
+    }
+    
+    // Clear error when field is being edited
+    if (formErrors[name]) {
+      setFormErrors(prev => ({ ...prev, [name]: '' }));
+    }
   };
   
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -129,43 +155,82 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({ isEditing, produc
       // Create preview URLs
       const newPreviewUrls = filesArray.map(file => URL.createObjectURL(file));
       setPreviewImages(prev => [...prev, ...newPreviewUrls]);
+      
+      // Clear any image-related errors
+      if (formErrors.imagens) {
+        setFormErrors(prev => ({ ...prev, imagens: '' }));
+      }
     }
   };
   
   const handleRemoveImage = (index: number) => {
     setPreviewImages(prev => prev.filter((_, i) => i !== index));
-    setSelectedImages(prev => prev.filter((_, i) => i !== index));
     
-    // If this was an existing image in formData.imagens, remove it
+    // Also remove from selectedImages if it's a new image
+    if (index < selectedImages.length) {
+      setSelectedImages(prev => prev.filter((_, i) => i !== index));
+    }
+    
+    // Update formData.imagens if it exists
     if (formData.imagens && Array.isArray(formData.imagens)) {
+      const updatedImages = [...formData.imagens];
+      updatedImages.splice(index, 1);
       setFormData(prev => ({
         ...prev,
-        imagens: prev.imagens?.filter((_, i) => i !== index)
+        imagens: updatedImages
       }));
     }
+  };
+  
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+    
+    // Basic required fields
+    if (!formData.nome?.trim()) {
+      errors.nome = 'Nome do produto é obrigatório';
+    }
+    
+    if (!formData.descricao?.trim()) {
+      errors.descricao = 'Descrição do produto é obrigatória';
+    }
+    
+    if (!formData.categoria) {
+      errors.categoria = 'Categoria do produto é obrigatória';
+    }
+    
+    // Numeric fields validation
+    if (formData.preco_normal === undefined || formData.preco_normal <= 0) {
+      errors.preco_normal = 'Preço deve ser maior que zero';
+    }
+    
+    if (formData.preco_promocional !== undefined && formData.preco_promocional <= 0) {
+      errors.preco_promocional = 'Preço promocional deve ser maior que zero';
+    }
+    
+    // If promotional price is higher than regular price
+    if (formData.preco_promocional !== undefined && 
+        formData.preco_normal !== undefined && 
+        formData.preco_promocional >= formData.preco_normal) {
+      errors.preco_promocional = 'Preço promocional deve ser menor que o preço regular';
+    }
+    
+    // Image validation - only when there are no images
+    if ((!formData.imagens || formData.imagens.length === 0) && previewImages.length === 0) {
+      errors.imagens = 'Pelo menos uma imagem é obrigatória';
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
   };
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Basic validation
-    if (!formData.nome) {
-      toast.error('Nome do produto é obrigatório');
-      return;
-    }
-    
-    if (!formData.descricao) {
-      toast.error('Descrição do produto é obrigatória');
-      return;
-    }
-    
-    if (!formData.categoria) {
-      toast.error('Categoria do produto é obrigatória');
-      return;
-    }
-    
-    if (formData.preco_normal <= 0) {
-      toast.error('Preço deve ser maior que zero');
+    // Validate form before submission
+    if (!validateForm()) {
+      // Show toast with first error
+      const firstError = Object.values(formErrors)[0];
+      toast.error(firstError || 'Verifique os campos obrigatórios');
       return;
     }
     
@@ -185,16 +250,23 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({ isEditing, produc
         productToSave.id = id;
       }
       
+      // Force numeric fields to be numbers, not undefined
+      productToSave.preco_normal = productToSave.preco_normal || 0;
+      productToSave.estoque = productToSave.estoque || 0;
+      productToSave.pontos_consumidor = productToSave.pontos_consumidor || 0;
+      productToSave.pontos_profissional = productToSave.pontos_profissional || 0;
+      
       // Save the product
       const savedProduct = await saveProductMutation.mutateAsync(productToSave);
       
       if (!savedProduct) {
-        throw new Error('Failed to save product');
+        throw new Error('Erro ao salvar produto');
       }
       
       // If there are new images to upload
       if (selectedImages.length > 0 && savedProduct.id) {
         const imageUrls: string[] = [];
+        let uploadFailed = false;
         
         // Upload each image
         for (let i = 0; i < selectedImages.length; i++) {
@@ -202,11 +274,17 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({ isEditing, produc
           const imageUrl = await uploadProductImage(savedProduct.id, file, i);
           if (imageUrl) {
             imageUrls.push(imageUrl);
+          } else {
+            uploadFailed = true;
           }
         }
         
+        if (uploadFailed) {
+          toast.warning('Algumas imagens não puderam ser enviadas. Verifique e tente novamente.');
+        }
+        
         // Combine existing images with new ones
-        const existingImages = (formData.imagens || []).filter(url => 
+        const existingImages = (savedProduct.imagens || []).filter(url => 
           typeof url === 'string' && !url.startsWith('blob:')
         );
         
@@ -214,18 +292,15 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({ isEditing, produc
         
         // Update the product with the new image URLs
         if (imageUrls.length > 0) {
-          await saveProductMutation.mutateAsync({
-            id: savedProduct.id,
-            imagens: allImages
-          });
+          await updateProductImages(savedProduct.id, allImages);
         }
       }
       
       toast.success(isEditing ? 'Produto atualizado com sucesso!' : 'Produto criado com sucesso!');
       navigate('/vendor/products');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in handleSubmit:', error);
-      toast.error('Erro ao salvar produto');
+      toast.error(`Erro ao salvar produto: ${error.message || 'Tente novamente'}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -247,9 +322,9 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({ isEditing, produc
       </div>
 
       <div className="p-6">
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           <Tabs defaultValue="basic" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-3 mb-6">
+            <TabsList className="grid grid-cols-3 mb-6 sm:grid-cols-3">
               <TabsTrigger value="basic">Informações Básicas</TabsTrigger>
               <TabsTrigger value="details">Detalhes</TabsTrigger>
               <TabsTrigger value="images">Imagens</TabsTrigger>
@@ -262,11 +337,14 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({ isEditing, produc
                   <Input
                     id="nome"
                     name="nome"
-                    value={formData.nome}
+                    value={formData.nome || ''}
                     onChange={handleInputChange}
                     placeholder="Ex: Furadeira de Impacto 650W"
-                    required
+                    className={formErrors.nome ? "border-red-500" : ""}
                   />
+                  {formErrors.nome && (
+                    <p className="text-sm text-red-500 mt-1">{formErrors.nome}</p>
+                  )}
                 </div>
                 
                 <div>
@@ -274,21 +352,29 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({ isEditing, produc
                   <Textarea
                     id="descricao"
                     name="descricao"
-                    value={formData.descricao}
+                    value={formData.descricao || ''}
                     onChange={handleInputChange}
                     placeholder="Descreva detalhes do produto..."
                     rows={4}
-                    required
+                    className={formErrors.descricao ? "border-red-500" : ""}
                   />
+                  {formErrors.descricao && (
+                    <p className="text-sm text-red-500 mt-1">{formErrors.descricao}</p>
+                  )}
                 </div>
                 
                 <div>
                   <Label htmlFor="categoria" className="block mb-2">Categoria *</Label>
                   <Select
-                    value={formData.categoria}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, categoria: value }))}
+                    value={formData.categoria || ''}
+                    onValueChange={(value) => {
+                      setFormData(prev => ({ ...prev, categoria: value }));
+                      if (formErrors.categoria) {
+                        setFormErrors(prev => ({ ...prev, categoria: '' }));
+                      }
+                    }}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className={formErrors.categoria ? "border-red-500" : ""}>
                       <SelectValue placeholder="Selecione uma categoria" />
                     </SelectTrigger>
                     <SelectContent>
@@ -297,6 +383,9 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({ isEditing, produc
                       ))}
                     </SelectContent>
                   </Select>
+                  {formErrors.categoria && (
+                    <p className="text-sm text-red-500 mt-1">{formErrors.categoria}</p>
+                  )}
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -308,11 +397,15 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({ isEditing, produc
                       type="number"
                       step="0.01"
                       min="0"
-                      value={formData.preco_normal}
+                      value={formData.preco_normal === undefined ? '' : formData.preco_normal}
                       onChange={handleNumberInputChange}
                       placeholder="0.00"
-                      required
+                      className={formErrors.preco_normal ? "border-red-500" : ""}
+                      inputMode="decimal"
                     />
+                    {formErrors.preco_normal && (
+                      <p className="text-sm text-red-500 mt-1">{formErrors.preco_normal}</p>
+                    )}
                   </div>
                   
                   <div>
@@ -323,10 +416,15 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({ isEditing, produc
                       type="number"
                       step="0.01"
                       min="0"
-                      value={formData.preco_promocional || ''}
+                      value={formData.preco_promocional === undefined ? '' : formData.preco_promocional}
                       onChange={handleNumberInputChange}
                       placeholder="0.00"
+                      className={formErrors.preco_promocional ? "border-red-500" : ""}
+                      inputMode="decimal"
                     />
+                    {formErrors.preco_promocional && (
+                      <p className="text-sm text-red-500 mt-1">{formErrors.preco_promocional}</p>
+                    )}
                   </div>
                 </div>
                 
@@ -359,9 +457,10 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({ isEditing, produc
                       name="estoque"
                       type="number"
                       min="0"
-                      value={formData.estoque}
+                      value={formData.estoque === undefined ? '' : formData.estoque}
                       onChange={handleNumberInputChange}
                       placeholder="0"
+                      inputMode="numeric"
                     />
                   </div>
                   
@@ -396,9 +495,10 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({ isEditing, produc
                       name="pontos_consumidor"
                       type="number"
                       min="0"
-                      value={formData.pontos_consumidor}
+                      value={formData.pontos_consumidor === undefined ? '' : formData.pontos_consumidor}
                       onChange={handleNumberInputChange}
                       placeholder="0"
+                      inputMode="numeric"
                     />
                   </div>
                   
@@ -409,9 +509,10 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({ isEditing, produc
                       name="pontos_profissional"
                       type="number"
                       min="0"
-                      value={formData.pontos_profissional}
+                      value={formData.pontos_profissional === undefined ? '' : formData.pontos_profissional}
                       onChange={handleNumberInputChange}
                       placeholder="0"
+                      inputMode="numeric"
                     />
                   </div>
                 </div>
@@ -437,8 +538,10 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({ isEditing, produc
             <TabsContent value="images">
               <Card className="p-6 space-y-6">
                 <div>
-                  <Label htmlFor="images" className="block mb-2">Imagens do Produto</Label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-md p-6 text-center">
+                  <Label htmlFor="images" className="block mb-2">Imagens do Produto *</Label>
+                  <div className={`border-2 border-dashed rounded-md p-6 text-center ${
+                    formErrors.imagens ? "border-red-500" : "border-gray-300"
+                  }`}>
                     <ImageIcon className="h-12 w-12 mx-auto text-gray-400" />
                     <p className="mt-2 text-sm text-gray-500">Arraste e solte suas imagens aqui, ou clique para selecionar</p>
                     <Input
@@ -449,13 +552,16 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({ isEditing, produc
                       onChange={handleImageUpload}
                       className="mt-4"
                     />
+                    {formErrors.imagens && (
+                      <p className="text-sm text-red-500 mt-1">{formErrors.imagens}</p>
+                    )}
                   </div>
                 </div>
                 
                 {previewImages.length > 0 && (
                   <div>
                     <Label className="block mb-2">Imagens selecionadas</Label>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                       {previewImages.map((src, index) => (
                         <div key={index} className="relative">
                           <img 
@@ -470,6 +576,11 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({ isEditing, produc
                           >
                             <Trash size={16} />
                           </button>
+                          {index === 0 && (
+                            <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs py-1 px-2 text-center">
+                              Imagem Principal
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
