@@ -38,6 +38,8 @@ export const getAdminProducts = async (status?: string): Promise<AdminProduct[]>
     }
     
     const { data, error } = await query;
+    
+    console.log('[AdminProducts] fetched:', data, error);
       
     if (error) {
       console.error('[AdminProductApi] Error fetching produtos:', error);

@@ -9,6 +9,8 @@ import ProductFilters from './products/ProductFilters';
 import ProductsTable from './products/ProductsTable';
 import ProductsHeader from './products/ProductsHeader';
 import { debugFetchProducts } from '@/services/admin/products';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/sonner';
 
 const ProductsManagementScreen: React.FC = () => {
   useTitle('ConstruPro Admin - Produtos');
@@ -20,8 +22,6 @@ const ProductsManagementScreen: React.FC = () => {
     setFilter,
     searchTerm,
     setSearchTerm,
-    handleApproveProduct,
-    handleRejectProduct,
     refreshProducts
   } = useAdminProducts();
 
@@ -30,6 +30,44 @@ const ProductsManagementScreen: React.FC = () => {
     const result = await debugFetchProducts();
     console.log('Debug result:', result);
   };
+
+  // New implementation for approve product handler
+  async function handleApproveProduct(productId: string) {
+    // 1) Atualiza o status no Supabase
+    const { data, error } = await supabase
+      .from('produtos')
+      .update({ status: 'aprovado' })
+      .eq('id', productId);
+
+    console.log('[ApproveProduct] data:', data, 'error:', error);
+    if (error) {
+      toast.error('Erro ao aprovar: ' + error.message);
+      return;
+    }
+
+    // 2) Refetch explícito da lista pendente
+    await refreshProducts();
+    toast.success('Produto aprovado com sucesso');
+  }
+
+  // New implementation for reject product handler
+  async function handleRejectProduct(productId: string) {
+    // 1) Atualiza o status no Supabase
+    const { data, error } = await supabase
+      .from('produtos')
+      .update({ status: 'inativo' })
+      .eq('id', productId);
+
+    console.log('[RejectProduct] data:', data, 'error:', error);
+    if (error) {
+      toast.error('Erro ao rejeitar: ' + error.message);
+      return;
+    }
+
+    // 2) Refetch explícito da lista pendente
+    await refreshProducts();
+    toast.success('Produto rejeitado com sucesso');
+  }
 
   useEffect(() => {
     // Log the number of products loaded

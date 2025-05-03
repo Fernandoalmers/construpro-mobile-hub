@@ -10,32 +10,34 @@ export const getAdminStores = async (): Promise<AdminStore[]> => {
   try {
     console.log('[AdminStoresFetcher] Fetching admin stores from vendedores table...');
     
-    const { data: vendedores, error: vendedoresError } = await supabase
+    const { data, error } = await supabase
       .from('vendedores')
       .select(`
-        id,
-        nome_loja,
-        usuario_id,
-        status,
+        id, 
+        nome_loja, 
+        usuario_id, 
+        status, 
         descricao,
         telefone,
         whatsapp,
         logo,
         banner,
-        created_at,
+        created_at, 
         updated_at
       `)
       .order('created_at', { ascending: false });
       
-    if (vendedoresError) {
-      console.error('[AdminStoresFetcher] Error fetching stores:', vendedoresError);
-      throw vendedoresError;
+    console.log('[AdminStores] data:', data, 'error:', error);
+      
+    if (error) {
+      console.error('[AdminStoresFetcher] Error fetching stores:', error);
+      throw error;
     }
 
-    console.log('[AdminStoresFetcher] Fetched vendedores data:', vendedores);
+    console.log('[AdminStoresFetcher] Fetched vendedores data:', data);
     
     // Transform vendedores data to AdminStore format
-    const stores: AdminStore[] = await Promise.all(vendedores.map(async (store) => {
+    const stores: AdminStore[] = await Promise.all((data || []).map(async (store) => {
       // Try to get product count
       let produtos_count = 0;
       try {

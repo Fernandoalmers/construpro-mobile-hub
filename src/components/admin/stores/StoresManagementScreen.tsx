@@ -19,8 +19,11 @@ const StoresManagementScreen: React.FC = () => {
     searchTerm,
     setSearchTerm,
     approveStore,
-    rejectStore
+    rejectStore,
+    refreshStores
   } = useAdminStores();
+
+  console.log('Stores fetched:', stores);
 
   return (
     <AdminLayout currentSection="lojas">
