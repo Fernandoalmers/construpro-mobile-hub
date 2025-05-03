@@ -172,17 +172,42 @@ const FavoritesScreen: React.FC = () => {
     queryFn: async () => {
       try {
         // Fetch product IDs and counts from order items
+        // Fix: Use a different approach to count products in order items
         const { data: orderItems, error: orderItemsError } = await supabase
           .from('order_items')
-          .select('produto_id, count(*)')
-          .eq('order_id', user?.id || '')
-          .limit(8);
+          .select('produto_id, quantidade') // Getting quantidade instead of using count(*)
+          .eq('order_id', user?.id || '');
           
         if (orderItemsError) throw orderItemsError;
         
-        // If we have order items, fetch the product details separately
+        // If we have order items, aggregate them by produto_id
         if (orderItems && orderItems.length > 0) {
-          const productIds = orderItems.map(item => item.produto_id);
+          // Aggregate the items by produto_id and count them
+          const productMap: Record<string, number> = {};
+          
+          orderItems.forEach(item => {
+            if (item.produto_id) {
+              if (!productMap[item.produto_id]) {
+                productMap[item.produto_id] = 0;
+              }
+              productMap[item.produto_id] += item.quantidade || 1;
+            }
+          });
+          
+          // Convert to array of { produto_id, count }
+          const aggregatedItems = Object.entries(productMap).map(([produto_id, count]) => ({
+            produto_id,
+            count
+          }));
+          
+          // Get the top 8 most frequently bought products
+          const topItems = aggregatedItems
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 8);
+          
+          const productIds = topItems.map(item => item.produto_id);
+          
+          if (productIds.length === 0) return [];
           
           const { data: products, error: productsError } = await supabase
             .from('products')
@@ -195,7 +220,7 @@ const FavoritesScreen: React.FC = () => {
           if (productsError) throw productsError;
           
           // Map product details to order items
-          const enrichedItems = orderItems.map(item => {
+          const enrichedItems = topItems.map(item => {
             const matchingProduct = products?.find(p => p.id === item.produto_id) || null;
             return {
               produto_id: item.produto_id,
