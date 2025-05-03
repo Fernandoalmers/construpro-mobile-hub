@@ -83,25 +83,31 @@ const AdminCategoriesScreen: React.FC = () => {
         setCategories(transformedCategories);
       } else {
         // Count products for each category
-        // Fix: Using a separate query for the count with proper grouping
-        const { data: countsData, error: countsError } = await supabase
-          .from('produtos')
-          .select('categoria, count(*)', { count: 'exact', head: false })
-          .group('categoria');
-          
-        if (countsError) {
-          console.error('Error counting categories:', countsError);
-        }
-
-        const countMap: Record<string, number> = {};
+        // Using a more compatible query approach without group() method
+        const categoryCountPromises = categoriesData.map(async (category) => {
+          const { count, error } = await supabase
+            .from('produtos')
+            .select('*', { count: 'exact', head: true })
+            .eq('categoria', category.nome);
+            
+          return {
+            categoryName: category.nome,
+            count: count || 0,
+            error
+          };
+        });
         
-        if (countsData) {
-          countsData.forEach((item: any) => {
-            if (item.categoria) {
-              countMap[item.categoria] = parseInt(item.count, 10) || 0;
-            }
-          });
-        }
+        const categoryCounts = await Promise.all(categoryCountPromises);
+        
+        // Create a map of category names to counts
+        const countMap: Record<string, number> = {};
+        categoryCounts.forEach(result => {
+          if (result.error) {
+            console.error(`Error counting for category ${result.categoryName}:`, result.error);
+          } else {
+            countMap[result.categoryName] = result.count;
+          }
+        });
 
         // Get segment names for categories
         const segmentMap: Record<string, string> = {};
