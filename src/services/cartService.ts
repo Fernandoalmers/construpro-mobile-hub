@@ -1,5 +1,24 @@
 import { supabase } from "@/integrations/supabase/client";
 
+// Define interface for product to ensure TypeScript recognizes its properties
+interface Product {
+  id: string;
+  nome: string;
+  preco: number;
+  pontos?: number;
+  estoque?: number;
+  imagem_url?: string;
+  avaliacao?: number;
+  preco_anterior?: number;
+  descricao?: string;
+  loja_id?: string;
+  stores?: {
+    id: string;
+    nome: string;
+    logo_url?: string;
+  };
+}
+
 export interface CartItem {
   id: string;
   produtoId: string;
@@ -7,7 +26,7 @@ export interface CartItem {
   preco: number;
   subtotal: number;
   pontos: number;
-  produto: any;
+  produto: Product;
 }
 
 export interface CartSummary {
@@ -95,11 +114,11 @@ export const cartService = {
       
       // Format cart items
       const items: CartItem[] = (cartItems || []).map(item => {
-        // Safely access properties with null checks
-        const product = item.products || {};
+        // Safely access properties with null checks and type assertions
+        const product = (item.products || {}) as Product;
         const preco = product.preco ?? item.price_at_add ?? 0;
         const quantidade = item.quantity || 0;
-        const pontos = product.pontos || 0;
+        const pontos = product.pontos ?? 0;
         
         return {
           id: item.id,
