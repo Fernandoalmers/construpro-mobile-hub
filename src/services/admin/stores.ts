@@ -44,7 +44,9 @@ export const getAdminStores = async (): Promise<AdminStore[]> => {
       proprietario_id: store.usuario_id,
       status: store.status || 'pendente',
       created_at: store.created_at,
-      updated_at: store.updated_at
+      updated_at: store.updated_at,
+      produtos_count: 0,  // Add default value for produtos_count
+      contato: store.telefone || store.whatsapp || undefined
     }));
     
     console.log('Admin stores loaded:', stores);
@@ -91,7 +93,9 @@ export const getAdminPendingStores = async (): Promise<AdminStore[]> => {
       proprietario_id: store.usuario_id,
       status: store.status || 'pendente',
       created_at: store.created_at,
-      updated_at: store.updated_at
+      updated_at: store.updated_at,
+      produtos_count: 0,  // Add default value for produtos_count
+      contato: store.telefone || undefined
     }));
     
     return stores;

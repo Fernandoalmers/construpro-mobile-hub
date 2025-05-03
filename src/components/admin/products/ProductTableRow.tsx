@@ -216,7 +216,7 @@ const ProductTableRow: React.FC<ProductTableRowProps> = ({
               <div>
                 <h3 className="font-bold text-xl">{product.nome}</h3>
                 <p className="text-sm text-gray-500">{product.categoria}</p>
-                <Badge className={getStatusBadgeClass(product.status)} className="mt-2">
+                <Badge className={getStatusBadgeClass(product.status)}>
                   {product.status === 'pendente' ? 'Pendente' : 
                   product.status === 'aprovado' ? 'Aprovado' : 'Inativo'}
                 </Badge>
