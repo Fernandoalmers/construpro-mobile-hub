@@ -18,6 +18,7 @@ import {
   VendorProduct 
 } from '@/services/vendorService';
 import LoadingState from '../common/LoadingState';
+import ProductNotification from './ProductNotification';
 
 interface ProductFormScreenProps {
   isEditing?: boolean;
@@ -54,6 +55,7 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({ isEditing, produc
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [previewImages, setPreviewImages] = useState<string[]>([]);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [showNotification, setShowNotification] = useState(false);
   
   // Categories (could be fetched from an API in the future)
   const categories = [
@@ -103,7 +105,16 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({ isEditing, produc
         queryClient.invalidateQueries({ queryKey: ['vendorProduct', data.id] });
       }
       toast.success(isEditing ? 'Produto atualizado com sucesso!' : 'Produto criado com sucesso!');
-      navigate('/vendor/products');
+      
+      // Mostrar notificação de status pendente
+      if (data && data.status === 'pendente') {
+        setShowNotification(true);
+      }
+      
+      // Redirecionamento após um curto delay para permitir que a notificação seja vista
+      setTimeout(() => {
+        navigate('/vendor/products');
+      }, 2000);
     },
     onError: (error: any) => {
       toast.error(`Erro ao salvar produto: ${error.message || 'Verifique os campos e tente novamente'}`);
@@ -129,6 +140,11 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({ isEditing, produc
         // Set preview images from existing product
         if (productData.imagens && Array.isArray(productData.imagens)) {
           setPreviewImages(productData.imagens);
+        }
+        
+        // Mostrar notificação se for um produto pendente ou recentemente aprovado/rejeitado
+        if (productData.status === 'pendente' || productData.status === 'aprovado' || productData.status === 'inativo') {
+          setShowNotification(true);
         }
       }
     }
@@ -336,6 +352,13 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({ isEditing, produc
       </div>
 
       <div className="p-6">
+        {showNotification && productData && (
+          <ProductNotification 
+            status={productData.status} 
+            onDismiss={() => setShowNotification(false)} 
+          />
+        )}
+
         <form onSubmit={handleSubmit} noValidate>
           <Tabs defaultValue="basic" value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid grid-cols-3 mb-6 sm:grid-cols-3">

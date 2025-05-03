@@ -7,11 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Search } from 'lucide-react';
-import { AdminStore, fetchAdminStores, approveStore, rejectStore, deleteStore, getStoreBadgeColor } from '@/services/adminStoresService';
+import { AdminStore, fetchAdminStores, approveStore, rejectStore, deleteStore, getStoreBadgeColor, subscribeToAdminStoreUpdates } from '@/services/adminStoresService';
 import { toast } from '@/components/ui/sonner';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
 import LoadingState from '@/components/common/LoadingState';
 import ErrorState from '@/components/common/ErrorState';
+import { RealtimeChannel } from '@supabase/supabase-js';
 
 const StoresManagementScreen: React.FC = () => {
   const { isAdmin, isLoading: isAdminLoading } = useIsAdmin();
@@ -20,6 +21,7 @@ const StoresManagementScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [realtimeChannel, setRealtimeChannel] = useState<RealtimeChannel | null>(null);
   
   useEffect(() => {
     if (isAdminLoading) {
@@ -33,6 +35,32 @@ const StoresManagementScreen: React.FC = () => {
     }
     
     loadStores();
+    
+    // Configurar realtime para lojas
+    const channel = subscribeToAdminStoreUpdates((store, eventType) => {
+      // Recarregar lojas quando houver mudanças
+      loadStores();
+      
+      // Exibir notificações relevantes
+      if (eventType === 'INSERT') {
+        toast.info('Nova loja cadastrada - Aguardando aprovação', {
+          description: store.nome
+        });
+      } else if (eventType === 'UPDATE') {
+        toast.info('Loja atualizada', {
+          description: store.nome
+        });
+      }
+    });
+    
+    setRealtimeChannel(channel);
+    
+    // Limpar assinatura ao desmontar componente
+    return () => {
+      if (channel) {
+        channel.unsubscribe();
+      }
+    };
   }, [isAdmin, isAdminLoading]);
   
   const loadStores = async () => {
@@ -60,6 +88,9 @@ const StoresManagementScreen: React.FC = () => {
     
     return matchesSearch && matchesStatus;
   });
+
+  // Contagem de lojas pendentes para destaque na UI
+  const pendingStoresCount = stores.filter(s => s.status === 'pendente').length;
   
   const handleApproveStore = async (storeId: string) => {
     try {
@@ -133,10 +164,19 @@ const StoresManagementScreen: React.FC = () => {
     <AdminLayout currentSection="Lojas">
       <Card>
         <CardHeader>
-          <CardTitle>Gerenciamento de Lojas</CardTitle>
-          <CardDescription>
-            Visualize e gerencie todas as lojas da plataforma
-          </CardDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>Gerenciamento de Lojas</CardTitle>
+              <CardDescription>
+                Visualize e gerencie todas as lojas da plataforma
+              </CardDescription>
+            </div>
+            {pendingStoresCount > 0 && (
+              <Badge variant="outline" className="bg-amber-100 text-amber-800 px-3 py-1">
+                {pendingStoresCount} loja{pendingStoresCount !== 1 ? 's' : ''} pendente{pendingStoresCount !== 1 ? 's' : ''}
+              </Badge>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {/* Search and filters */}

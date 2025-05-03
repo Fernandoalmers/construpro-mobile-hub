@@ -200,23 +200,3 @@ export const subscribeToAdminProductUpdates = (
     )
     .subscribe();
 };
-
-// Função para habilitar reprodução em tempo real para as tabelas no Supabase
-export const enableRealtimeForTables = async () => {
-  try {
-    // Este código seria executado via SQL no Supabase
-    // Aqui apenas como documentação do que é necessário configurar
-    
-    // ALTER TABLE produtos REPLICA IDENTITY FULL;
-    // ALTER TABLE vendedores REPLICA IDENTITY FULL;
-    // ALTER TABLE product_images REPLICA IDENTITY FULL;
-    
-    // INSERT INTO supabase_realtime.subscription (subscription_id, entity, filters)
-    // VALUES ('produtos_changes', 'produtos', '{}');
-    
-    return true;
-  } catch (error) {
-    console.error('Error enabling realtime:', error);
-    return false;
-  }
-};
