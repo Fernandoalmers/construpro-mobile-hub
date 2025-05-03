@@ -12,7 +12,11 @@ interface UserTableProps {
   isLoading: boolean;
   handleApproveUser: (userId: string) => Promise<void>;
   handleRejectUser: (userId: string) => Promise<void>;
+  handleBlockUser: (userId: string) => Promise<void>;
+  handleUnblockUser: (userId: string) => Promise<void>;
   handleDeleteUser: (userId: string) => Promise<void>;
+  handleMakeAdmin: (userId: string) => Promise<void>;
+  handleRemoveAdmin: (userId: string) => Promise<void>;
   getRoleBadgeColor: (role: string) => string;
   getStatusBadgeColor: (status: string) => string;
 }
@@ -22,7 +26,11 @@ const UserTable: React.FC<UserTableProps> = ({
   isLoading,
   handleApproveUser,
   handleRejectUser,
+  handleBlockUser,
+  handleUnblockUser,
   handleDeleteUser,
+  handleMakeAdmin,
+  handleRemoveAdmin,
   getRoleBadgeColor,
   getStatusBadgeColor
 }) => {
@@ -40,9 +48,8 @@ const UserTable: React.FC<UserTableProps> = ({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[80px]">Avatar</TableHead>
             <TableHead>Nome</TableHead>
-            <TableHead>CPF</TableHead>
+            <TableHead>Email</TableHead>
             <TableHead>Tipo</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Pontos</TableHead>
@@ -52,7 +59,7 @@ const UserTable: React.FC<UserTableProps> = ({
         <TableBody>
           {filteredUsers.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} className="h-24 text-center">
+              <TableCell colSpan={6} className="h-24 text-center">
                 Nenhum usuário encontrado.
               </TableCell>
             </TableRow>
@@ -63,7 +70,11 @@ const UserTable: React.FC<UserTableProps> = ({
                 user={user}
                 handleApproveUser={handleApproveUser}
                 handleRejectUser={handleRejectUser}
+                handleBlockUser={handleBlockUser}
+                handleUnblockUser={handleUnblockUser}
                 handleDeleteUser={handleDeleteUser}
+                handleMakeAdmin={handleMakeAdmin}
+                handleRemoveAdmin={handleRemoveAdmin}
                 getRoleBadgeColor={getRoleBadgeColor}
                 getStatusBadgeColor={getStatusBadgeColor}
               />

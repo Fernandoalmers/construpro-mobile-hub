@@ -50,7 +50,7 @@ export interface AdminCategory {
   nome: string;
   segment_id?: string;
   segment_name?: string;
-  status: string; // Changed from "ativo" | "inativo" to string for compatibility
+  status: string; 
   produtos_count: number;
   created_at: string;
   updated_at: string;
@@ -59,7 +59,7 @@ export interface AdminCategory {
 export interface AdminSegment {
   id: string;
   nome: string;
-  status: string; // Changed from "ativo" | "inativo" to string for compatibility
+  status: string;
   categorias_count: number;
   created_at: string;
   updated_at: string;
@@ -73,7 +73,7 @@ export interface AdminRedemption {
   pontos: number;
   imagem_url: string | null;
   codigo: string | null;
-  status: string; // Changed from "pendente" | "aprovado" | "recusado" | "entregue" to string for compatibility
+  status: string;
   data: string;
   created_at: string;
   updated_at: string;
@@ -86,7 +86,7 @@ export interface AdminReward {
   pontos: number;
   imagem_url: string | null;
   categoria: string;
-  status: string; // Changed from "ativo" | "inativo" to string for compatibility
+  status: string;
   estoque: number | null;
   created_at: string;
   updated_at: string;

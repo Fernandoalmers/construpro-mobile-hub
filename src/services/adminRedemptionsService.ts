@@ -7,14 +7,22 @@ import { AdminRedemption } from '@/types/admin';
 export const fetchAdminRedemptions = async (): Promise<AdminRedemption[]> => {
   try {
     // Check if the resgates table exists
-    const { error: tableCheckError } = await supabase
-      .from('resgates')
-      .select('count')
-      .limit(1)
-      .single();
+    let tableExists = false;
+    try {
+      const { error } = await supabase
+        .from('resgates')
+        .select('count')
+        .limit(1)
+        .single();
+      
+      tableExists = !error;
+    } catch (err) {
+      console.log('Redemptions table does not exist yet');
+      return [];
+    }
     
     // If table doesn't exist, return empty array
-    if (tableCheckError && tableCheckError.code === '42P01') {
+    if (!tableExists) {
       console.log('Redemptions table does not exist yet, returning empty data');
       return [];
     }
@@ -53,10 +61,19 @@ export const fetchAdminRedemptions = async (): Promise<AdminRedemption[]> => {
     clientes?.forEach(c => clienteMap.set(c.id, c.nome));
 
     // Associar nomes de clientes aos resgates
-    const resgatesWithClienteNames = resgates.map(resgate => ({
-      ...resgate,
-      cliente_nome: clienteMap.get(resgate.cliente_id) || 'Cliente Desconhecido'
-    })) as AdminRedemption[];
+    const resgatesWithClienteNames: AdminRedemption[] = resgates.map(resgate => ({
+      id: resgate.id,
+      cliente_id: resgate.cliente_id,
+      cliente_nome: clienteMap.get(resgate.cliente_id) || 'Cliente Desconhecido',
+      item: resgate.item,
+      pontos: resgate.pontos,
+      imagem_url: resgate.imagem_url,
+      codigo: resgate.codigo,
+      status: resgate.status,
+      data: resgate.data,
+      created_at: resgate.created_at,
+      updated_at: resgate.updated_at
+    }));
     
     return resgatesWithClienteNames;
   } catch (error) {

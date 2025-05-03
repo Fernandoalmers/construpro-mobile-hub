@@ -7,14 +7,22 @@ import { AdminReward } from '@/types/admin';
 export const fetchAdminRewards = async (): Promise<AdminReward[]> => {
   try {
     // Check if the recompensas table exists
-    const { error: tableCheckError } = await supabase
-      .from('recompensas')
-      .select('count')
-      .limit(1)
-      .single();
+    let tableExists = false;
+    try {
+      const { error } = await supabase
+        .from('recompensas')
+        .select('count')
+        .limit(1)
+        .single();
+      
+      tableExists = !error;
+    } catch (err) {
+      console.log('Rewards table does not exist yet');
+      return [];
+    }
     
     // If table doesn't exist, return empty array
-    if (tableCheckError && tableCheckError.code === '42P01') {
+    if (!tableExists) {
       console.log('Rewards table does not exist yet, returning empty data');
       return [];
     }
@@ -33,15 +41,15 @@ export const fetchAdminRewards = async (): Promise<AdminReward[]> => {
     // Convert to AdminReward type
     const rewards: AdminReward[] = data?.map(item => ({
       id: item.id,
-      nome: item.nome,
+      nome: item.nome || '',
       descricao: item.descricao || '',
-      pontos: item.pontos,
-      imagem_url: item.imagem_url,
-      categoria: item.categoria,
+      pontos: item.pontos || 0,
+      imagem_url: item.imagem_url || null,
+      categoria: item.categoria || '',
       status: item.status || 'ativo',
-      estoque: item.estoque,
-      created_at: item.created_at,
-      updated_at: item.updated_at
+      estoque: item.estoque || null,
+      created_at: item.created_at || new Date().toISOString(),
+      updated_at: item.updated_at || new Date().toISOString()
     })) || [];
     
     return rewards;
@@ -55,14 +63,22 @@ export const fetchAdminRewards = async (): Promise<AdminReward[]> => {
 export const createReward = async (rewardData: Omit<AdminReward, 'id' | 'created_at' | 'updated_at'>): Promise<boolean> => {
   try {
     // Check if the recompensas table exists
-    const { error: tableCheckError } = await supabase
-      .from('recompensas')
-      .select('count')
-      .limit(1)
-      .single();
+    let tableExists = false;
+    try {
+      const { error } = await supabase
+        .from('recompensas')
+        .select('count')
+        .limit(1)
+        .single();
+      
+      tableExists = !error;
+    } catch (err) {
+      toast.error('A tabela de recompensas não existe. Crie-a primeiro');
+      return false;
+    }
     
     // If table doesn't exist, show error
-    if (tableCheckError && tableCheckError.code === '42P01') {
+    if (!tableExists) {
       toast.error('A tabela de recompensas não existe. Crie-a primeiro');
       return false;
     }
@@ -96,6 +112,27 @@ export const createReward = async (rewardData: Omit<AdminReward, 'id' | 'created
 
 export const updateReward = async (id: string, rewardData: Partial<AdminReward>): Promise<boolean> => {
   try {
+    // Check if the recompensas table exists
+    let tableExists = false;
+    try {
+      const { error } = await supabase
+        .from('recompensas')
+        .select('count')
+        .limit(1)
+        .single();
+      
+      tableExists = !error;
+    } catch (err) {
+      toast.error('A tabela de recompensas não existe');
+      return false;
+    }
+    
+    // If table doesn't exist, show error
+    if (!tableExists) {
+      toast.error('A tabela de recompensas não existe');
+      return false;
+    }
+    
     const { error } = await supabase
       .from('recompensas')
       .update({
@@ -127,6 +164,27 @@ export const toggleRewardStatus = async (id: string, currentStatus: string): Pro
   const newStatus = currentStatus === 'ativo' ? 'inativo' : 'ativo';
   
   try {
+    // Check if the recompensas table exists
+    let tableExists = false;
+    try {
+      const { error } = await supabase
+        .from('recompensas')
+        .select('count')
+        .limit(1)
+        .single();
+      
+      tableExists = !error;
+    } catch (err) {
+      toast.error('A tabela de recompensas não existe');
+      return false;
+    }
+    
+    // If table doesn't exist, show error
+    if (!tableExists) {
+      toast.error('A tabela de recompensas não existe');
+      return false;
+    }
+    
     const { error } = await supabase
       .from('recompensas')
       .update({ 
@@ -157,14 +215,21 @@ export const toggleRewardStatus = async (id: string, currentStatus: string): Pro
 export const fetchRewardCategories = async (): Promise<string[]> => {
   try {
     // Check if the recompensas table exists
-    const { error: tableCheckError } = await supabase
-      .from('recompensas')
-      .select('count')
-      .limit(1)
-      .single();
+    let tableExists = false;
+    try {
+      const { error } = await supabase
+        .from('recompensas')
+        .select('count')
+        .limit(1)
+        .single();
+      
+      tableExists = !error;
+    } catch (err) {
+      return [];
+    }
     
     // If table doesn't exist, return empty array
-    if (tableCheckError && tableCheckError.code === '42P01') {
+    if (!tableExists) {
       return [];
     }
     
