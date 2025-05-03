@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Image as ImageIcon, Save, Trash } from 'lucide-react';
@@ -70,6 +69,23 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({ isEditing, produc
     'Outro'
   ];
   
+  // Format currency function
+  const formatCurrency = (value: number | undefined): string => {
+    if (value === undefined) return '';
+    
+    return new Intl.NumberFormat('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(value);
+  };
+  
+  // Parse formatted currency back to number
+  const parseCurrencyToNumber = (formattedValue: string): number => {
+    // Remove non-numeric characters except decimal separator
+    const numericValue = formattedValue.replace(/[^\d,]/g, '').replace(',', '.');
+    return parseFloat(numericValue) || 0;
+  };
+  
   // Fetch product data if in edit mode
   const { data: productData, isLoading } = useQuery({
     queryKey: ['vendorProduct', id],
@@ -131,11 +147,11 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({ isEditing, produc
   const handleNumberInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     
-    // Allow empty values in input (will be handled during validation before submit)
+    // Allow empty values in input
     if (value === '') {
       setFormData(prev => ({ ...prev, [name]: undefined }));
     } else {
-      const numValue = parseFloat(value);
+      const numValue = parseFloat(value.replace(/[^\d,\.]/g, '').replace(',', '.'));
       if (!isNaN(numValue)) {
         setFormData(prev => ({ ...prev, [name]: numValue }));
       }
@@ -203,12 +219,10 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({ isEditing, produc
       errors.preco_normal = 'Preço deve ser maior que zero';
     }
     
-    if (formData.preco_promocional !== undefined && formData.preco_promocional <= 0) {
-      errors.preco_promocional = 'Preço promocional deve ser maior que zero';
-    }
-    
-    // If promotional price is higher than regular price
+    // Only validate promotional price if it's filled in
     if (formData.preco_promocional !== undefined && 
+        formData.preco_promocional !== null && 
+        formData.preco_promocional > 0 && 
         formData.preco_normal !== undefined && 
         formData.preco_promocional >= formData.preco_normal) {
       errors.preco_promocional = 'Preço promocional deve ser menor que o preço regular';
@@ -391,18 +405,19 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({ isEditing, produc
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <Label htmlFor="preco_normal" className="block mb-2">Preço Regular (R$) *</Label>
-                    <Input
-                      id="preco_normal"
-                      name="preco_normal"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.preco_normal === undefined ? '' : formData.preco_normal}
-                      onChange={handleNumberInputChange}
-                      placeholder="0.00"
-                      className={formErrors.preco_normal ? "border-red-500" : ""}
-                      inputMode="decimal"
-                    />
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                      <Input
+                        id="preco_normal"
+                        name="preco_normal"
+                        type="text"
+                        value={formData.preco_normal !== undefined ? formatCurrency(formData.preco_normal) : ''}
+                        onChange={handleNumberInputChange}
+                        placeholder="0,00"
+                        className={`pl-9 ${formErrors.preco_normal ? "border-red-500" : ""}`}
+                        inputMode="decimal"
+                      />
+                    </div>
                     {formErrors.preco_normal && (
                       <p className="text-sm text-red-500 mt-1">{formErrors.preco_normal}</p>
                     )}
@@ -410,18 +425,19 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({ isEditing, produc
                   
                   <div>
                     <Label htmlFor="preco_promocional" className="block mb-2">Preço Promocional (R$)</Label>
-                    <Input
-                      id="preco_promocional"
-                      name="preco_promocional"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.preco_promocional === undefined ? '' : formData.preco_promocional}
-                      onChange={handleNumberInputChange}
-                      placeholder="0.00"
-                      className={formErrors.preco_promocional ? "border-red-500" : ""}
-                      inputMode="decimal"
-                    />
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                      <Input
+                        id="preco_promocional"
+                        name="preco_promocional"
+                        type="text"
+                        value={formData.preco_promocional !== undefined ? formatCurrency(formData.preco_promocional) : ''}
+                        onChange={handleNumberInputChange}
+                        placeholder="0,00"
+                        className={`pl-9 ${formErrors.preco_promocional ? "border-red-500" : ""}`}
+                        inputMode="decimal"
+                      />
+                    </div>
                     {formErrors.preco_promocional && (
                       <p className="text-sm text-red-500 mt-1">{formErrors.preco_promocional}</p>
                     )}

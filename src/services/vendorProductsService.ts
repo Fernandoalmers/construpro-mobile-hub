@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { getVendorProfile } from './vendorProfileService';
@@ -177,24 +176,24 @@ export const uploadProductImage = async (
       return null;
     }
     
-    const fileName = `${index}-${file.name.replace(/\s+/g, '-').toLowerCase()}`;
+    const fileName = `${Date.now()}-${index}-${file.name.replace(/\s+/g, '-').toLowerCase()}`;
     const filePath = `products/${vendorProfile.id}/${productId}/${fileName}`;
     
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadError, data } = await supabase.storage
       .from('vendor-images')
       .upload(filePath, file, { upsert: true });
     
     if (uploadError) {
       console.error('Error uploading product image:', uploadError);
-      toast.error('Erro ao fazer upload da imagem');
+      toast.error('Erro ao fazer upload da imagem: ' + uploadError.message);
       return null;
     }
     
-    const { data } = supabase.storage
+    const { data: publicUrlData } = supabase.storage
       .from('vendor-images')
       .getPublicUrl(filePath);
       
-    return data.publicUrl;
+    return publicUrlData.publicUrl;
   } catch (error) {
     console.error('Error in uploadProductImage:', error);
     toast.error('Erro ao processar imagem');

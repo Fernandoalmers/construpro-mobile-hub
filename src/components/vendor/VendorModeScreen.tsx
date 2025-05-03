@@ -1,38 +1,13 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Store, Package, Users, Settings, Tag, ArrowLeft } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { useAuth } from '@/context/AuthContext';
+import { ArrowLeft } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getVendorProfile } from '@/services/vendorService';
 import LoadingState from '../common/LoadingState';
 import { toast } from '@/components/ui/sonner';
-
-interface MenuItemProps {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-  onClick: () => void;
-}
-
-const MenuItem: React.FC<MenuItemProps> = ({ icon, title, description, onClick }) => {
-  return (
-    <Card 
-      className="p-6 cursor-pointer hover:shadow-md transition-shadow flex items-start"
-      onClick={onClick}
-    >
-      <div className="rounded-full bg-construPro-blue/10 p-3 mr-4">
-        {icon}
-      </div>
-      <div>
-        <h3 className="font-bold text-lg">{title}</h3>
-        <p className="text-gray-600 text-sm">{description}</p>
-      </div>
-    </Card>
-  );
-};
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/context/AuthContext';
 
 const VendorModeScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -45,36 +20,31 @@ const VendorModeScreen: React.FC = () => {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
   
-  const menuItems: MenuItemProps[] = [
+  const menuItems = [
     {
-      icon: <Package className="text-construPro-blue" />,
       title: "Produtos",
       description: "Cadastre e gerencie os produtos da sua loja",
-      onClick: () => navigate('/vendor/products')
+      path: '/vendor/products'
     },
     {
-      icon: <Store className="text-construPro-blue" />,
       title: "Pedidos",
       description: "Acompanhe os pedidos feitos na sua loja",
-      onClick: () => navigate('/vendor/orders')
+      path: '/vendor/orders'
     },
     {
-      icon: <Users className="text-construPro-blue" />,
       title: "Clientes",
       description: "Gerencie os clientes e visualize histórico de compras",
-      onClick: () => navigate('/vendor/customers')
+      path: '/vendor/customers'
     },
     {
-      icon: <Tag className="text-construPro-blue" />,
       title: "Ajuste de Pontos",
       description: "Adicione ou remova pontos dos clientes",
-      onClick: () => navigate('/vendor/adjust-points')
+      path: '/vendor/adjust-points'
     },
     {
-      icon: <Settings className="text-construPro-blue" />,
       title: "Configurações da Loja",
       description: "Edite as informações e configurações da sua loja",
-      onClick: () => navigate('/vendor/store-config')
+      path: '/vendor/store-config'
     }
   ];
 
@@ -91,7 +61,6 @@ const VendorModeScreen: React.FC = () => {
     return (
       <div className="min-h-screen bg-gray-100 p-6 flex flex-col items-center justify-center">
         <div className="bg-white rounded-lg shadow-md p-8 max-w-md w-full text-center">
-          <Store size={48} className="mx-auto text-construPro-blue mb-4" />
           <h1 className="text-2xl font-bold mb-2">Modo Lojista</h1>
           <p className="text-gray-600 mb-6">
             Você ainda não configurou seu perfil de lojista. Complete seu cadastro para começar a vender.
@@ -117,47 +86,46 @@ const VendorModeScreen: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
-      <div className="bg-construPro-blue text-white p-6">
-        <div className="container mx-auto">
-          <button 
+      <div className="bg-white border-b p-4 shadow-sm flex items-center justify-between">
+        <div className="flex items-center">
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={handleBackToConsumerMode}
-            className="flex items-center mb-6 text-white/80 hover:text-white transition-colors"
+            className="mr-4"
           >
-            <ArrowLeft size={20} className="mr-1" />
-            Voltar para Modo Cliente
-          </button>
-          
-          <div className="flex items-center">
-            {vendorProfile.logo ? (
-              <img 
-                src={vendorProfile.logo} 
-                alt={vendorProfile.nome_loja} 
-                className="w-16 h-16 rounded-full bg-white p-1 mr-4 object-cover"
-              />
-            ) : (
-              <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center mr-4">
-                <Store size={32} />
-              </div>
-            )}
-            <div>
-              <h1 className="text-2xl font-bold">{vendorProfile.nome_loja}</h1>
-              <p className="text-white/80">Modo Lojista</p>
-            </div>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-xl font-bold">Modo Lojista</h1>
+            <p className="text-sm text-muted-foreground">{vendorProfile.nome_loja}</p>
           </div>
         </div>
+        {vendorProfile.logo && (
+          <img 
+            src={vendorProfile.logo} 
+            alt={vendorProfile.nome_loja} 
+            className="w-10 h-10 rounded-full object-cover"
+          />
+        )}
       </div>
       
       {/* Menu Items */}
       <div className="container mx-auto p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {menuItems.map((item, index) => (
-            <MenuItem 
+            <Card 
               key={index}
-              icon={item.icon}
-              title={item.title}
-              description={item.description}
-              onClick={item.onClick}
-            />
+              className="cursor-pointer hover:shadow-md transition-all"
+              onClick={() => navigate(item.path)}
+            >
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">{item.title}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">{item.description}</p>
+              </CardContent>
+            </Card>
           ))}
         </div>
       </div>
