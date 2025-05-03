@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
@@ -68,7 +67,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [isAuthenticated, user]);
 
   // Get current cart
-  const refreshCart = async () => {
+  const refreshCart = async (): Promise<void> => {
     if (!user) {
       setCart(null);
       setIsLoading(false);
@@ -91,13 +90,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         }
         setCart(null);
         setIsLoading(false);
-        return null;
+        return;
       }
 
       if (!cartData) {
         setCart(null);
         setIsLoading(false);
-        return null;
+        return;
       }
 
       // Fetch cart items
@@ -124,7 +123,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         console.error('Error fetching cart items:', itemsError);
         setCart(null);
         setIsLoading(false);
-        return null;
+        return;
       }
 
       // Calculate summary
@@ -165,18 +164,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       };
 
       setCart(fullCart);
-      return fullCart;
+      setIsLoading(false);
+      return;
     } catch (error) {
       console.error('Error in refreshCart:', error);
       toast.error('Erro ao atualizar o carrinho');
-      return null;
-    } finally {
+      setCart(null);
       setIsLoading(false);
+      return;
     }
   };
 
   // Add product to cart
-  const addToCart = async (productId: string, quantity: number) => {
+  const addToCart = async (productId: string, quantity: number): Promise<void> => {
     if (!user) {
       toast.error('Faça login para adicionar produtos ao carrinho');
       return;
@@ -290,7 +290,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Update item quantity
-  const updateQuantity = async (cartItemId: string, newQuantity: number) => {
+  const updateQuantity = async (cartItemId: string, newQuantity: number): Promise<void> => {
     if (!cart) return;
 
     try {
@@ -316,7 +316,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Remove item from cart
-  const removeItem = async (cartItemId: string) => {
+  const removeItem = async (cartItemId: string): Promise<void> => {
     if (!cart) return;
 
     try {
@@ -342,7 +342,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Clear entire cart
-  const clearCart = async () => {
+  const clearCart = async (): Promise<void> => {
     if (!cart) return;
 
     try {
