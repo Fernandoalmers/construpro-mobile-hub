@@ -53,12 +53,12 @@ export const getPointAdjustments = async (userId?: string): Promise<PointAdjustm
     const safeAdjustments = data.map(item => ({
       ...item,
       cliente: item.cliente && typeof item.cliente === 'object' ? {
-        id: (item.cliente?.id || '') as string,
+        id: item.cliente.id ? item.cliente.id as string : '',
         vendedor_id: vendorProfile.id,
         usuario_id: item.usuario_id,
-        nome: (item.cliente?.nome || 'Cliente') as string,
-        telefone: (item.cliente?.telefone || '') as string,
-        email: (item.cliente?.email || '') as string,
+        nome: item.cliente.nome ? item.cliente.nome as string : 'Cliente',
+        telefone: item.cliente.telefone ? item.cliente.telefone as string : '',
+        email: item.cliente.email ? item.cliente.email as string : '',
         total_gasto: 0
       } : undefined
     }));
