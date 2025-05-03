@@ -32,6 +32,7 @@ import {
 import { useAuth, UserRole } from '../../context/AuthContext';
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import ChangePasswordModal from './ChangePasswordModal';
 
 const ProfileScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -39,6 +40,7 @@ const ProfileScreen: React.FC = () => {
   const [notifications, setNotifications] = useState(true);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
   
   // Use profile data if available
   const userPapel = profile?.papel || profile?.tipo_perfil || 'consumidor';
@@ -167,7 +169,7 @@ const ProfileScreen: React.FC = () => {
       await refreshProfile();
       
       toast.success("Avatar atualizado com sucesso!");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error uploading avatar:", error);
       toast.error("Erro ao atualizar avatar. Tente novamente.");
     } finally {
@@ -181,6 +183,10 @@ const ProfileScreen: React.FC = () => {
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
+  };
+
+  const handleOpenChangePasswordModal = () => {
+    setIsChangePasswordModalOpen(true);
   };
 
   // Get user display name and email safely
@@ -403,7 +409,10 @@ const ProfileScreen: React.FC = () => {
               <ChevronRight className="text-gray-400" size={18} />
             </div>
             
-            <div className="p-4 flex items-center justify-between cursor-pointer">
+            <div 
+              className="p-4 flex items-center justify-between cursor-pointer"
+              onClick={handleOpenChangePasswordModal}
+            >
               <div className="flex items-center">
                 <Lock className="text-construPro-blue mr-3" size={20} />
                 <span>Alterar senha</span>
@@ -445,6 +454,12 @@ const ProfileScreen: React.FC = () => {
           Sair
         </CustomButton>
       </div>
+      
+      {/* Change Password Modal */}
+      <ChangePasswordModal 
+        open={isChangePasswordModalOpen}
+        onOpenChange={setIsChangePasswordModalOpen}
+      />
     </div>
   );
 };

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, X, ShoppingBag } from 'lucide-react';
+import { ShoppingBag, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/use-cart';
 import { cn } from '@/lib/utils';

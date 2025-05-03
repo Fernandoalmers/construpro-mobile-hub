@@ -1,55 +1,336 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Bookmark, Clock, ShoppingBag, ChevronRight, Star } from 'lucide-react';
+import { ChevronLeft, Bookmark, Clock, ShoppingBag, ChevronRight, Star, Trash2 } from 'lucide-react';
 import Card from '../common/Card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CustomButton from '../common/CustomButton';
-import produtos from '../../data/produtos.json';
 import { toast } from "@/components/ui/sonner";
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '../../context/AuthContext';
 
-// Mock data for recently viewed and favorite products
-// In a real app, this would be stored in user data or localStorage
-const mockRecentlyViewed = ["1", "4", "2", "7"];
-const mockFavorites = ["3", "5", "1"];
-const mockFrequentlyBought = ["2", "7"];
+interface Product {
+  id: string;
+  nome: string;
+  preco: number;
+  imagem_url: string;
+  avaliacao: number;
+  categoria: string;
+  descricao: string;
+  loja_id?: string;
+  loja_nome?: string; // Added for display purposes
+}
+
+interface RecentlyViewed {
+  id: string;
+  user_id: string;
+  produto_id: string;
+  data_visualizacao: string;
+  produto: Product; // Joined product data
+}
+
+interface FavoriteItem {
+  id: string;
+  user_id: string;
+  produto_id: string;
+  data_adicionado: string;
+  produto: Product; // Joined product data
+}
 
 const FavoritesScreen: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("recent");
   
-  // Get products from IDs
-  const getProducts = (ids: string[]) => {
-    return ids.map(id => produtos.find(produto => produto.id === id)).filter(Boolean);
+  // Fetch recently viewed products
+  const { 
+    data: recentlyViewed = [], 
+    isLoading: isLoadingRecent,
+    error: recentError
+  } = useQuery({
+    queryKey: ['recentlyViewed'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('recently_viewed')
+        .select(`
+          *,
+          produto:produto_id (
+            id, nome, preco, imagem_url, avaliacao, categoria, descricao,
+            loja_id
+          )
+        `)
+        .eq('user_id', user?.id || '')
+        .order('data_visualizacao', { ascending: false })
+        .limit(10);
+      
+      if (error) throw error;
+      
+      // Fetch store names for products
+      const productsWithLojaId = data
+        .filter(item => item.produto && item.produto.loja_id)
+        .map(item => ({ 
+          ...item, 
+          loja_id: item.produto.loja_id 
+        }));
+      
+      if (productsWithLojaId.length > 0) {
+        const lojaIds = [...new Set(productsWithLojaId.map(item => item.loja_id))];
+        
+        const { data: lojas, error: lojasError } = await supabase
+          .from('stores')
+          .select('id, nome')
+          .in('id', lojaIds);
+        
+        if (!lojasError && lojas) {
+          const lojaMap = Object.fromEntries(lojas.map(loja => [loja.id, loja.nome]));
+          
+          return data.map(item => ({
+            ...item,
+            produto: item.produto ? {
+              ...item.produto,
+              loja_nome: item.produto.loja_id ? lojaMap[item.produto.loja_id] : undefined
+            } : null
+          }));
+        }
+      }
+      
+      return data;
+    },
+    enabled: !!user?.id
+  });
+  
+  // Fetch favorite products
+  const { 
+    data: favorites = [], 
+    isLoading: isLoadingFavorites,
+    error: favoritesError
+  } = useQuery({
+    queryKey: ['favorites'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('favorites')
+        .select(`
+          *,
+          produto:produto_id (
+            id, nome, preco, imagem_url, avaliacao, categoria, descricao,
+            loja_id
+          )
+        `)
+        .eq('user_id', user?.id || '');
+      
+      if (error) throw error;
+      
+      // Fetch store names for products
+      const productsWithLojaId = data
+        .filter(item => item.produto && item.produto.loja_id)
+        .map(item => ({ 
+          ...item, 
+          loja_id: item.produto.loja_id 
+        }));
+      
+      if (productsWithLojaId.length > 0) {
+        const lojaIds = [...new Set(productsWithLojaId.map(item => item.loja_id))];
+        
+        const { data: lojas, error: lojasError } = await supabase
+          .from('stores')
+          .select('id, nome')
+          .in('id', lojaIds);
+        
+        if (!lojasError && lojas) {
+          const lojaMap = Object.fromEntries(lojas.map(loja => [loja.id, loja.nome]));
+          
+          return data.map(item => ({
+            ...item,
+            produto: item.produto ? {
+              ...item.produto,
+              loja_nome: item.produto.loja_id ? lojaMap[item.produto.loja_id] : undefined
+            } : null
+          }));
+        }
+      }
+      
+      return data;
+    },
+    enabled: !!user?.id
+  });
+
+  // Most frequently bought products
+  const { 
+    data: frequentlyBought = [], 
+    isLoading: isLoadingFrequent,
+    error: frequentError
+  } = useQuery({
+    queryKey: ['frequentlyBought'],
+    queryFn: async () => {
+      try {
+        // This is a simplified implementation. In a real app, this would
+        // fetch from order history or a dedicated table of frequently bought items
+        const { data, error } = await supabase
+          .from('order_items')
+          .select(`
+            produto_id,
+            produto:produto_id (
+              id, nome, preco, imagem_url, avaliacao, categoria, descricao,
+              loja_id
+            ),
+            count(*) as purchase_count
+          `)
+          .eq('order_id', 'user_id', user?.id || '')
+          .group('produto_id')
+          .order('purchase_count', { ascending: false })
+          .limit(8);
+        
+        if (error) throw error;
+        
+        // Fetch store names for products (same logic as above)
+        // For brevity, this part is simplified
+        return data || [];
+      } catch (error) {
+        console.error('Error fetching frequently bought products:', error);
+        return [];
+      }
+    },
+    enabled: !!user?.id
+  });
+  
+  // Mutation to remove a favorite
+  const removeFavoriteMutation = useMutation({
+    mutationFn: async (favoriteId: string) => {
+      const { error } = await supabase
+        .from('favorites')
+        .delete()
+        .eq('id', favoriteId);
+      
+      if (error) throw error;
+      return favoriteId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['favorites'] });
+      toast.success('Produto removido dos favoritos');
+    },
+    onError: (error) => {
+      toast.error(`Erro ao remover favorito: ${error}`);
+    }
+  });
+  
+  const handleAddToCart = async (productId: string, productName: string) => {
+    try {
+      // First, check if the user already has an active cart
+      let { data: carts, error: cartsError } = await supabase
+        .from('carts')
+        .select('id')
+        .eq('user_id', user?.id)
+        .eq('status', 'active')
+        .single();
+      
+      let cartId: string;
+      
+      // If no active cart exists, create one
+      if (cartsError || !carts) {
+        const { data: newCart, error: newCartError } = await supabase
+          .from('carts')
+          .insert({ user_id: user?.id, status: 'active' })
+          .select('id')
+          .single();
+        
+        if (newCartError) throw newCartError;
+        cartId = newCart?.id;
+      } else {
+        cartId = carts.id;
+      }
+      
+      // Get product price
+      const { data: product, error: productError } = await supabase
+        .from('products')
+        .select('preco')
+        .eq('id', productId)
+        .single();
+      
+      if (productError) throw productError;
+      
+      // Check if item already exists in cart
+      const { data: existingItems, error: existingItemsError } = await supabase
+        .from('cart_items')
+        .select('id, quantity')
+        .eq('cart_id', cartId)
+        .eq('product_id', productId);
+      
+      if (existingItemsError) throw existingItemsError;
+      
+      if (existingItems && existingItems.length > 0) {
+        // Update existing cart item
+        const { error: updateError } = await supabase
+          .from('cart_items')
+          .update({ 
+            quantity: existingItems[0].quantity + 1,
+          })
+          .eq('id', existingItems[0].id);
+        
+        if (updateError) throw updateError;
+      } else {
+        // Add new cart item
+        const { error: insertError } = await supabase
+          .from('cart_items')
+          .insert({
+            cart_id: cartId,
+            product_id: productId,
+            quantity: 1,
+            price_at_add: product?.preco || 0
+          });
+        
+        if (insertError) throw insertError;
+      }
+      
+      toast.success(`${productName} adicionado ao carrinho`);
+      
+      // Signal that the cart was updated - useful for updating UI components
+      queryClient.invalidateQueries({ queryKey: ['cart'] });
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      toast.error('Erro ao adicionar ao carrinho');
+    }
   };
   
-  const recentlyViewedProducts = getProducts(mockRecentlyViewed);
-  const favoriteProducts = getProducts(mockFavorites);
-  const frequentlyBoughtProducts = getProducts(mockFrequentlyBought);
-  
-  const handleAddToCart = (productId: string) => {
-    toast.success("Produto adicionado ao carrinho");
-    // In a real app, this would add the product to the cart
+  const handleRemoveFavorite = (favoriteId: string) => {
+    if (confirm('Tem certeza que deseja remover este produto dos favoritos?')) {
+      removeFavoriteMutation.mutate(favoriteId);
+    }
   };
   
   // Render a product card
-  const renderProductCard = (product: any) => {
-    if (!product) return null;
+  const renderProductCard = (item: RecentlyViewed | FavoriteItem) => {
+    if (!item.produto) return null;
+    
+    const product = item.produto;
+    const isFavoriteTab = activeTab === "favorites";
     
     return (
-      <Card key={product.id} className="overflow-hidden">
+      <Card key={item.id} className="overflow-hidden">
+        {isFavoriteTab && (
+          <button 
+            className="absolute top-2 right-2 z-10 bg-white rounded-full p-1 shadow-md"
+            onClick={() => handleRemoveFavorite(item.id)}
+          >
+            <Trash2 size={14} className="text-red-500" />
+          </button>
+        )}
         <div 
           className="h-40 bg-center bg-cover"
-          style={{ backgroundImage: `url(${product.imagemUrl})` }}
+          style={{ backgroundImage: `url(${product.imagem_url || '/placeholder.svg'})` }}
+          onClick={() => navigate(`/marketplace/produto/${product.id}`)}
         />
         <div className="p-3">
           <h3 className="font-medium truncate">{product.nome}</h3>
+          {product.loja_nome && (
+            <p className="text-xs text-gray-500">{product.loja_nome}</p>
+          )}
           <div className="flex items-center mt-1 mb-2">
             <div className="flex items-center">
               <Star size={14} className="text-yellow-400 fill-yellow-400" />
               <span className="text-xs ml-1">{product.avaliacao.toFixed(1)}</span>
             </div>
-            <span className="text-xs text-gray-500 ml-2">({Math.floor(Math.random() * 100) + 10} avaliações)</span>
           </div>
           
           <div className="flex justify-between items-center">
@@ -60,7 +341,7 @@ const FavoritesScreen: React.FC = () => {
             <CustomButton
               variant="primary"
               size="sm"
-              onClick={() => handleAddToCart(product.id)}
+              onClick={() => handleAddToCart(product.id, product.nome)}
               icon={<ShoppingBag size={14} />}
             >
               Comprar
@@ -70,6 +351,18 @@ const FavoritesScreen: React.FC = () => {
       </Card>
     );
   };
+
+  // Loading states
+  const isLoading = 
+    (activeTab === "recent" && isLoadingRecent) || 
+    (activeTab === "favorites" && isLoadingFavorites) || 
+    (activeTab === "frequent" && isLoadingFrequent);
+
+  // Error handling
+  if (recentError || favoritesError || frequentError) {
+    const error = recentError || favoritesError || frequentError;
+    toast.error(`Erro ao carregar dados: ${(error as Error).message}`);
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
@@ -107,90 +400,98 @@ const FavoritesScreen: React.FC = () => {
       
       {/* Content */}
       <div className="p-6">
-        {activeTab === "recent" && (
+        {isLoading ? (
+          <div className="flex justify-center my-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-construPro-blue"></div>
+          </div>
+        ) : (
           <>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="font-medium">Vistos recentemente</h2>
-              <button 
-                className="text-sm text-construPro-blue flex items-center"
-                onClick={() => navigate('/marketplace')}
-              >
-                Ver todos
-                <ChevronRight size={16} />
-              </button>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              {recentlyViewedProducts.length > 0 ? (
-                recentlyViewedProducts.map(product => renderProductCard(product))
-              ) : (
-                <div className="col-span-2 text-center py-10">
-                  <Clock className="mx-auto text-gray-400 mb-3" size={40} />
-                  <h3 className="text-lg font-medium text-gray-700">Nenhum produto visualizado recentemente</h3>
-                  <CustomButton 
-                    variant="primary" 
-                    className="mt-4"
+            {activeTab === "recent" && (
+              <>
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="font-medium">Vistos recentemente</h2>
+                  <button 
+                    className="text-sm text-construPro-blue flex items-center"
                     onClick={() => navigate('/marketplace')}
                   >
-                    Ir para loja
-                  </CustomButton>
+                    Ver todos
+                    <ChevronRight size={16} />
+                  </button>
                 </div>
-              )}
-            </div>
-          </>
-        )}
-        
-        {activeTab === "favorites" && (
-          <>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="font-medium">Produtos favoritos</h2>
-            </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  {recentlyViewed.length > 0 ? (
+                    recentlyViewed.map(item => renderProductCard(item))
+                  ) : (
+                    <div className="col-span-2 text-center py-10">
+                      <Clock className="mx-auto text-gray-400 mb-3" size={40} />
+                      <h3 className="text-lg font-medium text-gray-700">Nenhum produto visualizado recentemente</h3>
+                      <CustomButton 
+                        variant="primary" 
+                        className="mt-4"
+                        onClick={() => navigate('/marketplace')}
+                      >
+                        Ir para loja
+                      </CustomButton>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
             
-            <div className="grid grid-cols-2 gap-4">
-              {favoriteProducts.length > 0 ? (
-                favoriteProducts.map(product => renderProductCard(product))
-              ) : (
-                <div className="col-span-2 text-center py-10">
-                  <Bookmark className="mx-auto text-gray-400 mb-3" size={40} />
-                  <h3 className="text-lg font-medium text-gray-700">Nenhum produto favorito</h3>
-                  <p className="text-gray-500 mt-1">Adicione produtos aos favoritos para encontrá-los aqui.</p>
-                  <CustomButton 
-                    variant="primary" 
-                    className="mt-4"
-                    onClick={() => navigate('/marketplace')}
-                  >
-                    Ir para loja
-                  </CustomButton>
+            {activeTab === "favorites" && (
+              <>
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="font-medium">Produtos favoritos</h2>
                 </div>
-              )}
-            </div>
-          </>
-        )}
-        
-        {activeTab === "frequent" && (
-          <>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="font-medium">Comprados com frequência</h2>
-            </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  {favorites.length > 0 ? (
+                    favorites.map(item => renderProductCard(item))
+                  ) : (
+                    <div className="col-span-2 text-center py-10">
+                      <Bookmark className="mx-auto text-gray-400 mb-3" size={40} />
+                      <h3 className="text-lg font-medium text-gray-700">Nenhum produto favorito</h3>
+                      <p className="text-gray-500 mt-1">Adicione produtos aos favoritos para encontrá-los aqui.</p>
+                      <CustomButton 
+                        variant="primary" 
+                        className="mt-4"
+                        onClick={() => navigate('/marketplace')}
+                      >
+                        Ir para loja
+                      </CustomButton>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
             
-            <div className="grid grid-cols-2 gap-4">
-              {frequentlyBoughtProducts.length > 0 ? (
-                frequentlyBoughtProducts.map(product => renderProductCard(product))
-              ) : (
-                <div className="col-span-2 text-center py-10">
-                  <ShoppingBag className="mx-auto text-gray-400 mb-3" size={40} />
-                  <h3 className="text-lg font-medium text-gray-700">Nenhum produto frequente</h3>
-                  <p className="text-gray-500 mt-1">Continue comprando para construir seu histórico.</p>
-                  <CustomButton 
-                    variant="primary" 
-                    className="mt-4"
-                    onClick={() => navigate('/marketplace')}
-                  >
-                    Ir para loja
-                  </CustomButton>
+            {activeTab === "frequent" && (
+              <>
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="font-medium">Comprados com frequência</h2>
                 </div>
-              )}
-            </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  {frequentlyBought.length > 0 ? (
+                    frequentlyBought.map(item => renderProductCard(item))
+                  ) : (
+                    <div className="col-span-2 text-center py-10">
+                      <ShoppingBag className="mx-auto text-gray-400 mb-3" size={40} />
+                      <h3 className="text-lg font-medium text-gray-700">Nenhum produto frequente</h3>
+                      <p className="text-gray-500 mt-1">Continue comprando para construir seu histórico.</p>
+                      <CustomButton 
+                        variant="primary" 
+                        className="mt-4"
+                        onClick={() => navigate('/marketplace')}
+                      >
+                        Ir para loja
+                      </CustomButton>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </>
         )}
       </div>

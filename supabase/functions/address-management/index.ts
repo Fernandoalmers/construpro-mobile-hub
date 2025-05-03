@@ -59,6 +59,7 @@ serve(async (req) => {
     // Verify user token and get user ID
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
     if (authError || !user) {
+      console.error("Auth error:", authError);
       return new Response(
         JSON.stringify({ error: authError?.message || 'Unauthorized' }),
         { status: 401, headers: corsHeaders }
@@ -80,6 +81,7 @@ serve(async (req) => {
         .order('created_at', { ascending: false })
       
       if (error) {
+        console.error("Error getting addresses:", error);
         return new Response(
           JSON.stringify({ error: error.message }),
           { status: 500, headers: corsHeaders }
@@ -102,6 +104,7 @@ serve(async (req) => {
         .single()
       
       if (error) {
+        console.error("Error getting address by id:", error);
         return new Response(
           JSON.stringify({ error: error.message }),
           { status: error.code === 'PGRST116' ? 404 : 500, headers: corsHeaders }
@@ -116,7 +119,8 @@ serve(async (req) => {
     
     // POST /address-management - Create new address
     if (req.method === 'POST') {
-      const addressData: AddressData = await req.json()
+      const requestBody = await req.json();
+      const addressData: AddressData = requestBody;
       
       // Validate required fields
       const requiredFields = ['nome', 'cep', 'logradouro', 'numero', 'bairro', 'cidade', 'estado']
@@ -131,11 +135,14 @@ serve(async (req) => {
       
       // If this address is set as principal, update all other addresses
       if (addressData.principal) {
-        await supabaseClient
+        const { error: updateError } = await supabaseClient
           .from('user_addresses')
           .update({ principal: false })
           .eq('user_id', user.id)
-          .neq('id', addressData.id || '')
+        
+        if (updateError) {
+          console.error("Error updating other addresses:", updateError);
+        }
       }
       
       // Insert new address
@@ -149,6 +156,7 @@ serve(async (req) => {
         .single()
       
       if (error) {
+        console.error("Error creating address:", error);
         return new Response(
           JSON.stringify({ error: error.message }),
           { status: 500, headers: corsHeaders }
@@ -163,15 +171,20 @@ serve(async (req) => {
     
     // PUT /address-management/:id - Update address
     if (req.method === 'PUT' && addressId) {
-      const addressData: AddressData = await req.json()
+      const requestBody = await req.json();
+      const addressData: AddressData = requestBody;
       
       // If this address is set as principal, update all other addresses
       if (addressData.principal) {
-        await supabaseClient
+        const { error: updateError } = await supabaseClient
           .from('user_addresses')
           .update({ principal: false })
           .eq('user_id', user.id)
           .neq('id', addressId)
+        
+        if (updateError) {
+          console.error("Error updating other addresses during edit:", updateError);
+        }
       }
       
       // Update address
@@ -184,6 +197,7 @@ serve(async (req) => {
         .single()
       
       if (error) {
+        console.error("Error updating address:", error);
         return new Response(
           JSON.stringify({ error: error.message }),
           { status: 500, headers: corsHeaders }
@@ -221,6 +235,7 @@ serve(async (req) => {
         .eq('user_id', user.id)
       
       if (error) {
+        console.error("Error deleting address:", error);
         return new Response(
           JSON.stringify({ error: error.message }),
           { status: 500, headers: corsHeaders }
@@ -238,9 +253,10 @@ serve(async (req) => {
       JSON.stringify({ error: 'Method not allowed' }),
       { status: 405, headers: corsHeaders }
     )
-  } catch (error) {
+  } catch (error: any) {
+    console.error("Unexpected error in address-management:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message || "Internal server error" }),
       { status: 500, headers: corsHeaders }
     )
   }

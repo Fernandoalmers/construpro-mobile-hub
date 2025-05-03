@@ -5,8 +5,27 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, content-type, x-client-info, apikey',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Content-Type': 'application/json'
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+}
+
+interface ReferralInfo {
+  codigo: string;
+  saldo_pontos: number;
+  total_referrals: number;
+  pending_referrals: number;
+  approved_referrals: number;
+  points_earned: number;
+  referrals: Array<{
+    id: string;
+    status: 'pendente' | 'aprovado' | 'rejeitado';
+    pontos: number;
+    data: string;
+    profiles: {
+      nome: string;
+      email: string;
+      created_at: string;
+    }
+  }>;
 }
 
 serve(async (req) => {
@@ -14,354 +33,357 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders, status: 204 })
   }
-
+  
   try {
-    // Get authorization token
-    const authHeader = req.headers.get('authorization')
+    // Get environment variables
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+    
+    // Get authorization token from request
+    const authHeader = req.headers.get('authorization');
     if (!authHeader) {
       return new Response(
-        JSON.stringify({ error: 'No authorization header' }),
-        { status: 401, headers: corsHeaders }
-      )
+        JSON.stringify({ error: 'Not authorized' }),
+        { status: 401, headers: { ...corsHeaders } }
+      );
     }
-
-    const token = authHeader.replace('Bearer ', '')
-
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || ''
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
     
-    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Initialize Supabase clients
+    const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      }
+    });
+    
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
       },
       global: {
         headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      },
-    })
+          Authorization: `Bearer ${token}`
+        }
+      }
+    });
     
-    // Admin client for operations that might require elevated privileges
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    })
-    
-    // Verify user token and get user ID
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
-    if (authError || !user) {
+    // Get the authenticated user
+    const { data: { user }, error: userError } = await userClient.auth.getUser();
+    if (userError || !user) {
       return new Response(
-        JSON.stringify({ error: authError?.message || 'Unauthorized' }),
-        { status: 401, headers: corsHeaders }
-      )
+        JSON.stringify({ error: 'Invalid user token' }),
+        { status: 401, headers: { ...corsHeaders } }
+      );
     }
     
-    const url = new URL(req.url)
-    const path = url.pathname.split('/').filter(Boolean)
-    const referralId = path[path.length - 1] !== 'referral-processing' ? path[path.length - 1] : null
-    
-    // GET /referral-processing - Get referral information
-    if (req.method === 'GET' && !referralId) {
-      // Get user's referral code
-      const { data: referrer, error: referrerError } = await supabaseClient
+    // GET: Fetch referral information
+    if (req.method === 'GET') {
+      // Get the user's profile to get the referral code
+      const { data: profile, error: profileError } = await userClient
         .from('profiles')
         .select('codigo, saldo_pontos')
         .eq('id', user.id)
-        .single()
+        .single();
       
-      if (referrerError) {
+      if (profileError) {
         return new Response(
-          JSON.stringify({ error: referrerError.message }),
-          { status: 500, headers: corsHeaders }
-        )
+          JSON.stringify({ error: 'Error fetching profile' }),
+          { status: 500, headers: { ...corsHeaders } }
+        );
       }
       
-      // If user doesn't have a code yet, generate one
-      if (!referrer.codigo) {
-        const code = generateReferralCode(8)
+      // Generate a referral code if the user doesn't have one yet
+      let referralCode = profile.codigo;
+      if (!referralCode) {
+        // Generate a 6-character alphanumeric code
+        referralCode = Math.random().toString(36).substring(2, 8).toUpperCase();
         
-        const { error: updateError } = await supabaseClient
+        // Save the code to the user's profile
+        const { error: updateError } = await userClient
           .from('profiles')
-          .update({ codigo: code })
-          .eq('id', user.id)
+          .update({ codigo: referralCode })
+          .eq('id', user.id);
         
         if (updateError) {
           return new Response(
-            JSON.stringify({ error: updateError.message }),
-            { status: 500, headers: corsHeaders }
-          )
+            JSON.stringify({ error: 'Error updating profile with referral code' }),
+            { status: 500, headers: { ...corsHeaders } }
+          );
         }
-        
-        referrer.codigo = code
       }
       
-      // Get referrals sent by user
-      const { data: sentReferrals, error: sentError } = await supabaseClient
+      // Get the referrals made by this user
+      const { data: referrals, error: referralsError } = await userClient
         .from('referrals')
         .select(`
-          id, 
-          status, 
-          pontos, 
-          data, 
-          profiles!referred_id (
-            nome, 
-            email, 
-            created_at
-          )
+          id, status, pontos, data,
+          profiles:referred_id(nome, email, created_at)
         `)
-        .eq('referrer_id', user.id)
+        .eq('referrer_id', user.id);
       
-      if (sentError) {
+      if (referralsError) {
         return new Response(
-          JSON.stringify({ error: sentError.message }),
-          { status: 500, headers: corsHeaders }
-        )
+          JSON.stringify({ error: 'Error fetching referrals' }),
+          { status: 500, headers: { ...corsHeaders } }
+        );
       }
       
+      // Calculate statistics
+      const totalReferrals = referrals ? referrals.length : 0;
+      const pendingReferrals = referrals ? referrals.filter(r => r.status === 'pendente').length : 0;
+      const approvedReferrals = referrals ? referrals.filter(r => r.status === 'aprovado').length : 0;
+      const pointsEarned = referrals 
+        ? referrals.filter(r => r.status === 'aprovado').reduce((sum, r) => sum + (r.pontos || 0), 0) 
+        : 0;
+      
+      // Build response
+      const response: ReferralInfo = {
+        codigo: referralCode,
+        saldo_pontos: profile.saldo_pontos || 0,
+        total_referrals: totalReferrals,
+        pending_referrals: pendingReferrals,
+        approved_referrals: approvedReferrals,
+        points_earned: pointsEarned,
+        referrals: referrals || []
+      };
+      
       return new Response(
-        JSON.stringify({
-          codigo: referrer.codigo,
-          saldo_pontos: referrer.saldo_pontos,
-          total_referrals: sentReferrals.length,
-          pending_referrals: sentReferrals.filter(ref => ref.status === 'pendente').length,
-          approved_referrals: sentReferrals.filter(ref => ref.status === 'aprovado').length,
-          points_earned: sentReferrals.reduce((sum, ref) => sum + (ref.pontos || 0), 0),
-          referrals: sentReferrals
-        }),
-        { status: 200, headers: corsHeaders }
-      )
+        JSON.stringify(response),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
     
-    // POST /referral-processing - Use a referral code during signup
+    // POST: Apply a referral code
     if (req.method === 'POST') {
-      const { codigo } = await req.json()
+      const { codigo } = await req.json();
       
       if (!codigo) {
         return new Response(
-          JSON.stringify({ error: 'Missing referral code' }),
-          { status: 400, headers: corsHeaders }
-        )
+          JSON.stringify({ error: 'Referral code is required' }),
+          { status: 400, headers: { ...corsHeaders } }
+        );
       }
       
-      // Find the referrer
-      const { data: referrer, error: referrerError } = await supabaseAdmin
+      // Find the referrer based on the code
+      const { data: referrer, error: referrerError } = await adminClient
         .from('profiles')
-        .select('id, codigo')
+        .select('id')
         .eq('codigo', codigo)
-        .single()
+        .single();
       
       if (referrerError || !referrer) {
         return new Response(
           JSON.stringify({ error: 'Invalid referral code' }),
-          { status: 400, headers: corsHeaders }
-        )
+          { status: 404, headers: { ...corsHeaders } }
+        );
       }
       
       // Make sure the user isn't referring themselves
       if (referrer.id === user.id) {
         return new Response(
-          JSON.stringify({ error: 'You cannot use your own referral code' }),
-          { status: 400, headers: corsHeaders }
-        )
+          JSON.stringify({ error: 'You cannot refer yourself' }),
+          { status: 400, headers: { ...corsHeaders } }
+        );
       }
       
-      // Check if the user has already been referred
-      const { data: existingReferral, error: existingError } = await supabaseAdmin
+      // Check if this referral already exists
+      const { data: existingReferral, error: existingError } = await adminClient
         .from('referrals')
         .select('id')
+        .eq('referrer_id', referrer.id)
         .eq('referred_id', user.id)
+        .single();
       
-      if (existingReferral?.length > 0) {
+      if (existingReferral) {
         return new Response(
-          JSON.stringify({ error: 'You have already been referred' }),
-          { status: 400, headers: corsHeaders }
-        )
+          JSON.stringify({ error: 'This referral already exists' }),
+          { status: 409, headers: { ...corsHeaders } }
+        );
       }
       
       // Create the referral record
-      const { error: insertError } = await supabaseAdmin
+      const { error: createError } = await adminClient
         .from('referrals')
         .insert({
           referrer_id: referrer.id,
           referred_id: user.id,
           status: 'pendente',
-          pontos: 0
-        })
+          pontos: 300 // Default points for referrals
+        });
       
-      if (insertError) {
+      if (createError) {
         return new Response(
-          JSON.stringify({ error: insertError.message }),
-          { status: 500, headers: corsHeaders }
-        )
+          JSON.stringify({ error: 'Error creating referral record' }),
+          { status: 500, headers: { ...corsHeaders } }
+        );
       }
       
       return new Response(
-        JSON.stringify({ success: true, message: 'Referral code applied successfully' }),
-        { status: 201, headers: corsHeaders }
-      )
+        JSON.stringify({
+          success: true,
+          message: 'Referral code applied successfully'
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
     
-    // PUT /referral-processing/:id - Approve a referral (admin only)
-    if (req.method === 'PUT' && referralId) {
+    // PUT: Update a referral status (admin or system)
+    if (req.method === 'PUT') {
+      const { id, status, pontos } = await req.json();
+      
+      if (!id || !status) {
+        return new Response(
+          JSON.stringify({ error: 'Referral ID and status are required' }),
+          { status: 400, headers: { ...corsHeaders } }
+        );
+      }
+      
       // Check if user is admin
-      const { data: profile, error: profileError } = await supabaseClient
+      const { data: profile, error: profileError } = await userClient
         .from('profiles')
         .select('is_admin')
         .eq('id', user.id)
-        .single()
+        .single();
       
-      if (profileError || !profile.is_admin) {
+      if (profileError) {
         return new Response(
-          JSON.stringify({ error: 'Unauthorized. Admin access required.' }),
-          { status: 403, headers: corsHeaders }
-        )
+          JSON.stringify({ error: 'Error checking user permissions' }),
+          { status: 500, headers: { ...corsHeaders } }
+        );
       }
       
-      const { status, pontos = 300 } = await req.json()
-      
-      if (!status || !['aprovado', 'rejeitado'].includes(status)) {
+      // Only admins can update referrals
+      if (!profile.is_admin) {
         return new Response(
-          JSON.stringify({ error: 'Invalid status. Must be "aprovado" or "rejeitado".' }),
-          { status: 400, headers: corsHeaders }
-        )
+          JSON.stringify({ error: 'Only admins can update referrals' }),
+          { status: 403, headers: { ...corsHeaders } }
+        );
       }
       
       // Get the referral
-      const { data: referral, error: referralError } = await supabaseAdmin
+      const { data: referral, error: referralError } = await adminClient
         .from('referrals')
         .select('referrer_id, referred_id, status')
-        .eq('id', referralId)
-        .single()
+        .eq('id', id)
+        .single();
       
       if (referralError || !referral) {
         return new Response(
           JSON.stringify({ error: 'Referral not found' }),
-          { status: 404, headers: corsHeaders }
-        )
+          { status: 404, headers: { ...corsHeaders } }
+        );
       }
       
-      // Make sure it's not already processed
-      if (referral.status !== 'pendente') {
-        return new Response(
-          JSON.stringify({ error: 'Referral has already been processed' }),
-          { status: 400, headers: corsHeaders }
-        )
-      }
-      
-      if (status === 'aprovado') {
-        // Add points to referrer
-        const { error: pointsError } = await supabaseAdmin
+      // If transitioning from pending to approved, award points
+      if (referral.status === 'pendente' && status === 'aprovado') {
+        // Award points to referrer
+        const { error: referrerUpdateError } = await adminClient.rpc(
+          'update_user_points',
+          { 
+            user_id: referral.referrer_id, 
+            points_to_add: pontos || 300 
+          }
+        );
+        
+        if (referrerUpdateError) {
+          return new Response(
+            JSON.stringify({ error: 'Error awarding points to referrer' }),
+            { status: 500, headers: { ...corsHeaders } }
+          );
+        }
+        
+        // Log transaction for referrer
+        const { error: referrerTxError } = await adminClient
           .from('points_transactions')
           .insert({
             user_id: referral.referrer_id,
-            pontos: pontos,
+            pontos: pontos || 300,
             tipo: 'indicacao',
-            referencia_id: referralId,
-            descricao: 'Bônus por indicação aprovada'
-          })
+            referencia_id: id,
+            descricao: 'Pontos por indicação aprovada'
+          });
         
-        if (pointsError) {
+        if (referrerTxError) {
           return new Response(
-            JSON.stringify({ error: pointsError.message }),
-            { status: 500, headers: corsHeaders }
-          )
+            JSON.stringify({ error: 'Error logging referrer transaction' }),
+            { status: 500, headers: { ...corsHeaders } }
+          );
         }
         
-        // Update referrer's balance
-        const { error: referrerError } = await supabaseAdmin
-          .from('profiles')
-          .update({
-            saldo_pontos: supabaseAdmin.rpc('increment_points', { user_id: referral.referrer_id, amount: pontos })
-          })
-          .eq('id', referral.referrer_id)
+        // Award points to referred user
+        const { error: referredUpdateError } = await adminClient.rpc(
+          'update_user_points',
+          { 
+            user_id: referral.referred_id, 
+            points_to_add: pontos || 300 
+          }
+        );
         
-        if (referrerError) {
+        if (referredUpdateError) {
           return new Response(
-            JSON.stringify({ error: referrerError.message }),
-            { status: 500, headers: corsHeaders }
-          )
+            JSON.stringify({ error: 'Error awarding points to referred user' }),
+            { status: 500, headers: { ...corsHeaders } }
+          );
         }
         
-        // Add points to referred user
-        const { error: referredPointsError } = await supabaseAdmin
+        // Log transaction for referred user
+        const { error: referredTxError } = await adminClient
           .from('points_transactions')
           .insert({
             user_id: referral.referred_id,
-            pontos: pontos,
+            pontos: pontos || 300,
             tipo: 'indicacao',
-            referencia_id: referralId,
-            descricao: 'Bônus por cadastro com código de indicação'
-          })
+            referencia_id: id,
+            descricao: 'Pontos por se cadastrar com código de indicação'
+          });
         
-        if (referredPointsError) {
+        if (referredTxError) {
           return new Response(
-            JSON.stringify({ error: referredPointsError.message }),
-            { status: 500, headers: corsHeaders }
-          )
-        }
-        
-        // Update referred user's balance
-        const { error: referredError } = await supabaseAdmin
-          .from('profiles')
-          .update({
-            saldo_pontos: supabaseAdmin.rpc('increment_points', { user_id: referral.referred_id, amount: pontos })
-          })
-          .eq('id', referral.referred_id)
-        
-        if (referredError) {
-          return new Response(
-            JSON.stringify({ error: referredError.message }),
-            { status: 500, headers: corsHeaders }
-          )
+            JSON.stringify({ error: 'Error logging referred user transaction' }),
+            { status: 500, headers: { ...corsHeaders } }
+          );
         }
       }
       
       // Update the referral status
-      const { error: updateError } = await supabaseAdmin
+      const { error: updateError } = await adminClient
         .from('referrals')
         .update({
           status,
-          pontos: status === 'aprovado' ? pontos : 0
+          pontos: pontos || 300
         })
-        .eq('id', referralId)
+        .eq('id', id);
       
       if (updateError) {
         return new Response(
-          JSON.stringify({ error: updateError.message }),
-          { status: 500, headers: corsHeaders }
-        )
+          JSON.stringify({ error: 'Error updating referral' }),
+          { status: 500, headers: { ...corsHeaders } }
+        );
       }
       
       return new Response(
-        JSON.stringify({ success: true }),
-        { status: 200, headers: corsHeaders }
-      )
+        JSON.stringify({
+          success: true,
+          message: `Referral updated to ${status}`
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
     
-    // If the request doesn't match any of the above conditions
+    // If the method is not supported
     return new Response(
-      JSON.stringify({ error: 'Method not allowed' }),
-      { status: 405, headers: corsHeaders }
-    )
+      JSON.stringify({ error: 'Method not supported' }),
+      { status: 405, headers: { ...corsHeaders } }
+    );
+    
   } catch (error) {
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: corsHeaders }
-    )
+      JSON.stringify({ error: error.message || 'Internal server error' }),
+      { status: 500, headers: { ...corsHeaders } }
+    );
   }
 })
-
-// Helper function to generate a random referral code
-function generateReferralCode(length: number): string {
-  const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Excluding confusing characters like I, O, 0, 1
-  let result = '';
-  for (let i = 0; i < length; i++) {
-    result += characters.charAt(Math.floor(Math.random() * characters.length));
-  }
-  return result;
-}

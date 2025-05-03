@@ -8,30 +8,63 @@ AS $$
 DECLARE
   result jsonb;
 BEGIN
-  -- Create policy for users to read all objects in avatars bucket
-  DROP POLICY IF EXISTS "Allow public read access to avatars" ON storage.objects;
-  CREATE POLICY "Allow public read access to avatars" 
-    ON storage.objects FOR SELECT 
-    USING (bucket_id = 'avatars');
-    
-  -- Create policy for users to upload their own avatars
-  DROP POLICY IF EXISTS "Allow users to upload avatars" ON storage.objects;
-  CREATE POLICY "Allow users to upload avatars" 
-    ON storage.objects FOR INSERT 
-    WITH CHECK (bucket_id = 'avatars');
-    
+  -- Create policy for avatar uploads
+  BEGIN
+    DROP POLICY IF EXISTS "Avatar uploads require authentication" ON storage.objects;
+    EXCEPTION WHEN OTHERS THEN NULL;
+  END;
+  
+  CREATE POLICY "Avatar uploads require authentication"
+    ON storage.objects
+    FOR INSERT
+    TO authenticated
+    WITH CHECK (
+      bucket_id = 'avatars'
+      AND (auth.uid())::text = (storage.foldername(name))[1]
+    );
+
   -- Create policy for users to update their own avatars
-  DROP POLICY IF EXISTS "Allow users to update their own avatars" ON storage.objects;
-  CREATE POLICY "Allow users to update their own avatars" 
-    ON storage.objects FOR UPDATE 
-    USING (bucket_id = 'avatars' AND auth.uid() = owner);
-    
+  BEGIN
+    DROP POLICY IF EXISTS "Users can update their own avatars" ON storage.objects;
+    EXCEPTION WHEN OTHERS THEN NULL;
+  END;
+  
+  CREATE POLICY "Users can update their own avatars"
+    ON storage.objects
+    FOR UPDATE
+    TO authenticated
+    USING (
+      bucket_id = 'avatars'
+      AND (auth.uid())::text = (storage.foldername(name))[1]
+    );
+
   -- Create policy for users to delete their own avatars
-  DROP POLICY IF EXISTS "Allow users to delete their own avatars" ON storage.objects;
-  CREATE POLICY "Allow users to delete their own avatars" 
-    ON storage.objects FOR DELETE 
-    USING (bucket_id = 'avatars' AND auth.uid() = owner);
-    
+  BEGIN
+    DROP POLICY IF EXISTS "Users can delete their own avatars" ON storage.objects;
+    EXCEPTION WHEN OTHERS THEN NULL;
+  END;
+  
+  CREATE POLICY "Users can delete their own avatars"
+    ON storage.objects
+    FOR DELETE
+    TO authenticated
+    USING (
+      bucket_id = 'avatars'
+      AND (auth.uid())::text = (storage.foldername(name))[1]
+    );
+
+  -- Create policy for public access to avatars
+  BEGIN
+    DROP POLICY IF EXISTS "Avatar images are publicly accessible" ON storage.objects;
+    EXCEPTION WHEN OTHERS THEN NULL;
+  END;
+  
+  CREATE POLICY "Avatar images are publicly accessible"
+    ON storage.objects
+    FOR SELECT
+    TO public
+    USING (bucket_id = 'avatars');
+
   -- Return success
   result := jsonb_build_object(
     'success', true,

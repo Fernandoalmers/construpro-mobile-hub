@@ -47,6 +47,7 @@ serve(async (req) => {
     // Get authorization token
     const authHeader = req.headers.get('authorization')
     if (!authHeader) {
+      console.error("Missing authorization header");
       return new Response(
         JSON.stringify({ error: 'No authorization header' }),
         { status: 401, headers }
@@ -55,9 +56,10 @@ serve(async (req) => {
     
     const token = authHeader.replace('Bearer ', '')
 
-    // Initialize Supabase client with service role - set search_path to avoid RLS recursion
+    // Initialize Supabase clients
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || ''
     
     // Client with Service Role token (bypassing RLS)
     const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
@@ -68,7 +70,7 @@ serve(async (req) => {
     });
     
     // Client with JWT token (from user) to verify identity
-    const supabaseClient = createClient(supabaseUrl, supabaseServiceKey, {
+    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
@@ -150,6 +152,12 @@ serve(async (req) => {
           updateData[field] = requestData[field]
         }
       })
+      
+      // Special handling for avatar field
+      if ('avatar' in requestData) {
+        updateData.avatar = requestData.avatar;
+        console.log("Updating avatar to:", updateData.avatar);
+      }
       
       // Handle nested endereco_principal
       if (requestData.endereco_principal) {
