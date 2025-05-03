@@ -15,22 +15,6 @@ import {
 } from './productBase';
 
 import {
-  getPendingProducts,
-  markProductAsPending,
-  approveProduct,
-  rejectProduct,
-  updateProductStatus
-} from './productApproval';
-
-import {
-  subscribeToVendorProducts,
-  subscribeToAllProducts,
-  subscribeToAdminProductUpdates,
-  unsubscribeFromChannel,
-  unsubscribeAll
-} from './productRealtime';
-
-import {
   uploadProductImage,
   updateProductImages,
   getProductImages,
@@ -56,6 +40,23 @@ import {
   ValidationError
 } from './productValidation';
 
+// Re-export from the new modular admin product services
+import {
+  getPendingProducts,
+  markProductAsPending,
+  approveProduct,
+  rejectProduct,
+  updateProductStatus
+} from '@/services/admin/products/productApproval';
+
+import {
+  subscribeToVendorProducts,
+  subscribeToAllProducts,
+  subscribeToAdminProductUpdates,
+  unsubscribeFromChannel,
+  unsubscribeAll
+} from './productRealtime';
+
 // Export types
 export type { BaseProduct, VendorProduct, AdminProduct, ProductImage, ValidationError };
 
@@ -71,7 +72,7 @@ export {
   getCategories,
   getVendors,
   
-  // Product Approval
+  // Product Approval (now from admin/products module)
   getPendingProducts,
   markProductAsPending,
   approveProduct,
