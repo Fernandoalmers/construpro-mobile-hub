@@ -9,7 +9,10 @@ let redemptionsCache: AdminRedemption[] = [];
 /**
  * Update a redemption status in the cache
  */
-export const updateRedemptionInCache = (redemptionId: string, newStatus: string): void => {
+export const updateRedemptionInCache = (
+  redemptionId: string, 
+  newStatus: "pendente" | "aprovado" | "recusado" | "entregue"
+): void => {
   redemptionsCache = redemptionsCache.map(redemption =>
     redemption.id === redemptionId
       ? { ...redemption, status: newStatus }
@@ -63,7 +66,9 @@ export const fetchRedemptions = async (showAll: boolean = true): Promise<AdminRe
       return {
         ...redemption,
         cliente_nome: customerData?.nome || 'Desconhecido',
-        cliente_email: customerData?.email
+        cliente_email: customerData?.email,
+        // Ensure the status is properly typed
+        status: redemption.status as "pendente" | "aprovado" | "recusado" | "entregue"
       } as AdminRedemption;
     }));
     
