@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -10,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from "@/components/ui/sonner";
 import { useAuth, UserRole } from '../../context/AuthContext';
 import { supabase } from "@/integrations/supabase/client";
+import { OperatingHours, saveStore } from '@/services/storeService';
 
 interface DeliveryMethod {
   id: string;
@@ -128,21 +128,6 @@ const VendorProfileScreen: React.FC = () => {
         .filter(m => m.checked)
         .map(m => m.id);
       
-      const storeData = {
-        nome: formData.nomeLoja,
-        descricao: formData.descricao,
-        endereco: {
-          logradouro: formData.endereco,
-          cidade: formData.cidade,
-          estado: formData.estado,
-          cep: formData.cep,
-          full_address: `${formData.endereco}, ${formData.cidade} - ${formData.estado}, ${formData.cep}`
-        },
-        operating_hours: operatingHours,
-        owner_id: null, // Will be set by RLS policy
-        profile_id: null, // Will be updated after user role is updated
-      };
-
       // Update user with vendor data
       await updateUser({ 
         papel: 'lojista' as UserRole
@@ -152,16 +137,25 @@ const VendorProfileScreen: React.FC = () => {
       const { data: userData } = await supabase.auth.getUser();
       if (userData?.user) {
         // Create store
-        const { data: storeResult, error } = await supabase
-          .from('stores')
-          .insert({
-            ...storeData,
-            profile_id: userData.user.id
-          })
-          .select()
-          .single();
-          
-        if (error) throw error;
+        const storeData = {
+          nome: formData.nomeLoja,
+          descricao: formData.descricao,
+          endereco: {
+            logradouro: formData.endereco,
+            cidade: formData.cidade,
+            estado: formData.estado,
+            cep: formData.cep,
+            full_address: `${formData.endereco}, ${formData.cidade} - ${formData.estado}, ${formData.cep}`
+          },
+          operating_hours: operatingHours,
+          profile_id: userData.user.id
+        };
+        
+        const storeResult = await saveStore(storeData);
+        
+        if (!storeResult) {
+          throw new Error("Failed to create store");
+        }
         
         // Upload logo if provided
         if (formData.logo) {

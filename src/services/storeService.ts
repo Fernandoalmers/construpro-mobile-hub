@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { Database } from "@/integrations/supabase/types";
 
 export interface DayHours {
   open: string;
@@ -42,6 +43,42 @@ export interface Store {
   updated_at?: string;
 }
 
+type DbStore = Database['public']['Tables']['stores']['Row'];
+
+// Helper function to convert DB store to app Store type
+const mapDbStoreToStore = (dbStore: DbStore): Store => {
+  return {
+    id: dbStore.id,
+    nome: dbStore.nome,
+    descricao: dbStore.descricao || undefined,
+    logo_url: dbStore.logo_url || undefined,
+    endereco: dbStore.endereco as unknown as StoreAddress,
+    contato: dbStore.contato || undefined,
+    owner_id: dbStore.owner_id || undefined,
+    profile_id: dbStore.profile_id || undefined,
+    operating_hours: dbStore.operating_hours as unknown as OperatingHours,
+    created_at: dbStore.created_at,
+    updated_at: dbStore.updated_at
+  };
+};
+
+// Helper function to convert app Store type to DB store format
+const mapStoreToDbStore = (store: Partial<Store>): Partial<DbStore> => {
+  return {
+    id: store.id,
+    nome: store.nome,
+    descricao: store.descricao,
+    logo_url: store.logo_url,
+    endereco: store.endereco as any,
+    contato: store.contato,
+    owner_id: store.owner_id,
+    profile_id: store.profile_id,
+    operating_hours: store.operating_hours as any,
+    created_at: store.created_at,
+    updated_at: store.updated_at
+  };
+};
+
 // Get a store by ID
 export const getStoreById = async (id: string): Promise<Store | null> => {
   const { data, error } = await supabase
@@ -55,7 +92,7 @@ export const getStoreById = async (id: string): Promise<Store | null> => {
     return null;
   }
   
-  return data as Store;
+  return data ? mapDbStoreToStore(data as DbStore) : null;
 };
 
 // Get stores by owner
@@ -70,16 +107,18 @@ export const getStoresByOwner = async (profileId: string): Promise<Store[]> => {
     return [];
   }
   
-  return data as Store[];
+  return data ? data.map(item => mapDbStoreToStore(item as DbStore)) : [];
 };
 
 // Create or update store
 export const saveStore = async (store: Partial<Store>): Promise<Store | null> => {
+  const dbStore = mapStoreToDbStore(store);
+  
   if (store.id) {
     // Update existing store
     const { data, error } = await supabase
       .from('stores')
-      .update(store)
+      .update(dbStore)
       .eq('id', store.id)
       .select()
       .single();
@@ -89,12 +128,12 @@ export const saveStore = async (store: Partial<Store>): Promise<Store | null> =>
       return null;
     }
     
-    return data as Store;
+    return data ? mapDbStoreToStore(data as DbStore) : null;
   } else {
     // Create new store
     const { data, error } = await supabase
       .from('stores')
-      .insert(store)
+      .insert(dbStore)
       .select()
       .single();
       
@@ -103,7 +142,7 @@ export const saveStore = async (store: Partial<Store>): Promise<Store | null> =>
       return null;
     }
     
-    return data as Store;
+    return data ? mapDbStoreToStore(data as DbStore) : null;
   }
 };
 

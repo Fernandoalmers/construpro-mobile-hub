@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, ExternalLink, Upload, Clock } from 'lucide-react';
@@ -12,6 +11,7 @@ import { useForm } from 'react-hook-form';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from '@/context/AuthContext';
 import { Checkbox } from '@/components/ui/checkbox';
+import { OperatingHours, getStoreById, saveStore } from '@/services/storeService';
 
 interface StoreFormValues {
   nome: string;
@@ -108,12 +108,16 @@ const ConfiguracoesVendorScreen: React.FC = () => {
           // Set form values from store data
           form.setValue('nome', storeData.nome || '');
           form.setValue('descricao', storeData.descricao || '');
-          form.setValue('endereco', storeData.endereco?.full_address || '');
+          
+          // Handle address with type safety
+          const endereco = storeData.endereco as any;
+          form.setValue('endereco', endereco?.full_address || '');
           form.setValue('whatsapp', storeData.contato || '');
           
-          // Handle operating hours
+          // Handle operating hours with type safety
           if (storeData.operating_hours) {
-            form.setValue('operatingHours', storeData.operating_hours);
+            const typedHours = storeData.operating_hours as unknown as OperatingHours;
+            form.setValue('operatingHours', typedHours);
           }
           
           // Set logo preview if available
@@ -187,6 +191,7 @@ const ConfiguracoesVendorScreen: React.FC = () => {
       
       // Create or update store data
       const storeData = {
+        id: storeId,
         nome: data.nome,
         descricao: data.descricao,
         endereco: { full_address: data.endereco },
@@ -195,30 +200,10 @@ const ConfiguracoesVendorScreen: React.FC = () => {
         profile_id: user?.id
       };
       
-      let storeResult;
+      const storeResult = await saveStore(storeData);
       
-      if (storeId) {
-        // Update existing store
-        const { data: updatedStore, error } = await supabase
-          .from('stores')
-          .update(storeData)
-          .eq('id', storeId)
-          .select()
-          .single();
-          
-        if (error) throw error;
-        storeResult = updatedStore;
-      } else {
-        // Create new store
-        const { data: newStore, error } = await supabase
-          .from('stores')
-          .insert(storeData)
-          .select()
-          .single();
-          
-        if (error) throw error;
-        storeResult = newStore;
-        setStoreId(newStore.id);
+      if (!storeResult) {
+        throw new Error("Failed to save store data");
       }
       
       // Upload logo if changed
