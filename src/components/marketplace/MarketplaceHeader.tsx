@@ -1,13 +1,14 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ChevronDown, Star } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Star, ShoppingBag } from 'lucide-react';
 import { motion } from 'framer-motion';
 import CustomInput from '../common/CustomInput';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from '@/components/ui/badge';
 import { FilterOption } from '@/hooks/use-product-filter';
-import lojas from '../../data/lojas.json';
+import { useCart } from '@/hooks/use-cart';
+import { supabase } from '@/integrations/supabase/client';
 
 interface MarketplaceHeaderProps {
   hideHeader: boolean;
@@ -17,17 +18,14 @@ interface MarketplaceHeaderProps {
   selectedRatings: string[];
   allCategories: FilterOption[];
   ratingOptions: FilterOption[];
+  stores?: any[];
   onSearchChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onSearch?: (term: string) => void;
   onLojaClick: (lojaId: string) => void;
   onCategoryClick: (categoryId: string) => void;
   onRatingClick: (ratingId: string) => void;
   clearFilters: () => void;
 }
-
-const lojasOptions: FilterOption[] = lojas.map(loja => ({
-  id: loja.id,
-  label: loja.nome
-}));
 
 const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
   hideHeader,
@@ -37,17 +35,83 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
   selectedRatings,
   allCategories,
   ratingOptions,
+  stores = [],
   onSearchChange,
+  onSearch,
   onLojaClick,
   onCategoryClick,
   onRatingClick,
   clearFilters
 }) => {
   const navigate = useNavigate();
+  const { cartCount } = useCart();
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [showResults, setShowResults] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
   const handleBackClick = () => {
     navigate('/marketplace');
   };
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSearch?.(searchTerm);
+    setShowResults(false);
+  };
+  
+  // Real-time search results
+  useEffect(() => {
+    const searchProducts = async () => {
+      if (!searchTerm || searchTerm.trim().length < 2) {
+        setSearchResults([]);
+        setShowResults(false);
+        return;
+      }
+      
+      try {
+        setIsSearching(true);
+        
+        const { data, error } = await supabase
+          .from('products')
+          .select(`
+            id, 
+            nome, 
+            preco, 
+            imagem_url,
+            stores:loja_id (
+              nome
+            )
+          `)
+          .ilike('nome', `%${searchTerm.trim()}%`)
+          .limit(5);
+          
+        if (error) throw error;
+        
+        setSearchResults(data || []);
+        setShowResults(data && data.length > 0);
+      } catch (error) {
+        console.error('Error searching products:', error);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+    
+    const debounceTimer = setTimeout(() => {
+      searchProducts();
+    }, 300);
+    
+    return () => clearTimeout(debounceTimer);
+  }, [searchTerm]);
+  
+  const handleResultClick = (productId: string) => {
+    navigate(`/produto/${productId}`);
+    setShowResults(false);
+  };
+
+  const lojasOptions = stores.map(store => ({
+    id: store.id,
+    label: store.nome
+  }));
 
   return (
     <motion.div 
@@ -68,15 +132,63 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
             <ArrowLeft size={24} />
           </button>
           <h1 className="text-2xl font-bold text-white">Produtos</h1>
+          
+          {/* Cart icon with count */}
+          <div className="ml-auto">
+            <button 
+              onClick={() => navigate('/cart')} 
+              className="relative text-white"
+            >
+              <ShoppingBag size={24} />
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                  {cartCount}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
         
-        <CustomInput
-          isSearch
-          placeholder="Buscar produtos"
-          value={searchTerm}
-          onChange={onSearchChange}
-          className="mb-4"
-        />
+        <form onSubmit={handleSearchSubmit} className="relative mb-4">
+          <input
+            type="text"
+            placeholder="Buscar produtos..."
+            value={searchTerm}
+            onChange={onSearchChange}
+            className="w-full px-4 py-2 border border-gray-300 rounded-md bg-white text-sm focus:outline-none"
+          />
+          
+          {/* Search results dropdown */}
+          {showResults && (
+            <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-md shadow-lg z-20 mt-1">
+              {searchResults.map((product) => (
+                <div
+                  key={product.id}
+                  className="p-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100"
+                  onClick={() => handleResultClick(product.id)}
+                >
+                  <div className="flex items-center">
+                    {product.imagem_url && (
+                      <img 
+                        src={product.imagem_url} 
+                        alt={product.nome} 
+                        className="w-10 h-10 object-cover rounded-sm mr-2"
+                      />
+                    )}
+                    <div>
+                      <p className="text-sm line-clamp-1">{product.nome}</p>
+                      <div className="flex items-center text-xs">
+                        <span className="text-gray-500">{product.stores?.nome}</span>
+                        <span className="mx-1">•</span>
+                        <span className="font-bold">R$ {product.preco.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </form>
 
         <div className="flex space-x-2 overflow-x-auto pb-4">
           <Dialog>

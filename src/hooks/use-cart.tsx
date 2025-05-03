@@ -65,12 +65,9 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       
       // Show cart popup for 4 seconds
       setShowCartPopup(true);
-      setTimeout(() => {
-        setShowCartPopup(false);
-      }, 4000);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to add to cart:', err);
-      toast.error('Erro ao adicionar ao carrinho');
+      toast.error(err.message || 'Erro ao adicionar ao carrinho');
       throw err;
     } finally {
       setLoading(false);
@@ -82,9 +79,9 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true);
       const updatedCart = await cartService.updateCartItemQuantity(itemId, quantity);
       setCart(updatedCart);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to update quantity:', err);
-      toast.error('Erro ao atualizar quantidade');
+      toast.error(err.message || 'Erro ao atualizar quantidade');
       throw err;
     } finally {
       setLoading(false);

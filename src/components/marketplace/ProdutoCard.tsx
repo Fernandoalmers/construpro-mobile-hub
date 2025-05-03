@@ -20,10 +20,10 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
       onClick={onClick}
       className="bg-white rounded-md shadow-sm p-3 flex border border-gray-100"
     >
-      {/* Product Image - moved to left side */}
+      {/* Product Image - positioned on the left side */}
       <div className="w-24 h-24 rounded-md overflow-hidden mr-3 flex-shrink-0">
         <img 
-          src={produto.imagemUrl} 
+          src={produto.imagemUrl || produto.imagem_url} 
           alt={produto.nome}
           className="w-full h-full object-cover"
         />
@@ -55,12 +55,19 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
         {/* Price */}
         <div className="mt-1">
           <span className="text-sm font-bold">R$ {produto.preco.toFixed(2)}</span>
-          {'precoAnterior' in produto && produto.precoAnterior > produto.preco && (
+          {(produto.precoAnterior > produto.preco || produto.preco_anterior > produto.preco) && (
             <span className="text-xs text-gray-400 line-through ml-2">
-              R$ {(produto as any).precoAnterior.toFixed(2)}
+              R$ {(produto.precoAnterior || produto.preco_anterior).toFixed(2)}
             </span>
           )}
         </div>
+        
+        {/* Points */}
+        {produto.pontos && (
+          <div className="text-xs text-construPro-orange mt-1">
+            Ganhe {produto.pontos} pontos
+          </div>
+        )}
       </div>
     </div>
   );

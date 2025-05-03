@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Heart, ShoppingBag, Star, Truck, Shield, Clock, Plus, Minus } from 'lucide-react';
@@ -5,31 +6,75 @@ import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/use-cart';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
-import produtos from '../../data/produtos.json';
-import lojas from '../../data/lojas.json';
 import { cartService } from '@/services/cartService';
+import { supabase } from '@/integrations/supabase/client';
 
 const ProdutoDetailScreen: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
-  const { addToCart, cartCount } = useCart();
+  const { addToCart, cartCount, refreshCart } = useCart();
   
+  const [produto, setProduto] = useState<any>(null);
+  const [loja, setLoja] = useState<any>(null);
   const [quantity, setQuantity] = useState(1);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [addingToCart, setAddingToCart] = useState(false);
   const [addingToFavorites, setAddingToFavorites] = useState(false);
   
-  // For now, using static data
-  const produto = produtos.find(p => p.id === id);
-  const loja = produto ? lojas.find(l => l.id === produto.lojaId) : undefined;
-  
   useEffect(() => {
-    if (!produto) {
-      toast.error("Produto não encontrado");
-      navigate('/marketplace');
-    }
-  }, [produto, navigate]);
+    const fetchProduct = async () => {
+      try {
+        setLoading(true);
+        
+        // Get product from Supabase
+        const { data: productData, error: productError } = await supabase
+          .from('products')
+          .select('*')
+          .eq('id', id)
+          .single();
+        
+        if (productError) throw productError;
+        if (!productData) {
+          toast.error("Produto não encontrado");
+          navigate('/marketplace');
+          return;
+        }
+        
+        setProduto(productData);
+        
+        // Get store information
+        if (productData.loja_id) {
+          const { data: storeData } = await supabase
+            .from('stores')
+            .select('*')
+            .eq('id', productData.loja_id)
+            .single();
+          
+          setLoja(storeData);
+        }
+        
+        // Add to recently viewed
+        if (isAuthenticated) {
+          await supabase
+            .from('recently_viewed')
+            .insert({
+              user_id: (await supabase.auth.getUser()).data.user?.id,
+              produto_id: id
+            })
+            .select();
+        }
+      } catch (error) {
+        console.error("Error fetching product:", error);
+        toast.error("Erro ao carregar o produto");
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchProduct();
+    refreshCart();
+  }, [id, navigate, isAuthenticated, refreshCart]);
 
   const handleDecrementQuantity = () => {
     if (quantity > 1) {
@@ -69,6 +114,24 @@ const ProdutoDetailScreen: React.FC = () => {
     }
   };
 
+  const handleBuyNow = async () => {
+    if (!isAuthenticated) {
+      navigate('/login', { state: { from: `/produto/${id}` } });
+      return;
+    }
+    
+    try {
+      setAddingToCart(true);
+      await addToCart(produto.id, quantity);
+      navigate('/checkout');
+    } catch (error) {
+      console.error("Erro ao processar compra:", error);
+      toast.error("Não foi possível processar sua compra");
+    } finally {
+      setAddingToCart(false);
+    }
+  };
+
   const handleAddToFavorites = async () => {
     if (!isAuthenticated) {
       navigate('/login', { state: { from: `/produto/${id}` } });
@@ -82,7 +145,6 @@ const ProdutoDetailScreen: React.FC = () => {
 
     try {
       setAddingToFavorites(true);
-      // Existing code for adding to favorites
       await cartService.addToFavorites(produto.id);
       toast.success("Adicionado aos favoritos!");
     } catch (error) {
@@ -95,15 +157,41 @@ const ProdutoDetailScreen: React.FC = () => {
 
   // Search functionality
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [showResults, setShowResults] = useState(false);
   
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchTerm.trim()) {
-      navigate(`/marketplace?search=${encodeURIComponent(searchTerm.trim())}`);
+  const handleSearch = async (query: string) => {
+    setSearchTerm(query);
+    
+    if (query.trim().length < 2) {
+      setSearchResults([]);
+      setShowResults(false);
+      return;
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('id, nome, preco, imagem_url')
+        .ilike('nome', `%${query}%`)
+        .limit(5);
+        
+      if (error) throw error;
+      
+      setSearchResults(data || []);
+      setShowResults(true);
+    } catch (error) {
+      console.error('Error searching products:', error);
     }
   };
+  
+  const handleSearchItemClick = (productId: string) => {
+    navigate(`/produto/${productId}`);
+    setShowResults(false);
+    setSearchTerm('');
+  };
 
-  if (loading || !produto || !loja) {
+  if (loading) {
     return (
       <div className="flex flex-col min-h-screen bg-gray-100">
         <div className="bg-white p-4 flex items-center">
@@ -122,6 +210,28 @@ const ProdutoDetailScreen: React.FC = () => {
     );
   }
 
+  if (!produto) {
+    return (
+      <div className="flex flex-col min-h-screen bg-gray-100">
+        <div className="bg-white p-4 flex items-center">
+          <button onClick={() => navigate(-1)} className="mr-4">
+            <ArrowLeft size={24} />
+          </button>
+          <h1 className="text-xl font-medium">Produto não encontrado</h1>
+        </div>
+        <div className="p-6 text-center">
+          <p className="text-gray-600 mb-4">O produto que você está procurando não está disponível.</p>
+          <Button 
+            onClick={() => navigate('/marketplace')}
+            className="bg-construPro-blue"
+          >
+            Voltar para a loja
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
       {/* Header with search and cart */}
@@ -131,15 +241,42 @@ const ProdutoDetailScreen: React.FC = () => {
             <ArrowLeft size={22} />
           </button>
           
-          <form onSubmit={handleSearch} className="flex-1 mx-2">
+          <div className="flex-1 mx-2 relative">
             <input
               type="text"
               placeholder="Buscar produtos..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => handleSearch(e.target.value)}
+              onFocus={() => searchResults.length > 0 && setShowResults(true)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-sm focus:outline-none"
             />
-          </form>
+            
+            {showResults && searchResults.length > 0 && (
+              <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-md shadow-lg z-20 mt-1">
+                {searchResults.map((product) => (
+                  <div
+                    key={product.id}
+                    className="p-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100"
+                    onClick={() => handleSearchItemClick(product.id)}
+                  >
+                    <div className="flex items-center">
+                      {product.imagem_url && (
+                        <img 
+                          src={product.imagem_url} 
+                          alt={product.nome} 
+                          className="w-10 h-10 object-cover rounded-sm mr-2"
+                        />
+                      )}
+                      <div>
+                        <p className="text-sm line-clamp-1">{product.nome}</p>
+                        <p className="text-xs font-bold">R$ {product.preco.toFixed(2)}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           
           <button 
             onClick={() => navigate('/cart')} 
@@ -158,7 +295,7 @@ const ProdutoDetailScreen: React.FC = () => {
       {/* Product Image */}
       <div className="w-full h-[300px] bg-white">
         <img 
-          src={produto.imagemUrl} 
+          src={produto.imagem_url || produto.imagemUrl} 
           alt={produto.nome} 
           className="w-full h-full object-contain"
         />
@@ -167,14 +304,16 @@ const ProdutoDetailScreen: React.FC = () => {
       {/* Product Info */}
       <div className="bg-white p-6">
         {/* Store Info */}
-        <div className="flex items-center mb-3">
-          <img 
-            src={loja.logoUrl} 
-            alt={loja.nome} 
-            className="w-5 h-5 rounded-full object-cover mr-2"
-          />
-          <span className="text-sm text-gray-600">{loja.nome}</span>
-        </div>
+        {loja && (
+          <div className="flex items-center mb-3">
+            <img 
+              src={loja.logo_url} 
+              alt={loja.nome} 
+              className="w-5 h-5 rounded-full object-cover mr-2"
+            />
+            <span className="text-sm text-gray-600">{loja.nome}</span>
+          </div>
+        )}
 
         <h1 className="text-xl font-bold">{produto.nome}</h1>
         
@@ -194,9 +333,9 @@ const ProdutoDetailScreen: React.FC = () => {
             <span className="text-2xl font-bold text-construPro-blue">
               R$ {produto.preco.toFixed(2)}
             </span>
-            {'precoAnterior' in produto && (
+            {(produto.precoAnterior > produto.preco || produto.preco_anterior > produto.preco) && (
               <span className="text-sm line-through text-gray-400">
-                R$ {(produto as any).precoAnterior.toFixed(2)}
+                R$ {(produto.precoAnterior || produto.preco_anterior).toFixed(2)}
               </span>
             )}
           </div>
@@ -248,6 +387,14 @@ const ProdutoDetailScreen: React.FC = () => {
           </Button>
           
           <Button 
+            onClick={handleBuyNow}
+            className="flex-1 bg-green-600 hover:bg-green-700"
+            disabled={addingToCart}
+          >
+            Comprar Agora
+          </Button>
+          
+          <Button 
             variant="outline" 
             className="px-4"
             onClick={handleAddToFavorites}
@@ -286,8 +433,8 @@ const ProdutoDetailScreen: React.FC = () => {
       <div className="bg-white mt-2 p-6">
         <h2 className="text-lg font-bold mb-3">Especificações</h2>
         <ul className="space-y-2">
-          {'especificacoes' in produto && Array.isArray((produto as any).especificacoes) && (
-            (produto as any).especificacoes.map((spec: string, index: number) => (
+          {'especificacoes' in produto && Array.isArray(produto.especificacoes) && (
+            produto.especificacoes.map((spec: string, index: number) => (
               <li key={index} className="text-gray-700 text-sm py-1 border-b border-gray-100">
                 {spec}
               </li>

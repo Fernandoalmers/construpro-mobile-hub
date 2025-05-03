@@ -1,131 +1,157 @@
 
-import { useState, useEffect, useMemo } from 'react';
-import produtos from '../data/produtos.json';
-import lojas from '../data/lojas.json';
+import { useState, useEffect } from 'react';
 
-// Define types
-export type FilterOption = {
+export interface FilterOption {
   id: string;
   label: string;
-};
+}
 
-type ProductFilterProps = {
+interface ProductFilterProps {
   initialCategories?: string[];
-  pageSize?: number;
-};
+  initialProducts?: any[];
+  initialSearch?: string;
+}
 
-export function useProductFilter({ initialCategories = [], pageSize = 12 }: ProductFilterProps = {}) {
-  // Search and filter state
-  const [searchTerm, setSearchTerm] = useState('');
+export const useProductFilter = ({ 
+  initialCategories = [], 
+  initialProducts = [],
+  initialSearch = ''
+}: ProductFilterProps = {}) => {
+  const [searchTerm, setSearchTerm] = useState<string>(initialSearch);
   const [selectedCategories, setSelectedCategories] = useState<string[]>(initialCategories);
   const [selectedLojas, setSelectedLojas] = useState<string[]>([]);
   const [selectedRatings, setSelectedRatings] = useState<string[]>([]);
-  const [page, setPage] = useState(1);
-  
-  // Generate unique categories from all products
-  const allCategories = useMemo(() => {
-    const categories = new Set<string>();
-    produtos.forEach(produto => {
-      if (produto.categoria) {
-        categories.add(produto.categoria);
-      }
-    });
-    return Array.from(categories).map(cat => ({
-      id: cat,
-      label: cat
-    }));
-  }, []);
-  
-  // Rating options
-  const ratingOptions = useMemo(() => [
-    { id: '4', label: '4+ ⭐' },
-    { id: '3', label: '3+ ⭐' },
-    { id: '2', label: '2+ ⭐' },
-    { id: '1', label: '1+ ⭐' }
-  ], []);
-  
-  // Filter products based on search term and selected filters
-  const filteredProdutos = useMemo(() => {
-    return produtos.filter(produto => {
-      // Search term filter
-      const matchesSearch = searchTerm === '' || 
-        produto.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (produto.descricao && produto.descricao.toLowerCase().includes(searchTerm.toLowerCase()));
-      
-      // Category filter
-      const matchesCategory = selectedCategories.length === 0 || 
-        (produto.categoria && selectedCategories.includes(produto.categoria));
-      
-      // Loja filter
-      const matchesLoja = selectedLojas.length === 0 || 
-        (produto.lojaId && selectedLojas.includes(produto.lojaId));
-      
-      // Rating filter - use avaliacao instead of rating
-      const matchesRating = selectedRatings.length === 0 || 
-        selectedRatings.some(rating => {
-          const minRating = parseInt(rating, 10);
-          return produto.avaliacao >= minRating;
+  const [produtos, setProdutos] = useState<any[]>(initialProducts);
+  const [filteredProdutos, setFilteredProdutos] = useState<any[]>([]);
+  const [displayedProducts, setDisplayedProducts] = useState<any[]>([]);
+  const [page, setPage] = useState<number>(1);
+  const [hasMore, setHasMore] = useState<boolean>(true);
+  const PRODUCTS_PER_PAGE = 10;
+
+  // Update products when initialProducts changes (from API)
+  useEffect(() => {
+    setProdutos(initialProducts);
+  }, [initialProducts]);
+
+  // Filter products based on search term and filters
+  useEffect(() => {
+    let filtered = [...produtos];
+    
+    // Filter by search term
+    if (searchTerm) {
+      filtered = filtered.filter(produto => 
+        produto.nome.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    // Filter by categories
+    if (selectedCategories.length > 0) {
+      filtered = filtered.filter(produto => 
+        selectedCategories.includes(produto.categoria)
+      );
+    }
+    
+    // Filter by stores/lojas
+    if (selectedLojas.length > 0) {
+      filtered = filtered.filter(produto => 
+        selectedLojas.includes(produto.loja_id) ||
+        (produto.stores && selectedLojas.includes(produto.stores.id))
+      );
+    }
+    
+    // Filter by ratings
+    if (selectedRatings.length > 0) {
+      filtered = filtered.filter(produto => {
+        const rating = parseFloat(produto.avaliacao);
+        return selectedRatings.some(r => {
+          const minRating = parseFloat(r);
+          return !isNaN(minRating) && rating >= minRating;
         });
-      
-      return matchesSearch && matchesCategory && matchesLoja && matchesRating;
-    });
-  }, [searchTerm, selectedCategories, selectedLojas, selectedRatings]);
-  
-  // Calculate total pages and slice products for current page
-  const totalPages = Math.ceil(filteredProdutos.length / pageSize);
-  const hasMore = page < totalPages;
-  
-  const displayedProducts = useMemo(() => {
-    return filteredProdutos.slice(0, page * pageSize);
-  }, [filteredProdutos, page, pageSize]);
-  
-  // Event handlers
-  const handleSearchChange = (value: string) => {
-    setSearchTerm(value);
-    setPage(1); // Reset pagination when search changes
+      });
+    }
+    
+    setFilteredProdutos(filtered);
+    setPage(1);
+    
+    // Reset displayed products
+    const initialDisplayed = filtered.slice(0, PRODUCTS_PER_PAGE);
+    setDisplayedProducts(initialDisplayed);
+    setHasMore(initialDisplayed.length < filtered.length);
+    
+  }, [produtos, searchTerm, selectedCategories, selectedLojas, selectedRatings]);
+
+  // Extract all available categories from products
+  const allCategories: FilterOption[] = Array.from(
+    new Set(produtos.map(p => p.categoria).filter(Boolean))
+  ).map(cat => ({
+    id: cat as string,
+    label: cat as string
+  }));
+
+  // Rating filter options
+  const ratingOptions: FilterOption[] = [
+    { id: "4", label: "4+ estrelas" },
+    { id: "3", label: "3+ estrelas" },
+    { id: "2", label: "2+ estrelas" },
+    { id: "1", label: "1+ estrela" }
+  ];
+
+  // Handle search input change
+  const handleSearchChange = (term: string) => {
+    setSearchTerm(term);
   };
-  
+
+  // Toggle category filter
   const handleCategoryClick = (categoryId: string) => {
     setSelectedCategories(prev => 
-      prev.includes(categoryId) 
-        ? prev.filter(id => id !== categoryId) 
+      prev.includes(categoryId)
+        ? prev.filter(id => id !== categoryId)
         : [...prev, categoryId]
     );
-    setPage(1); // Reset pagination when filters change
   };
-  
+
+  // Toggle loja/store filter
   const handleLojaClick = (lojaId: string) => {
     setSelectedLojas(prev => 
-      prev.includes(lojaId) 
-        ? prev.filter(id => id !== lojaId) 
+      prev.includes(lojaId)
+        ? prev.filter(id => id !== lojaId)
         : [...prev, lojaId]
     );
-    setPage(1); // Reset pagination when filters change
   };
-  
+
+  // Toggle rating filter
   const handleRatingClick = (ratingId: string) => {
     setSelectedRatings(prev => 
-      prev.includes(ratingId) 
-        ? prev.filter(id => id !== ratingId) 
+      prev.includes(ratingId)
+        ? prev.filter(id => id !== ratingId)
         : [...prev, ratingId]
     );
-    setPage(1); // Reset pagination when filters change
   };
-  
+
+  // Load more products for infinite scroll
   const loadMoreProducts = () => {
-    if (page < totalPages) {
-      setPage(prevPage => prevPage + 1);
+    const nextPage = page + 1;
+    const startIndex = (nextPage - 1) * PRODUCTS_PER_PAGE;
+    const endIndex = nextPage * PRODUCTS_PER_PAGE;
+    const newProducts = filteredProdutos.slice(startIndex, endIndex);
+    
+    if (newProducts.length > 0) {
+      setDisplayedProducts(prev => [...prev, ...newProducts]);
+      setPage(nextPage);
+      setHasMore(endIndex < filteredProdutos.length);
+    } else {
+      setHasMore(false);
     }
   };
-  
+
+  // Clear all filters
   const clearFilters = () => {
-    setSearchTerm('');
+    setSearchTerm("");
     setSelectedCategories([]);
     setSelectedLojas([]);
     setSelectedRatings([]);
-    setPage(1);
   };
-  
+
   return {
     searchTerm,
     selectedCategories,
@@ -133,16 +159,19 @@ export function useProductFilter({ initialCategories = [], pageSize = 12 }: Prod
     selectedRatings,
     allCategories,
     ratingOptions,
+    produtos,
     filteredProdutos,
     displayedProducts,
     hasMore,
+    page,
+    setPage,
+    setProdutos,
+    setSelectedLojas,
     handleSearchChange,
-    handleLojaClick,
     handleCategoryClick,
+    handleLojaClick,
     handleRatingClick,
     loadMoreProducts,
-    clearFilters,
-    setSelectedLojas,
-    setPage
+    clearFilters
   };
-}
+};
