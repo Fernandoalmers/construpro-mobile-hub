@@ -83,11 +83,15 @@ const AdminCategoriesScreen: React.FC = () => {
         setCategories(transformedCategories);
       } else {
         // Count products for each category
-        const { data: countsData } = await supabase
+        // Fix: Using a separate query for the count with proper grouping
+        const { data: countsData, error: countsError } = await supabase
           .from('produtos')
-          .select('categoria, count')
-          .select('categoria, count(*)')
+          .select('categoria, count(*)', { count: 'exact', head: false })
           .group('categoria');
+          
+        if (countsError) {
+          console.error('Error counting categories:', countsError);
+        }
 
         const countMap: Record<string, number> = {};
         
