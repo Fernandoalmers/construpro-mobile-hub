@@ -142,7 +142,7 @@ export const referralService = {
           data,
           status,
           pontos,
-          profiles:referred_id (nome)
+          profiles!referred_id (nome)
         `)
         .eq('referrer_id', userData.user.id);
 
