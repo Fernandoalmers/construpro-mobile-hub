@@ -14,6 +14,7 @@ export const useDashboardData = () => {
   const [totalStores, setTotalStores] = useState(0);
   const [totalUsers, setTotalUsers] = useState(0);
   const [totalCategories, setTotalCategories] = useState(0);
+  const [totalRedemptions, setTotalRedemptions] = useState(0);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [activitiesLoading, setActivitiesLoading] = useState(true);
@@ -44,11 +45,12 @@ export const useDashboardData = () => {
         setPendingRedemptions(redemptionsData?.length || 0);
         
         // Get total redemptions
-        const { count: totalRedemptions, error: totalRedemptionsError } = await supabase
+        const { count: totalRedemptionsCount, error: totalRedemptionsError } = await supabase
           .from('resgates')
           .select('*', { count: 'exact', head: true });
           
         if (totalRedemptionsError) throw totalRedemptionsError;
+        setTotalRedemptions(totalRedemptionsCount || 0);
         
         // Get pending stores
         const pendingStoresData = await fetchPendingStores();
@@ -78,7 +80,7 @@ export const useDashboardData = () => {
         if (categoriesError) throw categoriesError;
         setTotalCategories(categoriesCount || 0);
         
-        // Get recent activity logs
+        // Get recent activity logs - Fixing the relation issue
         const { data: logsData, error: logsError } = await supabase
           .from('admin_logs')
           .select(`
@@ -88,23 +90,31 @@ export const useDashboardData = () => {
             entity_id,
             details,
             created_at,
-            admin_id,
-            profiles(nome)
+            admin_id
           `)
           .order('created_at', { ascending: false })
           .limit(10);
         
         if (logsError) throw logsError;
         
-        // Format activity logs
-        const formattedLogs = logsData?.map(log => ({
-          id: log.id,
-          action: log.action,
-          entity: `${log.entity_type}: ${log.entity_id}`,
-          details: log.details,
-          timestamp: log.created_at,
-          admin_name: log.profiles?.nome || 'Admin'
-        })) || [];
+        // Format activity logs and get admin names separately
+        const formattedLogs = await Promise.all((logsData || []).map(async (log) => {
+          // Get admin name separately
+          const { data: adminData } = await supabase
+            .from('profiles')
+            .select('nome')
+            .eq('id', log.admin_id)
+            .single();
+            
+          return {
+            id: log.id,
+            action: log.action,
+            entity: `${log.entity_type}: ${log.entity_id}`,
+            details: log.details,
+            timestamp: log.created_at,
+            admin_name: adminData?.nome || 'Admin'
+          };
+        }));
         
         setRecentActivity(formattedLogs);
         setActivitiesLoading(false);
@@ -132,7 +142,7 @@ export const useDashboardData = () => {
       pending: pendingStores
     },
     redemptions: {
-      total: totalRedemptions || 0,
+      total: totalRedemptions,
       pending: pendingRedemptions
     },
     users: {
