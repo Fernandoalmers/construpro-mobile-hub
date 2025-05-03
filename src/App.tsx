@@ -19,6 +19,7 @@ import LoadingState from './components/common/LoadingState';
 import PhysicalPurchasesScreen from './components/profile/PhysicalPurchasesScreen';
 import PointsHistoryScreen from './components/profile/PointsHistoryScreen';
 import AddressScreen from './components/profile/AddressScreen';
+import VendorModeScreen from './components/vendor/VendorModeScreen';
 
 function App() {
   const location = useLocation();
@@ -99,6 +100,7 @@ function App() {
         <Route path="/settings" element={<ProtectedRoute><SettingsScreen /></ProtectedRoute>} />
         
         {/* Vendor routes */}
+        <Route path="/vendor" element={<ProtectedRoute><VendorModeScreen /></ProtectedRoute>} />
         <Route path="/vendor-dashboard" element={<ProtectedRoute><VendorDashboardScreen /></ProtectedRoute>} />
         <Route path="/vendor/products" element={<ProtectedRoute><VendorProductsScreen /></ProtectedRoute>} />
         <Route path="/vendor/customers" element={<ProtectedRoute><VendorCustomersScreen /></ProtectedRoute>} />
