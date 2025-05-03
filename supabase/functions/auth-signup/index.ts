@@ -36,6 +36,8 @@ serve(async (req) => {
   }
   
   try {
+    console.log("Auth signup function called");
+    
     // Parse request body
     const userData: SignupData = await req.json()
     
@@ -55,6 +57,8 @@ serve(async (req) => {
     // Initialize Supabase client with service role
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+
+    console.log("Initializing Supabase client for auth-signup");
     
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
@@ -62,6 +66,12 @@ serve(async (req) => {
         persistSession: false
       }
     })
+
+    console.log("Creating user with info:", {
+      email: userData.email,
+      nome: userData.nome,
+      tipo_perfil: userData.tipo_perfil
+    });
     
     // Create user with metadata
     const { data, error } = await supabaseAdmin.auth.admin.createUser({
@@ -79,6 +89,7 @@ serve(async (req) => {
     })
     
     if (error) {
+      console.error("Error creating user:", error);
       let statusCode = 500
       let errorMessage = error.message
       
@@ -93,6 +104,8 @@ serve(async (req) => {
         { status: statusCode, headers }
       )
     }
+
+    console.log("User created successfully");
     
     // Return success response
     return new Response(
@@ -104,6 +117,7 @@ serve(async (req) => {
     )
     
   } catch (error) {
+    console.error("Unexpected error in auth-signup:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers }

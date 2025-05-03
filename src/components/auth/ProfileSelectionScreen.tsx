@@ -17,17 +17,17 @@ interface ProfileOption {
 
 const ProfileSelectionScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { updateUser, user, profile, isAuthenticated } = useAuth();
+  const { updateUser, user, profile, isAuthenticated, isLoading } = useAuth();
   const [selectedProfiles, setSelectedProfiles] = useState<UserRole[]>(['consumidor']);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Check if user is authenticated and redirect if not
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isLoading && !isAuthenticated) {
       // User is not authenticated, redirect to login
-      navigate('/login');
+      navigate('/login', { state: { from: { pathname: '/auth/profile-selection' } } });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, isLoading, navigate]);
 
   const profileOptions: ProfileOption[] = [
     {

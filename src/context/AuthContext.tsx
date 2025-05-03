@@ -118,7 +118,32 @@ export function AuthProvider({ children }: ProviderProps) {
       setState(prev => ({ ...prev, isLoading: true }));
       
       try {
-        // Get current session
+        // Set up auth state change listener first
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+          console.log('Auth state changed:', event, session);
+          
+          if (session) {
+            // Need to fetch the profile after auth state changes
+            const profile = await getProfile();
+            setState({ 
+              session, 
+              user: session.user, 
+              profile, 
+              isLoading: false, 
+              error: null 
+            });
+          } else {
+            setState({ 
+              session: null, 
+              user: null, 
+              profile: null, 
+              isLoading: false, 
+              error: null 
+            });
+          }
+        });
+
+        // Then get current session
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -133,6 +158,10 @@ export function AuthProvider({ children }: ProviderProps) {
         } else {
           setState({ session: null, user: null, profile: null, isLoading: false, error: null });
         }
+
+        return () => {
+          subscription.unsubscribe();
+        };
       } catch (error) {
         console.error('Error initializing auth:', error);
         setState(prev => ({ 
@@ -144,22 +173,6 @@ export function AuthProvider({ children }: ProviderProps) {
     };
 
     initializeAuth();
-    
-    // Set up auth state change listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session);
-      if (session) {
-        // Need to fetch the profile after auth state changes
-        const profile = await getProfile();
-        setState({ session, user: session.user, profile, isLoading: false, error: null });
-      } else {
-        setState({ session: null, user: null, profile: null, isLoading: false, error: null });
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
   }, []);
 
   // Login function
@@ -204,6 +217,26 @@ export function AuthProvider({ children }: ProviderProps) {
         setState(prev => ({ ...prev, isLoading: false, error: signupError.message }));
         return { error: signupError, data: null };
       }
+      
+      // Automatically sign in after successful signup
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (signInError) {
+        setState(prev => ({ ...prev, isLoading: false, error: signInError.message }));
+        return { error: signInError, data: signupData };
+      }
+      
+      const profile = await getProfile();
+      setState({ 
+        session: signInData.session, 
+        user: signInData.user, 
+        profile, 
+        isLoading: false, 
+        error: null 
+      });
       
       setState(prev => ({ ...prev, isLoading: false, error: null }));
       return { error: null, data: signupData };

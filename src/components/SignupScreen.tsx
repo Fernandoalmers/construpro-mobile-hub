@@ -73,7 +73,7 @@ const SignupScreen: React.FC = () => {
       
       toast.success("Cadastro realizado com sucesso!");
       
-      // Redirecionar para seleção de perfil em vez da tela de login
+      // Redirecionar para seleção de perfil
       navigate('/auth/profile-selection');
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Erro ao criar conta';

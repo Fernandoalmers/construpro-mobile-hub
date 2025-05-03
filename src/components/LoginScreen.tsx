@@ -22,7 +22,9 @@ const LoginScreen: React.FC = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated && !isLoading) {
+      // Use the state from location if available, otherwise go to home
       const from = location.state?.from?.pathname || '/home';
+      console.log("User is authenticated. Redirecting to:", from);
       navigate(from, { replace: true });
     }
   }, [isAuthenticated, isLoading, navigate, location.state]);
@@ -44,17 +46,19 @@ const LoginScreen: React.FC = () => {
       const { error } = await login(loginData.email, loginData.password);
       
       if (error) {
+        console.error("Login error:", error);
         setError(error.message);
         setLoggingIn(false);
         return;
       }
-
-      // Login successful, navigate to home
-      // Note: We don't need to navigate here as the useEffect above will handle it
+      
+      // Login successful, navigate is handled by useEffect
       toast.success("Login realizado com sucesso!");
     } catch (err) {
+      console.error("Login exception:", err);
       const errorMsg = err instanceof Error ? err.message : 'Erro ao fazer login';
       setError(errorMsg);
+    } finally {
       setLoggingIn(false);
     }
   };

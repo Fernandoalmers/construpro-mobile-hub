@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import HomeScreen from './HomeScreen';
 import LoadingState from '../common/LoadingState';
@@ -11,7 +10,7 @@ import { toast } from "@/components/ui/sonner";
 import clientes from '../../data/clientes.json';
 
 const HomeScreenWrapper: React.FC = () => {
-  const { user, profile, isLoading: authLoading } = useAuth();
+  const { user, profile, isLoading: authLoading, getProfile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [userData, setUserData] = useState<any>(null);
@@ -39,9 +38,24 @@ const HomeScreenWrapper: React.FC = () => {
           return;
         }
         
+        // If we have a user but no profile, try to fetch profile
+        if (user && !profile) {
+          console.log("User found but no profile, fetching profile...");
+          const profileData = await getProfile();
+          if (profileData) {
+            console.log("Profile fetched successfully:", profileData);
+            setUserData({
+              ...profileData,
+              saldoPontos: profileData.saldo_pontos || 0,
+            });
+            setLoading(false);
+            return;
+          }
+        }
+        
         // Fallback to mock data if no profile
         if (user) {
-          console.log("User found in auth context, looking for data in clientes:", user.id);
+          console.log("No profile available, looking for data in clientes:", user.id);
           const clienteData = clientes.find(cliente => cliente.id === user.id);
           
           if (clienteData) {
@@ -75,7 +89,7 @@ const HomeScreenWrapper: React.FC = () => {
     };
 
     fetchUserData();
-  }, [user, profile, authLoading]);
+  }, [user, profile, authLoading, getProfile]);
 
   const handleRetry = () => {
     // Reset and fetch again
