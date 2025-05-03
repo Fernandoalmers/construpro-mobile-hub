@@ -1,8 +1,9 @@
 
 import { useState, useEffect } from 'react';
-import { fetchAdminProducts, approveProduct, rejectProduct, subscribeToAdminProductUpdates } from '@/services/adminProductsService';
+import { fetchAdminProducts, approveProduct, rejectProduct } from '@/services/adminProductsService';
 import { AdminProduct } from '@/types/admin';
 import { toast } from '@/components/ui/sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 export const useAdminProducts = (initialFilter: string = 'all') => {
   const [products, setProducts] = useState<AdminProduct[]>([]);
@@ -14,7 +15,9 @@ export const useAdminProducts = (initialFilter: string = 'all') => {
   const loadProducts = async () => {
     try {
       setLoading(true);
+      console.log('Loading admin products...');
       const productsData = await fetchAdminProducts();
+      console.log('Admin products loaded:', productsData);
       setProducts(productsData);
       applyFilters(productsData, filter, searchTerm);
     } catch (error) {
@@ -45,6 +48,7 @@ export const useAdminProducts = (initialFilter: string = 'all') => {
       );
     }
     
+    console.log('Filtered products:', filtered.length);
     setFilteredProducts(filtered);
   };
 
@@ -113,12 +117,25 @@ export const useAdminProducts = (initialFilter: string = 'all') => {
     loadProducts();
     
     // Set up realtime subscription for products
-    const channel = subscribeToAdminProductUpdates((_, eventType) => {
-      if (eventType === 'INSERT' || eventType === 'UPDATE' || eventType === 'DELETE') {
-        // Reload products when changes occur
-        loadProducts();
-      }
-    });
+    const channel = supabase
+      .channel('admin-products-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'produtos'
+        },
+        (payload) => {
+          console.log('Produto atualizado (Admin):', payload);
+          const eventType = payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE';
+          if (eventType === 'INSERT' || eventType === 'UPDATE' || eventType === 'DELETE') {
+            // Reload products when changes occur
+            loadProducts();
+          }
+        }
+      )
+      .subscribe();
       
     return () => {
       supabase.removeChannel(channel);
@@ -142,5 +159,3 @@ export const useAdminProducts = (initialFilter: string = 'all') => {
     refreshProducts: loadProducts
   };
 };
-
-import { supabase } from '@/integrations/supabase/client';

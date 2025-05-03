@@ -31,6 +31,18 @@ const ProductsManagementScreen: React.FC = () => {
     handleRejectProduct
   } = useAdminProducts();
 
+  // Debug function to help troubleshoot data issues
+  const debugData = async () => {
+    const { debugFetchProducts } = await import('@/services/adminProductsService');
+    debugFetchProducts();
+  };
+
+  useEffect(() => {
+    // Log the number of products loaded
+    console.log(`ProductsManagement rendered with ${products.length} products`);
+    console.log('Products data:', products);
+  }, [products]);
+
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
       case 'aprovado': return 'bg-green-100 text-green-800';
@@ -57,6 +69,9 @@ const ProductsManagementScreen: React.FC = () => {
             <span className="text-sm text-gray-500">
               {products.length} {products.length === 1 ? 'produto' : 'produtos'} encontrados
             </span>
+            <Button variant="ghost" size="sm" onClick={debugData} title="Debug data">
+              🐞
+            </Button>
           </div>
         </div>
         
@@ -131,6 +146,9 @@ const ProductsManagementScreen: React.FC = () => {
           ) : products.length === 0 ? (
             <div className="p-6 text-center">
               <p className="text-gray-500">Nenhum produto encontrado.</p>
+              <p className="text-sm text-gray-400 mt-1">
+                {filter !== 'all' ? 'Tente selecionar outro filtro acima.' : 'Verifique as configurações de conexão com o banco de dados.'}
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -156,12 +174,18 @@ const ProductsManagementScreen: React.FC = () => {
                               src={product.imagemUrl} 
                               alt={product.nome}
                               className="w-10 h-10 object-cover rounded"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = 'none';
+                                (e.target as HTMLImageElement).nextElementSibling!.style.display = 'flex';
+                              }}
                             />
-                          ) : (
-                            <div className="w-10 h-10 bg-gray-200 rounded flex items-center justify-center text-gray-400">
-                              <span className="text-xs">Imagem</span>
-                            </div>
-                          )}
+                          ) : null}
+                          <div 
+                            className="w-10 h-10 bg-gray-200 rounded flex items-center justify-center text-gray-400"
+                            style={{ display: product.imagemUrl ? 'none' : 'flex' }}
+                          >
+                            <span className="text-xs">Imagem</span>
+                          </div>
                           <div>
                             <div className="font-medium">{product.nome}</div>
                             <div className="text-xs text-gray-500">{product.categoria}</div>
