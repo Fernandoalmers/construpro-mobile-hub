@@ -266,7 +266,7 @@ export const getAllProducts = async (): Promise<AdminProduct[]> => {
         lojaNome: item.vendedores?.nome_loja || 'Loja desconhecida',
         status: item.status as 'pendente' | 'aprovado' | 'inativo',
         created_at: item.created_at,
-        imagens: Array.isArray(item.imagens) ? item.imagens : []
+        imagens: Array.isArray(item.imagens) ? item.imagens.filter(img => typeof img === 'string') : []
       };
     });
     
