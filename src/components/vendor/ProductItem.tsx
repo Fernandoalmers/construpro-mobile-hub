@@ -1,8 +1,9 @@
 
 import React from 'react';
-import { Card } from '@/components/ui/card';
-import { Edit2, Trash2, Eye, ToggleLeft, ToggleRight } from 'lucide-react';
-import ProductStatusBadge from './ProductStatusBadge';
+import { Eye, Edit2, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { VendorProduct } from '@/services/vendorService';
 
 interface ProductItemProps {
@@ -12,98 +13,109 @@ interface ProductItemProps {
   onEdit: (id: string) => void;
 }
 
-const ProductItem: React.FC<ProductItemProps> = ({ 
-  produto, 
+const ProductItem: React.FC<ProductItemProps> = ({
+  produto,
   onToggleStatus,
   onDelete,
   onEdit
 }) => {
-  const isActive = produto.status === 'aprovado';
-  
-  const firstImageUrl = produto.imagens && Array.isArray(produto.imagens) && produto.imagens.length > 0
-    ? produto.imagens[0]
-    : undefined;
-  
-  const formatCurrency = (value: number) => {
+  const getStatusBadge = () => {
+    switch (produto.status) {
+      case 'aprovado':
+        return <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Aprovado</Badge>;
+      case 'inativo':
+        return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-200">Inativo</Badge>;
+      default:
+        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">Pendente</Badge>;
+    }
+  };
+
+  const formatPrice = (price: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
-    }).format(value);
+    }).format(price);
   };
 
+  const getToggleIcon = () => {
+    return produto.status === 'aprovado' || produto.status === 'pendente' ? 
+      <ToggleRight className="text-green-500" size={20} /> : 
+      <ToggleLeft className="text-gray-500" size={20} />;
+  };
+
+  // Extrair a primeira imagem se existir
+  const imagemUrl = Array.isArray(produto.imagens) && produto.imagens.length > 0 ? produto.imagens[0] : undefined;
+
   return (
-    <Card className="p-4 hover:shadow-md transition-shadow">
-      <div className="flex">
-        <div 
-          className="w-20 h-20 bg-gray-200 rounded-md mr-4 flex-shrink-0 bg-center bg-cover"
-          style={{ backgroundImage: firstImageUrl ? `url(${firstImageUrl})` : 'none' }}
-        >
-          {!firstImageUrl && (
-            <div className="w-full h-full flex items-center justify-center text-gray-400">
-              <Eye size={24} />
-            </div>
-          )}
-        </div>
-        
-        <div className="flex-1">
-          <div className="flex justify-between items-start">
-            <div>
-              <h3 className="font-bold">{produto.nome}</h3>
-              <p className="text-sm text-gray-600 line-clamp-1">{produto.descricao}</p>
-            </div>
-            
-            <div className="flex">
-              <button
-                onClick={() => onEdit(produto.id)}
-                className="p-2 mr-2 text-blue-600 hover:bg-blue-50 rounded"
-                title="Editar produto"
-              >
-                <Edit2 size={18} />
-              </button>
-              
-              <button
-                onClick={() => onToggleStatus(produto.id, produto.status)}
-                className={`p-2 mr-2 ${isActive ? 'text-amber-500' : 'text-green-600'} hover:bg-gray-50 rounded`}
-                title={isActive ? "Desativar produto" : "Ativar produto"}
-              >
-                {isActive ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
-              </button>
-              
-              <button
-                onClick={() => onDelete(produto.id)}
-                className="p-2 text-red-600 hover:bg-red-50 rounded"
-                title="Excluir produto"
-              >
-                <Trash2 size={18} />
-              </button>
-            </div>
+    <Card className="overflow-hidden">
+      <CardContent className="p-0">
+        <div className="flex items-center p-4">
+          {/* Product Image */}
+          <div className="w-16 h-16 mr-4 rounded overflow-hidden bg-gray-100 flex-shrink-0">
+            {imagemUrl ? (
+              <img 
+                src={imagemUrl} 
+                alt={produto.nome} 
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400">
+                Sem imagem
+              </div>
+            )}
           </div>
           
-          <div className="mt-3 flex flex-wrap gap-2 text-sm">
-            <div className="bg-gray-100 px-2 py-1 rounded">
-              <span className="font-medium">Preço:</span>{' '}
-              <span>{formatCurrency(produto.preco_normal)}</span>
+          {/* Product Details */}
+          <div className="flex-1 min-w-0">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="font-semibold truncate">{produto.nome}</h3>
+                <p className="text-sm text-gray-500 truncate">{produto.categoria}</p>
+              </div>
+              <div className="flex flex-col items-end">
+                <p className="font-medium">{formatPrice(produto.preco_normal)}</p>
+                {getStatusBadge()}
+              </div>
             </div>
             
-            <div className="bg-gray-100 px-2 py-1 rounded">
-              <span className="font-medium">Estoque:</span>{' '}
-              <span>{produto.estoque || 0}</span>
+            <div className="mt-2 flex justify-between items-center">
+              <div className="text-sm text-gray-500">
+                Estoque: {produto.estoque}
+              </div>
+              
+              <div className="flex space-x-1">
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => onToggleStatus(produto.id, produto.status)}
+                  className="h-8 w-8"
+                  title={produto.status === 'aprovado' ? 'Desativar' : 'Ativar'}
+                >
+                  {getToggleIcon()}
+                </Button>
+                <Button 
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onEdit(produto.id)}
+                  className="h-8 w-8"
+                  title="Editar"
+                >
+                  <Edit2 size={16} />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => onDelete(produto.id)}
+                  className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+                  title="Excluir"
+                >
+                  <Trash2 size={16} />
+                </Button>
+              </div>
             </div>
-            
-            <div className="bg-gray-100 px-2 py-1 rounded">
-              <span className="font-medium">Categoria:</span>{' '}
-              <span>{produto.categoria}</span>
-            </div>
-            
-            <div className="bg-construPro-orange/10 text-construPro-orange px-2 py-1 rounded flex items-center">
-              <span>Pontos:</span>
-              <span className="ml-1">{produto.pontos_consumidor}</span>
-            </div>
-            
-            <ProductStatusBadge status={produto.status} />
           </div>
         </div>
-      </div>
+      </CardContent>
     </Card>
   );
 };

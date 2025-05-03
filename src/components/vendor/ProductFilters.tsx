@@ -1,11 +1,12 @@
 
 import React from 'react';
-import CustomInput from '../common/CustomInput';
-import CustomButton from '../common/CustomButton';
+import { Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 interface ProductFiltersProps {
   searchTerm: string;
-  setSearchTerm: (term: string) => void;
+  setSearchTerm: (value: string) => void;
   filterStatus: string | null;
   setFilterStatus: (status: string | null) => void;
 }
@@ -14,46 +15,41 @@ const ProductFilters: React.FC<ProductFiltersProps> = ({
   searchTerm,
   setSearchTerm,
   filterStatus,
-  setFilterStatus,
+  setFilterStatus
 }) => {
+  const statusOptions = [
+    { value: null, label: 'Todos' },
+    { value: 'pendente', label: 'Pendente' },
+    { value: 'aprovado', label: 'Aprovado' },
+    { value: 'inativo', label: 'Inativo' }
+  ];
+
   return (
     <div className="space-y-4">
-      <CustomInput
-        isSearch
-        placeholder="Buscar produtos"
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-      />
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+        <Input
+          placeholder="Buscar produtos..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-10"
+        />
+      </div>
       
-      <div className="flex gap-2 overflow-x-auto pb-2">
-        <CustomButton
-          variant={filterStatus === null ? 'primary' : 'outline'}
-          size="sm"
-          onClick={() => setFilterStatus(null)}
-        >
-          Todos
-        </CustomButton>
-        <CustomButton
-          variant={filterStatus === 'ativo' ? 'primary' : 'outline'}
-          size="sm"
-          onClick={() => setFilterStatus('ativo')}
-        >
-          Ativos
-        </CustomButton>
-        <CustomButton
-          variant={filterStatus === 'inativo' ? 'primary' : 'outline'}
-          size="sm"
-          onClick={() => setFilterStatus('inativo')}
-        >
-          Inativos
-        </CustomButton>
-        <CustomButton
-          variant={filterStatus === 'pendente' ? 'primary' : 'outline'}
-          size="sm"
-          onClick={() => setFilterStatus('pendente')}
-        >
-          Pendentes
-        </CustomButton>
+      {/* Status Filters */}
+      <div className="flex space-x-2 overflow-x-auto pb-1">
+        {statusOptions.map((option) => (
+          <Button
+            key={option.label}
+            variant={filterStatus === option.value ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFilterStatus(option.value)}
+            className="whitespace-nowrap"
+          >
+            {option.label}
+          </Button>
+        ))}
       </div>
     </div>
   );

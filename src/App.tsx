@@ -20,6 +20,13 @@ import PhysicalPurchasesScreen from './components/profile/PhysicalPurchasesScree
 import PointsHistoryScreen from './components/profile/PointsHistoryScreen';
 import AddressScreen from './components/profile/AddressScreen';
 import VendorModeScreen from './components/vendor/VendorModeScreen';
+import ProductManagementScreen from './components/vendor/ProductManagementScreen';
+import ProdutoEditScreen from './components/vendor/ProdutoEditScreen';
+import ProductFormScreen from './components/vendor/ProductFormScreen';
+import ClientesVendorScreen from './components/vendor/ClientesVendorScreen';
+import ConfiguracoesVendorScreen from './components/vendor/ConfiguracoesVendorScreen';
+import AjustePontosVendorScreen from './components/vendor/AjustePontosVendorScreen';
+import ProdutosVendorScreen from './components/vendor/ProdutosVendorScreen';
 
 function App() {
   const location = useLocation();
@@ -99,11 +106,19 @@ function App() {
         <Route path="/chat" element={<ProtectedRoute><ChatScreen /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><SettingsScreen /></ProtectedRoute>} />
         
-        {/* Vendor routes */}
+        {/* Vendor routes - all corrected and organized */}
         <Route path="/vendor" element={<ProtectedRoute><VendorModeScreen /></ProtectedRoute>} />
-        <Route path="/vendor-dashboard" element={<ProtectedRoute><VendorDashboardScreen /></ProtectedRoute>} />
-        <Route path="/vendor/products" element={<ProtectedRoute><VendorProductsScreen /></ProtectedRoute>} />
-        <Route path="/vendor/customers" element={<ProtectedRoute><VendorCustomersScreen /></ProtectedRoute>} />
+        <Route path="/vendor/products" element={<ProtectedRoute><ProductManagementScreen /></ProtectedRoute>} />
+        <Route path="/vendor/product-new" element={<ProtectedRoute><ProductFormScreen /></ProtectedRoute>} />
+        <Route path="/vendor/product-edit/:id" element={<ProtectedRoute><ProdutoEditScreen /></ProtectedRoute>} />
+        <Route path="/vendor/orders" element={<ProtectedRoute><ProdutosVendorScreen /></ProtectedRoute>} />
+        <Route path="/vendor/customers" element={<ProtectedRoute><ClientesVendorScreen /></ProtectedRoute>} />
+        <Route path="/vendor/adjust-points" element={<ProtectedRoute><AjustePontosVendorScreen /></ProtectedRoute>} />
+        <Route path="/vendor/store-config" element={<ProtectedRoute><ConfiguracoesVendorScreen /></ProtectedRoute>} />
+        
+        {/* Legacy vendor routes - keeping for backward compatibility */}
+        <Route path="/vendor-dashboard" element={<ProtectedRoute><VendorModeScreen /></ProtectedRoute>} />
+        <Route path="/vendor/dashboard" element={<ProtectedRoute><VendorModeScreen /></ProtectedRoute>} />
         
         {/* Marketplace routes */}
         <Route path="/marketplace" element={<ProtectedRoute><MarketplaceScreenWrapper /></ProtectedRoute>} />

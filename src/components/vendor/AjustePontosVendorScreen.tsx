@@ -1,12 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Card from '../common/Card';
-import CustomInput from '../common/CustomInput';
-import CustomButton from '../common/CustomButton';
-import ListEmptyState from '../common/ListEmptyState';
-import Avatar from '../common/Avatar';
-import { Input } from '@/components/ui/input';
 import { ArrowLeft, Search, Plus, Minus, History } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -18,6 +12,11 @@ import {
   VendorCustomer,
   PointAdjustment
 } from '@/services/vendorService';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import Avatar from '../common/Avatar';
 
 interface CustomerData {
   id: string;
@@ -152,8 +151,18 @@ const AjustePontosVendorScreen: React.FC = () => {
     }
   };
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   return (
-    <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
+    <div className="min-h-screen bg-gray-100 pb-20">
       {/* Header */}
       <div className="bg-white p-4 flex items-center shadow-sm">
         <button onClick={() => navigate('/vendor')} className="mr-4">
@@ -166,12 +175,15 @@ const AjustePontosVendorScreen: React.FC = () => {
         {/* Client Search */}
         <Card className="p-4">
           <h2 className="font-bold mb-3">Buscar cliente</h2>
-          <CustomInput
-            isSearch
-            placeholder="Nome, CPF ou e-mail"
-            value={searchTerm}
-            onChange={handleSearchChange}
-          />
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+            <Input
+              placeholder="Nome, CPF ou e-mail"
+              value={searchTerm}
+              onChange={handleSearchChange}
+              className="pl-10"
+            />
+          </div>
           
           {isSearching && (
             <div className="mt-4 text-center">
@@ -216,143 +228,121 @@ const AjustePontosVendorScreen: React.FC = () => {
         </Card>
         
         {/* Selected Client */}
-        {selectedCustomerId && (
-          <Card className="p-4">
-            <div className="flex items-center">
-              <Avatar
-                src={undefined}
-                fallback={searchResults.find(c => c.id === selectedCustomerId)?.nome || 'Cliente'}
-                size="md"
-                className="mr-4"
-              />
-              <div>
-                <h3 className="font-bold">{searchResults.find(c => c.id === selectedCustomerId)?.nome || 'Cliente'}</h3>
-                <p className="text-sm text-gray-600">{searchResults.find(c => c.id === selectedCustomerId)?.cpf || ''}</p>
-                <div className="mt-1 flex items-center">
-                  {searchResults.find(c => c.id === selectedCustomerId)?.email && (
-                    <span className="text-xs bg-gray-100 px-2 py-0.5 rounded mr-2">
-                      {searchResults.find(c => c.id === selectedCustomerId)?.email}
-                    </span>
-                  )}
-                  <span className="text-xs bg-construPro-orange/10 text-construPro-orange px-2 py-0.5 rounded">
-                    {customerPoints} pontos
-                  </span>
+        {selectedCustomerId && searchResults.find(c => c.id === selectedCustomerId) && (
+          <>
+            <Card className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Avatar
+                    src={undefined}
+                    fallback={searchResults.find(c => c.id === selectedCustomerId)?.nome || 'Cliente'}
+                    size="md"
+                    className="mr-4"
+                  />
+                  <div>
+                    <h3 className="font-bold">{searchResults.find(c => c.id === selectedCustomerId)?.nome}</h3>
+                    <p className="text-sm text-gray-600">
+                      {searchResults.find(c => c.id === selectedCustomerId)?.email || 
+                       searchResults.find(c => c.id === selectedCustomerId)?.telefone || 
+                       'Sem contato'}
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-center bg-blue-50 px-4 py-2 rounded-lg">
+                    <p className="text-xs text-blue-600">Saldo de Pontos</p>
+                    <p className="text-xl font-bold text-blue-700">{customerPoints}</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          </Card>
-        )}
-        
-        {/* Adjustment Form */}
-        {selectedCustomerId && (
-          <Card className="p-4">
-            <h2 className="font-bold mb-4">Ajustar Pontos</h2>
+            </Card>
             
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tipo de ajuste
-                </label>
-                <div className="flex">
-                  <button
-                    type="button"
-                    className={`flex-1 py-2 px-4 text-center border ${
-                      isPositiveAdjustment
-                        ? 'bg-green-100 border-green-300 text-green-700'
-                        : 'bg-white border-gray-300 text-gray-700'
-                    } rounded-l-md flex items-center justify-center`}
-                    onClick={() => setIsPositiveAdjustment(true)}
-                  >
-                    <Plus size={16} className="mr-1" /> Adicionar
-                  </button>
-                  <button
-                    type="button"
-                    className={`flex-1 py-2 px-4 text-center border ${
-                      !isPositiveAdjustment
-                        ? 'bg-red-100 border-red-300 text-red-700'
-                        : 'bg-white border-gray-300 text-gray-700'
-                    } rounded-r-md flex items-center justify-center`}
-                    onClick={() => setIsPositiveAdjustment(false)}
-                  >
-                    <Minus size={16} className="mr-1" /> Remover
-                  </button>
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Quantidade de pontos
-                </label>
-                <Input
-                  value={pontos}
-                  onChange={handlePontosChange}
-                  placeholder="Ex: 500"
-                  className="w-full"
-                  type="text"
-                  inputMode="numeric"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Motivo
-                </label>
-                <Input
-                  value={motivo}
-                  onChange={(e) => setMotivo(e.target.value)}
-                  placeholder="Ex: Compra na loja física"
-                  className="w-full"
-                  required
-                />
-              </div>
-              
-              <CustomButton
-                variant="primary"
-                type="submit"
-                fullWidth
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? 'Processando...' : `${isPositiveAdjustment ? 'Adicionar' : 'Remover'} Pontos`}
-              </CustomButton>
-            </form>
-          </Card>
-        )}
-        
-        {/* Recent Adjustments */}
-        {selectedCustomerId && (
-          <div>
-            <div className="flex items-center mb-3">
-              <History size={18} className="mr-2 text-gray-800" />
-              <h2 className="font-bold text-lg text-gray-800">Histórico de ajustes</h2>
-            </div>
-            
-            {adjustments.length > 0 ? (
-              <Card className="overflow-hidden">
-                <div className="divide-y divide-gray-100">
-                  {adjustments.map((adjustment: PointAdjustment) => (
-                    <div key={adjustment.id} className="p-4">
-                      <div className="flex justify-between items-center">
-                        <p className={`font-medium ${adjustment.valor >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {adjustment.valor >= 0 ? '+' : ''}{adjustment.valor} pontos
-                        </p>
-                        <span className="text-sm text-gray-500">
-                          {new Date(adjustment.created_at!).toLocaleDateString('pt-BR')}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600 mt-1">{adjustment.motivo}</p>
+            {/* Points Adjustment Form */}
+            <Card className="p-4">
+              <h3 className="font-bold mb-4">Ajustar Pontos</h3>
+              <form onSubmit={handleSubmit}>
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex mb-2">
+                      <Button
+                        type="button"
+                        variant={isPositiveAdjustment ? "default" : "outline"}
+                        className="flex-1 rounded-r-none"
+                        onClick={() => setIsPositiveAdjustment(true)}
+                      >
+                        <Plus className="mr-2 h-4 w-4" /> Adicionar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={!isPositiveAdjustment ? "default" : "outline"}
+                        className="flex-1 rounded-l-none"
+                        onClick={() => setIsPositiveAdjustment(false)}
+                      >
+                        <Minus className="mr-2 h-4 w-4" /> Remover
+                      </Button>
                     </div>
+                    <Input
+                      value={pontos}
+                      onChange={handlePontosChange}
+                      placeholder="Quantidade de pontos"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Motivo
+                    </label>
+                    <Textarea
+                      value={motivo}
+                      onChange={(e) => setMotivo(e.target.value)}
+                      placeholder="Descreva o motivo do ajuste de pontos"
+                      required
+                      rows={3}
+                    />
+                  </div>
+                  <Button 
+                    type="submit" 
+                    className="w-full" 
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? 'Processando...' : 'Confirmar Ajuste'}
+                  </Button>
+                </div>
+              </form>
+            </Card>
+            
+            {/* History */}
+            <div>
+              <div className="flex items-center mb-2">
+                <History size={16} className="mr-2 text-gray-500" />
+                <h3 className="font-bold">Histórico de Ajustes</h3>
+              </div>
+              
+              {adjustments.length > 0 ? (
+                <div className="space-y-3">
+                  {adjustments.map(adjustment => (
+                    <Card key={adjustment.id} className="p-3">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className={`font-medium ${adjustment.valor >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {adjustment.valor >= 0 ? '+' : ''}{adjustment.valor} pontos
+                          </p>
+                          <p className="text-sm text-gray-600">{adjustment.motivo}</p>
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {adjustment.created_at ? formatDate(adjustment.created_at) : ''}
+                        </div>
+                      </div>
+                    </Card>
                   ))}
                 </div>
-              </Card>
-            ) : (
-              <ListEmptyState
-                title="Sem histórico"
-                description="Este cliente ainda não teve ajustes de pontos."
-                className="bg-white"
-              />
-            )}
-          </div>
+              ) : (
+                <Card className="p-3 text-center text-gray-500">
+                  Nenhum ajuste de pontos registrado
+                </Card>
+              )}
+            </div>
+          </>
         )}
       </div>
     </div>

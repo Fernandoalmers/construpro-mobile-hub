@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
@@ -56,7 +57,7 @@ const VendorModeScreen: React.FC = () => {
     return <LoadingState text="Carregando..." />;
   }
   
-  // If there's no vendor profile, redirect to vendor registration
+  // Se não há perfil de vendedor, redirecionar para registro de vendedor
   if (!vendorProfile) {
     return (
       <div className="min-h-screen bg-gray-100 p-6 flex flex-col items-center justify-center">

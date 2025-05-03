@@ -8,29 +8,34 @@ import {
   deleteVendorProduct,
   updateProductStatus,
   uploadProductImage,
-  updateProductImages
+  updateProductImages,
+  VendorProduct
 } from './vendorProductsService';
 import { 
   getVendorOrders,
-  updateOrderStatus 
+  updateOrderStatus,
+  VendorOrder,
+  OrderItem 
 } from './vendorOrdersService';
 import { 
   getVendorCustomers,
   getVendorCustomer,
   searchCustomers,
-  getCustomerPoints 
+  getCustomerPoints,
+  VendorCustomer 
 } from './vendorCustomersService';
 import { 
   getPointAdjustments,
-  createPointAdjustment 
+  createPointAdjustment,
+  PointAdjustment
 } from './vendorPointsService';
 
 // Type exports
 export type { VendorProfile };
-export type { VendorProduct } from './vendorProductsService';
-export type { VendorOrder, OrderItem } from './vendorOrdersService';
-export type { VendorCustomer } from './vendorCustomersService';
-export type { PointAdjustment } from './vendorPointsService';
+export type { VendorProduct };
+export type { VendorOrder, OrderItem };
+export type { VendorCustomer };
+export type { PointAdjustment };
   
 // Function exports
 export {

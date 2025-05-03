@@ -90,6 +90,18 @@ export const saveVendorProduct = async (product: Partial<VendorProduct>): Promis
     let result;
     
     if (product.id) {
+      // Verify ownership before update
+      const { data: existingProduct } = await supabase
+        .from('produtos')
+        .select('vendedor_id')
+        .eq('id', product.id)
+        .single();
+      
+      if (!existingProduct || existingProduct.vendedor_id !== vendorProfile.id) {
+        toast.error('Você não tem permissão para editar este produto');
+        return null;
+      }
+      
       // Update existing product
       const { data, error } = await supabase
         .from('produtos')
