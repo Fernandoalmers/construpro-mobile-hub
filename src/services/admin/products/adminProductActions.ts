@@ -8,7 +8,7 @@ import { logAdminAction } from '../../adminService';
  */
 export const approveProduct = async (productId: string): Promise<boolean> => {
   try {
-    console.log('Approving product:', productId);
+    console.log('[AdminProductActions] Approving product:', productId);
     const { data, error } = await supabase
       .from('produtos')
       .update({ 
@@ -18,11 +18,12 @@ export const approveProduct = async (productId: string): Promise<boolean> => {
       .eq('id', productId);
       
     if (error) {
-      console.error('Error approving product:', error);
+      console.error('[AdminProductActions] Error approving product:', error);
+      toast.error(`Erro ao aprovar produto: ${error.message}`);
       throw error;
     }
     
-    console.log('Update result:', data, error);
+    console.log('[AdminProductActions] Update result:', data, error);
     
     // Log the admin action
     await logAdminAction({
@@ -35,7 +36,7 @@ export const approveProduct = async (productId: string): Promise<boolean> => {
     toast.success('Produto aprovado com sucesso');
     return true;
   } catch (error) {
-    console.error('Error approving product:', error);
+    console.error('[AdminProductActions] Error approving product:', error);
     toast.error('Erro ao aprovar produto');
     return false;
   }
@@ -46,7 +47,7 @@ export const approveProduct = async (productId: string): Promise<boolean> => {
  */
 export const rejectProduct = async (productId: string): Promise<boolean> => {
   try {
-    console.log('Rejecting product:', productId);
+    console.log('[AdminProductActions] Rejecting product:', productId);
     const { data, error } = await supabase
       .from('produtos')
       .update({ 
@@ -56,11 +57,12 @@ export const rejectProduct = async (productId: string): Promise<boolean> => {
       .eq('id', productId);
       
     if (error) {
-      console.error('Error rejecting product:', error);
+      console.error('[AdminProductActions] Error rejecting product:', error);
+      toast.error(`Erro ao rejeitar produto: ${error.message}`);
       throw error;
     }
     
-    console.log('Update result:', data, error);
+    console.log('[AdminProductActions] Update result:', data, error);
     
     // Log the admin action
     await logAdminAction({
@@ -73,7 +75,7 @@ export const rejectProduct = async (productId: string): Promise<boolean> => {
     toast.success('Produto rejeitado com sucesso');
     return true;
   } catch (error) {
-    console.error('Error rejecting product:', error);
+    console.error('[AdminProductActions] Error rejecting product:', error);
     toast.error('Erro ao rejeitar produto');
     return false;
   }
@@ -90,11 +92,12 @@ export const deleteProduct = async (productId: string): Promise<boolean> => {
       .eq('id', productId);
       
     if (error) {
-      console.error('Error deleting product:', error);
+      console.error('[AdminProductActions] Error deleting product:', error);
+      toast.error(`Erro ao excluir produto: ${error.message}`);
       throw error;
     }
     
-    console.log('Delete result:', data, error);
+    console.log('[AdminProductActions] Delete result:', data, error);
     
     // Log the admin action
     await logAdminAction({
@@ -107,7 +110,7 @@ export const deleteProduct = async (productId: string): Promise<boolean> => {
     toast.success('Produto excluído com sucesso');
     return true;
   } catch (error) {
-    console.error('Error deleting product:', error);
+    console.error('[AdminProductActions] Error deleting product:', error);
     toast.error('Erro ao excluir produto');
     return false;
   }

@@ -14,7 +14,7 @@ const StoreSearchBar: React.FC<StoreSearchBarProps> = ({ searchTerm, setSearchTe
       <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
       <Input
         placeholder="Buscar lojas..."
-        className="pl-8 w-[250px]"
+        className="pl-8 w-full md:w-[250px]"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
       />

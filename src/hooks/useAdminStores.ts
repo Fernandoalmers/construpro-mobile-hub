@@ -19,13 +19,13 @@ export const useAdminStores = (initialFilter: string = 'all') => {
   const loadStores = async () => {
     try {
       setLoading(true);
-      console.log('Loading admin stores...');
+      console.log('[useAdminStores] Loading admin stores...');
       const storesData = await getAdminStores();
-      console.log('Admin stores loaded:', storesData);
+      console.log('[useAdminStores] Admin stores loaded:', storesData);
       setStores(storesData);
       applyFilters(storesData, filter, searchTerm);
     } catch (error) {
-      console.error('Error loading stores:', error);
+      console.error('[useAdminStores] Error loading stores:', error);
       toast.error('Erro ao carregar lojas');
     } finally {
       setLoading(false);
@@ -56,12 +56,13 @@ export const useAdminStores = (initialFilter: string = 'all') => {
       );
     }
     
+    console.log('[useAdminStores] Filtered stores:', filtered.length);
     setFilteredStores(filtered);
   };
 
   const handleApproveStore = async (storeId: string) => {
     try {
-      console.log('Approving store with ID:', storeId);
+      console.log('[useAdminStores] Approving store with ID:', storeId);
       const success = await approveStore(storeId);
       
       if (success) {
@@ -70,14 +71,14 @@ export const useAdminStores = (initialFilter: string = 'all') => {
         toast.success('Loja aprovada com sucesso');
       }
     } catch (error) {
-      console.error('Error approving store:', error);
+      console.error('[useAdminStores] Error approving store:', error);
       toast.error('Erro ao aprovar loja');
     }
   };
 
   const handleRejectStore = async (storeId: string) => {
     try {
-      console.log('Rejecting store with ID:', storeId);
+      console.log('[useAdminStores] Rejecting store with ID:', storeId);
       const success = await rejectStore(storeId);
       
       if (success) {
@@ -86,7 +87,7 @@ export const useAdminStores = (initialFilter: string = 'all') => {
         toast.success('Loja rejeitada com sucesso');
       }
     } catch (error) {
-      console.error('Error rejecting store:', error);
+      console.error('[useAdminStores] Error rejecting store:', error);
       toast.error('Erro ao rejeitar loja');
     }
   };
@@ -99,7 +100,7 @@ export const useAdminStores = (initialFilter: string = 'all') => {
     const { unsubscribe } = subscribeToAdminStoreUpdates((_, eventType) => {
       if (eventType === 'INSERT' || eventType === 'UPDATE' || eventType === 'DELETE') {
         // Reload stores when changes occur
-        console.log('Realtime store update detected, reloading stores...');
+        console.log('[useAdminStores] Realtime store update detected, reloading stores...');
         loadStores();
       }
     });

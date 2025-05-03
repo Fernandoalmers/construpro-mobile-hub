@@ -8,7 +8,7 @@ import { AdminStore } from '@/types/admin';
  */
 export const getAdminStores = async (): Promise<AdminStore[]> => {
   try {
-    console.log('Fetching admin stores from vendedores table...');
+    console.log('[AdminStoresFetcher] Fetching admin stores from vendedores table...');
     
     const { data, error } = await supabase
       .from('vendedores')
@@ -27,11 +27,11 @@ export const getAdminStores = async (): Promise<AdminStore[]> => {
       .order('created_at', { ascending: false });
       
     if (error) {
-      console.error('Error fetching stores:', error);
+      console.error('[AdminStoresFetcher] Error fetching stores:', error);
       throw error;
     }
 
-    console.log('Admin stores data from vendedores:', data);
+    console.log('[AdminStoresFetcher] Admin stores data from vendedores:', data);
     
     // Transform data to AdminStore format
     const stores: AdminStore[] = data.map(store => ({
@@ -47,10 +47,10 @@ export const getAdminStores = async (): Promise<AdminStore[]> => {
       contato: store.telefone || store.whatsapp || undefined
     }));
     
-    console.log('Admin stores loaded:', stores);
+    console.log('[AdminStoresFetcher] Admin stores loaded:', stores);
     return stores;
   } catch (error) {
-    console.error('Error in getAdminStores:', error);
+    console.error('[AdminStoresFetcher] Error in getAdminStores:', error);
     toast.error('Erro ao carregar lojas');
     return [];
   }
@@ -78,7 +78,7 @@ export const getAdminPendingStores = async (): Promise<AdminStore[]> => {
       .order('created_at', { ascending: false });
       
     if (error) {
-      console.error('Error fetching pending stores:', error);
+      console.error('[AdminStoresFetcher] Error fetching pending stores:', error);
       throw error;
     }
     
@@ -98,7 +98,7 @@ export const getAdminPendingStores = async (): Promise<AdminStore[]> => {
     
     return stores;
   } catch (error) {
-    console.error('Error in getAdminPendingStores:', error);
+    console.error('[AdminStoresFetcher] Error in getAdminPendingStores:', error);
     toast.error('Erro ao carregar lojas pendentes');
     return [];
   }

@@ -22,13 +22,13 @@ export const useAdminProducts = (initialFilter: string = 'all') => {
   const loadProducts = async () => {
     try {
       setLoading(true);
-      console.log('Loading admin products...');
+      console.log('[useAdminProducts] Loading admin products...');
       const productsData = await fetchAdminProducts();
-      console.log('Admin products loaded:', productsData);
+      console.log('[useAdminProducts] Admin products loaded:', productsData);
       setProducts(productsData);
       applyFilters(productsData, filter, searchTerm);
     } catch (error) {
-      console.error('Error loading products:', error);
+      console.error('[useAdminProducts] Error loading products:', error);
       toast.error('Erro ao carregar produtos');
     } finally {
       setLoading(false);
@@ -55,36 +55,40 @@ export const useAdminProducts = (initialFilter: string = 'all') => {
       );
     }
     
-    console.log('Filtered products:', filtered.length);
+    console.log('[useAdminProducts] Filtered products:', filtered.length);
     setFilteredProducts(filtered);
   };
 
   const handleApproveProduct = async (productId: string) => {
     try {
+      console.log('[useAdminProducts] Approving product:', productId);
       // Chama a função de aprovação da API
       const success = await approveProduct(productId);
       if (success) {
-        console.log('Product approved successfully, refreshing products...');
+        console.log('[useAdminProducts] Product approved successfully, refreshing products...');
         // Recarrega os produtos após a aprovação
         await loadProducts();
+        toast.success('Produto aprovado com sucesso');
       }
     } catch (error) {
-      console.error('Error approving product:', error);
+      console.error('[useAdminProducts] Error approving product:', error);
       toast.error('Erro ao aprovar produto');
     }
   };
 
   const handleRejectProduct = async (productId: string) => {
     try {
+      console.log('[useAdminProducts] Rejecting product:', productId);
       // Chama a função de rejeição da API
       const success = await rejectProduct(productId);
       if (success) {
-        console.log('Product rejected successfully, refreshing products...');
+        console.log('[useAdminProducts] Product rejected successfully, refreshing products...');
         // Recarrega os produtos após a rejeição
         await loadProducts();
+        toast.success('Produto rejeitado com sucesso');
       }
     } catch (error) {
-      console.error('Error rejecting product:', error);
+      console.error('[useAdminProducts] Error rejecting product:', error);
       toast.error('Erro ao rejeitar produto');
     }
   };
@@ -97,7 +101,7 @@ export const useAdminProducts = (initialFilter: string = 'all') => {
     const channel = subscribeToAdminProductUpdates((product, eventType) => {
       if (eventType === 'INSERT' || eventType === 'UPDATE' || eventType === 'DELETE') {
         // Reload products when changes occur
-        console.log('Realtime product update detected, reloading products...');
+        console.log('[useAdminProducts] Realtime product update detected, reloading products...');
         loadProducts();
       }
     });

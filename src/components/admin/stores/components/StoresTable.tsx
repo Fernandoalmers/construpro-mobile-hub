@@ -22,6 +22,8 @@ const StoresTable: React.FC<StoresTableProps> = ({ stores, approveStore, rejectS
     }
   };
 
+  console.log('[StoresTable] Rendering with stores:', stores);
+
   return (
     <Table>
       <TableHeader>
