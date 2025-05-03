@@ -2,19 +2,8 @@
 import React from 'react';
 import { 
   Table, TableHeader, TableBody, TableHead, 
-  TableRow, TableCell 
+  TableRow
 } from '@/components/ui/table';
-import { 
-  Check, X, Eye, ExternalLink 
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { AdminProduct } from '@/types/admin';
 import ProductTableRow from './ProductTableRow';
 
