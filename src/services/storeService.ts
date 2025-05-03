@@ -80,7 +80,7 @@ export const saveStore = async (storeData: StoreData): Promise<Store | null> => 
       profile_id: result.usuario_id,
       created_at: result.created_at,
       updated_at: result.updated_at
-    };
+    } as Store;
   } catch (error) {
     console.error('Error in saveStore:', error);
     return null;
@@ -109,7 +109,7 @@ export const getStoreById = async (storeId: string): Promise<Store | null> => {
       profile_id: data.usuario_id,
       created_at: data.created_at,
       updated_at: data.updated_at
-    };
+    } as Store;
   } catch (error) {
     console.error('Error in getStoreById:', error);
     return null;
@@ -138,7 +138,7 @@ export const getStoreByProfileId = async (profileId: string): Promise<Store | nu
       profile_id: data.usuario_id,
       created_at: data.created_at,
       updated_at: data.updated_at
-    };
+    } as Store;
   } catch (error) {
     console.error('Error in getStoreByProfileId:', error);
     return null;

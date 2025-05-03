@@ -91,9 +91,17 @@ export interface PointAdjustment {
 // Vendor Store Management
 export const getVendorProfile = async (): Promise<Vendor | null> => {
   try {
+    // Get auth user id
+    const { data: user } = await supabase.auth.getUser();
+    if (!user.user) {
+      console.error('User not authenticated');
+      return null;
+    }
+    
     const { data, error } = await supabase
       .from('vendedores')
       .select('*')
+      .eq('usuario_id', user.user.id)
       .single();
     
     if (error) {
@@ -110,9 +118,18 @@ export const getVendorProfile = async (): Promise<Vendor | null> => {
 
 export const saveVendorProfile = async (vendorData: Partial<Vendor>): Promise<Vendor | null> => {
   try {
+    // Get auth user id
+    const { data: user } = await supabase.auth.getUser();
+    if (!user.user) {
+      console.error('User not authenticated');
+      return null;
+    }
+    
+    // Check if vendor profile exists
     const { data: existingVendor } = await supabase
       .from('vendedores')
       .select('id')
+      .eq('usuario_id', user.user.id)
       .single();
     
     let result;
@@ -129,17 +146,19 @@ export const saveVendorProfile = async (vendorData: Partial<Vendor>): Promise<Ve
       if (error) throw error;
       result = data;
     } else {
-      // Create new vendor
-      // Get auth user id
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) throw new Error('User not authenticated');
+      // Create new vendor - ensure nome_loja is provided
+      if (!vendorData.nome_loja) {
+        throw new Error('Nome da loja é obrigatório');
+      }
+      
+      const newVendor = {
+        ...vendorData,
+        usuario_id: user.user.id
+      };
       
       const { data, error } = await supabase
         .from('vendedores')
-        .insert({
-          ...vendorData,
-          usuario_id: user.user.id
-        })
+        .insert(newVendor)
         .select()
         .single();
       
@@ -158,9 +177,17 @@ export const saveVendorProfile = async (vendorData: Partial<Vendor>): Promise<Ve
 // Vendor Products Management
 export const getVendorProducts = async (): Promise<VendorProduct[]> => {
   try {
+    // Get vendor id
+    const vendorProfile = await getVendorProfile();
+    if (!vendorProfile) {
+      console.error('Vendor profile not found');
+      return [];
+    }
+    
     const { data, error } = await supabase
       .from('produtos')
       .select('*')
+      .eq('vendedor_id', vendorProfile.id)
       .order('created_at', { ascending: false });
     
     if (error) {
@@ -197,6 +224,7 @@ export const getVendorProduct = async (id: string): Promise<VendorProduct | null
 
 export const saveVendorProduct = async (product: Partial<VendorProduct>): Promise<VendorProduct | null> => {
   try {
+    // Get vendor profile
     const vendorProfile = await getVendorProfile();
     if (!vendorProfile) {
       toast.error('Perfil de vendedor não encontrado');
@@ -223,10 +251,23 @@ export const saveVendorProduct = async (product: Partial<VendorProduct>): Promis
       if (error) throw error;
       result = data;
     } else {
-      // Create new product
+      // Create new product - make sure required fields are provided
+      if (!product.nome || !product.descricao || !product.categoria) {
+        throw new Error('Nome, descrição e categoria são obrigatórios');
+      }
+      
+      const newProduct = {
+        ...vendorProduct,
+        nome: product.nome,
+        descricao: product.descricao,
+        categoria: product.categoria,
+        preco_normal: product.preco_normal || 0,
+        status: 'pendente'
+      };
+      
       const { data, error } = await supabase
         .from('produtos')
-        .insert(vendorProduct)
+        .insert(newProduct)
         .select()
         .single();
       
@@ -277,6 +318,13 @@ export const updateProductStatus = async (id: string, status: 'pendente' | 'apro
 // Vendor Orders Management
 export const getVendorOrders = async (): Promise<VendorOrder[]> => {
   try {
+    // Get vendor id
+    const vendorProfile = await getVendorProfile();
+    if (!vendorProfile) {
+      console.error('Vendor profile not found');
+      return [];
+    }
+    
     const { data, error } = await supabase
       .from('pedidos')
       .select(`
@@ -288,6 +336,7 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
           telefone
         )
       `)
+      .eq('vendedor_id', vendorProfile.id)
       .order('created_at', { ascending: false });
     
     if (error) {
@@ -308,10 +357,36 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
         
         if (itemsError) {
           console.error('Error fetching order items:', itemsError);
-          return { ...order, itens: [] };
+          return { 
+            ...order, 
+            itens: [],
+            // Convert cliente to proper structure if it exists
+            cliente: order.cliente ? {
+              id: order.cliente.id || '',
+              vendedor_id: vendorProfile.id,
+              usuario_id: order.usuario_id,
+              nome: order.cliente.nome || '',
+              telefone: order.cliente.telefone,
+              email: order.cliente.email,
+              total_gasto: 0
+            } : undefined
+          };
         }
         
-        return { ...order, itens: itemsData };
+        return { 
+          ...order, 
+          itens: itemsData,
+          // Convert cliente to proper structure if it exists
+          cliente: order.cliente ? {
+            id: order.cliente.id || '',
+            vendedor_id: vendorProfile.id,
+            usuario_id: order.usuario_id,
+            nome: order.cliente.nome || '',
+            telefone: order.cliente.telefone,
+            email: order.cliente.email,
+            total_gasto: 0
+          } : undefined
+        };
       })
     );
     
@@ -341,9 +416,17 @@ export const updateOrderStatus = async (id: string, status: string): Promise<boo
 // Vendor Customers Management
 export const getVendorCustomers = async (): Promise<VendorCustomer[]> => {
   try {
+    // Get vendor id
+    const vendorProfile = await getVendorProfile();
+    if (!vendorProfile) {
+      console.error('Vendor profile not found');
+      return [];
+    }
+    
     const { data, error } = await supabase
       .from('clientes_vendedor')
       .select('*')
+      .eq('vendedor_id', vendorProfile.id)
       .order('total_gasto', { ascending: false });
     
     if (error) {
@@ -360,9 +443,17 @@ export const getVendorCustomers = async (): Promise<VendorCustomer[]> => {
 
 export const getVendorCustomer = async (userId: string): Promise<VendorCustomer | null> => {
   try {
+    // Get vendor id
+    const vendorProfile = await getVendorProfile();
+    if (!vendorProfile) {
+      console.error('Vendor profile not found');
+      return null;
+    }
+    
     const { data, error } = await supabase
       .from('clientes_vendedor')
       .select('*')
+      .eq('vendedor_id', vendorProfile.id)
       .eq('usuario_id', userId)
       .single();
     
@@ -381,6 +472,13 @@ export const getVendorCustomer = async (userId: string): Promise<VendorCustomer 
 // Points Adjustment Management
 export const getPointAdjustments = async (userId?: string): Promise<PointAdjustment[]> => {
   try {
+    // Get vendor id
+    const vendorProfile = await getVendorProfile();
+    if (!vendorProfile) {
+      console.error('Vendor profile not found');
+      return [];
+    }
+    
     let query = supabase
       .from('pontos_ajustados')
       .select(`
@@ -391,7 +489,8 @@ export const getPointAdjustments = async (userId?: string): Promise<PointAdjustm
           email,
           telefone
         )
-      `);
+      `)
+      .eq('vendedor_id', vendorProfile.id);
     
     if (userId) {
       query = query.eq('usuario_id', userId);
@@ -404,7 +503,18 @@ export const getPointAdjustments = async (userId?: string): Promise<PointAdjustm
       return [];
     }
     
-    return data as unknown as PointAdjustment[];
+    return data.map(item => ({
+      ...item,
+      cliente: item.cliente ? {
+        id: item.cliente.id || '',
+        vendedor_id: vendorProfile.id,
+        usuario_id: item.usuario_id,
+        nome: item.cliente.nome || '',
+        telefone: item.cliente.telefone,
+        email: item.cliente.email,
+        total_gasto: 0
+      } : undefined
+    })) as PointAdjustment[];
   } catch (error) {
     console.error('Error in getPointAdjustments:', error);
     return [];

@@ -51,27 +51,33 @@ export const getProducts = async (): Promise<Product[]> => {
     }
     
     // Transform the data to match the expected format
-    const products = data.map(item => ({
-      id: item.id,
-      nome: item.nome,
-      descricao: item.descricao,
-      preco: item.preco_normal,
-      preco_anterior: item.preco_promocional,
-      pontos: item.pontos_consumidor,
-      categoria: item.categoria,
-      imagem_url: item.imagens && Array.isArray(item.imagens) && item.imagens.length > 0 
-        ? item.imagens[0] 
-        : undefined,
-      loja_id: item.vendedor_id,
-      estoque: item.estoque,
-      avaliacao: 5, // Default value for now
-      created_at: item.created_at,
-      updated_at: item.updated_at,
-      loja: item.vendedores ? {
-        nome: item.vendedores.nome_loja,
-        logo_url: item.vendedores.logo
-      } : undefined
-    }));
+    const products: Product[] = data.map(item => {
+      // Handle imagens which can be an array or null
+      let imageUrl: string | undefined = undefined;
+      if (item.imagens && Array.isArray(item.imagens) && item.imagens.length > 0) {
+        imageUrl = item.imagens[0] as string;
+      }
+      
+      return {
+        id: item.id,
+        nome: item.nome,
+        descricao: item.descricao,
+        preco: item.preco_normal,
+        preco_anterior: item.preco_promocional,
+        pontos: item.pontos_consumidor || 0,
+        categoria: item.categoria,
+        imagem_url: imageUrl,
+        loja_id: item.vendedor_id,
+        estoque: item.estoque,
+        avaliacao: 5, // Default value for now
+        created_at: item.created_at,
+        updated_at: item.updated_at,
+        loja: item.vendedores ? {
+          nome: item.vendedores.nome_loja,
+          logo_url: item.vendedores.logo
+        } : undefined
+      };
+    });
     
     return products;
   } catch (error) {
@@ -111,27 +117,33 @@ export const getProductsByCategory = async (category: string): Promise<Product[]
     }
     
     // Transform the data to match the expected format
-    const products = data.map(item => ({
-      id: item.id,
-      nome: item.nome,
-      descricao: item.descricao,
-      preco: item.preco_normal,
-      preco_anterior: item.preco_promocional,
-      pontos: item.pontos_consumidor,
-      categoria: item.categoria,
-      imagem_url: item.imagens && Array.isArray(item.imagens) && item.imagens.length > 0 
-        ? item.imagens[0] 
-        : undefined,
-      loja_id: item.vendedor_id,
-      estoque: item.estoque,
-      avaliacao: 5, // Default value for now
-      created_at: item.created_at,
-      updated_at: item.updated_at,
-      loja: item.vendedores ? {
-        nome: item.vendedores.nome_loja,
-        logo_url: item.vendedores.logo
-      } : undefined
-    }));
+    const products: Product[] = data.map(item => {
+      // Handle imagens which can be an array or null
+      let imageUrl: string | undefined = undefined;
+      if (item.imagens && Array.isArray(item.imagens) && item.imagens.length > 0) {
+        imageUrl = item.imagens[0] as string;
+      }
+      
+      return {
+        id: item.id,
+        nome: item.nome,
+        descricao: item.descricao,
+        preco: item.preco_normal,
+        preco_anterior: item.preco_promocional,
+        pontos: item.pontos_consumidor || 0,
+        categoria: item.categoria,
+        imagem_url: imageUrl,
+        loja_id: item.vendedor_id,
+        estoque: item.estoque,
+        avaliacao: 5, // Default value for now
+        created_at: item.created_at,
+        updated_at: item.updated_at,
+        loja: item.vendedores ? {
+          nome: item.vendedores.nome_loja,
+          logo_url: item.vendedores.logo
+        } : undefined
+      };
+    });
     
     return products;
   } catch (error) {
@@ -170,18 +182,22 @@ export const getProductById = async (id: string): Promise<Product | null> => {
       return null;
     }
     
+    // Handle imagens which can be an array or null
+    let imageUrl: string | undefined = undefined;
+    if (data.imagens && Array.isArray(data.imagens) && data.imagens.length > 0) {
+      imageUrl = data.imagens[0] as string;
+    }
+    
     // Transform the data to match the expected format
-    const product = {
+    const product: Product = {
       id: data.id,
       nome: data.nome,
       descricao: data.descricao,
       preco: data.preco_normal,
       preco_anterior: data.preco_promocional,
-      pontos: data.pontos_consumidor,
+      pontos: data.pontos_consumidor || 0,
       categoria: data.categoria,
-      imagem_url: data.imagens && Array.isArray(data.imagens) && data.imagens.length > 0 
-        ? data.imagens[0] 
-        : undefined,
+      imagem_url: imageUrl,
       loja_id: data.vendedor_id,
       estoque: data.estoque,
       avaliacao: 5, // Default value for now
@@ -279,17 +295,21 @@ export const addProduct = async (product: Omit<Product, 'id' | 'created_at' | 'u
       return null;
     }
     
+    // Handle imagens which can be an array or null
+    let imageUrl: string | undefined = undefined;
+    if (data.imagens && Array.isArray(data.imagens) && data.imagens.length > 0) {
+      imageUrl = data.imagens[0] as string;
+    }
+    
     // Transform back to the expected format
-    const createdProduct = {
+    const createdProduct: Product = {
       id: data.id,
       nome: data.nome,
       descricao: data.descricao,
       preco: data.preco_normal,
       preco_anterior: data.preco_promocional,
-      pontos: data.pontos_consumidor,
-      imagem_url: data.imagens && Array.isArray(data.imagens) && data.imagens.length > 0 
-        ? data.imagens[0] 
-        : undefined,
+      pontos: data.pontos_consumidor || 0,
+      imagem_url: imageUrl,
       loja_id: data.vendedor_id,
       categoria: data.categoria,
       estoque: data.estoque,
@@ -334,18 +354,22 @@ export const updateProduct = async (id: string, updates: Partial<Omit<Product, '
       return null;
     }
     
+    // Handle imagens which can be an array or null
+    let imageUrl: string | undefined = undefined;
+    if (data.imagens && Array.isArray(data.imagens) && data.imagens.length > 0) {
+      imageUrl = data.imagens[0] as string;
+    }
+    
     // Transform back to the expected format
-    const updatedProduct = {
+    const updatedProduct: Product = {
       id: data.id,
       nome: data.nome,
       descricao: data.descricao,
       preco: data.preco_normal,
       preco_anterior: data.preco_promocional,
-      pontos: data.pontos_consumidor,
+      pontos: data.pontos_consumidor || 0,
       categoria: data.categoria,
-      imagem_url: data.imagens && Array.isArray(data.imagens) && data.imagens.length > 0 
-        ? data.imagens[0] 
-        : undefined,
+      imagem_url: imageUrl,
       loja_id: data.vendedor_id,
       estoque: data.estoque,
       avaliacao: 5, // Default value for now

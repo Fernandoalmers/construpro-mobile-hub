@@ -30,7 +30,7 @@ const ProdutosVendorScreen: React.FC = () => {
   // Filter orders based on search and status
   const filteredOrders = orders.filter(order => {
     const matchesSearch = searchTerm === '' || 
-      order.cliente?.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (order.cliente?.nome.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
       order.id.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = filterStatus === null || order.status === filterStatus;
