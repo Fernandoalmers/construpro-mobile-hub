@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Avatar from '../common/Avatar';
 import Card from '../common/Card';
@@ -25,38 +25,24 @@ import {
   Store,
   Wrench,
   RefreshCw,
-  MapPin
+  MapPin,
+  Camera,
+  Loader2
 } from 'lucide-react';
-import clientes from '../../data/clientes.json';
 import { useAuth, UserRole } from '../../context/AuthContext';
 import { toast } from "@/components/ui/sonner";
-
-// Define a type for the user that includes all required properties
-interface ExtendedUser {
-  id: string;
-  nome: string;
-  cpf: string;
-  codigo: string;
-  saldoPontos: number;
-  nivel: string;
-  pontosParaProximoNivel: number;
-  email: string;
-  telefone: string;
-  avatar: string;
-  papel?: UserRole;
-}
+import { supabase } from "@/integrations/supabase/client";
 
 const ProfileScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { user: authUser, profile, logout, updateUser } = useAuth();
+  const { user: authUser, profile, logout, updateUser, updateProfile, refreshProfile } = useAuth();
+  const [notifications, setNotifications] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Use profile data if available, otherwise fallback to client data
-  const currentUser = profile || clientes[0] as ExtendedUser;
-  
-  // Initialize with default papel if not present
+  // Use profile data if available
   const userPapel = profile?.papel || profile?.tipo_perfil || 'consumidor';
   
-  const [notifications, setNotifications] = useState(true);
   const [vendorMode, setVendorMode] = useState(userPapel === 'lojista');
   const [professionalMode, setProfessionalMode] = useState(userPapel === 'profissional');
   const [showModeSwitch, setShowModeSwitch] = useState(false);
@@ -73,8 +59,8 @@ const ProfileScreen: React.FC = () => {
   let currentProgress = 0;
   let maxProgress = 2000;
   
-  // Get saldo_pontos from profile or saldoPontos from client data
-  const userPoints = profile ? profile.saldo_pontos : currentUser.saldoPontos;
+  // Get saldo_pontos from profile
+  const userPoints = profile ? profile.saldo_pontos || 0 : 0;
   
   if (userPoints >= levelPoints.gold.min) {
     currentLevel = 'gold';
@@ -136,11 +122,62 @@ const ProfileScreen: React.FC = () => {
     navigate('/login');
   };
 
+  // Function to handle avatar upload
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      if (!event.target.files || event.target.files.length === 0) {
+        return;
+      }
+      
+      const file = event.target.files[0];
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${authUser?.id}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+      const filePath = `avatars/${fileName}`;
+      
+      setUploading(true);
+      
+      // Upload the file to Supabase Storage
+      const { data, error } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Get the public URL for the uploaded file
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+      
+      // Update the user's profile with the new avatar URL
+      await updateProfile({ avatar: publicUrl });
+      
+      // Refresh the profile to get the updated avatar
+      await refreshProfile();
+      
+      toast.success("Avatar atualizado com sucesso!");
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
+      toast.error("Erro ao atualizar avatar. Tente novamente.");
+    } finally {
+      setUploading(false);
+      // Clear the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
   // Get user display name and email safely
-  const userName = profile?.nome || currentUser.nome;
-  const userEmail = profile?.email || currentUser.email;
-  const userAvatar = profile?.avatar || currentUser.avatar;
-  const userCode = profile?.codigo || currentUser.codigo;
+  const userName = profile?.nome || authUser?.user_metadata?.nome || "Usuário";
+  const userEmail = profile?.email || authUser?.email || "";
+  const userAvatar = profile?.avatar || undefined;
+  const userCode = profile?.codigo || "";
 
   // Profile menu sections
   const profileSections = [
@@ -178,22 +215,46 @@ const ProfileScreen: React.FC = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
+      {/* Hidden file input for avatar upload */}
+      <input 
+        type="file"
+        ref={fileInputRef}
+        onChange={handleAvatarUpload}
+        accept="image/*"
+        className="hidden"
+      />
+      
       {/* Header */}
       <div className="bg-construPro-blue p-6 pt-12 rounded-b-3xl">
         <div className="flex flex-col items-center mb-4">
-          <Avatar 
-            src={userAvatar} 
-            alt={userName}
-            fallback={userName}
-            size="xl" 
-            className="border-4 border-white mb-3"
-          />
+          <div className="relative">
+            <Avatar 
+              src={userAvatar} 
+              alt={userName}
+              fallback={userName}
+              size="xl" 
+              className="border-4 border-white mb-3"
+            />
+            <button 
+              className="absolute bottom-2 right-0 bg-white p-1 rounded-full shadow-md"
+              onClick={handleAvatarClick}
+              disabled={uploading}
+            >
+              {uploading ? (
+                <Loader2 size={16} className="text-construPro-blue animate-spin" />
+              ) : (
+                <Camera size={16} className="text-construPro-blue" />
+              )}
+            </button>
+          </div>
           <h1 className="text-xl font-bold text-white">{userName}</h1>
           <p className="text-white text-opacity-70">{userEmail}</p>
-          <div className="mt-2 bg-white px-4 py-1 rounded-full text-sm">
-            <span className="font-medium text-construPro-blue">Código: </span>
-            <span>{userCode}</span>
-          </div>
+          {userCode && (
+            <div className="mt-2 bg-white px-4 py-1 rounded-full text-sm">
+              <span className="font-medium text-construPro-blue">Código: </span>
+              <span>{userCode}</span>
+            </div>
+          )}
           
           <Button
             variant="outline"

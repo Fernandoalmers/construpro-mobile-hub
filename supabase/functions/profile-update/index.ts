@@ -43,14 +43,6 @@ serve(async (req) => {
     if (req.method === 'OPTIONS') {
       return new Response(null, { headers, status: 204 })
     }
-
-    // Verify request method
-    if (req.method !== 'POST') {
-      return new Response(
-        JSON.stringify({ error: 'Method not allowed' }),
-        { status: 405, headers }
-      )
-    }
     
     // Get authorization token
     const authHeader = req.headers.get('authorization')
@@ -102,83 +94,120 @@ serve(async (req) => {
     
     console.log("User authenticated:", user.id);
     
-    // Get update data from request body
-    let requestData: Profile;
-    try {
-      requestData = await req.json();
-      console.log("Received update request:", requestData);
-    } catch (parseError) {
-      console.error("Error parsing request body:", parseError);
-      return new Response(
-        JSON.stringify({ error: 'Invalid JSON in request body' }),
-        { status: 400, headers }
-      );
-    }
-    
-    // Create a clean update object (preventing unauthorized updates)
-    const updateData: Record<string, any> = {}
-    
-    // Only allow certain fields to be updated
-    const allowedFields = [
-      'nome', 'cpf', 'telefone', 'papel', 'tipo_perfil', 'avatar', 'status', 'codigo'
-    ]
-    
-    allowedFields.forEach(field => {
-      if (field in requestData) {
-        updateData[field] = requestData[field]
+    // Handle GET request - fetch profile
+    if (req.method === 'GET') {
+      const { data: profile, error: getError } = await adminClient
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+        
+      if (getError) {
+        console.error("Error fetching profile:", getError);
+        return new Response(
+          JSON.stringify({ error: getError.message }),
+          { status: 500, headers }
+        )
       }
-    })
-    
-    // Handle nested endereco_principal
-    if (requestData.endereco_principal) {
-      updateData.endereco_principal = requestData.endereco_principal
-    }
-    
-    // Ensure tipo_perfil and papel are in sync
-    if (requestData.papel && !requestData.tipo_perfil) {
-      updateData.tipo_perfil = requestData.papel
-    }
-    
-    if (requestData.tipo_perfil && !requestData.papel) {
-      updateData.papel = requestData.tipo_perfil
-    }
-    
-    // If no valid data to update
-    if (Object.keys(updateData).length === 0) {
-      return new Response(
-        JSON.stringify({ error: 'No valid fields to update' }),
-        { status: 400, headers }
-      )
-    }
-    
-    console.log("Updating profile with data:", updateData);
-    
-    // Update profile using admin client to bypass RLS
-    const { data: profile, error: updateError } = await adminClient
-      .from('profiles')
-      .update(updateData)
-      .eq('id', user.id)
-      .select()
-      .single();
       
-    if (updateError) {
-      console.error("Error updating profile:", updateError);
+      console.log("Profile fetched successfully:", profile);
+      
+      // Return profile
       return new Response(
-        JSON.stringify({ error: updateError.message }),
-        { status: 500, headers }
+        JSON.stringify({
+          success: true,
+          data: profile
+        }),
+        { status: 200, headers }
       )
     }
     
-    console.log("Profile updated successfully:", profile);
+    // Handle POST/PUT requests - update profile
+    if (req.method === 'POST' || req.method === 'PUT') {
+      // Get update data from request body
+      let requestData: Profile;
+      try {
+        requestData = await req.json();
+        console.log("Received update request:", requestData);
+      } catch (parseError) {
+        console.error("Error parsing request body:", parseError);
+        return new Response(
+          JSON.stringify({ error: 'Invalid JSON in request body' }),
+          { status: 400, headers }
+        );
+      }
+      
+      // Create a clean update object (preventing unauthorized updates)
+      const updateData: Record<string, any> = {}
+      
+      // Only allow certain fields to be updated
+      const allowedFields = [
+        'nome', 'cpf', 'telefone', 'papel', 'tipo_perfil', 'avatar', 'status', 'codigo'
+      ]
+      
+      allowedFields.forEach(field => {
+        if (field in requestData) {
+          updateData[field] = requestData[field]
+        }
+      })
+      
+      // Handle nested endereco_principal
+      if (requestData.endereco_principal) {
+        updateData.endereco_principal = requestData.endereco_principal
+      }
+      
+      // Ensure tipo_perfil and papel are in sync
+      if (requestData.papel && !requestData.tipo_perfil) {
+        updateData.tipo_perfil = requestData.papel
+      }
+      
+      if (requestData.tipo_perfil && !requestData.papel) {
+        updateData.papel = requestData.tipo_perfil
+      }
+      
+      // If no valid data to update
+      if (Object.keys(updateData).length === 0) {
+        return new Response(
+          JSON.stringify({ error: 'No valid fields to update' }),
+          { status: 400, headers }
+        )
+      }
+      
+      console.log("Updating profile with data:", updateData);
+      
+      // Update profile using admin client to bypass RLS
+      const { data: profile, error: updateError } = await adminClient
+        .from('profiles')
+        .update(updateData)
+        .eq('id', user.id)
+        .select()
+        .single();
+        
+      if (updateError) {
+        console.error("Error updating profile:", updateError);
+        return new Response(
+          JSON.stringify({ error: updateError.message }),
+          { status: 500, headers }
+        )
+      }
+      
+      console.log("Profile updated successfully:", profile);
+      
+      // Return updated profile
+      return new Response(
+        JSON.stringify({
+          success: true,
+          data: profile
+        }),
+        { status: 200, headers }
+      )
+    }
     
-    // Return updated profile
+    // If method is not GET, POST or PUT
     return new Response(
-      JSON.stringify({
-        success: true,
-        data: profile
-      }),
-      { status: 200, headers }
-    )
+      JSON.stringify({ error: 'Method not allowed' }),
+      { status: 405, headers }
+    );
     
   } catch (error) {
     console.error("Unexpected error in profile-update:", error);

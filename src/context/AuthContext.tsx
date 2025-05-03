@@ -31,9 +31,10 @@ type AuthContextType = AuthState & {
   signup: (params: SignupParams) => Promise<{ error: AuthError | null, data: any }>;
   logout: () => Promise<void>;
   updateUser: (data: any) => Promise<void>;
-  updateProfile: (data: any) => Promise<void>;
+  updateProfile: (data: any) => Promise<any>;
   getProfile: () => Promise<any>;
   refreshProfile: () => Promise<void>;
+  setupAvatarStorage: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -51,8 +52,8 @@ export function AuthProvider({ children }: ProviderProps) {
   // Compute isAuthenticated based on session existence
   const isAuthenticated = !!state.session && !!state.user;
 
-  // Function to fetch user profile from profiles table
-  const getProfile = async () => {
+  // Function to fetch user profile from profiles table with retry logic
+  const getProfile = async (retries = 1): Promise<any> => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
@@ -66,7 +67,29 @@ export function AuthProvider({ children }: ProviderProps) {
         .eq('id', user.id)
         .maybeSingle();
       
-      if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned" which is not an error for maybeSingle
+      if (error) {
+        // Handle the infinite recursion error specifically
+        if (error.code === '42P17' && retries > 0) {
+          console.log("Detected possible RLS recursion, retrying with edge function...");
+          
+          // Use the profile-update edge function to get the profile instead
+          try {
+            const { data: edgeProfile, error: edgeError } = await supabase.functions.invoke('profile-update', {
+              method: 'GET'
+            });
+            
+            if (edgeError) throw edgeError;
+            if (edgeProfile?.data) return edgeProfile.data;
+          } catch (edgeErr) {
+            console.error("Edge function fallback also failed:", edgeErr);
+            // Continue to retry with delay if edge function failed
+          }
+          
+          // Wait a bit and retry
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          return getProfile(retries - 1);
+        }
+        
         console.error('Error fetching profile:', error);
         return null;
       }
@@ -115,15 +138,20 @@ export function AuthProvider({ children }: ProviderProps) {
         throw new Error("Usuário não autenticado");
       }
 
-      const { data: updatedProfile, error } = await supabase.functions.invoke('profile-update', {
+      const { data: response, error } = await supabase.functions.invoke('profile-update', {
         body: data
       });
 
       if (error) throw error;
 
       // Refresh state with new profile
-      await refreshProfile();
-      return updatedProfile;
+      if (response?.data) {
+        setState(prev => ({ ...prev, profile: response.data }));
+      } else {
+        await refreshProfile();
+      }
+      
+      return response?.data;
     } catch (error) {
       console.error('Error updating profile:', error);
       throw error;
@@ -132,9 +160,24 @@ export function AuthProvider({ children }: ProviderProps) {
 
   // Function to refresh user profile
   const refreshProfile = async () => {
-    const profile = await getProfile();
-    if (profile) {
-      setState(prev => ({ ...prev, profile }));
+    try {
+      const profile = await getProfile();
+      if (profile) {
+        setState(prev => ({ ...prev, profile }));
+      }
+      return profile;
+    } catch (error) {
+      console.error('Error refreshing profile:', error);
+      throw error;
+    }
+  };
+  
+  // Function to set up avatar storage bucket
+  const setupAvatarStorage = async () => {
+    try {
+      await supabase.functions.invoke('create-avatar-bucket');
+    } catch (error) {
+      console.error('Error setting up avatar storage:', error);
     }
   };
 
@@ -165,6 +208,9 @@ export function AuthProvider({ children }: ProviderProps) {
                 if (profile) {
                   setState(prev => ({ ...prev, profile }));
                 }
+                
+                // Set up avatar storage if we have a user
+                setupAvatarStorage();
               } catch (profileError) {
                 console.error("Error fetching profile after auth state change:", profileError);
               }
@@ -204,6 +250,9 @@ export function AuthProvider({ children }: ProviderProps) {
             if (profile) {
               setState(prev => ({ ...prev, profile }));
             }
+            
+            // Set up avatar storage if we have a user
+            setupAvatarStorage();
           } catch (profileError) {
             console.error("Error fetching profile during initialization:", profileError);
           }
@@ -260,6 +309,9 @@ export function AuthProvider({ children }: ProviderProps) {
           if (profile) {
             setState(prev => ({ ...prev, profile }));
           }
+          
+          // Set up avatar storage
+          setupAvatarStorage();
         } catch (profileError) {
           console.error("Error fetching profile after login:", profileError);
         }
@@ -327,6 +379,9 @@ export function AuthProvider({ children }: ProviderProps) {
           if (profile) {
             setState(prev => ({ ...prev, profile }));
           }
+          
+          // Set up avatar storage
+          setupAvatarStorage();
         } catch (profileError) {
           console.error("Error fetching profile after signup:", profileError);
         }
@@ -363,7 +418,8 @@ export function AuthProvider({ children }: ProviderProps) {
         updateUser,
         updateProfile,
         getProfile,
-        refreshProfile
+        refreshProfile,
+        setupAvatarStorage
       }}
     >
       {children}

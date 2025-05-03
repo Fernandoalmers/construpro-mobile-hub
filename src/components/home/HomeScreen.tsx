@@ -1,20 +1,20 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import Card from '../common/Card';
 import Avatar from '../common/Avatar';
 import ProgressBar from '../common/ProgressBar';
 import CustomButton from '../common/CustomButton';
 import { Receipt, Gift, QrCode, MessageSquare, Award, ChevronRight } from 'lucide-react';
-import clientes from '../../data/clientes.json';
+import { useAuth } from '../../context/AuthContext';
 
 const HomeScreen: React.FC = () => {
   const navigate = useNavigate();
-  // Use the first client as the logged in user for demo
-  const currentUser = clientes[0];
-  const [saldoPontos] = useState(currentUser.saldoPontos);
-
-  // Calculate level info
+  const { user, profile } = useAuth();
+  
+  // Calculate level info based on real user points
+  const saldoPontos = profile?.saldo_pontos || 0;
+  
   const levelPoints = {
     bronze: { min: 0, max: 2000 },
     silver: { min: 2000, max: 5000 },
@@ -75,6 +75,9 @@ const HomeScreen: React.FC = () => {
     },
   ];
 
+  // Get user's name from profile or user metadata
+  const userName = profile?.nome || user?.user_metadata?.nome || "Usuário";
+
   return (
     <div className="flex flex-col bg-gray-100 min-h-screen pb-20">
       {/* Header Section */}
@@ -82,14 +85,15 @@ const HomeScreen: React.FC = () => {
         <div className="flex justify-between items-center mb-4">
           <div>
             <p className="text-white text-opacity-80">Olá,</p>
-            <h1 className="text-2xl font-bold text-white">{currentUser.nome.split(' ')[0]}!</h1>
+            <h1 className="text-2xl font-bold text-white">{userName.split(' ')[0]}!</h1>
           </div>
           <Avatar 
-            src={currentUser.avatar} 
-            alt={currentUser.nome}
-            fallback={currentUser.nome}
+            src={profile?.avatar || undefined} 
+            alt={userName}
+            fallback={userName}
             size="lg" 
-            className="border-2 border-white"
+            className="border-2 border-white cursor-pointer"
+            onClick={() => navigate('/profile')}
           />
         </div>
         

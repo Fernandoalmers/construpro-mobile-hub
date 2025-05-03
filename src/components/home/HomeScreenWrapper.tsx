@@ -13,7 +13,6 @@ const HomeScreenWrapper: React.FC = () => {
   const { user, profile, isLoading: authLoading, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const [userData, setUserData] = useState<any>(null);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -26,14 +25,9 @@ const HomeScreenWrapper: React.FC = () => {
       try {
         console.log("Auth state in HomeScreenWrapper:", { user, profile });
         
-        // If we have a profile from auth context, use it
+        // If we have a profile from auth context, we're good to go
         if (profile) {
           console.log("Using profile from auth context:", profile);
-          setUserData({
-            ...profile,
-            // Ensure we have saldoPontos for display
-            saldoPontos: profile.saldo_pontos || 0,
-          });
           setLoading(false);
           return;
         }
@@ -42,29 +36,14 @@ const HomeScreenWrapper: React.FC = () => {
         if (user && !profile) {
           console.log("User found but no profile, fetching profile...");
           await refreshProfile();
-          // After refreshing, check if profile was loaded
-          if (profile) {
-            setUserData({
-              ...profile,
-              saldoPontos: profile.saldo_pontos || 0,
-            });
-            setLoading(false);
-            return;
-          }
         }
         
-        // If still no user data, set a placeholder
-        setUserData({
-          nome: user?.user_metadata?.nome || "Usuário",
-          saldoPontos: 0,
-          papel: 'consumidor'
-        });
-        
+        // After refreshing, we're done loading regardless of success
+        setLoading(false);
       } catch (err) {
         console.error("Error fetching user data:", err);
         setError(err instanceof Error ? err : new Error('Failed to fetch user data'));
         toast.error("Erro ao carregar dados do usuário");
-      } finally {
         setLoading(false);
       }
     };
@@ -74,27 +53,12 @@ const HomeScreenWrapper: React.FC = () => {
 
   const handleRetry = async () => {
     // Reset and fetch again
-    setUserData(null);
     setLoading(true);
     setError(null);
     
     try {
       await refreshProfile();
-      
-      if (profile) {
-        setUserData({
-          ...profile,
-          saldoPontos: profile.saldo_pontos || 0,
-        });
-        toast.success("Dados atualizados com sucesso");
-      } else if (user) {
-        setUserData({
-          nome: user?.user_metadata?.nome || "Usuário",
-          saldoPontos: 0,
-          papel: 'consumidor'
-        });
-        toast.success("Dados atualizados com sucesso");
-      }
+      toast.success("Dados atualizados com sucesso");
     } catch (error) {
       console.error("Error refreshing profile:", error);
       setError(error instanceof Error ? error : new Error('Failed to refresh profile'));
@@ -120,8 +84,8 @@ const HomeScreenWrapper: React.FC = () => {
     );
   }
 
-  // Show empty state if no user data
-  if (!userData) {
+  // If we're not loading and have no user data, show empty state
+  if (!user) {
     return (
       <ListEmptyState
         title="Dados não encontrados"
