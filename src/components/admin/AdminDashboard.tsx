@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import AdminLayout from './AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -5,6 +6,9 @@ import { Users, ShoppingBag, Store, Gift, Clock, AlertCircle } from 'lucide-reac
 import { supabase } from '@/integrations/supabase/client';
 import LoadingState from '@/components/common/LoadingState';
 import ErrorState from '@/components/common/ErrorState';
+import { toast } from '@/components/ui/sonner';
+import { useIsAdmin } from '@/hooks/useIsAdmin';
+import { fetchAdminLogs } from '@/services/adminService';
 
 interface DashboardStats {
   users: {
@@ -36,6 +40,7 @@ interface ActivityLog {
 }
 
 const AdminDashboard: React.FC = () => {
+  const { isAdmin, isLoading: isAdminLoading } = useIsAdmin();
   const [stats, setStats] = useState<DashboardStats>({
     users: { total: 0, pending: 0 },
     products: { total: 0, pending: 0 },
@@ -49,19 +54,21 @@ const AdminDashboard: React.FC = () => {
   const [activitiesLoading, setActivitiesLoading] = useState<boolean>(true);
 
   useEffect(() => {
+    if (isAdminLoading) {
+      return; // Wait for admin status check to complete
+    }
+    
+    if (!isAdmin) {
+      setStats(prev => ({
+        ...prev,
+        isLoading: false,
+        error: 'Unauthorized: Admin access required'
+      }));
+      return;
+    }
+    
     const fetchStats = async () => {
       try {
-        // Check admin status first
-        const { data: isAdmin, error: adminError } = await supabase.rpc('is_admin');
-        
-        if (adminError) {
-          throw new Error('Error verifying admin status: ' + adminError.message);
-        }
-        
-        if (!isAdmin) {
-          throw new Error('Unauthorized: Admin access required');
-        }
-        
         // Fetch total users count
         const { count: totalUsers, error: usersError } = await supabase
           .from('profiles')
@@ -77,7 +84,7 @@ const AdminDashboard: React.FC = () => {
           
         if (pendingUsersError) throw new Error('Error fetching pending users: ' + pendingUsersError.message);
         
-        // Fetch total products count
+        // Fetch total products count - use produtos table, not products
         const { count: totalProducts, error: productsError } = await supabase
           .from('produtos')
           .select('*', { count: 'exact', head: true });
@@ -92,10 +99,11 @@ const AdminDashboard: React.FC = () => {
           
         if (pendingProductsError) throw new Error('Error fetching pending products: ' + pendingProductsError.message);
         
-        // Fetch total stores count
+        // Fetch total stores count - use lojas table, not stores
         const { count: totalStores, error: storesError } = await supabase
           .from('lojas')
-          .select('*', { count: 'exact', head: true });
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'ativa'); // Only count active stores
           
         if (storesError) throw new Error('Error fetching stores: ' + storesError.message);
         
@@ -154,6 +162,7 @@ const AdminDashboard: React.FC = () => {
           isLoading: false,
           error: error instanceof Error ? error.message : 'Erro ao carregar estatísticas'
         }));
+        toast.error('Erro ao carregar estatísticas do painel');
       }
     };
     
@@ -161,57 +170,36 @@ const AdminDashboard: React.FC = () => {
       try {
         setActivitiesLoading(true);
         
-        // Fetch recent admin logs if available
-        const { data: logs, error: logsError } = await supabase
-          .from('admin_logs')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(5);
-          
-        if (logsError) {
-          console.warn('Could not fetch admin logs:', logsError);
-          // Generate some placeholder data if no logs exist
-          setRecentActivity([
-            { 
-              id: '1', 
-              action: 'Aprovação de produto', 
-              entity: 'Furadeira de Impacto 750W', 
-              timestamp: new Date().toISOString() 
-            },
-            { 
-              id: '2', 
-              action: 'Cadastro de recompensa', 
-              entity: 'Vale-compra R$100', 
-              timestamp: new Date(Date.now() - 3600000).toISOString() 
-            },
-            { 
-              id: '3', 
-              action: 'Aprovação de loja', 
-              entity: 'Casa do Construtor', 
-              timestamp: new Date(Date.now() - 86400000).toISOString() 
-            }
-          ]);
-        } else {
+        // Use fetchAdminLogs from adminService.ts
+        const logs = await fetchAdminLogs(5);
+        
+        if (logs && logs.length > 0) {
           // Format admin logs appropriately
-          const formattedLogs = logs?.map(log => ({
+          const formattedLogs = logs.map(log => ({
             id: log.id,
             action: log.action,
             entity: log.entity_type + ': ' + log.entity_id,
             timestamp: new Date(log.created_at).toISOString(),
             details: log.details ? JSON.stringify(log.details) : undefined
-          })) || [];
+          }));
           
           setRecentActivity(formattedLogs);
+        } else {
+          // If no logs exist, set empty array - don't create fictional data
+          setRecentActivity([]);
         }
       } catch (error) {
         console.error('Error fetching activity logs:', error);
+        toast.error('Erro ao carregar histórico de atividades');
+        // Set empty array on error
+        setRecentActivity([]);
       } finally {
         setActivitiesLoading(false);
       }
     };
 
     fetchStats();
-  }, []);
+  }, [isAdmin, isAdminLoading]);
 
   // Format the date display
   const formatDate = (dateString: string): string => {
@@ -234,6 +222,28 @@ const AdminDashboard: React.FC = () => {
     return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}, ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
   };
   
+  // If admin status is still loading
+  if (isAdminLoading) {
+    return (
+      <AdminLayout currentSection="Dashboard">
+        <LoadingState text="Verificando permissões de administrador..." />
+      </AdminLayout>
+    );
+  }
+  
+  // If user is not an admin
+  if (!isAdmin) {
+    return (
+      <AdminLayout currentSection="Dashboard">
+        <ErrorState 
+          title="Acesso Negado" 
+          message="Você não tem permissões de administrador para acessar este painel."
+          onRetry={() => window.location.href = '/profile'}
+        />
+      </AdminLayout>
+    );
+  }
+
   // If there's an error loading the stats
   if (stats.error) {
     return (

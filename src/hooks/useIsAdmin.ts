@@ -18,7 +18,7 @@ export const useIsAdmin = () => {
       }
 
       try {
-        // Use the is_admin RPC function that we fixed to avoid recursion
+        // Call the fixed is_admin RPC function
         const { data, error } = await supabase.rpc('is_admin');
 
         if (error) {
