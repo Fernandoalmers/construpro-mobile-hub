@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export interface CartItem {
@@ -95,15 +94,23 @@ export const cartService = {
       if (itemsError) throw itemsError;
       
       // Format cart items
-      const items: CartItem[] = (cartItems || []).map(item => ({
-        id: item.id,
-        produtoId: item.product_id,
-        quantidade: item.quantity,
-        preco: item.products?.preco || item.price_at_add,
-        subtotal: (item.products?.preco || item.price_at_add) * item.quantity,
-        pontos: (item.products?.pontos || 0) * item.quantity,
-        produto: item.products
-      }));
+      const items: CartItem[] = (cartItems || []).map(item => {
+        // Safely access properties with null checks
+        const product = item.products || {};
+        const preco = product.preco ?? item.price_at_add ?? 0;
+        const quantidade = item.quantity || 0;
+        const pontos = product.pontos || 0;
+        
+        return {
+          id: item.id,
+          produtoId: item.product_id,
+          quantidade,
+          preco,
+          subtotal: preco * quantidade,
+          pontos: pontos * quantidade,
+          produto: product
+        };
+      });
       
       // Get all stores with products in cart
       const storeIds = [...new Set(items.map(item => item.produto?.stores?.id).filter(Boolean))];
@@ -152,8 +159,9 @@ export const cartService = {
       if (!product) throw new Error('Product not found');
       
       // Check stock
-      if (product.estoque < quantity) {
-        throw new Error(`Only ${product.estoque} units available in stock`);
+      const estoque = product.estoque || 0;
+      if (estoque < quantity) {
+        throw new Error(`Only ${estoque} units available in stock`);
       }
       
       // Get or create active cart
@@ -191,8 +199,8 @@ export const cartService = {
         const newQuantity = existingItem.quantity + quantity;
         
         // Check if new quantity exceeds available stock
-        if (newQuantity > product.estoque) {
-          throw new Error(`Cannot add more units. Maximum stock reached (${product.estoque}).`);
+        if (newQuantity > estoque) {
+          throw new Error(`Cannot add more units. Maximum stock reached (${estoque}).`);
         }
         
         const { error: updateError } = await supabase
@@ -209,7 +217,7 @@ export const cartService = {
             cart_id: cart.id,
             product_id: productId,
             quantity: quantity,
-            price_at_add: product.preco
+            price_at_add: product.preco || 0
           });
         
         if (insertError) throw insertError;
@@ -247,8 +255,9 @@ export const cartService = {
       
       if (productError) throw productError;
       
-      if (quantity > product.estoque) {
-        throw new Error(`Only ${product.estoque} units available in stock`);
+      const estoque = product?.estoque || 0;
+      if (quantity > estoque) {
+        throw new Error(`Only ${estoque} units available in stock`);
       }
       
       // Update quantity

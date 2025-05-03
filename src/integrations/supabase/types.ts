@@ -369,7 +369,9 @@ export type Database = {
           imagem_url: string | null
           loja_id: string
           nome: string
+          pontos: number | null
           preco: number
+          preco_anterior: number | null
           updated_at: string | null
         }
         Insert: {
@@ -382,7 +384,9 @@ export type Database = {
           imagem_url?: string | null
           loja_id: string
           nome: string
+          pontos?: number | null
           preco: number
+          preco_anterior?: number | null
           updated_at?: string | null
         }
         Update: {
@@ -395,7 +399,9 @@ export type Database = {
           imagem_url?: string | null
           loja_id?: string
           nome?: string
+          pontos?: number | null
           preco?: number
+          preco_anterior?: number | null
           updated_at?: string | null
         }
         Relationships: []

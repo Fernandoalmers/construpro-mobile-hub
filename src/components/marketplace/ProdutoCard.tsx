@@ -49,15 +49,15 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
         {/* Rating */}
         <div className="flex items-center mt-1">
           <Star size={14} className="fill-yellow-400 text-yellow-400" />
-          <span className="text-xs ml-1">{produto.avaliacao}</span>
+          <span className="text-xs ml-1">{produto.avaliacao || 0}</span>
         </div>
         
         {/* Price */}
         <div className="mt-1">
-          <span className="text-sm font-bold">R$ {produto.preco.toFixed(2)}</span>
+          <span className="text-sm font-bold">R$ {(produto.preco || 0).toFixed(2)}</span>
           {(produto.precoAnterior > produto.preco || produto.preco_anterior > produto.preco) && (
             <span className="text-xs text-gray-400 line-through ml-2">
-              R$ {(produto.precoAnterior || produto.preco_anterior).toFixed(2)}
+              R$ {((produto.precoAnterior || produto.preco_anterior) || 0).toFixed(2)}
             </span>
           )}
         </div>
