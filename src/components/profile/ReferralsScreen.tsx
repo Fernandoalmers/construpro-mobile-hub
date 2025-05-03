@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Users, Share2, Copy, UserCheck, Award } from 'lucide-react';
@@ -35,7 +36,7 @@ const ReferralsScreen: React.FC = () => {
   
   const handleShareWhatsApp = () => {
     if (referralData?.codigo) {
-      const message = `Venha para a ConstruPro! Use meu código ${referralData.codigo} e ganhe 300 pontos na primeira compra. https://construpro.com/convite`;
+      const message = `Venha para a ConstruPro! Use meu código ${referralData.codigo} e ganhe 100 pontos na primeira compra. https://construpro.com/convite`;
       const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
       window.open(whatsappUrl, '_blank');
     }
@@ -139,7 +140,7 @@ const ReferralsScreen: React.FC = () => {
                 2
               </div>
               <div>
-                <p>Quando seu amigo se cadastrar e fizer a primeira compra, você ganha 300 pontos.</p>
+                <p>Quando seu amigo se cadastrar e fizer a primeira compra, você ganha 100 pontos.</p>
               </div>
             </li>
             <li className="flex">
@@ -147,7 +148,7 @@ const ReferralsScreen: React.FC = () => {
                 3
               </div>
               <div>
-                <p>Seu amigo também ganha 300 pontos no primeiro pedido!</p>
+                <p>Seu amigo também ganha 100 pontos no primeiro pedido!</p>
               </div>
             </li>
           </ol>

@@ -1,8 +1,9 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Check, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Check, Eye, EyeOff, Users } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '../context/AuthContext';
 import { toast } from "@/components/ui/sonner";
@@ -23,6 +24,7 @@ const SignupScreen: React.FC = () => {
     email: '',
     senha: '',
     confirmaSenha: '',
+    codigoIndicacao: '', // New field for referral code
     tipo_perfil: 'consumidor' as UserRole
   });
 
@@ -60,7 +62,8 @@ const SignupScreen: React.FC = () => {
           nome: signupData.nome,
           cpf: signupData.cpf,
           telefone: signupData.telefone,
-          tipo_perfil: signupData.tipo_perfil
+          tipo_perfil: signupData.tipo_perfil,
+          codigo_indicacao: signupData.codigoIndicacao // Pass referral code
         }
       });
       
@@ -171,6 +174,29 @@ const SignupScreen: React.FC = () => {
                 required
                 disabled={isSubmitting}
               />
+            </div>
+
+            {/* New field for referral code */}
+            <div>
+              <label htmlFor="codigoIndicacao" className="block text-sm font-medium text-gray-600 mb-1">
+                Código de indicação (opcional)
+              </label>
+              <div className="relative">
+                <Input
+                  id="codigoIndicacao"
+                  name="codigoIndicacao"
+                  type="text"
+                  value={signupData.codigoIndicacao}
+                  onChange={handleChange}
+                  placeholder="Tem um código? Digite aqui"
+                  className="w-full pl-9"
+                  disabled={isSubmitting}
+                />
+                <Users size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Ganhe 100 pontos ao se cadastrar com um código de indicação
+              </p>
             </div>
 
             <div>

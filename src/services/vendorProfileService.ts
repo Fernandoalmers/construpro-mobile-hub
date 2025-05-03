@@ -1,142 +1,227 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/sonner';
 
-// Types
-export interface Vendor {
+export interface VendorProfile {
   id: string;
   usuario_id: string;
   nome_loja: string;
+  descricao?: string;
   logo?: string;
   banner?: string;
   segmento?: string;
-  descricao?: string;
-  formas_entrega?: string[];
+  email?: string;
   telefone?: string;
   whatsapp?: string;
-  email?: string;
+  formas_entrega?: any[];
   created_at?: string;
   updated_at?: string;
 }
 
-// Vendor Profile Management
-export const getVendorProfile = async (): Promise<Vendor | null> => {
+export const getVendorProfile = async (): Promise<VendorProfile | null> => {
   try {
-    // Get auth user id
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) {
-      console.error('User not authenticated');
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
       return null;
     }
     
-    const { data, error } = await supabase
+    const { data: vendorData, error } = await supabase
       .from('vendedores')
       .select('*')
-      .eq('usuario_id', user.user.id)
+      .eq('usuario_id', userData.user.id)
       .single();
-    
+      
     if (error) {
-      console.error('Error fetching vendor:', error);
+      if (error.code === 'PGRST116') { // Not found
+        return null;
+      }
+      console.error('Error fetching vendor profile:', error);
       return null;
     }
     
-    return data as Vendor;
+    return vendorData as VendorProfile;
   } catch (error) {
     console.error('Error in getVendorProfile:', error);
     return null;
   }
 };
 
-export const saveVendorProfile = async (vendorData: Partial<Vendor>): Promise<Vendor | null> => {
+export const createVendorProfile = async (profile: Partial<VendorProfile>): Promise<VendorProfile | null> => {
   try {
-    // Get auth user id
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) {
-      console.error('User not authenticated');
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
       return null;
     }
     
-    // Check if vendor profile exists
-    const { data: existingVendor } = await supabase
+    // Set user_id
+    const vendorProfile = {
+      ...profile,
+      usuario_id: userData.user.id,
+    };
+    
+    const { data, error } = await supabase
       .from('vendedores')
-      .select('id')
-      .eq('usuario_id', user.user.id)
+      .insert([vendorProfile])
+      .select()
       .single();
-    
-    let result;
-    
-    if (existingVendor) {
-      // Update existing vendor
-      const { data, error } = await supabase
-        .from('vendedores')
-        .update(vendorData)
-        .eq('id', existingVendor.id)
-        .select()
-        .single();
       
-      if (error) throw error;
-      result = data;
-    } else {
-      // Create new vendor - ensure nome_loja is provided
-      if (!vendorData.nome_loja) {
-        throw new Error('Nome da loja é obrigatório');
-      }
-      
-      // Make sure we're providing a nome_loja value when creating a new vendor
-      const newVendor = {
-        ...vendorData,
-        nome_loja: vendorData.nome_loja,
-        usuario_id: user.user.id
-      };
-      
-      const { data, error } = await supabase
-        .from('vendedores')
-        .insert(newVendor)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      result = data;
+    if (error) {
+      console.error('Error creating vendor profile:', error);
+      return null;
     }
     
-    return result as Vendor;
+    // Update user role
+    await supabase.auth.updateUser({
+      data: {
+        papel: 'lojista',
+        tipo_perfil: 'lojista'
+      }
+    });
+    
+    return data as VendorProfile;
   } catch (error) {
-    console.error('Error saving vendor profile:', error);
-    toast.error('Erro ao salvar dados da loja');
+    console.error('Error in createVendorProfile:', error);
     return null;
   }
 };
 
-// File Upload Helpers for Profile
-export const uploadVendorImage = async (
-  file: File,
-  folder: string,
-  fileName: string
-): Promise<string | null> => {
+export const updateVendorProfile = async (profile: Partial<VendorProfile>): Promise<VendorProfile | null> => {
   try {
-    const vendorProfile = await getVendorProfile();
-    if (!vendorProfile) {
-      toast.error('Perfil de vendedor não encontrado');
+    const currentProfile = await getVendorProfile();
+    if (!currentProfile) {
       return null;
     }
     
-    const filePath = `${folder}/${vendorProfile.id}/${fileName}`;
-    const { error: uploadError } = await supabase.storage
-      .from('vendor-images')
-      .upload(filePath, file, { upsert: true });
+    const { data, error } = await supabase
+      .from('vendedores')
+      .update(profile)
+      .eq('id', currentProfile.id)
+      .select()
+      .single();
+      
+    if (error) {
+      console.error('Error updating vendor profile:', error);
+      return null;
+    }
     
-    if (uploadError) {
-      console.error('Error uploading image:', uploadError);
+    return data as VendorProfile;
+  } catch (error) {
+    console.error('Error in updateVendorProfile:', error);
+    return null;
+  }
+};
+
+export const getVendorCustomers = async (): Promise<any[]> => {
+  try {
+    const vendorProfile = await getVendorProfile();
+    if (!vendorProfile) {
+      return [];
+    }
+    
+    const { data, error } = await supabase
+      .from('clientes_vendedor')
+      .select('*')
+      .eq('vendedor_id', vendorProfile.id)
+      .order('ultimo_pedido', { ascending: false });
+      
+    if (error) {
+      console.error('Error fetching vendor customers:', error);
+      return [];
+    }
+    
+    return data || [];
+  } catch (error) {
+    console.error('Error in getVendorCustomers:', error);
+    return [];
+  }
+};
+
+export const getVendorOrders = async (): Promise<any[]> => {
+  try {
+    const vendorProfile = await getVendorProfile();
+    if (!vendorProfile) {
+      return [];
+    }
+    
+    const { data, error } = await supabase
+      .from('pedidos')
+      .select(`
+        *,
+        itens_pedido(*),
+        profiles:usuario_id (nome, email, telefone)
+      `)
+      .eq('vendedor_id', vendorProfile.id)
+      .order('created_at', { ascending: false });
+      
+    if (error) {
+      console.error('Error fetching vendor orders:', error);
+      return [];
+    }
+    
+    return data || [];
+  } catch (error) {
+    console.error('Error in getVendorOrders:', error);
+    return [];
+  }
+};
+
+// Upload vendor logo
+export const uploadVendorLogo = async (file: File): Promise<string | null> => {
+  try {
+    const vendorProfile = await getVendorProfile();
+    if (!vendorProfile) {
+      return null;
+    }
+    
+    const fileName = `logo-${Date.now()}.${file.name.split('.').pop()}`;
+    const filePath = `vendors/${vendorProfile.id}/${fileName}`;
+    
+    const { error } = await supabase.storage
+      .from('vendor-assets')
+      .upload(filePath, file, { upsert: true });
+      
+    if (error) {
+      console.error('Error uploading vendor logo:', error);
       return null;
     }
     
     const { data } = supabase.storage
-      .from('vendor-images')
+      .from('vendor-assets')
       .getPublicUrl(filePath);
       
     return data.publicUrl;
   } catch (error) {
-    console.error('Error in uploadVendorImage:', error);
+    console.error('Error in uploadVendorLogo:', error);
+    return null;
+  }
+};
+
+// Upload vendor banner
+export const uploadVendorBanner = async (file: File): Promise<string | null> => {
+  try {
+    const vendorProfile = await getVendorProfile();
+    if (!vendorProfile) {
+      return null;
+    }
+    
+    const fileName = `banner-${Date.now()}.${file.name.split('.').pop()}`;
+    const filePath = `vendors/${vendorProfile.id}/${fileName}`;
+    
+    const { error } = await supabase.storage
+      .from('vendor-assets')
+      .upload(filePath, file, { upsert: true });
+      
+    if (error) {
+      console.error('Error uploading vendor banner:', error);
+      return null;
+    }
+    
+    const { data } = supabase.storage
+      .from('vendor-assets')
+      .getPublicUrl(filePath);
+      
+    return data.publicUrl;
+  } catch (error) {
+    console.error('Error in uploadVendorBanner:', error);
     return null;
   }
 };

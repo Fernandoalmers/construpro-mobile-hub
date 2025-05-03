@@ -1,3 +1,4 @@
+
 // Core and Admin Components
 import AdminDashboard from './components/admin/dashboard/AdminDashboard';
 import UsersManagement from './components/admin/UsersManagement';
@@ -33,6 +34,7 @@ import MarketplaceScreenWrapper from './components/marketplace/MarketplaceScreen
 import PhysicalPurchasesScreen from './components/profile/PhysicalPurchasesScreen';
 import PointsHistoryScreen from './components/profile/PointsHistoryScreen';
 import AddressScreen from './components/profile/AddressScreen';
+import ReferralsScreen from './components/profile/ReferralsScreen';
 
 // Vendor Components
 import VendorDashboardScreen from './components/vendor/VendorHomeScreen';
@@ -75,6 +77,12 @@ export {
   SettingsScreen,
   NotFoundScreen,
   MarketplaceScreenWrapper,
+  
+  // Profile Related Components
+  PhysicalPurchasesScreen,
+  PointsHistoryScreen,
+  AddressScreen,
+  ReferralsScreen,
   
   // Vendor Components
   VendorDashboardScreen,

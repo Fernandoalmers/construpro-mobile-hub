@@ -4,7 +4,7 @@
  * @param length Length of the code to generate
  * @returns A random alphanumeric code
  */
-export function generateReferralCode(length: number = 8): string {
+export function generateReferralCode(length: number = 6): string {
   const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Excluding confusing characters like I, O, 0, 1
   let result = '';
   for (let i = 0; i < length; i++) {

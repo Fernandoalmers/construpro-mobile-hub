@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { getVendorProfile } from './vendorProfileService';
@@ -179,7 +180,7 @@ export const uploadProductImage = async (
     const fileName = `${Date.now()}-${index}-${file.name.replace(/\s+/g, '-').toLowerCase()}`;
     const filePath = `products/${vendorProfile.id}/${productId}/${fileName}`;
     
-    const { error: uploadError, data } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('vendor-images')
       .upload(filePath, file, { upsert: true });
     
@@ -192,6 +193,20 @@ export const uploadProductImage = async (
     const { data: publicUrlData } = supabase.storage
       .from('vendor-images')
       .getPublicUrl(filePath);
+      
+    // Save image in product_images table
+    const { error: imageError } = await supabase
+      .from('product_images')
+      .insert({
+        product_id: productId,
+        url: publicUrlData.publicUrl,
+        is_primary: index === 0,
+        ordem: index
+      });
+      
+    if (imageError) {
+      console.error('Error saving product image reference:', imageError);
+    }
       
     return publicUrlData.publicUrl;
   } catch (error) {
@@ -214,6 +229,70 @@ export const updateProductImages = async (productId: string, imageUrls: string[]
   } catch (error) {
     console.error('Error updating product images:', error);
     toast.error('Erro ao atualizar imagens do produto');
+    return false;
+  }
+};
+
+// Function to get product images from the product_images table
+export const getProductImages = async (productId: string): Promise<any[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('product_images')
+      .select('*')
+      .eq('product_id', productId)
+      .order('ordem', { ascending: true });
+    
+    if (error) {
+      console.error('Error fetching product images:', error);
+      return [];
+    }
+    
+    return data || [];
+  } catch (error) {
+    console.error('Error in getProductImages:', error);
+    return [];
+  }
+};
+
+// Function to update an existing product image
+export const updateProductImage = async (
+  imageId: string,
+  updates: { is_primary?: boolean; ordem?: number }
+): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('product_images')
+      .update(updates)
+      .eq('id', imageId);
+    
+    if (error) {
+      console.error('Error updating product image:', error);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in updateProductImage:', error);
+    return false;
+  }
+};
+
+// Function to delete a product image
+export const deleteProductImage = async (imageId: string): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('product_images')
+      .delete()
+      .eq('id', imageId);
+    
+    if (error) {
+      console.error('Error deleting product image:', error);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in deleteProductImage:', error);
     return false;
   }
 };

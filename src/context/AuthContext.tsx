@@ -3,6 +3,7 @@ import React, { createContext, useState, useEffect, useContext, useCallback } fr
 import { supabase } from '@/integrations/supabase/client';
 import { getUserProfile, UserProfile, updateUserProfile } from '@/services/userService';
 import { Session, User } from '@supabase/supabase-js';
+import { referralService } from '@/services/pointsService';
 
 export type UserRole = 'consumidor' | 'profissional' | 'lojista' | 'admin' | 'cliente' | 'vendedor';
 
@@ -130,6 +131,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signup = async ({ email, password, userData }: { email: string, password: string, userData: any }) => {
     try {
       setIsLoading(true);
+
+      // Extract referral code if provided
+      const referralCode = userData.codigo_indicacao;
+      delete userData.codigo_indicacao; // Remove from userData as it's not stored in auth.users
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -137,6 +143,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           data: userData
         }
       });
+      
+      // If signup was successful and a referral code was provided
+      if (!error && data.user && referralCode) {
+        // Process the referral code
+        await referralService.processReferral(data.user.id, referralCode);
+      }
       
       return { error, data };
     } catch (error) {

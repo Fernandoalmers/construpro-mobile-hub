@@ -13,100 +13,51 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from '../../context/AuthContext';
-import pedidos from '../../data/pedidos.json';
-import resgates from '../../data/resgates.json';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
-// Vamos simular transações de pontos baseado nos dados existentes
-const generatePointsTransactions = (userId: string) => {
-  const transactions = [];
-
-  // Transações de compras
-  pedidos
-    .filter(pedido => pedido.clienteId === userId)
-    .forEach(pedido => {
-      transactions.push({
-        id: `compra-${pedido.id}`,
-        tipo: 'compra',
-        pontos: pedido.pontosGanhos,
-        data: pedido.data,
-        descricao: `Compra no app - Pedido #${pedido.id}`,
-        referencia: pedido.id
-      });
-    });
-  
-  // Transações de resgates
-  resgates
-    .filter(resgate => resgate.clienteId === userId)
-    .forEach(resgate => {
-      transactions.push({
-        id: `resgate-${resgate.id}`,
-        tipo: 'resgate',
-        pontos: -resgate.pontos,
-        data: resgate.data,
-        descricao: `Resgate de ${resgate.item}`,
-        referencia: resgate.id
-      });
-    });
-  
-  // Simular algumas transações adicionais
-  transactions.push({
-    id: 'ind-1',
-    tipo: 'indicacao',
-    pontos: 300,
-    data: '2025-04-15T10:30:00',
-    descricao: 'Indicação aprovada - João Silva',
-    referencia: 'user-123'
-  });
-  
-  transactions.push({
-    id: 'nf-1',
-    tipo: 'loja-fisica',
-    pontos: 500,
-    data: '2025-04-10T14:45:00',
-    descricao: 'Compra loja física (NF 1234)',
-    referencia: 'nf-1234'
-  });
-  
-  // Adicionar pontos de serviços para profissionais
-  transactions.push({
-    id: 'serv-1',
-    tipo: 'servico',
-    pontos: 350,
-    data: '2025-04-18T09:15:00',
-    descricao: 'Serviço concluído - Pintura residencial',
-    referencia: 'project-123'
-  });
-  
-  transactions.push({
-    id: 'serv-2',
-    tipo: 'servico',
-    pontos: 420,
-    data: '2025-04-05T11:30:00',
-    descricao: 'Serviço concluído - Instalação elétrica',
-    referencia: 'project-456'
-  });
-  
-  // Ordenar por data (mais recente primeiro)
-  return transactions.sort((a, b) => 
-    new Date(b.data).getTime() - new Date(a.data).getTime()
-  );
-};
+interface Transaction {
+  id: string;
+  tipo: string;
+  pontos: number;
+  data: string;
+  descricao: string;
+  referencia_id?: string;
+}
 
 const PointsHistoryScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const userId = user?.id || "1"; // Default to first client if no user
+  const { user, profile } = useAuth();
   
   const [typeFilter, setTypeFilter] = useState<string>("todos");
   const [originFilter, setOriginFilter] = useState<string>("todos");
   const [periodFilter, setPeriodFilter] = useState<string>("todos");
   const [showFilters, setShowFilters] = useState(false);
   
-  // Generate transactions
-  const allTransactions = generatePointsTransactions(userId);
+  // Fetch transactions from Supabase
+  const { data: transactions = [], isLoading } = useQuery({
+    queryKey: ['pointsHistory', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      
+      const { data, error } = await supabase
+        .from('points_transactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('data', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching points history:', error);
+        return [];
+      }
+      
+      return data as Transaction[];
+    },
+    enabled: !!user
+  });
   
   // Apply filters
-  let filteredTransactions = [...allTransactions];
+  let filteredTransactions = [...transactions];
   
   // Apply type filter (ganho/resgate)
   if (typeFilter === "ganho") {
@@ -144,15 +95,15 @@ const PointsHistoryScreen: React.FC = () => {
     );
   }
   
-  // Calculate total points
-  const totalPoints = allTransactions.reduce((sum, t) => sum + t.pontos, 0);
+  // Calculate total points from profile
+  const totalPoints = profile?.saldo_pontos || 0;
   
   // Calculate points statistics
-  const totalEarned = allTransactions
+  const totalEarned = transactions
     .filter(t => t.pontos > 0)
     .reduce((sum, t) => sum + t.pontos, 0);
     
-  const totalRedeemed = allTransactions
+  const totalRedeemed = transactions
     .filter(t => t.pontos < 0)
     .reduce((sum, t) => sum + Math.abs(t.pontos), 0);
   
@@ -276,7 +227,11 @@ const PointsHistoryScreen: React.FC = () => {
         
         {/* Transactions */}
         <Card className="overflow-hidden">
-          {filteredTransactions.length === 0 ? (
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-construPro-blue"></div>
+            </div>
+          ) : filteredTransactions.length === 0 ? (
             <div className="text-center py-10">
               <CircleDollarSign className="mx-auto text-gray-400 mb-3" size={40} />
               <h3 className="text-lg font-medium text-gray-700">Nenhuma transação encontrada</h3>
@@ -284,7 +239,7 @@ const PointsHistoryScreen: React.FC = () => {
             </div>
           ) : (
             <div className="divide-y divide-gray-100">
-              {filteredTransactions.map((transaction, index) => (
+              {filteredTransactions.map((transaction) => (
                 <div key={transaction.id} className="p-4">
                   <div className="flex justify-between items-start">
                     <div className="flex">

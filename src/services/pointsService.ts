@@ -1,244 +1,162 @@
 
-import { supabase } from "@/integrations/supabase/client";
-import { getUserProfile } from "./userService";
-
-export interface PointsTransaction {
-  id: string;
-  user_id: string;
-  pontos: number;
-  tipo: 'compra' | 'resgate' | 'indicacao' | 'loja-fisica' | 'servico' | 'ajuste';
-  descricao: string;
-  referencia_id?: string;
-  data: string;
-  created_at?: string;
-}
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/sonner';
+import { UserProfile } from './userService';
 
 export interface ReferralInfo {
   codigo: string;
   total_referrals: number;
   points_earned: number;
-  referrals: Array<{
-    id: string;
-    data: string;
-    status: 'pendente' | 'aprovado' | 'rejeitado';
-    pontos: number;
-    profiles: {
-      nome: string;
-    };
-  }>;
+  referrals: ReferralDetail[];
 }
 
-// Get points transactions
-export const getPointsTransactions = async (): Promise<PointsTransaction[]> => {
-  try {
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) {
-      console.error('User not authenticated');
-      return [];
-    }
-
-    const { data, error } = await supabase
-      .from('points_transactions')
-      .select('*')
-      .eq('user_id', userData.user.id)
-      .order('data', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching points transactions:', error);
-      return [];
-    }
-
-    return data as PointsTransaction[];
-  } catch (error) {
-    console.error('Error in getPointsTransactions:', error);
-    return [];
+export interface ReferralDetail {
+  id: string;
+  data: string;
+  status: string;
+  pontos: number;
+  profiles: {
+    nome: string;
   }
-};
+}
 
-// Add points transaction
-export const addPointsTransaction = async (
-  points: number,
-  type: PointsTransaction['tipo'],
-  description: string,
-  referenceId?: string
-): Promise<boolean> => {
-  try {
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) {
-      console.error('User not authenticated');
-      return false;
-    }
-
-    // Start a transaction to ensure both operations succeed or fail together
-    const { data, error } = await supabase.rpc('update_user_points', {
-      user_id: userData.user.id,
-      points_to_add: points
-    });
-
-    if (error) {
-      console.error('Error updating user points:', error);
-      return false;
-    }
-
-    const { error: txError } = await supabase
-      .from('points_transactions')
-      .insert({
-        user_id: userData.user.id,
-        pontos: points,
-        tipo: type,
-        descricao: description,
-        referencia_id: referenceId
-      });
-
-    if (txError) {
-      console.error('Error creating points transaction:', txError);
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    console.error('Error in addPointsTransaction:', error);
-    return false;
-  }
-};
-
-// Get current points balance
-export const getCurrentPoints = async (): Promise<number> => {
-  try {
-    const profile = await getUserProfile();
-    return profile?.saldo_pontos || 0;
-  } catch (error) {
-    console.error('Error in getCurrentPoints:', error);
-    return 0;
-  }
-};
-
-// Referral service
 export const referralService = {
-  getReferralInfo: async (): Promise<ReferralInfo> => {
+  // Process a referral code when a user signs up
+  async processReferral(userId: string, referralCode: string): Promise<boolean> {
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) {
-        throw new Error('User not authenticated');
+      if (!referralCode) return false;
+      
+      const { data, error } = await supabase.rpc('process_referral', {
+        user_id: userId,
+        referral_code: referralCode
+      });
+      
+      if (error) {
+        console.error('Error processing referral:', error);
+        return false;
       }
-
-      // Get user's referral code
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('codigo')
-        .eq('id', userData.user.id)
-        .single();
-
-      if (profileError || !profileData) {
-        console.error('Error fetching referral code:', profileError);
-        throw new Error('Could not fetch referral code');
-      }
-
-      // Get referrals made by the user - explicitly specify the referred_id column for profiles
-      const { data: referralsData, error: referralsError } = await supabase
-        .from('referrals')
-        .select(`
-          id,
-          data,
-          status,
-          pontos,
-          profiles!referred_id (nome)
-        `)
-        .eq('referrer_id', userData.user.id);
-
-      if (referralsError) {
-        console.error('Error fetching referrals:', referralsError);
-        throw new Error('Could not fetch referrals');
-      }
-
-      // Type-safe referral data transformation
-      const typedReferrals = (referralsData || []).map(ref => ({
-        id: ref.id,
-        data: ref.data,
-        status: (ref.status as 'pendente' | 'aprovado' | 'rejeitado') || 'pendente',
-        pontos: ref.pontos,
-        profiles: {
-          nome: ref.profiles?.nome || 'Usuário'
-        }
-      }));
-
-      // Calculate total points earned from referrals
-      const pointsEarned = typedReferrals.reduce((sum, ref) => sum + (ref.pontos || 0), 0) || 0;
-
-      return {
-        codigo: profileData.codigo || 'CONSTRUPRO',
-        total_referrals: typedReferrals.length || 0,
-        points_earned: pointsEarned,
-        referrals: typedReferrals
-      };
+      
+      return data || false;
     } catch (error) {
-      console.error('Error in getReferralInfo:', error);
-      return {
-        codigo: 'CONSTRUPRO',
-        total_referrals: 0,
-        points_earned: 0,
-        referrals: []
-      };
+      console.error('Error in processReferral:', error);
+      return false;
     }
   },
 
-  // Apply referral code
-  applyReferralCode: async (code: string): Promise<boolean> => {
+  // Get referral information for the current user
+  async getReferralInfo(): Promise<ReferralInfo | null> {
     try {
+      // Get current user
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) {
-        throw new Error('User not authenticated');
+        return null;
       }
 
-      // Check if the code exists
-      const { data: referrerData, error: referrerError } = await supabase
+      // Get user's profile to get their referral code
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('id')
-        .eq('codigo', code)
+        .select('codigo, saldo_pontos')
+        .eq('id', userData.user.id)
         .single();
-
-      if (referrerError || !referrerData) {
-        console.error('Invalid referral code:', referrerError);
-        return false;
+      
+      if (profileError) {
+        console.error('Error fetching user profile:', profileError);
+        return null;
       }
 
-      // Check if user is trying to refer themselves
-      if (referrerData.id === userData.user.id) {
-        console.error('Cannot use own referral code');
-        return false;
-      }
-
-      // Check if the user has already been referred
-      const { data: existingReferral, error: existingReferralError } = await supabase
+      // Get user's referrals
+      const { data: referrals, error: referralsError } = await supabase
         .from('referrals')
-        .select('id')
-        .eq('referred_id', userData.user.id)
-        .single();
-
-      if (existingReferral) {
-        console.error('User already has been referred');
-        return false;
+        .select(`
+          id, 
+          status, 
+          pontos, 
+          data,
+          profiles:referred_id (nome)
+        `)
+        .eq('referrer_id', userData.user.id);
+      
+      if (referralsError) {
+        console.error('Error fetching referrals:', referralsError);
+        return null;
       }
 
-      // Create referral record
-      const { error: referralError } = await supabase
-        .from('referrals')
-        .insert({
-          referrer_id: referrerData.id,
-          referred_id: userData.user.id,
-          status: 'pendente',
-          pontos: 0
-        });
+      // Calculate total points earned from referrals
+      const pointsEarned = referrals.reduce((sum, ref) => sum + (ref.pontos || 0), 0);
 
-      if (referralError) {
-        console.error('Error creating referral:', referralError);
-        return false;
-      }
-
-      return true;
+      return {
+        codigo: profile.codigo || '',
+        total_referrals: referrals.length,
+        points_earned: pointsEarned,
+        referrals: referrals as ReferralDetail[]
+      };
     } catch (error) {
-      console.error('Error in applyReferralCode:', error);
-      return false;
+      console.error('Error in getReferralInfo:', error);
+      return null;
+    }
+  },
+
+  // Get points transactions history
+  async getPointsHistory(userId: string): Promise<any[]> {
+    try {
+      const { data, error } = await supabase
+        .from('points_transactions')
+        .select('*')
+        .eq('user_id', userId)
+        .order('data', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching points history:', error);
+        return [];
+      }
+      
+      return data || [];
+    } catch (error) {
+      console.error('Error in getPointsHistory:', error);
+      return [];
+    }
+  }
+};
+
+// Create a service for store management
+export const storeService = {
+  async saveStore(storeData: any): Promise<any> {
+    try {
+      const { data, error } = await supabase
+        .from('stores')
+        .insert([storeData])
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Error saving store:', error);
+        return null;
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Error in saveStore:', error);
+      return null;
+    }
+  },
+  
+  async getStoreByProfileId(profileId: string): Promise<any> {
+    try {
+      const { data, error } = await supabase
+        .from('stores')
+        .select('*')
+        .eq('profile_id', profileId)
+        .single();
+      
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching store:', error);
+        return null;
+      }
+      
+      return data || null;
+    } catch (error) {
+      console.error('Error in getStoreByProfileId:', error);
+      return null;
     }
   }
 };
