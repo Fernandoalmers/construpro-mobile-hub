@@ -23,7 +23,7 @@ export const getAdminStores = async (): Promise<AdminStore[]> => {
         logo,
         created_at,
         updated_at,
-        profiles:usuario_id (nome, email)
+        profiles:usuario_id(nome, email)
       `);
     
     console.log('[getAdminStores] data:', data, 'error:', error);
@@ -36,6 +36,11 @@ export const getAdminStores = async (): Promise<AdminStore[]> => {
     
     // Transform data to AdminStore format
     const stores = (data || []).map(item => {
+      // Handle possible null profiles or missing properties
+      const profileData = item.profiles || {};
+      const profileName = typeof profileData === 'object' && profileData !== null ? profileData.nome : 'Desconhecido';
+      const profileEmail = typeof profileData === 'object' && profileData !== null ? profileData.email : 'sem-email';
+      
       return {
         id: item.id,
         nome: item.nome_loja,
@@ -43,11 +48,13 @@ export const getAdminStores = async (): Promise<AdminStore[]> => {
         status: item.status || 'pendente',
         usuarioId: item.usuario_id,
         proprietario_id: item.usuario_id,
-        proprietario_nome: item.profiles?.nome || 'Desconhecido',
-        proprietario_email: item.profiles?.email || 'sem-email',
+        proprietario_nome: profileName,
+        proprietario_email: profileEmail,
         telefone: item.telefone || '',
         whatsapp: item.whatsapp || '',
         logo_url: item.logo || '',
+        produtos_count: 0, // Adding the missing property with default value
+        contato: item.telefone || item.whatsapp || '', // Adding contato from telefone/whatsapp
         created_at: item.created_at,
         updated_at: item.updated_at
       };
