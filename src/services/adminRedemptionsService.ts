@@ -1,10 +1,21 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { AdminRedemption } from '@/types/admin'; // Import from centralized types
 import { toast } from '@/components/ui/sonner';
 
-// Make sure to export AdminRedemption
-export type { AdminRedemption };
+// Define and export the type
+export type AdminRedemption = {
+  id: string;
+  cliente_id: string;
+  cliente_nome?: string;
+  item: string;
+  pontos: number;
+  imagem_url: string | null;
+  codigo: string | null;
+  status: "recusado" | "pendente" | "aprovado" | "entregue";
+  data: string;
+  created_at: string;
+  updated_at: string;
+};
 
 /**
  * Fetches all redemptions from the system
@@ -37,7 +48,7 @@ export const fetchRedemptions = async (): Promise<AdminRedemption[]> => {
       pontos: item.pontos,
       imagem_url: item.imagem_url,
       codigo: item.codigo,
-      status: item.status,
+      status: (item.status as "recusado" | "pendente" | "aprovado" | "entregue") || "pendente",
       data: item.data || item.created_at,
       created_at: item.created_at,
       updated_at: item.updated_at

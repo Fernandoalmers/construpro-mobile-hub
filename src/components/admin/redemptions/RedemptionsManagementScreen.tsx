@@ -7,7 +7,14 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Search, Check, X, Package } from 'lucide-react';
-import { AdminRedemption, fetchAdminRedemptions, approveRedemption, rejectRedemption, markRedemptionDelivered, getRedemptionStatusBadgeColor } from '@/services/adminRedemptionsService';
+import { 
+  fetchRedemptions, 
+  approveRedemption, 
+  rejectRedemption, 
+  markRedemptionAsDelivered, 
+  getRedemptionStatusBadgeColor,
+  AdminRedemption
+} from '@/services/adminRedemptionsService';
 import { toast } from '@/components/ui/sonner';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
 import LoadingState from '@/components/common/LoadingState';
@@ -39,7 +46,7 @@ const RedemptionsManagementScreen: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
-      const redemptionsData = await fetchAdminRedemptions();
+      const redemptionsData = await fetchRedemptions();
       setRedemptions(redemptionsData);
     } catch (err) {
       setError('Failed to load redemptions. Please try again.');
@@ -91,7 +98,7 @@ const RedemptionsManagementScreen: React.FC = () => {
   
   const handleMarkAsDelivered = async (redemptionId: string) => {
     try {
-      await markRedemptionDelivered(redemptionId);
+      await markRedemptionAsDelivered(redemptionId);
       setRedemptions(prevRedemptions =>
         prevRedemptions.map(redemption =>
           redemption.id === redemptionId ? { ...redemption, status: 'entregue' } : redemption

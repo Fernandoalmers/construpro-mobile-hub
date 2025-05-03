@@ -9,9 +9,8 @@ import { toast } from '@/components/ui/sonner';
 export const fetchRewards = async (): Promise<AdminReward[]> => {
   try {
     // First, check if the table exists using the function
-    const { data: tableExists, error: checkError } = await supabase
-      .rpc('is_admin')
-      .select('*');
+    const { data: isAdmin, error: checkError } = await supabase
+      .rpc('is_admin');
       
     if (checkError) {
       console.error('Error checking admin status:', checkError);
@@ -47,7 +46,7 @@ export const fetchRewards = async (): Promise<AdminReward[]> => {
       pontos: item.pontos,
       imagem_url: item.imagem_url,
       categoria: 'Resgate', // Default category for resgates items
-      status: item.status,
+      status: item.status as string,
       estoque: null, // No estoque info in resgates
       created_at: item.created_at,
       updated_at: item.updated_at || item.created_at
@@ -59,64 +58,26 @@ export const fetchRewards = async (): Promise<AdminReward[]> => {
 };
 
 /**
- * Fetches a specific reward by ID
- */
-export const fetchRewardById = async (rewardId: string): Promise<AdminReward | null> => {
-  try {
-    // Check admin status/permission
-    const { error: adminError } = await supabase
-      .rpc('is_admin')
-      .select('*');
-
-    if (adminError) {
-      console.error('Admin check failed:', adminError);
-      return null;
-    }
-
-    // Attempt to retrieve the reward
-    const { data, error } = await supabase
-      .from('resgates')
-      .select('*')
-      .eq('id', rewardId)
-      .single();
-
-    if (error) {
-      console.error('Error fetching reward by ID:', error);
-      return null;
-    }
-
-    // Transform to AdminReward format
-    return {
-      id: data.id,
-      nome: data.item,
-      descricao: data.item,
-      pontos: data.pontos,
-      imagem_url: data.imagem_url,
-      categoria: 'Resgate',
-      status: data.status,
-      estoque: null,
-      created_at: data.created_at,
-      updated_at: data.updated_at || data.created_at
-    };
-  } catch (error) {
-    console.error('Unexpected error fetching reward by ID:', error);
-    return null;
-  }
-};
-
-/**
  * Creates a new reward
  */
 export const createReward = async (rewardData: Omit<AdminReward, 'id' | 'created_at' | 'updated_at'>): Promise<AdminReward | null> => {
   try {
     // First verify admin status
     const { error: adminError } = await supabase
-      .rpc('is_admin')
-      .select('*');
+      .rpc('is_admin');
 
     if (adminError) {
       console.error('Admin check failed:', adminError);
       toast.error('Permissão negada: apenas administradores podem criar recompensas');
+      return null;
+    }
+    
+    // We need to include cliente_id for the insertion to work
+    const user = supabase.auth.getUser();
+    const userId = (await user).data.user?.id;
+    
+    if (!userId) {
+      toast.error('Usuário não autenticado');
       return null;
     }
     
@@ -128,7 +89,7 @@ export const createReward = async (rewardData: Omit<AdminReward, 'id' | 'created
         pontos: rewardData.pontos,
         imagem_url: rewardData.imagem_url,
         status: rewardData.status || 'pendente',
-        // We don't have a direct field for descricao, categoria or estoque
+        cliente_id: userId  // Required field
       })
       .select()
       .single();
@@ -168,8 +129,7 @@ export const updateReward = async (rewardId: string, rewardData: Partial<AdminRe
   try {
     // First verify admin status
     const { error: adminError } = await supabase
-      .rpc('is_admin')
-      .select('*');
+      .rpc('is_admin');
 
     if (adminError) {
       console.error('Admin check failed:', adminError);
@@ -225,8 +185,7 @@ export const toggleRewardStatus = async (rewardId: string, currentStatus: string
   try {
     // First verify admin status
     const { error: adminError } = await supabase
-      .rpc('is_admin')
-      .select('*');
+      .rpc('is_admin');
 
     if (adminError) {
       console.error('Admin check failed:', adminError);
