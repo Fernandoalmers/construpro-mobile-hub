@@ -61,7 +61,7 @@ const ProductListSection: React.FC<ProductListSectionProps> = ({
 
   return (
     <>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+      <div className="flex flex-col gap-2">
         {displayedProducts.map(produto => {
           const loja = lojas.find(l => l.id === produto.lojaId);
           return (
