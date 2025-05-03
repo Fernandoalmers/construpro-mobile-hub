@@ -26,12 +26,14 @@ const ProductActionButtons: React.FC<ProductActionButtonsProps> = ({
   const handleApprove = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    console.log('Approve button clicked, status:', status);
     onApprove();
   };
   
   const handleReject = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    console.log('Reject button clicked, status:', status);
     onReject();
   };
 

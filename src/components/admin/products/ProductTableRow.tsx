@@ -8,6 +8,7 @@ import PointsDisplay from './components/PointsDisplay';
 import StatusBadge from './components/StatusBadge';
 import ProductActionButtons from './components/ProductActionButtons';
 import ProductDetailsDialog from './components/ProductDetailsDialog';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 
 interface ProductTableRowProps {
   product: AdminProduct;
@@ -33,7 +34,22 @@ const ProductTableRow: React.FC<ProductTableRowProps> = ({
           </div>
         </div>
       </TableCell>
-      <TableCell>{product.lojaNome || 'N/A'}</TableCell>
+      <TableCell>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger>
+              <div className="font-medium">{product.lojaNome || 'N/A'}</div>
+              {product.vendedor_id && (
+                <div className="text-xs text-gray-500">ID: {product.vendedor_id.substring(0, 8)}...</div>
+              )}
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Vendedor: {product.lojaNome}</p>
+              {product.vendedor_id && <p>ID completo: {product.vendedor_id}</p>}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </TableCell>
       <TableCell>
         <PriceDisplay
           preco={product.preco}

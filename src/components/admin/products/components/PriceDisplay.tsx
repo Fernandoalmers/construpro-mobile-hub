@@ -20,20 +20,25 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({ preco, preco_promocional })
     }).format(value);
   };
   
+  // Check if there's a valid promotional price that's different from the regular price
+  const hasValidPromotion = preco_promocional && preco_promocional < preco;
+  
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger>
-          <div className="font-medium">{formatCurrency(preco)}</div>
-          {preco_promocional && (
+          <div className="font-medium">
+            {hasValidPromotion ? formatCurrency(preco_promocional) : formatCurrency(preco)}
+          </div>
+          {hasValidPromotion && (
             <div className="text-xs line-through text-gray-500">
-              {formatCurrency(preco_promocional)}
+              {formatCurrency(preco)}
             </div>
           )}
         </TooltipTrigger>
         <TooltipContent>
           <p>Preço regular: {formatCurrency(preco)}</p>
-          {preco_promocional && (
+          {hasValidPromotion && (
             <p>Preço promocional: {formatCurrency(preco_promocional)}</p>
           )}
         </TooltipContent>
