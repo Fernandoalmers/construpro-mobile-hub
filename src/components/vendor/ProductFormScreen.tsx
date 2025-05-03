@@ -163,14 +163,21 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({ isEditing, produc
   const handleNumberInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     
-    // Allow empty values in input
+    // Handle empty input case
     if (value === '') {
       setFormData(prev => ({ ...prev, [name]: undefined }));
-    } else {
-      const numValue = parseFloat(value.replace(/[^\d,\.]/g, '').replace(',', '.'));
-      if (!isNaN(numValue)) {
-        setFormData(prev => ({ ...prev, [name]: numValue }));
-      }
+      return;
+    }
+    
+    // Remove non-numeric characters except decimal separator
+    // Keep only digits and at most one decimal separator
+    const formattedValue = value.replace(/[^\d,]/g, '')
+      .replace(',', '.')  // Convert comma to dot for internal processing
+      .replace(/\.(?=.*\.)/g, ''); // Keep only the first decimal separator
+
+    const numValue = parseFloat(formattedValue);
+    if (!isNaN(numValue)) {
+      setFormData(prev => ({ ...prev, [name]: numValue }));
     }
     
     // Clear error when field is being edited

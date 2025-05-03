@@ -16,6 +16,25 @@ const ProductActionButtons: React.FC<ProductActionButtonsProps> = ({
   onApprove,
   onReject
 }) => {
+  // Ensure the event handlers are properly triggered
+  const handleView = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onView();
+  };
+  
+  const handleApprove = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onApprove();
+  };
+  
+  const handleReject = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onReject();
+  };
+
   return (
     <div className="space-x-2">
       <Button 
@@ -23,7 +42,7 @@ const ProductActionButtons: React.FC<ProductActionButtonsProps> = ({
         variant="outline" 
         className="h-8 w-8 p-0 text-blue-600"
         title="Ver detalhes"
-        onClick={onView}
+        onClick={handleView}
       >
         <Eye className="h-4 w-4" />
       </Button>
@@ -34,7 +53,7 @@ const ProductActionButtons: React.FC<ProductActionButtonsProps> = ({
             size="sm" 
             variant="outline" 
             className="h-8 w-8 p-0 text-green-600"
-            onClick={onApprove}
+            onClick={handleApprove}
             title="Aprovar produto"
           >
             <Check className="h-4 w-4" />
@@ -43,7 +62,7 @@ const ProductActionButtons: React.FC<ProductActionButtonsProps> = ({
             size="sm" 
             variant="outline" 
             className="h-8 w-8 p-0 text-red-600"
-            onClick={onReject}
+            onClick={handleReject}
             title="Rejeitar produto"
           >
             <X className="h-4 w-4" />
@@ -56,7 +75,7 @@ const ProductActionButtons: React.FC<ProductActionButtonsProps> = ({
           size="sm" 
           variant="outline" 
           className="h-8 w-8 p-0 text-red-600"
-          onClick={onReject}
+          onClick={handleReject}
           title="Desativar produto"
         >
           <X className="h-4 w-4" />
@@ -68,7 +87,7 @@ const ProductActionButtons: React.FC<ProductActionButtonsProps> = ({
           size="sm" 
           variant="outline" 
           className="h-8 w-8 p-0 text-green-600"
-          onClick={onApprove}
+          onClick={handleApprove}
           title="Reativar produto"
         >
           <Check className="h-4 w-4" />

@@ -1,292 +1,290 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from '@/components/ui/sonner';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { 
-  Card, 
-  CardHeader, 
-  CardTitle,
-  CardContent,
-  CardFooter 
-} from '@/components/ui/card';
-import { VendorProfile, saveVendorProfile, uploadVendorImage } from '@/services/vendorProfileService';
-import LoadingState from '../common/LoadingState';
-import ErrorState from '../common/ErrorState';
+import { Separator } from '@/components/ui/separator';
+import { toast } from '@/components/ui/sonner';
+import { ArrowLeft, Save, Upload } from 'lucide-react';
+import { useVendorProfile } from '@/hooks/useVendorProfile';
+import LoadingState from '@/components/common/LoadingState';
 
-const ConfiguracoesVendorScreen: React.FC = () => {
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [uploading, setUploading] = useState<{ logo: boolean, banner: boolean }>({ logo: false, banner: false });
+const ConfiguracoesVendorScreen = () => {
   const navigate = useNavigate();
-  
-  const [vendorProfile, setVendorProfile] = useState<VendorProfile | null>(null);
-  const [formValues, setFormValues] = useState<Partial<VendorProfile>>({
+  const { vendorProfile, isLoading, updateVendorProfile } = useVendorProfile();
+  const [formData, setFormData] = useState({
     nome_loja: '',
     descricao: '',
-    segmento: '',
-    email: '',
     telefone: '',
-    whatsapp: ''
+    whatsapp: '',
+    email: '',
+    segmento: '',
   });
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
+  // Load vendor profile data
   useEffect(() => {
-    const fetchVendorProfile = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // Import dynamically to avoid circular dependencies
-        const { getVendorProfile } = await import('@/services/vendorProfileService');
-        const profile = await getVendorProfile();
-        
-        if (profile) {
-          setVendorProfile(profile);
-          setFormValues({
-            nome_loja: profile.nome_loja || '',
-            descricao: profile.descricao || '',
-            segmento: profile.segmento || '',
-            email: profile.email || '',
-            telefone: profile.telefone || '',
-            whatsapp: profile.whatsapp || ''
-          });
-        }
-      } catch (err) {
-        console.error('Error fetching vendor profile:', err);
-        setError('Erro ao carregar o perfil do vendedor');
-      } finally {
-        setLoading(false);
+    if (vendorProfile) {
+      setFormData({
+        nome_loja: vendorProfile.nome_loja || '',
+        descricao: vendorProfile.descricao || '',
+        telefone: vendorProfile.telefone || '',
+        whatsapp: vendorProfile.whatsapp || '',
+        email: vendorProfile.email || '',
+        segmento: vendorProfile.segmento || '',
+      });
+      
+      if (vendorProfile.logo) {
+        setLogoPreview(vendorProfile.logo);
       }
-    };
-    
-    fetchVendorProfile();
-  }, []);
+      
+      if (vendorProfile.banner) {
+        setBannerPreview(vendorProfile.banner);
+      }
+    }
+  }, [vendorProfile]);
 
+  // Handle form input changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormValues(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  // Handle logo file selection
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setLogoFile(file);
+      setLogoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  // Handle banner file selection
+  const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setBannerFile(file);
+      setBannerPreview(URL.createObjectURL(file));
+    }
+  };
+
+  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSaving(true);
+    
     try {
-      setSaving(true);
-      
-      const updatedProfile = await saveVendorProfile({
-        ...formValues,
-        // Ensure nome_loja is set
-        nome_loja: formValues.nome_loja || 'Minha Loja'
+      const updatedProfile = await updateVendorProfile({
+        ...formData,
+        logoFile,
+        bannerFile
       });
       
       if (updatedProfile) {
-        setVendorProfile(updatedProfile);
-        toast.success('Perfil atualizado com sucesso');
+        toast.success('Configurações salvas com sucesso!');
       } else {
-        toast.error('Erro ao atualizar o perfil');
+        toast.error('Erro ao salvar configurações');
       }
-    } catch (err) {
-      console.error('Error saving vendor profile:', err);
-      toast.error('Erro ao salvar as alterações');
+    } catch (error) {
+      toast.error('Erro ao salvar configurações');
+      console.error('Error saving vendor profile:', error);
     } finally {
-      setSaving(false);
+      setIsSaving(false);
     }
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'banner') => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    
-    try {
-      setUploading(prev => ({ ...prev, [type]: true }));
-      
-      const imageUrl = await uploadVendorImage(file, type);
-      
-      if (imageUrl) {
-        // Update form and vendor profile with the new image URL
-        setFormValues(prev => ({ ...prev, [type]: imageUrl }));
-        setVendorProfile(prev => prev ? { ...prev, [type]: imageUrl } : null);
-        
-        // Save the change to the database
-        await saveVendorProfile({ [type]: imageUrl });
-        toast.success(`Imagem de ${type === 'logo' ? 'logo' : 'banner'} atualizada com sucesso`);
-      } else {
-        toast.error(`Erro ao enviar imagem de ${type === 'logo' ? 'logo' : 'banner'}`);
-      }
-    } catch (err) {
-      console.error(`Error uploading ${type}:`, err);
-      toast.error(`Erro ao fazer upload da imagem de ${type === 'logo' ? 'logo' : 'banner'}`);
-    } finally {
-      setUploading(prev => ({ ...prev, [type]: false }));
-    }
-  };
-
-  if (loading) {
-    return <LoadingState text="Carregando perfil do vendedor..." />;
-  }
-
-  if (error) {
-    return (
-      <ErrorState 
-        title="Erro ao carregar perfil" 
-        message={error} 
-        onRetry={() => navigate(0)}
-      />
-    );
+  if (isLoading) {
+    return <LoadingState text="Carregando configurações..." />;
   }
 
   return (
-    <div className="container mx-auto py-6">
-      <h1 className="text-2xl font-bold mb-6">Configurações da Loja</h1>
+    <div className="p-4 space-y-6">
+      {/* Back button added here */}
+      <div className="flex items-center mb-4">
+        <Button 
+          variant="ghost" 
+          onClick={() => navigate('/vendor')}
+          className="flex items-center gap-1"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>Voltar</span>
+        </Button>
+      </div>
       
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Imagens da Loja</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Logo Upload */}
+      <h1 className="text-2xl font-bold">Configurações da Loja</h1>
+      
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Informações Básicas</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
             <div>
-              <Label htmlFor="logo">Logo da Loja</Label>
-              <div className="mt-2">
-                {vendorProfile?.logo && (
-                  <div className="mb-4">
+              <Label htmlFor="nome_loja">Nome da Loja</Label>
+              <Input
+                id="nome_loja"
+                name="nome_loja"
+                value={formData.nome_loja}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="descricao">Descrição</Label>
+              <Textarea
+                id="descricao"
+                name="descricao"
+                value={formData.descricao}
+                onChange={handleChange}
+                rows={4}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="segmento">Segmento</Label>
+              <Input
+                id="segmento"
+                name="segmento"
+                value={formData.segmento}
+                onChange={handleChange}
+              />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Contato</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleChange}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="telefone">Telefone</Label>
+              <Input
+                id="telefone"
+                name="telefone"
+                value={formData.telefone}
+                onChange={handleChange}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="whatsapp">WhatsApp</Label>
+              <Input
+                id="whatsapp"
+                name="whatsapp"
+                value={formData.whatsapp}
+                onChange={handleChange}
+              />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Imagens</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div>
+              <Label htmlFor="logo">Logo</Label>
+              <div className="mt-2 flex items-center space-x-4">
+                {logoPreview && (
+                  <div className="relative w-24 h-24 bg-gray-100 rounded-md overflow-hidden">
                     <img 
-                      src={vendorProfile.logo} 
-                      alt="Logo da loja" 
-                      className="h-24 w-24 object-contain border rounded"
+                      src={logoPreview} 
+                      alt="Logo Preview" 
+                      className="w-full h-full object-contain"
                     />
                   </div>
                 )}
-                <Input
-                  id="logo"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleFileUpload(e, 'logo')}
-                  disabled={uploading.logo}
-                />
-                {uploading.logo && <p className="text-sm mt-2">Enviando logo...</p>}
+                <div className="flex-1">
+                  <Label 
+                    htmlFor="logo-upload" 
+                    className="inline-flex cursor-pointer items-center px-4 py-2 bg-gray-100 border border-gray-200 rounded-md text-gray-700 hover:bg-gray-200"
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Selecionar Logo
+                  </Label>
+                  <Input
+                    id="logo-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoChange}
+                    className="hidden"
+                  />
+                  <p className="text-sm text-gray-500 mt-1">
+                    Recomendado: 512x512px. JPG, PNG ou GIF.
+                  </p>
+                </div>
               </div>
             </div>
             
-            {/* Banner Upload */}
+            <Separator />
+            
             <div>
-              <Label htmlFor="banner">Banner da Loja</Label>
-              <div className="mt-2">
-                {vendorProfile?.banner && (
-                  <div className="mb-4">
+              <Label htmlFor="banner">Banner</Label>
+              <div className="mt-2 space-y-4">
+                {bannerPreview && (
+                  <div className="relative w-full h-32 bg-gray-100 rounded-md overflow-hidden">
                     <img 
-                      src={vendorProfile.banner} 
-                      alt="Banner da loja" 
-                      className="h-32 w-full object-cover border rounded"
+                      src={bannerPreview} 
+                      alt="Banner Preview" 
+                      className="w-full h-full object-cover"
                     />
                   </div>
                 )}
-                <Input
-                  id="banner"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleFileUpload(e, 'banner')}
-                  disabled={uploading.banner}
-                />
-                {uploading.banner && <p className="text-sm mt-2">Enviando banner...</p>}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-      
-      <form onSubmit={handleSubmit}>
-        <Card>
-          <CardHeader>
-            <CardTitle>Informações da Loja</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="nome_loja">Nome da Loja *</Label>
+                  <Label 
+                    htmlFor="banner-upload" 
+                    className="inline-flex cursor-pointer items-center px-4 py-2 bg-gray-100 border border-gray-200 rounded-md text-gray-700 hover:bg-gray-200"
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Selecionar Banner
+                  </Label>
                   <Input
-                    id="nome_loja"
-                    name="nome_loja"
-                    value={formValues.nome_loja || ''}
-                    onChange={handleChange}
-                    required
+                    id="banner-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleBannerChange}
+                    className="hidden"
                   />
-                </div>
-                <div>
-                  <Label htmlFor="segmento">Segmento</Label>
-                  <Input
-                    id="segmento"
-                    name="segmento"
-                    value={formValues.segmento || ''}
-                    onChange={handleChange}
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <Label htmlFor="descricao">Descrição</Label>
-                <Textarea
-                  id="descricao"
-                  name="descricao"
-                  value={formValues.descricao || ''}
-                  onChange={handleChange}
-                  rows={4}
-                />
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="email">E-mail de Contato</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={formValues.email || ''}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="telefone">Telefone</Label>
-                  <Input
-                    id="telefone"
-                    name="telefone"
-                    value={formValues.telefone || ''}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="whatsapp">WhatsApp</Label>
-                  <Input
-                    id="whatsapp"
-                    name="whatsapp"
-                    value={formValues.whatsapp || ''}
-                    onChange={handleChange}
-                  />
+                  <p className="text-sm text-gray-500 mt-1">
+                    Recomendado: 1200x300px. JPG, PNG ou GIF.
+                  </p>
                 </div>
               </div>
             </div>
           </CardContent>
-          <CardFooter className="flex justify-between">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => navigate(-1)}
-            >
-              Cancelar
-            </Button>
-            <Button 
-              type="submit" 
-              disabled={saving}
-            >
-              {saving ? 'Salvando...' : 'Salvar Alterações'}
-            </Button>
-          </CardFooter>
         </Card>
+        
+        <div className="flex justify-end">
+          <Button 
+            type="submit" 
+            disabled={isSaving}
+            className="flex items-center"
+          >
+            <Save className="h-4 w-4 mr-2" />
+            {isSaving ? 'Salvando...' : 'Salvar Configurações'}
+          </Button>
+        </div>
       </form>
     </div>
   );
