@@ -84,8 +84,8 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
               vendedor_id: vendorProfile.id,
               usuario_id: order.usuario_id,
               nome: (order.cliente?.nome || 'Cliente') as string,
-              telefone: order.cliente?.telefone as string | undefined,
-              email: order.cliente?.email as string | undefined,
+              telefone: (order.cliente?.telefone || '') as string,
+              email: (order.cliente?.email || '') as string,
               total_gasto: 0
             } : undefined
           };
@@ -100,8 +100,8 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
             vendedor_id: vendorProfile.id,
             usuario_id: order.usuario_id,
             nome: (order.cliente?.nome || 'Cliente') as string,
-            telefone: order.cliente?.telefone as string | undefined,
-            email: order.cliente?.email as string | undefined,
+            telefone: (order.cliente?.telefone || '') as string,
+            email: (order.cliente?.email || '') as string,
             total_gasto: 0
           } : undefined
         };

@@ -57,8 +57,8 @@ export const getPointAdjustments = async (userId?: string): Promise<PointAdjustm
         vendedor_id: vendorProfile.id,
         usuario_id: item.usuario_id,
         nome: (item.cliente?.nome || 'Cliente') as string,
-        telefone: item.cliente?.telefone as string | undefined,
-        email: item.cliente?.email as string | undefined,
+        telefone: (item.cliente?.telefone || '') as string,
+        email: (item.cliente?.email || '') as string,
         total_gasto: 0
       } : undefined
     }));
