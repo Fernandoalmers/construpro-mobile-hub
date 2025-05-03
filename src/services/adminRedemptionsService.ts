@@ -1,4 +1,5 @@
 
+
 // This file is kept for backward compatibility
 // It re-exports everything from the new modular structure
 
@@ -24,7 +25,7 @@ export {
 
 // Add a function to get pending redemptions count for the admin dashboard
 export const resgatesPendentes = async () => {
-  const redemptions = await fetchRedemptions({ status: 'pendente' });
+  const redemptions = await fetchRedemptions(false); // Pass false instead of {status: 'pendente'}
   return redemptions.filter(r => r.status === 'pendente');
 };
 
