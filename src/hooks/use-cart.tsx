@@ -1,53 +1,9 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { useAuth } from '@/context/AuthContext';
-
-// Types for cart data
-export type CartItem = {
-  id: string;
-  produto_id: string;
-  quantidade: number;
-  preco: number;
-  subtotal: number;
-  produto?: {
-    id: string;
-    nome: string;
-    preco: number;
-    imagem_url: string;
-    estoque: number;
-    loja_id: string;
-    pontos: number;
-  };
-};
-
-export type Cart = {
-  id: string;
-  user_id: string;
-  items: CartItem[];
-  summary: {
-    subtotal: number;
-    shipping: number;
-    totalItems: number;
-    totalPoints: number;
-  };
-  stores?: {
-    id: string;
-    nome: string;
-    logo_url: string;
-  }[];
-};
-
-interface CartContextType {
-  cart: Cart | null;
-  cartCount: number;
-  isLoading: boolean;
-  addToCart: (productId: string, quantity: number) => Promise<void>;
-  updateQuantity: (cartItemId: string, newQuantity: number) => Promise<void>;
-  removeItem: (cartItemId: string) => Promise<void>;
-  clearCart: () => Promise<void>;
-  refreshCart: () => Promise<void>;
-}
+import { Cart, CartContextType } from '@/types/cart';
+import * as cartApi from '@/services/cartApiService';
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
@@ -76,102 +32,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
     try {
       setIsLoading(true);
-      const { data: cartData, error: cartError } = await supabase
-        .from('carts')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('status', 'active')
-        .single();
-
-      if (cartError) {
-        if (cartError.code !== 'PGRST116') { // Not found error
-          console.error('Error fetching cart:', cartError);
-          toast.error('Erro ao carregar o carrinho');
-        }
-        setCart(null);
-        setIsLoading(false);
-        return;
-      }
-
-      if (!cartData) {
-        setCart(null);
-        setIsLoading(false);
-        return;
-      }
-
-      // Fetch cart items
-      const { data: cartItems, error: itemsError } = await supabase
-        .from('cart_items')
-        .select(`
-          id,
-          product_id as produto_id,
-          quantity as quantidade,
-          price_at_add as preco,
-          products:product_id (
-            id,
-            nome,
-            preco,
-            imagem_url,
-            estoque,
-            loja_id,
-            pontos
-          )
-        `)
-        .eq('cart_id', cartData.id);
-
-      if (itemsError) {
-        console.error('Error fetching cart items:', itemsError);
-        setCart(null);
-        setIsLoading(false);
-        return;
-      }
-
-      // Calculate summary
-      const items = cartItems.map((item: any) => ({
-        ...item,
-        produto: item.products,
-        subtotal: item.quantidade * item.preco
-      }));
-
-      const subtotal = items.reduce((sum: number, item: any) => sum + (item.quantidade * item.preco), 0);
-      const totalItems = items.reduce((sum: number, item: any) => sum + item.quantidade, 0);
-      const totalPoints = items.reduce((sum: number, item: any) => sum + ((item.produto?.pontos || 0) * item.quantidade), 0);
-      const shipping = 15.90; // Fixed shipping for now
-
-      // Get unique store information
-      const storeIds = [...new Set(items.map((item: any) => item.produto?.loja_id).filter(Boolean))];
-      
-      let stores = [];
-      if (storeIds.length > 0) {
-        const { data: storesData } = await supabase
-          .from('stores')
-          .select('id, nome, logo_url')
-          .in('id', storeIds);
-          
-        stores = storesData || [];
-      }
-
-      const fullCart: Cart = {
-        ...cartData,
-        items,
-        stores,
-        summary: {
-          subtotal,
-          shipping,
-          totalItems,
-          totalPoints
-        }
-      };
-
-      setCart(fullCart);
-      setIsLoading(false);
-      return;
+      const cartData = await cartApi.fetchCart(user.id);
+      setCart(cartData);
     } catch (error) {
       console.error('Error in refreshCart:', error);
       toast.error('Erro ao atualizar o carrinho');
-      setCart(null);
+    } finally {
       setIsLoading(false);
-      return;
     }
   };
 
@@ -186,13 +53,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
 
       // Get the product price
-      const { data: product, error: productError } = await supabase
-        .from('products')
-        .select('preco, estoque')
-        .eq('id', productId)
-        .single();
-
-      if (productError || !product) {
+      const product = await cartApi.fetchProductInfo(productId);
+      if (!product) {
         toast.error('Produto não encontrado');
         return;
       }
@@ -204,44 +66,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       // Get or create a cart
       let cartId;
-      const { data: existingCart, error: cartError } = await supabase
-        .from('carts')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('status', 'active')
-        .single();
-
-      if (cartError && cartError.code !== 'PGRST116') { // Not "not found" error
-        toast.error('Erro ao verificar o carrinho');
-        return;
-      }
-
-      if (!existingCart) {
-        // Create new cart
-        const { data: newCart, error: createError } = await supabase
-          .from('carts')
-          .insert([{ user_id: user.id, status: 'active' }])
-          .select('id')
-          .single();
-
-        if (createError || !newCart) {
-          toast.error('Erro ao criar o carrinho');
-          return;
-        }
+      if (cart) {
+        cartId = cart.id;
         
-        cartId = newCart.id;
-      } else {
-        cartId = existingCart.id;
-
         // Check if product already exists in cart
-        const { data: existingItem, error: existingItemError } = await supabase
-          .from('cart_items')
-          .select('id, quantity')
-          .eq('cart_id', cartId)
-          .eq('product_id', productId)
-          .single();
+        const existingItem = await cartApi.findCartItem(cartId, productId);
 
-        if (!existingItemError && existingItem) {
+        if (existingItem) {
           // Update existing item
           const newQuantity = existingItem.quantity + quantity;
           
@@ -250,12 +81,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             return;
           }
           
-          const { error: updateError } = await supabase
-            .from('cart_items')
-            .update({ quantity: newQuantity })
-            .eq('id', existingItem.id);
-
-          if (updateError) {
+          const updated = await cartApi.updateItemQuantity(existingItem.id, newQuantity);
+          if (!updated) {
             toast.error('Erro ao atualizar o carrinho');
             return;
           }
@@ -263,24 +90,24 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           await refreshCart();
           return;
         }
+      } else {
+        // Create new cart
+        cartId = await cartApi.createCart(user.id);
+        if (!cartId) {
+          toast.error('Erro ao criar o carrinho');
+          return;
+        }
       }
 
       // Add new item to cart
-      const { error: addError } = await supabase
-        .from('cart_items')
-        .insert([{
-          cart_id: cartId,
-          product_id: productId,
-          quantity: quantity,
-          price_at_add: product.preco
-        }]);
-
-      if (addError) {
+      const added = await cartApi.addItemToCart(cartId, productId, quantity, product.preco);
+      if (!added) {
         toast.error('Erro ao adicionar ao carrinho');
         return;
       }
 
       await refreshCart();
+      toast.success('Produto adicionado ao carrinho');
     } catch (error) {
       console.error('Error adding to cart:', error);
       toast.error('Erro ao adicionar ao carrinho');
@@ -296,12 +123,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     try {
       setIsLoading(true);
       
-      const { error } = await supabase
-        .from('cart_items')
-        .update({ quantity: newQuantity })
-        .eq('id', cartItemId);
-
-      if (error) {
+      const updated = await cartApi.updateItemQuantity(cartItemId, newQuantity);
+      if (!updated) {
         toast.error('Erro ao atualizar quantidade');
         return;
       }
@@ -322,12 +145,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     try {
       setIsLoading(true);
       
-      const { error } = await supabase
-        .from('cart_items')
-        .delete()
-        .eq('id', cartItemId);
-
-      if (error) {
+      const removed = await cartApi.removeCartItem(cartItemId);
+      if (!removed) {
         toast.error('Erro ao remover item do carrinho');
         return;
       }
@@ -348,12 +167,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     try {
       setIsLoading(true);
       
-      const { error } = await supabase
-        .from('cart_items')
-        .delete()
-        .eq('cart_id', cart.id);
-
-      if (error) {
+      const cleared = await cartApi.clearCartItems(cart.id);
+      if (!cleared) {
         toast.error('Erro ao limpar o carrinho');
         return;
       }
@@ -370,7 +185,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // Calculate total items in cart
   const cartCount = cart?.summary.totalItems || 0;
 
-  const value = {
+  const value: CartContextType = {
     cart,
     cartCount,
     isLoading,

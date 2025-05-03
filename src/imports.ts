@@ -1,4 +1,3 @@
-
 // Core and Admin Components
 import AdminDashboard from './components/admin/dashboard/AdminDashboard';
 import UsersManagement from './components/admin/UsersManagement';
@@ -42,6 +41,7 @@ import VendorCustomersScreen from './components/vendor/ClientesVendorScreen';
 
 // Auth Context and Route Protection
 import { AuthProvider } from './context/AuthContext';
+import { CartProvider } from './hooks/use-cart';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
 export {
@@ -83,5 +83,6 @@ export {
   
   // Auth Context and Route Protection
   AuthProvider,
+  CartProvider,
   ProtectedRoute
 };
