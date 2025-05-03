@@ -15,6 +15,7 @@ export const useAdminStores = (initialFilter: string = 'all') => {
     try {
       setLoading(true);
       const storesData = await fetchAdminStores();
+      console.log('Admin stores loaded:', storesData);
       setStores(storesData);
       applyFilters(storesData, filter, searchTerm);
     } catch (error) {
@@ -52,25 +53,9 @@ export const useAdminStores = (initialFilter: string = 'all') => {
       const success = await approveStore(storeId);
       
       if (success) {
-        // Update local state
-        setStores(prevStores => 
-          prevStores.map(store => 
-            store.id === storeId 
-              ? { ...store, status: 'ativa' } 
-              : store
-          )
-        );
-        
-        // Re-apply filters
-        applyFilters(
-          stores.map(store => 
-            store.id === storeId 
-              ? { ...store, status: 'ativa' } 
-              : store
-          ),
-          filter,
-          searchTerm
-        );
+        // Refresh stores data to ensure we have the latest data
+        await loadStores();
+        toast.success('Loja aprovada com sucesso');
       }
     } catch (error) {
       console.error('Error approving store:', error);
@@ -83,25 +68,9 @@ export const useAdminStores = (initialFilter: string = 'all') => {
       const success = await rejectStore(storeId);
       
       if (success) {
-        // Update local state
-        setStores(prevStores => 
-          prevStores.map(store => 
-            store.id === storeId 
-              ? { ...store, status: 'inativa' } 
-              : store
-          )
-        );
-        
-        // Re-apply filters
-        applyFilters(
-          stores.map(store => 
-            store.id === storeId 
-              ? { ...store, status: 'inativa' } 
-              : store
-          ),
-          filter,
-          searchTerm
-        );
+        // Refresh stores data to ensure we have the latest data
+        await loadStores();
+        toast.success('Loja rejeitada com sucesso');
       }
     } catch (error) {
       console.error('Error rejecting store:', error);
@@ -117,6 +86,7 @@ export const useAdminStores = (initialFilter: string = 'all') => {
     const { unsubscribe } = subscribeToAdminStoreUpdates((_, eventType) => {
       if (eventType === 'INSERT' || eventType === 'UPDATE' || eventType === 'DELETE') {
         // Reload stores when changes occur
+        console.log('Realtime store update detected, reloading stores...');
         loadStores();
       }
     });

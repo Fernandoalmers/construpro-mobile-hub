@@ -63,25 +63,9 @@ export const useAdminProducts = (initialFilter: string = 'all') => {
     try {
       const success = await approveProduct(productId);
       if (success) {
-        // Update local state
-        setProducts(prevProducts => 
-          prevProducts.map(product => 
-            product.id === productId 
-              ? { ...product, status: 'aprovado' } 
-              : product
-          )
-        );
-        
-        // Re-apply filters
-        applyFilters(
-          products.map(product => 
-            product.id === productId 
-              ? { ...product, status: 'aprovado' } 
-              : product
-          ),
-          filter,
-          searchTerm
-        );
+        // Refresh product data - directly fetch all products again to ensure we have the latest data
+        await loadProducts();
+        toast.success('Produto aprovado com sucesso');
       }
     } catch (error) {
       console.error('Error approving product:', error);
@@ -93,25 +77,9 @@ export const useAdminProducts = (initialFilter: string = 'all') => {
     try {
       const success = await rejectProduct(productId);
       if (success) {
-        // Update local state
-        setProducts(prevProducts => 
-          prevProducts.map(product => 
-            product.id === productId 
-              ? { ...product, status: 'inativo' } 
-              : product
-          )
-        );
-        
-        // Re-apply filters
-        applyFilters(
-          products.map(product => 
-            product.id === productId 
-              ? { ...product, status: 'inativo' } 
-              : product
-          ),
-          filter,
-          searchTerm
-        );
+        // Refresh product data - directly fetch all products again to ensure we have the latest data
+        await loadProducts();
+        toast.success('Produto rejeitado com sucesso');
       }
     } catch (error) {
       console.error('Error rejecting product:', error);
@@ -127,6 +95,7 @@ export const useAdminProducts = (initialFilter: string = 'all') => {
     const channel = subscribeToAdminProductUpdates((product, eventType) => {
       if (eventType === 'INSERT' || eventType === 'UPDATE' || eventType === 'DELETE') {
         // Reload products when changes occur
+        console.log('Realtime product update detected, reloading products...');
         loadProducts();
       }
     });
