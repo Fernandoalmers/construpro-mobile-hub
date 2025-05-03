@@ -49,18 +49,18 @@ export const getPointAdjustments = async (userId?: string): Promise<PointAdjustm
       return [];
     }
 
-    // Safely process the data handling potential errors with cliente data
+    // Create safe adjustments with proper cliente handling
     const safeAdjustments = data.map(item => ({
       ...item,
-      cliente: item.cliente ? {
-        id: String(item.cliente?.id || ''),
+      cliente: {
+        id: item.usuario_id || '',
         vendedor_id: vendorProfile.id,
         usuario_id: item.usuario_id,
-        nome: String(item.cliente?.nome || 'Cliente'),
-        telefone: String(item.cliente?.telefone || ''),
-        email: String(item.cliente?.email || ''),
+        nome: typeof item.cliente === 'object' && item.cliente ? (item.cliente.nome || 'Cliente') : 'Cliente',
+        telefone: typeof item.cliente === 'object' && item.cliente ? (item.cliente.telefone || '') : '',
+        email: typeof item.cliente === 'object' && item.cliente ? (item.cliente.email || '') : '',
         total_gasto: 0
-      } : undefined
+      }
     }));
     
     return safeAdjustments as PointAdjustment[];

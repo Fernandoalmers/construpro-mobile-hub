@@ -78,32 +78,32 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
           return { 
             ...order, 
             itens: [],
-            // Safely handle potentially missing cliente data with null checks
-            cliente: order.cliente ? {
-              id: String(order.cliente?.id || ''),
+            // Create a default cliente object since the relation might not exist
+            cliente: {
+              id: order.usuario_id || '',
               vendedor_id: vendorProfile.id,
               usuario_id: order.usuario_id,
-              nome: String(order.cliente?.nome || 'Cliente'),
-              telefone: String(order.cliente?.telefone || ''),
-              email: String(order.cliente?.email || ''),
+              nome: 'Cliente',
+              telefone: '',
+              email: '',
               total_gasto: 0
-            } : undefined
+            }
           };
         }
         
         return { 
           ...order, 
           itens: itemsData || [],
-          // Safely handle potentially missing cliente data with null checks
-          cliente: order.cliente ? {
-            id: String(order.cliente?.id || ''),
+          // Create a proper cliente object with safe access
+          cliente: {
+            id: order.usuario_id || '',
             vendedor_id: vendorProfile.id,
             usuario_id: order.usuario_id,
-            nome: String(order.cliente?.nome || 'Cliente'),
-            telefone: String(order.cliente?.telefone || ''),
-            email: String(order.cliente?.email || ''),
+            nome: typeof order.cliente === 'object' && order.cliente ? (order.cliente.nome || 'Cliente') : 'Cliente',
+            telefone: typeof order.cliente === 'object' && order.cliente ? (order.cliente.telefone || '') : '',
+            email: typeof order.cliente === 'object' && order.cliente ? (order.cliente.email || '') : '',
             total_gasto: 0
-          } : undefined
+          }
         };
       })
     );
