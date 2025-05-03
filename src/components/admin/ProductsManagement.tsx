@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import AdminLayout from './AdminLayout';
 import { useAdminProducts } from '@/hooks/useAdminProducts';
 import { useTitle } from '@/hooks/use-title';
@@ -175,8 +175,11 @@ const ProductsManagementScreen: React.FC = () => {
                               alt={product.nome}
                               className="w-10 h-10 object-cover rounded"
                               onError={(e) => {
-                                (e.target as HTMLImageElement).style.display = 'none';
-                                (e.target as HTMLImageElement).nextElementSibling!.style.display = 'flex';
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                if (target.nextElementSibling) {
+                                  (target.nextElementSibling as HTMLElement).style.display = 'flex';
+                                }
                               }}
                             />
                           ) : null}
