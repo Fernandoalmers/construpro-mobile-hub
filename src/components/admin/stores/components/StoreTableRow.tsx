@@ -61,7 +61,7 @@ const StoreTableRow: React.FC<StoreTableRowProps> = ({
             <TooltipTrigger>
               <div className="flex items-center gap-1">
                 <span>{store.produtos_count || 0}</span>
-                {(store.produtos_count > 0 || 0) > 0 && (
+                {(store.produtos_count || 0) > 0 && (
                   <Info className="h-3 w-3 text-gray-400" />
                 )}
               </div>
