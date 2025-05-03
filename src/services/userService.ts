@@ -10,6 +10,7 @@ export interface UserProfile {
   papel?: string;
   tipo_perfil?: string;
   avatar?: string;
+  codigo?: string;
   saldo_pontos?: number;
   endereco_principal?: {
     logradouro?: string;

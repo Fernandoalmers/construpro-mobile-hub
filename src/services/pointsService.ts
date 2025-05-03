@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { getUserProfile } from "./userService";
 
@@ -134,7 +133,7 @@ export const referralService = {
         throw new Error('Could not fetch referral code');
       }
 
-      // Get referrals made by the user
+      // Get referrals made by the user - fix the embedded relation
       const { data: referralsData, error: referralsError } = await supabase
         .from('referrals')
         .select(`
@@ -142,9 +141,7 @@ export const referralService = {
           data,
           status,
           pontos,
-          profiles:referred_id (
-            nome
-          )
+          profiles:referred_id (nome)
         `)
         .eq('referrer_id', userData.user.id);
 
@@ -153,14 +150,25 @@ export const referralService = {
         throw new Error('Could not fetch referrals');
       }
 
+      // Type-safe referral data transformation
+      const typedReferrals = (referralsData || []).map(ref => ({
+        id: ref.id,
+        data: ref.data,
+        status: (ref.status as 'pendente' | 'aprovado' | 'rejeitado') || 'pendente',
+        pontos: ref.pontos,
+        profiles: {
+          nome: ref.profiles?.nome || 'Usuário'
+        }
+      }));
+
       // Calculate total points earned from referrals
-      const pointsEarned = referralsData?.reduce((sum, ref) => sum + (ref.pontos || 0), 0) || 0;
+      const pointsEarned = typedReferrals.reduce((sum, ref) => sum + (ref.pontos || 0), 0) || 0;
 
       return {
         codigo: profileData.codigo || 'CONSTRUPRO',
-        total_referrals: referralsData?.length || 0,
+        total_referrals: typedReferrals.length || 0,
         points_earned: pointsEarned,
-        referrals: referralsData || []
+        referrals: typedReferrals
       };
     } catch (error) {
       console.error('Error in getReferralInfo:', error);

@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export interface CartItem {
@@ -7,6 +6,7 @@ export interface CartItem {
     id: string;
     nome: string;
     preco: number;
+    pontos?: number;
     imagem_url?: string;
     loja_id: string;
     estoque: number;
@@ -15,6 +15,7 @@ export interface CartItem {
   quantidade: number;
   preco: number;
   subtotal: number;
+  pontos?: number;
 }
 
 export interface Cart {

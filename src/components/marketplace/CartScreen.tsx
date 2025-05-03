@@ -211,7 +211,7 @@ const CartScreen: React.FC = () => {
                                 {item.quantidade} x R$ {item.preco.toFixed(2)}
                               </p>
                               <div className="bg-construPro-orange/10 text-construPro-orange text-xs rounded-full px-2 py-0.5 inline-block mt-1">
-                                {item.pontos} pontos
+                                {item.produto?.pontos || 0} pontos
                               </div>
                             </div>
                             
