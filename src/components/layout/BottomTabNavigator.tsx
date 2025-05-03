@@ -24,24 +24,35 @@ interface MenuItem {
   icon: JSX.Element;
   path: string;
   tooltip: string;
-  show: (role: string) => boolean;
+  show: (role?: string) => boolean;
 }
 
 const BottomTabNavigator: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [currentPath, setCurrentPath] = useState('');
-  const { user, profile } = useAuth();
+  const { user, profile, isLoading } = useAuth();
   const { cartCount } = useCart();
   
   // Extract the first part of the path
   useEffect(() => {
-    const pathBase = '/' + location.pathname.split('/')[1];
+    const pathBase = '/' + (location.pathname.split('/')[1] || 'home');
     setCurrentPath(pathBase);
+    console.log("Bottom navigation current path:", pathBase);
   }, [location.pathname]);
 
   // User role
   const userRole = profile?.papel || 'consumidor';
+
+  // Debug rendering
+  useEffect(() => {
+    console.log("BottomTabNavigator rendering:", { 
+      path: location.pathname,
+      userRole,
+      isAuthenticated: !!user,
+      isLoading
+    });
+  }, [location.pathname, userRole, user, isLoading]);
 
   // Menu Items
   const menuItems: MenuItem[] = [
@@ -50,34 +61,34 @@ const BottomTabNavigator: React.FC = () => {
       icon: <Home size={24} />, 
       path: '/home', 
       tooltip: 'Voltar para a página inicial',
-      show: (role) => role === 'consumidor'
+      show: () => true
     },
     { 
       name: 'Loja', 
       icon: <ShoppingBag size={24} />, 
       path: '/marketplace',
       tooltip: 'Navegar pela loja online',
-      show: (role) => role === 'consumidor'
+      show: (role) => role === 'consumidor' || !role
     },
     { 
       name: 'Resgates', 
       icon: <Gift size={24} />, 
-      path: '/resgates',
+      path: '/rewards',
       tooltip: 'Ver resgates disponíveis',
-      show: (role) => role === 'consumidor'
+      show: (role) => role === 'consumidor' || !role
     },
     { 
       name: 'Chat', 
       icon: <MessageSquare size={24} />, 
       path: '/chat',
       tooltip: 'Mensagens e suporte',
-      show: (role) => true
+      show: () => true
     },
-    // Admin-specific items
+    // Role-specific items
     { 
       name: 'Gerenciar', 
       icon: <Store size={24} />, 
-      path: '/vendor',
+      path: '/vendor-dashboard',
       tooltip: 'Gerenciar sua loja',
       show: (role) => role === 'lojista' || role === 'vendedor'
     },
@@ -93,16 +104,36 @@ const BottomTabNavigator: React.FC = () => {
       icon: <User size={24} />, 
       path: '/profile',
       tooltip: 'Ver seu perfil',
-      show: (role) => true
+      show: () => true
     },
   ];
   
   // Filter menu items based on user role
   const filteredMenuItems = menuItems.filter(item => item.show(userRole));
   
-  // Only show navigation on certain paths
-  if (!user || location.pathname === '/login' || location.pathname === '/signup' || 
-      location.pathname === '/onboarding' || location.pathname === '/splash') {
+  // Show loading placeholder while auth is loading to prevent UI jumps
+  if (isLoading) {
+    return (
+      <nav className="fixed bottom-0 w-full bg-white border-t border-gray-200 shadow-md z-40">
+        <div className="flex justify-around items-center h-16">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="flex flex-col items-center justify-center w-full h-full px-2">
+              <div className="h-6 w-6 bg-gray-200 rounded-full mb-1"></div>
+              <div className="h-3 w-10 bg-gray-200 rounded"></div>
+            </div>
+          ))}
+        </div>
+      </nav>
+    );
+  }
+
+  // Don't show navigation on certain paths
+  if (!user || 
+      location.pathname === '/login' || 
+      location.pathname === '/signup' || 
+      location.pathname === '/onboarding' || 
+      location.pathname === '/splash' ||
+      location.pathname.startsWith('/admin')) {
     return null;
   }
 

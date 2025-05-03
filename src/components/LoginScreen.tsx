@@ -29,6 +29,11 @@ const LoginScreen: React.FC = () => {
     }
   }, [isAuthenticated, isLoading, navigate, location.state]);
 
+  // Debug rendering and state
+  useEffect(() => {
+    console.log("LoginScreen rendering:", { isAuthenticated, isLoading });
+  }, [isAuthenticated, isLoading]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setLoginData((prev) => ({ ...prev, [name]: value }));
@@ -42,6 +47,7 @@ const LoginScreen: React.FC = () => {
     setLoggingIn(true);
     
     try {
+      console.log("Attempting login...");
       // Call the auth context login function
       const { error } = await login(loginData.email, loginData.password);
       
@@ -53,6 +59,7 @@ const LoginScreen: React.FC = () => {
       }
       
       // Login successful, navigate is handled by useEffect
+      console.log("Login successful");
       toast.success("Login realizado com sucesso!");
     } catch (err) {
       console.error("Login exception:", err);
@@ -104,7 +111,7 @@ const LoginScreen: React.FC = () => {
                   placeholder="Seu email ou CPF"
                   className="w-full"
                   required
-                  disabled={isLoading}
+                  disabled={isLoading || loggingIn}
                 />
               </div>
 
@@ -122,13 +129,13 @@ const LoginScreen: React.FC = () => {
                     placeholder="Sua senha"
                     className="w-full"
                     required
-                    disabled={isLoading}
+                    disabled={isLoading || loggingIn}
                   />
                   <button
                     type="button"
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
                     onClick={() => setShowPassword(!showPassword)}
-                    disabled={isLoading}
+                    disabled={isLoading || loggingIn}
                   >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
@@ -139,7 +146,7 @@ const LoginScreen: React.FC = () => {
                 <Button 
                   variant="link" 
                   className="text-sm text-construPro-orange p-0"
-                  disabled={isLoading}
+                  disabled={isLoading || loggingIn}
                   onClick={() => navigate('/recuperar-senha')}
                   type="button"
                 >
@@ -150,9 +157,9 @@ const LoginScreen: React.FC = () => {
               <Button 
                 type="submit" 
                 className="w-full bg-construPro-orange hover:bg-orange-600 text-white flex items-center justify-center gap-2"
-                disabled={isLoading}
+                disabled={isLoading || loggingIn}
               >
-                {isLoading ? (
+                {loggingIn ? (
                   <>Entrando...</>
                 ) : (
                   <>Entrar <ArrowRight size={18} /></>
@@ -168,7 +175,7 @@ const LoginScreen: React.FC = () => {
             onClick={goToSignup} 
             variant="link" 
             className="text-construPro-blue font-medium"
-            disabled={isLoading}
+            disabled={isLoading || loggingIn}
           >
             Criar uma conta
           </Button>

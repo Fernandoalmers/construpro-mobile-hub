@@ -24,7 +24,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   // Additional profile loading check - ensures profile is loaded for authenticated users
   useEffect(() => {
     const loadProfile = async () => {
-      if (isAuthenticated && !profile) {
+      if (isAuthenticated && !profile && !isLoading) {
+        console.log("ProtectedRoute: Loading profile for authenticated user");
         setProfileLoading(true);
         try {
           await refreshProfile();
@@ -37,10 +38,26 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     };
     
     loadProfile();
-  }, [isAuthenticated, profile, refreshProfile]);
+  }, [isAuthenticated, profile, refreshProfile, isLoading]);
+
+  // Show logging for debugging
+  useEffect(() => {
+    console.log("ProtectedRoute state:", {
+      path: location.pathname,
+      isAuthenticated,
+      isLoading,
+      profileLoading,
+      requireAuth,
+      requireAdmin,
+      profile: profile?.papel,
+      adminCheckLoading,
+      isAdmin
+    });
+  }, [location.pathname, isAuthenticated, isLoading, profileLoading, requireAuth, requireAdmin, profile, adminCheckLoading, isAdmin]);
 
   // Show loading while checking authentication or loading profile
   if (isLoading || profileLoading || (requireAdmin && adminCheckLoading)) {
+    console.log("ProtectedRoute: Showing loading state for:", location.pathname);
     return <LoadingState text="Verificando autenticação..." />;
   }
 
@@ -52,11 +69,13 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // If admin access is required and user is not an admin, redirect to home
   if (requireAdmin && !isAdmin) {
+    console.log("Admin required but user is not admin. Redirecting to home from:", location.pathname);
     return <Navigate to="/home" replace />;
   }
 
   // If user is authenticated and trying to access auth pages, redirect to home
   if (isAuthenticated && ['/login', '/signup'].includes(location.pathname)) {
+    console.log("User is authenticated. Redirecting from auth page to home");
     return <Navigate to="/home" replace />;
   }
 
@@ -72,6 +91,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // Render children if all conditions are met
+  console.log("ProtectedRoute: Rendering children for:", location.pathname);
   return <>{children}</>;
 };
 

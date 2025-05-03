@@ -14,34 +14,46 @@ import {
   VendorCustomersScreen, AuthProvider, ProtectedRoute
 } from './imports';
 import { useAuth } from './context/AuthContext';
-import BottomNavigation from './components/common/BottomNavigation';
+import BottomTabNavigator from './components/layout/BottomTabNavigator';
+import LoadingState from './components/common/LoadingState';
 
 function App() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { isAuthenticated, profile } = useAuth();
-  const [loading, setLoading] = useState(true);
+  const { isAuthenticated, profile, isLoading } = useAuth();
+  const [appReady, setAppReady] = useState(false);
 
+  // Wait for auth to be checked before rendering app
   useEffect(() => {
-    const checkAuth = async () => {
-      setLoading(true);
-      // Simulate auth check delay
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      
-      if (location.pathname !== '/login' && location.pathname !== '/signup' && !isAuthenticated) {
-        navigate('/login');
-      } else if (isAuthenticated && location.pathname === '/onboarding' && profile) {
-        // Redirect away from onboarding if profile is set
-        navigate('/home');
-      }
-      setLoading(false);
-    };
+    if (!isLoading) {
+      setAppReady(true);
+    }
+  }, [isLoading]);
 
-    checkAuth();
-  }, [isAuthenticated, location.pathname, navigate, profile]);
+  // Debug routes and auth status
+  useEffect(() => {
+    console.log("App rendering. Path:", location.pathname, "Auth:", isAuthenticated, "Loading:", isLoading);
+  }, [location.pathname, isAuthenticated, isLoading]);
+
+  // Show loading state while authentication is being checked
+  if (!appReady) {
+    return <LoadingState text="Carregando aplicativo..." />;
+  }
+
+  // Helper function to determine if bottom navigation should be shown
+  const shouldShowBottomNav = () => {
+    // Don't show on admin routes, auth routes, or specific pages
+    return !location.pathname.startsWith('/admin') && 
+           !location.pathname.includes('/auth/') &&
+           location.pathname !== '/login' &&
+           location.pathname !== '/signup' &&
+           location.pathname !== '/welcome' &&
+           location.pathname !== '/onboarding' &&
+           location.pathname !== '/splash';
+  };
 
   return (
-    <AuthProvider>
+    <>
       <Routes>
         {/* Public routes */}
         <Route path="/login" element={<LoginScreen />} />
@@ -80,8 +92,8 @@ function App() {
         <Route path="*" element={<NotFoundScreen />} />
       </Routes>
       
-      <BottomNavigation />
-    </AuthProvider>
+      {shouldShowBottomNav() && <BottomTabNavigator />}
+    </>
   );
 }
 
