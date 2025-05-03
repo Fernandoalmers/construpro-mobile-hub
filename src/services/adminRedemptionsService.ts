@@ -21,3 +21,18 @@ export {
   markRedemptionAsDelivered,
   getRedemptionStatusBadgeColor
 };
+
+// Add a function to get pending redemptions count for the admin dashboard
+export const resgatesPendentes = async () => {
+  const redemptions = await fetchRedemptions({ status: 'pendente' });
+  return redemptions.filter(r => r.status === 'pendente');
+};
+
+// For backward compatibility with the dashboard
+export const fetchAdminRedemptionsCount = async () => {
+  const pendingRedemptions = await resgatesPendentes();
+  return { 
+    pending: pendingRedemptions.length,
+    total: 0 // This would need to be implemented if required
+  };
+};

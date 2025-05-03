@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { fetchPendingProducts } from '@/services/admin/products';
-import { fetchAdminRedemptionsCount } from '@/services/adminRedemptionsService';
+import { resgatesPendentes } from '@/services/adminRedemptionsService';
 import { fetchPendingStores } from '@/services/adminStoresService';
 
 export const useDashboardData = () => {
@@ -11,6 +11,7 @@ export const useDashboardData = () => {
   const [pendingStores, setPendingStores] = useState(0);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [activitiesLoading, setActivitiesLoading] = useState(true);
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -21,9 +22,9 @@ export const useDashboardData = () => {
         const products = await fetchPendingProducts();
         setPendingProducts(products.length);
         
-        // Get pending redemptions
-        const redemptionsCount = await fetchAdminRedemptionsCount();
-        setPendingRedemptions(redemptionsCount.pending || 0);
+        // Get pending redemptions - using resgatesPendentes instead of fetchAdminRedemptionsCount
+        const redemptions = await resgatesPendentes();
+        setPendingRedemptions(redemptions.length || 0);
         
         // Get pending stores
         const pendingStoresData = await fetchPendingStores();
@@ -31,6 +32,7 @@ export const useDashboardData = () => {
         
         // Recent activity
         setRecentActivity([]); // To be implemented
+        setActivitiesLoading(false);
         
       } catch (err) {
         console.error('Error loading dashboard data:', err);
@@ -43,12 +45,35 @@ export const useDashboardData = () => {
     loadDashboardData();
   }, []);
 
+  // Create a stats object to match what the components expect
+  const stats = {
+    products: {
+      total: 0, // This would come from an API call
+      pending: pendingProducts
+    },
+    stores: {
+      total: 0, // This would come from an API call
+      pending: pendingStores
+    },
+    redemptions: {
+      total: 0, // This would come from an API call
+      pending: pendingRedemptions
+    },
+    users: {
+      total: 0, // This would come from an API call
+      pending: 0
+    }
+  };
+
   return {
     loading,
+    isLoading: loading,
     pendingProducts,
     pendingRedemptions,
     pendingStores,
     recentActivity,
-    error
+    error,
+    activitiesLoading,
+    stats
   };
 };
