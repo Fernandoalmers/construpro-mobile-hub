@@ -10,6 +10,7 @@ interface AvatarProps {
   fallback?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
+  onClick?: () => void;  // Added onClick handler
 }
 
 const Avatar: React.FC<AvatarProps> = ({
@@ -18,6 +19,7 @@ const Avatar: React.FC<AvatarProps> = ({
   fallback,
   size = 'md',
   className,
+  onClick,
 }) => {
   const sizeClassMap = {
     sm: 'h-8 w-8',
@@ -31,7 +33,10 @@ const Avatar: React.FC<AvatarProps> = ({
     : 'U';
 
   return (
-    <ShadcnAvatar className={cn(sizeClassMap[size], className)}>
+    <ShadcnAvatar 
+      className={cn(sizeClassMap[size], className, onClick && 'cursor-pointer')} 
+      onClick={onClick}
+    >
       <AvatarImage src={src} alt={alt} />
       <AvatarFallback className="bg-construPro-orange text-white flex items-center justify-center">
         {src ? <User size={size === 'sm' ? 16 : size === 'md' ? 20 : 24} /> : initials}

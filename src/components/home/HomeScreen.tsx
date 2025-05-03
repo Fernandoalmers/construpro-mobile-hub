@@ -92,7 +92,7 @@ const HomeScreen: React.FC = () => {
             alt={userName}
             fallback={userName}
             size="lg" 
-            className="border-2 border-white cursor-pointer"
+            className="border-2 border-white"
             onClick={() => navigate('/profile')}
           />
         </div>
