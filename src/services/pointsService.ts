@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { getUserProfile } from "./userService";
 
@@ -134,7 +133,7 @@ export const referralService = {
         throw new Error('Could not fetch referral code');
       }
 
-      // Get referrals made by the user - need to explicitly specify the column name for profiles
+      // Get referrals made by the user - explicitly specify the column name for profiles
       const { data: referralsData, error: referralsError } = await supabase
         .from('referrals')
         .select(`
