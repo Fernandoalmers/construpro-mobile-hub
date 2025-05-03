@@ -1,36 +1,39 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { RealtimeChannel } from '@supabase/supabase-js';
+
+// Type definition for realtime event handlers
+type StoreRealtimeEventHandler = (payload: any, eventType: string) => void;
 
 /**
- * Subscribe to updates in the vendedores table for real-time admin updates
+ * Subscribe to real-time updates for admin stores
+ * @param callback Function to call when store data changes
+ * @returns Object with unsubscribe method
  */
 export const subscribeToAdminStoreUpdates = (
-  callback: (store: any, eventType: 'INSERT' | 'UPDATE' | 'DELETE') => void
+  callback: StoreRealtimeEventHandler
 ) => {
-  console.log('Setting up realtime subscription for vendedores table');
+  console.log('[StoreRealtime] Setting up store update subscription');
   
   const channel = supabase
-    .channel('admin-store-changes')
+    .channel('admin-stores-changes')
     .on(
       'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'vendedores',
-      },
+      { event: '*', schema: 'public', table: 'vendedores' },
       (payload) => {
-        const eventType = payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE';
-        const storeData = payload.new || payload.old;
-        callback(storeData, eventType);
+        console.log('[StoreRealtime] Store update received:', payload);
+        // Pass the payload and event type to the callback
+        callback(payload.new || payload.old, payload.eventType);
       }
     )
-    .subscribe();
+    .subscribe((status) => {
+      console.log('[StoreRealtime] Subscription status:', status);
+    });
 
+  // Return unsubscribe method
   return {
-    channel,
     unsubscribe: () => {
-      channel.unsubscribe();
+      console.log('[StoreRealtime] Unsubscribing from store updates');
+      supabase.removeChannel(channel);
     }
   };
 };

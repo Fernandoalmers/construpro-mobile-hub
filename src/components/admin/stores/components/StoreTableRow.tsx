@@ -34,7 +34,11 @@ const StoreTableRow: React.FC<StoreTableRowProps> = ({
             <img 
               src={store.logo_url} 
               alt={store.nome}
-              className="w-10 h-10 object-cover rounded"
+              className="w-10 h-10 object-cover rounded bg-gray-100"
+              onError={(e) => {
+                (e.target as HTMLImageElement).onerror = null;
+                (e.target as HTMLImageElement).src = '/placeholder.svg';
+              }}
             />
           ) : (
             <div className="w-10 h-10 bg-gray-200 rounded flex items-center justify-center text-gray-400">
@@ -56,14 +60,14 @@ const StoreTableRow: React.FC<StoreTableRowProps> = ({
           <Tooltip>
             <TooltipTrigger>
               <div className="flex items-center gap-1">
-                <span>{store.produtos_count}</span>
-                {store.produtos_count > 0 && (
+                <span>{store.produtos_count || 0}</span>
+                {(store.produtos_count > 0 || 0) > 0 && (
                   <Info className="h-3 w-3 text-gray-400" />
                 )}
               </div>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Esta loja tem {store.produtos_count} produtos</p>
+              <p>Esta loja tem {store.produtos_count || 0} produtos</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
