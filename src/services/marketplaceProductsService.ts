@@ -50,8 +50,13 @@ export const getMarketplaceProducts = async (categoria?: string): Promise<Market
     return (data || []).map(item => {
       // Find the primary image or first available
       let imagemPrincipal = null;
-      if (item.imagens && Array.isArray(item.imagens) && item.imagens.length > 0) {
-        imagemPrincipal = item.imagens[0];
+      // Ensure imagens is an array and cast from JSON to string[]
+      const imagensArray: string[] = Array.isArray(item.imagens) 
+        ? item.imagens.map(img => String(img))
+        : [];
+      
+      if (imagensArray.length > 0) {
+        imagemPrincipal = imagensArray[0];
       }
       
       return {
@@ -62,7 +67,7 @@ export const getMarketplaceProducts = async (categoria?: string): Promise<Market
         preco_promocional: item.preco_promocional,
         pontos_consumidor: item.pontos_consumidor || 0,
         categoria: item.categoria,
-        imagens: Array.isArray(item.imagens) ? item.imagens : [],
+        imagens: imagensArray,
         imagemPrincipal,
         estoque: item.estoque,
         vendedor_id: item.vendedor_id,
@@ -99,10 +104,15 @@ export const getMarketplaceProductById = async (id: string): Promise<Marketplace
     
     if (!data) return null;
     
+    // Cast imagens from JSON to string[]
+    const imagensArray: string[] = Array.isArray(data.imagens) 
+      ? data.imagens.map(img => String(img))
+      : [];
+    
     // Find the primary image or first available
     let imagemPrincipal = null;
-    if (data.imagens && Array.isArray(data.imagens) && data.imagens.length > 0) {
-      imagemPrincipal = data.imagens[0];
+    if (imagensArray.length > 0) {
+      imagemPrincipal = imagensArray[0];
     }
     
     return {
@@ -113,7 +123,7 @@ export const getMarketplaceProductById = async (id: string): Promise<Marketplace
       preco_promocional: data.preco_promocional,
       pontos_consumidor: data.pontos_consumidor || 0,
       categoria: data.categoria,
-      imagens: Array.isArray(data.imagens) ? data.imagens : [],
+      imagens: imagensArray,
       imagemPrincipal,
       estoque: data.estoque,
       vendedor_id: data.vendedor_id,
