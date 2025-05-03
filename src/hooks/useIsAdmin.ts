@@ -1,43 +1,43 @@
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/context/AuthContext';
-import { toast } from '@/components/ui/sonner';
 
 export const useIsAdmin = () => {
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const { user } = useAuth();
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const checkAdminStatus = async () => {
-      if (!user) {
-        setIsAdmin(false);
-        setIsLoading(false);
-        return;
-      }
-
       try {
-        // Call the fixed is_admin RPC function
-        const { data, error } = await supabase.rpc('is_admin');
-
-        if (error) {
-          console.error('Error checking admin status:', error);
-          toast.error('Erro ao verificar permissões de administrador');
+        setIsLoading(true);
+        
+        // Get current session
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
           setIsAdmin(false);
-        } else {
-          setIsAdmin(!!data); // Convert to boolean
+          return;
         }
-      } catch (error) {
-        console.error('Error in admin check:', error);
+        
+        // Check if user is admin
+        const { data, error } = await supabase
+          .rpc('is_admin');
+          
+        if (error) throw error;
+        
+        setIsAdmin(!!data);
+      } catch (err) {
+        console.error('Error checking admin status:', err);
+        setError('Falha ao verificar status de administrador');
         setIsAdmin(false);
       } finally {
         setIsLoading(false);
       }
     };
-
+    
     checkAdminStatus();
-  }, [user]);
+  }, []);
 
-  return { isAdmin, isLoading };
+  return { isAdmin, isLoading, error };
 };

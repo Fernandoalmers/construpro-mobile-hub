@@ -1,43 +1,36 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShoppingBag, Store, Users, Tag } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useDashboardData } from './useDashboardData';
 
 const DashboardStats = () => {
   const navigate = useNavigate();
+  const { totalProducts, totalStores, totalUsers, totalCategories, loading } = useDashboardData();
   
-  // For simplicity, we'll use placeholders for stats
-  // In a full implementation, these would come from API calls
-  const [stats] = useState({
-    productsCount: '---',
-    storesCount: '---',
-    usersCount: '---',
-    categoriesCount: '---'
-  });
-
   const statItems = [
     {
       title: 'Total de Produtos',
-      value: stats.productsCount,
+      value: loading ? '...' : totalProducts.toString(),
       icon: <ShoppingBag className="w-8 h-8 text-blue-500" />,
       action: () => navigate('/admin/products')
     },
     {
       title: 'Total de Lojas',
-      value: stats.storesCount,
+      value: loading ? '...' : totalStores.toString(),
       icon: <Store className="w-8 h-8 text-green-500" />,
       action: () => navigate('/admin/stores')
     },
     {
       title: 'Total de Usuários',
-      value: stats.usersCount,
+      value: loading ? '...' : totalUsers.toString(),
       icon: <Users className="w-8 h-8 text-purple-500" />,
       action: () => navigate('/admin/users')
     },
     {
       title: 'Categorias',
-      value: stats.categoriesCount,
+      value: loading ? '...' : totalCategories.toString(),
       icon: <Tag className="w-8 h-8 text-amber-500" />,
       action: () => navigate('/admin/categories')
     }

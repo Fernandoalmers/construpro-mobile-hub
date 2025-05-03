@@ -11,16 +11,7 @@ import { useIsAdmin } from '@/hooks/useIsAdmin';
 
 const AdminDashboard: React.FC = () => {
   const { isAdmin, isLoading: isAdminLoading } = useIsAdmin();
-  const { 
-    loading, 
-    error, 
-    recentActivity, 
-    activitiesLoading, 
-    pendingProducts,
-    pendingStores,
-    pendingRedemptions,
-    stats 
-  } = useDashboardData();
+  const { loading, error } = useDashboardData();
   
   // If admin status is still loading
   if (isAdminLoading) {
@@ -73,15 +64,10 @@ const AdminDashboard: React.FC = () => {
         <DashboardStats />
         
         {/* Pending Items Section */}
-        <PendingItemsSection 
-          pendingProducts={pendingProducts}
-          pendingStores={pendingStores}
-          pendingRedemptions={pendingRedemptions}
-          loading={loading}
-        />
+        <PendingItemsSection />
         
         {/* Activity Logs */}
-        <ActivityLogs activities={recentActivity} isLoading={activitiesLoading} />
+        <ActivityLogs />
       </div>
     </AdminLayout>
   );

@@ -5,21 +5,11 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingBag, Store, Gift, AlertTriangle } from 'lucide-react';
 import LoadingState from '@/components/common/LoadingState';
+import { useDashboardData } from './useDashboardData';
 
-interface PendingItemsSectionProps {
-  pendingProducts: number;
-  pendingStores: number;
-  pendingRedemptions: number;
-  loading: boolean;
-}
-
-const PendingItemsSection: React.FC<PendingItemsSectionProps> = ({
-  pendingProducts,
-  pendingStores,
-  pendingRedemptions,
-  loading
-}) => {
+const PendingItemsSection: React.FC = () => {
   const navigate = useNavigate();
+  const { pendingProducts, pendingStores, pendingRedemptions, loading } = useDashboardData();
   
   if (loading) {
     return (

@@ -1,15 +1,19 @@
 
 import { useState, useEffect } from 'react';
-import { getPendingProducts } from '@/services/admin/products/adminProductApi';
-import { fetchRedemptions } from '@/services/admin/redemptions/redemptionsFetcher';
-import { getAdminPendingStores } from '@/services/admin/stores';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/sonner';
 import { AdminStats } from '@/types/admin';
+import { fetchPendingStores } from '@/services/adminStoresService';
 
 export const useDashboardData = () => {
   const [loading, setLoading] = useState(true);
   const [pendingProducts, setPendingProducts] = useState(0);
   const [pendingRedemptions, setPendingRedemptions] = useState(0);
   const [pendingStores, setPendingStores] = useState(0);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [totalStores, setTotalStores] = useState(0);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [totalCategories, setTotalCategories] = useState(0);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [activitiesLoading, setActivitiesLoading] = useState(true);
@@ -19,25 +23,96 @@ export const useDashboardData = () => {
       try {
         setLoading(true);
         
-        // Get pending products
-        const products = await getPendingProducts();
-        setPendingProducts(products.length);
+        // Get total and pending products
+        const { data: productsData, error: productsError } = await supabase
+          .from('produtos')
+          .select('id, status', { count: 'exact' });
         
-        // Get pending redemptions - using proper function now
-        const redemptions = await fetchRedemptions(false);
-        setPendingRedemptions(redemptions.length);
+        if (productsError) throw productsError;
+        
+        const pendingProductsCount = (productsData || []).filter(p => p.status === 'pendente').length;
+        setPendingProducts(pendingProductsCount);
+        setTotalProducts(productsData?.length || 0);
+        
+        // Get pending redemptions
+        const { data: redemptionsData, error: redemptionsError } = await supabase
+          .from('resgates')
+          .select('*')
+          .eq('status', 'pendente');
+        
+        if (redemptionsError) throw redemptionsError;
+        setPendingRedemptions(redemptionsData?.length || 0);
+        
+        // Get total redemptions
+        const { count: totalRedemptions, error: totalRedemptionsError } = await supabase
+          .from('resgates')
+          .select('*', { count: 'exact', head: true });
+          
+        if (totalRedemptionsError) throw totalRedemptionsError;
         
         // Get pending stores
-        const pendingStoresData = await getAdminPendingStores();
+        const pendingStoresData = await fetchPendingStores();
         setPendingStores(pendingStoresData.length);
         
-        // Recent activity - to be implemented
-        setRecentActivity([]);
+        // Get total stores
+        const { count: storesCount, error: storesError } = await supabase
+          .from('vendedores')
+          .select('*', { count: 'exact', head: true });
+          
+        if (storesError) throw storesError;
+        setTotalStores(storesCount || 0);
+        
+        // Get total users
+        const { count: usersCount, error: usersError } = await supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true });
+          
+        if (usersError) throw usersError;
+        setTotalUsers(usersCount || 0);
+        
+        // Get total categories
+        const { count: categoriesCount, error: categoriesError } = await supabase
+          .from('product_categories')
+          .select('*', { count: 'exact', head: true });
+          
+        if (categoriesError) throw categoriesError;
+        setTotalCategories(categoriesCount || 0);
+        
+        // Get recent activity logs
+        const { data: logsData, error: logsError } = await supabase
+          .from('admin_logs')
+          .select(`
+            id,
+            action,
+            entity_type,
+            entity_id,
+            details,
+            created_at,
+            admin_id,
+            profiles(nome)
+          `)
+          .order('created_at', { ascending: false })
+          .limit(10);
+        
+        if (logsError) throw logsError;
+        
+        // Format activity logs
+        const formattedLogs = logsData?.map(log => ({
+          id: log.id,
+          action: log.action,
+          entity: `${log.entity_type}: ${log.entity_id}`,
+          details: log.details,
+          timestamp: log.created_at,
+          admin_name: log.profiles?.nome || 'Admin'
+        })) || [];
+        
+        setRecentActivity(formattedLogs);
         setActivitiesLoading(false);
         
       } catch (err) {
         console.error('Error loading dashboard data:', err);
         setError('Erro ao carregar dados do dashboard');
+        toast.error('Erro ao carregar estatísticas');
       } finally {
         setLoading(false);
       }
@@ -49,19 +124,19 @@ export const useDashboardData = () => {
   // Create a stats object to match what the components expect
   const stats: AdminStats = {
     products: {
-      total: 0, // This would come from an API call
+      total: totalProducts,
       pending: pendingProducts
     },
     stores: {
-      total: 0, // This would come from an API call
+      total: totalStores,
       pending: pendingStores
     },
     redemptions: {
-      total: 0, // This would come from an API call
+      total: totalRedemptions || 0,
       pending: pendingRedemptions
     },
     users: {
-      total: 0, // This would come from an API call
+      total: totalUsers,
       pending: 0
     }
   };
@@ -72,6 +147,10 @@ export const useDashboardData = () => {
     pendingProducts,
     pendingRedemptions,
     pendingStores,
+    totalProducts,
+    totalStores,
+    totalUsers,
+    totalCategories,
     recentActivity,
     error,
     activitiesLoading,
