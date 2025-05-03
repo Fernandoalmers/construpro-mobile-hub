@@ -1,6 +1,6 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
+import { Json } from '@/integrations/supabase/types';
 
 export interface Product {
   id: string;
@@ -40,112 +40,142 @@ export const trackProductView = async (productId: string): Promise<void> => {
   }
 };
 
-export const productService = {
-  async getProducts(): Promise<Product[]> {
-    try {
-      // Get approved products only
-      const { data, error } = await supabase
-        .from('produtos')
-        .select('*, vendedores(nome_loja)')
-        .eq('status', 'aprovado')
-        .order('created_at', { ascending: false });
-      
-      if (error) {
-        console.error('Error fetching products:', error);
-        return [];
-      }
-      
-      return data || [];
-    } catch (error) {
-      console.error('Error in getProducts:', error);
+// Transform database product to match Product interface
+const transformProduct = (dbProduct: any): Product => {
+  return {
+    id: dbProduct.id,
+    nome: dbProduct.nome,
+    descricao: dbProduct.descricao,
+    preco: dbProduct.preco_normal || 0,
+    preco_anterior: dbProduct.preco_promocional,
+    categoria: dbProduct.categoria,
+    segmento: dbProduct.segmento,
+    imagem_url: Array.isArray(dbProduct.imagens) && dbProduct.imagens.length > 0 
+      ? dbProduct.imagens[0] 
+      : undefined,
+    imagens: Array.isArray(dbProduct.imagens) ? dbProduct.imagens : [],
+    estoque: dbProduct.estoque || 0,
+    pontos: dbProduct.pontos_consumidor || 0,
+    loja_id: dbProduct.vendedor_id,
+    status: dbProduct.status,
+    avaliacao: dbProduct.avaliacao
+  };
+};
+
+// Individual function exports
+export async function getProducts(): Promise<Product[]> {
+  try {
+    // Get approved products only
+    const { data, error } = await supabase
+      .from('produtos')
+      .select('*, vendedores(nome_loja)')
+      .eq('status', 'aprovado')
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching products:', error);
       return [];
     }
-  },
-  
-  async getProductsByCategory(category: string): Promise<Product[]> {
-    try {
-      const { data, error } = await supabase
-        .from('produtos')
-        .select('*, vendedores(nome_loja)')
-        .eq('status', 'aprovado')
-        .eq('categoria', category)
-        .order('created_at', { ascending: false });
-      
-      if (error) {
-        console.error(`Error fetching products by category ${category}:`, error);
-        return [];
-      }
-      
-      return data || [];
-    } catch (error) {
-      console.error(`Error in getProductsByCategory for ${category}:`, error);
+    
+    return data.map(transformProduct) || [];
+  } catch (error) {
+    console.error('Error in getProducts:', error);
+    return [];
+  }
+}
+
+export async function getProductsByCategory(category: string): Promise<Product[]> {
+  try {
+    const { data, error } = await supabase
+      .from('produtos')
+      .select('*, vendedores(nome_loja)')
+      .eq('status', 'aprovado')
+      .eq('categoria', category)
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error(`Error fetching products by category ${category}:`, error);
       return [];
     }
-  },
-  
-  async getProductById(id: string): Promise<Product | null> {
-    try {
-      const { data, error } = await supabase
-        .from('produtos')
-        .select('*, vendedores(nome_loja, id)')
-        .eq('id', id)
-        .single();
-      
-      if (error) {
-        console.error(`Error fetching product with ID ${id}:`, error);
-        return null;
-      }
-      
-      // Track product view
-      await trackProductView(id);
-      
-      return data;
-    } catch (error) {
-      console.error(`Error in getProductById for ${id}:`, error);
+    
+    return data.map(transformProduct) || [];
+  } catch (error) {
+    console.error(`Error in getProductsByCategory for ${category}:`, error);
+    return [];
+  }
+}
+
+export async function getProductById(id: string): Promise<Product | null> {
+  try {
+    const { data, error } = await supabase
+      .from('produtos')
+      .select('*, vendedores(nome_loja, id)')
+      .eq('id', id)
+      .single();
+    
+    if (error) {
+      console.error(`Error fetching product with ID ${id}:`, error);
       return null;
     }
-  },
-  
-  async searchProducts(query: string): Promise<Product[]> {
-    try {
-      const { data, error } = await supabase
-        .from('produtos')
-        .select('*, vendedores(nome_loja)')
-        .eq('status', 'aprovado')
-        .ilike('nome', `%${query}%`)
-        .order('created_at', { ascending: false });
-      
-      if (error) {
-        console.error(`Error searching products with query ${query}:`, error);
-        return [];
-      }
-      
-      return data || [];
-    } catch (error) {
-      console.error(`Error in searchProducts for ${query}:`, error);
-      return [];
-    }
-  },
-  
-  async getProductCategories(): Promise<string[]> {
-    try {
-      const { data, error } = await supabase
-        .from('produtos')
-        .select('categoria')
-        .eq('status', 'aprovado')
-        .order('categoria');
-      
-      if (error) {
-        console.error('Error fetching product categories:', error);
-        return [];
-      }
-      
-      // Extract unique categories
-      const categories = [...new Set(data.map(item => item.categoria))];
-      return categories;
-    } catch (error) {
-      console.error('Error in getProductCategories:', error);
-      return [];
-    }
+    
+    // Track product view
+    await trackProductView(id);
+    
+    return transformProduct(data);
+  } catch (error) {
+    console.error(`Error in getProductById for ${id}:`, error);
+    return null;
   }
+}
+
+export async function searchProducts(query: string): Promise<Product[]> {
+  try {
+    const { data, error } = await supabase
+      .from('produtos')
+      .select('*, vendedores(nome_loja)')
+      .eq('status', 'aprovado')
+      .ilike('nome', `%${query}%`)
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error(`Error searching products with query ${query}:`, error);
+      return [];
+    }
+    
+    return data.map(transformProduct) || [];
+  } catch (error) {
+    console.error(`Error in searchProducts for ${query}:`, error);
+    return [];
+  }
+}
+
+export async function getProductCategories(): Promise<string[]> {
+  try {
+    const { data, error } = await supabase
+      .from('produtos')
+      .select('categoria')
+      .eq('status', 'aprovado')
+      .order('categoria');
+    
+    if (error) {
+      console.error('Error fetching product categories:', error);
+      return [];
+    }
+    
+    // Extract unique categories
+    const categories = [...new Set(data.map(item => item.categoria))];
+    return categories;
+  } catch (error) {
+    console.error('Error in getProductCategories:', error);
+    return [];
+  }
+}
+
+// Keep the object for backward compatibility
+export const productService = {
+  getProducts,
+  getProductsByCategory,
+  getProductById,
+  searchProducts,
+  getProductCategories
 };

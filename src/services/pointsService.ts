@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { UserProfile } from './userService';
@@ -25,7 +26,7 @@ export const referralService = {
     try {
       if (!referralCode) return false;
       
-      // Instead of using rpc, use the functions.invoke method
+      // Use the functions.invoke method
       const { data, error } = await supabase.functions.invoke('referral-processing', {
         method: 'POST',
         body: { 
@@ -116,7 +117,7 @@ export const storeService = {
         .from('stores')
         .select('*')
         .eq('profile_id', profileId)
-        .single();
+        .maybeSingle();
       
       if (error && error.code !== 'PGRST116') {
         console.error('Error fetching store:', error);
