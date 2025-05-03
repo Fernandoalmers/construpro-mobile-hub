@@ -1,6 +1,11 @@
 
 import { useState, useEffect } from 'react';
-import { fetchAdminStores, approveStore, rejectStore, subscribeToAdminStoreUpdates } from '@/services/adminStoresService';
+import { 
+  getAdminStores, 
+  approveStore, 
+  rejectStore, 
+  subscribeToAdminStoreUpdates 
+} from '@/services/admin/stores';
 import { AdminStore } from '@/types/admin';
 import { toast } from '@/components/ui/sonner';
 
@@ -14,7 +19,8 @@ export const useAdminStores = (initialFilter: string = 'all') => {
   const loadStores = async () => {
     try {
       setLoading(true);
-      const storesData = await fetchAdminStores();
+      console.log('Loading admin stores...');
+      const storesData = await getAdminStores();
       console.log('Admin stores loaded:', storesData);
       setStores(storesData);
       applyFilters(storesData, filter, searchTerm);
@@ -50,6 +56,7 @@ export const useAdminStores = (initialFilter: string = 'all') => {
 
   const handleApproveStore = async (storeId: string) => {
     try {
+      console.log('Approving store with ID:', storeId);
       const success = await approveStore(storeId);
       
       if (success) {
@@ -65,6 +72,7 @@ export const useAdminStores = (initialFilter: string = 'all') => {
 
   const handleRejectStore = async (storeId: string) => {
     try {
+      console.log('Rejecting store with ID:', storeId);
       const success = await rejectStore(storeId);
       
       if (success) {

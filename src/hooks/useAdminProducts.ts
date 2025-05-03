@@ -63,6 +63,7 @@ export const useAdminProducts = (initialFilter: string = 'all') => {
     try {
       const success = await approveProduct(productId);
       if (success) {
+        console.log('Product approved successfully, refreshing products...');
         // Refresh product data - directly fetch all products again to ensure we have the latest data
         await loadProducts();
         toast.success('Produto aprovado com sucesso');
@@ -77,6 +78,7 @@ export const useAdminProducts = (initialFilter: string = 'all') => {
     try {
       const success = await rejectProduct(productId);
       if (success) {
+        console.log('Product rejected successfully, refreshing products...');
         // Refresh product data - directly fetch all products again to ensure we have the latest data
         await loadProducts();
         toast.success('Produto rejeitado com sucesso');

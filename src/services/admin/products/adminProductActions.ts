@@ -9,7 +9,7 @@ import { logAdminAction } from '../../adminService';
 export const approveProduct = async (productId: string): Promise<boolean> => {
   try {
     console.log('Approving product:', productId);
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('produtos')
       .update({ status: 'aprovado', updated_at: new Date().toISOString() })
       .eq('id', productId);
@@ -18,6 +18,8 @@ export const approveProduct = async (productId: string): Promise<boolean> => {
       console.error('Error approving product:', error);
       throw error;
     }
+    
+    console.log('Update result:', data, error);
     
     // Log the admin action
     await logAdminAction({
@@ -42,7 +44,7 @@ export const approveProduct = async (productId: string): Promise<boolean> => {
 export const rejectProduct = async (productId: string): Promise<boolean> => {
   try {
     console.log('Rejecting product:', productId);
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('produtos')
       .update({ status: 'inativo', updated_at: new Date().toISOString() })
       .eq('id', productId);
@@ -51,6 +53,8 @@ export const rejectProduct = async (productId: string): Promise<boolean> => {
       console.error('Error rejecting product:', error);
       throw error;
     }
+    
+    console.log('Update result:', data, error);
     
     // Log the admin action
     await logAdminAction({
@@ -74,7 +78,7 @@ export const rejectProduct = async (productId: string): Promise<boolean> => {
  */
 export const deleteProduct = async (productId: string): Promise<boolean> => {
   try {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('produtos')
       .delete()
       .eq('id', productId);
@@ -83,6 +87,8 @@ export const deleteProduct = async (productId: string): Promise<boolean> => {
       console.error('Error deleting product:', error);
       throw error;
     }
+    
+    console.log('Delete result:', data, error);
     
     // Log the admin action
     await logAdminAction({
