@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Search } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getVendorProducts, getVendorOrders, VendorProduct, VendorOrder } from '@/services/vendorService';
-import { Tab, TabList, TabPanel, TabPanels, Tabs } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import LoadingState from '../common/LoadingState';
 import ListEmptyState from '../common/ListEmptyState';
 import OrderItem from './OrderItem';

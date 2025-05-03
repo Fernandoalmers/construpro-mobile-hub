@@ -5,7 +5,7 @@ import { toast } from '@/components/ui/sonner';
 interface StoreData {
   nome: string;
   descricao: string;
-  endereco: {
+  endereco?: {
     logradouro: string;
     cidade: string;
     estado: string;
@@ -69,7 +69,18 @@ export const saveStore = async (storeData: StoreData): Promise<Store | null> => 
       result = data;
     }
     
-    return result as Store;
+    // Map the vendedores data to the Store interface
+    return {
+      id: result.id,
+      nome: result.nome_loja,
+      descricao: result.descricao,
+      logo_url: result.logo,
+      banner_url: result.banner,
+      endereco: {},  // No direct address in vendedores table
+      profile_id: result.usuario_id,
+      created_at: result.created_at,
+      updated_at: result.updated_at
+    };
   } catch (error) {
     console.error('Error in saveStore:', error);
     return null;
@@ -86,7 +97,19 @@ export const getStoreById = async (storeId: string): Promise<Store | null> => {
       .single();
     
     if (error) throw error;
-    return data as Store;
+    
+    // Map the vendedores data to the Store interface
+    return {
+      id: data.id,
+      nome: data.nome_loja,
+      descricao: data.descricao,
+      logo_url: data.logo,
+      banner_url: data.banner,
+      endereco: {},  // No direct address in vendedores table
+      profile_id: data.usuario_id,
+      created_at: data.created_at,
+      updated_at: data.updated_at
+    };
   } catch (error) {
     console.error('Error in getStoreById:', error);
     return null;
@@ -103,7 +126,19 @@ export const getStoreByProfileId = async (profileId: string): Promise<Store | nu
       .single();
     
     if (error) throw error;
-    return data as Store;
+    
+    // Map the vendedores data to the Store interface
+    return {
+      id: data.id,
+      nome: data.nome_loja,
+      descricao: data.descricao,
+      logo_url: data.logo,
+      banner_url: data.banner,
+      endereco: {},  // No direct address in vendedores table
+      profile_id: data.usuario_id,
+      created_at: data.created_at,
+      updated_at: data.updated_at
+    };
   } catch (error) {
     console.error('Error in getStoreByProfileId:', error);
     return null;

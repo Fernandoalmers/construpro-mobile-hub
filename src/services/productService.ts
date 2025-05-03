@@ -30,17 +30,17 @@ export const getProducts = async (): Promise<Product[]> => {
         id,
         nome,
         descricao,
-        preco_normal as preco,
-        preco_promocional as preco_anterior,
-        pontos_consumidor as pontos,
+        preco_normal,
+        preco_promocional,
+        pontos_consumidor,
         categoria,
         imagens,
-        vendedor_id as loja_id,
+        vendedor_id,
         estoque,
         status,
         created_at,
         updated_at,
-        vendedores:vendedor_id (nome_loja as nome, logo as logo_url)
+        vendedores:vendedor_id (nome_loja, logo)
       `)
       .eq('status', 'aprovado')
       .order('nome');
@@ -52,15 +52,28 @@ export const getProducts = async (): Promise<Product[]> => {
     
     // Transform the data to match the expected format
     const products = data.map(item => ({
-      ...item,
+      id: item.id,
+      nome: item.nome,
+      descricao: item.descricao,
+      preco: item.preco_normal,
+      preco_anterior: item.preco_promocional,
+      pontos: item.pontos_consumidor,
+      categoria: item.categoria,
       imagem_url: item.imagens && Array.isArray(item.imagens) && item.imagens.length > 0 
         ? item.imagens[0] 
         : undefined,
+      loja_id: item.vendedor_id,
+      estoque: item.estoque,
       avaliacao: 5, // Default value for now
-      loja: item.vendedores
+      created_at: item.created_at,
+      updated_at: item.updated_at,
+      loja: item.vendedores ? {
+        nome: item.vendedores.nome_loja,
+        logo_url: item.vendedores.logo
+      } : undefined
     }));
     
-    return products as unknown as Product[];
+    return products;
   } catch (error) {
     console.error('Error in getProducts:', error);
     return [];
@@ -76,17 +89,17 @@ export const getProductsByCategory = async (category: string): Promise<Product[]
         id,
         nome,
         descricao,
-        preco_normal as preco,
-        preco_promocional as preco_anterior,
-        pontos_consumidor as pontos,
+        preco_normal,
+        preco_promocional,
+        pontos_consumidor,
         categoria,
         imagens,
-        vendedor_id as loja_id,
+        vendedor_id,
         estoque,
         status,
         created_at,
         updated_at,
-        vendedores:vendedor_id (nome_loja as nome, logo as logo_url)
+        vendedores:vendedor_id (nome_loja, logo)
       `)
       .eq('categoria', category)
       .eq('status', 'aprovado')
@@ -99,15 +112,28 @@ export const getProductsByCategory = async (category: string): Promise<Product[]
     
     // Transform the data to match the expected format
     const products = data.map(item => ({
-      ...item,
+      id: item.id,
+      nome: item.nome,
+      descricao: item.descricao,
+      preco: item.preco_normal,
+      preco_anterior: item.preco_promocional,
+      pontos: item.pontos_consumidor,
+      categoria: item.categoria,
       imagem_url: item.imagens && Array.isArray(item.imagens) && item.imagens.length > 0 
         ? item.imagens[0] 
         : undefined,
+      loja_id: item.vendedor_id,
+      estoque: item.estoque,
       avaliacao: 5, // Default value for now
-      loja: item.vendedores
+      created_at: item.created_at,
+      updated_at: item.updated_at,
+      loja: item.vendedores ? {
+        nome: item.vendedores.nome_loja,
+        logo_url: item.vendedores.logo
+      } : undefined
     }));
     
-    return products as unknown as Product[];
+    return products;
   } catch (error) {
     console.error('Error in getProductsByCategory:', error);
     return [];
@@ -123,17 +149,17 @@ export const getProductById = async (id: string): Promise<Product | null> => {
         id,
         nome,
         descricao,
-        preco_normal as preco,
-        preco_promocional as preco_anterior,
-        pontos_consumidor as pontos,
+        preco_normal,
+        preco_promocional,
+        pontos_consumidor,
         categoria,
         imagens,
-        vendedor_id as loja_id,
+        vendedor_id,
         estoque,
         status,
         created_at,
         updated_at,
-        vendedores:vendedor_id (nome_loja as nome, logo as logo_url)
+        vendedores:vendedor_id (nome_loja, logo)
       `)
       .eq('id', id)
       .eq('status', 'aprovado')
@@ -146,15 +172,28 @@ export const getProductById = async (id: string): Promise<Product | null> => {
     
     // Transform the data to match the expected format
     const product = {
-      ...data,
+      id: data.id,
+      nome: data.nome,
+      descricao: data.descricao,
+      preco: data.preco_normal,
+      preco_anterior: data.preco_promocional,
+      pontos: data.pontos_consumidor,
+      categoria: data.categoria,
       imagem_url: data.imagens && Array.isArray(data.imagens) && data.imagens.length > 0 
         ? data.imagens[0] 
         : undefined,
+      loja_id: data.vendedor_id,
+      estoque: data.estoque,
       avaliacao: 5, // Default value for now
-      loja: data.vendedores
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+      loja: data.vendedores ? {
+        nome: data.vendedores.nome_loja,
+        logo_url: data.vendedores.logo
+      } : undefined
     };
     
-    return product as unknown as Product;
+    return product;
   } catch (error) {
     console.error('Error in getProductById:', error);
     return null;
@@ -242,7 +281,9 @@ export const addProduct = async (product: Omit<Product, 'id' | 'created_at' | 'u
     
     // Transform back to the expected format
     const createdProduct = {
-      ...data,
+      id: data.id,
+      nome: data.nome,
+      descricao: data.descricao,
       preco: data.preco_normal,
       preco_anterior: data.preco_promocional,
       pontos: data.pontos_consumidor,
@@ -250,10 +291,14 @@ export const addProduct = async (product: Omit<Product, 'id' | 'created_at' | 'u
         ? data.imagens[0] 
         : undefined,
       loja_id: data.vendedor_id,
-      avaliacao: 5 // Default value for now
+      categoria: data.categoria,
+      estoque: data.estoque,
+      avaliacao: 5, // Default value for now
+      created_at: data.created_at,
+      updated_at: data.updated_at
     };
     
-    return createdProduct as unknown as Product;
+    return createdProduct;
   } catch (error) {
     console.error('Error in addProduct:', error);
     return null;
@@ -291,18 +336,24 @@ export const updateProduct = async (id: string, updates: Partial<Omit<Product, '
     
     // Transform back to the expected format
     const updatedProduct = {
-      ...data,
+      id: data.id,
+      nome: data.nome,
+      descricao: data.descricao,
       preco: data.preco_normal,
       preco_anterior: data.preco_promocional,
       pontos: data.pontos_consumidor,
+      categoria: data.categoria,
       imagem_url: data.imagens && Array.isArray(data.imagens) && data.imagens.length > 0 
         ? data.imagens[0] 
         : undefined,
       loja_id: data.vendedor_id,
-      avaliacao: 5 // Default value for now
+      estoque: data.estoque,
+      avaliacao: 5, // Default value for now
+      created_at: data.created_at,
+      updated_at: data.updated_at
     };
     
-    return updatedProduct as unknown as Product;
+    return updatedProduct;
   } catch (error) {
     console.error('Error in updateProduct:', error);
     return null;
