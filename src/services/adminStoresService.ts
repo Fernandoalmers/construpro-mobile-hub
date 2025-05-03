@@ -7,7 +7,7 @@ import { AdminStore } from '@/types/admin';
 export const fetchAdminStores = async (): Promise<AdminStore[]> => {
   try {
     // Fetch directly from the vendedores table
-    const { data: vendedores, error: vendedoresError } = await supabase
+    const { data: vendedores, error } = await supabase
       .from('vendedores')
       .select(`
         id,
@@ -15,14 +15,17 @@ export const fetchAdminStores = async (): Promise<AdminStore[]> => {
         logo,
         usuario_id,
         status,
+        whatsapp,
+        telefone,
+        email,
         created_at,
         updated_at
       `)
       .order('created_at', { ascending: false });
       
-    if (vendedoresError) {
-      console.error('Error fetching vendors:', vendedoresError);
-      throw vendedoresError;
+    if (error) {
+      console.error('Error fetching vendors:', error);
+      throw error;
     }
     
     // Get additional info for each vendor

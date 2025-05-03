@@ -1527,6 +1527,7 @@ export type Database = {
           logo: string | null
           nome_loja: string
           segmento: string | null
+          status: string | null
           telefone: string | null
           updated_at: string | null
           usuario_id: string
@@ -1542,6 +1543,7 @@ export type Database = {
           logo?: string | null
           nome_loja: string
           segmento?: string | null
+          status?: string | null
           telefone?: string | null
           updated_at?: string | null
           usuario_id: string
@@ -1557,6 +1559,7 @@ export type Database = {
           logo?: string | null
           nome_loja?: string
           segmento?: string | null
+          status?: string | null
           telefone?: string | null
           updated_at?: string | null
           usuario_id?: string
