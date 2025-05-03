@@ -2,7 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { getVendorProfile } from '../vendorProfileService';
-import { markProductAsPending } from './productApproval';
+import { markProductAsPending } from '@/services/admin/products/productApproval';
 
 /**
  * Interface for product image data
