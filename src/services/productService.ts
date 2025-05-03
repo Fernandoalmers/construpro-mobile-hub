@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { Json } from "@/integrations/supabase/types";
 
 export interface Product {
   id: string;
@@ -15,26 +16,10 @@ export interface Product {
   avaliacao: number;
   created_at?: string;
   updated_at?: string;
-  codigo_barras?: string;
-  sku?: string;
-  unidade_venda?: string;
-  m2_por_caixa?: number;
-  segmento?: string;
-  pontos_profissional?: number;
-  status?: string;
   loja?: {
     nome: string;
     logo_url?: string;
   };
-  images?: ProductImage[];
-}
-
-export interface ProductImage {
-  id: string;
-  product_id: string;
-  url: string;
-  ordem: number;
-  is_primary: boolean;
 }
 
 // Get all products
@@ -46,8 +31,6 @@ export const getProducts = async (): Promise<Product[]> => {
         *,
         stores:loja_id (nome, logo_url)
       `)
-      .eq('status', 'aprovado') // Only approved products
-      .gt('estoque', 0) // Only products with stock
       .order('nome');
       
     if (error) {
@@ -55,10 +38,7 @@ export const getProducts = async (): Promise<Product[]> => {
       return [];
     }
     
-    // Get primary images for products
-    const productsWithImages = await addPrimaryImagesToProducts(data);
-    
-    return productsWithImages as Product[] || [];
+    return data as unknown as Product[] || [];
   } catch (error) {
     console.error('Error in getProducts:', error);
     return [];
@@ -75,8 +55,6 @@ export const getProductsByCategory = async (category: string): Promise<Product[]
         stores:loja_id (nome, logo_url)
       `)
       .eq('categoria', category)
-      .eq('status', 'aprovado') // Only approved products
-      .gt('estoque', 0) // Only products with stock
       .order('nome');
       
     if (error) {
@@ -84,10 +62,7 @@ export const getProductsByCategory = async (category: string): Promise<Product[]
       return [];
     }
     
-    // Get primary images for products
-    const productsWithImages = await addPrimaryImagesToProducts(data);
-    
-    return productsWithImages as Product[] || [];
+    return data as unknown as Product[] || [];
   } catch (error) {
     console.error('Error in getProductsByCategory:', error);
     return [];
@@ -97,7 +72,7 @@ export const getProductsByCategory = async (category: string): Promise<Product[]
 // Get product by ID
 export const getProductById = async (id: string): Promise<Product | null> => {
   try {
-    const { data: product, error: productError } = await supabase
+    const { data, error } = await supabase
       .from('products')
       .select(`
         *,
@@ -106,66 +81,19 @@ export const getProductById = async (id: string): Promise<Product | null> => {
       .eq('id', id)
       .single();
       
-    if (productError) {
-      console.error('Error fetching product by ID:', productError);
+    if (error) {
+      console.error('Error fetching product by ID:', error);
       return null;
     }
-
-    // Get all images for this product
-    const { data: images, error: imagesError } = await supabase
-      .from('product_images')
-      .select('*')
-      .eq('product_id', id)
-      .order('ordem');
-      
-    if (imagesError) {
-      console.error('Error fetching product images:', imagesError);
-    }
     
-    return {
-      ...product as Product,
-      images: images as ProductImage[] || []
-    };
+    return data as unknown as Product;
   } catch (error) {
     console.error('Error in getProductById:', error);
     return null;
   }
 };
 
-// Helper function to add primary images to products
-const addPrimaryImagesToProducts = async (products: any[]): Promise<Product[]> => {
-  if (!products || products.length === 0) return [];
-  
-  // Get all product IDs
-  const productIds = products.map(p => p.id);
-  
-  // Get primary images for these products
-  const { data: images, error } = await supabase
-    .from('product_images')
-    .select('*')
-    .in('product_id', productIds)
-    .eq('is_primary', true);
-    
-  if (error) {
-    console.error('Error fetching product images:', error);
-    return products as Product[];
-  }
-  
-  // Create image lookup by product ID
-  const imagesByProduct = (images || []).reduce((acc, img) => {
-    acc[img.product_id] = img;
-    return acc;
-  }, {} as Record<string, any>);
-  
-  // Add image URLs to products
-  return products.map(product => ({
-    ...product,
-    imagem_url: imagesByProduct[product.id]?.url || null,
-    images: imagesByProduct[product.id] ? [imagesByProduct[product.id]] : []
-  }));
-};
-
-// Add product review
+// Add or update product review
 export const saveProductReview = async (
   productId: string, 
   rating: number, 
@@ -213,5 +141,68 @@ export const trackProductView = async (productId: string): Promise<void> => {
       });
   } catch (error) {
     console.error('Error tracking product view:', error);
+  }
+};
+
+// Add store product
+export const addProduct = async (product: Omit<Product, 'id' | 'created_at' | 'updated_at'>): Promise<Product | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .insert(product)
+      .select()
+      .single();
+      
+    if (error) {
+      console.error('Error adding product:', error);
+      return null;
+    }
+    
+    return data as unknown as Product;
+  } catch (error) {
+    console.error('Error in addProduct:', error);
+    return null;
+  }
+};
+
+// Update store product
+export const updateProduct = async (id: string, updates: Partial<Omit<Product, 'id' | 'created_at' | 'updated_at'>>): Promise<Product | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+      
+    if (error) {
+      console.error('Error updating product:', error);
+      return null;
+    }
+    
+    return data as unknown as Product;
+  } catch (error) {
+    console.error('Error in updateProduct:', error);
+    return null;
+  }
+};
+
+// Delete product
+export const deleteProduct = async (id: string): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('products')
+      .delete()
+      .eq('id', id);
+      
+    if (error) {
+      console.error('Error deleting product:', error);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in deleteProduct:', error);
+    return false;
   }
 };
