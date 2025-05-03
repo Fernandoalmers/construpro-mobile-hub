@@ -7,9 +7,16 @@ import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Search, Check, X } from 'lucide-react';
+import { Search, Check, X, Info, ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import LoadingState from '@/components/common/LoadingState';
+import { getStoreBadgeColor } from '@/services/adminStoresService';
 
 const StoresManagementScreen: React.FC = () => {
   useTitle('ConstruPro Admin - Lojas');
@@ -25,45 +32,68 @@ const StoresManagementScreen: React.FC = () => {
     rejectStore
   } = useAdminStores();
 
-  const getStatusBadgeClass = (status: string) => {
-    switch (status) {
-      case 'ativa': return 'bg-green-100 text-green-800';
-      case 'pendente': return 'bg-yellow-100 text-yellow-800';
-      case 'inativa': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
   return (
     <AdminLayout currentSection="lojas">
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold">Gerenciar Lojas</h1>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <h1 className="text-2xl font-bold">Gerenciar Lojas</h1>
+          
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-500">
+              {stores.length} {stores.length === 1 ? 'loja' : 'lojas'} encontradas
+            </span>
+          </div>
+        </div>
         
         <div className="flex flex-wrap gap-4 items-center justify-between">
           <div className="flex flex-wrap gap-2">
             <Button
               variant={filter === 'all' ? 'default' : 'outline'}
               onClick={() => setFilter('all')}
+              className="min-w-24"
             >
               Todas
+              {filter === 'all' && (
+                <Badge variant="secondary" className="ml-2 bg-white/20">
+                  {stores.length}
+                </Badge>
+              )}
             </Button>
             <Button
               variant={filter === 'pendente' ? 'default' : 'outline'}
               onClick={() => setFilter('pendente')}
+              className="min-w-24"
             >
               Pendentes
+              {filter === 'pendente' && (
+                <Badge variant="secondary" className="ml-2 bg-white/20">
+                  {stores.filter(store => store.status === 'pendente').length}
+                </Badge>
+              )}
             </Button>
             <Button
               variant={filter === 'ativa' ? 'default' : 'outline'}
               onClick={() => setFilter('ativa')}
+              className="min-w-24"
             >
               Ativas
+              {filter === 'ativa' && (
+                <Badge variant="secondary" className="ml-2 bg-white/20">
+                  {stores.filter(store => store.status === 'ativa').length}
+                </Badge>
+              )}
             </Button>
             <Button
               variant={filter === 'inativa' ? 'default' : 'outline'}
               onClick={() => setFilter('inativa')}
+              className="min-w-24"
             >
               Inativas
+              {filter === 'inativa' && (
+                <Badge variant="secondary" className="ml-2 bg-white/20">
+                  {stores.filter(store => store.status === 'inativa').length}
+                </Badge>
+              )}
             </Button>
           </div>
           
@@ -94,6 +124,7 @@ const StoresManagementScreen: React.FC = () => {
                   <TableHead>Loja</TableHead>
                   <TableHead>Proprietário</TableHead>
                   <TableHead>Contato</TableHead>
+                  <TableHead>Produtos</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -103,12 +134,16 @@ const StoresManagementScreen: React.FC = () => {
                   <TableRow key={store.id}>
                     <TableCell>
                       <div className="flex items-center space-x-3">
-                        {store.logo_url && (
+                        {store.logo_url ? (
                           <img 
                             src={store.logo_url} 
                             alt={store.nome}
                             className="w-10 h-10 object-cover rounded"
                           />
+                        ) : (
+                          <div className="w-10 h-10 bg-gray-200 rounded flex items-center justify-center text-gray-400">
+                            <span className="text-xs">Logo</span>
+                          </div>
                         )}
                         <div>
                           <div className="font-medium">{store.nome}</div>
@@ -118,12 +153,31 @@ const StoresManagementScreen: React.FC = () => {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>{store.owner_name}</TableCell>
+                    <TableCell>{store.proprietario_nome || 'Desconhecido'}</TableCell>
                     <TableCell>{store.contato || 'N/A'}</TableCell>
                     <TableCell>
-                      <Badge className={getStatusBadgeClass(store.status || 'pendente')}>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <div className="flex items-center gap-1">
+                              <span>{store.produtos_count}</span>
+                              {store.produtos_count > 0 && (
+                                <Info className="h-3 w-3 text-gray-400" />
+                              )}
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Esta loja tem {store.produtos_count} produtos</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={getStoreBadgeColor(store.status || 'pendente')}>
                         {store.status === 'ativa' ? 'Ativa' : 
-                         store.status === 'pendente' ? 'Pendente' : 'Inativa'}
+                         store.status === 'pendente' ? 'Pendente' :
+                         store.status === 'inativa' ? 'Inativa' : 
+                         store.status === 'excluida' ? 'Excluída' : 'Desconhecido'}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right space-x-2">
@@ -134,6 +188,7 @@ const StoresManagementScreen: React.FC = () => {
                             variant="outline" 
                             className="h-8 w-8 p-0 text-green-600"
                             onClick={() => approveStore(store.id)}
+                            title="Aprovar loja"
                           >
                             <Check className="h-4 w-4" />
                           </Button>
@@ -142,20 +197,32 @@ const StoresManagementScreen: React.FC = () => {
                             variant="outline" 
                             className="h-8 w-8 p-0 text-red-600"
                             onClick={() => rejectStore(store.id)}
+                            title="Rejeitar loja"
                           >
                             <X className="h-4 w-4" />
                           </Button>
                         </>
                       )}
                       {store.status === 'ativa' && (
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="h-8 w-8 p-0 text-red-600"
-                          onClick={() => rejectStore(store.id)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
+                        <>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="h-8 w-8 p-0 text-blue-600"
+                            title="Ver detalhes"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="h-8 w-8 p-0 text-red-600"
+                            onClick={() => rejectStore(store.id)}
+                            title="Desativar loja"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </>
                       )}
                       {store.status === 'inativa' && (
                         <Button 
@@ -163,6 +230,7 @@ const StoresManagementScreen: React.FC = () => {
                           variant="outline" 
                           className="h-8 w-8 p-0 text-green-600"
                           onClick={() => approveStore(store.id)}
+                          title="Reativar loja"
                         >
                           <Check className="h-4 w-4" />
                         </Button>

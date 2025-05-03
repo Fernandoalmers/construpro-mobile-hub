@@ -1,9 +1,8 @@
 
 import { useState, useEffect } from 'react';
-import { getAdminProducts, updateProductStatus } from '@/services/products/productApproval';
-import { AdminProduct } from '@/services/products/productBase';
+import { fetchAdminProducts, approveProduct, rejectProduct, subscribeToAdminProductUpdates } from '@/services/adminProductsService';
+import { AdminProduct } from '@/types/admin';
 import { toast } from '@/components/ui/sonner';
-import { supabase } from '@/integrations/supabase/client';
 
 export const useAdminProducts = (initialFilter: string = 'all') => {
   const [products, setProducts] = useState<AdminProduct[]>([]);
@@ -15,7 +14,7 @@ export const useAdminProducts = (initialFilter: string = 'all') => {
   const loadProducts = async () => {
     try {
       setLoading(true);
-      const productsData = await getAdminProducts();
+      const productsData = await fetchAdminProducts();
       setProducts(productsData);
       applyFilters(productsData, filter, searchTerm);
     } catch (error) {
@@ -42,7 +41,7 @@ export const useAdminProducts = (initialFilter: string = 'all') => {
           product.nome.toLowerCase().includes(lowerSearch) ||
           product.descricao.toLowerCase().includes(lowerSearch) ||
           product.categoria.toLowerCase().includes(lowerSearch) ||
-          product.lojaNome.toLowerCase().includes(lowerSearch)
+          (product.lojaNome && product.lojaNome.toLowerCase().includes(lowerSearch))
       );
     }
     
@@ -51,28 +50,28 @@ export const useAdminProducts = (initialFilter: string = 'all') => {
 
   const handleApproveProduct = async (productId: string) => {
     try {
-      await updateProductStatus(productId, 'aprovado');
-      toast.success('Produto aprovado com sucesso');
-      
-      // Update local state
-      setProducts(prevProducts => 
-        prevProducts.map(product => 
-          product.id === productId 
-            ? { ...product, status: 'aprovado' } 
-            : product
-        )
-      );
-      
-      // Re-apply filters
-      applyFilters(
-        products.map(product => 
-          product.id === productId 
-            ? { ...product, status: 'aprovado' } 
-            : product
-        ),
-        filter,
-        searchTerm
-      );
+      const success = await approveProduct(productId);
+      if (success) {
+        // Update local state
+        setProducts(prevProducts => 
+          prevProducts.map(product => 
+            product.id === productId 
+              ? { ...product, status: 'aprovado' } 
+              : product
+          )
+        );
+        
+        // Re-apply filters
+        applyFilters(
+          products.map(product => 
+            product.id === productId 
+              ? { ...product, status: 'aprovado' } 
+              : product
+          ),
+          filter,
+          searchTerm
+        );
+      }
     } catch (error) {
       console.error('Error approving product:', error);
       toast.error('Erro ao aprovar produto');
@@ -81,28 +80,28 @@ export const useAdminProducts = (initialFilter: string = 'all') => {
 
   const handleRejectProduct = async (productId: string) => {
     try {
-      await updateProductStatus(productId, 'inativo');
-      toast.success('Produto rejeitado com sucesso');
-      
-      // Update local state
-      setProducts(prevProducts => 
-        prevProducts.map(product => 
-          product.id === productId 
-            ? { ...product, status: 'inativo' } 
-            : product
-        )
-      );
-      
-      // Re-apply filters
-      applyFilters(
-        products.map(product => 
-          product.id === productId 
-            ? { ...product, status: 'inativo' } 
-            : product
-        ),
-        filter,
-        searchTerm
-      );
+      const success = await rejectProduct(productId);
+      if (success) {
+        // Update local state
+        setProducts(prevProducts => 
+          prevProducts.map(product => 
+            product.id === productId 
+              ? { ...product, status: 'inativo' } 
+              : product
+          )
+        );
+        
+        // Re-apply filters
+        applyFilters(
+          products.map(product => 
+            product.id === productId 
+              ? { ...product, status: 'inativo' } 
+              : product
+          ),
+          filter,
+          searchTerm
+        );
+      }
     } catch (error) {
       console.error('Error rejecting product:', error);
       toast.error('Erro ao rejeitar produto');
@@ -114,15 +113,12 @@ export const useAdminProducts = (initialFilter: string = 'all') => {
     loadProducts();
     
     // Set up realtime subscription for products
-    const channel = supabase
-      .channel('products_changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'produtos' }, 
-        () => {
-          loadProducts();
-        }
-      )
-      .subscribe();
+    const channel = subscribeToAdminProductUpdates((_, eventType) => {
+      if (eventType === 'INSERT' || eventType === 'UPDATE' || eventType === 'DELETE') {
+        // Reload products when changes occur
+        loadProducts();
+      }
+    });
       
     return () => {
       supabase.removeChannel(channel);
@@ -146,3 +142,5 @@ export const useAdminProducts = (initialFilter: string = 'all') => {
     refreshProducts: loadProducts
   };
 };
+
+import { supabase } from '@/integrations/supabase/client';

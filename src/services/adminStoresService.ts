@@ -2,22 +2,11 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { logAdminAction } from './adminService';
-
-export interface AdminStore {
-  id: string;
-  nome: string;
-  logo_url: string | null;
-  proprietario_id: string;
-  proprietario_nome?: string;
-  status: string;
-  produtos_count: number;
-  created_at: string;
-  updated_at: string;
-}
+import { AdminStore } from '@/types/admin';
 
 export const fetchAdminStores = async (): Promise<AdminStore[]> => {
   try {
-    // Buscar as lojas
+    // Tentar primeiro com a tabela 'lojas'
     const { data: lojas, error: lojasError } = await supabase
       .from('lojas')
       .select(`
@@ -27,53 +16,81 @@ export const fetchAdminStores = async (): Promise<AdminStore[]> => {
         proprietario_id,
         status,
         created_at,
-        updated_at
+        updated_at,
+        profiles:proprietario_id (nome, email, telefone)
       `)
       .order('created_at', { ascending: false });
       
-    if (lojasError) throw lojasError;
-
-    // Preparar estrutura para guardar informações de proprietários
-    const proprietarioIds = lojas
-      .filter(loja => loja.proprietario_id)
-      .map(loja => loja.proprietario_id);
-
-    // Buscar nomes dos proprietários
-    const { data: proprietarios, error: proprietariosError } = await supabase
-      .from('profiles')
-      .select('id, nome')
-      .in('id', proprietarioIds);
+    if (!lojasError && lojas) {
+      // Contar produtos por loja
+      const storesWithCounts = await Promise.all(lojas.map(async (loja) => {
+        const { count, error: countError } = await supabase
+          .from('produtos')
+          .select('*', { count: 'exact', head: true })
+          .eq('vendedor_id', loja.id);
+          
+        return {
+          id: loja.id,
+          nome: loja.nome,
+          logo_url: loja.logo_url,
+          proprietario_id: loja.proprietario_id,
+          proprietario_nome: loja.profiles?.nome || 'Desconhecido',
+          status: loja.status || 'pendente',
+          produtos_count: count || 0,
+          contato: loja.profiles?.telefone || loja.profiles?.email,
+          created_at: loja.created_at,
+          updated_at: loja.updated_at
+        } as AdminStore;
+      }));
       
-    if (proprietariosError) throw proprietariosError;
+      return storesWithCounts;
+    }
+    
+    // Caso falhe, tentar com a tabela 'stores'
+    console.log("Trying to fetch from 'stores' table instead");
+    const { data: stores, error: storesError } = await supabase
+      .from('stores')
+      .select(`
+        id, 
+        nome, 
+        logo_url, 
+        owner_id, 
+        created_at, 
+        updated_at,
+        contato,
+        descricao,
+        profiles:owner_id (nome, email)
+      `)
+      .order('created_at', { ascending: false });
+      
+    if (storesError) {
+      console.error('Error fetching from stores table:', storesError);
+      throw storesError;
+    }
 
-    // Criar um mapa para associar rapidamente IDs de proprietários aos seus nomes
-    const proprietarioMap = new Map();
-    proprietarios?.forEach(p => proprietarioMap.set(p.id, p.nome));
-
-    // Para cada loja, contar produtos associados
-    const storesWithProductCounts = await Promise.all(lojas.map(async (loja) => {
+    // Contar produtos por store
+    const storesWithCounts = await Promise.all(stores.map(async (store) => {
       const { count, error: countError } = await supabase
         .from('produtos')
         .select('*', { count: 'exact', head: true })
-        .eq('vendedor_id', loja.id);
+        .eq('vendedor_id', store.id);
         
-      if (countError) {
-        console.error('Error counting products for store:', countError);
-        return {
-          ...loja,
-          proprietario_nome: proprietarioMap.get(loja.proprietario_id) || 'Desconhecido',
-          produtos_count: 0
-        };
-      }
-      
       return {
-        ...loja,
-        proprietario_nome: proprietarioMap.get(loja.proprietario_id) || 'Desconhecido',
-        produtos_count: count || 0
-      };
+        id: store.id,
+        nome: store.nome,
+        descricao: store.descricao,
+        logo_url: store.logo_url,
+        proprietario_id: store.owner_id,
+        proprietario_nome: store.profiles?.nome || 'Desconhecido',
+        status: 'ativa', // Default para stores se não tiver status
+        produtos_count: count || 0,
+        contato: store.contato || store.profiles?.email,
+        created_at: store.created_at,
+        updated_at: store.updated_at
+      } as AdminStore;
     }));
     
-    return storesWithProductCounts;
+    return storesWithCounts;
   } catch (error) {
     console.error('Error fetching admin stores:', error);
     toast.error('Erro ao carregar lojas');
@@ -83,14 +100,37 @@ export const fetchAdminStores = async (): Promise<AdminStore[]> => {
 
 export const approveStore = async (storeId: string): Promise<boolean> => {
   try {
-    const { error } = await supabase
+    // Tentar atualizar na tabela 'lojas' primeiro
+    const { error: lojasError } = await supabase
       .from('lojas')
-      .update({ status: 'ativa' })
+      .update({ status: 'ativa', updated_at: new Date().toISOString() })
       .eq('id', storeId);
       
-    if (error) throw error;
+    if (!lojasError) {
+      // Log da ação administrativa
+      await logAdminAction({
+        action: 'approve_store',
+        entityType: 'loja',
+        entityId: storeId,
+        details: { status: 'ativa' }
+      });
+      
+      toast.success('Loja aprovada com sucesso');
+      return true;
+    }
     
-    // Log the admin action
+    // Se falhar com 'lojas', tentar com 'stores'
+    const { error: storesError } = await supabase
+      .from('stores')
+      .update({ status: 'ativa', updated_at: new Date().toISOString() })
+      .eq('id', storeId);
+      
+    if (storesError) {
+      console.error('Error updating store status:', storesError);
+      throw storesError;
+    }
+    
+    // Log da ação administrativa
     await logAdminAction({
       action: 'approve_store',
       entityType: 'loja',
@@ -109,40 +149,86 @@ export const approveStore = async (storeId: string): Promise<boolean> => {
 
 export const rejectStore = async (storeId: string): Promise<boolean> => {
   try {
-    const { error } = await supabase
+    // Tentar atualizar na tabela 'lojas' primeiro
+    const { error: lojasError } = await supabase
       .from('lojas')
-      .update({ status: 'recusada' })
+      .update({ status: 'inativa', updated_at: new Date().toISOString() })
       .eq('id', storeId);
       
-    if (error) throw error;
+    if (!lojasError) {
+      // Log da ação administrativa
+      await logAdminAction({
+        action: 'reject_store',
+        entityType: 'loja',
+        entityId: storeId,
+        details: { status: 'inativa' }
+      });
+      
+      toast.success('Loja rejeitada');
+      return true;
+    }
     
-    // Log the admin action
+    // Se falhar com 'lojas', tentar com 'stores'
+    const { error: storesError } = await supabase
+      .from('stores')
+      .update({ status: 'inativa', updated_at: new Date().toISOString() })
+      .eq('id', storeId);
+      
+    if (storesError) {
+      console.error('Error rejecting store:', storesError);
+      throw storesError;
+    }
+    
+    // Log da ação administrativa
     await logAdminAction({
       action: 'reject_store',
       entityType: 'loja',
       entityId: storeId,
-      details: { status: 'recusada' }
+      details: { status: 'inativa' }
     });
     
-    toast.success('Loja recusada');
+    toast.success('Loja rejeitada');
     return true;
   } catch (error) {
     console.error('Error rejecting store:', error);
-    toast.error('Erro ao recusar loja');
+    toast.error('Erro ao rejeitar loja');
     return false;
   }
 };
 
 export const deleteStore = async (storeId: string): Promise<boolean> => {
   try {
-    const { error } = await supabase
+    // Tentar atualizar na tabela 'lojas' primeiro
+    const { error: lojasError } = await supabase
       .from('lojas')
-      .update({ status: 'excluida' })
+      .update({ status: 'excluida', updated_at: new Date().toISOString() })
       .eq('id', storeId);
       
-    if (error) throw error;
+    if (!lojasError) {
+      // Log da ação administrativa
+      await logAdminAction({
+        action: 'delete_store',
+        entityType: 'loja',
+        entityId: storeId,
+        details: { status: 'excluida' }
+      });
+      
+      toast.success('Loja marcada como excluída');
+      return true;
+    }
     
-    // Log the admin action
+    // Se falhar com 'lojas', tentar com 'stores'
+    const { error: storesError } = await supabase
+      .from('stores')
+      .update({ status: 'excluida', updated_at: new Date().toISOString() })
+      .eq('id', storeId);
+      
+    if (storesError) {
+      console.error('Error deleting store:', storesError);
+      throw storesError;
+    }
+    
+    // Log da ação administrativa
     await logAdminAction({
       action: 'delete_store',
       entityType: 'loja',
@@ -179,8 +265,8 @@ export const getStoreBadgeColor = (status: string): string => {
 export const subscribeToAdminStoreUpdates = (
   callback: (store: any, eventType: 'INSERT' | 'UPDATE' | 'DELETE') => void
 ) => {
-  return supabase
-    .channel('admin-stores-changes')
+  const lojasChannel = supabase
+    .channel('admin-lojas-changes')
     .on(
       'postgres_changes',
       {
@@ -196,4 +282,33 @@ export const subscribeToAdminStoreUpdates = (
       }
     )
     .subscribe();
+    
+  const storesChannel = supabase
+    .channel('admin-stores-changes')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'stores'
+      },
+      (payload) => {
+        console.log('Store atualizada (Admin):', payload);
+        const eventType = payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE';
+        const store = payload.new;
+        callback(store, eventType);
+      }
+    )
+    .subscribe();
+    
+  return {
+    lojasChannel,
+    storesChannel,
+    unsubscribe: () => {
+      supabase.removeChannel(lojasChannel);
+      supabase.removeChannel(storesChannel);
+    }
+  };
 };
+
+export { type AdminStore };

@@ -1,4 +1,5 @@
 
+
 export interface UserData {
   id: string;
   nome?: string;
@@ -92,3 +93,41 @@ export interface AdminReward {
   created_at: string;
   updated_at: string;
 }
+
+export interface AdminProduct {
+  id: string;
+  nome: string;
+  descricao: string;
+  categoria: string;
+  imagemUrl: string | null;
+  preco: number;
+  preco_normal: number;
+  preco_promocional?: number;
+  estoque: number;
+  pontos: number;
+  pontos_consumidor?: number;
+  pontos_profissional?: number;
+  lojaId: string;
+  lojaNome: string;
+  status: "pendente" | "aprovado" | "inativo";
+  created_at?: string;
+  updated_at?: string;
+  imagens?: string[];
+  vendedor_id?: string;
+}
+
+export interface AdminStore {
+  id: string;
+  nome: string;
+  logo_url: string | null;
+  banner_url?: string | null;
+  descricao?: string;
+  proprietario_id: string;
+  proprietario_nome?: string;
+  status: string;
+  produtos_count: number;
+  contato?: string;
+  created_at: string;
+  updated_at: string;
+}
+
