@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Suspense, lazy } from 'react';
 import { Route, Routes, Navigate } from 'react-router-dom';
@@ -62,8 +61,11 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 
 // Admin Dashboard Components
 import AdminDashboard from './components/admin/AdminDashboard';
-import UsersManagement from './components/admin/UsersManagement';
+import UserManagementScreen from './components/admin/UserManagementScreen';
 import ProductsManagement from './components/admin/ProductsManagement';
+import StoresManagementScreen from './components/admin/StoresManagementScreen';
+import RedemptionsManagementScreen from './components/admin/RedemptionsManagementScreen';
+import OrdersManagementScreen from './components/admin/OrdersManagementScreen';
 import AdminLogs from './components/admin/AdminLogs';
 
 // QueryClient for React Query
@@ -324,27 +326,63 @@ function App() {
                 </ProtectedRoute>
               } />
               
-              {/* Admin Dashboard Routes - Protected with admin requirement */}
-              <Route path="/admin" element={
-                <ProtectedRoute requireAuth={true} requireAdmin={true}>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              } />
-              <Route path="/admin/users" element={
-                <ProtectedRoute requireAuth={true} requireAdmin={true}>
-                  <UsersManagement />
-                </ProtectedRoute>
-              } />
-              <Route path="/admin/products" element={
-                <ProtectedRoute requireAuth={true} requireAdmin={true}>
-                  <ProductsManagement />
-                </ProtectedRoute>
-              } />
-              <Route path="/admin/logs" element={
-                <ProtectedRoute requireAuth={true} requireAdmin={true}>
-                  <AdminLogs />
-                </ProtectedRoute>
-              } />
+              {/* Admin Routes */}
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute requireAuth={true} requireAdmin={true}>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/users"
+                element={
+                  <ProtectedRoute requireAuth={true} requireAdmin={true}>
+                    <UserManagementScreen />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/products"
+                element={
+                  <ProtectedRoute requireAuth={true} requireAdmin={true}>
+                    <ProductsManagement />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/stores"
+                element={
+                  <ProtectedRoute requireAuth={true} requireAdmin={true}>
+                    <StoresManagementScreen />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/redemptions"
+                element={
+                  <ProtectedRoute requireAuth={true} requireAdmin={true}>
+                    <RedemptionsManagementScreen />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/orders"
+                element={
+                  <ProtectedRoute requireAuth={true} requireAdmin={true}>
+                    <OrdersManagementScreen />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/logs"
+                element={
+                  <ProtectedRoute requireAuth={true} requireAdmin={true}>
+                    <AdminLogs />
+                  </ProtectedRoute>
+                }
+              />
               
               {/* Default redirect */}
               <Route path="*" element={<Navigate to="/home" replace />} />
