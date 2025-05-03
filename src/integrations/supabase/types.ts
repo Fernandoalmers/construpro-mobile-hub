@@ -320,6 +320,73 @@ export type Database = {
           },
         ]
       }
+      product_categories: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+          segmento_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+          segmento_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+          segmento_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_categories_segmento_id_fkey"
+            columns: ["segmento_id"]
+            isOneToOne: false
+            referencedRelation: "product_segments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_images: {
+        Row: {
+          created_at: string
+          id: string
+          is_primary: boolean | null
+          ordem: number
+          product_id: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean | null
+          ordem?: number
+          product_id: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean | null
+          ordem?: number
+          product_id?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_images_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_reviews: {
         Row: {
           cliente_id: string
@@ -358,50 +425,92 @@ export type Database = {
           },
         ]
       }
+      product_segments: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           avaliacao: number | null
           categoria: string
+          codigo_barras: string | null
           created_at: string | null
           descricao: string
           estoque: number
           id: string
           imagem_url: string | null
           loja_id: string
+          m2_por_caixa: number | null
           nome: string
           pontos: number | null
+          pontos_profissional: number | null
           preco: number
           preco_anterior: number | null
+          segmento: string | null
+          sku: string | null
+          status: string | null
+          unidade_venda: string | null
           updated_at: string | null
         }
         Insert: {
           avaliacao?: number | null
           categoria: string
+          codigo_barras?: string | null
           created_at?: string | null
           descricao: string
           estoque?: number
           id?: string
           imagem_url?: string | null
           loja_id: string
+          m2_por_caixa?: number | null
           nome: string
           pontos?: number | null
+          pontos_profissional?: number | null
           preco: number
           preco_anterior?: number | null
+          segmento?: string | null
+          sku?: string | null
+          status?: string | null
+          unidade_venda?: string | null
           updated_at?: string | null
         }
         Update: {
           avaliacao?: number | null
           categoria?: string
+          codigo_barras?: string | null
           created_at?: string | null
           descricao?: string
           estoque?: number
           id?: string
           imagem_url?: string | null
           loja_id?: string
+          m2_por_caixa?: number | null
           nome?: string
           pontos?: number | null
+          pontos_profissional?: number | null
           preco?: number
           preco_anterior?: number | null
+          segmento?: string | null
+          sku?: string | null
+          status?: string | null
+          unidade_venda?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -1101,6 +1210,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_product: {
+        Args: { product_id: string }
+        Returns: undefined
+      }
+      get_vendor_stores: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          nome: string
+          logo_url: string
+        }[]
+      }
       increment_services_count: {
         Args: { prof_id: string }
         Returns: undefined
