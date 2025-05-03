@@ -9,24 +9,14 @@ import { logAdminAction } from '../../adminService';
 export const approveProduct = async (productId: string): Promise<boolean> => {
   try {
     console.log('Approving product:', productId);
-    // Try updating in produtos table first
-    let { error } = await supabase
+    const { error } = await supabase
       .from('produtos')
       .update({ status: 'aprovado', updated_at: new Date().toISOString() })
       .eq('id', productId);
       
     if (error) {
-      console.log('Error updating in produtos, trying products table:', error);
-      // Try updating in products table if produtos fails
-      const { error: productsError } = await supabase
-        .from('products')
-        .update({ status: 'aprovado', updated_at: new Date().toISOString() })
-        .eq('id', productId);
-      
-      if (productsError) {
-        console.error('Error approving product in both tables:', productsError);
-        throw productsError;
-      }
+      console.error('Error approving product:', error);
+      throw error;
     }
     
     // Log the admin action
@@ -52,24 +42,14 @@ export const approveProduct = async (productId: string): Promise<boolean> => {
 export const rejectProduct = async (productId: string): Promise<boolean> => {
   try {
     console.log('Rejecting product:', productId);
-    // Try updating in produtos table first
-    let { error } = await supabase
+    const { error } = await supabase
       .from('produtos')
       .update({ status: 'inativo', updated_at: new Date().toISOString() })
       .eq('id', productId);
       
     if (error) {
-      console.log('Error updating in produtos, trying products table:', error);
-      // Try updating in products table if produtos fails
-      const { error: productsError } = await supabase
-        .from('products')
-        .update({ status: 'inativo', updated_at: new Date().toISOString() })
-        .eq('id', productId);
-      
-      if (productsError) {
-        console.error('Error rejecting product in both tables:', productsError);
-        throw productsError;
-      }
+      console.error('Error rejecting product:', error);
+      throw error;
     }
     
     // Log the admin action
@@ -94,23 +74,14 @@ export const rejectProduct = async (productId: string): Promise<boolean> => {
  */
 export const deleteProduct = async (productId: string): Promise<boolean> => {
   try {
-    // Try deleting from produtos table first
-    let { error } = await supabase
+    const { error } = await supabase
       .from('produtos')
       .delete()
       .eq('id', productId);
       
     if (error) {
-      // Try deleting from products table if produtos fails
-      const { error: productsError } = await supabase
-        .from('products')
-        .delete()
-        .eq('id', productId);
-      
-      if (productsError) {
-        console.error('Error deleting product from both tables:', productsError);
-        throw productsError;
-      }
+      console.error('Error deleting product:', error);
+      throw error;
     }
     
     // Log the admin action

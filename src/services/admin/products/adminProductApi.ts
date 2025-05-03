@@ -27,7 +27,8 @@ export const getAdminProducts = async (status?: string): Promise<AdminProduct[]>
         estoque,
         status,
         created_at,
-        updated_at
+        updated_at,
+        vendedores:vendedor_id (nome_loja)
       `)
       .order('created_at', { ascending: false });
       
@@ -45,33 +46,16 @@ export const getAdminProducts = async (status?: string): Promise<AdminProduct[]>
 
     console.log(`Found ${data?.length || 0} products in 'produtos' table`);
     
-    // Get vendor information for each product
-    const productsWithVendorInfo = await Promise.all((data || []).map(async (item) => {
+    // Transform data to AdminProduct format
+    const productsWithVendorInfo = (data || []).map(item => {
       // Get the first image URL from the images array if available
       let imageUrl = null;
       if (item.imagens && Array.isArray(item.imagens) && item.imagens.length > 0) {
         imageUrl = item.imagens[0];
       }
       
-      let vendorName = 'Loja desconhecida';
-      
-      // Try to get vendor name
-      if (item.vendedor_id) {
-        try {
-          // Try from lojas table
-          const { data: lojaData } = await supabase
-            .from('lojas')
-            .select('nome')
-            .eq('id', item.vendedor_id)
-            .single();
-              
-          if (lojaData?.nome) {
-            vendorName = lojaData.nome;
-          }
-        } catch (error) {
-          console.log('Error fetching vendor name:', error);
-        }
-      }
+      // Use vendedor name directly from join
+      const vendorName = item.vendedores?.nome_loja || 'Loja desconhecida';
       
       return {
         id: item.id,
@@ -94,7 +78,7 @@ export const getAdminProducts = async (status?: string): Promise<AdminProduct[]>
         updated_at: item.updated_at,
         imagens: Array.isArray(item.imagens) ? item.imagens.filter(img => typeof img === 'string') : []
       };
-    }));
+    });
     
     return productsWithVendorInfo;
   } catch (error) {
@@ -123,7 +107,10 @@ export const getPendingProducts = async (): Promise<AdminProduct[]> => {
 export const debugFetchProducts = async () => {
   console.log('Debug fetch products called');
   try {
-    const { data, error } = await supabase.from('produtos').select('*').limit(10);
+    const { data, error } = await supabase
+      .from('produtos')
+      .select('*, vendedores:vendedor_id(nome_loja)')
+      .limit(10);
     console.log('Debug productos data:', data);
     
     if (error) {

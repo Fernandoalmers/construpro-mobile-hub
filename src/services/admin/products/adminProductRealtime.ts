@@ -1,26 +1,27 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { AdminProduct } from '@/types/admin';
 import { RealtimeChannel } from '@supabase/supabase-js';
 
 /**
- * Function to configure subscription for realtime product updates
+ * Subscribe to admin product updates in realtime
  */
 export const subscribeToAdminProductUpdates = (
-  callback: (product: any, eventType: 'INSERT' | 'UPDATE' | 'DELETE') => void
+  callback: (product: AdminProduct, eventType: 'INSERT' | 'UPDATE' | 'DELETE') => void
 ): RealtimeChannel => {
   return supabase
-    .channel('admin-products-changes')
+    .channel('admin-product-changes')
     .on(
       'postgres_changes',
       {
         event: '*',
         schema: 'public',
-        table: 'produtos'
+        table: 'produtos',
       },
       (payload) => {
-        console.log('Produto atualizado (Admin):', payload);
+        console.log('Product realtime update:', payload);
         const eventType = payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE';
-        const product = payload.new;
+        const product = payload.new as any;
         callback(product, eventType);
       }
     )
@@ -28,10 +29,10 @@ export const subscribeToAdminProductUpdates = (
 };
 
 /**
- * Unsubscribe from a channel
+ * Unsubscribe from a realtime channel
  */
-export const unsubscribeFromChannel = (channel: RealtimeChannel | null): void => {
+export const unsubscribeFromChannel = (channel: RealtimeChannel): void => {
   if (channel) {
-    supabase.removeChannel(channel);
+    channel.unsubscribe();
   }
 };
