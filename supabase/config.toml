@@ -25,3 +25,7 @@ verify_jwt = true
 
 [functions.marketplace-management]
 verify_jwt = true
+
+[functions.services-management]
+verify_jwt = true
+

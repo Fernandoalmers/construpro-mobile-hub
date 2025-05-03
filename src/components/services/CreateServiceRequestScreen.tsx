@@ -11,6 +11,7 @@ import CustomButton from '../common/CustomButton';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
 import { useAuth } from '@/context/AuthContext';
+import { servicesService } from '@/services/servicesManagementService';
 
 const serviceCategories = [
   { value: 'pintura', label: 'Pintura' },
@@ -36,7 +37,7 @@ const formSchema = z.object({
 
 const CreateServiceRequestScreen = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -49,18 +50,28 @@ const CreateServiceRequestScreen = () => {
     },
   });
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    if (!user) {
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    if (!isAuthenticated) {
       toast.error('Você precisa estar logado para criar uma solicitação de serviço');
       navigate('/login');
       return;
     }
 
-    // Here would be the API call to create the service request
-    console.log('Criando solicitação de serviço:', values);
-    
-    toast.success('Solicitação de serviço criada com sucesso!');
-    navigate('/services');
+    try {
+      await servicesService.createServiceRequest({
+        titulo: values.titulo,
+        descricao: values.descricao,
+        categoria: values.categoria,
+        endereco: values.endereco,
+        orcamento: values.orcamento || null
+      });
+      
+      toast.success('Solicitação de serviço criada com sucesso!');
+      navigate('/services');
+    } catch (error) {
+      console.error('Erro ao criar solicitação:', error);
+      toast.error('Erro ao criar solicitação. Tente novamente.');
+    }
   };
 
   return (

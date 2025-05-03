@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Clock, CheckCircle, XCircle } from 'lucide-react';
@@ -8,29 +8,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import ListEmptyState from '../common/ListEmptyState';
-import { serviceRequestsMock } from '@/data/serviceRequests';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Proposal } from '@/types/services';
-
-// Mock data - In a real app, this would come from the API
-const getMyProposals = (userId: string) => {
-  const allProposals: { proposal: Proposal; service: any }[] = [];
-  
-  // Extract all proposals across service requests
-  serviceRequestsMock.forEach(service => {
-    service.propostas
-      .filter(proposal => proposal.profissionalId === userId)
-      .forEach(proposal => {
-        allProposals.push({
-          proposal,
-          service
-        });
-      });
-  });
-  
-  return allProposals;
-};
+import { servicesService } from '@/services/servicesManagementService';
+import { toast } from '@/components/ui/sonner';
 
 const ProposalStatusBadge = ({ status }: { status: string }) => {
   switch (status) {
@@ -62,9 +44,27 @@ const MyProposalsScreen: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('all');
+  const [myProposals, setMyProposals] = useState<{ proposal: Proposal; service: any }[]>([]);
+  const [loading, setLoading] = useState(true);
   
-  // Get proposals from mock data
-  const myProposals = getMyProposals(user?.id || '1');
+  useEffect(() => {
+    const fetchProposals = async () => {
+      if (!user) return;
+      
+      try {
+        setLoading(true);
+        const proposals = await servicesService.getMyProposals();
+        setMyProposals(proposals);
+      } catch (error) {
+        console.error('Error fetching proposals:', error);
+        toast.error('Erro ao carregar propostas. Tente novamente mais tarde.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProposals();
+  }, [user]);
   
   // Filter proposals based on active tab
   const filteredProposals = myProposals.filter(item => {
@@ -78,6 +78,14 @@ const MyProposalsScreen: React.FC = () => {
   const handleViewService = (serviceId: string) => {
     navigate(`/services/request/${serviceId}`);
   };
+  
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-40">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-construPro-blue"></div>
+      </div>
+    );
+  }
   
   return (
     <div className="flex flex-col gap-4">
@@ -115,7 +123,7 @@ const MyProposalsScreen: React.FC = () => {
                     
                     <div className="flex items-center text-xs text-gray-500 mt-2">
                       <span>
-                        Enviada {format(new Date(proposal.dataCriacao), 'dd/MM/yyyy', { locale: ptBR })}
+                        Enviada {proposal.dataCriacao ? format(new Date(proposal.dataCriacao), 'dd/MM/yyyy', { locale: ptBR }) : ''}
                       </span>
                     </div>
                   </div>

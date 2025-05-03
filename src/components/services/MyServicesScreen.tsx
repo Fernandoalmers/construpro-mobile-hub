@@ -1,13 +1,13 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { serviceRequestsMock } from '@/data/serviceRequests';
-import { projectsMock } from '@/data/projects';
+import { ServiceRequest, Project } from '@/types/services';
 import ServiceRequestCard from './ServiceRequestCard';
 import ProjectCard from './ProjectCard';
 import ListEmptyState from '../common/ListEmptyState';
 import { ClipboardCheck, List } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { servicesService } from '@/services/servicesManagementService';
 
 interface MyServicesScreenProps {
   isProfessional: boolean;
@@ -16,21 +16,48 @@ interface MyServicesScreenProps {
 const MyServicesScreen: React.FC<MyServicesScreenProps> = ({ isProfessional }) => {
   const [activeTab, setActiveTab] = useState('requests');
   const { user } = useAuth();
+  const [myServiceRequests, setMyServiceRequests] = useState<ServiceRequest[]>([]);
+  const [myProjects, setMyProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data filtering - in real app, this would use actual user ID
-  const userOrProfessionalId = user?.id || '1';
-  
-  const myServiceRequests = serviceRequestsMock.filter(request => 
-    isProfessional 
-      ? request.propostas.some(p => p.profissionalId === userOrProfessionalId)
-      : request.clienteId === userOrProfessionalId
-  );
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch service requests
+        const filters = isProfessional ? {} : { status: 'all' };
+        const requests = await servicesService.getAvailableServices(filters);
+        
+        // Filter requests based on user role
+        const filteredRequests = isProfessional 
+          ? requests.filter(request => request.propostas.some(p => p.profissionalId === user?.id))
+          : requests.filter(request => request.clienteId === user?.id);
+        
+        setMyServiceRequests(filteredRequests);
+        
+        // Fetch projects
+        const projects = await servicesService.getProjects(isProfessional);
+        setMyProjects(projects);
+      } catch (error) {
+        console.error('Error fetching user services/projects:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const myProjects = projectsMock.filter(project => 
-    isProfessional 
-      ? project.profissionalId === userOrProfessionalId
-      : project.clienteId === userOrProfessionalId
-  );
+    if (user?.id) {
+      fetchData();
+    }
+  }, [user?.id, isProfessional]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-40">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-construPro-blue"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4">
