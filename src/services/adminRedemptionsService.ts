@@ -17,10 +17,21 @@ export type AdminRedemption = {
   updated_at: string;
 };
 
+// Cache to prevent unnecessary refetches
+let redemptionsCache: AdminRedemption[] | null = null;
+let lastFetchTime = 0;
+const CACHE_DURATION = 60000; // 1 minute cache
+
 /**
  * Fetches all redemptions from the system
  */
-export const fetchRedemptions = async (): Promise<AdminRedemption[]> => {
+export const fetchRedemptions = async (forceRefresh = false): Promise<AdminRedemption[]> => {
+  // Return cached data if available and not expired
+  const now = Date.now();
+  if (!forceRefresh && redemptionsCache && (now - lastFetchTime < CACHE_DURATION)) {
+    return redemptionsCache;
+  }
+
   try {
     const { data, error } = await supabase
       .from('resgates')
@@ -40,11 +51,11 @@ export const fetchRedemptions = async (): Promise<AdminRedemption[]> => {
       return [];
     }
 
-    return data.map(item => ({
+    const formattedData = data.map(item => ({
       id: item.id,
       cliente_id: item.cliente_id,
-      // Fix the type issue with a proper null check for profiles
-      cliente_nome: (item.profiles && typeof item.profiles === 'object') 
+      // Fix the type issue with a proper null check and type assertion
+      cliente_nome: item.profiles && typeof item.profiles === 'object' 
         ? ((item.profiles as {nome?: string}).nome || 'Cliente')
         : 'Cliente',
       item: item.item,
@@ -56,6 +67,12 @@ export const fetchRedemptions = async (): Promise<AdminRedemption[]> => {
       created_at: item.created_at,
       updated_at: item.updated_at
     }));
+
+    // Update cache
+    redemptionsCache = formattedData;
+    lastFetchTime = now;
+
+    return formattedData;
   } catch (error) {
     console.error('Unexpected error fetching redemptions:', error);
     return [];
@@ -84,6 +101,9 @@ export const approveRedemption = async (redemptionId: string): Promise<boolean> 
       entity_type: 'redemption',
       entity_id: redemptionId
     });
+
+    // Invalidate cache
+    redemptionsCache = null;
 
     toast.success('Resgate aprovado com sucesso');
     return true;
@@ -117,6 +137,9 @@ export const rejectRedemption = async (redemptionId: string): Promise<boolean> =
       entity_id: redemptionId
     });
 
+    // Invalidate cache
+    redemptionsCache = null;
+
     toast.success('Resgate recusado com sucesso');
     return true;
   } catch (error) {
@@ -148,6 +171,9 @@ export const markRedemptionAsDelivered = async (redemptionId: string): Promise<b
       entity_type: 'redemption',
       entity_id: redemptionId
     });
+
+    // Invalidate cache
+    redemptionsCache = null;
 
     toast.success('Resgate marcado como entregue com sucesso');
     return true;
