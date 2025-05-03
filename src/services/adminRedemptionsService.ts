@@ -45,7 +45,7 @@ export const fetchRedemptions = async (): Promise<AdminRedemption[]> => {
       cliente_id: item.cliente_id,
       // Fix the type issue with a proper null check for profiles
       cliente_nome: item.profiles && typeof item.profiles === 'object' ? 
-        (item.profiles.nome || 'Cliente') : 'Cliente',
+        item.profiles.nome || 'Cliente' : 'Cliente',
       item: item.item,
       pontos: item.pontos,
       imagem_url: item.imagem_url,
