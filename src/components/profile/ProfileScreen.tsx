@@ -30,7 +30,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { useAuth, UserRole } from '../../context/AuthContext';
-import { toast } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 const ProfileScreen: React.FC = () => {
@@ -132,16 +132,20 @@ const ProfileScreen: React.FC = () => {
       const file = event.target.files[0];
       const fileExt = file.name.split('.').pop();
       const fileName = `${authUser?.id}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
+      const filePath = `${fileName}`;
       
       setUploading(true);
       
       // Upload the file to Supabase Storage
       const { data, error } = await supabase.storage
         .from('avatars')
-        .upload(filePath, file);
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
       
       if (error) {
+        console.error("Upload error:", error);
         throw error;
       }
       
@@ -150,8 +154,14 @@ const ProfileScreen: React.FC = () => {
         .from('avatars')
         .getPublicUrl(filePath);
       
+      console.log("Avatar URL:", publicUrl);
+      
       // Update the user's profile with the new avatar URL
-      await updateProfile({ avatar: publicUrl });
+      const updateResult = await updateProfile({ avatar: publicUrl });
+      
+      if (!updateResult) {
+        throw new Error("Failed to update profile with new avatar");
+      }
       
       // Refresh the profile to get the updated avatar
       await refreshProfile();

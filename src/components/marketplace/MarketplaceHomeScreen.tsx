@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import CustomInput from '../common/CustomInput';
@@ -13,20 +13,15 @@ import {
   ShoppingBag,
   Construction
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import LoadingState from '../common/LoadingState';
+import ErrorState from '../common/ErrorState';
 
-// Imagens de fundo para as categorias
-const categoryImages = {
-  'materiais-construcao': '/lovable-uploads/1b629f74-0778-46a1-bb6a-4c30301e733e.png',
-  'materiais-eletricos': 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=300',
-  'vidracaria': 'https://images.unsplash.com/photo-1496307653780-42ee777d4833?auto=format&fit=crop&w=300',
-  'marmoraria': 'https://images.unsplash.com/photo-1466442929976-97f336a657be?auto=format&fit=crop&w=300',
-  'aluguel': 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&w=300',
-  'profissionais': 'https://images.unsplash.com/photo-1521791055366-0d553872125f?auto=format&fit=crop&w=300',
-  'todos': 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=300'
-};
+// Import store data
+import stores from '@/data/lojas.json';
 
-// Updated category blocks list (removed Hidráulica and Ferramentas)
-const categoryBlocks = [
+// Updated category blocks list
+const segmentBlocks = [
   {
     id: 'materiais-construcao',
     name: 'Materiais de Construção',
@@ -73,6 +68,46 @@ const categoryBlocks = [
 
 const MarketplaceHomeScreen: React.FC = () => {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [storeData, setStoreData] = useState<any[]>(stores);
+
+  // Use real store images if available
+  const segmentImages: Record<string, string> = {
+    'materiais-construcao': '/lovable-uploads/1b629f74-0778-46a1-bb6a-4c30301e733e.png',
+    'materiais-eletricos': storeData.find(s => s.categorias?.includes('Elétrica'))?.logoUrl || 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=300',
+    'vidracaria': storeData.find(s => s.categorias?.includes('Vidraçaria'))?.logoUrl || 'https://images.unsplash.com/photo-1496307653780-42ee777d4833?auto=format&fit=crop&w=300',
+    'marmoraria': storeData.find(s => s.categorias?.includes('Marmoraria'))?.logoUrl || 'https://images.unsplash.com/photo-1466442929976-97f336a657be?auto=format&fit=crop&w=300',
+    'aluguel': storeData.find(s => s.categorias?.includes('Aluguel'))?.logoUrl || 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&w=300',
+    'profissionais': 'https://images.unsplash.com/photo-1521791055366-0d553872125f?auto=format&fit=crop&w=300',
+    'todos': 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=300'
+  };
+
+  useEffect(() => {
+    const fetchStores = async () => {
+      try {
+        setLoading(true);
+        
+        const { data, error } = await supabase
+          .from('stores')
+          .select('*');
+          
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          setStoreData(data);
+        }
+        
+      } catch (err) {
+        console.error('Error fetching stores:', err);
+        setError('Falha ao carregar lojas. Por favor, tente novamente.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchStores();
+  }, []);
 
   const handleCategoryClick = (filter: any) => {
     if (filter.type === 'professionals') {
@@ -90,6 +125,14 @@ const MarketplaceHomeScreen: React.FC = () => {
     navigate(`/marketplace/products?${queryParams.toString()}`);
   };
 
+  if (loading) {
+    return <LoadingState text="Carregando segmentos..." />;
+  }
+
+  if (error) {
+    return <ErrorState title="Erro" message={error} />;
+  }
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 pb-20">
       {/* Header */}
@@ -105,21 +148,21 @@ const MarketplaceHomeScreen: React.FC = () => {
         />
       </div>
       
-      {/* Category blocks - redesigned for more elegance */}
+      {/* Segment blocks - redesigned for more elegance */}
       <div className="p-4">
-        <h2 className="font-bold text-lg mb-3">Categorias</h2>
+        <h2 className="font-bold text-lg mb-3">Segmentos</h2>
         
         <div className="grid grid-cols-2 gap-4">
-          {categoryBlocks.map((category) => (
+          {segmentBlocks.map((segment) => (
             <div 
-              key={category.id}
+              key={segment.id}
               className="cursor-pointer"
-              onClick={() => handleCategoryClick(category.filter)}
+              onClick={() => handleCategoryClick(segment.filter)}
             >
               <div 
                 className="relative h-40 rounded-lg overflow-hidden shadow-md"
                 style={{ 
-                  backgroundImage: `url(${categoryImages[category.id as keyof typeof categoryImages]})`,
+                  backgroundImage: `url(${segmentImages[segment.id]})`,
                   backgroundSize: 'cover',
                   backgroundPosition: 'center'
                 }}
@@ -131,10 +174,10 @@ const MarketplaceHomeScreen: React.FC = () => {
                 <div className="absolute bottom-0 left-0 right-0 p-3 flex flex-col items-start">
                   <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center mb-2 shadow-md">
                     <span className="text-construPro-blue">
-                      {category.icon}
+                      {segment.icon}
                     </span>
                   </div>
-                  <span className="text-white font-medium">{category.name}</span>
+                  <span className="text-white font-medium">{segment.name}</span>
                 </div>
               </div>
             </div>

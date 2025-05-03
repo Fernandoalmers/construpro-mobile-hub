@@ -14,6 +14,8 @@ interface CartContextType {
   updateQuantity: (itemId: string, quantity: number) => Promise<void>;
   removeItem: (itemId: string) => Promise<void>;
   clearCart: () => Promise<void>;
+  showCartPopup: boolean;
+  setShowCartPopup: (show: boolean) => void;
 }
 
 const CartContext = createContext<CartContextType | null>(null);
@@ -22,6 +24,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [cart, setCart] = useState<Cart | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [showCartPopup, setShowCartPopup] = useState<boolean>(false);
   const { isAuthenticated } = useAuth();
 
   const refreshCart = async () => {
@@ -59,6 +62,12 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       const updatedCart = await cartService.addToCart(productId, quantity);
       setCart(updatedCart);
       toast.success('Produto adicionado ao carrinho');
+      
+      // Show cart popup for 4 seconds
+      setShowCartPopup(true);
+      setTimeout(() => {
+        setShowCartPopup(false);
+      }, 4000);
     } catch (err) {
       console.error('Failed to add to cart:', err);
       toast.error('Erro ao adicionar ao carrinho');
@@ -125,6 +134,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     updateQuantity,
     removeItem,
     clearCart,
+    showCartPopup,
+    setShowCartPopup,
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
