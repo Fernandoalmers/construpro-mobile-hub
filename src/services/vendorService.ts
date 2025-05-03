@@ -151,8 +151,10 @@ export const saveVendorProfile = async (vendorData: Partial<Vendor>): Promise<Ve
         throw new Error('Nome da loja é obrigatório');
       }
       
+      // Make sure we're providing a nome_loja value when creating a new vendor
       const newVendor = {
         ...vendorData,
+        nome_loja: vendorData.nome_loja,
         usuario_id: user.user.id
       };
       
@@ -325,7 +327,8 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
       return [];
     }
     
-    const { data, error } = await supabase
+    // Query orders
+    const { data: ordersData, error: ordersError } = await supabase
       .from('pedidos')
       .select(`
         *,
@@ -339,14 +342,18 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
       .eq('vendedor_id', vendorProfile.id)
       .order('created_at', { ascending: false });
     
-    if (error) {
-      console.error('Error fetching vendor orders:', error);
+    if (ordersError) {
+      console.error('Error fetching vendor orders:', ordersError);
       return [];
     }
     
+    if (!ordersData || ordersData.length === 0) {
+      return [];
+    }
+
     // Fetch order items for each order
     const ordersWithItems = await Promise.all(
-      data.map(async (order) => {
+      ordersData.map(async (order) => {
         const { data: itemsData, error: itemsError } = await supabase
           .from('itens_pedido')
           .select(`
@@ -360,12 +367,12 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
           return { 
             ...order, 
             itens: [],
-            // Convert cliente to proper structure if it exists
-            cliente: order.cliente ? {
+            // Safely handle potentially missing cliente data
+            cliente: order.cliente && typeof order.cliente === 'object' ? {
               id: order.cliente.id || '',
               vendedor_id: vendorProfile.id,
               usuario_id: order.usuario_id,
-              nome: order.cliente.nome || '',
+              nome: order.cliente.nome || 'Cliente',
               telefone: order.cliente.telefone,
               email: order.cliente.email,
               total_gasto: 0
@@ -375,13 +382,13 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
         
         return { 
           ...order, 
-          itens: itemsData,
-          // Convert cliente to proper structure if it exists
-          cliente: order.cliente ? {
+          itens: itemsData || [],
+          // Safely handle potentially missing cliente data
+          cliente: order.cliente && typeof order.cliente === 'object' ? {
             id: order.cliente.id || '',
             vendedor_id: vendorProfile.id,
             usuario_id: order.usuario_id,
-            nome: order.cliente.nome || '',
+            nome: order.cliente.nome || 'Cliente',
             telefone: order.cliente.telefone,
             email: order.cliente.email,
             total_gasto: 0
@@ -502,19 +509,22 @@ export const getPointAdjustments = async (userId?: string): Promise<PointAdjustm
       console.error('Error fetching point adjustments:', error);
       return [];
     }
-    
-    return data.map(item => ({
+
+    // Safely process the data handling potential errors with cliente data
+    const safeAdjustments = data.map(item => ({
       ...item,
-      cliente: item.cliente ? {
+      cliente: item.cliente && typeof item.cliente === 'object' ? {
         id: item.cliente.id || '',
         vendedor_id: vendorProfile.id,
         usuario_id: item.usuario_id,
-        nome: item.cliente.nome || '',
+        nome: item.cliente.nome || 'Cliente',
         telefone: item.cliente.telefone,
         email: item.cliente.email,
         total_gasto: 0
       } : undefined
-    })) as PointAdjustment[];
+    }));
+    
+    return safeAdjustments as PointAdjustment[];
   } catch (error) {
     console.error('Error in getPointAdjustments:', error);
     return [];
