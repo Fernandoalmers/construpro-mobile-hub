@@ -32,7 +32,7 @@ const BottomTabNavigator: React.FC = () => {
   const navigate = useNavigate();
   const [currentPath, setCurrentPath] = useState('');
   const { user, profile, isLoading } = useAuth();
-  const { cartCount } = useCart();
+  const { cartCount = 0 } = useCart();
   
   // Extract the first part of the path
   useEffect(() => {
