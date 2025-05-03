@@ -175,16 +175,13 @@ const FavoritesScreen: React.FC = () => {
               id, nome, preco, imagem_url, avaliacao, categoria, descricao,
               loja_id
             ),
-            count(*) as purchase_count
+            count
           `)
-          .eq('order_id', 'user_id', user?.id || '')
-          .group('produto_id')
-          .order('purchase_count', { ascending: false })
+          .eq('order_id', user?.id || '')
           .limit(8);
         
         if (error) throw error;
         
-        // Fetch store names for products (same logic as above)
         // For brevity, this part is simplified
         return data || [];
       } catch (error) {
