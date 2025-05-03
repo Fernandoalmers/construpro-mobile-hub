@@ -66,6 +66,7 @@ const SignupScreen: React.FC = () => {
       });
       
       if (error) {
+        console.error("Signup error:", error);
         toast.error(error.message || "Erro ao criar conta");
         setIsSubmitting(false);
         return;
@@ -73,11 +74,13 @@ const SignupScreen: React.FC = () => {
       
       toast.success("Cadastro realizado com sucesso!");
       
-      // Redirecionar para seleção de perfil
+      // Redirect to profile selection
       navigate('/auth/profile-selection');
     } catch (err) {
+      console.error("Unexpected signup error:", err);
       const errorMsg = err instanceof Error ? err.message : 'Erro ao criar conta';
       toast.error(errorMsg);
+    } finally {
       setIsSubmitting(false);
     }
   };

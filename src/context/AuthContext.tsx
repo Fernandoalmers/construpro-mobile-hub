@@ -53,20 +53,24 @@ export function AuthProvider({ children }: ProviderProps) {
   const getProfile = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-        
-        if (error) {
-          console.error('Error fetching profile:', error);
-        }
-        
-        return data;
+      
+      if (!user) return null;
+      
+      console.log("Fetching profile for user:", user.id);
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      
+      if (error) {
+        console.error('Error fetching profile:', error);
+        return null;
       }
-      return null;
+      
+      console.log("Profile fetched:", data);
+      return data;
     } catch (error) {
       console.error('Error in getProfile:', error);
       return null;
@@ -118,20 +122,23 @@ export function AuthProvider({ children }: ProviderProps) {
       setState(prev => ({ ...prev, isLoading: true }));
       
       try {
-        // Set up auth state change listener first
+        // First, set up the auth state change listener
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-          console.log('Auth state changed:', event, session);
+          console.log('Auth state changed:', event, session ? "session exists" : "no session");
           
           if (session) {
-            // Need to fetch the profile after auth state changes
-            const profile = await getProfile();
-            setState({ 
-              session, 
-              user: session.user, 
-              profile, 
-              isLoading: false, 
-              error: null 
-            });
+            // Use setTimeout to avoid potential recursive calls
+            setTimeout(async () => {
+              // Fetch profile data after getting session
+              const profile = await getProfile();
+              setState({ 
+                session, 
+                user: session.user, 
+                profile, 
+                isLoading: false, 
+                error: null 
+              });
+            }, 0);
           } else {
             setState({ 
               session: null, 
@@ -143,19 +150,22 @@ export function AuthProvider({ children }: ProviderProps) {
           }
         });
 
-        // Then get current session
+        // Then check for existing session
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
+          console.error("Error getting session:", error);
           setState(prev => ({ ...prev, error: error.message, isLoading: false }));
           return;
         }
 
         if (session) {
+          console.log("Existing session found");
           // Get user profile
           const profile = await getProfile();
           setState({ session, user: session.user, profile, isLoading: false, error: null });
         } else {
+          console.log("No existing session");
           setState({ session: null, user: null, profile: null, isLoading: false, error: null });
         }
 
@@ -186,10 +196,12 @@ export function AuthProvider({ children }: ProviderProps) {
       });
       
       if (error) {
+        console.error("Login error:", error);
         setState(prev => ({ ...prev, error: error.message, isLoading: false }));
         return { error };
       }
       
+      console.log("Login successful, fetching profile");
       const profile = await getProfile();
       setState({ session: data.session, user: data.user, profile, isLoading: false, error: null });
       return { error: null };
@@ -200,10 +212,12 @@ export function AuthProvider({ children }: ProviderProps) {
     }
   };
 
-  // Signup function - updated to use the new params structure
+  // Signup function - updated to handle edge function errors
   const signup = async ({ email, password, userData }: SignupParams) => {
     try {
       setState(prev => ({ ...prev, isLoading: true }));
+      
+      console.log("Invoking auth-signup edge function with:", { email, ...userData });
       
       const { data: signupData, error: signupError } = await supabase.functions.invoke('auth-signup', {
         body: {
@@ -213,10 +227,14 @@ export function AuthProvider({ children }: ProviderProps) {
         }
       });
       
-      if (signupError) {
-        setState(prev => ({ ...prev, isLoading: false, error: signupError.message }));
-        return { error: signupError, data: null };
+      if (signupError || (signupData && signupData.error)) {
+        const errorMessage = signupError?.message || (signupData && signupData.error) || 'Erro ao criar conta';
+        console.error("Signup error:", errorMessage);
+        setState(prev => ({ ...prev, isLoading: false, error: errorMessage }));
+        return { error: new AuthError(errorMessage), data: null };
       }
+      
+      console.log("Signup successful, signing in...");
       
       // Automatically sign in after successful signup
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
@@ -225,10 +243,14 @@ export function AuthProvider({ children }: ProviderProps) {
       });
       
       if (signInError) {
+        console.error("Auto sign-in error:", signInError);
         setState(prev => ({ ...prev, isLoading: false, error: signInError.message }));
+        
+        // Even if auto-login fails, consider the signup successful
         return { error: signInError, data: signupData };
       }
       
+      console.log("Auto sign-in successful, fetching profile");
       const profile = await getProfile();
       setState({ 
         session: signInData.session, 
@@ -238,7 +260,6 @@ export function AuthProvider({ children }: ProviderProps) {
         error: null 
       });
       
-      setState(prev => ({ ...prev, isLoading: false, error: null }));
       return { error: null, data: signupData };
     } catch (error) {
       console.error('Signup error:', error);
@@ -249,9 +270,13 @@ export function AuthProvider({ children }: ProviderProps) {
 
   // Logout function
   const logout = async () => {
-    await supabase.auth.signOut();
-    setState({ session: null, user: null, profile: null, isLoading: false, error: null });
-    navigate('/login');
+    try {
+      await supabase.auth.signOut();
+      setState({ session: null, user: null, profile: null, isLoading: false, error: null });
+      navigate('/login');
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   return (

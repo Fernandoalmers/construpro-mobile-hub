@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import LoadingState from '../common/LoadingState';
@@ -16,21 +16,24 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requireAdmin = false
 }) => {
   const { isAuthenticated, isLoading, profile, getProfile } = useAuth();
+  const [profileLoading, setProfileLoading] = useState(false);
   const location = useLocation();
 
   // Additional profile loading check - ensures profile is loaded for authenticated users
   useEffect(() => {
     const loadProfile = async () => {
       if (isAuthenticated && !profile) {
+        setProfileLoading(true);
         await getProfile();
+        setProfileLoading(false);
       }
     };
     
     loadProfile();
   }, [isAuthenticated, profile, getProfile]);
 
-  // Show loading while checking authentication
-  if (isLoading) {
+  // Show loading while checking authentication or loading profile
+  if (isLoading || profileLoading) {
     return <LoadingState text="Verificando autenticação..." />;
   }
 
@@ -57,6 +60,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   
   // Special case: if user is authenticated but has no role selected, direct to profile selection
   if (isAuthenticated && profile && !profile.papel && !location.pathname.includes('/auth/profile-selection')) {
+    console.log("User has no role, redirecting to profile selection");
     return <Navigate to="/auth/profile-selection" replace />;
   }
 

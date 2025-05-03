@@ -17,7 +17,7 @@ serve(async (req) => {
   // Set CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, content-type',
+    'Access-Control-Allow-Headers': 'authorization, content-type, x-client-info, apikey',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Content-Type': 'application/json'
   }
@@ -55,8 +55,16 @@ serve(async (req) => {
     }
     
     // Initialize Supabase client with service role
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error("Missing environment variables: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+      return new Response(
+        JSON.stringify({ error: 'Server configuration error' }),
+        { status: 500, headers }
+      );
+    }
 
     console.log("Initializing Supabase client for auth-signup");
     
@@ -65,7 +73,7 @@ serve(async (req) => {
         autoRefreshToken: false,
         persistSession: false
       }
-    })
+    });
 
     console.log("Creating user with info:", {
       email: userData.email,
@@ -80,32 +88,32 @@ serve(async (req) => {
       email_confirm: true,
       user_metadata: {
         nome: userData.nome,
-        cpf: userData.cpf,
-        telefone: userData.telefone,
+        cpf: userData.cpf || null,
+        telefone: userData.telefone || null,
         tipo_perfil: userData.tipo_perfil,
         papel: userData.tipo_perfil,
         status: 'ativo'
       }
-    })
+    });
     
     if (error) {
       console.error("Error creating user:", error);
-      let statusCode = 500
-      let errorMessage = error.message
+      let statusCode = 500;
+      let errorMessage = error.message;
       
       // Handle specific error cases
       if (error.message.includes('already registered')) {
-        statusCode = 409
-        errorMessage = 'Este email já está cadastrado'
+        statusCode = 409;
+        errorMessage = 'Este email já está cadastrado';
       }
       
       return new Response(
         JSON.stringify({ error: errorMessage }),
         { status: statusCode, headers }
-      )
+      );
     }
 
-    console.log("User created successfully");
+    console.log("User created successfully:", data.user?.id);
     
     // Return success response
     return new Response(
@@ -114,13 +122,13 @@ serve(async (req) => {
         user: data.user
       }),
       { status: 201, headers }
-    )
+    );
     
   } catch (error) {
     console.error("Unexpected error in auth-signup:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message || "Erro interno do servidor" }),
       { status: 500, headers }
-    )
+    );
   }
-})
+});
