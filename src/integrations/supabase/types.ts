@@ -236,6 +236,36 @@ export type Database = {
           },
         ]
       }
+      lojas: {
+        Row: {
+          created_at: string | null
+          id: string
+          logo_url: string | null
+          nome: string
+          proprietario_id: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          logo_url?: string | null
+          nome: string
+          proprietario_id?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          logo_url?: string | null
+          nome?: string
+          proprietario_id?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           created_at: string | null
@@ -1235,6 +1265,45 @@ export type Database = {
           },
         ]
       }
+      resgates: {
+        Row: {
+          cliente_id: string
+          codigo: string | null
+          created_at: string | null
+          data: string | null
+          id: string
+          imagem_url: string | null
+          item: string
+          pontos: number
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          cliente_id: string
+          codigo?: string | null
+          created_at?: string | null
+          data?: string | null
+          id?: string
+          imagem_url?: string | null
+          item: string
+          pontos: number
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          cliente_id?: string
+          codigo?: string | null
+          created_at?: string | null
+          data?: string | null
+          id?: string
+          imagem_url?: string | null
+          item?: string
+          pontos?: number
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       service_requests: {
         Row: {
           categoria: string
@@ -1507,6 +1576,10 @@ export type Database = {
       approve_product: {
         Args: { product_id: string }
         Returns: undefined
+      }
+      get_user_admin_status: {
+        Args: { user_id: string }
+        Returns: boolean
       }
       get_vendor_id: {
         Args: Record<PropertyKey, never>
