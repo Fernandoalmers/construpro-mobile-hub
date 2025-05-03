@@ -5,7 +5,10 @@ import { useProductFilter } from '@/hooks/use-product-filter';
 import { useScrollBehavior } from '@/hooks/use-scroll-behavior';
 import MarketplaceHeader from './MarketplaceHeader';
 import ProductListSection from './ProductListSection';
+import { getProducts } from '@/services/productService';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/sonner';
+import LoadingState from '../common/LoadingState';
 
 const MarketplaceScreen: React.FC = () => {
   const location = useLocation();
@@ -32,15 +35,8 @@ const MarketplaceScreen: React.FC = () => {
         setIsLoading(true);
         
         // Fetch products
-        const { data: productsData, error: productsError } = await supabase
-          .from('products')
-          .select(`
-            *,
-            stores:loja_id(*)
-          `)
-          .order('nome');
-        
-        if (productsError) throw productsError;
+        const productsData = await getProducts();
+        setProducts(productsData);
         
         // Fetch stores
         const { data: storesData, error: storesError } = await supabase
@@ -49,10 +45,10 @@ const MarketplaceScreen: React.FC = () => {
         
         if (storesError) throw storesError;
         
-        setProducts(productsData || []);
         setStores(storesData || []);
       } catch (error) {
         console.error('Error fetching data:', error);
+        toast.error('Erro ao carregar dados');
       } finally {
         setIsLoading(false);
       }
@@ -170,15 +166,19 @@ const MarketplaceScreen: React.FC = () => {
       
       {/* Product List */}
       <div className="px-2 py-2 flex-1">
-        <ProductListSection 
-          displayedProducts={displayedProducts}
-          filteredProdutos={filteredProdutos}
-          hasMore={hasMore}
-          loadMoreProducts={loadMoreProducts}
-          clearFilters={clearFilters}
-          onLojaClick={handleLojaCardClick}
-          isLoading={isLoading}
-        />
+        {isLoading ? (
+          <LoadingState type="spinner" text="Carregando produtos..." count={3} />
+        ) : (
+          <ProductListSection 
+            displayedProducts={displayedProducts}
+            filteredProdutos={filteredProdutos}
+            hasMore={hasMore}
+            loadMoreProducts={loadMoreProducts}
+            clearFilters={clearFilters}
+            onLojaClick={handleLojaCardClick}
+            isLoading={isLoading}
+          />
+        )}
       </div>
     </div>
   );

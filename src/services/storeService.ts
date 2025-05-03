@@ -46,6 +46,17 @@ export interface Store {
 
 type DbStore = Database['public']['Tables']['stores']['Row'];
 
+// Helper function to parse JSON data to typed objects
+function parseJsonToType<T>(json: Json | null): T | undefined {
+  if (!json) return undefined;
+  
+  if (typeof json === 'object' && json !== null && !Array.isArray(json)) {
+    return json as unknown as T;
+  }
+  
+  return undefined;
+}
+
 // Helper function to convert DB store to app Store type
 const mapDbStoreToStore = (dbStore: DbStore): Store => {
   return {
@@ -53,11 +64,11 @@ const mapDbStoreToStore = (dbStore: DbStore): Store => {
     nome: dbStore.nome,
     descricao: dbStore.descricao || undefined,
     logo_url: dbStore.logo_url || undefined,
-    endereco: dbStore.endereco as unknown as StoreAddress,
+    endereco: parseJsonToType<StoreAddress>(dbStore.endereco),
     contato: dbStore.contato || undefined,
     owner_id: dbStore.owner_id || undefined,
     profile_id: dbStore.profile_id || undefined,
-    operating_hours: dbStore.operating_hours as unknown as OperatingHours,
+    operating_hours: parseJsonToType<OperatingHours>(dbStore.operating_hours),
     created_at: dbStore.created_at,
     updated_at: dbStore.updated_at
   };
@@ -142,7 +153,7 @@ export const saveStore = async (store: Partial<Store>): Promise<Store | null> =>
       .from('stores')
       .insert({ 
         ...dbStore,
-        nome: dbStore.nome || '' // Ensure nome is provided as it's required
+        nome: store.nome || '' // Ensure nome is provided as it's required
       })
       .select()
       .single();

@@ -1,17 +1,67 @@
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getProducts, Product } from '@/services/productService';
+import { getUserProfile } from '@/services/userService';
+import { useAuth } from '@/context/AuthContext';
+import LoadingState from '../common/LoadingState';
+import ErrorState from '../common/ErrorState';
 import Card from '../common/Card';
 import Avatar from '../common/Avatar';
 import ProgressBar from '../common/ProgressBar';
 import CustomButton from '../common/CustomButton';
 import { Receipt, Gift, QrCode, MessageSquare, Award, ChevronRight } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
 
 const HomeScreen: React.FC = () => {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   
+  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch products
+        const productsData = await getProducts();
+        setFeaturedProducts(productsData.slice(0, 6));
+        
+        // Extract unique categories
+        const uniqueCategories = Array.from(new Set(productsData.map(p => p.categoria)));
+        setCategories(uniqueCategories);
+        
+        // Get user profile if logged in but profile not in auth context
+        if (user && !profile) {
+          await getUserProfile();
+        }
+      } catch (err) {
+        console.error('Error fetching home data:', err);
+        setError('Erro ao carregar dados iniciais');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [user, profile]);
+
+  if (loading) {
+    return <LoadingState text="Carregando..." />;
+  }
+
+  if (error) {
+    return (
+      <ErrorState 
+        title="Erro ao carregar dados" 
+        message={error}
+        onRetry={() => window.location.reload()}
+      />
+    );
+  }
+
   // Calculate level info based on real user points
   const saldoPontos = profile?.saldo_pontos || 0;
   

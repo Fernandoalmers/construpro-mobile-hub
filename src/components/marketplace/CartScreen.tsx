@@ -4,8 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ShoppingBag, Trash2, Plus, Minus, Ticket } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
-import { cartService, Cart, CartItem } from '@/services/cartService';
+import { toast } from '@/components/ui/sonner';
+import { getCart, updateCartItemQuantity, removeFromCart } from '@/services/cartService';
+import { Cart, CartItem } from '@/services/cartService';
 import CustomButton from '../common/CustomButton';
 import Card from '../common/Card';
 import ListEmptyState from '../common/ListEmptyState';
@@ -36,7 +37,7 @@ const CartScreen: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const cartData = await cartService.getCart();
+      const cartData = await getCart();
       setCart(cartData);
     } catch (err) {
       console.error('Failed to fetch cart:', err);
@@ -46,7 +47,7 @@ const CartScreen: React.FC = () => {
     }
   };
 
-  const updateQuantity = async (item: CartItem, newQuantity: number) => {
+  const handleUpdateQuantity = async (item: CartItem, newQuantity: number) => {
     if (newQuantity < 1) return;
     
     if (newQuantity > (item.produto?.estoque || 0)) {
@@ -56,9 +57,11 @@ const CartScreen: React.FC = () => {
 
     try {
       setProcessingItem(item.id);
-      const updatedCart = await cartService.updateCartItemQuantity(item.id, newQuantity);
-      setCart(updatedCart);
-      toast.success('Carrinho atualizado com sucesso');
+      const updatedCart = await updateCartItemQuantity(item.id, newQuantity);
+      if (updatedCart) {
+        setCart(updatedCart);
+        toast.success('Carrinho atualizado com sucesso');
+      }
     } catch (err) {
       console.error('Failed to update quantity:', err);
       toast.error('Erro ao atualizar quantidade');
@@ -67,12 +70,14 @@ const CartScreen: React.FC = () => {
     }
   };
 
-  const removeItem = async (itemId: string) => {
+  const handleRemoveItem = async (itemId: string) => {
     try {
       setProcessingItem(itemId);
-      const updatedCart = await cartService.removeFromCart(itemId);
-      setCart(updatedCart);
-      toast.success('Item removido do carrinho');
+      const updatedCart = await removeFromCart(itemId);
+      if (updatedCart) {
+        setCart(updatedCart);
+        toast.success('Item removido do carrinho');
+      }
     } catch (err) {
       console.error('Failed to remove item:', err);
       toast.error('Erro ao remover item do carrinho');

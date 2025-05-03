@@ -1,116 +1,99 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { getUserProfile } from "./userService";
 
-export interface PointTransaction {
+export interface PointsTransaction {
   id: string;
   user_id: string;
   pontos: number;
-  tipo: 'compra' | 'resgate' | 'indicacao' | 'loja-fisica' | 'servico';
-  referencia_id?: string;
+  tipo: 'compra' | 'resgate' | 'indicacao' | 'loja-fisica' | 'servico' | 'ajuste';
   descricao: string;
+  referencia_id?: string;
   data: string;
+  created_at?: string;
 }
 
-export interface PointsBalance {
-  saldo_pontos: number;
-  transactions: PointTransaction[];
-}
+// Get points transactions
+export const getPointsTransactions = async (): Promise<PointsTransaction[]> => {
+  try {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
+      console.error('User not authenticated');
+      return [];
+    }
 
-export const pointsService = {
-  async getPointsBalance(): Promise<PointsBalance> {
-    const { data, error } = await supabase.functions.invoke('points-management');
-    
+    const { data, error } = await supabase
+      .from('points_transactions')
+      .select('*')
+      .eq('user_id', userData.user.id)
+      .order('data', { ascending: false });
+
     if (error) {
-      console.error('Error getting points balance:', error);
-      throw error;
+      console.error('Error fetching points transactions:', error);
+      return [];
     }
-    
-    return {
-      saldo_pontos: data?.saldo_pontos || 0,
-      transactions: data?.transactions || []
-    };
-  },
-  
-  async addTransaction(transaction: Omit<PointTransaction, 'id' | 'user_id' | 'data'>): Promise<{ new_balance: number }> {
-    const { data, error } = await supabase.functions.invoke('points-management', {
-      method: 'POST',
-      body: transaction
-    });
-    
-    if (error) {
-      console.error('Error adding points transaction:', error);
-      throw error;
-    }
-    
-    return { new_balance: data?.new_balance || 0 };
+
+    return data as PointsTransaction[];
+  } catch (error) {
+    console.error('Error in getPointsTransactions:', error);
+    return [];
   }
-}
+};
 
-export interface ReferralInfo {
-  codigo: string;
-  saldo_pontos: number;
-  total_referrals: number;
-  pending_referrals: number;
-  approved_referrals: number;
-  points_earned: number;
-  referrals: Array<{
-    id: string;
-    status: 'pendente' | 'aprovado' | 'rejeitado';
-    pontos: number;
-    data: string;
-    profiles: {
-      nome: string;
-      email: string;
-      created_at: string;
+// Add points transaction
+export const addPointsTransaction = async (
+  points: number,
+  type: PointsTransaction['tipo'],
+  description: string,
+  referenceId?: string
+): Promise<boolean> => {
+  try {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
+      console.error('User not authenticated');
+      return false;
     }
-  }>;
-}
 
-export const referralService = {
-  async getReferralInfo(): Promise<ReferralInfo> {
-    const { data, error } = await supabase.functions.invoke('referral-processing');
-    
-    if (error) {
-      console.error('Error getting referral info:', error);
-      throw error;
-    }
-    
-    return data as ReferralInfo;
-  },
-  
-  async applyReferralCode(codigo: string): Promise<void> {
-    const { error } = await supabase.functions.invoke('referral-processing', {
-      method: 'POST',
-      body: { codigo }
+    // Start a transaction to ensure both operations succeed or fail together
+    const { data, error } = await supabase.rpc('update_user_points', {
+      user_id: userData.user.id,
+      points_to_add: points
     });
-    
+
     if (error) {
-      console.error('Error applying referral code:', error);
-      throw error;
+      console.error('Error updating user points:', error);
+      return false;
     }
-  },
-  
-  async approveReferral(referralId: string, pontos: number = 300): Promise<void> {
-    const { error } = await supabase.functions.invoke('referral-processing', {
-      method: 'PUT',
-      body: { id: referralId, status: 'aprovado', pontos }
-    });
-    
-    if (error) {
-      console.error('Error approving referral:', error);
-      throw error;
+
+    const { error: txError } = await supabase
+      .from('points_transactions')
+      .insert({
+        user_id: userData.user.id,
+        pontos: points,
+        tipo: type,
+        descricao: description,
+        referencia_id: referenceId
+      });
+
+    if (txError) {
+      console.error('Error creating points transaction:', txError);
+      return false;
     }
-  },
-  
-  async rejectReferral(referralId: string): Promise<void> {
-    const { error } = await supabase.functions.invoke('referral-processing', {
-      method: 'PUT',
-      body: { id: referralId, status: 'rejeitado' }
-    });
-    
-    if (error) {
-      console.error('Error rejecting referral:', error);
-      throw error;
-    }
+
+    return true;
+  } catch (error) {
+    console.error('Error in addPointsTransaction:', error);
+    return false;
   }
-}
+};
+
+// Get current points balance
+export const getCurrentPoints = async (): Promise<number> => {
+  try {
+    const profile = await getUserProfile();
+    return profile?.saldo_pontos || 0;
+  } catch (error) {
+    console.error('Error in getCurrentPoints:', error);
+    return 0;
+  }
+};

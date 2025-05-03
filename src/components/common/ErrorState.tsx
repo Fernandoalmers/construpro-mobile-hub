@@ -1,30 +1,32 @@
 
 import React from 'react';
-import { cn } from '@/lib/utils';
-import { AlertTriangle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import CustomButton from './CustomButton';
 
-interface ErrorStateProps {
-  title?: string;
-  message?: string;
+type ErrorStateProps = {
+  title: string;
+  message: string;
   onRetry?: () => void;
   className?: string;
-}
+};
 
 const ErrorState: React.FC<ErrorStateProps> = ({
-  title = 'Algo deu errado',
-  message = 'Não foi possível carregar os dados. Por favor, tente novamente.',
+  title,
+  message,
   onRetry,
-  className,
+  className = ''
 }) => {
   return (
-    <div className={cn("flex flex-col items-center justify-center text-center p-8", className)}>
-      <AlertTriangle size={48} className="text-red-500 mb-4" />
-      <h3 className="text-xl font-semibold text-gray-800 mb-2">{title}</h3>
-      <p className="text-gray-600 mb-6 max-w-md">{message}</p>
+    <div className={`flex flex-col items-center justify-center h-64 p-6 ${className}`}>
+      <AlertCircle size={48} className="text-red-500 mb-4" />
+      <h2 className="text-xl font-bold mb-2">{title}</h2>
+      <p className="text-gray-600 text-center mb-6">{message}</p>
       {onRetry && (
-        <CustomButton variant="primary" onClick={onRetry}>
-          Tentar Novamente
+        <CustomButton 
+          variant="primary"
+          onClick={onRetry}
+        >
+          Tentar novamente
         </CustomButton>
       )}
     </div>
