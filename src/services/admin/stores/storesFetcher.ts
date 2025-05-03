@@ -38,8 +38,17 @@ export const getAdminStores = async (): Promise<AdminStore[]> => {
     const stores = (data || []).map(item => {
       // Handle possible null profiles or missing properties
       const profileData = item.profiles || {};
-      const profileName = typeof profileData === 'object' && profileData !== null ? profileData.nome : 'Desconhecido';
-      const profileEmail = typeof profileData === 'object' && profileData !== null ? profileData.email : 'sem-email';
+      
+      // Type safety: extract properties with default values to handle any profile shape
+      const profileName = profileData && 
+                         typeof profileData === 'object' ? 
+                         (profileData as Record<string, any>).nome || 'Desconhecido' : 
+                         'Desconhecido';
+                         
+      const profileEmail = profileData && 
+                         typeof profileData === 'object' ? 
+                         (profileData as Record<string, any>).email || 'sem-email' : 
+                         'sem-email';
       
       return {
         id: item.id,
