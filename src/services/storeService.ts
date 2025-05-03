@@ -1,6 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
+import { Json } from "@/integrations/supabase/types";
 
 export interface DayHours {
   open: string;
@@ -112,6 +113,12 @@ export const getStoresByOwner = async (profileId: string): Promise<Store[]> => {
 
 // Create or update store
 export const saveStore = async (store: Partial<Store>): Promise<Store | null> => {
+  // Ensure we have the required fields for new stores
+  if (!store.id && !store.nome) {
+    console.error('Store name is required for new stores');
+    return null;
+  }
+  
   const dbStore = mapStoreToDbStore(store);
   
   if (store.id) {
@@ -133,7 +140,10 @@ export const saveStore = async (store: Partial<Store>): Promise<Store | null> =>
     // Create new store
     const { data, error } = await supabase
       .from('stores')
-      .insert(dbStore)
+      .insert({ 
+        ...dbStore,
+        nome: dbStore.nome || '' // Ensure nome is provided as it's required
+      })
       .select()
       .single();
       

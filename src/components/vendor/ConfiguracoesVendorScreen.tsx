@@ -35,12 +35,6 @@ interface StoreFormValues {
   };
 }
 
-interface DayHours {
-  open: string;
-  close: string;
-  isOpen: boolean;
-}
-
 const defaultOperatingHours = {
   monday: { open: "08:00", close: "18:00", isOpen: true },
   tuesday: { open: "08:00", close: "18:00", isOpen: true },
@@ -110,8 +104,11 @@ const ConfiguracoesVendorScreen: React.FC = () => {
           form.setValue('descricao', storeData.descricao || '');
           
           // Handle address with type safety
-          const endereco = storeData.endereco as any;
-          form.setValue('endereco', endereco?.full_address || '');
+          if (storeData.endereco) {
+            const endereco = storeData.endereco as any;
+            form.setValue('endereco', endereco?.full_address || '');
+          }
+          
           form.setValue('whatsapp', storeData.contato || '');
           
           // Handle operating hours with type safety

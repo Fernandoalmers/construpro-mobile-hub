@@ -9,7 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from "@/components/ui/sonner";
 import { useAuth, UserRole } from '../../context/AuthContext';
 import { supabase } from "@/integrations/supabase/client";
-import { OperatingHours, saveStore } from '@/services/storeService';
+import { saveStore } from '@/services/storeService';
 
 interface DeliveryMethod {
   id: string;
