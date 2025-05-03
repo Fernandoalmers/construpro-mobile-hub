@@ -80,12 +80,12 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
             itens: [],
             // Safely handle potentially missing cliente data
             cliente: order.cliente && typeof order.cliente === 'object' ? {
-              id: order.cliente && order.cliente.id ? order.cliente.id as string : '',
+              id: ((order.cliente as any)?.id as string) || '',
               vendedor_id: vendorProfile.id,
               usuario_id: order.usuario_id,
-              nome: order.cliente && order.cliente.nome ? order.cliente.nome as string : 'Cliente',
-              telefone: order.cliente && order.cliente.telefone ? order.cliente.telefone as string : '',
-              email: order.cliente && order.cliente.email ? order.cliente.email as string : '',
+              nome: ((order.cliente as any)?.nome as string) || 'Cliente',
+              telefone: ((order.cliente as any)?.telefone as string) || '',
+              email: ((order.cliente as any)?.email as string) || '',
               total_gasto: 0
             } : undefined
           };
@@ -96,12 +96,12 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
           itens: itemsData || [],
           // Safely handle potentially missing cliente data
           cliente: order.cliente && typeof order.cliente === 'object' ? {
-            id: order.cliente && order.cliente.id ? order.cliente.id as string : '',
+            id: ((order.cliente as any)?.id as string) || '',
             vendedor_id: vendorProfile.id,
             usuario_id: order.usuario_id,
-            nome: order.cliente && order.cliente.nome ? order.cliente.nome as string : 'Cliente',
-            telefone: order.cliente && order.cliente.telefone ? order.cliente.telefone as string : '',
-            email: order.cliente && order.cliente.email ? order.cliente.email as string : '',
+            nome: ((order.cliente as any)?.nome as string) || 'Cliente',
+            telefone: ((order.cliente as any)?.telefone as string) || '',
+            email: ((order.cliente as any)?.email as string) || '',
             total_gasto: 0
           } : undefined
         };
