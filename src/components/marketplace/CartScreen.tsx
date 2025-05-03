@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ShoppingBag, Trash2, Plus, Minus, Ticket } from 'lucide-react';
@@ -13,11 +12,12 @@ import ListEmptyState from '../common/ListEmptyState';
 import LoadingState from '../common/LoadingState';
 import ErrorState from '../common/ErrorState';
 import { useAuth } from '@/context/AuthContext';
+import { useCart } from '@/hooks/use-cart';
 
 const CartScreen: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
-  const [cart, setCart] = useState<Cart | null>(null);
+  const { cart, updateQuantity, removeItem, refreshCart } = useCart();
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [couponCode, setCouponCode] = useState('');
@@ -30,22 +30,13 @@ const CartScreen: React.FC = () => {
       return;
     }
     
-    fetchCart();
-  }, [isAuthenticated, navigate]);
+    refreshCart();
+  }, [isAuthenticated, navigate, refreshCart]);
 
-  const fetchCart = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const cartData = await getCart();
-      setCart(cartData);
-    } catch (err) {
-      console.error('Failed to fetch cart:', err);
-      setError('Falha ao carregar o carrinho. Por favor, tente novamente.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    // Update loading state based on cart loading
+    setLoading(false);
+  }, [cart]);
 
   const handleUpdateQuantity = async (item: CartItem, newQuantity: number) => {
     if (newQuantity < 1) return;
@@ -57,11 +48,8 @@ const CartScreen: React.FC = () => {
 
     try {
       setProcessingItem(item.id);
-      const updatedCart = await updateCartItemQuantity(item.id, newQuantity);
-      if (updatedCart) {
-        setCart(updatedCart);
-        toast.success('Carrinho atualizado com sucesso');
-      }
+      await updateQuantity(item.id, newQuantity);
+      toast.success('Carrinho atualizado com sucesso');
     } catch (err) {
       console.error('Failed to update quantity:', err);
       toast.error('Erro ao atualizar quantidade');
@@ -73,11 +61,8 @@ const CartScreen: React.FC = () => {
   const handleRemoveItem = async (itemId: string) => {
     try {
       setProcessingItem(itemId);
-      const updatedCart = await removeFromCart(itemId);
-      if (updatedCart) {
-        setCart(updatedCart);
-        toast.success('Item removido do carrinho');
-      }
+      await removeItem(itemId);
+      toast.success('Item removido do carrinho');
     } catch (err) {
       console.error('Failed to remove item:', err);
       toast.error('Erro ao remover item do carrinho');
@@ -133,7 +118,7 @@ const CartScreen: React.FC = () => {
         <ErrorState 
           title="Erro ao carregar o carrinho" 
           message={error} 
-          onRetry={fetchCart} 
+          onRetry={() => refreshCart()} 
         />
       </div>
     );
@@ -232,7 +217,7 @@ const CartScreen: React.FC = () => {
                             
                             <div className="flex flex-col items-end">
                               <button 
-                                onClick={() => removeItem(item.id)} 
+                                onClick={() => handleRemoveItem(item.id)} 
                                 className="text-red-500 mb-2"
                                 disabled={processingItem === item.id}
                               >
@@ -241,7 +226,7 @@ const CartScreen: React.FC = () => {
                               
                               <div className="flex items-center border border-gray-300 rounded-md">
                                 <button
-                                  onClick={() => updateQuantity(item, item.quantidade - 1)}
+                                  onClick={() => handleUpdateQuantity(item, item.quantidade - 1)}
                                   className="w-8 h-8 flex items-center justify-center text-gray-600"
                                   disabled={processingItem === item.id || item.quantidade <= 1}
                                 >
@@ -251,7 +236,7 @@ const CartScreen: React.FC = () => {
                                   {processingItem === item.id ? "..." : item.quantidade}
                                 </span>
                                 <button
-                                  onClick={() => updateQuantity(item, item.quantidade + 1)}
+                                  onClick={() => handleUpdateQuantity(item, item.quantidade + 1)}
                                   className="w-8 h-8 flex items-center justify-center text-gray-600"
                                   disabled={processingItem === item.id || item.quantidade >= (item.produto?.estoque || 0)}
                                 >

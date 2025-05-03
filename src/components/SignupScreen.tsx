@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -54,7 +53,7 @@ const SignupScreen: React.FC = () => {
     
     try {
       // Register the user
-      const { error, data } = await signup({
+      const { error } = await signup({
         email: signupData.email, 
         password: signupData.senha,
         userData: {

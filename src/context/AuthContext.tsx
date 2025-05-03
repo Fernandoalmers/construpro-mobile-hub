@@ -1,10 +1,10 @@
 
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { getUserProfile, UserProfile } from '@/services/userService';
+import { getUserProfile, UserProfile, updateUserProfile } from '@/services/userService';
 import { Session, User } from '@supabase/supabase-js';
 
-export type UserRole = 'cliente' | 'lojista' | 'profissional' | 'admin';
+export type UserRole = 'consumidor' | 'profissional' | 'lojista' | 'admin' | 'cliente' | 'vendedor';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -12,11 +12,12 @@ interface AuthContextType {
   profile: UserProfile | null;
   session: Session | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<{ error: any | null }>;
-  signup: (email: string, password: string, userData: any) => Promise<{ error: any | null }>;
+  login: (email: string, password: string) => Promise<{ error: any | null, data?: any }>;
+  signup: (params: { email: string, password: string, userData: any }) => Promise<{ error: any | null, data?: any }>;
   logout: () => Promise<void>;
   updateUser: (data: any) => Promise<{ error: any | null }>;
   refreshProfile: () => Promise<UserProfile | null>;
+  updateProfile: (data: Partial<UserProfile>) => Promise<UserProfile | null>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -29,7 +30,8 @@ const AuthContext = createContext<AuthContextType>({
   signup: async () => ({ error: null }),
   logout: async () => {},
   updateUser: async () => ({ error: null }),
-  refreshProfile: async () => null
+  refreshProfile: async () => null,
+  updateProfile: async () => null
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -95,14 +97,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setProfile(userProfile);
       }
       
-      return { error };
+      return { error, data };
     } catch (error) {
       console.error("Login error:", error);
       return { error };
     }
   };
 
-  const signup = async (email: string, password: string, userData: any) => {
+  const signup = async ({ email, password, userData }: { email: string, password: string, userData: any }) => {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -112,7 +114,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       });
       
-      return { error };
+      return { error, data };
     } catch (error) {
       console.error("Signup error:", error);
       return { error };
@@ -145,6 +147,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const updateProfile = async (data: Partial<UserProfile>) => {
+    try {
+      const updatedProfile = await updateUserProfile(data);
+      if (updatedProfile) {
+        setProfile(updatedProfile);
+      }
+      return updatedProfile;
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      return null;
+    }
+  };
+
   const refreshProfile = async () => {
     try {
       const userProfile = await getUserProfile();
@@ -168,7 +183,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signup,
     logout,
     updateUser,
-    refreshProfile
+    refreshProfile,
+    updateProfile
   };
 
   return (

@@ -1,6 +1,6 @@
 
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
-import { Cart, cartService } from '@/services/cartService';
+import { Cart, getCart, addToCart, updateCartItemQuantity, removeFromCart, clearCart } from '@/services/cartService';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 
@@ -37,7 +37,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     try {
       setLoading(true);
       setError(null);
-      const cartData = await cartService.getCart();
+      const cartData = await getCart();
       setCart(cartData);
     } catch (err) {
       console.error('Failed to fetch cart:', err);
@@ -56,10 +56,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [isAuthenticated]);
 
-  const addToCart = async (productId: string, quantity: number = 1) => {
+  const addItemToCart = async (productId: string, quantity: number = 1) => {
     try {
       setLoading(true);
-      const updatedCart = await cartService.addToCart(productId, quantity);
+      const updatedCart = await addToCart(productId, quantity);
       setCart(updatedCart);
       toast.success('Produto adicionado ao carrinho');
       
@@ -77,7 +77,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const updateQuantity = async (itemId: string, quantity: number) => {
     try {
       setLoading(true);
-      const updatedCart = await cartService.updateCartItemQuantity(itemId, quantity);
+      const updatedCart = await updateCartItemQuantity(itemId, quantity);
       setCart(updatedCart);
     } catch (err: any) {
       console.error('Failed to update quantity:', err);
@@ -91,7 +91,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const removeItem = async (itemId: string) => {
     try {
       setLoading(true);
-      const updatedCart = await cartService.removeFromCart(itemId);
+      const updatedCart = await removeFromCart(itemId);
       setCart(updatedCart);
       toast.success('Item removido do carrinho');
     } catch (err) {
@@ -103,10 +103,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const clearCart = async () => {
+  const clearCartItems = async () => {
     try {
       setLoading(true);
-      await cartService.clearCart();
+      await clearCart();
       setCart(null);
       toast.success('Carrinho esvaziado');
     } catch (err) {
@@ -127,10 +127,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     loading,
     error,
     refreshCart,
-    addToCart,
+    addToCart: addItemToCart,
     updateQuantity,
     removeItem,
-    clearCart,
+    clearCart: clearCartItems,
     showCartPopup,
     setShowCartPopup,
   };

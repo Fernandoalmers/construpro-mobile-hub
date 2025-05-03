@@ -15,7 +15,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requireAuth = true,
   requireAdmin = false
 }) => {
-  const { isAuthenticated, isLoading, profile, getProfile, refreshProfile } = useAuth();
+  const { isAuthenticated, isLoading, profile, refreshProfile } = useAuth();
   const [profileLoading, setProfileLoading] = useState(false);
   const location = useLocation();
 

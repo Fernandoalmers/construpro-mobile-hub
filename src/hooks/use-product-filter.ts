@@ -1,113 +1,113 @@
 
-import { useState, useMemo, useEffect } from 'react';
-import { Product } from '@/services/productService';
+import { useState, useMemo } from 'react';
 
-interface ProductFilterProps {
-  initialProducts: Product[];
+export interface FilterOption {
+  id: string;
+  label: string;
+}
+
+export interface FilterParams {
   initialCategories?: string[];
-  initialLojas?: string[];
-  initialRatings?: number[];
+  initialProducts: any[];
   initialSearch?: string;
 }
 
 export const useProductFilter = ({
-  initialProducts = [],
   initialCategories = [],
-  initialLojas = [],
-  initialRatings = [],
+  initialProducts = [],
   initialSearch = ''
-}: ProductFilterProps) => {
-  const [products, setProducts] = useState<Product[]>(initialProducts);
+}: FilterParams) => {
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
   const [selectedCategories, setSelectedCategories] = useState<string[]>(initialCategories);
-  const [selectedLojas, setSelectedLojas] = useState<string[]>(initialLojas);
-  const [selectedRatings, setSelectedRatings] = useState<number[]>(initialRatings);
-  const [searchTerm, setSearchTerm] = useState<string>(initialSearch);
-  const [page, setPage] = useState<number>(1);
-  const itemsPerPage = 10;
-
-  // Update products when initialProducts changes
-  useEffect(() => {
-    if (initialProducts.length > 0) {
-      setProducts(initialProducts);
-    }
-  }, [initialProducts]);
-
-  const ratingOptions = [
-    { value: 4, label: '4★ ou mais' },
-    { value: 3, label: '3★ ou mais' },
-    { value: 2, label: '2★ ou mais' },
-  ];
-
-  // Filter products based on selected filters
+  const [selectedLojas, setSelectedLojas] = useState<string[]>([]);
+  const [selectedRatings, setSelectedRatings] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
+  
+  const ITEMS_PER_PAGE = 10;
+  
+  // Rating options 
+  const ratingOptions: FilterOption[] = useMemo(() => ([
+    { id: '4', label: '4+' },
+    { id: '3', label: '3+' },
+    { id: '2', label: '2+' },
+    { id: '1', label: '1+' }
+  ]), []);
+  
+  // Filter products
   const filteredProdutos = useMemo(() => {
-    return products.filter(produto => {
+    return initialProducts.filter(produto => {
       // Filter by search term
-      const matchesSearch = searchTerm === '' || 
-        produto.nome.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        produto.descricao.toLowerCase().includes(searchTerm.toLowerCase());
-        
+      const matchesSearch = !searchTerm || 
+        produto.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        produto.descricao?.toLowerCase().includes(searchTerm.toLowerCase());
+      
       // Filter by category
       const matchesCategory = selectedCategories.length === 0 || 
         selectedCategories.includes(produto.categoria);
-        
-      // Filter by loja
+      
+      // Filter by store
       const matchesLoja = selectedLojas.length === 0 || 
         selectedLojas.includes(produto.loja_id);
-        
+      
       // Filter by rating
       const matchesRating = selectedRatings.length === 0 || 
-        selectedRatings.some(rating => (produto.avaliacao >= rating));
+        selectedRatings.some(rating => produto.avaliacao >= parseInt(rating, 10));
       
       return matchesSearch && matchesCategory && matchesLoja && matchesRating;
     });
-  }, [products, searchTerm, selectedCategories, selectedLojas, selectedRatings]);
+  }, [initialProducts, searchTerm, selectedCategories, selectedLojas, selectedRatings]);
   
-  // Get paginated products
+  // Paginate results
   const displayedProducts = useMemo(() => {
-    const startIndex = 0;
-    const endIndex = page * itemsPerPage;
-    return filteredProdutos.slice(startIndex, endIndex);
-  }, [filteredProdutos, page, itemsPerPage]);
+    const start = (page - 1) * ITEMS_PER_PAGE;
+    const end = start + ITEMS_PER_PAGE;
+    return filteredProdutos.slice(start, end);
+  }, [filteredProdutos, page]);
   
-  // Check if more products available
-  const hasMore = displayedProducts.length < filteredProdutos.length;
+  // Check if there are more products to load
+  const hasMore = useMemo(() => {
+    return page * ITEMS_PER_PAGE < filteredProdutos.length;
+  }, [filteredProdutos, page]);
   
-  // Load more products
-  const loadMoreProducts = () => {
-    setPage(prevPage => prevPage + 1);
-  };
-
-  // Filter handlers
+  // Handle search input change
   const handleSearchChange = (term: string) => {
     setSearchTerm(term);
     setPage(1);
   };
   
-  const handleCategoryClick = (category: string) => {
-    setSelectedCategories(prev => 
-      prev.includes(category) 
-        ? prev.filter(cat => cat !== category) 
-        : [...prev, category]
-    );
+  // Handle category selection
+  const handleCategoryClick = (categoryId: string) => {
+    setSelectedCategories(prev => {
+      return prev.includes(categoryId)
+        ? prev.filter(id => id !== categoryId)
+        : [...prev, categoryId];
+    });
     setPage(1);
   };
   
+  // Handle loja selection
   const handleLojaClick = (lojaId: string) => {
-    setSelectedLojas(prev => 
-      prev.includes(lojaId) 
-        ? prev.filter(id => id !== lojaId) 
-        : [...prev, lojaId]
-    );
+    setSelectedLojas(prev => {
+      return prev.includes(lojaId)
+        ? prev.filter(id => id !== lojaId)
+        : [...prev, lojaId];
+    });
     setPage(1);
   };
   
-  const handleRatingClick = (rating: number) => {
-    setSelectedRatings(prev => 
-      prev.includes(rating) 
-        ? prev.filter(r => r !== rating) 
-        : [...prev, rating]
-    );
+  // Handle rating selection
+  const handleRatingClick = (ratingId: string) => {
+    setSelectedRatings(prev => {
+      return prev.includes(ratingId)
+        ? prev.filter(id => id !== ratingId)
+        : [...prev, ratingId];
+    });
     setPage(1);
+  };
+  
+  // Load more products
+  const loadMoreProducts = () => {
+    setPage(prev => prev + 1);
   };
   
   // Clear all filters
@@ -118,29 +118,24 @@ export const useProductFilter = ({
     setSelectedRatings([]);
     setPage(1);
   };
-
+  
   return {
-    products,
-    setProducts,
-    selectedCategories,
-    setSelectedCategories,
-    selectedLojas,
-    setSelectedLojas,
-    selectedRatings,
-    setSelectedRatings,
     searchTerm,
-    setSearchTerm,
-    page,
-    setPage,
+    selectedCategories,
+    selectedLojas,
+    selectedRatings,
+    ratingOptions,
     filteredProdutos,
     displayedProducts,
     hasMore,
-    ratingOptions,
+    page,
     handleSearchChange,
     handleCategoryClick,
     handleLojaClick,
     handleRatingClick,
     loadMoreProducts,
-    clearFilters
+    clearFilters,
+    setSelectedLojas,
+    setPage
   };
 };

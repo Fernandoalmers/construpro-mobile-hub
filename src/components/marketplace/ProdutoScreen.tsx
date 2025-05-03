@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Heart, Star, Truck, ShoppingCart, ArrowLeft, Check, AlertCircle } from 'lucide-react';
+import { Heart, Star, Truck, ShoppingCart, ArrowLeft, Check, AlertCircle, Shield as ShieldIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/sonner';
 import { getProductById, trackProductView, Product } from '@/services/productService';
 import { addToCart } from '@/services/cartService';
-import { addToFavorites, isProductFavorited } from '@/services/favoriteService';
+import { addToFavorites, isProductFavorited } from '@/services/cartService';
 import { useAuth } from '@/context/AuthContext';
 import LoadingState from '../common/LoadingState';
 import ErrorState from '../common/ErrorState';
@@ -245,7 +245,7 @@ const ProdutoScreen: React.FC = () => {
           Entrega rápida e segura em todo o Brasil
         </p>
         <p>
-          <Shield className="inline-block mr-2" />
+          <ShieldIcon className="inline-block mr-2" />
           Compra garantida ou seu dinheiro de volta
         </p>
       </footer>

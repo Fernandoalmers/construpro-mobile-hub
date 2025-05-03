@@ -13,6 +13,21 @@ export interface PointsTransaction {
   created_at?: string;
 }
 
+export interface ReferralInfo {
+  codigo: string;
+  total_referrals: number;
+  points_earned: number;
+  referrals: Array<{
+    id: string;
+    data: string;
+    status: 'pendente' | 'aprovado' | 'rejeitado';
+    pontos: number;
+    profiles: {
+      nome: string;
+    };
+  }>;
+}
+
 // Get points transactions
 export const getPointsTransactions = async (): Promise<PointsTransaction[]> => {
   try {
@@ -95,5 +110,126 @@ export const getCurrentPoints = async (): Promise<number> => {
   } catch (error) {
     console.error('Error in getCurrentPoints:', error);
     return 0;
+  }
+};
+
+// Referral service
+export const referralService = {
+  getReferralInfo: async (): Promise<ReferralInfo> => {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Get user's referral code
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('codigo')
+        .eq('id', userData.user.id)
+        .single();
+
+      if (profileError || !profileData) {
+        console.error('Error fetching referral code:', profileError);
+        throw new Error('Could not fetch referral code');
+      }
+
+      // Get referrals made by the user
+      const { data: referralsData, error: referralsError } = await supabase
+        .from('referrals')
+        .select(`
+          id,
+          data,
+          status,
+          pontos,
+          profiles:referred_id (
+            nome
+          )
+        `)
+        .eq('referrer_id', userData.user.id);
+
+      if (referralsError) {
+        console.error('Error fetching referrals:', referralsError);
+        throw new Error('Could not fetch referrals');
+      }
+
+      // Calculate total points earned from referrals
+      const pointsEarned = referralsData?.reduce((sum, ref) => sum + (ref.pontos || 0), 0) || 0;
+
+      return {
+        codigo: profileData.codigo || 'CONSTRUPRO',
+        total_referrals: referralsData?.length || 0,
+        points_earned: pointsEarned,
+        referrals: referralsData || []
+      };
+    } catch (error) {
+      console.error('Error in getReferralInfo:', error);
+      return {
+        codigo: 'CONSTRUPRO',
+        total_referrals: 0,
+        points_earned: 0,
+        referrals: []
+      };
+    }
+  },
+
+  // Apply referral code
+  applyReferralCode: async (code: string): Promise<boolean> => {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Check if the code exists
+      const { data: referrerData, error: referrerError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('codigo', code)
+        .single();
+
+      if (referrerError || !referrerData) {
+        console.error('Invalid referral code:', referrerError);
+        return false;
+      }
+
+      // Check if user is trying to refer themselves
+      if (referrerData.id === userData.user.id) {
+        console.error('Cannot use own referral code');
+        return false;
+      }
+
+      // Check if the user has already been referred
+      const { data: existingReferral, error: existingReferralError } = await supabase
+        .from('referrals')
+        .select('id')
+        .eq('referred_id', userData.user.id)
+        .single();
+
+      if (existingReferral) {
+        console.error('User already has been referred');
+        return false;
+      }
+
+      // Create referral record
+      const { error: referralError } = await supabase
+        .from('referrals')
+        .insert({
+          referrer_id: referrerData.id,
+          referred_id: userData.user.id,
+          status: 'pendente',
+          pontos: 0
+        });
+
+      if (referralError) {
+        console.error('Error creating referral:', referralError);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error in applyReferralCode:', error);
+      return false;
+    }
   }
 };

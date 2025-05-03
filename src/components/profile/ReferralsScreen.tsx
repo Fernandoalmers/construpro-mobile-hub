@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Users, Share2, Copy, UserCheck, Award } from 'lucide-react';
