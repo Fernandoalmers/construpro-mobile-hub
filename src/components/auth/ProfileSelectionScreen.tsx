@@ -7,6 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from "@/components/ui/sonner";
 import { UserRole } from '@/context/AuthContext';
+import LoadingState from '../common/LoadingState';
 
 interface ProfileOption {
   id: UserRole;
@@ -17,7 +18,7 @@ interface ProfileOption {
 
 const ProfileSelectionScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { updateUser, user, profile, isAuthenticated, isLoading } = useAuth();
+  const { updateProfile, user, profile, isAuthenticated, isLoading } = useAuth();
   const [selectedProfiles, setSelectedProfiles] = useState<UserRole[]>(['consumidor']);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -70,8 +71,8 @@ const ProfileSelectionScreen: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      // Update user with selected roles
-      await updateUser({ 
+      // Use the profile-update edge function instead of direct table update
+      await updateProfile({ 
         papel: selectedProfiles[0],
         tipo_perfil: selectedProfiles[0]
       });
@@ -90,11 +91,17 @@ const ProfileSelectionScreen: React.FC = () => {
         navigate('/home');
       }
     } catch (error) {
+      console.error("Erro ao atualizar perfil:", error);
       toast.error("Ocorreu um erro. Por favor, tente novamente.");
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  // Show loading state while authentication status is being determined
+  if (isLoading) {
+    return <LoadingState text="Verificando autenticação..." />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-white">

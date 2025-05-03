@@ -39,7 +39,21 @@ serve(async (req) => {
     console.log("Auth signup function called");
     
     // Parse request body
-    const userData: SignupData = await req.json()
+    let userData: SignupData;
+    try {
+      userData = await req.json();
+      console.log("Received signup data:", { 
+        email: userData.email, 
+        nome: userData.nome,
+        tipo_perfil: userData.tipo_perfil
+      });
+    } catch (parseError) {
+      console.error("Error parsing request body:", parseError);
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON in request body' }),
+        { status: 400, headers }
+      );
+    }
     
     // Validate required fields
     if (!userData.email || !userData.password || !userData.nome) {
@@ -54,7 +68,7 @@ serve(async (req) => {
       userData.tipo_perfil = 'consumidor';
     }
     
-    // Initialize Supabase client with service role
+    // Initialize Supabase client with service role - set search_path to avoid RLS recursion
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 

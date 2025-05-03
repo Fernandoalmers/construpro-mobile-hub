@@ -3,6 +3,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { Session, User, AuthError } from '@supabase/supabase-js';
+import { toast } from "@/components/ui/sonner";
 
 export type UserRole = 'consumidor' | 'profissional' | 'lojista' | 'vendedor';
 
@@ -32,6 +33,7 @@ type AuthContextType = AuthState & {
   updateUser: (data: any) => Promise<void>;
   updateProfile: (data: any) => Promise<void>;
   getProfile: () => Promise<any>;
+  refreshProfile: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -58,19 +60,24 @@ export function AuthProvider({ children }: ProviderProps) {
       
       console.log("Fetching profile for user:", user.id);
       
-      const { data, error } = await supabase
+      const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
       
-      if (error) {
+      if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned" which is not an error for maybeSingle
         console.error('Error fetching profile:', error);
         return null;
       }
       
-      console.log("Profile fetched:", data);
-      return data;
+      if (profile) {
+        console.log("Profile fetched:", profile);
+        return profile;
+      } else {
+        console.log("No profile found for user:", user.id);
+        return null;
+      }
     } catch (error) {
       console.error('Error in getProfile:', error);
       return null;
@@ -80,17 +87,20 @@ export function AuthProvider({ children }: ProviderProps) {
   // Function to update user metadata
   const updateUser = async (data: any) => {
     try {
+      if (!state.user?.id) {
+        throw new Error("Usuário não autenticado");
+      }
+
       // Update profile table
       const { error } = await supabase
         .from('profiles')
         .update(data)
-        .eq('id', state.user?.id);
+        .eq('id', state.user.id);
 
       if (error) throw error;
 
-      // Update state with new profile data
-      const profile = await getProfile();
-      setState(prev => ({ ...prev, profile }));
+      // Refresh profile after update
+      await refreshProfile();
       
     } catch (error) {
       console.error('Error updating user data:', error);
@@ -98,21 +108,33 @@ export function AuthProvider({ children }: ProviderProps) {
     }
   };
 
-  // Function to update user profile in profiles table and in Supabase auth
+  // Function to update user profile via edge function
   const updateProfile = async (data: any) => {
     try {
+      if (!state.user?.id) {
+        throw new Error("Usuário não autenticado");
+      }
+
       const { data: updatedProfile, error } = await supabase.functions.invoke('profile-update', {
         body: data
       });
 
       if (error) throw error;
 
-      // Update state with new profile
-      setState(prev => ({ ...prev, profile: updatedProfile?.data || prev.profile }));
+      // Refresh state with new profile
+      await refreshProfile();
       return updatedProfile;
     } catch (error) {
       console.error('Error updating profile:', error);
       throw error;
+    }
+  };
+
+  // Function to refresh user profile
+  const refreshProfile = async () => {
+    const profile = await getProfile();
+    if (profile) {
+      setState(prev => ({ ...prev, profile }));
     }
   };
 
@@ -129,15 +151,23 @@ export function AuthProvider({ children }: ProviderProps) {
           if (session) {
             // Use setTimeout to avoid potential recursive calls
             setTimeout(async () => {
-              // Fetch profile data after getting session
-              const profile = await getProfile();
-              setState({ 
+              setState(prev => ({ 
+                ...prev, 
                 session, 
                 user: session.user, 
-                profile, 
                 isLoading: false, 
                 error: null 
-              });
+              }));
+              
+              // Fetch profile data after session is set
+              try {
+                const profile = await getProfile();
+                if (profile) {
+                  setState(prev => ({ ...prev, profile }));
+                }
+              } catch (profileError) {
+                console.error("Error fetching profile after auth state change:", profileError);
+              }
             }, 0);
           } else {
             setState({ 
@@ -161,9 +191,22 @@ export function AuthProvider({ children }: ProviderProps) {
 
         if (session) {
           console.log("Existing session found");
-          // Get user profile
-          const profile = await getProfile();
-          setState({ session, user: session.user, profile, isLoading: false, error: null });
+          setState(prev => ({ 
+            ...prev, 
+            session, 
+            user: session.user, 
+            isLoading: false 
+          }));
+          
+          // Get user profile after setting session
+          try {
+            const profile = await getProfile();
+            if (profile) {
+              setState(prev => ({ ...prev, profile }));
+            }
+          } catch (profileError) {
+            console.error("Error fetching profile during initialization:", profileError);
+          }
         } else {
           console.log("No existing session");
           setState({ session: null, user: null, profile: null, isLoading: false, error: null });
@@ -201,9 +244,27 @@ export function AuthProvider({ children }: ProviderProps) {
         return { error };
       }
       
-      console.log("Login successful, fetching profile");
-      const profile = await getProfile();
-      setState({ session: data.session, user: data.user, profile, isLoading: false, error: null });
+      console.log("Login successful");
+      setState(prev => ({ 
+        ...prev, 
+        session: data.session, 
+        user: data.user, 
+        isLoading: false, 
+        error: null 
+      }));
+      
+      // Fetch profile separately to avoid recursive calls
+      setTimeout(async () => {
+        try {
+          const profile = await getProfile();
+          if (profile) {
+            setState(prev => ({ ...prev, profile }));
+          }
+        } catch (profileError) {
+          console.error("Error fetching profile after login:", profileError);
+        }
+      }, 0);
+      
       return { error: null };
     } catch (error) {
       console.error('Login error:', error);
@@ -250,15 +311,26 @@ export function AuthProvider({ children }: ProviderProps) {
         return { error: signInError, data: signupData };
       }
       
-      console.log("Auto sign-in successful, fetching profile");
-      const profile = await getProfile();
+      console.log("Auto sign-in successful");
       setState({ 
         session: signInData.session, 
         user: signInData.user, 
-        profile, 
+        profile: null,
         isLoading: false, 
         error: null 
       });
+      
+      // Fetch profile separately to avoid recursive calls
+      setTimeout(async () => {
+        try {
+          const profile = await getProfile();
+          if (profile) {
+            setState(prev => ({ ...prev, profile }));
+          }
+        } catch (profileError) {
+          console.error("Error fetching profile after signup:", profileError);
+        }
+      }, 0);
       
       return { error: null, data: signupData };
     } catch (error) {
@@ -276,6 +348,7 @@ export function AuthProvider({ children }: ProviderProps) {
       navigate('/login');
     } catch (error) {
       console.error("Logout error:", error);
+      toast.error("Erro ao fazer logout. Tente novamente.");
     }
   };
 
@@ -290,6 +363,7 @@ export function AuthProvider({ children }: ProviderProps) {
         updateUser,
         updateProfile,
         getProfile,
+        refreshProfile
       }}
     >
       {children}

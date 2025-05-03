@@ -15,7 +15,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requireAuth = true,
   requireAdmin = false
 }) => {
-  const { isAuthenticated, isLoading, profile, getProfile } = useAuth();
+  const { isAuthenticated, isLoading, profile, getProfile, refreshProfile } = useAuth();
   const [profileLoading, setProfileLoading] = useState(false);
   const location = useLocation();
 
@@ -24,13 +24,18 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     const loadProfile = async () => {
       if (isAuthenticated && !profile) {
         setProfileLoading(true);
-        await getProfile();
-        setProfileLoading(false);
+        try {
+          await refreshProfile();
+        } catch (error) {
+          console.error("Error loading profile in ProtectedRoute:", error);
+        } finally {
+          setProfileLoading(false);
+        }
       }
     };
     
     loadProfile();
-  }, [isAuthenticated, profile, getProfile]);
+  }, [isAuthenticated, profile, refreshProfile]);
 
   // Show loading while checking authentication or loading profile
   if (isLoading || profileLoading) {

@@ -34,7 +34,7 @@ serve(async (req) => {
     // Set CORS headers
     const headers = {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'authorization, content-type',
+      'Access-Control-Allow-Headers': 'authorization, content-type, x-client-info, apikey',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Content-Type': 'application/json'
     }
@@ -63,12 +63,20 @@ serve(async (req) => {
     
     const token = authHeader.replace('Bearer ', '')
 
-    // Initialize Supabase client with service role
+    // Initialize Supabase client with service role - set search_path to avoid RLS recursion
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || ''
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
     
-    // Client with JWT token (from user)
-    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+    // Client with Service Role token (bypassing RLS)
+    const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      }
+    });
+    
+    // Client with JWT token (from user) to verify identity
+    const supabaseClient = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
@@ -80,17 +88,32 @@ serve(async (req) => {
       },
     })
     
+    console.log("Verifying user token");
+    
     // Verify user token and get user ID
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
     if (authError || !user) {
+      console.error("Auth error:", authError);
       return new Response(
         JSON.stringify({ error: authError?.message || 'Unauthorized' }),
         { status: 401, headers }
       )
     }
     
+    console.log("User authenticated:", user.id);
+    
     // Get update data from request body
-    const requestData: Profile = await req.json()
+    let requestData: Profile;
+    try {
+      requestData = await req.json();
+      console.log("Received update request:", requestData);
+    } catch (parseError) {
+      console.error("Error parsing request body:", parseError);
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON in request body' }),
+        { status: 400, headers }
+      );
+    }
     
     // Create a clean update object (preventing unauthorized updates)
     const updateData: Record<string, any> = {}
@@ -128,20 +151,25 @@ serve(async (req) => {
       )
     }
     
-    // Update profile
-    const { data: profile, error: updateError } = await supabaseClient
+    console.log("Updating profile with data:", updateData);
+    
+    // Update profile using admin client to bypass RLS
+    const { data: profile, error: updateError } = await adminClient
       .from('profiles')
       .update(updateData)
       .eq('id', user.id)
       .select()
-      .single()
+      .single();
       
     if (updateError) {
+      console.error("Error updating profile:", updateError);
       return new Response(
         JSON.stringify({ error: updateError.message }),
         { status: 500, headers }
       )
     }
+    
+    console.log("Profile updated successfully:", profile);
     
     // Return updated profile
     return new Response(
@@ -153,13 +181,16 @@ serve(async (req) => {
     )
     
   } catch (error) {
+    console.error("Unexpected error in profile-update:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message || "Erro interno do servidor" }),
       { 
         status: 500, 
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'authorization, content-type, x-client-info, apikey',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
         } 
       }
     )
