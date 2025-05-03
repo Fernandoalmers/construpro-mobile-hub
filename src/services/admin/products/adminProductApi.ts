@@ -117,8 +117,26 @@ export const getPendingProducts = async (): Promise<AdminProduct[]> => {
   }
 };
 
-// Re-export existing debug function
-export { debugFetchProducts } from './adminProductApi';
+/**
+ * Debug function to fetch products with detailed logging
+ */
+export const debugFetchProducts = async () => {
+  console.log('Debug fetch products called');
+  try {
+    const { data, error } = await supabase.from('produtos').select('*').limit(10);
+    console.log('Debug productos data:', data);
+    
+    if (error) {
+      console.error('Error in debug fetch:', error);
+      return { error };
+    }
+    
+    return { data };
+  } catch (err) {
+    console.error('Unexpected error in debug fetch:', err);
+    return { error: err };
+  }
+};
 
 // Update the existing function to use the new implementation
 export const fetchPendingProducts = getPendingProducts;

@@ -3,6 +3,20 @@ import { supabase } from '@/integrations/supabase/client';
 import { AdminRedemption } from '@/types/admin';
 import { toast } from '@/components/ui/sonner';
 
+// Cache for redemptions to improve performance
+let redemptionsCache: AdminRedemption[] = [];
+
+/**
+ * Update a redemption status in the cache
+ */
+export const updateRedemptionInCache = (redemptionId: string, newStatus: string): void => {
+  redemptionsCache = redemptionsCache.map(redemption =>
+    redemption.id === redemptionId
+      ? { ...redemption, status: newStatus }
+      : redemption
+  );
+};
+
 /**
  * Fetch redemptions with optional filtering by status
  */
@@ -52,6 +66,9 @@ export const fetchRedemptions = async (showAll: boolean = true): Promise<AdminRe
         cliente_email: customerData?.email
       } as AdminRedemption;
     }));
+    
+    // Update the cache
+    redemptionsCache = redemptionsWithCustomerInfo;
     
     return redemptionsWithCustomerInfo;
   } catch (error) {
