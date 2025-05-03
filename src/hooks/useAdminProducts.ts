@@ -1,9 +1,15 @@
 
 import { useState, useEffect } from 'react';
-import { fetchAdminProducts, approveProduct, rejectProduct } from '@/services/adminProductsService';
+import { 
+  fetchAdminProducts, 
+  approveProduct, 
+  rejectProduct, 
+  subscribeToAdminProductUpdates, 
+  unsubscribeFromChannel 
+} from '@/services/admin/products';
 import { AdminProduct } from '@/types/admin';
 import { toast } from '@/components/ui/sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { RealtimeChannel } from '@supabase/supabase-js';
 
 export const useAdminProducts = (initialFilter: string = 'all') => {
   const [products, setProducts] = useState<AdminProduct[]>([]);
@@ -11,6 +17,7 @@ export const useAdminProducts = (initialFilter: string = 'all') => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState(initialFilter);
   const [searchTerm, setSearchTerm] = useState('');
+  const [realtimeChannel, setRealtimeChannel] = useState<RealtimeChannel | null>(null);
 
   const loadProducts = async () => {
     try {
@@ -112,33 +119,22 @@ export const useAdminProducts = (initialFilter: string = 'all') => {
     }
   };
 
-  // Initial load
+  // Initial load and realtime setup
   useEffect(() => {
     loadProducts();
     
     // Set up realtime subscription for products
-    const channel = supabase
-      .channel('admin-products-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'produtos'
-        },
-        (payload) => {
-          console.log('Produto atualizado (Admin):', payload);
-          const eventType = payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE';
-          if (eventType === 'INSERT' || eventType === 'UPDATE' || eventType === 'DELETE') {
-            // Reload products when changes occur
-            loadProducts();
-          }
-        }
-      )
-      .subscribe();
+    const channel = subscribeToAdminProductUpdates((product, eventType) => {
+      if (eventType === 'INSERT' || eventType === 'UPDATE' || eventType === 'DELETE') {
+        // Reload products when changes occur
+        loadProducts();
+      }
+    });
+    
+    setRealtimeChannel(channel);
       
     return () => {
-      supabase.removeChannel(channel);
+      unsubscribeFromChannel(channel);
     };
   }, []);
 

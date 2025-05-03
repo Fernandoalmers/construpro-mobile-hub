@@ -3,12 +3,12 @@ import React, { useEffect } from 'react';
 import AdminLayout from './AdminLayout';
 import { useAdminProducts } from '@/hooks/useAdminProducts';
 import { useTitle } from '@/hooks/use-title';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import LoadingState from '@/components/common/LoadingState';
 import ProductFilters from './products/ProductFilters';
 import ProductsTable from './products/ProductsTable';
 import ProductsHeader from './products/ProductsHeader';
+import { debugFetchProducts } from '@/services/admin/products';
 
 const ProductsManagementScreen: React.FC = () => {
   useTitle('ConstruPro Admin - Produtos');
@@ -27,8 +27,8 @@ const ProductsManagementScreen: React.FC = () => {
 
   // Debug function to help troubleshoot data issues
   const debugData = async () => {
-    const { debugFetchProducts } = await import('@/services/adminProductsService');
-    debugFetchProducts();
+    const result = await debugFetchProducts();
+    console.log('Debug result:', result);
   };
 
   useEffect(() => {
