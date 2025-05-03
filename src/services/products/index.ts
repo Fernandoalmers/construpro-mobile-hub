@@ -22,7 +22,7 @@ import {
   deleteProductImage,
   deleteProductImageFromStorage,
   ProductImage
-} from './productImages';
+} from './images';
 
 import {
   mirrorChangesForAdmin,
