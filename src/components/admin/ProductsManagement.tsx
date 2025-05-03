@@ -19,73 +19,71 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ProductStatusBadge from '../vendor/ProductStatusBadge';
 import { toast } from '@/components/ui/sonner';
-
-interface ProductData {
-  id: string;
-  nome: string;
-  imagemUrl: string;
-  preco: number;
-  pontos: number;
-  categoria: string;
-  lojaId: string;
-  lojaNome?: string;
-  status?: string;
-}
+import { useIsAdmin } from '@/hooks/useIsAdmin';
+import { 
+  AdminProduct, 
+  fetchAdminProducts, 
+  approveProduct, 
+  rejectProduct, 
+  deleteProduct, 
+  getCategories, 
+  getVendors 
+} from '@/services/adminProductsService';
+import LoadingState from '@/components/common/LoadingState';
+import ErrorState from '@/components/common/ErrorState';
 
 const ProductsManagement: React.FC = () => {
-  const [products, setProducts] = useState<ProductData[]>([]);
+  const { isAdmin, isLoading: isAdminLoading } = useIsAdmin();
+  const [products, setProducts] = useState<AdminProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [storeFilter, setStoreFilter] = useState('all');
   const [categories, setCategories] = useState<string[]>([]);
   const [stores, setStores] = useState<{id: string, nome: string}[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        setIsLoading(true);
-        
-        // For demo purposes, we'll use mock data
-        const productData = (await import('../../data/produtos.json')).default;
-        const storeData = (await import('../../data/lojas.json')).default;
-        
-        // Add store name and random status to products
-        const enhancedProducts = productData.map((product: any) => {
-          const store = storeData.find(store => store.id === product.lojaId);
-          return {
-            ...product,
-            lojaNome: store?.nome || 'Loja desconhecida',
-            // Random status for demo
-            status: ['ativo', 'pendente', 'inativo'][Math.floor(Math.random() * 3)]
-          };
-        });
-        
-        setProducts(enhancedProducts);
-        
-        // Extract categories
-        const uniqueCategories = Array.from(
-          new Set(enhancedProducts.map((product: ProductData) => product.categoria))
-        );
-        setCategories(uniqueCategories);
-        
-        // Extract stores
-        setStores(storeData.map(store => ({
-          id: store.id,
-          nome: store.nome
-        })));
-        
-      } catch (error) {
-        console.error('Error fetching products:', error);
-        toast.error('Erro ao carregar produtos');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    if (isAdminLoading) {
+      return; // Wait for admin status check to complete
+    }
     
-    fetchProducts();
-  }, []);
+    if (!isAdmin) {
+      setError('Unauthorized: Admin access required');
+      setIsLoading(false);
+      return;
+    }
+    
+    loadProducts();
+  }, [isAdmin, isAdminLoading]);
+
+  const loadProducts = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Fetch products
+      const productsData = await fetchAdminProducts();
+      setProducts(productsData);
+      
+      // Fetch categories
+      const categoriesData = await getCategories();
+      setCategories(categoriesData);
+      
+      // Fetch stores
+      const storesData = await getVendors();
+      setStores(storesData);
+      
+    } catch (error) {
+      console.error('Error loading products data:', error);
+      setError('Failed to load products. Please try again.');
+      toast.error('Erro ao carregar produtos');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Filter products based on search and filters
   const filteredProducts = products.filter(product => {
@@ -102,10 +100,17 @@ const ProductsManagement: React.FC = () => {
   });
 
   const handleApproveProduct = async (productId: string) => {
+    if (isProcessing) return;
+    
     try {
+      setIsProcessing(true);
+      
+      await approveProduct(productId);
+      
+      // Update local state
       setProducts(prevProducts =>
         prevProducts.map(product =>
-          product.id === productId ? { ...product, status: 'ativo' } : product
+          product.id === productId ? { ...product, status: 'aprovado' } : product
         )
       );
       
@@ -113,11 +118,20 @@ const ProductsManagement: React.FC = () => {
     } catch (error) {
       console.error('Error approving product:', error);
       toast.error('Erro ao aprovar produto');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   const handleRejectProduct = async (productId: string) => {
+    if (isProcessing) return;
+    
     try {
+      setIsProcessing(true);
+      
+      await rejectProduct(productId);
+      
+      // Update local state
       setProducts(prevProducts =>
         prevProducts.map(product =>
           product.id === productId ? { ...product, status: 'inativo' } : product
@@ -128,15 +142,24 @@ const ProductsManagement: React.FC = () => {
     } catch (error) {
       console.error('Error rejecting product:', error);
       toast.error('Erro ao recusar produto');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   const handleDeleteProduct = async (productId: string) => {
+    if (isProcessing) return;
+    
     if (!window.confirm('Tem certeza que deseja excluir este produto?')) {
       return;
     }
     
     try {
+      setIsProcessing(true);
+      
+      await deleteProduct(productId);
+      
+      // Update local state
       setProducts(prevProducts => 
         prevProducts.filter(product => product.id !== productId)
       );
@@ -145,6 +168,8 @@ const ProductsManagement: React.FC = () => {
     } catch (error) {
       console.error('Error deleting product:', error);
       toast.error('Erro ao excluir produto');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -154,6 +179,41 @@ const ProductsManagement: React.FC = () => {
       currency: 'BRL'
     }).format(price);
   };
+
+  // If admin status is still loading
+  if (isAdminLoading) {
+    return (
+      <AdminLayout currentSection="Produtos">
+        <LoadingState text="Verificando permissões de administrador..." />
+      </AdminLayout>
+    );
+  }
+  
+  // If user is not an admin
+  if (!isAdmin) {
+    return (
+      <AdminLayout currentSection="Produtos">
+        <ErrorState 
+          title="Acesso Negado" 
+          message="Você não tem permissões de administrador para acessar este painel."
+          onRetry={() => window.location.href = '/profile'}
+        />
+      </AdminLayout>
+    );
+  }
+
+  // If there's an error loading the products
+  if (error) {
+    return (
+      <AdminLayout currentSection="Produtos">
+        <ErrorState 
+          title="Erro ao carregar produtos" 
+          message={error}
+          onRetry={loadProducts}
+        />
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout currentSection="Produtos">
@@ -196,7 +256,7 @@ const ProductsManagement: React.FC = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos os status</SelectItem>
-                  <SelectItem value="ativo">Ativos</SelectItem>
+                  <SelectItem value="aprovado">Aprovados</SelectItem>
                   <SelectItem value="pendente">Pendentes</SelectItem>
                   <SelectItem value="inativo">Inativos</SelectItem>
                 </SelectContent>
@@ -218,10 +278,7 @@ const ProductsManagement: React.FC = () => {
           </div>
           
           {isLoading ? (
-            <div className="text-center py-8">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-construPro-blue"></div>
-              <p className="mt-2 text-gray-500">Carregando produtos...</p>
-            </div>
+            <LoadingState text="Carregando produtos..." />
           ) : (
             <div className="rounded-md border">
               <Table>
@@ -248,11 +305,17 @@ const ProductsManagement: React.FC = () => {
                     filteredProducts.map((product) => (
                       <TableRow key={product.id}>
                         <TableCell>
-                          <img 
-                            src={product.imagemUrl} 
-                            alt={product.nome}
-                            className="h-12 w-12 rounded object-cover"
-                          />
+                          {product.imagemUrl ? (
+                            <img 
+                              src={product.imagemUrl} 
+                              alt={product.nome}
+                              className="h-12 w-12 rounded object-cover"
+                            />
+                          ) : (
+                            <div className="h-12 w-12 bg-gray-200 rounded flex items-center justify-center">
+                              <Store size={16} className="text-gray-400" />
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell className="font-medium">
                           {product.nome}
@@ -266,7 +329,7 @@ const ProductsManagement: React.FC = () => {
                         <TableCell>{formatPrice(product.preco)}</TableCell>
                         <TableCell>{product.pontos}</TableCell>
                         <TableCell>
-                          <ProductStatusBadge status={product.status || 'pendente'} />
+                          <ProductStatusBadge status={product.status} />
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
@@ -274,6 +337,7 @@ const ProductsManagement: React.FC = () => {
                               size="sm" 
                               variant="ghost"
                               onClick={() => handleApproveProduct(product.id)}
+                              disabled={isProcessing || product.status === 'aprovado'}
                             >
                               <Check size={16} className="text-green-600" />
                             </Button>
@@ -281,12 +345,14 @@ const ProductsManagement: React.FC = () => {
                               size="sm" 
                               variant="ghost"
                               onClick={() => handleRejectProduct(product.id)}
+                              disabled={isProcessing || product.status === 'inativo'}
                             >
                               <X size={16} className="text-red-600" />
                             </Button>
                             <Button 
                               size="sm" 
                               variant="ghost"
+                              onClick={() => window.location.href = `/admin/product-edit/${product.id}`}
                             >
                               <Edit size={16} className="text-blue-600" />
                             </Button>
@@ -294,6 +360,7 @@ const ProductsManagement: React.FC = () => {
                               size="sm" 
                               variant="ghost"
                               onClick={() => handleDeleteProduct(product.id)}
+                              disabled={isProcessing}
                             >
                               <Trash2 size={16} className="text-red-600" />
                             </Button>
@@ -311,6 +378,13 @@ const ProductsManagement: React.FC = () => {
           <p className="text-sm text-gray-500">
             Exibindo {filteredProducts.length} de {products.length} produtos
           </p>
+          <Button 
+            variant="outline" 
+            onClick={loadProducts}
+            disabled={isLoading || isProcessing}
+          >
+            Atualizar
+          </Button>
         </CardFooter>
       </Card>
     </AdminLayout>
