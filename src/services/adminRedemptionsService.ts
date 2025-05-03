@@ -1,5 +1,4 @@
 
-
 // This file is kept for backward compatibility
 // It re-exports everything from the new modular structure
 
@@ -8,7 +7,8 @@ import {
   approveRedemption,
   rejectRedemption,
   markRedemptionAsDelivered,
-  getRedemptionStatusBadgeColor
+  getRedemptionStatusBadgeColor,
+  getRedemptionsCount
 } from './admin/redemptions';
 
 // Use "export type" for type re-exports when isolatedModules is enabled
@@ -25,15 +25,10 @@ export {
 
 // Add a function to get pending redemptions count for the admin dashboard
 export const resgatesPendentes = async () => {
-  const redemptions = await fetchRedemptions(false); // Pass false instead of {status: 'pendente'}
-  return redemptions.filter(r => r.status === 'pendente');
+  return await fetchRedemptions(false);
 };
 
 // For backward compatibility with the dashboard
 export const fetchAdminRedemptionsCount = async () => {
-  const pendingRedemptions = await resgatesPendentes();
-  return { 
-    pending: pendingRedemptions.length,
-    total: 0 // This would need to be implemented if required
-  };
+  return await getRedemptionsCount();
 };

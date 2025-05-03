@@ -1,94 +1,90 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { AdminRedemption, RedemptionsCache, CACHE_DURATION } from './types';
-
-// Cache to prevent unnecessary refetches
-let redemptionsCache: RedemptionsCache = {
-  data: null,
-  timestamp: 0
-};
+import { AdminRedemption } from '@/types/admin';
+import { toast } from '@/components/ui/sonner';
 
 /**
- * Fetches all redemptions from the system
+ * Fetch redemptions with optional filtering by status
  */
-export const fetchRedemptions = async (forceRefresh = false): Promise<AdminRedemption[]> => {
-  // Return cached data if available and not expired
-  const now = Date.now();
-  if (!forceRefresh && redemptionsCache.data && (now - redemptionsCache.timestamp < CACHE_DURATION)) {
-    return redemptionsCache.data;
-  }
-
+export const fetchRedemptions = async (showAll: boolean = true): Promise<AdminRedemption[]> => {
   try {
-    const { data, error } = await supabase
+    // Build base query
+    let query = supabase
       .from('resgates')
       .select(`
-        *,
-        profiles:cliente_id(nome)
+        id,
+        cliente_id,
+        item,
+        pontos,
+        imagem_url,
+        codigo,
+        status,
+        data,
+        created_at,
+        updated_at
       `)
       .order('created_at', { ascending: false });
-
+      
+    // If not showing all, filter to only pending ones
+    if (!showAll) {
+      query = query.eq('status', 'pendente');
+    }
+    
+    const { data, error } = await query;
+    
     if (error) {
       console.error('Error fetching redemptions:', error);
-      return [];
+      throw error;
     }
-
-    // Guard against null data
-    if (!data || !Array.isArray(data)) {
-      return [];
-    }
-
-    const formattedData = data.map(item => ({
-      id: item.id,
-      cliente_id: item.cliente_id,
-      // Safe access to profiles data with proper type checking
-      cliente_nome: item.profiles && typeof item.profiles === 'object' 
-        ? ((item.profiles as {nome?: string}).nome || 'Cliente')
-        : 'Cliente',
-      item: item.item,
-      pontos: item.pontos,
-      imagem_url: item.imagem_url,
-      codigo: item.codigo,
-      status: (item.status as "recusado" | "pendente" | "aprovado" | "entregue") || "pendente",
-      data: item.data || item.created_at,
-      created_at: item.created_at,
-      updated_at: item.updated_at
+    
+    // Get customer info for each redemption
+    const redemptionsWithCustomerInfo = await Promise.all((data || []).map(async (redemption) => {
+      // Get customer info
+      const { data: customerData } = await supabase
+        .from('profiles')
+        .select('nome, email')
+        .eq('id', redemption.cliente_id)
+        .single();
+      
+      return {
+        ...redemption,
+        cliente_nome: customerData?.nome || 'Desconhecido',
+        cliente_email: customerData?.email
+      } as AdminRedemption;
     }));
-
-    // Update cache
-    redemptionsCache = {
-      data: formattedData,
-      timestamp: now
-    };
-
-    return formattedData;
+    
+    return redemptionsWithCustomerInfo;
   } catch (error) {
-    console.error('Unexpected error fetching redemptions:', error);
+    console.error('Error in fetchRedemptions:', error);
+    toast.error('Erro ao carregar resgates');
     return [];
   }
 };
 
 /**
- * Updates the cache with a single updated redemption
+ * Get redemptions count by status
  */
-export const updateRedemptionInCache = (
-  redemptionId: string, 
-  newStatus: "recusado" | "pendente" | "aprovado" | "entregue"
-): void => {
-  if (redemptionsCache.data) {
-    redemptionsCache.data = redemptionsCache.data.map(item => 
-      item.id === redemptionId 
-        ? { ...item, status: newStatus, updated_at: new Date().toISOString() } 
-        : item
-    );
+export const getRedemptionsCount = async (): Promise<{ total: number; pending: number }> => {
+  try {
+    // Get pending count
+    const pendingRedemptions = await fetchRedemptions(false);
+    
+    // Get total count
+    const { count, error } = await supabase
+      .from('resgates')
+      .select('*', { count: 'exact', head: true });
+      
+    if (error) {
+      console.error('Error getting redemptions count:', error);
+      throw error;
+    }
+    
+    return {
+      total: count || 0,
+      pending: pendingRedemptions.length
+    };
+  } catch (error) {
+    console.error('Error in getRedemptionsCount:', error);
+    return { total: 0, pending: 0 };
   }
-};
-
-/**
- * Invalidates the cache completely
- */
-export const invalidateRedemptionsCache = (): void => {
-  redemptionsCache = {
-    data: null,
-    timestamp: 0
-  };
 };

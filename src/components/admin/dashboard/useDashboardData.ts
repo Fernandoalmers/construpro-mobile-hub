@@ -1,8 +1,9 @@
 
 import { useState, useEffect } from 'react';
-import { fetchPendingProducts } from '@/services/admin/products';
-import { resgatesPendentes } from '@/services/adminRedemptionsService';
-import { fetchPendingStores } from '@/services/adminStoresService';
+import { getPendingProducts } from '@/services/admin/products/adminProductApi';
+import { fetchRedemptions } from '@/services/admin/redemptions/redemptionsFetcher';
+import { getAdminPendingStores } from '@/services/admin/stores';
+import { AdminStats } from '@/types/admin';
 
 export const useDashboardData = () => {
   const [loading, setLoading] = useState(true);
@@ -19,19 +20,19 @@ export const useDashboardData = () => {
         setLoading(true);
         
         // Get pending products
-        const products = await fetchPendingProducts();
+        const products = await getPendingProducts();
         setPendingProducts(products.length);
         
-        // Get pending redemptions - using resgatesPendentes instead of fetchAdminRedemptionsCount
-        const redemptions = await resgatesPendentes();
-        setPendingRedemptions(redemptions.length || 0);
+        // Get pending redemptions - using proper function now
+        const redemptions = await fetchRedemptions(false);
+        setPendingRedemptions(redemptions.length);
         
         // Get pending stores
-        const pendingStoresData = await fetchPendingStores();
+        const pendingStoresData = await getAdminPendingStores();
         setPendingStores(pendingStoresData.length);
         
-        // Recent activity
-        setRecentActivity([]); // To be implemented
+        // Recent activity - to be implemented
+        setRecentActivity([]);
         setActivitiesLoading(false);
         
       } catch (err) {
@@ -46,7 +47,7 @@ export const useDashboardData = () => {
   }, []);
 
   // Create a stats object to match what the components expect
-  const stats = {
+  const stats: AdminStats = {
     products: {
       total: 0, // This would come from an API call
       pending: pendingProducts
