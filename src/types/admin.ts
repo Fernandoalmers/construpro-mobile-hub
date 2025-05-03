@@ -44,3 +44,50 @@ export interface AdminStats {
     pending: number;
   };
 }
+
+export interface AdminCategory {
+  id: string;
+  nome: string;
+  segment_id?: string;
+  segment_name?: string;
+  status: string; // Changed from "ativo" | "inativo" to string for compatibility
+  produtos_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminSegment {
+  id: string;
+  nome: string;
+  status: string; // Changed from "ativo" | "inativo" to string for compatibility
+  categorias_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminRedemption {
+  id: string;
+  cliente_id: string;
+  cliente_nome?: string;
+  item: string;
+  pontos: number;
+  imagem_url: string | null;
+  codigo: string | null;
+  status: string; // Changed from "pendente" | "aprovado" | "recusado" | "entregue" to string for compatibility
+  data: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminReward {
+  id: string;
+  nome: string;
+  descricao: string;
+  pontos: number;
+  imagem_url: string | null;
+  categoria: string;
+  status: string; // Changed from "ativo" | "inativo" to string for compatibility
+  estoque: number | null;
+  created_at: string;
+  updated_at: string;
+}

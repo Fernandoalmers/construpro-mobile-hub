@@ -2,23 +2,23 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { logAdminAction } from './adminService';
-
-export interface AdminRedemption {
-  id: string;
-  cliente_id: string;
-  cliente_nome?: string;
-  item: string;
-  pontos: number;
-  imagem_url: string | null;
-  codigo: string | null;
-  status: 'pendente' | 'aprovado' | 'recusado' | 'entregue';
-  data: string;
-  created_at: string;
-  updated_at: string;
-}
+import { AdminRedemption } from '@/types/admin';
 
 export const fetchAdminRedemptions = async (): Promise<AdminRedemption[]> => {
   try {
+    // Check if the resgates table exists
+    const { error: tableCheckError } = await supabase
+      .from('resgates')
+      .select('count')
+      .limit(1)
+      .single();
+    
+    // If table doesn't exist, return empty array
+    if (tableCheckError && tableCheckError.code === '42P01') {
+      console.log('Redemptions table does not exist yet, returning empty data');
+      return [];
+    }
+    
     // Buscar os resgates
     const { data: resgates, error: resgatesError } = await supabase
       .from('resgates')
@@ -56,13 +56,13 @@ export const fetchAdminRedemptions = async (): Promise<AdminRedemption[]> => {
     const resgatesWithClienteNames = resgates.map(resgate => ({
       ...resgate,
       cliente_nome: clienteMap.get(resgate.cliente_id) || 'Cliente Desconhecido'
-    }));
+    })) as AdminRedemption[];
     
     return resgatesWithClienteNames;
   } catch (error) {
     console.error('Error fetching admin redemptions:', error);
     toast.error('Erro ao carregar resgates');
-    throw error;
+    return [];
   }
 };
 

@@ -2,87 +2,21 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { logAdminAction } from './adminService';
-
-export interface AdminCategory {
-  id: string;
-  nome: string;
-  segment_id?: string;
-  segment_name?: string;
-  status: 'ativo' | 'inativo';
-  produtos_count: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface AdminSegment {
-  id: string;
-  nome: string;
-  status: 'ativo' | 'inativo';
-  categorias_count: number;
-  created_at: string;
-  updated_at: string;
-}
+import { AdminCategory, AdminSegment } from '@/types/admin';
 
 export const fetchAdminCategories = async (): Promise<AdminCategory[]> => {
   try {
-    // Primeiro tentar tabela padronizada 'product_categories'
-    try {
-      const { data: categories, error } = await supabase
-        .from('product_categories')
-        .select(`
-          id,
-          nome,
-          segmento_id,
-          status,
-          created_at,
-          updated_at
-        `)
-        .order('nome');
-
-      if (error) throw error;
-
-      // Buscar nomes dos segmentos
-      const segmentIds = categories
-        .filter(cat => cat.segmento_id)
-        .map(cat => cat.segmento_id);
-      
-      const { data: segments } = await supabase
-        .from('product_segments')
-        .select('id, nome')
-        .in('id', segmentIds);
-      
-      // Criar um mapa para associar rapidamente IDs de segmentos aos seus nomes
-      const segmentMap = new Map();
-      segments?.forEach(s => segmentMap.set(s.id, s.nome));
-
-      // Para cada categoria, contar produtos associados
-      const categoriesWithProductCounts = await Promise.all(categories.map(async (cat) => {
-        const { count, error: countError } = await supabase
-          .from('produtos')
-          .select('*', { count: 'exact', head: true })
-          .eq('categoria', cat.nome);
-          
-        if (countError) {
-          console.error('Error counting products for category:', countError);
-          return {
-            ...cat,
-            segment_name: segmentMap.get(cat.segmento_id) || 'Geral',
-            produtos_count: 0
-          };
-        }
-        
-        return {
-          ...cat,
-          segment_name: segmentMap.get(cat.segmento_id) || 'Geral',
-          produtos_count: count || 0
-        };
-      }));
-      
-      return categoriesWithProductCounts;
-    } catch (error) {
-      // Se a tabela padronizada não existir, fazer fallback para categorias da tabela produtos
-      console.log('Fallback para categorias da tabela produtos:', error);
-
+    // Check if the product_categories table exists
+    const { error: tableCheckError } = await supabase
+      .from('product_categories')
+      .select('count')
+      .limit(1)
+      .single();
+    
+    // If product_categories table doesn't exist, use fallback
+    if (tableCheckError && tableCheckError.code === '42P01') {
+      console.log('Product categories table does not exist, using fallback method');
+      // Fallback to categories from produtos table
       const { data, error: categoriesError } = await supabase
         .from('produtos')
         .select('categoria')
@@ -90,11 +24,13 @@ export const fetchAdminCategories = async (): Promise<AdminCategory[]> => {
         
       if (categoriesError) throw categoriesError;
       
-      // Extrair categorias únicas
-      const uniqueCategories = [...new Set(data.map(p => p.categoria))].filter(Boolean);
+      // Extract unique categories
+      const uniqueCategories = Array.from(new Set(data.map(p => p.categoria))).filter(Boolean);
       
-      // Para cada categoria, contar produtos
+      // For each category, count products
       const categoriesWithCounts = await Promise.all(uniqueCategories.map(async (catName) => {
+        if (!catName) return null;
+        
         const { count, error: countError } = await supabase
           .from('produtos')
           .select('*', { count: 'exact', head: true })
@@ -103,8 +39,8 @@ export const fetchAdminCategories = async (): Promise<AdminCategory[]> => {
         if (countError) {
           console.error('Error counting products for category:', countError);
           return {
-            id: catName, // Usando o nome como ID para categorias extraídas da tabela produtos
-            nome: catName,
+            id: catName as string, // Usando o nome como ID para categorias extraídas da tabela produtos
+            nome: catName as string,
             segment_name: 'Geral',
             status: 'ativo',
             produtos_count: 0,
@@ -114,8 +50,8 @@ export const fetchAdminCategories = async (): Promise<AdminCategory[]> => {
         }
         
         return {
-          id: catName, // Usando o nome como ID para categorias extraídas da tabela produtos
-          nome: catName,
+          id: catName as string, // Usando o nome como ID para categorias extraídas da tabela produtos
+          nome: catName as string,
           segment_name: 'Geral',
           status: 'ativo',
           produtos_count: count || 0,
@@ -124,8 +60,63 @@ export const fetchAdminCategories = async (): Promise<AdminCategory[]> => {
         };
       }));
       
-      return categoriesWithCounts;
+      return categoriesWithCounts.filter(Boolean) as AdminCategory[];
     }
+    
+    // If the table exists, use it
+    const { data: categories, error } = await supabase
+      .from('product_categories')
+      .select(`
+        id,
+        nome,
+        segmento_id,
+        created_at,
+        updated_at
+      `)
+      .order('nome');
+
+    if (error) throw error;
+
+    // Buscar nomes dos segmentos
+    const segmentIds = categories
+      .filter(cat => cat.segmento_id)
+      .map(cat => cat.segmento_id);
+    
+    const { data: segments } = await supabase
+      .from('product_segments')
+      .select('id, nome')
+      .in('id', segmentIds);
+    
+    // Criar um mapa para associar rapidamente IDs de segmentos aos seus nomes
+    const segmentMap = new Map();
+    segments?.forEach(s => segmentMap.set(s.id, s.nome));
+
+    // Para cada categoria, contar produtos associados
+    const categoriesWithProductCounts = await Promise.all(categories.map(async (cat) => {
+      const { count, error: countError } = await supabase
+        .from('produtos')
+        .select('*', { count: 'exact', head: true })
+        .eq('categoria', cat.nome);
+        
+      if (countError) {
+        console.error('Error counting products for category:', countError);
+        return {
+          ...cat,
+          segment_name: segmentMap.get(cat.segmento_id) || 'Geral',
+          status: 'ativo', // Default status if not present
+          produtos_count: 0
+        };
+      }
+      
+      return {
+        ...cat,
+        segment_name: segmentMap.get(cat.segmento_id) || 'Geral',
+        status: 'ativo', // Default status if not present
+        produtos_count: count || 0
+      };
+    }));
+    
+    return categoriesWithProductCounts;
   } catch (error) {
     console.error('Error fetching admin categories:', error);
     toast.error('Erro ao carregar categorias');
@@ -135,70 +126,83 @@ export const fetchAdminCategories = async (): Promise<AdminCategory[]> => {
 
 export const fetchAdminSegments = async (): Promise<AdminSegment[]> => {
   try {
-    // Primeiro tentar tabela padronizada 'product_segments'
-    try {
-      const { data, error } = await supabase
-        .from('product_segments')
-        .select(`
-          id,
-          nome,
-          status,
-          created_at,
-          updated_at
-        `)
-        .order('nome');
-
-      if (error) throw error;
-
-      // Para cada segmento, contar categorias associadas
-      const segmentsWithCategoryCounts = await Promise.all(data.map(async (segment) => {
-        const { count, error: countError } = await supabase
-          .from('product_categories')
-          .select('*', { count: 'exact', head: true })
-          .eq('segmento_id', segment.id);
+    // Check if product_segments table exists
+    const { error: tableCheckError } = await supabase
+      .from('product_segments')
+      .select('count')
+      .limit(1)
+      .single();
+    
+    // If table doesn't exist, return basic segments
+    if (tableCheckError && tableCheckError.code === '42P01') {
+      console.log('Product segments table does not exist, using fallback');
+      
+      // Check if produtos table has segmento column
+      try {
+        const { data, error: segmentsError } = await supabase
+          .from('produtos')
+          .select('segmento')
+          .order('segmento');
           
-        if (countError) {
-          console.error('Error counting categories for segment:', countError);
-          return {
-            ...segment,
-            categorias_count: 0
-          };
+        if (segmentsError) {
+          console.error('Error fetching segments from produtos:', segmentsError);
+          return [];
         }
         
-        return {
-          ...segment,
-          categorias_count: count || 0
-        };
-      }));
-      
-      return segmentsWithCategoryCounts;
-    } catch (error) {
-      // Se a tabela padronizada não existir, fazer fallback
-      console.log('Tabela de segmentos não existente:', error);
-      
-      // Verificar se existe coluna de segmento na tabela produtos
-      const { data, error: segmentsError } = await supabase
-        .from('produtos')
-        .select('segmento')
-        .order('segmento');
+        // Extract unique segments
+        const uniqueSegments = Array.from(new Set(data.map(p => p.segmento))).filter(Boolean);
         
-      if (segmentsError) {
-        console.error('Erro ao buscar segmentos da tabela produtos:', segmentsError);
+        return uniqueSegments.map(segName => ({
+          id: segName as string, // Using name as ID for segments extracted from products table
+          nome: segName as string,
+          status: 'ativo',
+          categorias_count: 0, // No easy way to count categories in this case
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }));
+      } catch (err) {
+        console.error('Error in segments fallback:', err);
         return [];
       }
-      
-      // Extrair segmentos únicos
-      const uniqueSegments = [...new Set(data.map(p => p.segmento))].filter(Boolean);
-      
-      return uniqueSegments.map(segName => ({
-        id: segName, // Usando o nome como ID para segmentos extraídos da tabela produtos
-        nome: segName,
-        status: 'ativo',
-        categorias_count: 0, // Não temos como contar facilmente neste caso
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }));
     }
+    
+    // If table exists, use it
+    const { data, error } = await supabase
+      .from('product_segments')
+      .select(`
+        id,
+        nome,
+        created_at,
+        updated_at
+      `)
+      .order('nome');
+
+    if (error) throw error;
+
+    // For each segment, count associated categories
+    const segmentsWithCategoryCounts = await Promise.all(data.map(async (segment) => {
+      const { count, error: countError } = await supabase
+        .from('product_categories')
+        .select('*', { count: 'exact', head: true })
+        .eq('segmento_id', segment.id);
+        
+      if (countError) {
+        console.error('Error counting categories for segment:', countError);
+        return {
+          ...segment,
+          status: 'ativo', // Default status if not present
+          categorias_count: 0
+        };
+      }
+      
+      return {
+        ...segment,
+        status: 'ativo', // Default status if not present
+        categorias_count: count || 0
+      };
+    }));
+    
+    return segmentsWithCategoryCounts;
   } catch (error) {
     console.error('Error fetching admin segments:', error);
     toast.error('Erro ao carregar segmentos');
@@ -206,71 +210,81 @@ export const fetchAdminSegments = async (): Promise<AdminSegment[]> => {
   }
 };
 
-export const createCategory = async (categoryData: Omit<AdminCategory, 'id' | 'created_at' | 'updated_at' | 'produtos_count'>): Promise<boolean> => {
+export const createCategory = async (categoryData: Omit<AdminCategory, 'id' | 'created_at' | 'updated_at' | 'produtos_count' | 'segment_name'>): Promise<boolean> => {
   try {
-    // Verificar se a tabela product_categories existe
-    try {
-      const { error } = await supabase
-        .from('product_categories')
-        .insert({
-          nome: categoryData.nome,
-          segmento_id: categoryData.segment_id,
-          status: categoryData.status
-        });
-        
-      if (error) throw error;
-      
-      // Log the admin action
-      await logAdminAction({
-        action: 'create_category',
-        entityType: 'categoria',
-        entityId: 'new',
-        details: { nome: categoryData.nome, segmento_id: categoryData.segment_id }
+    // Check if table exists
+    const { error: tableCheckError } = await supabase
+      .from('product_categories')
+      .select('count')
+      .limit(1)
+      .single();
+    
+    if (tableCheckError && tableCheckError.code === '42P01') {
+      toast.error('A tabela de categorias não existe. Crie-a primeiro');
+      return false;
+    }
+    
+    const { error } = await supabase
+      .from('product_categories')
+      .insert({
+        nome: categoryData.nome,
+        segmento_id: categoryData.segment_id,
       });
       
-      toast.success('Categoria criada com sucesso');
-      return true;
-    } catch (error) {
-      console.error('Erro ao criar categoria na tabela padronizada:', error);
-      throw error;
-    }
+    if (error) throw error;
+    
+    // Log the admin action
+    await logAdminAction({
+      action: 'create_category',
+      entityType: 'categoria',
+      entityId: 'new',
+      details: { nome: categoryData.nome, segmento_id: categoryData.segment_id }
+    });
+    
+    toast.success('Categoria criada com sucesso');
+    return true;
   } catch (error) {
     console.error('Error creating category:', error);
-    toast.error('Erro ao criar categoria. Verifique se a tabela product_categories existe.');
+    toast.error('Erro ao criar categoria');
     return false;
   }
 };
 
 export const createSegment = async (segmentData: Omit<AdminSegment, 'id' | 'created_at' | 'updated_at' | 'categorias_count'>): Promise<boolean> => {
   try {
-    // Verificar se a tabela product_segments existe
-    try {
-      const { error } = await supabase
-        .from('product_segments')
-        .insert({
-          nome: segmentData.nome,
-          status: segmentData.status
-        });
-        
-      if (error) throw error;
-      
-      // Log the admin action
-      await logAdminAction({
-        action: 'create_segment',
-        entityType: 'segmento',
-        entityId: 'new',
-        details: { nome: segmentData.nome }
+    // Check if table exists
+    const { error: tableCheckError } = await supabase
+      .from('product_segments')
+      .select('count')
+      .limit(1)
+      .single();
+    
+    if (tableCheckError && tableCheckError.code === '42P01') {
+      toast.error('A tabela de segmentos não existe. Crie-a primeiro');
+      return false;
+    }
+    
+    const { error } = await supabase
+      .from('product_segments')
+      .insert({
+        nome: segmentData.nome,
       });
       
-      toast.success('Segmento criado com sucesso');
-      return true;
-    } catch (error) {
-      console.error('Erro ao criar segmento na tabela padronizada:', error);
-      throw error;
-    }
+    if (error) throw error;
+    
+    // Log the admin action
+    await logAdminAction({
+      action: 'create_segment',
+      entityType: 'segmento',
+      entityId: 'new',
+      details: { nome: segmentData.nome }
+    });
+    
+    toast.success('Segmento criado com sucesso');
+    return true;
   } catch (error) {
     console.error('Error creating segment:', error);
-    toast.error('Erro ao criar segmento. Verifique se a tabela product_segments existe.');
+    toast.error('Erro ao criar segmento');
     return false;
   }
 };
@@ -282,7 +296,6 @@ export const updateCategory = async (id: string, categoryData: Partial<AdminCate
       .update({
         nome: categoryData.nome,
         segmento_id: categoryData.segment_id,
-        status: categoryData.status,
         updated_at: new Date().toISOString()
       })
       .eq('id', id);
@@ -312,7 +325,6 @@ export const updateSegment = async (id: string, segmentData: Partial<AdminSegmen
       .from('product_segments')
       .update({
         nome: segmentData.nome,
-        status: segmentData.status,
         updated_at: new Date().toISOString()
       })
       .eq('id', id);
@@ -336,7 +348,7 @@ export const updateSegment = async (id: string, segmentData: Partial<AdminSegmen
   }
 };
 
-export const toggleCategoryStatus = async (id: string, currentStatus: 'ativo' | 'inativo'): Promise<boolean> => {
+export const toggleCategoryStatus = async (id: string, currentStatus: string): Promise<boolean> => {
   const newStatus = currentStatus === 'ativo' ? 'inativo' : 'ativo';
   
   try {
@@ -367,7 +379,7 @@ export const toggleCategoryStatus = async (id: string, currentStatus: 'ativo' | 
   }
 };
 
-export const toggleSegmentStatus = async (id: string, currentStatus: 'ativo' | 'inativo'): Promise<boolean> => {
+export const toggleSegmentStatus = async (id: string, currentStatus: string): Promise<boolean> => {
   const newStatus = currentStatus === 'ativo' ? 'inativo' : 'ativo';
   
   try {

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Suspense, lazy } from 'react';
 import { Route, Routes, Navigate } from 'react-router-dom';
@@ -59,14 +60,16 @@ import QRCodeScreen from './components/QRCodeScreen';
 // Import Protected Route
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
-// Admin Dashboard Components
-import AdminDashboard from './components/admin/AdminDashboard';
-import UserManagementScreen from './components/admin/UserManagementScreen';
-import ProductsManagement from './components/admin/ProductsManagement';
-import StoresManagementScreen from './components/admin/StoresManagementScreen';
-import RedemptionsManagementScreen from './components/admin/RedemptionsManagementScreen';
-import OrdersManagementScreen from './components/admin/OrdersManagementScreen';
-import AdminLogs from './components/admin/AdminLogs';
+// Import admin components from our imports file
+import {
+  AdminDashboard,
+  UserManagementScreen as AdminUserManagementScreen,
+  ProductsManagement as AdminProductsManagement,
+  StoresManagementScreen as AdminStoresManagementScreen,
+  RedemptionsManagementScreen as AdminRedemptionsManagementScreen,
+  OrdersManagementScreen as AdminOrdersManagementScreen,
+  AdminLogs
+} from './imports';
 
 // QueryClient for React Query
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -339,7 +342,7 @@ function App() {
                 path="/admin/users"
                 element={
                   <ProtectedRoute requireAuth={true} requireAdmin={true}>
-                    <UserManagementScreen />
+                    <AdminUserManagementScreen />
                   </ProtectedRoute>
                 }
               />
@@ -347,7 +350,7 @@ function App() {
                 path="/admin/products"
                 element={
                   <ProtectedRoute requireAuth={true} requireAdmin={true}>
-                    <ProductsManagement />
+                    <AdminProductsManagement />
                   </ProtectedRoute>
                 }
               />
@@ -355,7 +358,7 @@ function App() {
                 path="/admin/stores"
                 element={
                   <ProtectedRoute requireAuth={true} requireAdmin={true}>
-                    <StoresManagementScreen />
+                    <AdminStoresManagementScreen />
                   </ProtectedRoute>
                 }
               />
@@ -363,7 +366,7 @@ function App() {
                 path="/admin/redemptions"
                 element={
                   <ProtectedRoute requireAuth={true} requireAdmin={true}>
-                    <RedemptionsManagementScreen />
+                    <AdminRedemptionsManagementScreen />
                   </ProtectedRoute>
                 }
               />
@@ -371,7 +374,7 @@ function App() {
                 path="/admin/orders"
                 element={
                   <ProtectedRoute requireAuth={true} requireAdmin={true}>
-                    <OrdersManagementScreen />
+                    <AdminOrdersManagementScreen />
                   </ProtectedRoute>
                 }
               />

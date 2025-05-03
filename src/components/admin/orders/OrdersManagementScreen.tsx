@@ -1,35 +1,17 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AdminLayout from '../AdminLayout';
-import { 
-  Card, CardContent, CardDescription, 
-  CardFooter, CardHeader, CardTitle 
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { 
-  MoreVertical, Search, RefreshCw, ShoppingBag, 
-  User, Clock, DollarSign, Truck, Edit, Eye 
-} from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { 
-  Select, SelectContent, SelectItem, 
-  SelectTrigger, SelectValue 
-} from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { 
-  DropdownMenu, DropdownMenuContent, DropdownMenuGroup, 
-  DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, 
-  DropdownMenuTrigger 
-} from '@/components/ui/dropdown-menu';
-import { useIsAdmin } from '@/hooks/useIsAdmin';
-import { 
-  AdminOrder, fetchAdminOrders, updateOrderStatus,
-  updateTrackingCode, getOrderStatusBadgeColor
-} from '@/services/adminOrdersService';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Search, Truck, FileText, CheckCircle, XCircle } from 'lucide-react';
+import { AdminOrder, fetchAdminOrders, updateOrderStatus, updateTrackingCode, getOrderStatusBadgeColor } from '@/services/adminOrdersService';
 import { toast } from '@/components/ui/sonner';
+import { useIsAdmin } from '@/hooks/useIsAdmin';
 import LoadingState from '@/components/common/LoadingState';
 import ErrorState from '@/components/common/ErrorState';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 const OrdersManagementScreen: React.FC = () => {
   const { isAdmin, isLoading: isAdminLoading } = useIsAdmin();
@@ -38,114 +20,87 @@ const OrdersManagementScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [isProcessing, setIsProcessing] = useState(false);
-
+  
   useEffect(() => {
     if (isAdminLoading) {
-      return; // Aguardar verificação de administrador
+      return; // Wait for admin status check to complete
     }
     
     if (!isAdmin) {
-      setError('Acesso não autorizado: Apenas administradores podem acessar esta página');
+      setError('Unauthorized: Admin access required');
       setIsLoading(false);
       return;
     }
     
     loadOrders();
   }, [isAdmin, isAdminLoading]);
-
+  
   const loadOrders = async () => {
     try {
       setIsLoading(true);
       setError(null);
-      
       const ordersData = await fetchAdminOrders();
       setOrders(ordersData);
-    } catch (error) {
-      console.error('Error loading orders:', error);
-      setError('Erro ao carregar pedidos. Tente novamente.');
+    } catch (err) {
+      setError('Failed to load orders. Please try again.');
       toast.error('Erro ao carregar pedidos');
     } finally {
       setIsLoading(false);
     }
   };
-
-  // Filtrar pedidos com base na busca e filtros
+  
+  // Filter orders based on search and filters
   const filteredOrders = orders.filter(order => {
     const matchesSearch = 
       !searchTerm || 
       order.cliente_nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.loja_nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.id.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
     
     return matchesSearch && matchesStatus;
   });
-
-  const handleUpdateStatus = async (orderId: string, status: string) => {
-    if (isProcessing) return;
-    
+  
+  const handleUpdateStatus = async (orderId: string, newStatus: string) => {
     try {
-      setIsProcessing(true);
-      await updateOrderStatus(orderId, status);
-      
-      // Atualizar estado local
+      await updateOrderStatus(orderId, newStatus);
       setOrders(prevOrders =>
         prevOrders.map(order =>
-          order.id === orderId ? { ...order, status } : order
+          order.id === orderId ? { ...order, status: newStatus } : order
         )
       );
-    } finally {
-      setIsProcessing(false);
+      toast.success(`Status do pedido atualizado para: ${newStatus}`);
+    } catch (err) {
+      toast.error('Erro ao atualizar status do pedido');
     }
   };
-
-  const handleUpdateTrackingCode = async (orderId: string) => {
-    if (isProcessing) return;
-    
-    const trackingCode = prompt('Insira o código de rastreio:');
-    if (!trackingCode) return;
-    
-    try {
-      setIsProcessing(true);
-      await updateTrackingCode(orderId, trackingCode);
-      
-      // Atualizar estado local
-      setOrders(prevOrders =>
-        prevOrders.map(order =>
-          order.id === orderId ? { ...order, rastreio: trackingCode } : order
-        )
-      );
-      
-      toast.success('Código de rastreio atualizado');
-    } catch (error) {
-      toast.error('Erro ao atualizar código de rastreio');
-    } finally {
-      setIsProcessing(false);
+  
+  const handleAddTracking = async (orderId: string) => {
+    const trackingCode = prompt('Digite o código de rastreio:');
+    if (trackingCode) {
+      try {
+        await updateTrackingCode(orderId, trackingCode);
+        setOrders(prevOrders =>
+          prevOrders.map(order =>
+            order.id === orderId ? { ...order, rastreio: trackingCode } : order
+          )
+        );
+        toast.success('Código de rastreio adicionado com sucesso');
+      } catch (err) {
+        toast.error('Erro ao adicionar código de rastreio');
+      }
     }
   };
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('pt-BR', { 
-      day: '2-digit', 
-      month: '2-digit', 
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const formatMoney = (value: number) => {
-    return value.toLocaleString('pt-BR', {
+  
+  // Format currency
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
-    });
+    }).format(value);
   };
-
-  // Se ainda está verificando se é admin
+  
+  // If admin status is still loading
   if (isAdminLoading) {
     return (
       <AdminLayout currentSection="Pedidos">
@@ -154,218 +109,170 @@ const OrdersManagementScreen: React.FC = () => {
     );
   }
   
-  // Se não for admin
+  // If user is not an admin
   if (!isAdmin) {
     return (
       <AdminLayout currentSection="Pedidos">
         <ErrorState 
           title="Acesso Negado" 
-          message="Você não tem permissões de administrador para acessar este painel."
+          message="Você não tem permissões de administrador para acessar este módulo."
           onRetry={() => window.location.href = '/profile'}
         />
       </AdminLayout>
     );
   }
-
-  // Se houver erro ao carregar os pedidos
-  if (error) {
-    return (
-      <AdminLayout currentSection="Pedidos">
-        <ErrorState 
-          title="Erro ao carregar pedidos" 
-          message={error}
-          onRetry={loadOrders}
-        />
-      </AdminLayout>
-    );
-  }
-
+  
   return (
     <AdminLayout currentSection="Pedidos">
       <Card>
         <CardHeader>
           <CardTitle>Gerenciamento de Pedidos</CardTitle>
           <CardDescription>
-            Visualize e gerencie todos os pedidos da plataforma
+            Visualize e gerencie todos os pedidos realizados na plataforma
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Search and filters */}
           <div className="flex flex-col md:flex-row gap-4 mb-6">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            <div className="flex w-full max-w-sm items-center space-x-2">
               <Input
-                placeholder="Buscar por cliente, loja ou ID do pedido"
-                className="pl-9"
+                placeholder="Buscar pedidos..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="flex-1"
               />
+              <Button type="submit" size="icon" variant="ghost">
+                <Search className="h-4 w-4" />
+              </Button>
             </div>
+            
             <div className="flex flex-wrap gap-2">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filtrar por status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os status</SelectItem>
-                  <SelectItem value="pendente">Pendentes</SelectItem>
-                  <SelectItem value="processando">Processando</SelectItem>
-                  <SelectItem value="enviado">Enviados</SelectItem>
-                  <SelectItem value="entregue">Entregues</SelectItem>
-                  <SelectItem value="concluido">Concluídos</SelectItem>
-                  <SelectItem value="cancelado">Cancelados</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              <Button variant="outline" onClick={loadOrders} disabled={isLoading}>
-                <RefreshCw size={16} className="mr-2" />
-                Atualizar
+              <Button
+                variant={statusFilter === 'all' ? 'default' : 'outline'}
+                onClick={() => setStatusFilter('all')}
+                size="sm"
+              >
+                Todos
+              </Button>
+              <Button
+                variant={statusFilter === 'pendente' ? 'default' : 'outline'}
+                onClick={() => setStatusFilter('pendente')}
+                size="sm"
+              >
+                Pendentes
+              </Button>
+              <Button
+                variant={statusFilter === 'processando' ? 'default' : 'outline'}
+                onClick={() => setStatusFilter('processando')}
+                size="sm"
+              >
+                Processando
+              </Button>
+              <Button
+                variant={statusFilter === 'enviado' ? 'default' : 'outline'}
+                onClick={() => setStatusFilter('enviado')}
+                size="sm"
+              >
+                Enviados
+              </Button>
+              <Button
+                variant={statusFilter === 'entregue' ? 'default' : 'outline'}
+                onClick={() => setStatusFilter('entregue')}
+                size="sm"
+              >
+                Entregues
+              </Button>
+              <Button
+                variant={statusFilter === 'cancelado' ? 'default' : 'outline'}
+                onClick={() => setStatusFilter('cancelado')}
+                size="sm"
+              >
+                Cancelados
               </Button>
             </div>
           </div>
           
+          {/* Orders Table */}
           {isLoading ? (
             <LoadingState text="Carregando pedidos..." />
+          ) : error ? (
+            <ErrorState title="Erro" message={error} onRetry={loadOrders} />
+          ) : filteredOrders.length === 0 ? (
+            <div className="text-center py-10">
+              <p className="text-gray-500">Nenhum pedido encontrado</p>
+            </div>
           ) : (
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>ID Pedido</TableHead>
+                    <TableHead>ID</TableHead>
                     <TableHead>Cliente</TableHead>
                     <TableHead>Valor</TableHead>
-                    <TableHead>Status</TableHead>
                     <TableHead>Pagamento</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead>Data</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
+                    <TableHead>Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredOrders.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="h-24 text-center">
-                        Nenhum pedido encontrado.
+                  {filteredOrders.map(order => (
+                    <TableRow key={order.id}>
+                      <TableCell className="font-medium">{order.id.substring(0, 8)}...</TableCell>
+                      <TableCell>{order.cliente_nome}</TableCell>
+                      <TableCell>{formatCurrency(order.valor_total)}</TableCell>
+                      <TableCell>{order.forma_pagamento}</TableCell>
+                      <TableCell>
+                        <Badge className={getOrderStatusBadgeColor(order.status)}>
+                          {order.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{new Date(order.data_criacao).toLocaleDateString('pt-BR')}</TableCell>
+                      <TableCell>
+                        <div className="flex space-x-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleUpdateStatus(order.id, 'processando')}
+                            disabled={['entregue', 'cancelado'].includes(order.status)}
+                          >
+                            <FileText className="h-4 w-4 mr-1" /> Processar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleAddTracking(order.id)}
+                            disabled={['entregue', 'cancelado'].includes(order.status)}
+                          >
+                            <Truck className="h-4 w-4 mr-1" /> Rastrear
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-green-600"
+                            onClick={() => handleUpdateStatus(order.id, 'entregue')}
+                            disabled={['entregue', 'cancelado'].includes(order.status)}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" /> Entregue
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-red-600"
+                            onClick={() => handleUpdateStatus(order.id, 'cancelado')}
+                            disabled={['entregue', 'cancelado'].includes(order.status)}
+                          >
+                            <XCircle className="h-4 w-4 mr-1" /> Cancelar
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
-                  ) : (
-                    filteredOrders.map((order) => (
-                      <TableRow key={order.id}>
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-2">
-                            <ShoppingBag size={16} className="text-gray-400" />
-                            {order.id.slice(0, 8)}...
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <User size={16} className="text-gray-400" />
-                            <span>{order.cliente_nome}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <DollarSign size={16} className="text-gray-400" />
-                            {formatMoney(order.valor_total)}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={getOrderStatusBadgeColor(order.status)}>
-                            {order.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{order.forma_pagamento}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Clock size={16} className="text-gray-400" />
-                            <span>{formatDate(order.data_criacao)}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreVertical size={16} />
-                                <span className="sr-only">Abrir menu</span>
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-[220px]">
-                              <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuGroup>
-                                <DropdownMenuItem onClick={() => window.location.href = `/admin/order-details/${order.id}`}>
-                                  <Eye size={16} className="mr-2 text-blue-600" />
-                                  Ver Detalhes
-                                </DropdownMenuItem>
-                                
-                                <DropdownMenuSeparator />
-                                <DropdownMenuLabel>Atualizar Status</DropdownMenuLabel>
-                                
-                                <DropdownMenuItem onClick={() => handleUpdateStatus(order.id, 'pendente')}>
-                                  <Badge className={getOrderStatusBadgeColor('pendente')} variant="outline">
-                                    Pendente
-                                  </Badge>
-                                </DropdownMenuItem>
-                                
-                                <DropdownMenuItem onClick={() => handleUpdateStatus(order.id, 'processando')}>
-                                  <Badge className={getOrderStatusBadgeColor('processando')} variant="outline">
-                                    Processando
-                                  </Badge>
-                                </DropdownMenuItem>
-                                
-                                <DropdownMenuItem onClick={() => handleUpdateStatus(order.id, 'enviado')}>
-                                  <Badge className={getOrderStatusBadgeColor('enviado')} variant="outline">
-                                    Enviado
-                                  </Badge>
-                                </DropdownMenuItem>
-                                
-                                <DropdownMenuItem onClick={() => handleUpdateStatus(order.id, 'entregue')}>
-                                  <Badge className={getOrderStatusBadgeColor('entregue')} variant="outline">
-                                    Entregue
-                                  </Badge>
-                                </DropdownMenuItem>
-                                
-                                <DropdownMenuItem onClick={() => handleUpdateStatus(order.id, 'concluido')}>
-                                  <Badge className={getOrderStatusBadgeColor('concluido')} variant="outline">
-                                    Concluído
-                                  </Badge>
-                                </DropdownMenuItem>
-                                
-                                <DropdownMenuItem onClick={() => handleUpdateStatus(order.id, 'cancelado')}>
-                                  <Badge className={getOrderStatusBadgeColor('cancelado')} variant="outline">
-                                    Cancelado
-                                  </Badge>
-                                </DropdownMenuItem>
-                                
-                                <DropdownMenuSeparator />
-                                
-                                <DropdownMenuItem onClick={() => handleUpdateTrackingCode(order.id)}>
-                                  <Truck size={16} className="mr-2 text-purple-600" />
-                                  {order.rastreio ? 'Atualizar Rastreio' : 'Adicionar Rastreio'}
-                                </DropdownMenuItem>
-                                
-                                {order.rastreio && (
-                                  <DropdownMenuItem>
-                                    <div className="text-xs text-gray-500">
-                                      Rastreio: {order.rastreio}
-                                    </div>
-                                  </DropdownMenuItem>
-                                )}
-                              </DropdownMenuGroup>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
+                  ))}
                 </TableBody>
               </Table>
             </div>
           )}
         </CardContent>
-        <CardFooter className="flex justify-between">
-          <p className="text-sm text-gray-500">
-            Exibindo {filteredOrders.length} de {orders.length} pedidos
-          </p>
-        </CardFooter>
       </Card>
     </AdminLayout>
   );

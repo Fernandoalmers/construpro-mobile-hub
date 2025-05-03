@@ -2,36 +2,49 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { logAdminAction } from './adminService';
-
-export interface AdminReward {
-  id: string;
-  nome: string;
-  descricao: string;
-  pontos: number;
-  imagem_url: string | null;
-  categoria: string;
-  status: 'ativo' | 'inativo';
-  estoque: number | null;
-  created_at: string;
-  updated_at: string;
-}
+import { AdminReward } from '@/types/admin';
 
 export const fetchAdminRewards = async (): Promise<AdminReward[]> => {
   try {
+    // Check if the recompensas table exists
+    const { error: tableCheckError } = await supabase
+      .from('recompensas')
+      .select('count')
+      .limit(1)
+      .single();
+    
+    // If table doesn't exist, return empty array
+    if (tableCheckError && tableCheckError.code === '42P01') {
+      console.log('Rewards table does not exist yet, returning empty data');
+      return [];
+    }
+    
+    // If table exists, fetch data
     const { data, error } = await supabase
       .from('recompensas')
       .select('*')
       .order('created_at', { ascending: false });
       
     if (error) {
-      // Se a tabela não existir, podemos considerar que ainda não foram criadas recompensas
-      if (error.code === '42P01') { // código para tabela inexistente
-        return [];
-      }
+      console.error('Error fetching rewards:', error);
       throw error;
     }
     
-    return data || [];
+    // Convert to AdminReward type
+    const rewards: AdminReward[] = data?.map(item => ({
+      id: item.id,
+      nome: item.nome,
+      descricao: item.descricao || '',
+      pontos: item.pontos,
+      imagem_url: item.imagem_url,
+      categoria: item.categoria,
+      status: item.status || 'ativo',
+      estoque: item.estoque,
+      created_at: item.created_at,
+      updated_at: item.updated_at
+    })) || [];
+    
+    return rewards;
   } catch (error) {
     console.error('Error fetching admin rewards:', error);
     toast.error('Erro ao carregar recompensas');
@@ -41,6 +54,19 @@ export const fetchAdminRewards = async (): Promise<AdminReward[]> => {
 
 export const createReward = async (rewardData: Omit<AdminReward, 'id' | 'created_at' | 'updated_at'>): Promise<boolean> => {
   try {
+    // Check if the recompensas table exists
+    const { error: tableCheckError } = await supabase
+      .from('recompensas')
+      .select('count')
+      .limit(1)
+      .single();
+    
+    // If table doesn't exist, show error
+    if (tableCheckError && tableCheckError.code === '42P01') {
+      toast.error('A tabela de recompensas não existe. Crie-a primeiro');
+      return false;
+    }
+    
     const { error } = await supabase
       .from('recompensas')
       .insert({
@@ -97,7 +123,7 @@ export const updateReward = async (id: string, rewardData: Partial<AdminReward>)
   }
 };
 
-export const toggleRewardStatus = async (id: string, currentStatus: 'ativo' | 'inativo'): Promise<boolean> => {
+export const toggleRewardStatus = async (id: string, currentStatus: string): Promise<boolean> => {
   const newStatus = currentStatus === 'ativo' ? 'inativo' : 'ativo';
   
   try {
@@ -130,6 +156,18 @@ export const toggleRewardStatus = async (id: string, currentStatus: 'ativo' | 'i
 
 export const fetchRewardCategories = async (): Promise<string[]> => {
   try {
+    // Check if the recompensas table exists
+    const { error: tableCheckError } = await supabase
+      .from('recompensas')
+      .select('count')
+      .limit(1)
+      .single();
+    
+    // If table doesn't exist, return empty array
+    if (tableCheckError && tableCheckError.code === '42P01') {
+      return [];
+    }
+    
     const { data, error } = await supabase
       .from('recompensas')
       .select('categoria')
