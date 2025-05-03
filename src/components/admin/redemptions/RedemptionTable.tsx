@@ -1,9 +1,10 @@
+
 import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Check, X, Package } from 'lucide-react';
-import { AdminRedemption, getRedemptionStatusBadgeColor } from '@/services/admin/redemptions';
+import { AdminRedemption } from '@/types/admin';
 
 interface RedemptionTableProps {
   redemptions: AdminRedemption[];
@@ -12,6 +13,21 @@ interface RedemptionTableProps {
   onMarkAsDelivered: (id: string) => void;
   isProcessing: boolean;
 }
+
+const getRedemptionStatusBadgeColor = (status: string): string => {
+  switch (status) {
+    case 'aprovado':
+      return 'bg-green-100 text-green-800';
+    case 'pendente':
+      return 'bg-yellow-100 text-yellow-800';
+    case 'recusado':
+      return 'bg-red-100 text-red-800';
+    case 'entregue':
+      return 'bg-blue-100 text-blue-800';
+    default:
+      return 'bg-gray-100 text-gray-800';
+  }
+};
 
 const RedemptionTable: React.FC<RedemptionTableProps> = React.memo(({
   redemptions,

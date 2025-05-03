@@ -1,3 +1,4 @@
+
 export interface UserData {
   id: string;
   nome?: string;
@@ -68,9 +69,10 @@ export interface AdminRedemption {
   id: string;
   cliente_id: string;
   cliente_nome?: string;
+  cliente_email?: string;
   item: string;
   pontos: number;
-  imagem_url: string | null;
+  imagem_url: string;
   codigo: string | null;
   status: "recusado" | "pendente" | "aprovado" | "entregue";
   data: string;

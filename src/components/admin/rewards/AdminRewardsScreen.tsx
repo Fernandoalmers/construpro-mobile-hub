@@ -14,7 +14,6 @@ import LoadingState from '@/components/common/LoadingState';
 interface Reward {
   id: string;
   nome: string;
-  item?: string;
   descricao: string;
   pontos: number;
   imagem_url: string | null;
@@ -47,11 +46,10 @@ const AdminRewardsScreen: React.FC = () => {
       const formattedRewards: Reward[] = (data || []).map(item => ({
         id: item.id,
         nome: item.item || 'Sem nome',
-        item: item.item,
-        descricao: item.descricao || 'Sem descrição',
+        descricao: 'Resgate de prêmio',
         pontos: item.pontos,
         imagem_url: item.imagem_url,
-        categoria: item.categoria || 'Geral',
+        categoria: 'Prêmio',
         estoque: null,
         created_at: item.created_at,
         status: item.status

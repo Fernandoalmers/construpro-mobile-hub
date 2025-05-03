@@ -12,6 +12,7 @@ export interface StoreData {
   contato?: string;
   status?: string;
   owner_id?: string;
+  proprietario_id?: string;
   owner_name?: string;
   created_at: string;
 }
@@ -26,24 +27,27 @@ export const useAdminStores = (initialFilter: string = 'all') => {
   const fetchStores = async () => {
     try {
       setLoading(true);
-      // Check if lojas table exists by fetching a single row
-      const { error: testError } = await supabase
+      
+      // First try with lojas table
+      const { data: lojasData, error: lojasError } = await supabase
         .from('lojas')
-        .select('id')
-        .limit(1);
-      
-      // If there's an error, try the stores table instead
-      const tableName = testError ? 'stores' : 'lojas';
-      
-      const { data, error } = await supabase
-        .from(tableName)
-        .select('*')
+        .select('id, nome, logo_url, proprietario_id, status, created_at, updated_at')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      // If that fails, try with stores table
+      const { data: storesData, error: storesError } = lojasError ? await supabase
+        .from('stores')
+        .select('id, nome, logo_url, owner_id, contato, created_at, updated_at, descricao')
+        .order('created_at', { ascending: false }) : { data: null, error: null };
 
-      // Get owner names from profiles
-      const ownerIds = data
+      if (lojasError && storesError) {
+        throw storesError || lojasError;
+      }
+
+      const storeData = lojasData || storesData || [];
+      
+      // Get owner IDs from the data
+      const ownerIds = storeData
         .map(store => store.proprietario_id || store.owner_id)
         .filter(Boolean);
       
@@ -64,17 +68,23 @@ export const useAdminStores = (initialFilter: string = 'all') => {
       }
 
       // Format the store data
-      const formattedStores = data.map(store => ({
-        id: store.id,
-        nome: store.nome,
-        descricao: store.descricao,
-        logo_url: store.logo_url,
-        contato: store.contato,
-        status: store.status || 'pendente',
-        owner_id: store.proprietario_id || store.owner_id,
-        owner_name: ownerNames[store.proprietario_id || store.owner_id] || 'Proprietário desconhecido',
-        created_at: store.created_at
-      }));
+      const formattedStores = storeData.map(store => {
+        // Handle the case where the field might be from either table
+        const ownerId = store.proprietario_id || store.owner_id;
+        
+        return {
+          id: store.id,
+          nome: store.nome,
+          descricao: (store as any).descricao,
+          logo_url: store.logo_url,
+          contato: (store as any).contato,
+          status: store.status || 'pendente',
+          owner_id: ownerId,
+          proprietario_id: ownerId,
+          owner_name: ownerNames[ownerId] || 'Proprietário desconhecido',
+          created_at: store.created_at
+        };
+      });
 
       setStores(formattedStores);
       applyFilters(formattedStores, filter, searchTerm);
@@ -110,22 +120,21 @@ export const useAdminStores = (initialFilter: string = 'all') => {
 
   const approveStore = async (storeId: string) => {
     try {
-      // Check if lojas table exists by fetching a single row
-      const { error: testError } = await supabase
+      // Try updating 'lojas' table first
+      const { error: lojasError } = await supabase
         .from('lojas')
-        .select('id')
-        .eq('id', storeId)
-        .limit(1);
-      
-      // If there's an error, try the stores table instead
-      const tableName = testError ? 'stores' : 'lojas';
-      
-      const { error } = await supabase
-        .from(tableName)
         .update({ status: 'ativa', updated_at: new Date().toISOString() })
         .eq('id', storeId);
       
-      if (error) throw error;
+      // If that fails, try 'stores' table
+      if (lojasError) {
+        const { error: storesError } = await supabase
+          .from('stores')
+          .update({ status: 'ativa', updated_at: new Date().toISOString() })
+          .eq('id', storeId);
+          
+        if (storesError) throw storesError;
+      }
       
       await logAdminAction({
         action: 'approve_store',
@@ -163,22 +172,21 @@ export const useAdminStores = (initialFilter: string = 'all') => {
 
   const rejectStore = async (storeId: string) => {
     try {
-      // Check if lojas table exists by fetching a single row
-      const { error: testError } = await supabase
+      // Try updating 'lojas' table first
+      const { error: lojasError } = await supabase
         .from('lojas')
-        .select('id')
-        .eq('id', storeId)
-        .limit(1);
-      
-      // If there's an error, try the stores table instead
-      const tableName = testError ? 'stores' : 'lojas';
-      
-      const { error } = await supabase
-        .from(tableName)
         .update({ status: 'inativa', updated_at: new Date().toISOString() })
         .eq('id', storeId);
       
-      if (error) throw error;
+      // If that fails, try 'stores' table
+      if (lojasError) {
+        const { error: storesError } = await supabase
+          .from('stores')
+          .update({ status: 'inativa', updated_at: new Date().toISOString() })
+          .eq('id', storeId);
+          
+        if (storesError) throw storesError;
+      }
       
       await logAdminAction({
         action: 'reject_store',

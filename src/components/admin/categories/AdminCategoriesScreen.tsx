@@ -15,10 +15,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 interface Category {
   id: string;
   nome: string;
-  segmento_id?: string;
-  segmento_nome?: string;
   produtos_count: number;
   created_at: string;
+  segmento_id?: string;
+  segmento_nome?: string;
 }
 
 interface Segment {
@@ -47,7 +47,7 @@ const AdminCategoriesScreen: React.FC = () => {
           id,
           nome,
           segmento_id,
-          product_segments(nome)
+          created_at
         `)
         .order('nome');
 
@@ -82,21 +82,41 @@ const AdminCategoriesScreen: React.FC = () => {
         setCategories(transformedCategories);
       } else {
         // Count products for each category
-        const { data: countsData, error: countsError } = await supabase
+        const { data: countsData } = await supabase
           .from('produtos')
           .select('categoria, count')
-          .select('categoria')
-          .select('count(*)')
-          .group('categoria');
+          .select('categoria, count(*)')
+          .eq('status', 'aprovado');
 
         const countMap: Record<string, number> = {};
         
-        if (!countsError && countsData) {
-          countsData.forEach(item => {
+        if (countsData) {
+          countsData.forEach((item: any) => {
             if (item.categoria) {
               countMap[item.categoria] = parseInt(item.count, 10) || 0;
             }
           });
+        }
+
+        // Get segment names for categories
+        const segmentMap: Record<string, string> = {};
+        if (categoriesData && categoriesData.length > 0) {
+          const segmentIds = categoriesData
+            .filter(cat => cat.segmento_id)
+            .map(cat => cat.segmento_id);
+            
+          if (segmentIds.length > 0) {
+            const { data: segmentsData } = await supabase
+              .from('product_segments')
+              .select('id, nome')
+              .in('id', segmentIds);
+              
+            if (segmentsData) {
+              segmentsData.forEach(segment => {
+                segmentMap[segment.id] = segment.nome;
+              });
+            }
+          }
         }
 
         // Format categories data
@@ -104,9 +124,9 @@ const AdminCategoriesScreen: React.FC = () => {
           id: cat.id,
           nome: cat.nome,
           segmento_id: cat.segmento_id,
-          segmento_nome: cat.product_segments?.nome,
+          segmento_nome: cat.segmento_id ? segmentMap[cat.segmento_id] : undefined,
           produtos_count: countMap[cat.nome] || 0,
-          created_at: new Date().toISOString()
+          created_at: cat.created_at || new Date().toISOString()
         }));
         
         setCategories(transformedCategories);
