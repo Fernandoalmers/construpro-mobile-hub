@@ -1,4 +1,3 @@
-
 // If this file doesn't exist, create it with these types
 
 export interface AdminProduct {
@@ -34,6 +33,21 @@ export interface AdminRedemption {
   codigo: string | null;
   status: 'pendente' | 'aprovado' | 'recusado' | 'entregue';
   data: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminStore {
+  id: string;
+  nome: string;
+  logo_url: string | null;
+  banner_url?: string | null;
+  descricao?: string;
+  proprietario_id: string;
+  proprietario_nome?: string;
+  status: string;
+  produtos_count: number;
+  contato?: string;
   created_at: string;
   updated_at: string;
 }
