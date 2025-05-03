@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface VendorProfile {
@@ -56,11 +55,13 @@ export const createVendorProfile = async (profile: Partial<VendorProfile>): Prom
     const vendorProfile = {
       ...profile,
       usuario_id: userData.user.id,
+      nome_loja: profile.nome_loja || 'Minha Loja' // Ensure nome_loja has a default value
     };
     
+    // Insert a single object, not an array
     const { data, error } = await supabase
       .from('vendedores')
-      .insert([vendorProfile])
+      .insert(vendorProfile)
       .select()
       .single();
       
@@ -106,6 +107,46 @@ export const updateVendorProfile = async (profile: Partial<VendorProfile>): Prom
     return data as VendorProfile;
   } catch (error) {
     console.error('Error in updateVendorProfile:', error);
+    return null;
+  }
+};
+
+// Add these functions that are referenced in vendorService.ts
+export const saveVendorProfile = async (profile: Partial<VendorProfile>): Promise<VendorProfile | null> => {
+  const existingProfile = await getVendorProfile();
+  if (existingProfile) {
+    return updateVendorProfile(profile);
+  } else {
+    return createVendorProfile(profile);
+  }
+};
+
+export const uploadVendorImage = async (file: File, type: 'logo' | 'banner'): Promise<string | null> => {
+  try {
+    const vendorProfile = await getVendorProfile();
+    if (!vendorProfile) {
+      return null;
+    }
+    
+    const fileName = `${type}-${Date.now()}.${file.name.split('.').pop()}`;
+    const filePath = `vendors/${vendorProfile.id}/${fileName}`;
+    
+    const { error } = await supabase.storage
+      .from('vendor-assets')
+      .upload(filePath, file, { upsert: true });
+      
+    if (error) {
+      console.error(`Error uploading vendor ${type}:`, error);
+      return null;
+    }
+    
+    const { data } = supabase.storage
+      .from('vendor-assets')
+      .getPublicUrl(filePath);
+      
+    return data.publicUrl;
+  } catch (error) {
+    console.error(`Error in uploadVendorImage:`, error);
     return null;
   }
 };

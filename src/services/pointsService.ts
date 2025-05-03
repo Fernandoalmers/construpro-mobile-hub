@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { UserProfile } from './userService';
@@ -26,6 +25,7 @@ export const referralService = {
     try {
       if (!referralCode) return false;
       
+      // Use the Supabase function to process the referral
       const { data, error } = await supabase.rpc('process_referral', {
         user_id: userId,
         referral_code: referralCode
@@ -36,7 +36,8 @@ export const referralService = {
         return false;
       }
       
-      return data || false;
+      // Ensure we return a boolean
+      return data === true;
     } catch (error) {
       console.error('Error in processReferral:', error);
       return false;
@@ -64,7 +65,7 @@ export const referralService = {
         return null;
       }
 
-      // Get user's referrals
+      // Get user's referrals with specific column selection for the profiles table
       const { data: referrals, error: referralsError } = await supabase
         .from('referrals')
         .select(`
@@ -84,11 +85,14 @@ export const referralService = {
       // Calculate total points earned from referrals
       const pointsEarned = referrals.reduce((sum, ref) => sum + (ref.pontos || 0), 0);
 
+      // Cast the referrals to the expected type
+      const typedReferrals = referrals as unknown as ReferralDetail[];
+
       return {
         codigo: profile.codigo || '',
         total_referrals: referrals.length,
         points_earned: pointsEarned,
-        referrals: referrals as ReferralDetail[]
+        referrals: typedReferrals
       };
     } catch (error) {
       console.error('Error in getReferralInfo:', error);

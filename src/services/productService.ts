@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface Product {
@@ -317,5 +316,22 @@ export const getRecentlyViewedProducts = async (): Promise<Product[]> => {
   } catch (error) {
     console.error('Error in getRecentlyViewedProducts:', error);
     return [];
+  }
+};
+
+// Track product view
+export const trackProductView = async (productId: string): Promise<boolean> => {
+  try {
+    // First make sure the user is authenticated
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData?.user) {
+      return false;
+    }
+    
+    // Add to recently viewed
+    return await addToRecentlyViewed(productId);
+  } catch (error) {
+    console.error('Error tracking product view:', error);
+    return false;
   }
 };

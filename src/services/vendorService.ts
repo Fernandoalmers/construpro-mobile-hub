@@ -1,6 +1,6 @@
 
 // This file re-exports all vendor services for backward compatibility
-import { getVendorProfile, saveVendorProfile, uploadVendorImage } from './vendorProfileService';
+import { getVendorProfile, saveVendorProfile, uploadVendorImage, VendorProfile } from './vendorProfileService';
 import { 
   getVendorProducts, 
   getVendorProduct,
@@ -26,7 +26,7 @@ import {
 } from './vendorPointsService';
 
 // Type exports
-export type { Vendor } from './vendorProfileService';
+export type { VendorProfile };
 export type { VendorProduct } from './vendorProductsService';
 export type { VendorOrder, OrderItem } from './vendorOrdersService';
 export type { VendorCustomer } from './vendorCustomersService';
