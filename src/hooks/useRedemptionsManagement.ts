@@ -6,7 +6,7 @@ import {
   rejectRedemption, 
   markRedemptionAsDelivered,
   AdminRedemption
-} from '@/services/adminRedemptionsService';
+} from '@/services/admin/redemptions';
 import { toast } from '@/components/ui/sonner';
 
 export const useRedemptionsManagement = () => {

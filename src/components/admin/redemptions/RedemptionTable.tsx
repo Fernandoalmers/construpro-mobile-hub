@@ -1,10 +1,9 @@
-
 import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Check, X, Package } from 'lucide-react';
-import { AdminRedemption, getRedemptionStatusBadgeColor } from '@/services/adminRedemptionsService';
+import { AdminRedemption, getRedemptionStatusBadgeColor } from '@/services/admin/redemptions';
 
 interface RedemptionTableProps {
   redemptions: AdminRedemption[];
