@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
@@ -11,7 +12,8 @@ import {
   FavoritesScreen, ChatScreen, SettingsScreen,
   NotFoundScreen, VendorDashboardScreen, VendorProductsScreen,
   VendorCustomersScreen, AuthProvider, ProtectedRoute,
-  MarketplaceScreenWrapper
+  MarketplaceScreenWrapper, AdminSettingsScreen, AdminRewardsScreen, 
+  AdminCategoriesScreen
 } from './imports';
 import { useAuth } from './context/AuthContext';
 import BottomTabNavigator from './components/layout/BottomTabNavigator';
@@ -132,6 +134,9 @@ function App() {
         <Route path="/admin/redemptions" element={<ProtectedRoute requireAdmin={true}><RedemptionsManagementScreen /></ProtectedRoute>} />
         <Route path="/admin/orders" element={<ProtectedRoute requireAdmin={true}><OrdersManagementScreen /></ProtectedRoute>} />
         <Route path="/admin/logs" element={<ProtectedRoute requireAdmin={true}><AdminLogsScreen /></ProtectedRoute>} />
+        <Route path="/admin/settings" element={<ProtectedRoute requireAdmin={true}><AdminSettingsScreen /></ProtectedRoute>} />
+        <Route path="/admin/rewards" element={<ProtectedRoute requireAdmin={true}><AdminRewardsScreen /></ProtectedRoute>} />
+        <Route path="/admin/categories" element={<ProtectedRoute requireAdmin={true}><AdminCategoriesScreen /></ProtectedRoute>} />
 
         {/* Catch-all route for 404 */}
         <Route path="*" element={<NotFoundScreen />} />

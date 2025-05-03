@@ -7,6 +7,9 @@ import StoresManagementScreen from './components/admin/stores/StoresManagementSc
 import RedemptionsManagementScreen from './components/admin/redemptions/RedemptionsManagementScreen';
 import OrdersManagementScreen from './components/admin/orders/OrdersManagementScreen';
 import AdminLogsScreen from './components/admin/AdminLogs';
+import AdminSettingsScreen from './components/admin/settings/AdminSettingsScreen';
+import AdminRewardsScreen from './components/admin/rewards/AdminRewardsScreen';
+import AdminCategoriesScreen from './components/admin/categories/AdminCategoriesScreen';
 
 // Auth Components
 import LoginScreen from './components/LoginScreen';
@@ -55,6 +58,9 @@ export {
   RedemptionsManagementScreen,
   OrdersManagementScreen,
   AdminLogsScreen,
+  AdminSettingsScreen,
+  AdminRewardsScreen,
+  AdminCategoriesScreen,
   
   // Auth Components
   LoginScreen,

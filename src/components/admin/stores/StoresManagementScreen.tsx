@@ -1,298 +1,180 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import AdminLayout from '../AdminLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { useAdminStores } from '@/hooks/useAdminStores';
+import { useTitle } from '@/hooks/use-title';
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Search, Check, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Search } from 'lucide-react';
-import { AdminStore, fetchAdminStores, approveStore, rejectStore, deleteStore, getStoreBadgeColor, subscribeToAdminStoreUpdates } from '@/services/adminStoresService';
-import { toast } from '@/components/ui/sonner';
-import { useIsAdmin } from '@/hooks/useIsAdmin';
 import LoadingState from '@/components/common/LoadingState';
-import ErrorState from '@/components/common/ErrorState';
-import { RealtimeChannel } from '@supabase/supabase-js';
 
 const StoresManagementScreen: React.FC = () => {
-  const { isAdmin, isLoading: isAdminLoading } = useIsAdmin();
-  const [stores, setStores] = useState<AdminStore[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [realtimeChannel, setRealtimeChannel] = useState<RealtimeChannel | null>(null);
+  useTitle('ConstruPro Admin - Lojas');
   
-  useEffect(() => {
-    if (isAdminLoading) {
-      return; // Wait for admin status check to complete
-    }
-    
-    if (!isAdmin) {
-      setError('Unauthorized: Admin access required');
-      setIsLoading(false);
-      return;
-    }
-    
-    loadStores();
-    
-    // Configurar realtime para lojas
-    const channel = subscribeToAdminStoreUpdates((store, eventType) => {
-      // Recarregar lojas quando houver mudanças
-      loadStores();
-      
-      // Exibir notificações relevantes
-      if (eventType === 'INSERT') {
-        toast.info('Nova loja cadastrada - Aguardando aprovação', {
-          description: store.nome
-        });
-      } else if (eventType === 'UPDATE') {
-        toast.info('Loja atualizada', {
-          description: store.nome
-        });
-      }
-    });
-    
-    setRealtimeChannel(channel);
-    
-    // Limpar assinatura ao desmontar componente
-    return () => {
-      if (channel) {
-        channel.unsubscribe();
-      }
-    };
-  }, [isAdmin, isAdminLoading]);
-  
-  const loadStores = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const storesData = await fetchAdminStores();
-      setStores(storesData);
-    } catch (err) {
-      setError('Failed to load stores. Please try again.');
-      toast.error('Erro ao carregar lojas');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  // Filter stores based on search and filters
-  const filteredStores = stores.filter(store => {
-    const matchesSearch = 
-      !searchTerm || 
-      store.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      store.proprietario_nome?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || store.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
-  });
+  const {
+    stores,
+    loading,
+    filter,
+    setFilter,
+    searchTerm,
+    setSearchTerm,
+    approveStore,
+    rejectStore
+  } = useAdminStores();
 
-  // Contagem de lojas pendentes para destaque na UI
-  const pendingStoresCount = stores.filter(s => s.status === 'pendente').length;
-  
-  const handleApproveStore = async (storeId: string) => {
-    try {
-      await approveStore(storeId);
-      setStores(prevStores =>
-        prevStores.map(store =>
-          store.id === storeId ? { ...store, status: 'ativa' } : store
-        )
-      );
-      toast.success('Loja aprovada com sucesso');
-    } catch (err) {
-      toast.error('Erro ao aprovar loja');
+  const getStatusBadgeClass = (status: string) => {
+    switch (status) {
+      case 'ativa': return 'bg-green-100 text-green-800';
+      case 'pendente': return 'bg-yellow-100 text-yellow-800';
+      case 'inativa': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
-  
-  const handleRejectStore = async (storeId: string) => {
-    try {
-      await rejectStore(storeId);
-      setStores(prevStores =>
-        prevStores.map(store =>
-          store.id === storeId ? { ...store, status: 'recusada' } : store
-        )
-      );
-      toast.success('Loja recusada');
-    } catch (err) {
-      toast.error('Erro ao recusar loja');
-    }
-  };
-  
-  const handleDeleteStore = async (storeId: string) => {
-    if (!window.confirm('Tem certeza que deseja excluir esta loja?')) {
-      return;
-    }
-    
-    try {
-      await deleteStore(storeId);
-      setStores(prevStores =>
-        prevStores.map(store =>
-          store.id === storeId ? { ...store, status: 'excluida' } : store
-        )
-      );
-      toast.success('Loja marcada como excluída');
-    } catch (err) {
-      toast.error('Erro ao excluir loja');
-    }
-  };
-  
-  // If admin status is still loading
-  if (isAdminLoading) {
-    return (
-      <AdminLayout currentSection="Lojas">
-        <LoadingState text="Verificando permissões de administrador..." />
-      </AdminLayout>
-    );
-  }
-  
-  // If user is not an admin
-  if (!isAdmin) {
-    return (
-      <AdminLayout currentSection="Lojas">
-        <ErrorState 
-          title="Acesso Negado" 
-          message="Você não tem permissões de administrador para acessar este módulo."
-          onRetry={() => window.location.href = '/profile'}
-        />
-      </AdminLayout>
-    );
-  }
-  
+
   return (
-    <AdminLayout currentSection="Lojas">
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle>Gerenciamento de Lojas</CardTitle>
-              <CardDescription>
-                Visualize e gerencie todas as lojas da plataforma
-              </CardDescription>
-            </div>
-            {pendingStoresCount > 0 && (
-              <Badge variant="outline" className="bg-amber-100 text-amber-800 px-3 py-1">
-                {pendingStoresCount} loja{pendingStoresCount !== 1 ? 's' : ''} pendente{pendingStoresCount !== 1 ? 's' : ''}
-              </Badge>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          {/* Search and filters */}
-          <div className="flex flex-col md:flex-row gap-4 mb-6">
-            <div className="flex w-full max-w-sm items-center space-x-2">
-              <Input
-                placeholder="Buscar lojas..."
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                className="flex-1"
-              />
-              <Button type="submit" size="icon" variant="ghost">
-                <Search className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            <div className="flex space-x-2">
-              <Button
-                variant={statusFilter === 'all' ? 'default' : 'outline'}
-                onClick={() => setStatusFilter('all')}
-                size="sm"
-              >
-                Todas
-              </Button>
-              <Button
-                variant={statusFilter === 'pendente' ? 'default' : 'outline'}
-                onClick={() => setStatusFilter('pendente')}
-                size="sm"
-              >
-                Pendentes
-              </Button>
-              <Button
-                variant={statusFilter === 'ativa' ? 'default' : 'outline'}
-                onClick={() => setStatusFilter('ativa')}
-                size="sm"
-              >
-                Ativas
-              </Button>
-              <Button
-                variant={statusFilter === 'recusada' ? 'default' : 'outline'}
-                onClick={() => setStatusFilter('recusada')}
-                size="sm"
-              >
-                Recusadas
-              </Button>
-            </div>
+    <AdminLayout currentSection="lojas">
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold">Gerenciar Lojas</h1>
+        
+        <div className="flex flex-wrap gap-4 items-center justify-between">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant={filter === 'all' ? 'default' : 'outline'}
+              onClick={() => setFilter('all')}
+            >
+              Todas
+            </Button>
+            <Button
+              variant={filter === 'pendente' ? 'default' : 'outline'}
+              onClick={() => setFilter('pendente')}
+            >
+              Pendentes
+            </Button>
+            <Button
+              variant={filter === 'ativa' ? 'default' : 'outline'}
+              onClick={() => setFilter('ativa')}
+            >
+              Ativas
+            </Button>
+            <Button
+              variant={filter === 'inativa' ? 'default' : 'outline'}
+              onClick={() => setFilter('inativa')}
+            >
+              Inativas
+            </Button>
           </div>
           
-          {/* Stores Table */}
-          {isLoading ? (
-            <LoadingState text="Carregando lojas..." />
-          ) : error ? (
-            <ErrorState title="Erro" message={error} onRetry={loadStores} />
-          ) : filteredStores.length === 0 ? (
-            <div className="text-center py-10">
-              <p className="text-gray-500">Nenhuma loja encontrada</p>
+          <div className="relative">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar lojas..."
+              className="pl-8 w-[250px]"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </div>
+        
+        <Card>
+          {loading ? (
+            <div className="p-6">
+              <LoadingState text="Carregando lojas..." />
+            </div>
+          ) : stores.length === 0 ? (
+            <div className="p-6 text-center">
+              <p className="text-gray-500">Nenhuma loja encontrada.</p>
             </div>
           ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Proprietário</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Produtos</TableHead>
-                    <TableHead>Data Criação</TableHead>
-                    <TableHead>Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredStores.map(store => (
-                    <TableRow key={store.id}>
-                      <TableCell className="font-medium">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Loja</TableHead>
+                  <TableHead>Proprietário</TableHead>
+                  <TableHead>Contato</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {stores.map((store) => (
+                  <TableRow key={store.id}>
+                    <TableCell>
+                      <div className="flex items-center space-x-3">
                         {store.logo_url && (
-                          <img
-                            src={store.logo_url}
+                          <img 
+                            src={store.logo_url} 
                             alt={store.nome}
-                            className="w-8 h-8 rounded-full inline mr-2 object-cover"
+                            className="w-10 h-10 object-cover rounded"
                           />
                         )}
-                        {store.nome}
-                      </TableCell>
-                      <TableCell>{store.proprietario_nome || 'Não informado'}</TableCell>
-                      <TableCell>
-                        <Badge className={getStoreBadgeColor(store.status)}>
-                          {store.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{store.produtos_count}</TableCell>
-                      <TableCell>{new Date(store.created_at).toLocaleDateString('pt-BR')}</TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
-                          {store.status === 'pendente' && (
-                            <>
-                              <Button size="sm" variant="outline" className="text-green-600" onClick={() => handleApproveStore(store.id)}>
-                                Aprovar
-                              </Button>
-                              <Button size="sm" variant="outline" className="text-red-600" onClick={() => handleRejectStore(store.id)}>
-                                Recusar
-                              </Button>
-                            </>
-                          )}
-                          <Button size="sm" variant="outline" onClick={() => handleDeleteStore(store.id)}>
-                            Excluir
-                          </Button>
+                        <div>
+                          <div className="font-medium">{store.nome}</div>
+                          <div className="text-xs text-gray-500 truncate max-w-[250px]">
+                            {store.descricao || 'Sem descrição'}
+                          </div>
                         </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>{store.owner_name}</TableCell>
+                    <TableCell>{store.contato || 'N/A'}</TableCell>
+                    <TableCell>
+                      <Badge className={getStatusBadgeClass(store.status || 'pendente')}>
+                        {store.status === 'ativa' ? 'Ativa' : 
+                         store.status === 'pendente' ? 'Pendente' : 'Inativa'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right space-x-2">
+                      {store.status === 'pendente' && (
+                        <>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="h-8 w-8 p-0 text-green-600"
+                            onClick={() => approveStore(store.id)}
+                          >
+                            <Check className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="h-8 w-8 p-0 text-red-600"
+                            onClick={() => rejectStore(store.id)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                      {store.status === 'ativa' && (
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="h-8 w-8 p-0 text-red-600"
+                          onClick={() => rejectStore(store.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {store.status === 'inativa' && (
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="h-8 w-8 p-0 text-green-600"
+                          onClick={() => approveStore(store.id)}
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
-        </CardContent>
-      </Card>
+        </Card>
+      </div>
     </AdminLayout>
   );
 };

@@ -1,122 +1,111 @@
 
-import React, { useEffect } from 'react';
-import AdminLayout from '../AdminLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useRedemptionsManagement } from '@/hooks/useRedemptionsManagement';
-import { useIsAdmin } from '@/hooks/useIsAdmin';
-import LoadingState from '@/components/common/LoadingState';
-import ErrorState from '@/components/common/ErrorState';
-import RedemptionTableSkeleton from './RedemptionTableSkeleton';
+import React, { useState } from 'react';
+import AdminLayout from '@/components/admin/AdminLayout';
 import RedemptionFilters from './RedemptionFilters';
 import RedemptionTable from './RedemptionTable';
+import RedemptionTableSkeleton from './RedemptionTableSkeleton';
+import { useTitle } from '@/hooks/use-title';
+import { useRedemptionsData, Redemption } from '@/hooks/useRedemptionsData';
+import { supabase } from '@/integrations/supabase/client';
 
 const RedemptionsManagementScreen: React.FC = () => {
-  const { isAdmin, isLoading: isAdminLoading } = useIsAdmin();
-  const {
-    filteredRedemptions,
-    isLoading,
-    error,
-    searchTerm,
-    setSearchTerm,
-    statusFilter,
-    setStatusFilter,
-    isProcessing,
-    loadRedemptions,
-    handleApproveRedemption,
-    handleRejectRedemption,
-    handleMarkAsDelivered
-  } = useRedemptionsManagement();
+  useTitle('ConstruPro Admin - Resgates');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
   
-  useEffect(() => {
-    if (isAdminLoading) {
-      return; // Wait for admin status verification
+  const { redemptions, isLoading, error, refetch } = useRedemptionsData({ 
+    status: statusFilter === 'all' ? undefined : statusFilter 
+  });
+  
+  // Filter redemptions based on search term
+  const filteredRedemptions = redemptions.filter((redemption: Redemption) =>
+    !searchTerm || 
+    redemption.cliente_nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    redemption.item?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    redemption.cliente_email?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleApprove = async (redemptionId: string) => {
+    try {
+      const { error } = await supabase
+        .from('resgates')
+        .update({ status: 'aprovado', updated_at: new Date().toISOString() })
+        .eq('id', redemptionId);
+      
+      if (error) throw error;
+      
+      // Refetch data
+      refetch();
+    } catch (error) {
+      console.error('Error approving redemption:', error);
     }
-    
-    if (!isAdmin) {
-      return; // Not authorized
+  };
+
+  const handleReject = async (redemptionId: string) => {
+    try {
+      const { error } = await supabase
+        .from('resgates')
+        .update({ status: 'recusado', updated_at: new Date().toISOString() })
+        .eq('id', redemptionId);
+      
+      if (error) throw error;
+      
+      // Refetch data
+      refetch();
+    } catch (error) {
+      console.error('Error rejecting redemption:', error);
     }
-    
-    // Load redemptions only once when component mounts and admin status is confirmed
-    loadRedemptions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin, isAdminLoading]); // Only re-run when admin status changes
-  
-  // If admin status is still loading
-  if (isAdminLoading) {
-    return (
-      <AdminLayout currentSection="Resgates">
-        <Card>
-          <CardHeader>
-            <CardTitle>Gerenciamento de Resgates</CardTitle>
-            <CardDescription>Verificando permissões...</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <LoadingState text="Verificando permissões de administrador..." />
-          </CardContent>
-        </Card>
-      </AdminLayout>
-    );
-  }
-  
-  // If user is not admin
-  if (!isAdmin) {
-    return (
-      <AdminLayout currentSection="Resgates">
-        <Card>
-          <CardHeader>
-            <CardTitle>Acesso Negado</CardTitle>
-            <CardDescription>Você não tem permissões para acessar esta página</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ErrorState 
-              title="Acesso Negado" 
-              message="Você não tem permissões de administrador para acessar este módulo."
-              onRetry={() => window.location.href = '/profile'}
-            />
-          </CardContent>
-        </Card>
-      </AdminLayout>
-    );
-  }
+  };
+
+  const handleMarkDelivered = async (redemptionId: string) => {
+    try {
+      const { error } = await supabase
+        .from('resgates')
+        .update({ status: 'entregue', updated_at: new Date().toISOString() })
+        .eq('id', redemptionId);
+      
+      if (error) throw error;
+      
+      // Refetch data
+      refetch();
+    } catch (error) {
+      console.error('Error marking redemption as delivered:', error);
+    }
+  };
   
   return (
-    <AdminLayout currentSection="Resgates">
-      <Card>
-        <CardHeader>
-          <CardTitle>Gerenciamento de Resgates</CardTitle>
-          <CardDescription>
-            Visualize e gerencie todos os resgates realizados na plataforma
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {/* Search and filters */}
-          <RedemptionFilters
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            statusFilter={statusFilter}
-            onStatusFilterChange={setStatusFilter}
+    <AdminLayout currentSection="resgates">
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold">Gerenciar Resgates</h1>
+        
+        <RedemptionFilters 
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+        />
+        
+        {isLoading ? (
+          <RedemptionTableSkeleton />
+        ) : error ? (
+          <div className="p-4 text-center">
+            <p className="text-red-500">Erro ao carregar resgates: {error}</p>
+            <button 
+              onClick={() => refetch()}
+              className="mt-2 px-4 py-2 bg-blue-500 text-white rounded"
+            >
+              Tentar novamente
+            </button>
+          </div>
+        ) : (
+          <RedemptionTable 
+            redemptions={filteredRedemptions}
+            onApprove={handleApprove}
+            onReject={handleReject}
+            onMarkDelivered={handleMarkDelivered}
           />
-          
-          {/* Redemptions Table */}
-          {isLoading ? (
-            <RedemptionTableSkeleton />
-          ) : error ? (
-            <ErrorState title="Erro" message={error} onRetry={() => loadRedemptions(true)} />
-          ) : filteredRedemptions.length === 0 ? (
-            <div className="text-center py-10">
-              <p className="text-gray-500">Nenhum resgate encontrado</p>
-            </div>
-          ) : (
-            <RedemptionTable
-              redemptions={filteredRedemptions}
-              onApprove={handleApproveRedemption}
-              onReject={handleRejectRedemption}
-              onMarkAsDelivered={handleMarkAsDelivered}
-              isProcessing={isProcessing}
-            />
-          )}
-        </CardContent>
-      </Card>
+        )}
+      </div>
     </AdminLayout>
   );
 };
