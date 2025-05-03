@@ -127,7 +127,8 @@ const SendProposalModal: React.FC<SendProposalModalProps> = ({
               </Button>
               <Button 
                 type="submit" 
-                variant="primary"
+                variant="default"
+                className="bg-construPro-orange hover:bg-orange-600 text-white"
               >
                 Enviar proposta
               </Button>
