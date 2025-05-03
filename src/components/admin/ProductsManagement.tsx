@@ -27,10 +27,13 @@ import {
   rejectProduct, 
   deleteProduct, 
   getCategories, 
-  getVendors 
+  getVendors,
+  subscribeToAdminProductUpdates
 } from '@/services/adminProductsService';
 import LoadingState from '@/components/common/LoadingState';
 import ErrorState from '@/components/common/ErrorState';
+import { RealtimeChannel } from '@supabase/supabase-js';
+import { useQueryClient } from '@tanstack/react-query';
 
 const ProductsManagement: React.FC = () => {
   const { isAdmin, isLoading: isAdminLoading } = useIsAdmin();
@@ -44,6 +47,8 @@ const ProductsManagement: React.FC = () => {
   const [categories, setCategories] = useState<string[]>([]);
   const [stores, setStores] = useState<{id: string, nome: string}[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [realtimeChannel, setRealtimeChannel] = useState<RealtimeChannel | null>(null);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (isAdminLoading) {
@@ -57,6 +62,32 @@ const ProductsManagement: React.FC = () => {
     }
     
     loadProducts();
+
+    // Configurar assinatura em tempo real para produtos
+    const channel = subscribeToAdminProductUpdates((product, eventType) => {
+      // Recarregar produtos quando houver alterações
+      loadProducts();
+      
+      // Exibir notificações relevantes
+      if (eventType === 'INSERT') {
+        toast.info('Novo produto adicionado - Aguardando aprovação', {
+          description: product.nome
+        });
+      } else if (eventType === 'UPDATE') {
+        toast.info('Produto atualizado', {
+          description: product.nome
+        });
+      }
+    });
+    
+    setRealtimeChannel(channel);
+    
+    // Limpar assinatura ao desmontar componente
+    return () => {
+      if (channel) {
+        channel.unsubscribe();
+      }
+    };
   }, [isAdmin, isAdminLoading]);
 
   const loadProducts = async () => {
@@ -98,6 +129,9 @@ const ProductsManagement: React.FC = () => {
     
     return matchesSearch && matchesCategory && matchesStatus && matchesStore;
   });
+
+  // Contagem de produtos pendentes para destaque na UI
+  const pendingProductsCount = products.filter(p => p.status === 'pendente').length;
 
   const handleApproveProduct = async (productId: string) => {
     if (isProcessing) return;
@@ -219,10 +253,19 @@ const ProductsManagement: React.FC = () => {
     <AdminLayout currentSection="Produtos">
       <Card>
         <CardHeader>
-          <CardTitle>Gerenciamento de Produtos</CardTitle>
-          <CardDescription>
-            Visualize e gerencie todos os produtos da plataforma
-          </CardDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>Gerenciamento de Produtos</CardTitle>
+              <CardDescription>
+                Visualize e gerencie todos os produtos da plataforma
+              </CardDescription>
+            </div>
+            {pendingProductsCount > 0 && (
+              <Badge variant="outline" className="bg-amber-100 text-amber-800 px-3 py-1">
+                {pendingProductsCount} produto{pendingProductsCount !== 1 ? 's' : ''} pendente{pendingProductsCount !== 1 ? 's' : ''}
+              </Badge>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -303,7 +346,7 @@ const ProductsManagement: React.FC = () => {
                     </TableRow>
                   ) : (
                     filteredProducts.map((product) => (
-                      <TableRow key={product.id}>
+                      <TableRow key={product.id} className={product.status === 'pendente' ? 'bg-amber-50' : ''}>
                         <TableCell>
                           {product.imagemUrl ? (
                             <img 
@@ -338,6 +381,7 @@ const ProductsManagement: React.FC = () => {
                               variant="ghost"
                               onClick={() => handleApproveProduct(product.id)}
                               disabled={isProcessing || product.status === 'aprovado'}
+                              className={product.status === 'pendente' ? 'bg-green-50' : ''}
                             >
                               <Check size={16} className="text-green-600" />
                             </Button>

@@ -9,6 +9,7 @@ import {
   updateProductStatus,
   uploadProductImage,
   updateProductImages,
+  subscribeToVendorProducts,
   VendorProduct
 } from './vendorProductsService';
 import { 
@@ -52,6 +53,7 @@ export {
   updateProductStatus,
   uploadProductImage,
   updateProductImages,
+  subscribeToVendorProducts,
   
   // Orders
   getVendorOrders,

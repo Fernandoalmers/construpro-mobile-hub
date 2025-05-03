@@ -174,3 +174,26 @@ export const getStoreBadgeColor = (status: string): string => {
       return 'bg-gray-100 text-gray-800';
   }
 };
+
+// Função para configurar subscription de realtime para atualizações de lojas
+export const subscribeToAdminStoreUpdates = (
+  callback: (store: any, eventType: 'INSERT' | 'UPDATE' | 'DELETE') => void
+) => {
+  return supabase
+    .channel('admin-stores-changes')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'lojas'
+      },
+      (payload) => {
+        console.log('Loja atualizada (Admin):', payload);
+        const eventType = payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE';
+        const store = payload.new;
+        callback(store, eventType);
+      }
+    )
+    .subscribe();
+};

@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { getVendorProfile } from './vendorProfileService';
@@ -102,10 +101,16 @@ export const saveVendorProduct = async (product: Partial<VendorProduct>): Promis
         return null;
       }
       
+      // Marcar produto como pendente quando for editado
+      const productToUpdate = {
+        ...vendorProduct,
+        status: 'pendente' // Sempre volta para pendente ao editar
+      };
+      
       // Update existing product
       const { data, error } = await supabase
         .from('produtos')
-        .update(vendorProduct)
+        .update(productToUpdate)
         .eq('id', product.id)
         .select()
         .single();
@@ -177,6 +182,54 @@ export const updateProductStatus = async (id: string, status: 'pendente' | 'apro
   }
 };
 
+// Função para configurar assinatura em tempo real para produtos de um vendedor
+export const subscribeToVendorProducts = (
+  vendorId: string, 
+  callback: (product: VendorProduct, eventType: 'INSERT' | 'UPDATE' | 'DELETE') => void
+) => {
+  return supabase
+    .channel('vendor-products-changes')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'produtos',
+        filter: `vendedor_id=eq.${vendorId}`
+      },
+      (payload) => {
+        console.log('Produto atualizado:', payload);
+        const eventType = payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE';
+        const product = payload.new as VendorProduct;
+        callback(product, eventType);
+      }
+    )
+    .subscribe();
+};
+
+// Função para configurar assinatura em tempo real para todos os produtos (uso administrativo)
+export const subscribeToAllProducts = (
+  callback: (product: VendorProduct, eventType: 'INSERT' | 'UPDATE' | 'DELETE') => void
+) => {
+  return supabase
+    .channel('all-products-changes')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'produtos'
+      },
+      (payload) => {
+        console.log('Produto atualizado (Admin):', payload);
+        const eventType = payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE';
+        const product = payload.new as VendorProduct;
+        callback(product, eventType);
+      }
+    )
+    .subscribe();
+};
+
 export const uploadProductImage = async (
   productId: string,
   file: File,
@@ -233,7 +286,7 @@ export const updateProductImages = async (productId: string, imageUrls: string[]
   try {
     const { error } = await supabase
       .from('produtos')
-      .update({ imagens: imageUrls })
+      .update({ imagens: imageUrls, status: 'pendente' }) // Marca como pendente ao atualizar imagens
       .eq('id', productId);
     
     if (error) throw error;

@@ -1,14 +1,22 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ShoppingBag, Search } from 'lucide-react';
+import { ArrowLeft, ShoppingBag } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getVendorProducts, updateProductStatus, deleteVendorProduct, VendorProduct } from '@/services/vendorService';
+import { 
+  getVendorProducts, 
+  updateProductStatus, 
+  deleteVendorProduct, 
+  VendorProduct,
+  subscribeToVendorProducts,
+  getVendorProfile
+} from '@/services/vendorService';
 import { toast } from '@/components/ui/sonner';
 import ProductFilters from './ProductFilters';
 import ProductList from './ProductList';
 import ProductActions from './ProductActions';
 import LoadingState from '../common/LoadingState';
+import { RealtimeChannel } from '@supabase/supabase-js';
 
 const ProductManagementScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -21,6 +29,56 @@ const ProductManagementScreen: React.FC = () => {
     queryKey: ['vendorProducts'],
     queryFn: getVendorProducts,
   });
+
+  // Estado para armazenar o canal de realtime
+  const [realtimeChannel, setRealtimeChannel] = useState<RealtimeChannel | null>(null);
+  
+  // Configurar assinatura em tempo real para produtos
+  useEffect(() => {
+    const setupRealtimeSubscription = async () => {
+      try {
+        // Obter o ID do vendedor
+        const vendorProfile = await getVendorProfile();
+        if (!vendorProfile) {
+          console.error('Perfil do vendedor não encontrado');
+          return;
+        }
+        
+        // Cancelar assinatura anterior se existir
+        if (realtimeChannel) {
+          realtimeChannel.unsubscribe();
+        }
+        
+        // Configurar nova assinatura
+        const channel = subscribeToVendorProducts(vendorProfile.id, (product, eventType) => {
+          // Revalidar a consulta de produtos para atualizar a UI
+          queryClient.invalidateQueries({ queryKey: ['vendorProducts'] });
+          
+          // Exibir notificações relevantes
+          if (eventType === 'INSERT') {
+            toast.success('Novo produto adicionado');
+          } else if (eventType === 'UPDATE') {
+            toast.success(`Produto "${product.nome}" atualizado`);
+          } else if (eventType === 'DELETE') {
+            toast.info('Produto removido');
+          }
+        });
+        
+        setRealtimeChannel(channel);
+        
+        // Limpar assinatura ao desmontar o componente
+        return () => {
+          if (channel) {
+            channel.unsubscribe();
+          }
+        };
+      } catch (error) {
+        console.error('Erro ao configurar assinatura em tempo real:', error);
+      }
+    };
+    
+    setupRealtimeSubscription();
+  }, [queryClient]);
   
   // Toggle product status mutation
   const toggleStatusMutation = useMutation({
