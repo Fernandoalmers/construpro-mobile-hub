@@ -91,19 +91,22 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
           };
         }
         
+        // Create a cliente object safely
+        const clienteData = order.cliente as any;
+        const clienteInfo: VendorCustomer = {
+          id: order.usuario_id || '',
+          vendedor_id: vendorProfile.id,
+          usuario_id: order.usuario_id,
+          nome: clienteData && clienteData.nome ? clienteData.nome : 'Cliente',
+          telefone: clienteData && clienteData.telefone ? clienteData.telefone : '',
+          email: clienteData && clienteData.email ? clienteData.email : '',
+          total_gasto: 0
+        };
+        
         return { 
           ...order, 
           itens: itemsData || [],
-          // Create a proper cliente object with safe access
-          cliente: {
-            id: order.usuario_id || '',
-            vendedor_id: vendorProfile.id,
-            usuario_id: order.usuario_id,
-            nome: typeof order.cliente === 'object' && order.cliente ? (order.cliente.nome || 'Cliente') : 'Cliente',
-            telefone: typeof order.cliente === 'object' && order.cliente ? (order.cliente.telefone || '') : '',
-            email: typeof order.cliente === 'object' && order.cliente ? (order.cliente.email || '') : '',
-            total_gasto: 0
-          }
+          cliente: clienteInfo
         };
       })
     );

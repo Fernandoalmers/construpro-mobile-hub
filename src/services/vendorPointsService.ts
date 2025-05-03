@@ -50,18 +50,24 @@ export const getPointAdjustments = async (userId?: string): Promise<PointAdjustm
     }
 
     // Create safe adjustments with proper cliente handling
-    const safeAdjustments = data.map(item => ({
-      ...item,
-      cliente: {
+    const safeAdjustments = data.map(item => {
+      // Create a cliente object safely
+      const clienteData = item.cliente as any;
+      const clienteInfo: VendorCustomer = {
         id: item.usuario_id || '',
         vendedor_id: vendorProfile.id,
         usuario_id: item.usuario_id,
-        nome: typeof item.cliente === 'object' && item.cliente ? (item.cliente.nome || 'Cliente') : 'Cliente',
-        telefone: typeof item.cliente === 'object' && item.cliente ? (item.cliente.telefone || '') : '',
-        email: typeof item.cliente === 'object' && item.cliente ? (item.cliente.email || '') : '',
+        nome: clienteData && clienteData.nome ? clienteData.nome : 'Cliente',
+        telefone: clienteData && clienteData.telefone ? clienteData.telefone : '',
+        email: clienteData && clienteData.email ? clienteData.email : '',
         total_gasto: 0
-      }
-    }));
+      };
+      
+      return {
+        ...item,
+        cliente: clienteInfo
+      };
+    });
     
     return safeAdjustments as PointAdjustment[];
   } catch (error) {
