@@ -1,7 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getProducts } from '@/services/productService';
+import { useCart } from '@/hooks/use-cart';
 import { toast } from '@/components/ui/use-toast';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,7 @@ interface Product {
 
 const ShopProductsList: React.FC = () => {
   const navigate = useNavigate();
+  const { addToCart } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -80,7 +81,7 @@ const ShopProductsList: React.FC = () => {
         product.nome.toLowerCase().includes(searchLower) || 
         product.descricao.toLowerCase().includes(searchLower) ||
         product.categoria.toLowerCase().includes(searchLower) ||
-        product.loja?.nome.toLowerCase().includes(searchLower)
+        (product.loja?.nome && product.loja.nome.toLowerCase().includes(searchLower))
       );
     }
     
@@ -90,6 +91,17 @@ const ShopProductsList: React.FC = () => {
   // Navigate to product detail
   const handleProductClick = (productId: string) => {
     navigate(`/shop/product/${productId}`);
+  };
+  
+  // Handle add to cart
+  const handleAddToCart = async (e: React.MouseEvent, productId: string) => {
+    e.stopPropagation(); // Prevent navigation to product detail
+    
+    try {
+      await addToCart(productId);
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+    }
   };
   
   // Format price as currency
@@ -181,13 +193,13 @@ const ShopProductsList: React.FC = () => {
             >
               <div className="relative pb-[56.25%] bg-gray-100">
                 <img 
-                  src={getProductImage(product)} 
+                  src={product.imagem_url || 'https://placehold.co/300x300/e6e6e6/7f7f7f?text=Sem+Imagem'} 
                   alt={product.nome}
                   className="absolute inset-0 w-full h-full object-cover"
                 />
                 {product.preco_anterior && product.preco_anterior > product.preco && (
                   <Badge className="absolute top-2 right-2 bg-red-500">
-                    {calculateDiscount(product.preco, product.preco_anterior)}% OFF
+                    {Math.round(((product.preco_anterior - product.preco) / product.preco_anterior) * 100)}% OFF
                   </Badge>
                 )}
               </div>
@@ -226,14 +238,7 @@ const ShopProductsList: React.FC = () => {
                   <Button 
                     size="sm"
                     className="ml-auto mt-2"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // Add to cart logic here
-                      toast({
-                        title: "Produto adicionado",
-                        description: `${product.nome} foi adicionado ao carrinho.`
-                      });
-                    }}
+                    onClick={(e) => handleAddToCart(e, product.id)}
                   >
                     <ShoppingCart size={16} />
                   </Button>

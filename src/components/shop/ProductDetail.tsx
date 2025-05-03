@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getProductById, trackProductView } from '@/services/productService';
+import { useCart } from '@/hooks/use-cart';
 import { 
   Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle 
 } from '@/components/ui/card';
@@ -9,12 +10,13 @@ import { Badge } from '@/components/ui/badge';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { toast } from '@/components/ui/use-toast';
 import { 
-  ShoppingCart, Star, ArrowLeft, Package, Truck, AlertTriangle, Image
+  ShoppingCart, Star, ArrowLeft, Package, Truck, AlertTriangle
 } from 'lucide-react';
 
 const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { addToCart } = useCart();
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -74,14 +76,14 @@ const ProductDetail: React.FC = () => {
   };
   
   // Handle add to cart
-  const handleAddToCart = () => {
-    toast({
-      title: "Produto adicionado",
-      description: `${quantity}x ${product.nome} adicionado ao carrinho.`
-    });
+  const handleAddToCart = async () => {
+    if (!product || !id) return;
     
-    // Reset quantity
-    setQuantity(1);
+    try {
+      await addToCart(id, quantity);
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+    }
   };
   
   // Get product images
@@ -228,22 +230,6 @@ const ProductDetail: React.FC = () => {
                 <p className="text-gray-600 whitespace-pre-line">{product.descricao}</p>
               </div>
               
-              {/* Inventory Status */}
-              <div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Package size={16} className="text-gray-500" />
-                  <span>
-                    {product.estoque > 0 
-                      ? `${product.estoque} ${product.unidade_venda || 'unidades'} disponíveis` 
-                      : 'Produto esgotado'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-sm mt-1">
-                  <Truck size={16} className="text-gray-500" />
-                  <span>Entrega estimada: 3-5 dias úteis</span>
-                </div>
-              </div>
-              
               {/* Quantity */}
               <div className="flex items-center gap-4">
                 <label htmlFor="quantity" className="text-sm font-medium">
@@ -261,15 +247,15 @@ const ProductDetail: React.FC = () => {
                     type="number"
                     id="quantity"
                     min="1"
-                    max={product.estoque}
+                    max={product.estoque || 99}
                     className="w-12 text-center p-1"
                     value={quantity}
-                    onChange={(e) => setQuantity(Math.min(product.estoque, Math.max(1, parseInt(e.target.value) || 1)))}
+                    onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
                   />
                   <button
                     type="button"
                     className="px-3 py-1 border-l"
-                    onClick={() => setQuantity(prev => Math.min(product.estoque, prev + 1))}
+                    onClick={() => setQuantity(prev => Math.min(product.estoque || 99, prev + 1))}
                   >
                     +
                   </button>
