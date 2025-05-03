@@ -18,19 +18,15 @@ export const useIsAdmin = () => {
       }
 
       try {
-        // Check if the user is an admin in the profiles table
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('id', user.id)
-          .single();
+        // Use the is_admin RPC function that we fixed to avoid recursion
+        const { data, error } = await supabase.rpc('is_admin');
 
         if (error) {
           console.error('Error checking admin status:', error);
           toast.error('Erro ao verificar permissões de administrador');
           setIsAdmin(false);
         } else {
-          setIsAdmin(data?.is_admin || false);
+          setIsAdmin(!!data); // Convert to boolean
         }
       } catch (error) {
         console.error('Error in admin check:', error);

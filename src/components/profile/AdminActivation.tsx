@@ -7,7 +7,7 @@ import { toast } from '@/components/ui/sonner';
 import { ShieldCheck } from 'lucide-react';
 
 const AdminActivation: React.FC = () => {
-  const { user, updateUser } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -16,13 +16,11 @@ const AdminActivation: React.FC = () => {
       if (!user) return;
 
       try {
-        const { data } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('id', user.id)
-          .single();
+        // Use the is_admin rpc function we fixed
+        const { data, error } = await supabase.rpc('is_admin');
         
-        setIsAdmin(data?.is_admin || false);
+        if (error) throw error;
+        setIsAdmin(!!data);
       } catch (error) {
         console.error('Error checking admin status:', error);
       }
@@ -49,16 +47,8 @@ const AdminActivation: React.FC = () => {
       // Update local state
       setIsAdmin(newAdminStatus);
       
-      // Update user in context - we need to add is_admin as an additional property
-      // since it's not part of the original type
-      if (user) {
-        // Use type assertion to add the is_admin property
-        updateUser({ 
-          ...user, 
-          // @ts-ignore - We know is_admin exists in the database even if not in the type
-          is_admin: newAdminStatus 
-        });
-      }
+      // Refresh the profile to get updated user data
+      await refreshProfile();
 
       toast.success(newAdminStatus 
         ? 'Permissões administrativas ativadas'

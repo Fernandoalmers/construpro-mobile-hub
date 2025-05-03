@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useIsAdmin } from '@/hooks/useIsAdmin';
 import LoadingState from '../common/LoadingState';
 
 interface ProtectedRouteProps {
@@ -16,6 +17,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requireAdmin = false
 }) => {
   const { isAuthenticated, isLoading, profile, refreshProfile } = useAuth();
+  const { isAdmin, isLoading: adminCheckLoading } = useIsAdmin();
   const [profileLoading, setProfileLoading] = useState(false);
   const location = useLocation();
 
@@ -38,7 +40,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }, [isAuthenticated, profile, refreshProfile]);
 
   // Show loading while checking authentication or loading profile
-  if (isLoading || profileLoading) {
+  if (isLoading || profileLoading || (requireAdmin && adminCheckLoading)) {
     return <LoadingState text="Verificando autenticação..." />;
   }
 
@@ -49,7 +51,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // If admin access is required and user is not an admin, redirect to home
-  if (requireAdmin && (!profile?.is_admin)) {
+  if (requireAdmin && !isAdmin) {
     return <Navigate to="/home" replace />;
   }
 
