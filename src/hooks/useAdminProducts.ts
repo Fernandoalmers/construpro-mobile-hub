@@ -2,8 +2,6 @@
 import { useState, useEffect } from 'react';
 import { 
   fetchAdminProducts, 
-  approveProduct, 
-  rejectProduct, 
   subscribeToAdminProductUpdates, 
   unsubscribeFromChannel 
 } from '@/services/admin/products';
@@ -59,40 +57,6 @@ export const useAdminProducts = (initialFilter: string = 'all') => {
     setFilteredProducts(filtered);
   };
 
-  const handleApproveProduct = async (productId: string) => {
-    try {
-      console.log('[useAdminProducts] Approving product:', productId);
-      // Chama a função de aprovação da API
-      const success = await approveProduct(productId);
-      if (success) {
-        console.log('[useAdminProducts] Product approved successfully, refreshing products...');
-        // Recarrega os produtos após a aprovação
-        await loadProducts();
-        toast.success('Produto aprovado com sucesso');
-      }
-    } catch (error) {
-      console.error('[useAdminProducts] Error approving product:', error);
-      toast.error('Erro ao aprovar produto');
-    }
-  };
-
-  const handleRejectProduct = async (productId: string) => {
-    try {
-      console.log('[useAdminProducts] Rejecting product:', productId);
-      // Chama a função de rejeição da API
-      const success = await rejectProduct(productId);
-      if (success) {
-        console.log('[useAdminProducts] Product rejected successfully, refreshing products...');
-        // Recarrega os produtos após a rejeição
-        await loadProducts();
-        toast.success('Produto rejeitado com sucesso');
-      }
-    } catch (error) {
-      console.error('[useAdminProducts] Error rejecting product:', error);
-      toast.error('Erro ao rejeitar produto');
-    }
-  };
-
   // Initial load and realtime setup
   useEffect(() => {
     loadProducts();
@@ -125,8 +89,6 @@ export const useAdminProducts = (initialFilter: string = 'all') => {
     setFilter,
     searchTerm,
     setSearchTerm,
-    handleApproveProduct,
-    handleRejectProduct,
     refreshProducts: loadProducts
   };
 };

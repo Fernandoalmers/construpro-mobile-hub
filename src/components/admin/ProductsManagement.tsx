@@ -31,7 +31,7 @@ const ProductsManagementScreen: React.FC = () => {
     console.log('Debug result:', result);
   };
 
-  // New implementation for approve product handler
+  // Implementation for approve product handler
   async function handleApproveProduct(productId: string) {
     // 1) Atualiza o status no Supabase
     const { data, error } = await supabase
@@ -50,7 +50,7 @@ const ProductsManagementScreen: React.FC = () => {
     toast.success('Produto aprovado com sucesso');
   }
 
-  // New implementation for reject product handler
+  // Implementation for reject product handler
   async function handleRejectProduct(productId: string) {
     // 1) Atualiza o status no Supabase
     const { data, error } = await supabase
