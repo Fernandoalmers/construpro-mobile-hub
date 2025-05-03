@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { logAdminAction } from './adminService';
@@ -16,28 +15,34 @@ export const fetchAdminStores = async (): Promise<AdminStore[]> => {
         proprietario_id,
         status,
         created_at,
-        updated_at,
-        profiles:proprietario_id (nome, email, telefone)
+        updated_at
       `)
       .order('created_at', { ascending: false });
       
     if (!lojasError && lojas) {
-      // Contar produtos por loja
+      // Contar produtos por loja e obter informações do proprietário
       const storesWithCounts = await Promise.all(lojas.map(async (loja) => {
         const { count, error: countError } = await supabase
           .from('produtos')
           .select('*', { count: 'exact', head: true })
           .eq('vendedor_id', loja.id);
           
+        // Fetch proprietário info separately since the relation isn't working
+        const { data: proprietarioData, error: proprietarioError } = await supabase
+          .from('profiles')
+          .select('nome, email, telefone')
+          .eq('id', loja.proprietario_id)
+          .single();
+          
         return {
           id: loja.id,
           nome: loja.nome,
           logo_url: loja.logo_url,
           proprietario_id: loja.proprietario_id,
-          proprietario_nome: loja.profiles?.nome || 'Desconhecido',
+          proprietario_nome: proprietarioData?.nome || 'Desconhecido',
           status: loja.status || 'pendente',
           produtos_count: count || 0,
-          contato: loja.profiles?.telefone || loja.profiles?.email,
+          contato: proprietarioData?.telefone || proprietarioData?.email,
           created_at: loja.created_at,
           updated_at: loja.updated_at
         } as AdminStore;
@@ -58,8 +63,7 @@ export const fetchAdminStores = async (): Promise<AdminStore[]> => {
         created_at, 
         updated_at,
         contato,
-        descricao,
-        profiles:owner_id (nome, email)
+        descricao
       `)
       .order('created_at', { ascending: false });
       
@@ -68,12 +72,19 @@ export const fetchAdminStores = async (): Promise<AdminStore[]> => {
       throw storesError;
     }
 
-    // Contar produtos por store
+    // Contar produtos por store e obter informações do owner
     const storesWithCounts = await Promise.all(stores.map(async (store) => {
       const { count, error: countError } = await supabase
         .from('produtos')
         .select('*', { count: 'exact', head: true })
         .eq('vendedor_id', store.id);
+        
+      // Fetch owner info separately since the relation isn't working
+      const { data: ownerData, error: ownerError } = await supabase
+        .from('profiles')
+        .select('nome, email')
+        .eq('id', store.owner_id)
+        .single();
         
       return {
         id: store.id,
@@ -81,10 +92,10 @@ export const fetchAdminStores = async (): Promise<AdminStore[]> => {
         descricao: store.descricao,
         logo_url: store.logo_url,
         proprietario_id: store.owner_id,
-        proprietario_nome: store.profiles?.nome || 'Desconhecido',
+        proprietario_nome: ownerData?.nome || 'Desconhecido',
         status: 'ativa', // Default para stores se não tiver status
         produtos_count: count || 0,
-        contato: store.contato || store.profiles?.email,
+        contato: store.contato || ownerData?.email,
         created_at: store.created_at,
         updated_at: store.updated_at
       } as AdminStore;
