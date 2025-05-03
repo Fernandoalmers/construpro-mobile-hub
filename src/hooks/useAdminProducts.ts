@@ -61,12 +61,12 @@ export const useAdminProducts = (initialFilter: string = 'all') => {
 
   const handleApproveProduct = async (productId: string) => {
     try {
+      // Chama a função de aprovação da API
       const success = await approveProduct(productId);
       if (success) {
         console.log('Product approved successfully, refreshing products...');
-        // Refresh product data - directly fetch all products again to ensure we have the latest data
+        // Recarrega os produtos após a aprovação
         await loadProducts();
-        toast.success('Produto aprovado com sucesso');
       }
     } catch (error) {
       console.error('Error approving product:', error);
@@ -76,12 +76,12 @@ export const useAdminProducts = (initialFilter: string = 'all') => {
 
   const handleRejectProduct = async (productId: string) => {
     try {
+      // Chama a função de rejeição da API
       const success = await rejectProduct(productId);
       if (success) {
         console.log('Product rejected successfully, refreshing products...');
-        // Refresh product data - directly fetch all products again to ensure we have the latest data
+        // Recarrega os produtos após a rejeição
         await loadProducts();
-        toast.success('Produto rejeitado com sucesso');
       }
     } catch (error) {
       console.error('Error rejecting product:', error);

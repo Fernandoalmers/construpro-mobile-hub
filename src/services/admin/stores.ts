@@ -1,8 +1,9 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
-import { logAdminAction } from '../adminService';
 import { AdminStore } from '@/types/admin';
+import { logAdminAction } from '../adminService';
+import { RealtimeChannel } from '@supabase/supabase-js';
 
 /**
  * Fetch all stores for admin management
@@ -10,64 +11,48 @@ import { AdminStore } from '@/types/admin';
 export const getAdminStores = async (): Promise<AdminStore[]> => {
   try {
     console.log('Fetching admin stores from vendedores table...');
-    // Fetch from vendedores table
+    
     const { data, error } = await supabase
       .from('vendedores')
       .select(`
         id,
         nome_loja,
-        logo,
         usuario_id,
         status,
-        whatsapp,
+        descricao,
         telefone,
-        email,
+        whatsapp,
+        logo,
         created_at,
         updated_at
       `)
       .order('created_at', { ascending: false });
       
     if (error) {
-      console.error('Error fetching vendors:', error);
+      console.error('Error fetching stores:', error);
       throw error;
     }
-    
+
     console.log('Admin stores data from vendedores:', data);
     
-    // Get additional info for each store
-    const storesWithDetails = await Promise.all((data || []).map(async (store) => {
-      // Count products for this store
-      const { count: productCount } = await supabase
-        .from('produtos')
-        .select('*', { count: 'exact', head: true })
-        .eq('vendedor_id', store.id);
-      
-      // Get owner info
-      const { data: ownerData } = await supabase
-        .from('profiles')
-        .select('nome, email, telefone')
-        .eq('id', store.usuario_id)
-        .single();
-        
-      return {
-        id: store.id,
-        nome: store.nome_loja,
-        logo_url: store.logo,
-        proprietario_id: store.usuario_id,
-        proprietario_nome: ownerData?.nome || 'Desconhecido',
-        status: store.status || 'pendente',
-        produtos_count: productCount || 0,
-        contato: store.whatsapp || store.telefone || store.email || ownerData?.telefone || ownerData?.email || 'N/A',
-        created_at: store.created_at,
-        updated_at: store.updated_at
-      } as AdminStore;
+    // Transform data to AdminStore format
+    const stores: AdminStore[] = data.map(store => ({
+      id: store.id,
+      nome: store.nome_loja,
+      descricao: store.descricao || '',
+      logo_url: store.logo || '',
+      proprietario_id: store.usuario_id,
+      status: store.status || 'pendente',
+      created_at: store.created_at,
+      updated_at: store.updated_at
     }));
     
-    return storesWithDetails;
+    console.log('Admin stores loaded:', stores);
+    return stores;
   } catch (error) {
     console.error('Error in getAdminStores:', error);
     toast.error('Erro ao carregar lojas');
-    throw error;
+    return [];
   }
 };
 
@@ -76,37 +61,70 @@ export const getAdminStores = async (): Promise<AdminStore[]> => {
  */
 export const getAdminPendingStores = async (): Promise<AdminStore[]> => {
   try {
-    const stores = await getAdminStores();
-    return stores.filter(store => store.status === 'pendente');
+    const { data, error } = await supabase
+      .from('vendedores')
+      .select(`
+        id,
+        nome_loja,
+        usuario_id,
+        status,
+        descricao,
+        telefone,
+        logo,
+        created_at,
+        updated_at
+      `)
+      .eq('status', 'pendente')
+      .order('created_at', { ascending: false });
+      
+    if (error) {
+      console.error('Error fetching pending stores:', error);
+      throw error;
+    }
+    
+    // Transform data to AdminStore format
+    const stores: AdminStore[] = data.map(store => ({
+      id: store.id,
+      nome: store.nome_loja,
+      descricao: store.descricao || '',
+      logo_url: store.logo || '',
+      proprietario_id: store.usuario_id,
+      status: store.status || 'pendente',
+      created_at: store.created_at,
+      updated_at: store.updated_at
+    }));
+    
+    return stores;
   } catch (error) {
-    console.error('Error fetching pending stores:', error);
+    console.error('Error in getAdminPendingStores:', error);
     toast.error('Erro ao carregar lojas pendentes');
-    throw error;
+    return [];
   }
 };
 
 /**
- * Approve a store 
+ * Approve a store
  */
 export const approveStore = async (storeId: string): Promise<boolean> => {
   try {
-    console.log('Approving store:', storeId);
-    const { error } = await supabase
+    console.log('Approving store with ID:', storeId);
+    
+    const { data, error } = await supabase
       .from('vendedores')
-      .update({ status: 'ativa', updated_at: new Date().toISOString() })
+      .update({ status: 'aprovado', updated_at: new Date().toISOString() })
       .eq('id', storeId);
       
     if (error) {
-      console.error('Error approving vendor:', error);
+      console.error('Error approving store:', error);
       throw error;
     }
     
-    // Log administrative action
+    // Log the admin action
     await logAdminAction({
       action: 'approve_store',
-      entityType: 'loja',
+      entityType: 'vendedor',
       entityId: storeId,
-      details: { status: 'ativa' }
+      details: { status: 'aprovado' }
     });
     
     toast.success('Loja aprovada com sucesso');
@@ -123,23 +141,24 @@ export const approveStore = async (storeId: string): Promise<boolean> => {
  */
 export const rejectStore = async (storeId: string): Promise<boolean> => {
   try {
-    console.log('Rejecting store:', storeId);
-    const { error } = await supabase
+    console.log('Rejecting store with ID:', storeId);
+    
+    const { data, error } = await supabase
       .from('vendedores')
-      .update({ status: 'inativa', updated_at: new Date().toISOString() })
+      .update({ status: 'inativo', updated_at: new Date().toISOString() })
       .eq('id', storeId);
       
     if (error) {
-      console.error('Error rejecting vendor:', error);
+      console.error('Error rejecting store:', error);
       throw error;
     }
     
-    // Log administrative action
+    // Log the admin action
     await logAdminAction({
       action: 'reject_store',
-      entityType: 'loja',
+      entityType: 'vendedor',
       entityId: storeId,
-      details: { status: 'inativa' }
+      details: { status: 'inativo' }
     });
     
     toast.success('Loja rejeitada com sucesso');
@@ -156,26 +175,25 @@ export const rejectStore = async (storeId: string): Promise<boolean> => {
  */
 export const deleteStore = async (storeId: string): Promise<boolean> => {
   try {
-    console.log('Marking store as deleted:', storeId);
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('vendedores')
-      .update({ status: 'excluida', updated_at: new Date().toISOString() })
+      .delete()
       .eq('id', storeId);
       
     if (error) {
-      console.error('Error deleting vendor:', error);
+      console.error('Error deleting store:', error);
       throw error;
     }
     
-    // Log administrative action
+    // Log the admin action
     await logAdminAction({
       action: 'delete_store',
-      entityType: 'loja',
+      entityType: 'vendedor',
       entityId: storeId,
-      details: { status: 'excluida' }
+      details: { action: 'delete' }
     });
     
-    toast.success('Loja marcada como excluída');
+    toast.success('Loja excluída com sucesso');
     return true;
   } catch (error) {
     console.error('Error deleting store:', error);
@@ -185,52 +203,50 @@ export const deleteStore = async (storeId: string): Promise<boolean> => {
 };
 
 /**
- * Get the badge color based on store status
+ * Get color for store status badge
  */
 export const getStoreBadgeColor = (status: string): string => {
-  switch (status?.toLowerCase()) {
-    case 'ativa':
+  switch (status) {
+    case 'aprovado':
       return 'bg-green-100 text-green-800';
     case 'pendente':
       return 'bg-yellow-100 text-yellow-800';
-    case 'recusada':
-    case 'excluida':
+    case 'inativo':
       return 'bg-red-100 text-red-800';
-    case 'inativa':
-      return 'bg-gray-100 text-gray-800';
     default:
       return 'bg-gray-100 text-gray-800';
   }
 };
 
 /**
- * Function to set up real-time subscription for vendor updates
+ * Subscribe to updates in the vendedores table for real-time admin updates
  */
 export const subscribeToAdminStoreUpdates = (
   callback: (store: any, eventType: 'INSERT' | 'UPDATE' | 'DELETE') => void
 ) => {
   console.log('Setting up realtime subscription for vendedores table');
-  const vendoresChannel = supabase
-    .channel('admin-vendedores-changes')
+  
+  const channel = supabase
+    .channel('admin-store-changes')
     .on(
       'postgres_changes',
       {
         event: '*',
         schema: 'public',
-        table: 'vendedores'
+        table: 'vendedores',
       },
       (payload) => {
-        console.log('Vendedor atualizado (Admin):', payload);
         const eventType = payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE';
-        const store = payload.new;
-        callback(store, eventType);
+        const storeData = payload.new || payload.old;
+        callback(storeData, eventType);
       }
     )
     .subscribe();
-    
+
   return {
+    channel,
     unsubscribe: () => {
-      supabase.removeChannel(vendoresChannel);
+      channel.unsubscribe();
     }
   };
 };

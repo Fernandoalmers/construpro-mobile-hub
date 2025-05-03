@@ -11,7 +11,10 @@ export const approveProduct = async (productId: string): Promise<boolean> => {
     console.log('Approving product:', productId);
     const { data, error } = await supabase
       .from('produtos')
-      .update({ status: 'aprovado', updated_at: new Date().toISOString() })
+      .update({ 
+        status: 'aprovado', 
+        updated_at: new Date().toISOString() 
+      })
       .eq('id', productId);
       
     if (error) {
@@ -46,7 +49,10 @@ export const rejectProduct = async (productId: string): Promise<boolean> => {
     console.log('Rejecting product:', productId);
     const { data, error } = await supabase
       .from('produtos')
-      .update({ status: 'inativo', updated_at: new Date().toISOString() })
+      .update({ 
+        status: 'inativo', 
+        updated_at: new Date().toISOString() 
+      })
       .eq('id', productId);
       
     if (error) {
