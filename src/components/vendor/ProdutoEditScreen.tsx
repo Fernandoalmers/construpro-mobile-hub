@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { toast } from '@/components/ui/sonner';
+import { toast } from 'sonner';
 import ProductFormScreen from './ProductFormScreen';
 import { getVendorProduct } from '@/services/vendorService';
 import LoadingState from '../common/LoadingState';
@@ -21,9 +21,8 @@ const ProdutoEditScreen: React.FC = () => {
       try {
         const product = await getVendorProduct(id);
         if (!product) {
-          toast("Produto não encontrado", {
-            description: "Não foi possível encontrar o produto solicitado",
-            variant: "destructive"
+          toast.error("Produto não encontrado", {
+            description: "Não foi possível encontrar o produto solicitado"
           });
           navigate('/vendor/products');
           return;
@@ -32,9 +31,8 @@ const ProdutoEditScreen: React.FC = () => {
         setLoading(false);
       } catch (error) {
         console.error('Error loading product:', error);
-        toast("Erro", {
-          description: "Ocorreu um erro ao carregar os dados do produto",
-          variant: "destructive"
+        toast.error("Erro", {
+          description: "Ocorreu um erro ao carregar os dados do produto"
         });
         navigate('/vendor/products');
       }
