@@ -51,45 +51,32 @@ serve(async (req) => {
 
     // Parse the request based on HTTP method
     let action = "";
-    const url = new URL(req.url);
-
-    // Extract action from request
-    if (req.method === "GET") {
-      // For GET requests, action is in the body or query parameter
-      const queryAction = url.searchParams.get("action");
-      if (queryAction) {
-        action = queryAction;
-      } else {
-        // Try to get action from body if it exists
-        try {
-          const body = await req.clone().json();
-          action = body.action || "";
-        } catch (e) {
-          // No body or not JSON, use path as fallback
-          action = url.pathname.split("/").pop() || "";
+    let body = {};
+    
+    // Try to parse the body if it exists
+    try {
+      if (req.body) {
+        body = await req.json();
+        // Extract action from body
+        if (body && body.action) {
+          action = body.action;
         }
       }
-    } else {
-      // For POST/PUT/DELETE, action should be in the body
-      try {
-        const body = await req.json();
-        action = body.action || "";
-        
-        // Remove action from body to avoid confusion
-        delete body.action;
-        
-        // Process based on action
-        return await handleAction(action, req.method, body, url, user, supabase);
-      } catch (e) {
-        return new Response(
-          JSON.stringify({ error: "Invalid JSON body or missing 'action' parameter" }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-        );
-      }
+    } catch (e) {
+      // No body or invalid JSON
+      console.log("Could not parse body:", e);
     }
     
-    // For GET requests, process based on action
-    return await handleAction(action, req.method, {}, url, user, supabase);
+    // If action wasn't found in the body, try to get it from URL
+    if (!action) {
+      const url = new URL(req.url);
+      action = url.searchParams.get("action") || "";
+    }
+    
+    console.log(`Handling request with action: ${action}, method: ${req.method}`);
+    
+    // Process based on action
+    return await handleAction(action, req.method, body, req.url, user, supabase);
 
   } catch (error) {
     console.error("Error processing request:", error);
@@ -100,7 +87,7 @@ serve(async (req) => {
   }
 });
 
-async function handleAction(action, method, body, url, user, supabase) {
+async function handleAction(action, method, body, reqUrl, user, supabase) {
   const corsHeaders = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -109,12 +96,16 @@ async function handleAction(action, method, body, url, user, supabase) {
   };
 
   console.log(`Handling action: ${action}, method: ${method}`);
+  const url = new URL(reqUrl);
 
   // GET requests - fetch data
   if (method === "GET") {
     // Get all service requests (with filters)
     if (action === "requests") {
-      const { status, category, limit, offset } = Object.fromEntries(url.searchParams);
+      const category = url.searchParams.get("category") || body.category;
+      const status = url.searchParams.get("status") || body.status;
+      const limit = url.searchParams.get("limit") || body.limit;
+      const offset = url.searchParams.get("offset") || body.offset;
       
       let query = supabase
         .from("service_requests")
@@ -145,7 +136,7 @@ async function handleAction(action, method, body, url, user, supabase) {
     
     // Get a single service request by ID
     if (action === "request") {
-      const id = url.searchParams.get("id");
+      const id = url.searchParams.get("id") || body.id;
       if (!id) {
         return new Response(
           JSON.stringify({ error: "Missing request ID" }),

@@ -10,15 +10,17 @@ export const servicesService = {
     offset?: number;
   }): Promise<ServiceRequest[]> {
     try {
-      const queryParams: Record<string, string> = {};
-      if (filters?.category) queryParams.category = filters.category;
-      if (filters?.status) queryParams.status = filters.status || 'aberto';
-      if (filters?.limit) queryParams.limit = filters.limit.toString();
-      if (filters?.offset) queryParams.offset = filters.offset.toString();
-
-      const { data, error } = await supabase.functions.invoke('services-management', {
+      let url = 'services-management';
+      const params = new URLSearchParams();
+      
+      params.append('action', 'requests');
+      if (filters?.category) params.append('category', filters.category);
+      if (filters?.status) params.append('status', filters.status || 'aberto');
+      if (filters?.limit) params.append('limit', filters.limit.toString());
+      if (filters?.offset) params.append('offset', filters.offset.toString());
+      
+      const { data, error } = await supabase.functions.invoke(url, {
         method: 'GET',
-        query: queryParams,
         body: { action: 'requests' }
       });
       
@@ -36,10 +38,14 @@ export const servicesService = {
 
   async getServiceRequestById(id: string): Promise<ServiceRequest> {
     try {
-      const { data, error } = await supabase.functions.invoke('services-management', {
+      const url = `services-management`;
+      const params = new URLSearchParams();
+      params.append('action', 'request');
+      params.append('id', id);
+
+      const { data, error } = await supabase.functions.invoke(url, {
         method: 'GET',
-        query: { id },
-        body: { action: 'request' }
+        body: { action: 'request', id }
       });
       
       if (error) {
@@ -84,8 +90,10 @@ export const servicesService = {
     try {
       const { data, error } = await supabase.functions.invoke('services-management', {
         method: 'GET',
-        query: { isProfessional: isProfessional.toString() },
-        body: { action: 'projects' }
+        body: { 
+          action: 'projects',
+          isProfessional: isProfessional.toString() 
+        }
       });
       
       if (error) {
@@ -108,8 +116,10 @@ export const servicesService = {
     try {
       const { data, error } = await supabase.functions.invoke('services-management', {
         method: 'GET',
-        query: { id },
-        body: { action: 'project' }
+        body: { 
+          action: 'project',
+          id 
+        }
       });
       
       if (error) {
@@ -268,13 +278,12 @@ export const servicesService = {
 
   async getProfessionalProfile(professionalId?: string): Promise<Professional> {
     try {
-      const queryParams: Record<string, string> = {};
-      if (professionalId) queryParams.id = professionalId;
-
       const { data, error } = await supabase.functions.invoke('services-management', {
         method: 'GET',
-        query: queryParams,
-        body: { action: 'professional-profile' }
+        body: { 
+          action: 'professional-profile',
+          professionalId 
+        }
       });
       
       if (error) {
