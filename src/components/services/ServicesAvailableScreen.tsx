@@ -5,7 +5,7 @@ import CustomInput from '../common/CustomInput';
 import ServiceRequestCard from './ServiceRequestCard';
 import ListEmptyState from '../common/ListEmptyState';
 import { ServiceRequest } from '@/types/services';
-import { servicesService } from '@/services/servicesManagementService';
+import { serviceRequestsService } from '@/services/serviceRequestsService';
 
 interface AvailableServicesScreenProps {
   isProfessional: boolean;
@@ -21,7 +21,7 @@ const ServicesAvailableScreen: React.FC<AvailableServicesScreenProps> = ({ isPro
     const fetchServices = async () => {
       try {
         setLoading(true);
-        const services = await servicesService.getAvailableServices();
+        const services = await serviceRequestsService.getAvailableServices();
         setServiceRequests(services);
       } catch (err) {
         console.error('Error fetching services:', err);
