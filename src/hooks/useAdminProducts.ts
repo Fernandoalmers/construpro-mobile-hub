@@ -23,6 +23,11 @@ export const useAdminProducts = (initialFilter: string = 'all') => {
       console.log('[useAdminProducts] Loading admin products...');
       const productsData = await fetchAdminProducts();
       console.log('[useAdminProducts] Admin products loaded:', productsData);
+      console.log('[useAdminProducts] Verificando nomes de lojas:', productsData.map(p => ({
+        id: p.id, 
+        vendedor_id: p.vendedor_id, 
+        lojaNome: p.lojaNome
+      })));
       setProducts(productsData);
       applyFilters(productsData, filter, searchTerm);
     } catch (error) {
@@ -38,12 +43,14 @@ export const useAdminProducts = (initialFilter: string = 'all') => {
     
     // Apply status filter
     if (statusFilter !== 'all') {
+      console.log(`[useAdminProducts] Filtrando por status: ${statusFilter}`);
       filtered = filtered.filter(product => product.status === statusFilter);
     }
     
     // Apply search filter
     if (search) {
       const lowerSearch = search.toLowerCase();
+      console.log(`[useAdminProducts] Filtrando por termo: ${search}`);
       filtered = filtered.filter(
         product => 
           product.nome.toLowerCase().includes(lowerSearch) ||
@@ -66,6 +73,7 @@ export const useAdminProducts = (initialFilter: string = 'all') => {
       if (eventType === 'INSERT' || eventType === 'UPDATE' || eventType === 'DELETE') {
         // Reload products when changes occur
         console.log('[useAdminProducts] Realtime product update detected, reloading products...');
+        console.log('[useAdminProducts] Event:', eventType, 'Product:', product);
         loadProducts();
       }
     });

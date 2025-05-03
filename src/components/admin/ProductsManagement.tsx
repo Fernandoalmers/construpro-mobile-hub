@@ -33,13 +33,18 @@ const ProductsManagementScreen: React.FC = () => {
 
   // Implementation for approve product handler
   async function handleApproveProduct(productId: string) {
+    // Log antes da chamada ao Supabase
+    console.log('[ApproveProduct] iniciando update para id:', productId);
+    
     // 1) Atualiza o status no Supabase
     const { data, error } = await supabase
       .from('produtos')
       .update({ status: 'aprovado' })
       .eq('id', productId);
 
-    console.log('[ApproveProduct] data:', data, 'error:', error);
+    // Log após receber resposta do Supabase
+    console.log('[ApproveProduct] retorno Supabase data:', data, 'error:', error);
+    
     if (error) {
       toast.error('Erro ao aprovar: ' + error.message);
       return;
@@ -52,13 +57,18 @@ const ProductsManagementScreen: React.FC = () => {
 
   // Implementation for reject product handler
   async function handleRejectProduct(productId: string) {
+    // Log antes da chamada ao Supabase
+    console.log('[RejectProduct] iniciando update para id:', productId);
+    
     // 1) Atualiza o status no Supabase
     const { data, error } = await supabase
       .from('produtos')
       .update({ status: 'inativo' })
       .eq('id', productId);
 
-    console.log('[RejectProduct] data:', data, 'error:', error);
+    // Log após receber resposta do Supabase
+    console.log('[RejectProduct] retorno Supabase data:', data, 'error:', error);
+    
     if (error) {
       toast.error('Erro ao rejeitar: ' + error.message);
       return;

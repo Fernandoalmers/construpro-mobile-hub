@@ -8,7 +8,7 @@ import { AdminProduct } from '@/types/admin';
  */
 export const getAdminProducts = async (status?: string): Promise<AdminProduct[]> => {
   try {
-    console.log('[AdminProductApi] Fetching admin products from Supabase...');
+    console.log('[getAdminProducts] executando query', status ? `com filtro status='${status}'` : 'sem filtro de status');
     
     // Build the base query
     let query = supabase
@@ -39,14 +39,14 @@ export const getAdminProducts = async (status?: string): Promise<AdminProduct[]>
     
     const { data, error } = await query;
     
-    console.log('[AdminProducts] fetched:', data, error);
+    console.log('[getAdminProducts] data:', data, 'error:', error);
       
     if (error) {
-      console.error('[AdminProductApi] Error fetching produtos:', error);
+      console.error('[getAdminProducts] Error fetching produtos:', error);
       throw error;
     }
 
-    console.log(`[AdminProductApi] Found ${data?.length || 0} products in 'produtos' table`);
+    console.log(`[getAdminProducts] Found ${data?.length || 0} products in 'produtos' table`);
     
     // Transform data to AdminProduct format
     const productsWithVendorInfo = (data || []).map(item => {
@@ -58,6 +58,7 @@ export const getAdminProducts = async (status?: string): Promise<AdminProduct[]>
       
       // Use vendedor name directly from join
       const vendorName = item.vendedores?.nome_loja || 'Loja desconhecida';
+      console.log(`[getAdminProducts] Produto ${item.id} - vendedor_id: ${item.vendedor_id}, nome_loja: ${vendorName}`);
       
       return {
         id: item.id,
@@ -84,7 +85,7 @@ export const getAdminProducts = async (status?: string): Promise<AdminProduct[]>
     
     return productsWithVendorInfo;
   } catch (error) {
-    console.error('[AdminProductApi] Error in getAdminProducts:', error);
+    console.error('[getAdminProducts] Error in getAdminProducts:', error);
     toast.error('Erro ao carregar produtos');
     throw error;
   }
@@ -95,9 +96,12 @@ export const getAdminProducts = async (status?: string): Promise<AdminProduct[]>
  */
 export const getPendingProducts = async (): Promise<AdminProduct[]> => {
   try {
-    return await getAdminProducts('pendente');
+    console.log('[getAdminProducts] executando query pendentes');
+    const products = await getAdminProducts('pendente');
+    console.log('[getPendingProducts] produtos pendentes:', products.length);
+    return products;
   } catch (error) {
-    console.error('[AdminProductApi] Error fetching pending products:', error);
+    console.error('[getAdminProducts] Error fetching pending products:', error);
     toast.error('Erro ao carregar produtos pendentes');
     throw error;
   }
@@ -107,22 +111,23 @@ export const getPendingProducts = async (): Promise<AdminProduct[]> => {
  * Debug function to fetch products with detailed logging
  */
 export const debugFetchProducts = async () => {
-  console.log('[AdminProductApi] Debug fetch products called');
+  console.log('[debugFetchProducts] Debug fetch products called');
   try {
+    console.log('[debugFetchProducts] Testando query direta de produtos com vendedores');
     const { data, error } = await supabase
       .from('produtos')
       .select('*, vendedores:vendedor_id(nome_loja)')
       .limit(10);
-    console.log('[AdminProductApi] Debug productos data:', data);
+    console.log('[debugFetchProducts] Debug productos data:', data);
     
     if (error) {
-      console.error('[AdminProductApi] Error in debug fetch:', error);
+      console.error('[debugFetchProducts] Error in debug fetch:', error);
       return { error };
     }
     
     return { data };
   } catch (err) {
-    console.error('[AdminProductApi] Unexpected error in debug fetch:', err);
+    console.error('[debugFetchProducts] Unexpected error in debug fetch:', err);
     return { error: err };
   }
 };
