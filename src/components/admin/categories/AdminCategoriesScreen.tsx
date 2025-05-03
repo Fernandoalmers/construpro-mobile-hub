@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import LoadingState from '@/components/common/LoadingState';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AdminCategory, AdminSegment } from '@/types/admin';
 
 interface Category {
   id: string;
@@ -86,7 +87,7 @@ const AdminCategoriesScreen: React.FC = () => {
           .from('produtos')
           .select('categoria, count')
           .select('categoria, count(*)')
-          .eq('status', 'aprovado');
+          .group('categoria');
 
         const countMap: Record<string, number> = {};
         
