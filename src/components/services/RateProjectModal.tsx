@@ -1,136 +1,147 @@
-
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Textarea } from '@/components/ui/textarea';
-import CustomButton from '../common/CustomButton';
-import CustomModal from '../common/CustomModal';
-import { toast } from '@/components/ui/sonner';
 import { Star } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { toast } from '@/components/ui/sonner';
+import { useNavigate } from 'react-router-dom';
+import { professionalsService } from '@/services/professionalsService';
+import { projectsService } from '@/services/projectsService';
+
+const formSchema = z.object({
+  nota: z.number().min(1, 'A nota deve ser entre 1 e 5').max(5, 'A nota deve ser entre 1 e 5'),
+  comentario: z.string().min(10, 'O comentário deve ter pelo menos 10 caracteres'),
+  servicoRealizado: z.string().min(5, 'Informe qual serviço foi realizado'),
+});
 
 interface RateProjectModalProps {
   projectId: string;
+  professionalId: string;
   professionalName: string;
-  professionalId?: string;
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
-const formSchema = z.object({
-  nota: z.number().min(1).max(5),
-  comentario: z.string().min(10, 'O comentário deve ter pelo menos 10 caracteres').max(500, 'O comentário deve ter no máximo 500 caracteres')
-});
-
-const RateProjectModal: React.FC<RateProjectModalProps> = ({ 
+const RateProjectModal: React.FC<RateProjectModalProps> = ({
   projectId,
-  professionalName,
   professionalId,
+  professionalName,
   open,
-  onOpenChange = () => {}
+  onOpenChange,
 }) => {
+  const navigate = useNavigate();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      nota: 0,
-      comentario: ''
+      nota: 5,
+      comentario: '',
+      servicoRealizado: '',
     },
   });
 
-  const [ratingHover, setRatingHover] = React.useState(0);
+  const onSubmit = async (data: z.infer<typeof formSchema>) => {
+    try {
+      // Submit the review
+      await professionalsService.submitReview({
+        projectId,
+        professionalId,
+        nota: data.nota,
+        comentario: data.comentario,
+        servicoRealizado: data.servicoRealizado,
+      });
+      
+      // Update project as evaluated
+      await projectsService.updateProjectStatus({
+        projectId,
+        concluido: true
+      });
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    // Here would be the API call to submit the rating
-    console.log('Enviando avaliação:', { projectId, professionalId, ...values });
-    
-    toast.success('Avaliação enviada com sucesso!');
-    onOpenChange(false);
-    form.reset();
+      toast.success('Avaliação enviada com sucesso!');
+      onOpenChange(false);
+      navigate('/services');
+    } catch (error) {
+      console.error('Erro ao enviar avaliação:', error);
+      toast.error('Erro ao enviar avaliação. Tente novamente.');
+    }
   };
 
   return (
-    <CustomModal
-      open={open}
-      onOpenChange={onOpenChange}
-      title="Avaliar profissional"
-      description={`Avalie o trabalho de ${professionalName}`}
-    >
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-4">
-          <FormField
-            control={form.control}
-            name="nota"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Sua avaliação</FormLabel>
-                <FormControl>
-                  <div className="flex items-center justify-center">
-                    <div className="flex items-center gap-1">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                          key={star}
-                          type="button"
-                          className="focus:outline-none"
-                          onClick={() => field.onChange(star)}
-                          onMouseEnter={() => setRatingHover(star)}
-                          onMouseLeave={() => setRatingHover(0)}
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Avaliar {professionalName}</DialogTitle>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="nota"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nota</FormLabel>
+                  <FormControl>
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map((value) => (
+                        <Button
+                          key={value}
+                          variant={field.value === value ? 'secondary' : 'outline'}
+                          onClick={() => field.onChange(value)}
                         >
                           <Star
-                            size={32}
-                            className={`transition-colors ${
-                              (ratingHover || field.value) >= star
-                                ? 'text-yellow-400 fill-yellow-400'
-                                : 'text-gray-300'
-                            }`}
+                            size={16}
+                            className={field.value >= value ? 'text-yellow-500 fill-yellow-500' : 'text-gray-400'}
                           />
-                        </button>
+                        </Button>
                       ))}
                     </div>
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="comentario"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Comentário</FormLabel>
-                <FormControl>
-                  <Textarea 
-                    placeholder="Descreva sua experiência com o profissional, qualidade do trabalho, etc." 
-                    className="min-h-[120px]"
-                    {...field} 
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <div className="pt-4 flex justify-end gap-2">
-            <CustomButton
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancelar
-            </CustomButton>
-            <CustomButton 
-              type="submit" 
-              variant="primary"
-              disabled={form.getValues().nota === 0}
-            >
-              Enviar avaliação
-            </CustomButton>
-          </div>
-        </form>
-      </Form>
-    </CustomModal>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="servicoRealizado"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Serviço realizado</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ex: Instalação de piso" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="comentario"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Comentário</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Descreva sua experiência com o profissional" className="min-h-[80px]" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <DialogFooter>
+              <Button type="submit">Enviar avaliação</Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
   );
 };
 

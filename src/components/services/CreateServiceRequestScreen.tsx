@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,7 +10,7 @@ import CustomButton from '../common/CustomButton';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
 import { useAuth } from '@/context/AuthContext';
-import { servicesService } from '@/services/servicesManagementService';
+import { serviceRequestsService } from '@/services/serviceRequestsService';
 
 const serviceCategories = [
   { value: 'pintura', label: 'Pintura' },
@@ -58,7 +57,7 @@ const CreateServiceRequestScreen = () => {
     }
 
     try {
-      await servicesService.createServiceRequest({
+      await serviceRequestsService.createServiceRequest({
         titulo: values.titulo,
         descricao: values.descricao,
         categoria: values.categoria,

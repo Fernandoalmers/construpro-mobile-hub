@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Avatar } from '@/components/ui/avatar';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -7,27 +6,70 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import CustomButton from '../common/CustomButton';
 import { MessageSquare, Star } from 'lucide-react';
-import { professionalsMock } from '@/data/professionals';
-import { reviewsMock } from '@/data/reviews';
 import { toast } from '@/components/ui/sonner';
 import { useNavigate } from 'react-router-dom';
+import { professionalsService } from '@/services/professionalsService';
+import { Professional } from '@/types/services';
 
 const ProfessionalProfileScreen: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState('info');
   const navigate = useNavigate();
+  const [professional, setProfessional] = useState<Professional | null>(null);
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   
-  // In a real app, fetch professional data by ID
-  const professional = professionalsMock.find(p => p.id === id) || professionalsMock[0];
-  
-  // In a real app, fetch reviews by professional ID
-  const reviews = reviewsMock.filter(r => r.profissionalId === professional.id);
+  useEffect(() => {
+    const fetchProfessionalData = async () => {
+      if (!id) return;
+      
+      try {
+        setLoading(true);
+        const professionalData = await professionalsService.getProfessionalProfile(id);
+        setProfessional(professionalData);
+        
+        // In a real app, we would also fetch reviews for this professional
+        // const professionalReviews = await reviewsService.getReviewsForProfessional(id);
+        // setReviews(professionalReviews);
+        
+        // For now, use mock data
+        setReviews([]);
+      } catch (error) {
+        console.error('Error fetching professional data:', error);
+        toast.error('Erro ao carregar dados do profissional');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchProfessionalData();
+  }, [id]);
   
   const handleContactProfessional = () => {
     // Navigate to chat with this professional
     toast.success('Chat iniciado com o profissional');
-    navigate(`/chat/professional-${professional.id}`);
+    navigate(`/chat/professional-${id}`);
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-construPro-blue"></div>
+      </div>
+    );
+  }
+
+  if (!professional) {
+    return (
+      <div className="p-4">
+        <Card>
+          <CardContent className="p-6 text-center">
+            <p>Profissional não encontrado.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col pb-16">

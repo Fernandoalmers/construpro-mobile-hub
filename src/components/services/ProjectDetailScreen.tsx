@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Calendar, CheckCircle, Clock, DollarSign, MessageCircle, Wrench, User, X, AlertTriangle } from 'lucide-react';
@@ -8,9 +7,9 @@ import Avatar from '../common/Avatar';
 import Card from '../common/Card';
 import RateProjectModal from './RateProjectModal';
 import { Project } from '@/types/services';
-import { projectsMock } from '@/data/projects';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from '@/components/ui/sonner';
+import { projectsService } from '@/services/projectsService';
 
 const ProjectDetailScreen: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -21,12 +20,22 @@ const ProjectDetailScreen: React.FC = () => {
   const [rateModalOpen, setRateModalOpen] = useState(false);
 
   useEffect(() => {
-    // In a real app, we would fetch from an API
-    const foundProject = projectsMock.find(p => p.id === id);
-    if (foundProject) {
-      setProject(foundProject);
-    }
-    setIsLoading(false);
+    const fetchProject = async () => {
+      if (!id) return;
+      
+      try {
+        setIsLoading(true);
+        const projectData = await projectsService.getProjectById(id);
+        setProject(projectData);
+      } catch (error) {
+        console.error('Error fetching project:', error);
+        toast.error('Erro ao carregar projeto');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchProject();
   }, [id]);
 
   // Default to consumer if no profile or papel is undefined
@@ -63,14 +72,33 @@ const ProjectDetailScreen: React.FC = () => {
     );
   }
 
-  const handleCompleteProject = () => {
-    toast.success("Projeto marcado como concluído!");
-    navigate('/services');
+  const handleCompleteProject = async () => {
+    try {
+      await projectsService.updateProjectStatus({
+        projectId: project.id,
+        concluido: true,
+        status: 'concluido'
+      });
+      toast.success("Projeto marcado como concluído!");
+      navigate('/services');
+    } catch (error) {
+      console.error('Error completing project:', error);
+      toast.error('Erro ao concluir projeto');
+    }
   };
 
-  const handleCancelProject = () => {
-    toast.success("Projeto cancelado com sucesso!");
-    navigate('/services');
+  const handleCancelProject = async () => {
+    try {
+      await projectsService.updateProjectStatus({
+        projectId: project.id,
+        status: 'cancelado'
+      });
+      toast.success("Projeto cancelado com sucesso!");
+      navigate('/services');
+    } catch (error) {
+      console.error('Error cancelling project:', error);
+      toast.error('Erro ao cancelar projeto');
+    }
   };
 
   const formatDate = (dateString: string) => {

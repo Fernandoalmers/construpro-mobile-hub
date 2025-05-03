@@ -11,7 +11,7 @@ import ListEmptyState from '../common/ListEmptyState';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Proposal } from '@/types/services';
-import { servicesService } from '@/services/servicesManagementService';
+import { proposalsService } from '@/services/proposalsService';
 import { toast } from '@/components/ui/sonner';
 
 const ProposalStatusBadge = ({ status }: { status: string }) => {
@@ -53,7 +53,7 @@ const MyProposalsScreen: React.FC = () => {
       
       try {
         setLoading(true);
-        const proposals = await servicesService.getMyProposals();
+        const proposals = await proposalsService.getMyProposals();
         setMyProposals(proposals);
       } catch (error) {
         console.error('Error fetching proposals:', error);

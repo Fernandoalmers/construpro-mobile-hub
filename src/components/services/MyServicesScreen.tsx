@@ -7,7 +7,8 @@ import ProjectCard from './ProjectCard';
 import ListEmptyState from '../common/ListEmptyState';
 import { ClipboardCheck, List } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { servicesService } from '@/services/servicesManagementService';
+import { serviceRequestsService } from '@/services/serviceRequestsService';
+import { projectsService } from '@/services/projectsService';
 
 interface MyServicesScreenProps {
   isProfessional: boolean;
@@ -27,7 +28,7 @@ const MyServicesScreen: React.FC<MyServicesScreenProps> = ({ isProfessional }) =
         
         // Fetch service requests
         const filters = isProfessional ? {} : { status: 'all' };
-        const requests = await servicesService.getAvailableServices(filters);
+        const requests = await serviceRequestsService.getAvailableServices(filters);
         
         // Filter requests based on user role
         const filteredRequests = isProfessional 
@@ -37,7 +38,7 @@ const MyServicesScreen: React.FC<MyServicesScreenProps> = ({ isProfessional }) =
         setMyServiceRequests(filteredRequests);
         
         // Fetch projects
-        const projects = await servicesService.getProjects(isProfessional);
+        const projects = await projectsService.getProjects(isProfessional);
         setMyProjects(projects);
       } catch (error) {
         console.error('Error fetching user services/projects:', error);
