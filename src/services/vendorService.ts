@@ -2,17 +2,6 @@
 // This file re-exports all vendor services for backward compatibility
 import { getVendorProfile, saveVendorProfile, uploadVendorImage, VendorProfile } from './vendorProfileService';
 import { 
-  getVendorProducts, 
-  getVendorProduct,
-  saveVendorProduct,
-  deleteVendorProduct,
-  updateProductStatus,
-  uploadProductImage,
-  updateProductImages,
-  subscribeToVendorProducts,
-  VendorProduct
-} from './vendorProductsService';
-import { 
   getVendorOrders,
   updateOrderStatus,
   VendorOrder,
@@ -31,12 +20,29 @@ import {
   PointAdjustment
 } from './vendorPointsService';
 
+// Import and re-export from our new modular product services
+import {
+  // Types
+  VendorProduct, ProductImage,
+  
+  // Product functions
+  getProductsByVendor as getVendorProducts,
+  getProductById as getVendorProduct,
+  createProduct as saveVendorProduct,
+  deleteProduct as deleteVendorProduct,
+  updateProductStatus,
+  uploadProductImage,
+  updateProductImages,
+  subscribeToVendorProducts
+} from './products';
+
 // Type exports
 export type { VendorProfile };
 export type { VendorProduct };
 export type { VendorOrder, OrderItem };
 export type { VendorCustomer };
 export type { PointAdjustment };
+export type { ProductImage };
   
 // Function exports
 export {
