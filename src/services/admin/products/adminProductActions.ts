@@ -1,117 +1,78 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
-import { logAdminAction } from '../../adminService';
+import { logAdminAction } from '@/services/admin/adminLogsService';
 
 /**
- * Approve a product
+ * Approve a product by ID
  */
 export const approveProduct = async (productId: string): Promise<boolean> => {
   try {
     console.log('[AdminProductActions] Approving product:', productId);
+    
     const { data, error } = await supabase
       .from('produtos')
-      .update({ 
-        status: 'aprovado', 
-        updated_at: new Date().toISOString() 
-      })
-      .eq('id', productId);
-      
+      .update({ status: 'aprovado' })
+      .eq('id', productId)
+      .select();
+    
+    console.log('[AdminProductActions] Approve result:', data, error);
+    
     if (error) {
       console.error('[AdminProductActions] Error approving product:', error);
-      toast.error(`Erro ao aprovar produto: ${error.message}`);
-      throw error;
+      toast.error('Erro ao aprovar produto: ' + error.message);
+      return false;
     }
     
-    console.log('[AdminProductActions] Update result:', data, error);
-    
     // Log the admin action
-    await logAdminAction({
-      action: 'approve_product',
-      entityType: 'produto',
-      entityId: productId,
-      details: { status: 'aprovado' }
-    });
+    try {
+      await logAdminAction('approve', 'product', productId);
+    } catch (logError) {
+      console.error('[AdminProductActions] Error logging admin action:', logError);
+      // Non-blocking error - product was still approved
+    }
     
-    toast.success('Produto aprovado com sucesso');
     return true;
   } catch (error) {
-    console.error('[AdminProductActions] Error approving product:', error);
-    toast.error('Erro ao aprovar produto');
+    console.error('[AdminProductActions] Unexpected error in approveProduct:', error);
+    toast.error('Erro inesperado ao aprovar produto');
     return false;
   }
 };
 
 /**
- * Reject a product
+ * Reject a product by ID (set status to inactive)
  */
 export const rejectProduct = async (productId: string): Promise<boolean> => {
   try {
     console.log('[AdminProductActions] Rejecting product:', productId);
+    
     const { data, error } = await supabase
       .from('produtos')
-      .update({ 
-        status: 'inativo', 
-        updated_at: new Date().toISOString() 
-      })
-      .eq('id', productId);
-      
+      .update({ status: 'inativo' })
+      .eq('id', productId)
+      .select();
+    
+    console.log('[AdminProductActions] Reject result:', data, error);
+    
     if (error) {
       console.error('[AdminProductActions] Error rejecting product:', error);
-      toast.error(`Erro ao rejeitar produto: ${error.message}`);
-      throw error;
+      toast.error('Erro ao rejeitar produto: ' + error.message);
+      return false;
     }
     
-    console.log('[AdminProductActions] Update result:', data, error);
-    
     // Log the admin action
-    await logAdminAction({
-      action: 'reject_product',
-      entityType: 'produto',
-      entityId: productId,
-      details: { status: 'inativo' }
-    });
-    
-    toast.success('Produto rejeitado com sucesso');
-    return true;
-  } catch (error) {
-    console.error('[AdminProductActions] Error rejecting product:', error);
-    toast.error('Erro ao rejeitar produto');
-    return false;
-  }
-};
-
-/**
- * Delete a product
- */
-export const deleteProduct = async (productId: string): Promise<boolean> => {
-  try {
-    const { data, error } = await supabase
-      .from('produtos')
-      .delete()
-      .eq('id', productId);
-      
-    if (error) {
-      console.error('[AdminProductActions] Error deleting product:', error);
-      toast.error(`Erro ao excluir produto: ${error.message}`);
-      throw error;
+    try {
+      await logAdminAction('reject', 'product', productId);
+    } catch (logError) {
+      console.error('[AdminProductActions] Error logging admin action:', logError);
+      // Non-blocking error - product was still rejected
     }
     
-    console.log('[AdminProductActions] Delete result:', data, error);
-    
-    // Log the admin action
-    await logAdminAction({
-      action: 'delete_product',
-      entityType: 'produto',
-      entityId: productId,
-      details: { action: 'delete' }
-    });
-    
-    toast.success('Produto excluído com sucesso');
     return true;
   } catch (error) {
-    console.error('[AdminProductActions] Error deleting product:', error);
-    toast.error('Erro ao excluir produto');
+    console.error('[AdminProductActions] Unexpected error in rejectProduct:', error);
+    toast.error('Erro inesperado ao rejeitar produto');
     return false;
   }
 };

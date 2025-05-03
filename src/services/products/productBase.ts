@@ -48,11 +48,17 @@ export interface AdminProduct extends BaseProduct {
  */
 export const getProductsByVendor = async (): Promise<VendorProduct[]> => {
   try {
+    console.log('[productBase] Getting products for vendor');
+    const vendorId = await getVendorId();
+    console.log('[productBase] Vendor ID:', vendorId);
+    
     const { data, error } = await supabase
       .from('produtos')
       .select('*')
-      .eq('vendedor_id', await getVendorId())
+      .eq('vendedor_id', vendorId)
       .order('created_at', { ascending: false });
+    
+    console.log('[productBase] Vendor products data:', data, 'error:', error);
     
     if (error) {
       console.error('Error fetching vendor products:', error);
@@ -83,6 +89,8 @@ async function getVendorId(): Promise<string> {
       .eq('usuario_id', user.id)
       .single();
     
+    console.log('[productBase] getVendorId data:', data, 'error:', error);
+    
     if (error) throw error;
     
     return data.id;
@@ -104,6 +112,8 @@ export const getProductById = async (id: string): Promise<VendorProduct | null> 
       .select('*')
       .eq('id', id)
       .single();
+    
+    console.log('[productBase] getProductById data:', data, 'error:', error);
     
     if (error) {
       console.error('Error fetching product:', error);
@@ -148,11 +158,15 @@ export const createProduct = async (product: Partial<VendorProduct>): Promise<Ve
       imagens: product.imagens || []
     };
     
+    console.log('[productBase] Creating product:', newProduct);
+    
     const { data, error } = await supabase
       .from('produtos')
       .insert(newProduct)
       .select()
       .single();
+    
+    console.log('[productBase] Create product result:', data, 'error:', error);
     
     if (error) throw error;
     return data as VendorProduct;
@@ -181,12 +195,16 @@ export const updateProduct = async (product: Partial<VendorProduct>): Promise<Ve
       updated_at: new Date().toISOString()
     };
     
+    console.log('[productBase] Updating product:', product.id, productToUpdate);
+    
     const { data, error } = await supabase
       .from('produtos')
       .update(productToUpdate)
       .eq('id', product.id)
       .select()
       .single();
+    
+    console.log('[productBase] Update product result:', data, 'error:', error);
     
     if (error) throw error;
     return data as VendorProduct;
@@ -204,10 +222,14 @@ export const updateProduct = async (product: Partial<VendorProduct>): Promise<Ve
  */
 export const deleteProduct = async (id: string): Promise<boolean> => {
   try {
+    console.log('[productBase] Deleting product:', id);
+    
     const { error } = await supabase
       .from('produtos')
       .delete()
       .eq('id', id);
+    
+    console.log('[productBase] Delete product result:', error ? `Error: ${error.message}` : 'Success');
     
     if (error) throw error;
     return true;

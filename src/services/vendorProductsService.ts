@@ -44,6 +44,7 @@ export const getVendorProducts = async (): Promise<VendorProduct[]> => {
       return [];
     }
     
+    console.log('[VendorProducts] fetched:', data);
     return data as VendorProduct[];
   } catch (error) {
     console.error('Error in getVendorProducts:', error);
@@ -64,6 +65,7 @@ export const getVendorProduct = async (id: string): Promise<VendorProduct | null
       return null;
     }
     
+    console.log('[VendorProducts] getVendorProduct:', data);
     return data as VendorProduct;
   } catch (error) {
     console.error('Error in getVendorProduct:', error);
@@ -86,6 +88,8 @@ export const saveVendorProduct = async (product: Partial<VendorProduct>): Promis
       vendedor_id: vendorProfile.id
     };
     
+    console.log('[VendorProducts] saving product:', vendorProduct);
+    
     let result;
     
     if (product.id) {
@@ -107,6 +111,8 @@ export const saveVendorProduct = async (product: Partial<VendorProduct>): Promis
         status: 'pendente' // Sempre volta para pendente ao editar
       };
       
+      console.log('[VendorProducts] updating product:', product.id, productToUpdate);
+      
       // Update existing product
       const { data, error } = await supabase
         .from('produtos')
@@ -114,6 +120,8 @@ export const saveVendorProduct = async (product: Partial<VendorProduct>): Promis
         .eq('id', product.id)
         .select()
         .single();
+      
+      console.log('[VendorProducts] update result:', data, error);
       
       if (error) throw error;
       result = data;
@@ -132,11 +140,15 @@ export const saveVendorProduct = async (product: Partial<VendorProduct>): Promis
         status: 'pendente' as const
       };
       
+      console.log('[VendorProducts] inserting new product:', newProduct);
+      
       const { data, error } = await supabase
         .from('produtos')
         .insert(newProduct)
         .select()
         .single();
+      
+      console.log('[VendorProducts] insert result:', data, error);
       
       if (error) throw error;
       result = data;
@@ -152,10 +164,14 @@ export const saveVendorProduct = async (product: Partial<VendorProduct>): Promis
 
 export const deleteVendorProduct = async (id: string): Promise<boolean> => {
   try {
+    console.log('[VendorProducts] deleting product:', id);
+    
     const { error } = await supabase
       .from('produtos')
       .delete()
       .eq('id', id);
+    
+    console.log('[VendorProducts] delete result:', error ? error : 'success');
     
     if (error) throw error;
     return true;
@@ -168,10 +184,14 @@ export const deleteVendorProduct = async (id: string): Promise<boolean> => {
 
 export const updateProductStatus = async (id: string, status: 'pendente' | 'aprovado' | 'inativo'): Promise<boolean> => {
   try {
+    console.log('[VendorProducts] updating status:', id, status);
+    
     const { error } = await supabase
       .from('produtos')
       .update({ status })
       .eq('id', id);
+    
+    console.log('[VendorProducts] status update result:', error ? error : 'success');
     
     if (error) throw error;
     return true;
