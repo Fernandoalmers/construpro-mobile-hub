@@ -14,7 +14,7 @@ interface RedemptionTableProps {
   isProcessing: boolean;
 }
 
-const RedemptionTable: React.FC<RedemptionTableProps> = ({
+const RedemptionTable: React.FC<RedemptionTableProps> = React.memo(({
   redemptions,
   onApprove,
   onReject,
@@ -45,6 +45,8 @@ const RedemptionTable: React.FC<RedemptionTableProps> = ({
                     alt={redemption.item}
                     className="w-8 h-8 rounded-md inline mr-2 object-cover"
                     loading="lazy"
+                    width={32}
+                    height={32}
                   />
                 )}
                 {redemption.item}
@@ -99,6 +101,8 @@ const RedemptionTable: React.FC<RedemptionTableProps> = ({
       </Table>
     </div>
   );
-};
+});
+
+RedemptionTable.displayName = 'RedemptionTable';
 
 export default RedemptionTable;

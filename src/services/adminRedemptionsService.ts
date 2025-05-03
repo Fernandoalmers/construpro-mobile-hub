@@ -1,6 +1,5 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/sonner';
 
 // Define and export the type
 export type AdminRedemption = {
@@ -54,7 +53,7 @@ export const fetchRedemptions = async (forceRefresh = false): Promise<AdminRedem
     const formattedData = data.map(item => ({
       id: item.id,
       cliente_id: item.cliente_id,
-      // Fix the type issue with a proper null check and type assertion
+      // Safe access to profiles data with proper type checking
       cliente_nome: item.profiles && typeof item.profiles === 'object' 
         ? ((item.profiles as {nome?: string}).nome || 'Cliente')
         : 'Cliente',
@@ -91,7 +90,6 @@ export const approveRedemption = async (redemptionId: string): Promise<boolean> 
 
     if (error) {
       console.error('Error approving redemption:', error);
-      toast.error('Erro ao aprovar resgate');
       return false;
     }
 
@@ -102,14 +100,18 @@ export const approveRedemption = async (redemptionId: string): Promise<boolean> 
       entity_id: redemptionId
     });
 
-    // Invalidate cache
-    redemptionsCache = null;
+    // Update the cache instead of invalidating it completely
+    if (redemptionsCache) {
+      redemptionsCache = redemptionsCache.map(item => 
+        item.id === redemptionId 
+          ? { ...item, status: 'aprovado', updated_at: new Date().toISOString() } 
+          : item
+      );
+    }
 
-    toast.success('Resgate aprovado com sucesso');
     return true;
   } catch (error) {
     console.error('Unexpected error approving redemption:', error);
-    toast.error('Erro inesperado ao aprovar resgate');
     return false;
   }
 };
@@ -126,7 +128,6 @@ export const rejectRedemption = async (redemptionId: string): Promise<boolean> =
 
     if (error) {
       console.error('Error rejecting redemption:', error);
-      toast.error('Erro ao recusar resgate');
       return false;
     }
 
@@ -137,14 +138,18 @@ export const rejectRedemption = async (redemptionId: string): Promise<boolean> =
       entity_id: redemptionId
     });
 
-    // Invalidate cache
-    redemptionsCache = null;
+    // Update the cache instead of invalidating it completely
+    if (redemptionsCache) {
+      redemptionsCache = redemptionsCache.map(item => 
+        item.id === redemptionId 
+          ? { ...item, status: 'recusado', updated_at: new Date().toISOString() } 
+          : item
+      );
+    }
 
-    toast.success('Resgate recusado com sucesso');
     return true;
   } catch (error) {
     console.error('Unexpected error rejecting redemption:', error);
-    toast.error('Erro inesperado ao recusar resgate');
     return false;
   }
 };
@@ -161,7 +166,6 @@ export const markRedemptionAsDelivered = async (redemptionId: string): Promise<b
 
     if (error) {
       console.error('Error marking redemption as delivered:', error);
-      toast.error('Erro ao marcar resgate como entregue');
       return false;
     }
 
@@ -172,14 +176,18 @@ export const markRedemptionAsDelivered = async (redemptionId: string): Promise<b
       entity_id: redemptionId
     });
 
-    // Invalidate cache
-    redemptionsCache = null;
+    // Update the cache instead of invalidating it completely
+    if (redemptionsCache) {
+      redemptionsCache = redemptionsCache.map(item => 
+        item.id === redemptionId 
+          ? { ...item, status: 'entregue', updated_at: new Date().toISOString() } 
+          : item
+      );
+    }
 
-    toast.success('Resgate marcado como entregue com sucesso');
     return true;
   } catch (error) {
     console.error('Unexpected error marking redemption as delivered:', error);
-    toast.error('Erro inesperado ao marcar resgate como entregue');
     return false;
   }
 };

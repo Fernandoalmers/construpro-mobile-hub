@@ -36,8 +36,10 @@ const RedemptionsManagementScreen: React.FC = () => {
       return; // Not authorized
     }
     
+    // Load redemptions only once when component mounts and admin status is confirmed
     loadRedemptions();
-  }, [isAdmin, isAdminLoading, loadRedemptions]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, isAdminLoading]); // Only re-run when admin status changes
   
   // If admin status is still loading
   if (isAdminLoading) {

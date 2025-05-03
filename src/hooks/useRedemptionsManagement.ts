@@ -1,5 +1,5 @@
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { 
   fetchRedemptions, 
   approveRedemption, 
@@ -16,18 +16,25 @@ export const useRedemptionsManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [isProcessing, setIsProcessing] = useState(false);
+  const loadingRef = useRef(false); // To prevent multiple simultaneous load requests
 
   const loadRedemptions = useCallback(async (forceRefresh = false) => {
+    // Prevent multiple simultaneous calls
+    if (loadingRef.current && !forceRefresh) return;
+    
     try {
+      loadingRef.current = true;
       setIsLoading(true);
       setError(null);
       const redemptionsData = await fetchRedemptions(forceRefresh);
       setRedemptions(redemptionsData);
     } catch (err) {
+      console.error("Error loading redemptions:", err);
       setError('Falha ao carregar resgates. Por favor, tente novamente.');
       toast.error('Erro ao carregar resgates');
     } finally {
       setIsLoading(false);
+      loadingRef.current = false;
     }
   }, []);
 
@@ -44,7 +51,7 @@ export const useRedemptionsManagement = () => {
     });
   }, [redemptions, searchTerm, statusFilter]);
 
-  const handleApproveRedemption = async (redemptionId: string) => {
+  const handleApproveRedemption = useCallback(async (redemptionId: string) => {
     if (isProcessing) return;
     
     try {
@@ -57,13 +64,17 @@ export const useRedemptionsManagement = () => {
             redemption.id === redemptionId ? { ...redemption, status: 'aprovado' } : redemption
           )
         );
+        toast.success('Resgate aprovado com sucesso');
       }
+    } catch (error) {
+      console.error('Error approving redemption:', error);
+      toast.error('Erro ao aprovar resgate');
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [isProcessing]);
   
-  const handleRejectRedemption = async (redemptionId: string) => {
+  const handleRejectRedemption = useCallback(async (redemptionId: string) => {
     if (isProcessing) return;
     
     try {
@@ -76,13 +87,17 @@ export const useRedemptionsManagement = () => {
             redemption.id === redemptionId ? { ...redemption, status: 'recusado' } : redemption
           )
         );
+        toast.success('Resgate recusado com sucesso');
       }
+    } catch (error) {
+      console.error('Error rejecting redemption:', error);
+      toast.error('Erro ao recusar resgate');
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [isProcessing]);
   
-  const handleMarkAsDelivered = async (redemptionId: string) => {
+  const handleMarkAsDelivered = useCallback(async (redemptionId: string) => {
     if (isProcessing) return;
     
     try {
@@ -95,11 +110,15 @@ export const useRedemptionsManagement = () => {
             redemption.id === redemptionId ? { ...redemption, status: 'entregue' } : redemption
           )
         );
+        toast.success('Resgate marcado como entregue com sucesso');
       }
+    } catch (error) {
+      console.error('Error marking redemption as delivered:', error);
+      toast.error('Erro ao marcar resgate como entregue');
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [isProcessing]);
 
   return {
     redemptions,

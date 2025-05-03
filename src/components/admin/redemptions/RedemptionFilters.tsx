@@ -11,7 +11,7 @@ interface RedemptionFiltersProps {
   onStatusFilterChange: (status: string) => void;
 }
 
-const RedemptionFilters: React.FC<RedemptionFiltersProps> = ({
+const RedemptionFilters: React.FC<RedemptionFiltersProps> = React.memo(({
   searchTerm,
   onSearchChange,
   statusFilter,
@@ -70,6 +70,8 @@ const RedemptionFilters: React.FC<RedemptionFiltersProps> = ({
       </div>
     </div>
   );
-};
+});
+
+RedemptionFilters.displayName = 'RedemptionFilters';
 
 export default RedemptionFilters;
