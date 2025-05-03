@@ -10,14 +10,16 @@ export const servicesService = {
     offset?: number;
   }): Promise<ServiceRequest[]> {
     try {
+      const queryParams: Record<string, string> = {};
+      if (filters?.category) queryParams.category = filters.category;
+      if (filters?.status) queryParams.status = filters.status || 'aberto';
+      if (filters?.limit) queryParams.limit = filters.limit.toString();
+      if (filters?.offset) queryParams.offset = filters.offset.toString();
+
       const { data, error } = await supabase.functions.invoke('services-management', {
-        path: 'requests',
-        query: {
-          ...(filters?.category ? { category: filters.category } : {}),
-          ...(filters?.status ? { status: filters.status || 'aberto' } : { status: 'aberto' }),
-          limit: filters?.limit?.toString() || '10',
-          offset: filters?.offset?.toString() || '0',
-        }
+        method: 'GET',
+        query: queryParams,
+        body: { action: 'requests' }
       });
       
       if (error) {
@@ -35,8 +37,9 @@ export const servicesService = {
   async getServiceRequestById(id: string): Promise<ServiceRequest> {
     try {
       const { data, error } = await supabase.functions.invoke('services-management', {
-        path: 'request',
-        query: { id }
+        method: 'GET',
+        query: { id },
+        body: { action: 'request' }
       });
       
       if (error) {
@@ -54,7 +57,8 @@ export const servicesService = {
   async getMyProposals(): Promise<{ proposal: Proposal; service: any }[]> {
     try {
       const { data, error } = await supabase.functions.invoke('services-management', {
-        path: 'my-proposals'
+        method: 'GET',
+        body: { action: 'my-proposals' }
       });
       
       if (error) {
@@ -79,8 +83,9 @@ export const servicesService = {
   async getProjects(isProfessional: boolean): Promise<Project[]> {
     try {
       const { data, error } = await supabase.functions.invoke('services-management', {
-        path: 'projects',
-        query: { isProfessional: isProfessional.toString() }
+        method: 'GET',
+        query: { isProfessional: isProfessional.toString() },
+        body: { action: 'projects' }
       });
       
       if (error) {
@@ -102,8 +107,9 @@ export const servicesService = {
   async getProjectById(id: string): Promise<Project> {
     try {
       const { data, error } = await supabase.functions.invoke('services-management', {
-        path: 'project',
-        query: { id }
+        method: 'GET',
+        query: { id },
+        body: { action: 'project' }
       });
       
       if (error) {
@@ -122,12 +128,20 @@ export const servicesService = {
     }
   },
 
-  async createServiceRequest(requestData: Omit<ServiceRequest, 'id' | 'clienteId' | 'dataCriacao' | 'propostas' | 'status'>): Promise<ServiceRequest> {
+  async createServiceRequest(requestData: {
+    titulo: string;
+    descricao: string;
+    categoria: string;
+    endereco: string;
+    orcamento: string | null;
+  }): Promise<ServiceRequest> {
     try {
       const { data, error } = await supabase.functions.invoke('services-management', {
-        path: 'create-request',
         method: 'POST',
-        body: requestData
+        body: { 
+          action: 'create-request',
+          ...requestData
+        }
       });
       
       if (error) {
@@ -150,9 +164,11 @@ export const servicesService = {
   }): Promise<Proposal> {
     try {
       const { data, error } = await supabase.functions.invoke('services-management', {
-        path: 'submit-proposal',
         method: 'POST',
-        body: proposalData
+        body: { 
+          action: 'submit-proposal',
+          ...proposalData
+        }
       });
       
       if (error) {
@@ -175,9 +191,11 @@ export const servicesService = {
   }): Promise<{ proposal: Proposal; project?: Project }> {
     try {
       const { data, error } = await supabase.functions.invoke('services-management', {
-        path: 'update-proposal',
         method: 'PUT',
-        body: proposalData
+        body: { 
+          action: 'update-proposal',
+          ...proposalData
+        }
       });
       
       if (error) {
@@ -203,9 +221,11 @@ export const servicesService = {
   }): Promise<Project> {
     try {
       const { data, error } = await supabase.functions.invoke('services-management', {
-        path: 'update-project',
         method: 'PUT',
-        body: updateData
+        body: { 
+          action: 'update-project',
+          ...updateData 
+        }
       });
       
       if (error) {
@@ -227,9 +247,11 @@ export const servicesService = {
   }): Promise<any> {
     try {
       const { data, error } = await supabase.functions.invoke('services-management', {
-        path: 'update-project-step',
         method: 'PUT',
-        body: updateData
+        body: { 
+          action: 'update-project-step',
+          ...updateData 
+        }
       });
       
       if (error) {
@@ -246,9 +268,13 @@ export const servicesService = {
 
   async getProfessionalProfile(professionalId?: string): Promise<Professional> {
     try {
+      const queryParams: Record<string, string> = {};
+      if (professionalId) queryParams.id = professionalId;
+
       const { data, error } = await supabase.functions.invoke('services-management', {
-        path: 'professional-profile',
-        query: professionalId ? { id: professionalId } : {}
+        method: 'GET',
+        query: queryParams,
+        body: { action: 'professional-profile' }
       });
       
       if (error) {
@@ -266,9 +292,11 @@ export const servicesService = {
   async createOrUpdateProfessionalProfile(profileData: Partial<Professional>): Promise<Professional> {
     try {
       const { data, error } = await supabase.functions.invoke('services-management', {
-        path: 'professional-profile',
         method: 'POST',
-        body: profileData
+        body: { 
+          action: 'professional-profile',
+          ...profileData
+        }
       });
       
       if (error) {
@@ -292,9 +320,11 @@ export const servicesService = {
   }): Promise<any> {
     try {
       const { data, error } = await supabase.functions.invoke('services-management', {
-        path: 'submit-review',
         method: 'POST',
-        body: reviewData
+        body: { 
+          action: 'submit-review',
+          ...reviewData
+        }
       });
       
       if (error) {
