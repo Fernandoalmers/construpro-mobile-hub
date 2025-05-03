@@ -48,7 +48,7 @@ const HomeScreen: React.FC = () => {
   };
 
   const shortcuts = [
-    { id: 'extrato', label: 'Extrato', icon: <Receipt size={24} />, route: '/extrato' },
+    { id: 'extrato', label: 'Extrato', icon: <Receipt size={24} />, route: '/profile/points' },
     { id: 'resgates', label: 'Resgates', icon: <Gift size={24} />, route: '/resgates' },
     { id: 'qrcode', label: 'QR Code', icon: <QrCode size={24} />, route: '/qrcode' },
     { id: 'contato', label: 'Contato', icon: <MessageSquare size={24} />, route: '/chat' },
@@ -98,7 +98,7 @@ const HomeScreen: React.FC = () => {
             <p className="text-gray-600">Seu saldo</p>
             <CustomButton 
               variant="link" 
-              onClick={() => navigate('/extrato')}
+              onClick={() => navigate('/profile/points')}
               className="flex items-center text-construPro-blue p-0"
             >
               Ver extrato <ChevronRight size={16} />

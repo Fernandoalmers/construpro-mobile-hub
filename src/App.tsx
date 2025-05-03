@@ -56,6 +56,7 @@ import ContractedProjectsScreen from './components/services/ContractedProjectsSc
 import ServiceCalendarScreen from './components/services/ServiceCalendarScreen';
 import { Toaster } from '@/components/ui/sonner';
 import BottomTabNavigator from './components/layout/BottomTabNavigator';
+import QRCodeScreen from './components/QRCodeScreen';
 
 // Admin Dashboard Components
 import AdminDashboard from './components/admin/AdminDashboard';
@@ -86,6 +87,7 @@ function App() {
             
             {/* Home */}
             <Route path="/home/*" element={<HomeScreenWrapper />} />
+            <Route path="/qrcode" element={<QRCodeScreen />} />
             
             {/* Profile */}
             <Route path="/profile" element={<ProfileScreen />} />
@@ -153,6 +155,7 @@ function App() {
           </Routes>
         </Suspense>
         <Toaster position="top-center" richColors />
+        <BottomTabNavigator />
       </CartProvider>
     </AuthProvider>
   );

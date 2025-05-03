@@ -1081,6 +1081,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      increment_services_count: {
+        Args: { prof_id: string }
+        Returns: undefined
+      }
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
