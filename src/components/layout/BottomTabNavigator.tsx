@@ -11,7 +11,6 @@ import {
   Gift, 
   User, 
   MessageSquare,
-  QrCode,
   Store,
   Wrench
 } from 'lucide-react';
@@ -58,13 +57,6 @@ const BottomTabNavigator: React.FC = () => {
       icon: <ShoppingBag size={24} />, 
       path: '/marketplace',
       tooltip: 'Navegar pela loja online',
-      show: (role) => role === 'consumidor'
-    },
-    { 
-      name: 'QR Code', 
-      icon: <QrCode size={24} />, 
-      path: '/qrcode',
-      tooltip: 'Escanear QR Code para pontos',
       show: (role) => role === 'consumidor'
     },
     { 

@@ -1,21 +1,22 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, ExternalLink, Upload } from 'lucide-react';
+import { ArrowLeft, Save, ExternalLink, Upload, Clock } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/use-toast';
 import CustomButton from '../common/CustomButton';
-import lojas from '../../data/lojas.json';
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from '@/context/AuthContext';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface StoreFormValues {
   nome: string;
   descricao: string;
   endereco: string;
-  horarioAtendimento: string;
   whatsapp: string;
   formasEntrega: {
     entregaPropria: boolean;
@@ -23,17 +24,41 @@ interface StoreFormValues {
     retirada: boolean;
   };
   categorias: string[];
+  operatingHours: {
+    monday: { open: string; close: string; isOpen: boolean };
+    tuesday: { open: string; close: string; isOpen: boolean };
+    wednesday: { open: string; close: string; isOpen: boolean };
+    thursday: { open: string; close: string; isOpen: boolean };
+    friday: { open: string; close: string; isOpen: boolean };
+    saturday: { open: string; close: string; isOpen: boolean };
+    sunday: { open: string; close: string; isOpen: boolean };
+  };
 }
+
+interface DayHours {
+  open: string;
+  close: string;
+  isOpen: boolean;
+}
+
+const defaultOperatingHours = {
+  monday: { open: "08:00", close: "18:00", isOpen: true },
+  tuesday: { open: "08:00", close: "18:00", isOpen: true },
+  wednesday: { open: "08:00", close: "18:00", isOpen: true },
+  thursday: { open: "08:00", close: "18:00", isOpen: true },
+  friday: { open: "08:00", close: "18:00", isOpen: true },
+  saturday: { open: "08:00", close: "13:00", isOpen: true },
+  sunday: { open: "00:00", close: "00:00", isOpen: false },
+};
 
 const ConfiguracoesVendorScreen: React.FC = () => {
   const navigate = useNavigate();
-  
-  // Simulate logged-in vendor's store
-  const currentLojaId = "1"; // Just for simulation purposes
-  const currentLoja = lojas.find(loja => loja.id === currentLojaId);
+  const { user, profile } = useAuth();
+  const [loading, setLoading] = useState<boolean>(true);
+  const [storeId, setStoreId] = useState<string | null>(null);
   
   const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [logoPreview, setLogoPreview] = useState<string>(currentLoja?.logoUrl || '');
+  const [logoPreview, setLogoPreview] = useState<string>('');
   
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [bannerPreview, setBannerPreview] = useState<string>('https://images.unsplash.com/photo-1487958449943-2429e8be8625?ixlib=rb-1.2.1&auto=format&fit=crop&w=1200&h=250&q=80');
@@ -45,19 +70,66 @@ const ConfiguracoesVendorScreen: React.FC = () => {
   
   const form = useForm<StoreFormValues>({
     defaultValues: {
-      nome: currentLoja?.nome || '',
-      descricao: currentLoja?.descricao || '',
-      endereco: currentLoja?.endereco || '',
-      horarioAtendimento: '08:00 - 18:00 (Seg a Sáb)',
-      whatsapp: currentLoja?.contato || '',
+      nome: '',
+      descricao: '',
+      endereco: '',
+      whatsapp: '',
       formasEntrega: {
         entregaPropria: true,
         correios: true,
         retirada: true
       },
-      categorias: currentLoja?.categorias || []
+      categorias: [],
+      operatingHours: defaultOperatingHours
     }
   });
+
+  // Fetch store data on component mount
+  useEffect(() => {
+    const fetchStoreData = async () => {
+      if (!user?.id) return;
+      
+      try {
+        const { data: storeData, error } = await supabase
+          .from('stores')
+          .select('*')
+          .eq('profile_id', user.id)
+          .single();
+          
+        if (error) {
+          console.error('Error fetching store data:', error);
+          setLoading(false);
+          return;
+        }
+        
+        if (storeData) {
+          setStoreId(storeData.id);
+          
+          // Set form values from store data
+          form.setValue('nome', storeData.nome || '');
+          form.setValue('descricao', storeData.descricao || '');
+          form.setValue('endereco', storeData.endereco?.full_address || '');
+          form.setValue('whatsapp', storeData.contato || '');
+          
+          // Handle operating hours
+          if (storeData.operating_hours) {
+            form.setValue('operatingHours', storeData.operating_hours);
+          }
+          
+          // Set logo preview if available
+          if (storeData.logo_url) {
+            setLogoPreview(storeData.logo_url);
+          }
+        }
+      } catch (error) {
+        console.error('Error in store fetch:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchStoreData();
+  }, [user, form]);
 
   const handleLogoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -89,22 +161,135 @@ const ConfiguracoesVendorScreen: React.FC = () => {
     form.setValue(`formasEntrega.${method}`, !currentValue);
   };
 
-  const onSubmit = (data: StoreFormValues) => {
-    // In a real app, this would update the store info in the database
-    console.log("Form data:", data);
-    console.log("Logo file:", logoFile);
-    console.log("Banner file:", bannerFile);
-    
-    toast({
-      title: "Configurações salvas!",
-      description: "As alterações na sua loja foram salvas com sucesso."
+  const handleDayToggle = (day: keyof StoreFormValues['operatingHours']) => {
+    const currentValue = form.getValues('operatingHours')[day];
+    form.setValue(`operatingHours.${day}`, {
+      ...currentValue,
+      isOpen: !currentValue.isOpen
+    });
+  };
+  
+  const handleHoursChange = (
+    day: keyof StoreFormValues['operatingHours'],
+    type: 'open' | 'close',
+    value: string
+  ) => {
+    const currentValue = form.getValues('operatingHours')[day];
+    form.setValue(`operatingHours.${day}`, {
+      ...currentValue,
+      [type]: value
     });
   };
 
-  const handleViewStore = () => {
-    // In a real app, this would navigate to the public store page
-    navigate(`/marketplace/loja/${currentLojaId}`);
+  const onSubmit = async (data: StoreFormValues) => {
+    try {
+      setLoading(true);
+      
+      // Create or update store data
+      const storeData = {
+        nome: data.nome,
+        descricao: data.descricao,
+        endereco: { full_address: data.endereco },
+        contato: data.whatsapp,
+        operating_hours: data.operatingHours,
+        profile_id: user?.id
+      };
+      
+      let storeResult;
+      
+      if (storeId) {
+        // Update existing store
+        const { data: updatedStore, error } = await supabase
+          .from('stores')
+          .update(storeData)
+          .eq('id', storeId)
+          .select()
+          .single();
+          
+        if (error) throw error;
+        storeResult = updatedStore;
+      } else {
+        // Create new store
+        const { data: newStore, error } = await supabase
+          .from('stores')
+          .insert(storeData)
+          .select()
+          .single();
+          
+        if (error) throw error;
+        storeResult = newStore;
+        setStoreId(newStore.id);
+      }
+      
+      // Upload logo if changed
+      if (logoFile) {
+        const logoPath = `stores/${storeResult.id}/logo`;
+        const { error: logoError } = await supabase.storage
+          .from('store-images')
+          .upload(logoPath, logoFile, { upsert: true });
+          
+        if (logoError) throw logoError;
+        
+        // Get public URL for logo
+        const { data: logoData } = supabase.storage
+          .from('store-images')
+          .getPublicUrl(logoPath);
+          
+        // Update store with logo URL
+        await supabase
+          .from('stores')
+          .update({ logo_url: logoData.publicUrl })
+          .eq('id', storeResult.id);
+      }
+      
+      toast({
+        title: "Configurações salvas!",
+        description: "As alterações na sua loja foram salvas com sucesso."
+      });
+      
+    } catch (error) {
+      console.error('Error saving store data:', error);
+      toast({
+        title: "Erro ao salvar",
+        description: "Ocorreu um erro ao salvar as configurações da loja.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleViewStore = () => {
+    if (storeId) {
+      navigate(`/marketplace/loja/${storeId}`);
+    } else {
+      toast({
+        title: "Loja não encontrada",
+        description: "Salve as configurações da loja primeiro."
+      });
+    }
+  };
+
+  const dayNames: Record<keyof StoreFormValues['operatingHours'], string> = {
+    monday: 'Segunda-feira',
+    tuesday: 'Terça-feira',
+    wednesday: 'Quarta-feira',
+    thursday: 'Quinta-feira',
+    friday: 'Sexta-feira',
+    saturday: 'Sábado',
+    sunday: 'Domingo'
+  };
+
+  if (loading && !form.formState.isSubmitting) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-construPro-blue mx-auto"></div>
+          <p className="mt-4">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
@@ -152,7 +337,7 @@ const ConfiguracoesVendorScreen: React.FC = () => {
                     <div className="mt-2 flex items-center">
                       <div className="relative">
                         <img 
-                          src={logoPreview} 
+                          src={logoPreview || 'https://via.placeholder.com/200'} 
                           alt="Logotipo" 
                           className="w-20 h-20 object-cover rounded-md"
                         />
@@ -231,34 +416,69 @@ const ConfiguracoesVendorScreen: React.FC = () => {
                   )}
                 />
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormField
-                    control={form.control}
-                    name="horarioAtendimento"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Horário de atendimento</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Ex: 08:00 - 18:00 (Seg a Sáb)" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="whatsapp"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>WhatsApp para contato</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Ex: (11) 98765-4321" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <FormField
+                  control={form.control}
+                  name="whatsapp"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>WhatsApp para contato</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Ex: (11) 98765-4321" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+            
+            {/* Operating Hours */}
+            <Card>
+              <CardContent className="pt-6 space-y-6">
+                <div>
+                  <FormLabel className="flex items-center">
+                    <Clock size={18} className="mr-2" /> Horário de Funcionamento
+                  </FormLabel>
+                  <div className="mt-4 space-y-3">
+                    {Object.entries(dayNames).map(([day, label]) => {
+                      const dayKey = day as keyof StoreFormValues['operatingHours'];
+                      const dayData = form.getValues('operatingHours')[dayKey];
+                      
+                      return (
+                        <div key={day} className="flex flex-wrap items-center gap-3">
+                          <div className="flex items-center min-w-[180px]">
+                            <Checkbox 
+                              id={`day-${day}`}
+                              checked={dayData.isOpen}
+                              onCheckedChange={() => handleDayToggle(dayKey)}
+                              className="mr-2"
+                            />
+                            <label htmlFor={`day-${day}`} className="text-sm font-medium">
+                              {label}
+                            </label>
+                          </div>
+                          
+                          <div className="flex items-center gap-2">
+                            <Input 
+                              type="time" 
+                              value={dayData.open}
+                              onChange={(e) => handleHoursChange(dayKey, 'open', e.target.value)}
+                              disabled={!dayData.isOpen}
+                              className="w-24"
+                            />
+                            <span>até</span>
+                            <Input 
+                              type="time" 
+                              value={dayData.close}
+                              onChange={(e) => handleHoursChange(dayKey, 'close', e.target.value)}
+                              disabled={!dayData.isOpen}
+                              className="w-24"
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -293,34 +513,31 @@ const ConfiguracoesVendorScreen: React.FC = () => {
                   <FormLabel>Formas de entrega disponíveis</FormLabel>
                   <div className="mt-2 space-y-2">
                     <div className="flex items-center">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         id="entregaPropria"
                         checked={form.getValues('formasEntrega').entregaPropria}
-                        onChange={() => handleDeliveryToggle('entregaPropria')}
-                        className="mr-2 h-4 w-4"
+                        onCheckedChange={() => handleDeliveryToggle('entregaPropria')}
+                        className="mr-2"
                       />
                       <label htmlFor="entregaPropria">Entrega própria</label>
                     </div>
                     
                     <div className="flex items-center">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         id="correios"
                         checked={form.getValues('formasEntrega').correios}
-                        onChange={() => handleDeliveryToggle('correios')}
-                        className="mr-2 h-4 w-4"
+                        onCheckedChange={() => handleDeliveryToggle('correios')}
+                        className="mr-2"
                       />
                       <label htmlFor="correios">Correios</label>
                     </div>
                     
                     <div className="flex items-center">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         id="retirada"
                         checked={form.getValues('formasEntrega').retirada}
-                        onChange={() => handleDeliveryToggle('retirada')}
-                        className="mr-2 h-4 w-4"
+                        onCheckedChange={() => handleDeliveryToggle('retirada')}
+                        className="mr-2"
                       />
                       <label htmlFor="retirada">Retirada no local</label>
                     </div>
@@ -336,8 +553,9 @@ const ConfiguracoesVendorScreen: React.FC = () => {
                 variant="primary"
                 icon={<Save size={18} />}
                 fullWidth
+                disabled={form.formState.isSubmitting}
               >
-                Salvar alterações
+                {form.formState.isSubmitting ? 'Salvando...' : 'Salvar alterações'}
               </CustomButton>
               
               <CustomButton

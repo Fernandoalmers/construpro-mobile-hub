@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -8,12 +9,39 @@ import { ArrowLeft, Camera, Clock, MapPin, Truck, Upload } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from "@/components/ui/sonner";
 import { useAuth, UserRole } from '../../context/AuthContext';
+import { supabase } from "@/integrations/supabase/client";
 
 interface DeliveryMethod {
   id: string;
   label: string;
   checked: boolean;
 }
+
+interface DayHours {
+  open: string;
+  close: string;
+  isOpen: boolean;
+}
+
+interface OperatingHours {
+  monday: DayHours;
+  tuesday: DayHours;
+  wednesday: DayHours;
+  thursday: DayHours;
+  friday: DayHours;
+  saturday: DayHours;
+  sunday: DayHours;
+}
+
+const defaultOperatingHours: OperatingHours = {
+  monday: { open: "08:00", close: "18:00", isOpen: true },
+  tuesday: { open: "08:00", close: "18:00", isOpen: true },
+  wednesday: { open: "08:00", close: "18:00", isOpen: true },
+  thursday: { open: "08:00", close: "18:00", isOpen: true },
+  friday: { open: "08:00", close: "18:00", isOpen: true },
+  saturday: { open: "08:00", close: "13:00", isOpen: true },
+  sunday: { open: "00:00", close: "00:00", isOpen: false },
+};
 
 const VendorProfileScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -27,12 +55,12 @@ const VendorProfileScreen: React.FC = () => {
     cidade: '',
     estado: '',
     cep: '',
-    horarioAbertura: '',
-    horarioFechamento: '',
     descricao: '',
     logo: null as File | null,
     banner: null as File | null,
   });
+
+  const [operatingHours, setOperatingHours] = useState<OperatingHours>(defaultOperatingHours);
   
   const [deliveryMethods, setDeliveryMethods] = useState<DeliveryMethod[]>([
     { id: 'retirada', label: 'Retirada na loja', checked: true },
@@ -54,6 +82,30 @@ const VendorProfileScreen: React.FC = () => {
     }
   };
 
+  const handleDayToggle = (day: keyof OperatingHours) => {
+    setOperatingHours(prev => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        isOpen: !prev[day].isOpen
+      }
+    }));
+  };
+  
+  const handleHoursChange = (
+    day: keyof OperatingHours,
+    type: 'open' | 'close',
+    value: string
+  ) => {
+    setOperatingHours(prev => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        [type]: value
+      }
+    }));
+  };
+
   const toggleDeliveryMethod = (id: string) => {
     setDeliveryMethods(prev => prev.map(method => 
       method.id === id ? { ...method, checked: !method.checked } : method
@@ -71,24 +123,86 @@ const VendorProfileScreen: React.FC = () => {
     setIsSubmitting(true);
     
     try {
-      // In a real app, we would upload files and save store data
+      // Create store in database
       const selectedDeliveryMethods = deliveryMethods
         .filter(m => m.checked)
         .map(m => m.id);
       
+      const storeData = {
+        nome: formData.nomeLoja,
+        descricao: formData.descricao,
+        endereco: {
+          logradouro: formData.endereco,
+          cidade: formData.cidade,
+          estado: formData.estado,
+          cep: formData.cep,
+          full_address: `${formData.endereco}, ${formData.cidade} - ${formData.estado}, ${formData.cep}`
+        },
+        operating_hours: operatingHours,
+        owner_id: null, // Will be set by RLS policy
+        profile_id: null, // Will be updated after user role is updated
+      };
+
       // Update user with vendor data
       await updateUser({ 
         papel: 'lojista' as UserRole
-        // Add vendor data in a real app
       });
+      
+      // Get updated user data to associate with store
+      const { data: userData } = await supabase.auth.getUser();
+      if (userData?.user) {
+        // Create store
+        const { data: storeResult, error } = await supabase
+          .from('stores')
+          .insert({
+            ...storeData,
+            profile_id: userData.user.id
+          })
+          .select()
+          .single();
+          
+        if (error) throw error;
+        
+        // Upload logo if provided
+        if (formData.logo) {
+          const logoPath = `stores/${storeResult.id}/logo`;
+          const { error: logoError } = await supabase.storage
+            .from('store-images')
+            .upload(logoPath, formData.logo, { upsert: true });
+            
+          if (logoError) throw logoError;
+          
+          // Get public URL for logo
+          const { data: logoData } = supabase.storage
+            .from('store-images')
+            .getPublicUrl(logoPath);
+            
+          // Update store with logo URL
+          await supabase
+            .from('stores')
+            .update({ logo_url: logoData.publicUrl })
+            .eq('id', storeResult.id);
+        }
+      }
       
       toast.success("Perfil de loja criado com sucesso!");
       navigate('/vendor');
     } catch (error) {
+      console.error("Error creating store:", error);
       toast.error("Ocorreu um erro. Por favor, tente novamente.");
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const dayNames: Record<keyof OperatingHours, string> = {
+    monday: 'Segunda-feira',
+    tuesday: 'Terça-feira',
+    wednesday: 'Quarta-feira',
+    thursday: 'Quinta-feira',
+    friday: 'Sexta-feira',
+    saturday: 'Sábado',
+    sunday: 'Domingo'
   };
   
   return (
@@ -291,32 +405,45 @@ const VendorProfileScreen: React.FC = () => {
                 <Clock size={18} className="mr-2" /> Horário de Funcionamento
               </h3>
               
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="horarioAbertura">Abertura *</Label>
-                  <Input
-                    id="horarioAbertura"
-                    name="horarioAbertura"
-                    type="time"
-                    value={formData.horarioAbertura}
-                    onChange={handleInputChange}
-                    className="mt-1"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="horarioFechamento">Fechamento *</Label>
-                  <Input
-                    id="horarioFechamento"
-                    name="horarioFechamento"
-                    type="time"
-                    value={formData.horarioFechamento}
-                    onChange={handleInputChange}
-                    className="mt-1"
-                    required
-                  />
-                </div>
+              <div className="space-y-3">
+                {Object.entries(dayNames).map(([day, label]) => {
+                  const dayKey = day as keyof OperatingHours;
+                  const dayData = operatingHours[dayKey];
+                  
+                  return (
+                    <div key={day} className="flex flex-wrap items-center gap-3">
+                      <div className="flex items-center min-w-[180px]">
+                        <Checkbox 
+                          id={`day-${day}`}
+                          checked={dayData.isOpen}
+                          onCheckedChange={() => handleDayToggle(dayKey)}
+                          className="mr-2"
+                        />
+                        <label htmlFor={`day-${day}`} className="text-sm font-medium">
+                          {label}
+                        </label>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <Input 
+                          type="time" 
+                          value={dayData.open}
+                          onChange={(e) => handleHoursChange(dayKey, 'open', e.target.value)}
+                          disabled={!dayData.isOpen}
+                          className="w-24"
+                        />
+                        <span>até</span>
+                        <Input 
+                          type="time" 
+                          value={dayData.close}
+                          onChange={(e) => handleHoursChange(dayKey, 'close', e.target.value)}
+                          disabled={!dayData.isOpen}
+                          className="w-24"
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
             

@@ -999,7 +999,9 @@ export type Database = {
           id: string
           logo_url: string | null
           nome: string
+          operating_hours: Json | null
           owner_id: string | null
+          profile_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1010,7 +1012,9 @@ export type Database = {
           id?: string
           logo_url?: string | null
           nome: string
+          operating_hours?: Json | null
           owner_id?: string | null
+          profile_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1021,10 +1025,20 @@ export type Database = {
           id?: string
           logo_url?: string | null
           nome?: string
+          operating_hours?: Json | null
           owner_id?: string | null
+          profile_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "stores_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_addresses: {
         Row: {
