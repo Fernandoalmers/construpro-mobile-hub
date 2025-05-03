@@ -70,39 +70,47 @@ const AdminCategoriesScreen: React.FC = () => {
         }, {});
 
         // Transform to expected format
-        categoriesData = Object.entries(categoryCounts).map(([nome, count]) => ({
+        const transformedCategories = Object.entries(categoryCounts).map(([nome, count]) => ({
           id: nome, // Use category name as ID for these legacy categories
           nome,
           produtos_count: count,
           created_at: new Date().toISOString(),
-          segmento_id: null,
-          segmento_nome: null
+          segmento_id: undefined,
+          segmento_nome: undefined
         }));
+        
+        setCategories(transformedCategories);
       } else {
         // Count products for each category
-        const { data: countsData } = await supabase
+        const { data: countsData, error: countsError } = await supabase
           .from('produtos')
           .select('categoria, count')
-          .order('categoria')
+          .select('categoria')
+          .select('count(*)')
           .group('categoria');
 
-        const countMap = (countsData || []).reduce((acc: Record<string, number>, curr) => {
-          acc[curr.categoria] = curr.count;
-          return acc;
-        }, {});
+        const countMap: Record<string, number> = {};
+        
+        if (!countsError && countsData) {
+          countsData.forEach(item => {
+            if (item.categoria) {
+              countMap[item.categoria] = parseInt(item.count, 10) || 0;
+            }
+          });
+        }
 
         // Format categories data
-        categoriesData = categoriesData.map(cat => ({
+        const transformedCategories = categoriesData.map(cat => ({
           id: cat.id,
           nome: cat.nome,
           segmento_id: cat.segmento_id,
           segmento_nome: cat.product_segments?.nome,
           produtos_count: countMap[cat.nome] || 0,
-          created_at: cat.created_at || new Date().toISOString()
+          created_at: new Date().toISOString()
         }));
+        
+        setCategories(transformedCategories);
       }
-
-      setCategories(categoriesData || []);
     } catch (error) {
       console.error('Error fetching categories:', error);
       toast.error('Erro ao buscar categorias');
@@ -134,7 +142,8 @@ const AdminCategoriesScreen: React.FC = () => {
 
           return {
             ...segment,
-            categorias_count: count || 0
+            categorias_count: count || 0,
+            created_at: segment.created_at || new Date().toISOString()
           };
         })
       );

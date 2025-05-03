@@ -29,7 +29,10 @@ const RedemptionsManagementScreen: React.FC = () => {
     try {
       const { error } = await supabase
         .from('resgates')
-        .update({ status: 'aprovado', updated_at: new Date().toISOString() })
+        .update({ 
+          status: 'aprovado', 
+          updated_at: new Date().toISOString() 
+        })
         .eq('id', redemptionId);
       
       if (error) throw error;
@@ -45,7 +48,10 @@ const RedemptionsManagementScreen: React.FC = () => {
     try {
       const { error } = await supabase
         .from('resgates')
-        .update({ status: 'recusado', updated_at: new Date().toISOString() })
+        .update({ 
+          status: 'recusado', 
+          updated_at: new Date().toISOString() 
+        })
         .eq('id', redemptionId);
       
       if (error) throw error;
@@ -61,7 +67,10 @@ const RedemptionsManagementScreen: React.FC = () => {
     try {
       const { error } = await supabase
         .from('resgates')
-        .update({ status: 'entregue', updated_at: new Date().toISOString() })
+        .update({ 
+          status: 'entregue', 
+          updated_at: new Date().toISOString() 
+        })
         .eq('id', redemptionId);
       
       if (error) throw error;
@@ -80,9 +89,9 @@ const RedemptionsManagementScreen: React.FC = () => {
         
         <RedemptionFilters 
           statusFilter={statusFilter}
-          setStatusFilter={setStatusFilter}
+          onStatusChange={setStatusFilter}
           searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
+          onSearchChange={setSearchTerm}
         />
         
         {isLoading ? (

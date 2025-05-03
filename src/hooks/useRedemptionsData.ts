@@ -34,10 +34,7 @@ export const useRedemptionsData = (filters?: {
       
       let query = supabase
         .from('resgates')
-        .select(`
-          *,
-          profiles:cliente_id (nome, email)
-        `);
+        .select('*');
       
       // Apply filters if they exist
       if (filters?.status && filters.status !== 'all') {
@@ -56,18 +53,44 @@ export const useRedemptionsData = (filters?: {
         query = query.limit(filters.limit);
       }
       
-      const { data, error } = await query;
+      const { data: redemptionData, error: redemptionError } = await query;
       
-      if (error) {
-        throw error;
+      if (redemptionError) {
+        throw redemptionError;
+      }
+
+      // Fetch client profiles separately since the join isn't working
+      const clientIds = (redemptionData || [])
+        .filter(item => item.cliente_id)
+        .map(item => item.cliente_id);
+
+      let clientProfiles: Record<string, { nome?: string; email?: string }> = {};
+      
+      if (clientIds.length > 0) {
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, nome, email')
+          .in('id', clientIds);
+
+        if (!profilesError && profilesData) {
+          clientProfiles = profilesData.reduce((acc, profile) => {
+            acc[profile.id] = { nome: profile.nome, email: profile.email };
+            return acc;
+          }, {} as Record<string, { nome?: string; email?: string }>);
+        }
       }
       
       // Transform the data to include cliente_nome and cliente_email
-      const transformedData = data.map(item => ({
-        ...item,
-        cliente_nome: item.profiles?.nome || 'Cliente desconhecido',
-        cliente_email: item.profiles?.email || 'Email não disponível'
-      }));
+      const transformedData: Redemption[] = (redemptionData || []).map(item => {
+        const clientProfile = clientProfiles[item.cliente_id] || {};
+        
+        return {
+          ...item,
+          status: item.status as 'pendente' | 'aprovado' | 'recusado' | 'entregue',
+          cliente_nome: clientProfile.nome || 'Cliente desconhecido',
+          cliente_email: clientProfile.email || 'Email não disponível'
+        };
+      });
       
       setRedemptions(transformedData);
     } catch (err: any) {

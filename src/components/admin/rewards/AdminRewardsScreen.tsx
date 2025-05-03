@@ -14,12 +14,14 @@ import LoadingState from '@/components/common/LoadingState';
 interface Reward {
   id: string;
   nome: string;
+  item?: string;
   descricao: string;
   pontos: number;
   imagem_url: string | null;
   categoria: string;
   estoque: number | null;
   created_at: string;
+  status?: string;
 }
 
 const AdminRewardsScreen: React.FC = () => {
@@ -41,7 +43,21 @@ const AdminRewardsScreen: React.FC = () => {
         throw error;
       }
 
-      setRewards(data || []);
+      // Transform the data to match our Reward interface
+      const formattedRewards: Reward[] = (data || []).map(item => ({
+        id: item.id,
+        nome: item.item || 'Sem nome',
+        item: item.item,
+        descricao: item.descricao || 'Sem descrição',
+        pontos: item.pontos,
+        imagem_url: item.imagem_url,
+        categoria: item.categoria || 'Geral',
+        estoque: null,
+        created_at: item.created_at,
+        status: item.status
+      }));
+
+      setRewards(formattedRewards);
     } catch (error) {
       console.error('Error fetching rewards:', error);
       toast.error('Erro ao buscar recompensas');
@@ -74,9 +90,9 @@ const AdminRewardsScreen: React.FC = () => {
   }, []);
 
   const filteredRewards = rewards.filter(reward =>
-    reward.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    reward.descricao?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    reward.categoria?.toLowerCase().includes(searchTerm.toLowerCase())
+    reward.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (reward.descricao && reward.descricao.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (reward.categoria && reward.categoria.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
@@ -123,7 +139,7 @@ const AdminRewardsScreen: React.FC = () => {
                 <TableBody>
                   {filteredRewards.map((reward) => (
                     <TableRow key={reward.id}>
-                      <TableCell className="font-medium">{reward.nome || reward.item}</TableCell>
+                      <TableCell className="font-medium">{reward.nome}</TableCell>
                       <TableCell>{reward.categoria || 'N/A'}</TableCell>
                       <TableCell>{reward.pontos}</TableCell>
                       <TableCell>{reward.estoque !== null ? reward.estoque : 'Ilimitado'}</TableCell>

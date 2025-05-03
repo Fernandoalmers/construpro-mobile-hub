@@ -26,22 +26,42 @@ export const useAdminStores = (initialFilter: string = 'all') => {
   const fetchStores = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      // Check if lojas table exists by fetching a single row
+      const { error: testError } = await supabase
         .from('lojas')
-        .select(`
-          id, 
-          nome, 
-          descricao, 
-          logo_url, 
-          contato,
-          status,
-          proprietario_id,
-          created_at,
-          profiles:proprietario_id (nome)
-        `)
+        .select('id')
+        .limit(1);
+      
+      // If there's an error, try the stores table instead
+      const tableName = testError ? 'stores' : 'lojas';
+      
+      const { data, error } = await supabase
+        .from(tableName)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+
+      // Get owner names from profiles
+      const ownerIds = data
+        .map(store => store.proprietario_id || store.owner_id)
+        .filter(Boolean);
+      
+      let ownerNames: Record<string, string> = {};
+      
+      if (ownerIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, nome')
+          .in('id', ownerIds);
+          
+        if (profilesData) {
+          ownerNames = profilesData.reduce((acc, profile) => {
+            acc[profile.id] = profile.nome || 'Usuário';
+            return acc;
+          }, {} as Record<string, string>);
+        }
+      }
 
       // Format the store data
       const formattedStores = data.map(store => ({
@@ -51,14 +71,14 @@ export const useAdminStores = (initialFilter: string = 'all') => {
         logo_url: store.logo_url,
         contato: store.contato,
         status: store.status || 'pendente',
-        owner_id: store.proprietario_id,
-        owner_name: store.profiles?.nome || 'Proprietário desconhecido',
+        owner_id: store.proprietario_id || store.owner_id,
+        owner_name: ownerNames[store.proprietario_id || store.owner_id] || 'Proprietário desconhecido',
         created_at: store.created_at
       }));
 
       setStores(formattedStores);
       applyFilters(formattedStores, filter, searchTerm);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching stores:', error);
       toast.error('Erro ao carregar lojas');
     } finally {
@@ -90,8 +110,18 @@ export const useAdminStores = (initialFilter: string = 'all') => {
 
   const approveStore = async (storeId: string) => {
     try {
-      const { error } = await supabase
+      // Check if lojas table exists by fetching a single row
+      const { error: testError } = await supabase
         .from('lojas')
+        .select('id')
+        .eq('id', storeId)
+        .limit(1);
+      
+      // If there's an error, try the stores table instead
+      const tableName = testError ? 'stores' : 'lojas';
+      
+      const { error } = await supabase
+        .from(tableName)
         .update({ status: 'ativa', updated_at: new Date().toISOString() })
         .eq('id', storeId);
       
@@ -133,8 +163,18 @@ export const useAdminStores = (initialFilter: string = 'all') => {
 
   const rejectStore = async (storeId: string) => {
     try {
-      const { error } = await supabase
+      // Check if lojas table exists by fetching a single row
+      const { error: testError } = await supabase
         .from('lojas')
+        .select('id')
+        .eq('id', storeId)
+        .limit(1);
+      
+      // If there's an error, try the stores table instead
+      const tableName = testError ? 'stores' : 'lojas';
+      
+      const { error } = await supabase
+        .from(tableName)
         .update({ status: 'inativa', updated_at: new Date().toISOString() })
         .eq('id', storeId);
       
@@ -179,8 +219,18 @@ export const useAdminStores = (initialFilter: string = 'all') => {
     fetchStores();
     
     // Set up realtime subscription for stores
-    const channel = supabase
+    const storesChannel = supabase
       .channel('stores_changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'stores' }, 
+        () => {
+          fetchStores();
+        }
+      )
+      .subscribe();
+      
+    const lojasChannel = supabase
+      .channel('lojas_changes')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'lojas' }, 
         () => {
@@ -190,7 +240,8 @@ export const useAdminStores = (initialFilter: string = 'all') => {
       .subscribe();
       
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(storesChannel);
+      supabase.removeChannel(lojasChannel);
     };
   }, []);
 
