@@ -69,7 +69,7 @@ export const fetchAdminRedemptions = async (): Promise<AdminRedemption[]> => {
       pontos: resgate.pontos,
       imagem_url: resgate.imagem_url,
       codigo: resgate.codigo,
-      status: resgate.status,
+      status: resgate.status as AdminRedemption['status'], // Type assertion to ensure proper type
       data: resgate.data,
       created_at: resgate.created_at,
       updated_at: resgate.updated_at

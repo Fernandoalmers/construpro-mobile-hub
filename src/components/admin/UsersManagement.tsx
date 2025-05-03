@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import AdminLayout from './AdminLayout';
 import { 
@@ -11,7 +10,11 @@ import {
   fetchUsers, 
   approveUser, 
   rejectUser, 
-  deleteUser, 
+  deleteUser,
+  blockUser,
+  unblockUser,
+  makeAdmin,
+  removeAdmin,
   getRoleBadgeColor, 
   getStatusBadgeColor 
 } from '@/services/userManagementService';
@@ -71,6 +74,50 @@ const UsersManagement: React.FC = () => {
     }
   };
 
+  const handleBlockUser = async (userId: string) => {
+    const success = await blockUser(userId);
+    if (success) {
+      setUsers(prevUsers =>
+        prevUsers.map(user =>
+          user.id === userId ? { ...user, status: 'bloqueado' } : user
+        )
+      );
+    }
+  };
+
+  const handleUnblockUser = async (userId: string) => {
+    const success = await unblockUser(userId);
+    if (success) {
+      setUsers(prevUsers =>
+        prevUsers.map(user =>
+          user.id === userId ? { ...user, status: 'ativo' } : user
+        )
+      );
+    }
+  };
+
+  const handleMakeAdmin = async (userId: string) => {
+    const success = await makeAdmin(userId);
+    if (success) {
+      setUsers(prevUsers =>
+        prevUsers.map(user =>
+          user.id === userId ? { ...user, is_admin: true } : user
+        )
+      );
+    }
+  };
+
+  const handleRemoveAdmin = async (userId: string) => {
+    const success = await removeAdmin(userId);
+    if (success) {
+      setUsers(prevUsers =>
+        prevUsers.map(user =>
+          user.id === userId ? { ...user, is_admin: false } : user
+        )
+      );
+    }
+  };
+
   const handleDeleteUser = async (userId: string) => {
     const success = await deleteUser(userId);
     if (success) {
@@ -104,7 +151,11 @@ const UsersManagement: React.FC = () => {
             isLoading={isLoading}
             handleApproveUser={handleApproveUser}
             handleRejectUser={handleRejectUser}
+            handleBlockUser={handleBlockUser}
+            handleUnblockUser={handleUnblockUser}
             handleDeleteUser={handleDeleteUser}
+            handleMakeAdmin={handleMakeAdmin}
+            handleRemoveAdmin={handleRemoveAdmin}
             getRoleBadgeColor={getRoleBadgeColor}
             getStatusBadgeColor={getStatusBadgeColor}
           />

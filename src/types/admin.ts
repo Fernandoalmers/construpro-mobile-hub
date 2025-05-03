@@ -73,7 +73,7 @@ export interface AdminRedemption {
   pontos: number;
   imagem_url: string | null;
   codigo: string | null;
-  status: string;
+  status: "recusado" | "pendente" | "aprovado" | "entregue";
   data: string;
   created_at: string;
   updated_at: string;

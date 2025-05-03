@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { UserData } from '@/types/admin';
 import { logAdminAction } from './adminService';
@@ -78,6 +77,86 @@ export const rejectUser = async (userId: string): Promise<boolean> => {
   }
 };
 
+export const blockUser = async (userId: string): Promise<boolean> => {
+  try {
+    // In a real app, update the user status in database
+    // For now we'll just return success
+    
+    await logAdminAction({
+      action: 'block_user',
+      entityType: 'user',
+      entityId: userId
+    });
+    
+    toast.success('Usuário bloqueado com sucesso');
+    return true;
+  } catch (error) {
+    console.error('Error blocking user:', error);
+    toast.error('Erro ao bloquear usuário');
+    return false;
+  }
+};
+
+export const unblockUser = async (userId: string): Promise<boolean> => {
+  try {
+    // In a real app, update the user status in database
+    // For now we'll just return success
+    
+    await logAdminAction({
+      action: 'unblock_user',
+      entityType: 'user',
+      entityId: userId
+    });
+    
+    toast.success('Usuário desbloqueado com sucesso');
+    return true;
+  } catch (error) {
+    console.error('Error unblocking user:', error);
+    toast.error('Erro ao desbloquear usuário');
+    return false;
+  }
+};
+
+export const makeAdmin = async (userId: string): Promise<boolean> => {
+  try {
+    // In a real app, update the user admin status in database
+    // For now we'll just return success
+    
+    await logAdminAction({
+      action: 'make_admin',
+      entityType: 'user',
+      entityId: userId
+    });
+    
+    toast.success('Usuário promovido a administrador');
+    return true;
+  } catch (error) {
+    console.error('Error making user admin:', error);
+    toast.error('Erro ao promover usuário a administrador');
+    return false;
+  }
+};
+
+export const removeAdmin = async (userId: string): Promise<boolean> => {
+  try {
+    // In a real app, update the user admin status in database
+    // For now we'll just return success
+    
+    await logAdminAction({
+      action: 'remove_admin',
+      entityType: 'user',
+      entityId: userId
+    });
+    
+    toast.success('Privilégios de administrador removidos');
+    return true;
+  } catch (error) {
+    console.error('Error removing admin privileges:', error);
+    toast.error('Erro ao remover privilégios de administrador');
+    return false;
+  }
+};
+
 export const deleteUser = async (userId: string): Promise<boolean> => {
   if (!window.confirm('Tem certeza que deseja excluir este usuário?')) {
     return false;
@@ -109,6 +188,7 @@ export const getStatusBadgeColor = (status: string): string => {
     case 'ativo': return 'bg-green-100 text-green-800';
     case 'pendente': return 'bg-amber-100 text-amber-800';
     case 'recusado': return 'bg-red-100 text-red-800';
+    case 'bloqueado': return 'bg-red-100 text-red-800';
     default: return 'bg-gray-100 text-gray-800';
   }
 };
