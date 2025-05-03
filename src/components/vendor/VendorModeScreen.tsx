@@ -25,7 +25,7 @@ const VendorModeScreen: React.FC = () => {
     {
       title: "Produtos",
       description: "Cadastre e gerencie os produtos da sua loja",
-      path: '/vendor/products'
+      path: '/vendor/produtos'
     },
     {
       title: "Pedidos",
@@ -35,17 +35,17 @@ const VendorModeScreen: React.FC = () => {
     {
       title: "Clientes",
       description: "Gerencie os clientes e visualize histórico de compras",
-      path: '/vendor/customers'
+      path: '/vendor/clientes'
     },
     {
       title: "Ajuste de Pontos",
       description: "Adicione ou remova pontos dos clientes",
-      path: '/vendor/adjust-points'
+      path: '/vendor/ajuste-pontos'
     },
     {
       title: "Configurações da Loja",
       description: "Edite as informações e configurações da sua loja",
-      path: '/vendor/store-config'
+      path: '/vendor/configuracoes'
     }
   ];
 
