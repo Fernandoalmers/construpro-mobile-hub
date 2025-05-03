@@ -21,8 +21,7 @@ const ProdutoEditScreen: React.FC = () => {
       try {
         const product = await getVendorProduct(id);
         if (!product) {
-          toast({
-            title: "Produto não encontrado",
+          toast("Produto não encontrado", {
             description: "Não foi possível encontrar o produto solicitado",
             variant: "destructive"
           });
@@ -33,8 +32,7 @@ const ProdutoEditScreen: React.FC = () => {
         setLoading(false);
       } catch (error) {
         console.error('Error loading product:', error);
-        toast({
-          title: "Erro",
+        toast("Erro", {
           description: "Ocorreu um erro ao carregar os dados do produto",
           variant: "destructive"
         });
