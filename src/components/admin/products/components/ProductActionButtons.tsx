@@ -32,8 +32,8 @@ const ProductActionButtons: React.FC<ProductActionButtonsProps> = ({
     
     try {
       onApprove();
+      toast.success('Produto aprovado com sucesso');
       console.log('Product approval function called');
-      // No need to show toast here as it should be handled in the parent component
     } catch (error) {
       console.error('Error approving product:', error);
       toast.error('Erro ao aprovar produto');
@@ -48,6 +48,7 @@ const ProductActionButtons: React.FC<ProductActionButtonsProps> = ({
     
     try {
       onReject();
+      toast.success('Produto rejeitado com sucesso');
       console.log('Product rejection function called');
     } catch (error) {
       console.error('Error rejecting product:', error);
