@@ -1,6 +1,6 @@
 
 import { VendorProduct } from './productBase';
-import { getProductImages } from './productImages';
+import { getProductImages } from './images';
 import { supabase } from '@/integrations/supabase/client';
 
 /**
