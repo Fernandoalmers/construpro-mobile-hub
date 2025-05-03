@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Bookmark, Clock, ShoppingBag, ChevronRight, Star, Trash2 } from 'lucide-react';
@@ -36,6 +35,13 @@ interface FavoriteItem {
   produto_id: string;
   data_adicionado: string;
   produto: Product; // Joined product data
+}
+
+// New interface for frequently bought items
+interface FrequentlyBoughtItem {
+  produto_id: string;
+  count: number;
+  produto: Product;
 }
 
 const FavoritesScreen: React.FC = () => {
@@ -297,7 +303,54 @@ const FavoritesScreen: React.FC = () => {
   };
   
   // Render a product card
-  const renderProductCard = (item: RecentlyViewed | FavoriteItem) => {
+  const renderProductCard = (item: RecentlyViewed | FavoriteItem | FrequentlyBoughtItem) => {
+    // Check if it's a FrequentlyBoughtItem (doesn't have id field)
+    if (!('id' in item)) {
+      // For FrequentlyBoughtItem, we need to handle it differently
+      if (!item.produto) return null;
+      
+      const product = item.produto;
+      
+      return (
+        <Card key={`frequent-${item.produto_id}`} className="overflow-hidden">
+          <div 
+            className="h-40 bg-center bg-cover"
+            style={{ backgroundImage: `url(${product.imagem_url || '/placeholder.svg'})` }}
+            onClick={() => navigate(`/marketplace/produto/${product.id}`)}
+          />
+          <div className="p-3">
+            <h3 className="font-medium truncate">{product.nome}</h3>
+            {product.loja_nome && (
+              <p className="text-xs text-gray-500">{product.loja_nome}</p>
+            )}
+            <div className="flex items-center mt-1 mb-2">
+              <div className="flex items-center">
+                <Star size={14} className="text-yellow-400 fill-yellow-400" />
+                <span className="text-xs ml-1">{product.avaliacao.toFixed(1)}</span>
+              </div>
+              <span className="text-xs ml-2 text-gray-500">Comprado {item.count}x</span>
+            </div>
+            
+            <div className="flex justify-between items-center">
+              <span className="font-bold text-construPro-blue">
+                R$ {product.preco.toFixed(2)}
+              </span>
+              
+              <CustomButton
+                variant="primary"
+                size="sm"
+                onClick={() => handleAddToCart(product.id, product.nome)}
+                icon={<ShoppingBag size={14} />}
+              >
+                Comprar
+              </CustomButton>
+            </div>
+          </div>
+        </Card>
+      );
+    }
+    
+    // Original logic for RecentlyViewed and FavoriteItem
     if (!item.produto) return null;
     
     const product = item.produto;
@@ -471,7 +524,7 @@ const FavoritesScreen: React.FC = () => {
                 
                 <div className="grid grid-cols-2 gap-4">
                   {frequentlyBought.length > 0 ? (
-                    frequentlyBought.map(item => renderProductCard(item))
+                    frequentlyBought.map(item => renderProductCard(item as FrequentlyBoughtItem))
                   ) : (
                     <div className="col-span-2 text-center py-10">
                       <ShoppingBag className="mx-auto text-gray-400 mb-3" size={40} />
