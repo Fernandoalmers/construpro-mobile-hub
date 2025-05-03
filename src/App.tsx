@@ -1,6 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
-import { useMediaQuery } from 'react-responsive';
 import { toast } from '@/components/ui/sonner';
 import { 
   AdminDashboard, UsersManagement, ProductsManagementScreen,

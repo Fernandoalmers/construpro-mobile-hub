@@ -1,14 +1,16 @@
+
 import React from 'react';
 import { useLocation } from 'react-router-dom';
 import { Home, Search, ShoppingBag, User, LayoutDashboard, Gift } from 'lucide-react';
 import NavItem from './NavItem';
 import { useAuth } from '@/context/AuthContext';
-import { useMediaQuery } from 'usehooks-ts';
 
 const BottomNavigation: React.FC = () => {
   const location = useLocation();
   const { profile } = useAuth();
-  const isMobile = useMediaQuery('(max-width: 640px)');
+  
+  // Simple hook to check if mobile
+  const isMobile = window.innerWidth <= 640;
 
   // Do not render on desktop or certain pages
   if (!isMobile || location.pathname.includes('/auth/') || 
