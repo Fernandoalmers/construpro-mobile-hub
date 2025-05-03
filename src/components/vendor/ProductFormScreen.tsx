@@ -1,507 +1,502 @@
-
-import React, { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Upload, Plus, Trash, Camera } from 'lucide-react';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { ArrowLeft, Image as ImageIcon, Save, Trash } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import CustomButton from '../common/CustomButton';
-import Card from '../common/Card';
-import { toast } from '@/hooks/use-toast';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import produtos from '../../data/produtos.json';
+import { Card } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from '@/components/ui/sonner';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getVendorProduct, saveVendorProduct, uploadProductImage, VendorProduct } from '@/services/vendorService';
+import LoadingState from '../common/LoadingState';
 
-const formSchema = z.object({
-  nome: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
-  descricao: z.string().min(10, 'Descrição deve ter pelo menos 10 caracteres'),
-  segmento: z.string().min(1, 'Segmento é obrigatório'),
-  categoria: z.string().min(1, 'Categoria é obrigatória'),
-  codigoBarras: z.string().optional(),
-  sku: z.string().min(1, 'SKU é obrigatório'),
-  preco: z.string().min(1, 'Preço é obrigatório'),
-  precoPromocional: z.string().optional(),
-  estoque: z.string().min(1, 'Estoque é obrigatório'),
-  unidadeVenda: z.string().min(1, 'Unidade de venda é obrigatória'),
-  m2PorCaixa: z.string().optional(),
-  pontosConsumidor: z.string().min(1, 'Pontos para consumidor é obrigatório'),
-  pontosProfissional: z.string().min(1, 'Pontos para profissional é obrigatório'),
-});
+interface ProductFormScreenProps {
+  isEditing?: boolean;
+  productId?: string;
+}
 
-const segmentos = [
-  { value: 'materiais_construcao', label: 'Materiais de Construção' },
-  { value: 'material_eletrico', label: 'Material Elétrico' },
-  { value: 'vidracaria', label: 'Vidraçaria' },
-  { value: 'marmoraria', label: 'Marmoraria' },
-  { value: 'aluguel_equipamentos', label: 'Aluguel de Equipamentos' },
-];
-
-const categorias = {
-  materiais_construcao: [
-    { value: 'cimento', label: 'Cimento' },
-    { value: 'argamassa', label: 'Argamassa' },
-    { value: 'tijolos', label: 'Tijolos e Blocos' },
-    { value: 'telhas', label: 'Telhas' },
-  ],
-  material_eletrico: [
-    { value: 'cabos', label: 'Cabos e Fios' },
-    { value: 'disjuntores', label: 'Disjuntores' },
-    { value: 'lampadas', label: 'Lâmpadas' },
-    { value: 'tomadas', label: 'Tomadas e Interruptores' },
-  ],
-  vidracaria: [
-    { value: 'vidros_planos', label: 'Vidros Planos' },
-    { value: 'box', label: 'Box para Banheiro' },
-    { value: 'espelhos', label: 'Espelhos' },
-  ],
-  marmoraria: [
-    { value: 'granito', label: 'Granito' },
-    { value: 'marmore', label: 'Mármore' },
-    { value: 'quartzos', label: 'Quartzos' },
-  ],
-  aluguel_equipamentos: [
-    { value: 'betoneiras', label: 'Betoneiras' },
-    { value: 'andaimes', label: 'Andaimes' },
-    { value: 'compressores', label: 'Compressores' },
-  ],
-};
-
-const unidadesVenda = [
-  { value: 'unidade', label: 'Unidade' },
-  { value: 'metro', label: 'Metro' },
-  { value: 'metro_quadrado', label: 'Metro Quadrado' },
-  { value: 'metro_cubico', label: 'Metro Cúbico' },
-  { value: 'caixa', label: 'Caixa' },
-  { value: 'pacote', label: 'Pacote' },
-  { value: 'kg', label: 'Quilograma' },
-  { value: 'litro', label: 'Litro' },
-  { value: 'galao', label: 'Galão' },
-];
-
-const ProductFormScreen: React.FC = () => {
+const ProductFormScreen: React.FC<ProductFormScreenProps> = ({ isEditing, productId }) => {
+  const params = useParams();
   const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
-  const isEditing = !!id;
+  const location = useLocation();
+  const queryClient = useQueryClient();
   
-  const [images, setImages] = useState<string[]>([]);
-  const [selectedSegmento, setSelectedSegmento] = useState('');
-  const [availableCategorias, setAvailableCategorias] = useState<{value: string, label: string}[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: isEditing && id ? 
-      {
-        nome: produtos.find(p => p.id === id)?.nome || '',
-        descricao: produtos.find(p => p.id === id)?.descricao || '',
-        segmento: '',
-        categoria: produtos.find(p => p.id === id)?.categoria || '',
-        codigoBarras: '',
-        sku: '',
-        preco: produtos.find(p => p.id === id)?.preco.toString() || '',
-        precoPromocional: '',
-        estoque: produtos.find(p => p.id === id)?.estoque.toString() || '',
-        unidadeVenda: '',
-        m2PorCaixa: '',
-        pontosConsumidor: produtos.find(p => p.id === id)?.pontos.toString() || '',
-        pontosProfissional: '',
-      } : {
-        nome: '',
-        descricao: '',
-        segmento: '',
-        categoria: '',
-        codigoBarras: '',
-        sku: '',
-        preco: '',
-        precoPromocional: '',
-        estoque: '',
-        unidadeVenda: '',
-        m2PorCaixa: '',
-        pontosConsumidor: '',
-        pontosProfissional: '',
-      }
+  // Get product ID from props or URL params
+  const id = productId || params.id;
+  
+  // Check if this is a clone operation
+  const isCloning = location.pathname.includes('/vendor/product-clone');
+  
+  const [formData, setFormData] = useState<Partial<VendorProduct>>({
+    nome: '',
+    descricao: '',
+    preco_normal: 0,
+    preco_promocional: undefined,
+    estoque: 0,
+    codigo_barras: '',
+    sku: '',
+    categoria: '',
+    pontos_consumidor: 0,
+    pontos_profissional: 0,
+    imagens: []
   });
-
-  React.useEffect(() => {
-    if (isEditing && id) {
-      const produto = produtos.find(p => p.id === id);
-      if (produto) {
-        // Add product image to state
-        setImages([produto.imagemUrl]);
+  const [activeTab, setActiveTab] = useState('basic');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [previewImages, setPreviewImages] = useState<string[]>([]);
+  
+  // Categories (could be fetched from an API in the future)
+  const categories = [
+    'Ferramentas',
+    'Material de Construção',
+    'Tintas',
+    'Elétrica',
+    'Hidráulica',
+    'Acabamento',
+    'Decoração',
+    'Jardinagem',
+    'Segurança',
+    'Outro'
+  ];
+  
+  // Fetch product data if in edit mode
+  const { data: productData, isLoading } = useQuery({
+    queryKey: ['vendorProduct', id],
+    queryFn: () => getVendorProduct(id!),
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+  
+  // Save product mutation
+  const saveProductMutation = useMutation({
+    mutationFn: (data: Partial<VendorProduct>) => saveVendorProduct(data),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['vendorProducts'] });
+      if (data?.id) {
+        queryClient.invalidateQueries({ queryKey: ['vendorProduct', data.id] });
+      }
+      toast.success(isEditing ? 'Produto atualizado com sucesso!' : 'Produto criado com sucesso!');
+      navigate('/vendor/products');
+    },
+    onError: (error) => {
+      toast.error('Erro ao salvar produto');
+      console.error('Error saving product:', error);
+    }
+  });
+  
+  // Load product data into form when available
+  useEffect(() => {
+    if (productData && (isEditing || isCloning)) {
+      // For cloning, we keep all data except id
+      if (isCloning) {
+        const { id, ...cloneData } = productData;
+        setFormData(cloneData);
+        
+        // Set preview images from existing product
+        if (cloneData.imagens && Array.isArray(cloneData.imagens)) {
+          setPreviewImages(cloneData.imagens);
+        }
+      } else {
+        setFormData(productData);
+        
+        // Set preview images from existing product
+        if (productData.imagens && Array.isArray(productData.imagens)) {
+          setPreviewImages(productData.imagens);
+        }
       }
     }
-  }, [id, isEditing]);
+  }, [productData, isEditing, isCloning]);
 
-  const handleSegmentoChange = (value: string) => {
-    setSelectedSegmento(value);
-    form.setValue('segmento', value);
-    setAvailableCategorias(categorias[value as keyof typeof categorias] || []);
-    form.setValue('categoria', '');
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
   
-  const addImage = () => {
-    // Mock adding image - in a real app, this would open a file selector
-    const mockImageUrl = "https://images.unsplash.com/photo-1618160472022-18a881fd7e13?auto=format&fit=crop&w=200&h=200&q=80";
-    setImages(prev => [...prev, mockImageUrl]);
+  const handleNumberInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    const numValue = parseFloat(value) || 0;
+    setFormData(prev => ({ ...prev, [name]: numValue }));
   };
-
-  const removeImage = (index: number) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
+  
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const filesArray = Array.from(e.target.files);
+      setSelectedImages(prev => [...prev, ...filesArray]);
+      
+      // Create preview URLs
+      const newPreviewUrls = filesArray.map(file => URL.createObjectURL(file));
+      setPreviewImages(prev => [...prev, ...newPreviewUrls]);
+    }
   };
-
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    if (images.length === 0) {
-      toast({
-        title: "Erro",
-        description: "Adicione pelo menos uma imagem do produto",
-        variant: "destructive",
-      });
+  
+  const handleRemoveImage = (index: number) => {
+    setPreviewImages(prev => prev.filter((_, i) => i !== index));
+    setSelectedImages(prev => prev.filter((_, i) => i !== index));
+    
+    // If this was an existing image in formData.imagens, remove it
+    if (formData.imagens && Array.isArray(formData.imagens)) {
+      setFormData(prev => ({
+        ...prev,
+        imagens: prev.imagens?.filter((_, i) => i !== index)
+      }));
+    }
+  };
+  
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Basic validation
+    if (!formData.nome) {
+      toast.error('Nome do produto é obrigatório');
+      return;
+    }
+    
+    if (!formData.descricao) {
+      toast.error('Descrição do produto é obrigatória');
+      return;
+    }
+    
+    if (!formData.categoria) {
+      toast.error('Categoria do produto é obrigatória');
+      return;
+    }
+    
+    if (formData.preco_normal <= 0) {
+      toast.error('Preço deve ser maior que zero');
       return;
     }
     
     setIsSubmitting(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      // Create or update the product first to get an ID
+      let productToSave: Partial<VendorProduct> = { ...formData };
       
-      if (isEditing) {
-        toast({
-          title: "Produto atualizado",
-          description: "O produto foi atualizado e está pendente de aprovação",
-        });
-      } else {
-        toast({
-          title: "Produto criado",
-          description: "O produto foi criado e está pendente de aprovação",
-        });
+      // If cloning, make sure we don't include the original product's ID
+      if (isCloning) {
+        delete productToSave.id;
       }
       
+      // If editing, keep the ID
+      if (isEditing && id) {
+        productToSave.id = id;
+      }
+      
+      // Save the product
+      const savedProduct = await saveProductMutation.mutateAsync(productToSave);
+      
+      if (!savedProduct) {
+        throw new Error('Failed to save product');
+      }
+      
+      // If there are new images to upload
+      if (selectedImages.length > 0 && savedProduct.id) {
+        const imageUrls: string[] = [];
+        
+        // Upload each image
+        for (let i = 0; i < selectedImages.length; i++) {
+          const file = selectedImages[i];
+          const imageUrl = await uploadProductImage(savedProduct.id, file, i);
+          if (imageUrl) {
+            imageUrls.push(imageUrl);
+          }
+        }
+        
+        // Combine existing images with new ones
+        const existingImages = (formData.imagens || []).filter(url => 
+          typeof url === 'string' && !url.startsWith('blob:')
+        );
+        
+        const allImages = [...existingImages, ...imageUrls];
+        
+        // Update the product with the new image URLs
+        if (imageUrls.length > 0) {
+          await saveProductMutation.mutateAsync({
+            id: savedProduct.id,
+            imagens: allImages
+          });
+        }
+      }
+      
+      toast.success(isEditing ? 'Produto atualizado com sucesso!' : 'Produto criado com sucesso!');
       navigate('/vendor/products');
-    }, 1500);
+    } catch (error) {
+      console.error('Error in handleSubmit:', error);
+      toast.error('Erro ao salvar produto');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+  
+  if (isLoading && (isEditing || isCloning)) {
+    return <LoadingState text="Carregando dados do produto..." />;
+  }
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
-      {/* Header */}
-      <div className="bg-construPro-blue p-6 pt-12 flex items-center">
-        <button onClick={() => navigate('/vendor/products')} className="mr-4 text-white">
+    <div className="min-h-screen bg-gray-100 pb-20">
+      <div className="bg-white p-4 shadow-sm flex items-center">
+        <button onClick={() => navigate('/vendor/products')} className="mr-4">
           <ArrowLeft size={24} />
         </button>
-        <h1 className="text-xl font-bold text-white">
-          {isEditing ? 'Editar Produto' : 'Novo Produto'}
+        <h1 className="text-xl font-bold">
+          {isEditing ? 'Editar Produto' : isCloning ? 'Clonar Produto' : 'Novo Produto'}
         </h1>
       </div>
-      
+
       <div className="p-6">
-        <Tabs defaultValue="basic">
-          <TabsList className="grid grid-cols-3 mb-4">
-            <TabsTrigger value="basic">Básico</TabsTrigger>
-            <TabsTrigger value="details">Detalhes</TabsTrigger>
-            <TabsTrigger value="images">Imagens</TabsTrigger>
-          </TabsList>
-          
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <TabsContent value="basic" className="space-y-4">
-                <Card className="p-4">
-                  <FormField
-                    control={form.control}
+        <form onSubmit={handleSubmit}>
+          <Tabs defaultValue="basic" value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid grid-cols-3 mb-6">
+              <TabsTrigger value="basic">Informações Básicas</TabsTrigger>
+              <TabsTrigger value="details">Detalhes</TabsTrigger>
+              <TabsTrigger value="images">Imagens</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="basic">
+              <Card className="p-6 space-y-6">
+                <div>
+                  <Label htmlFor="nome" className="block mb-2">Nome do Produto *</Label>
+                  <Input
+                    id="nome"
                     name="nome"
-                    render={({ field }) => (
-                      <FormItem className="mb-4">
-                        <FormLabel>Nome do produto*</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Ex: Cimento CP-II 50kg" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    value={formData.nome}
+                    onChange={handleInputChange}
+                    placeholder="Ex: Furadeira de Impacto 650W"
+                    required
                   />
-                  
-                  <FormField
-                    control={form.control}
+                </div>
+                
+                <div>
+                  <Label htmlFor="descricao" className="block mb-2">Descrição *</Label>
+                  <Textarea
+                    id="descricao"
                     name="descricao"
-                    render={({ field }) => (
-                      <FormItem className="mb-4">
-                        <FormLabel>Descrição*</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            placeholder="Descreva detalhes do produto"
-                            className="min-h-[120px]"
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    value={formData.descricao}
+                    onChange={handleInputChange}
+                    placeholder="Descreva detalhes do produto..."
+                    rows={4}
+                    required
                   />
-                  
-                  <FormField
-                    control={form.control}
-                    name="segmento"
-                    render={({ field }) => (
-                      <FormItem className="mb-4">
-                        <FormLabel>Segmento*</FormLabel>
-                        <Select
-                          onValueChange={handleSegmentoChange}
-                          value={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione o segmento" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {segmentos.map(option => (
-                              <SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="categoria"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Categoria*</FormLabel>
-                        <Select
-                          disabled={!selectedSegmento}
-                          onValueChange={field.onChange}
-                          value={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder={selectedSegmento ? "Selecione a categoria" : "Selecione um segmento primeiro"} />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {availableCategorias.map(option => (
-                              <SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </Card>
-              </TabsContent>
-              
-              <TabsContent value="details" className="space-y-4">
-                <Card className="p-4">
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    <FormField
-                      control={form.control}
-                      name="codigoBarras"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Código de Barras</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Ex: 7891234567890" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="sku"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>SKU*</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Ex: CIM-CP2-50" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                </div>
+                
+                <div>
+                  <Label htmlFor="categoria" className="block mb-2">Categoria *</Label>
+                  <Select
+                    value={formData.categoria}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, categoria: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione uma categoria" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map(category => (
+                        <SelectItem key={category} value={category}>{category}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <Label htmlFor="preco_normal" className="block mb-2">Preço Regular (R$) *</Label>
+                    <Input
+                      id="preco_normal"
+                      name="preco_normal"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.preco_normal}
+                      onChange={handleNumberInputChange}
+                      placeholder="0.00"
+                      required
                     />
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    <FormField
-                      control={form.control}
-                      name="preco"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Preço Normal*</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Ex: 29.90" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="precoPromocional"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Preço Promocional</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Ex: 24.90" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                  <div>
+                    <Label htmlFor="preco_promocional" className="block mb-2">Preço Promocional (R$)</Label>
+                    <Input
+                      id="preco_promocional"
+                      name="preco_promocional"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.preco_promocional || ''}
+                      onChange={handleNumberInputChange}
+                      placeholder="0.00"
                     />
                   </div>
-                  
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    <FormField
-                      control={form.control}
+                </div>
+                
+                <div className="flex justify-end">
+                  <Button 
+                    type="button" 
+                    variant="outline"
+                    className="mr-2"
+                    onClick={() => navigate('/vendor/products')}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button 
+                    type="button"
+                    onClick={() => setActiveTab('details')}
+                  >
+                    Próximo
+                  </Button>
+                </div>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="details">
+              <Card className="p-6 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <Label htmlFor="estoque" className="block mb-2">Estoque</Label>
+                    <Input
+                      id="estoque"
                       name="estoque"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Estoque*</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Ex: 50" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="unidadeVenda"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Unidade de Venda*</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {unidadesVenda.map(option => (
-                                <SelectItem key={option.value} value={option.value}>
-                                  {option.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                      type="number"
+                      min="0"
+                      value={formData.estoque}
+                      onChange={handleNumberInputChange}
+                      placeholder="0"
                     />
                   </div>
                   
-                  <div className="mb-4">
-                    <FormField
-                      control={form.control}
-                      name="m2PorCaixa"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>m² por caixa (se aplicável)</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Ex: 2.5" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                  <div>
+                    <Label htmlFor="sku" className="block mb-2">SKU / Código</Label>
+                    <Input
+                      id="sku"
+                      name="sku"
+                      value={formData.sku || ''}
+                      onChange={handleInputChange}
+                      placeholder="Ex: PROD-12345"
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <Label htmlFor="codigo_barras" className="block mb-2">Código de Barras</Label>
+                  <Input
+                    id="codigo_barras"
+                    name="codigo_barras"
+                    value={formData.codigo_barras || ''}
+                    onChange={handleInputChange}
+                    placeholder="Ex: 7891234567890"
+                  />
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <Label htmlFor="pontos_consumidor" className="block mb-2">Pontos para Consumidores</Label>
+                    <Input
+                      id="pontos_consumidor"
+                      name="pontos_consumidor"
+                      type="number"
+                      min="0"
+                      value={formData.pontos_consumidor}
+                      onChange={handleNumberInputChange}
+                      placeholder="0"
                     />
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-3">
-                    <FormField
-                      control={form.control}
-                      name="pontosConsumidor"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Pontos Consumidor*</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Ex: 50" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="pontosProfissional"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Pontos Profissional*</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Ex: 75" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                  <div>
+                    <Label htmlFor="pontos_profissional" className="block mb-2">Pontos para Profissionais</Label>
+                    <Input
+                      id="pontos_profissional"
+                      name="pontos_profissional"
+                      type="number"
+                      min="0"
+                      value={formData.pontos_profissional}
+                      onChange={handleNumberInputChange}
+                      placeholder="0"
                     />
                   </div>
-                </Card>
-              </TabsContent>
-              
-              <TabsContent value="images" className="space-y-4">
-                <Card className="p-4">
-                  <Label className="mb-4 block">Imagens do produto</Label>
-                  
-                  {images.length > 0 && (
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      {images.map((image, i) => (
-                        <div key={i} className="relative rounded-lg overflow-hidden h-40 bg-gray-200">
-                          <img src={image} alt={`Imagem ${i+1}`} className="w-full h-full object-cover" />
-                          <button 
-                            type="button" 
-                            onClick={() => removeImage(i)}
+                </div>
+                
+                <div className="flex justify-between">
+                  <Button 
+                    type="button"
+                    variant="outline"
+                    onClick={() => setActiveTab('basic')}
+                  >
+                    Voltar
+                  </Button>
+                  <Button 
+                    type="button"
+                    onClick={() => setActiveTab('images')}
+                  >
+                    Próximo
+                  </Button>
+                </div>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="images">
+              <Card className="p-6 space-y-6">
+                <div>
+                  <Label htmlFor="images" className="block mb-2">Imagens do Produto</Label>
+                  <div className="border-2 border-dashed border-gray-300 rounded-md p-6 text-center">
+                    <ImageIcon className="h-12 w-12 mx-auto text-gray-400" />
+                    <p className="mt-2 text-sm text-gray-500">Arraste e solte suas imagens aqui, ou clique para selecionar</p>
+                    <Input
+                      id="images"
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleImageUpload}
+                      className="mt-4"
+                    />
+                  </div>
+                </div>
+                
+                {previewImages.length > 0 && (
+                  <div>
+                    <Label className="block mb-2">Imagens selecionadas</Label>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {previewImages.map((src, index) => (
+                        <div key={index} className="relative">
+                          <img 
+                            src={src} 
+                            alt={`Preview ${index}`}
+                            className="h-32 w-full object-cover rounded-md"
+                          />
+                          <button
+                            type="button"
                             className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"
+                            onClick={() => handleRemoveImage(index)}
                           >
-                            <Trash size={14} />
+                            <Trash size={16} />
                           </button>
                         </div>
                       ))}
                     </div>
-                  )}
-                  
-                  <CustomButton
+                  </div>
+                )}
+                
+                <div className="flex justify-between">
+                  <Button 
                     type="button"
                     variant="outline"
-                    icon={images.length === 0 ? <Camera size={18} /> : <Plus size={18} />}
-                    onClick={addImage}
-                    fullWidth
+                    onClick={() => setActiveTab('details')}
                   >
-                    {images.length === 0 ? 'Adicionar imagens' : 'Adicionar mais imagens'}
-                  </CustomButton>
-                  
-                  <p className="text-xs text-gray-500 mt-2">
-                    Formatos aceitos: JPG, PNG. Tamanho máximo: 5MB por imagem.
-                  </p>
-                </Card>
-              </TabsContent>
-              
-              <CustomButton
-                type="submit"
-                variant="primary"
-                fullWidth
-                loading={isSubmitting}
-              >
-                {isEditing ? 'Atualizar Produto' : 'Cadastrar Produto'}
-              </CustomButton>
-            </form>
-          </Form>
-        </Tabs>
+                    Voltar
+                  </Button>
+                  <Button 
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="bg-construPro-blue hover:bg-blue-700"
+                  >
+                    <Save size={18} className="mr-2" />
+                    {isSubmitting ? 'Salvando...' : 'Salvar Produto'}
+                  </Button>
+                </div>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </form>
       </div>
     </div>
   );

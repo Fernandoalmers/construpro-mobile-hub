@@ -7,47 +7,23 @@ import CustomInput from '../common/CustomInput';
 import CustomButton from '../common/CustomButton';
 import Avatar from '../common/Avatar';
 import ListEmptyState from '../common/ListEmptyState';
-import clientes from '../../data/clientes.json';
-import pedidos from '../../data/pedidos.json';
-import produtos from '../../data/produtos.json';
+import { useQuery } from '@tanstack/react-query';
+import { getVendorCustomers, VendorCustomer } from '@/services/vendorService';
+import LoadingState from '../common/LoadingState';
 
 const ClientesVendorScreen: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<'nome' | 'totalGasto'>('nome');
+  const [sortBy, setSortBy] = useState<'nome' | 'total_gasto'>('total_gasto');
   
-  // Simulate logged-in vendor's store
-  const currentLojaId = "1"; // Just for simulation purposes
-  
-  // Calculate client statistics
-  const clientStats = clientes.map(cliente => {
-    const clientPedidos = pedidos.filter(pedido => pedido.clienteId === cliente.id);
-    
-    let totalGasto = 0;
-    let pontosGanhos = 0;
-    let ultimaCompra: Date | null = null;
-    
-    clientPedidos.forEach(pedido => {
-      totalGasto += pedido.valorTotal;
-      pontosGanhos += pedido.pontosGanhos;
-      
-      const pedidoDate = new Date(pedido.data);
-      if (!ultimaCompra || pedidoDate > ultimaCompra) {
-        ultimaCompra = pedidoDate;
-      }
-    });
-    
-    return {
-      ...cliente,
-      totalGasto,
-      pontosGanhos,
-      ultimaCompra,
-      totalPedidos: clientPedidos.length
-    };
+  // Fetch customers
+  const { data: customers = [], isLoading, error } = useQuery({
+    queryKey: ['vendorCustomers'],
+    queryFn: getVendorCustomers,
   });
   
-  // Filter and sort clients
-  const filteredClients = clientStats
+  // Filter and sort customers
+  const filteredClients = customers
     .filter(cliente => 
       searchTerm === '' || 
       cliente.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -57,19 +33,38 @@ const ClientesVendorScreen: React.FC = () => {
     .sort((a, b) => {
       if (sortBy === 'nome') {
         return a.nome.localeCompare(b.nome);
-      } else if (sortBy === 'totalGasto') {
-        return b.totalGasto - a.totalGasto;
+      } else if (sortBy === 'total_gasto') {
+        return b.total_gasto - a.total_gasto;
       }
       return 0;
     });
 
   const handleAjustarPontos = (clienteId: string) => {
-    navigate(`/vendor/ajuste-pontos?clienteId=${clienteId}`);
+    navigate(`/vendor/adjust-points?clienteId=${clienteId}`);
   };
   
   const handleViewExtrato = (clienteId: string) => {
     navigate(`/vendor/clientes/${clienteId}/extrato`);
   };
+
+  if (isLoading) {
+    return <LoadingState text="Carregando clientes..." />;
+  }
+  
+  if (error) {
+    console.error('Error fetching customers:', error);
+  }
+
+  // Calculate stats
+  const recentCustomersCount = customers.filter(c => 
+    c.ultimo_pedido && 
+    new Date().getTime() - new Date(c.ultimo_pedido).getTime() < 30 * 24 * 60 * 60 * 1000
+  ).length;
+  
+  const totalPointsGiven = customers.reduce((sum, client) => {
+    // Total points is not directly available, this is just an approximate
+    return sum + (client.total_gasto > 0 ? Math.floor(client.total_gasto / 10) : 0);
+  }, 0);
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
@@ -106,15 +101,15 @@ const ClientesVendorScreen: React.FC = () => {
             </button>
             
             <button
-              onClick={() => setSortBy('totalGasto')}
+              onClick={() => setSortBy('total_gasto')}
               className={`px-3 py-1 text-sm rounded-full flex items-center ${
-                sortBy === 'totalGasto' 
+                sortBy === 'total_gasto' 
                   ? 'bg-construPro-blue text-white' 
                   : 'bg-gray-200 text-gray-800'
               }`}
             >
               <span className="mr-1">Maiores compradores</span>
-              {sortBy === 'totalGasto' && <SortDesc size={14} />}
+              {sortBy === 'total_gasto' && <SortDesc size={14} />}
             </button>
           </div>
         </div>
@@ -123,22 +118,17 @@ const ClientesVendorScreen: React.FC = () => {
         <div className="grid grid-cols-3 gap-4">
           <Card className="p-4 text-center">
             <p className="text-gray-500 text-sm">Total de clientes</p>
-            <p className="text-xl font-bold">{clientes.length}</p>
+            <p className="text-xl font-bold">{customers.length}</p>
           </Card>
           
           <Card className="p-4 text-center">
             <p className="text-gray-500 text-sm">Clientes recentes</p>
-            <p className="text-xl font-bold">
-              {clientStats.filter(c => c.ultimaCompra && 
-                new Date().getTime() - new Date(c.ultimaCompra).getTime() < 30 * 24 * 60 * 60 * 1000).length}
-            </p>
+            <p className="text-xl font-bold">{recentCustomersCount}</p>
           </Card>
           
           <Card className="p-4 text-center">
             <p className="text-gray-500 text-sm">Pontos distribuídos</p>
-            <p className="text-xl font-bold">
-              {clientStats.reduce((sum, cliente) => sum + cliente.pontosGanhos, 0)}
-            </p>
+            <p className="text-xl font-bold">{totalPointsGiven}</p>
           </Card>
         </div>
         
@@ -148,11 +138,11 @@ const ClientesVendorScreen: React.FC = () => {
           
           {filteredClients.length > 0 ? (
             <div className="space-y-3">
-              {filteredClients.map(cliente => (
+              {filteredClients.map((cliente) => (
                 <Card key={cliente.id} className="p-4">
                   <div className="flex items-center">
                     <Avatar
-                      src={cliente.avatar}
+                      src={undefined}
                       fallback={cliente.nome}
                       size="md"
                       className="mr-4"
@@ -167,7 +157,7 @@ const ClientesVendorScreen: React.FC = () => {
                         
                         <div className="flex">
                           <button
-                            onClick={() => handleViewExtrato(cliente.id)}
+                            onClick={() => handleViewExtrato(cliente.usuario_id)}
                             className="p-2 mr-2 text-blue-600 hover:bg-blue-50 rounded"
                             title="Ver extrato"
                           >
@@ -175,7 +165,7 @@ const ClientesVendorScreen: React.FC = () => {
                           </button>
                           
                           <button
-                            onClick={() => handleAjustarPontos(cliente.id)}
+                            onClick={() => handleAjustarPontos(cliente.usuario_id)}
                             className="p-2 text-green-600 hover:bg-green-50 rounded"
                             title="Ajustar pontos"
                           >
@@ -187,23 +177,13 @@ const ClientesVendorScreen: React.FC = () => {
                       <div className="mt-3 flex flex-wrap gap-2 text-sm">
                         <div className="bg-gray-100 px-2 py-1 rounded">
                           <span className="font-medium">Compras:</span>{' '}
-                          <span>R$ {cliente.totalGasto.toFixed(2)}</span>
+                          <span>R$ {cliente.total_gasto.toFixed(2)}</span>
                         </div>
                         
-                        <div className="bg-gray-100 px-2 py-1 rounded">
-                          <span className="font-medium">Pedidos:</span>{' '}
-                          <span>{cliente.totalPedidos}</span>
-                        </div>
-                        
-                        <div className="bg-construPro-orange/10 text-construPro-orange px-2 py-1 rounded">
-                          <span className="font-medium">Pontos:</span>{' '}
-                          <span>{cliente.saldoPontos}</span>
-                        </div>
-                        
-                        {cliente.ultimaCompra && (
+                        {cliente.ultimo_pedido && (
                           <div className="bg-gray-100 px-2 py-1 rounded">
                             <span className="font-medium">Última compra:</span>{' '}
-                            <span>{new Date(cliente.ultimaCompra).toLocaleDateString('pt-BR')}</span>
+                            <span>{new Date(cliente.ultimo_pedido).toLocaleDateString('pt-BR')}</span>
                           </div>
                         )}
                       </div>
@@ -216,7 +196,7 @@ const ClientesVendorScreen: React.FC = () => {
             <ListEmptyState
               icon={<Search className="h-12 w-12 text-gray-400" />}
               title="Nenhum cliente encontrado"
-              description="Tente ajustar os filtros de busca"
+              description="Ainda não há clientes registrados ou nenhum corresponde à busca."
             />
           )}
         </div>

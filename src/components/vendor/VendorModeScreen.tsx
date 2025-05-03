@@ -1,147 +1,165 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  Store, 
-  Users, 
-  ShoppingBag, 
-  Settings, 
-  CreditCard,
-  DollarSign,
-  ChevronRight
-} from 'lucide-react';
-import Card from '../common/Card';
+import { Store, Package, Users, Settings, Tag, ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { useAuth } from '@/context/AuthContext';
-import { toast } from '@/hooks/use-toast';
+import { useQuery } from '@tanstack/react-query';
+import { getVendorProfile } from '@/services/vendorService';
+import LoadingState from '../common/LoadingState';
+import { toast } from '@/components/ui/sonner';
 
-interface VendorStats {
-  totalSales: number;
-  activeProducts: number;
-  customersCount: number;
-  pendingOrders: number;
+interface MenuItemProps {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  onClick: () => void;
 }
 
-const mockStats: VendorStats = {
-  totalSales: 8750.50,
-  activeProducts: 124,
-  customersCount: 48,
-  pendingOrders: 7
+const MenuItem: React.FC<MenuItemProps> = ({ icon, title, description, onClick }) => {
+  return (
+    <Card 
+      className="p-6 cursor-pointer hover:shadow-md transition-shadow flex items-start"
+      onClick={onClick}
+    >
+      <div className="rounded-full bg-construPro-blue/10 p-3 mr-4">
+        {icon}
+      </div>
+      <div>
+        <h3 className="font-bold text-lg">{title}</h3>
+        <p className="text-gray-600 text-sm">{description}</p>
+      </div>
+    </Card>
+  );
 };
 
 const VendorModeScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const [stats, setStats] = useState<VendorStats>(mockStats);
-
-  // Menu sections for vendor
-  const vendorSections = [
+  const { profile } = useAuth();
+  
+  // Fetch vendor profile to check if it exists
+  const { data: vendorProfile, isLoading } = useQuery({
+    queryKey: ['vendorProfile'],
+    queryFn: getVendorProfile,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+  
+  const menuItems: MenuItemProps[] = [
     {
-      title: "Ajustar Pontos",
-      icon: <DollarSign className="text-construPro-blue mr-3" size={20} />,
-      path: "/vendor/adjust-points",
-      description: "Crédito ou débito de pontos para clientes"
-    },
-    {
+      icon: <Package className="text-construPro-blue" />,
       title: "Produtos",
-      icon: <ShoppingBag className="text-construPro-blue mr-3" size={20} />,
-      path: "/vendor/products",
-      description: "Gerenciar catálogo de produtos"
+      description: "Cadastre e gerencie os produtos da sua loja",
+      onClick: () => navigate('/vendor/products')
     },
     {
+      icon: <Store className="text-construPro-blue" />,
+      title: "Pedidos",
+      description: "Acompanhe os pedidos feitos na sua loja",
+      onClick: () => navigate('/vendor/orders')
+    },
+    {
+      icon: <Users className="text-construPro-blue" />,
       title: "Clientes",
-      icon: <Users className="text-construPro-blue mr-3" size={20} />,
-      path: "/vendor/customers",
-      description: "Ver lista de clientes e compras"
+      description: "Gerencie os clientes e visualize histórico de compras",
+      onClick: () => navigate('/vendor/customers')
     },
     {
-      title: "Configuração da Loja",
-      icon: <Settings className="text-construPro-blue mr-3" size={20} />,
-      path: "/vendor/store-config",
-      description: "Dados e configurações da loja"
+      icon: <Tag className="text-construPro-blue" />,
+      title: "Ajuste de Pontos",
+      description: "Adicione ou remova pontos dos clientes",
+      onClick: () => navigate('/vendor/adjust-points')
     },
     {
-      title: "Pedidos Recentes",
-      icon: <CreditCard className="text-construPro-blue mr-3" size={20} />,
-      path: "/vendor/orders",
-      description: "Gerenciar e acompanhar pedidos"
+      icon: <Settings className="text-construPro-blue" />,
+      title: "Configurações da Loja",
+      description: "Edite as informações e configurações da sua loja",
+      onClick: () => navigate('/vendor/store-config')
     }
   ];
 
-  const handleExitVendorMode = () => {
-    navigate('/profile');
-    toast({
-      title: "Modo Vendedor desativado",
-      description: "Voltando para o modo normal"
-    });
+  const handleBackToConsumerMode = () => {
+    navigate('/home');
   };
+  
+  if (isLoading) {
+    return <LoadingState text="Carregando..." />;
+  }
+  
+  // If there's no vendor profile, redirect to vendor registration
+  if (!vendorProfile) {
+    return (
+      <div className="min-h-screen bg-gray-100 p-6 flex flex-col items-center justify-center">
+        <div className="bg-white rounded-lg shadow-md p-8 max-w-md w-full text-center">
+          <Store size={48} className="mx-auto text-construPro-blue mb-4" />
+          <h1 className="text-2xl font-bold mb-2">Modo Lojista</h1>
+          <p className="text-gray-600 mb-6">
+            Você ainda não configurou seu perfil de lojista. Complete seu cadastro para começar a vender.
+          </p>
+          <Button 
+            onClick={() => navigate('/auth/vendor-profile')}
+            className="w-full bg-construPro-blue hover:bg-blue-700"
+          >
+            Configurar Perfil de Lojista
+          </Button>
+          <Button 
+            variant="outline"
+            className="w-full mt-4"
+            onClick={handleBackToConsumerMode}
+          >
+            Voltar para Modo Cliente
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
+    <div className="min-h-screen bg-gray-100">
       {/* Header */}
-      <div className="bg-construPro-blue p-6 pt-12 flex items-center">
-        <button onClick={handleExitVendorMode} className="mr-4 text-white">
-          <ArrowLeft size={24} />
-        </button>
-        <Store className="text-white mr-2" size={24} />
-        <h1 className="text-xl font-bold text-white">Modo Vendedor</h1>
-      </div>
-      
-      {/* Stats Cards */}
-      <div className="px-6 py-4">
-        <div className="grid grid-cols-2 gap-4">
-          <Card className="p-4 flex flex-col items-center justify-center bg-amber-50 border-amber-200">
-            <h3 className="text-amber-800 font-medium text-sm mb-1">Vendas Totais</h3>
-            <p className="font-bold text-amber-900 text-xl">
-              R$ {stats.totalSales.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-            </p>
-          </Card>
+      <div className="bg-construPro-blue text-white p-6">
+        <div className="container mx-auto">
+          <button 
+            onClick={handleBackToConsumerMode}
+            className="flex items-center mb-6 text-white/80 hover:text-white transition-colors"
+          >
+            <ArrowLeft size={20} className="mr-1" />
+            Voltar para Modo Cliente
+          </button>
           
-          <Card className="p-4 flex flex-col items-center justify-center bg-emerald-50 border-emerald-200">
-            <h3 className="text-emerald-800 font-medium text-sm mb-1">Produtos Ativos</h3>
-            <p className="font-bold text-emerald-900 text-xl">
-              {stats.activeProducts}
-            </p>
-          </Card>
-          
-          <Card className="p-4 flex flex-col items-center justify-center bg-blue-50 border-blue-200">
-            <h3 className="text-blue-800 font-medium text-sm mb-1">Clientes</h3>
-            <p className="font-bold text-blue-900 text-xl">
-              {stats.customersCount}
-            </p>
-          </Card>
-          
-          <Card className="p-4 flex flex-col items-center justify-center bg-red-50 border-red-200">
-            <h3 className="text-red-800 font-medium text-sm mb-1">Pedidos Pendentes</h3>
-            <p className="font-bold text-red-900 text-xl">
-              {stats.pendingOrders}
-            </p>
-          </Card>
+          <div className="flex items-center">
+            {vendorProfile.logo ? (
+              <img 
+                src={vendorProfile.logo} 
+                alt={vendorProfile.nome_loja} 
+                className="w-16 h-16 rounded-full bg-white p-1 mr-4 object-cover"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center mr-4">
+                <Store size={32} />
+              </div>
+            )}
+            <div>
+              <h1 className="text-2xl font-bold">{vendorProfile.nome_loja}</h1>
+              <p className="text-white/80">Modo Lojista</p>
+            </div>
+          </div>
         </div>
       </div>
       
-      {/* Section Menu */}
-      <div className="px-6 space-y-4">
-        <Card className="overflow-hidden divide-y divide-gray-100">
-          {vendorSections.map((section, index) => (
-            <div 
-              key={index} 
-              className="p-4 cursor-pointer"
-              onClick={() => navigate(section.path)}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  {section.icon}
-                  <div>
-                    <h3 className="font-medium">{section.title}</h3>
-                    <p className="text-sm text-gray-500">{section.description}</p>
-                  </div>
-                </div>
-                <ChevronRight className="text-gray-400" size={20} />
-              </div>
-            </div>
+      {/* Menu Items */}
+      <div className="container mx-auto p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {menuItems.map((item, index) => (
+            <MenuItem 
+              key={index}
+              icon={item.icon}
+              title={item.title}
+              description={item.description}
+              onClick={item.onClick}
+            />
           ))}
-        </Card>
+        </div>
       </div>
     </div>
   );

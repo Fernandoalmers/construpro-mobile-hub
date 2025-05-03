@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Card from '../common/Card';
 import CustomInput from '../common/CustomInput';
@@ -7,43 +7,105 @@ import CustomButton from '../common/CustomButton';
 import ListEmptyState from '../common/ListEmptyState';
 import Avatar from '../common/Avatar';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Search, Plus, Minus } from 'lucide-react';
-import { toast } from '@/components/ui/use-toast';
-import clientes from '../../data/clientes.json';
-import ajustes from '../../data/ajustes.json';
+import { ArrowLeft, Search, Plus, Minus, History } from 'lucide-react';
+import { toast } from '@/components/ui/sonner';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  searchCustomers,
+  getCustomerPoints,
+  getPointAdjustments,
+  createPointAdjustment,
+  VendorCustomer,
+  PointAdjustment
+} from '@/services/vendorService';
+
+interface CustomerData {
+  id: string;
+  nome: string;
+  telefone?: string;
+  email?: string;
+  cpf?: string;
+}
 
 const AjustePontosVendorScreen: React.FC = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [pontos, setPontos] = useState('');
   const [motivo, setMotivo] = useState('');
   const [isPositiveAdjustment, setIsPositiveAdjustment] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<CustomerData[]>([]);
+  const [showSearchResults, setShowSearchResults] = useState(false);
 
-  // Filter clients based on search
-  const filteredClientes = clientes.filter(cliente =>
-    cliente.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    cliente.cpf.includes(searchTerm) ||
-    cliente.codigo.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Get customer's points
+  const { data: customerPoints = 0 } = useQuery({
+    queryKey: ['customerPoints', selectedCustomerId],
+    queryFn: () => selectedCustomerId ? getCustomerPoints(selectedCustomerId) : Promise.resolve(0),
+    enabled: !!selectedCustomerId,
+  });
 
-  const selectedClient = selectedClientId 
-    ? clientes.find(cliente => cliente.id === selectedClientId) 
-    : null;
+  // Get point adjustments history for the selected customer
+  const { data: adjustments = [] } = useQuery({
+    queryKey: ['pointAdjustments', selectedCustomerId],
+    queryFn: () => selectedCustomerId ? getPointAdjustments(selectedCustomerId) : Promise.resolve([]),
+    enabled: !!selectedCustomerId,
+  });
 
-  // Get recent adjustments for the selected client
-  const clientAdjustments = selectedClientId
-    ? ajustes.filter(ajuste => ajuste.clienteId === selectedClientId)
-        .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
-    : [];
+  // Create point adjustment mutation
+  const createAdjustmentMutation = useMutation({
+    mutationFn: (data: { userId: string, tipo: string, valor: number, motivo: string }) => 
+      createPointAdjustment(data.userId, data.tipo, data.valor, data.motivo),
+    onSuccess: () => {
+      toast.success(isPositiveAdjustment ? 'Pontos adicionados com sucesso!' : 'Pontos removidos com sucesso!');
+      setPontos('');
+      setMotivo('');
+      
+      // Invalidate queries to update data
+      queryClient.invalidateQueries({ queryKey: ['customerPoints', selectedCustomerId] });
+      queryClient.invalidateQueries({ queryKey: ['pointAdjustments', selectedCustomerId] });
+    },
+    onError: (error) => {
+      toast.error('Erro ao ajustar pontos. Tente novamente.');
+      console.error('Error creating point adjustment:', error);
+    }
+  });
+
+  // Handle search for customers
+  useEffect(() => {
+    const searchCustomersDebounced = async () => {
+      if (searchTerm.length < 3) {
+        setSearchResults([]);
+        setShowSearchResults(false);
+        return;
+      }
+      
+      setIsSearching(true);
+      try {
+        const results = await searchCustomers(searchTerm);
+        setSearchResults(results);
+        setShowSearchResults(true);
+      } catch (error) {
+        console.error('Error searching customers:', error);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+
+    const timeoutId = setTimeout(searchCustomersDebounced, 500);
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
   };
 
-  const handleSelectClient = (clientId: string) => {
-    setSelectedClientId(clientId);
+  const handleSelectCustomer = (customer: CustomerData) => {
+    setSelectedCustomerId(customer.id);
     setSearchTerm('');
+    setShowSearchResults(false);
   };
 
   const handlePontosChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -56,34 +118,45 @@ const AjustePontosVendorScreen: React.FC = () => {
     setIsPositiveAdjustment(!isPositiveAdjustment);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedClientId || !pontos || !motivo) {
-      toast({
-        title: "Erro",
-        description: "Preencha todos os campos obrigatórios.",
-        variant: "destructive"
-      });
+    if (!selectedCustomerId || !pontos || !motivo) {
+      toast.error('Preencha todos os campos obrigatórios.');
       return;
     }
     
-    // In a real app, this would send the adjustment to the backend
-    toast({
-      title: "Ajuste registrado!",
-      description: `${isPositiveAdjustment ? 'Adicionado' : 'Removido'} ${pontos} pontos para o cliente.`,
-    });
+    const pontosValue = parseInt(pontos);
+    if (isNaN(pontosValue) || pontosValue <= 0) {
+      toast.error('O valor de pontos deve ser maior que zero.');
+      return;
+    }
     
-    // Reset form
-    setPontos('');
-    setMotivo('');
+    // If removing points, check if customer has enough points
+    if (!isPositiveAdjustment && pontosValue > customerPoints) {
+      toast.error(`O cliente possui apenas ${customerPoints} pontos disponíveis.`);
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    try {
+      await createAdjustmentMutation.mutateAsync({
+        userId: selectedCustomerId,
+        tipo: isPositiveAdjustment ? 'adicao' : 'remocao',
+        valor: isPositiveAdjustment ? pontosValue : -pontosValue,
+        motivo
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
       {/* Header */}
       <div className="bg-white p-4 flex items-center shadow-sm">
-        <button onClick={() => navigate(-1)} className="mr-4">
+        <button onClick={() => navigate('/vendor')} className="mr-4">
           <ArrowLeft size={24} />
         </button>
         <h1 className="text-xl font-bold">Ajuste de Pontos</h1>
@@ -95,33 +168,39 @@ const AjustePontosVendorScreen: React.FC = () => {
           <h2 className="font-bold mb-3">Buscar cliente</h2>
           <CustomInput
             isSearch
-            placeholder="Nome, CPF ou código"
+            placeholder="Nome, CPF ou e-mail"
             value={searchTerm}
             onChange={handleSearchChange}
           />
           
-          {searchTerm && (
+          {isSearching && (
+            <div className="mt-4 text-center">
+              <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-gray-900"></div>
+              <p className="mt-2 text-sm text-gray-500">Buscando clientes...</p>
+            </div>
+          )}
+          
+          {showSearchResults && (
             <div className="mt-4 max-h-60 overflow-y-auto">
-              {filteredClientes.length > 0 ? (
+              {searchResults.length > 0 ? (
                 <div className="divide-y divide-gray-100">
-                  {filteredClientes.map(cliente => (
+                  {searchResults.map(customer => (
                     <div
-                      key={cliente.id}
+                      key={customer.id}
                       className="py-2 flex items-center cursor-pointer hover:bg-gray-50"
-                      onClick={() => handleSelectClient(cliente.id)}
+                      onClick={() => handleSelectCustomer(customer)}
                     >
                       <Avatar
-                        src={cliente.avatar}
-                        fallback={cliente.nome}
+                        src={undefined}
+                        fallback={customer.nome}
                         size="sm"
                         className="mr-3"
                       />
                       <div>
-                        <p className="font-medium">{cliente.nome}</p>
+                        <p className="font-medium">{customer.nome}</p>
                         <div className="text-xs text-gray-500">
-                          <span>CPF: {cliente.cpf}</span>
-                          <span className="mx-2">•</span>
-                          <span>Código: {cliente.codigo}</span>
+                          {customer.cpf && <><span>CPF: {customer.cpf}</span><span className="mx-2">•</span></>}
+                          <span>{customer.email || customer.telefone || ''}</span>
                         </div>
                       </div>
                     </div>
@@ -137,24 +216,26 @@ const AjustePontosVendorScreen: React.FC = () => {
         </Card>
         
         {/* Selected Client */}
-        {selectedClient && (
+        {selectedCustomerId && (
           <Card className="p-4">
             <div className="flex items-center">
               <Avatar
-                src={selectedClient.avatar}
-                fallback={selectedClient.nome}
+                src={undefined}
+                fallback={searchResults.find(c => c.id === selectedCustomerId)?.nome || 'Cliente'}
                 size="md"
                 className="mr-4"
               />
               <div>
-                <h3 className="font-bold">{selectedClient.nome}</h3>
-                <p className="text-sm text-gray-600">{selectedClient.cpf}</p>
+                <h3 className="font-bold">{searchResults.find(c => c.id === selectedCustomerId)?.nome || 'Cliente'}</h3>
+                <p className="text-sm text-gray-600">{searchResults.find(c => c.id === selectedCustomerId)?.cpf || ''}</p>
                 <div className="mt-1 flex items-center">
-                  <span className="text-xs bg-gray-100 px-2 py-0.5 rounded mr-2">
-                    Código: {selectedClient.codigo}
-                  </span>
+                  {searchResults.find(c => c.id === selectedCustomerId)?.email && (
+                    <span className="text-xs bg-gray-100 px-2 py-0.5 rounded mr-2">
+                      {searchResults.find(c => c.id === selectedCustomerId)?.email}
+                    </span>
+                  )}
                   <span className="text-xs bg-construPro-orange/10 text-construPro-orange px-2 py-0.5 rounded">
-                    {selectedClient.saldoPontos} pontos
+                    {customerPoints} pontos
                   </span>
                 </div>
               </div>
@@ -163,7 +244,7 @@ const AjustePontosVendorScreen: React.FC = () => {
         )}
         
         {/* Adjustment Form */}
-        {selectedClient && (
+        {selectedCustomerId && (
           <Card className="p-4">
             <h2 className="font-bold mb-4">Ajustar Pontos</h2>
             
@@ -230,33 +311,36 @@ const AjustePontosVendorScreen: React.FC = () => {
                 variant="primary"
                 type="submit"
                 fullWidth
+                disabled={isSubmitting}
               >
-                {isPositiveAdjustment ? 'Adicionar' : 'Remover'} Pontos
+                {isSubmitting ? 'Processando...' : `${isPositiveAdjustment ? 'Adicionar' : 'Remover'} Pontos`}
               </CustomButton>
             </form>
           </Card>
         )}
         
         {/* Recent Adjustments */}
-        {selectedClient && (
+        {selectedCustomerId && (
           <div>
-            <h2 className="font-bold text-lg text-gray-800 mb-3">Histórico de ajustes</h2>
+            <div className="flex items-center mb-3">
+              <History size={18} className="mr-2 text-gray-800" />
+              <h2 className="font-bold text-lg text-gray-800">Histórico de ajustes</h2>
+            </div>
             
-            {clientAdjustments.length > 0 ? (
+            {adjustments.length > 0 ? (
               <Card className="overflow-hidden">
                 <div className="divide-y divide-gray-100">
-                  {clientAdjustments.map(ajuste => (
-                    <div key={ajuste.id} className="p-4">
+                  {adjustments.map((adjustment: PointAdjustment) => (
+                    <div key={adjustment.id} className="p-4">
                       <div className="flex justify-between items-center">
-                        <p className={`font-medium ${ajuste.pontos >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {ajuste.pontos >= 0 ? '+' : ''}{ajuste.pontos} pontos
+                        <p className={`font-medium ${adjustment.valor >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {adjustment.valor >= 0 ? '+' : ''}{adjustment.valor} pontos
                         </p>
                         <span className="text-sm text-gray-500">
-                          {new Date(ajuste.data).toLocaleDateString('pt-BR')}
+                          {new Date(adjustment.created_at!).toLocaleDateString('pt-BR')}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600 mt-1">{ajuste.motivo}</p>
-                      <p className="text-xs text-gray-500 mt-1">Vendedor: {ajuste.vendedor}</p>
+                      <p className="text-sm text-gray-600 mt-1">{adjustment.motivo}</p>
                     </div>
                   ))}
                 </div>

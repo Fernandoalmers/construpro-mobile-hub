@@ -1,54 +1,60 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search, Plus, Edit2, Archive, Tag } from 'lucide-react';
+import { ArrowLeft, Search } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { getVendorProducts, getVendorOrders, VendorProduct, VendorOrder } from '@/services/vendorService';
+import { Tab, TabList, TabPanel, TabPanels, Tabs } from '@/components/ui/tabs';
+import LoadingState from '../common/LoadingState';
+import ListEmptyState from '../common/ListEmptyState';
+import OrderItem from './OrderItem';
 import { Card } from '@/components/ui/card';
 import CustomInput from '../common/CustomInput';
-import CustomButton from '../common/CustomButton';
-import ListEmptyState from '../common/ListEmptyState';
-import produtos from '../../data/produtos.json';
-import { toast } from '@/components/ui/use-toast';
 
 const ProdutosVendorScreen: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterCategory, setFilterCategory] = useState<string | null>(null);
+  const [filterStatus, setFilterStatus] = useState<string | null>(null);
   
-  // Simulate logged-in vendor's store
-  const currentLojaId = "1"; // Just for simulation purposes
-  
-  // Filter products for current store only
-  const storeProdutos = produtos.filter(produto => produto.lojaId === currentLojaId);
-  
-  // Get unique categories
-  const categories = Array.from(new Set(storeProdutos.map(produto => produto.categoria)));
-  
-  // Filter products based on search and category
-  const filteredProducts = storeProdutos.filter(produto => {
-    const matchesSearch = searchTerm === '' || 
-      produto.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      produto.descricao?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesCategory = !filterCategory || produto.categoria === filterCategory;
-    
-    return matchesSearch && matchesCategory;
+  // Fetch orders
+  const { 
+    data: orders = [], 
+    isLoading: isOrdersLoading,
+    error: ordersError
+  } = useQuery({
+    queryKey: ['vendorOrders'],
+    queryFn: getVendorOrders,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
+  
+  // Filter orders based on search and status
+  const filteredOrders = orders.filter(order => {
+    const matchesSearch = searchTerm === '' || 
+      order.cliente?.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.id.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = filterStatus === null || order.status === filterStatus;
+    
+    return matchesSearch && matchesStatus;
+  });
+  
+  // Order Status types
+  const orderStatuses = [
+    { value: 'pendente', label: 'Pendente' },
+    { value: 'aprovado', label: 'Aprovado' },
+    { value: 'processando', label: 'Em processamento' },
+    { value: 'enviado', label: 'Enviado' },
+    { value: 'entregue', label: 'Entregue' },
+    { value: 'cancelado', label: 'Cancelado' }
+  ];
 
-  const handleNewProduct = () => {
-    navigate('/vendor/produtos/novo');
-  };
+  if (isOrdersLoading) {
+    return <LoadingState text="Carregando pedidos..." />;
+  }
   
-  const handleEditProduct = (productId: string) => {
-    navigate(`/vendor/produtos/editar/${productId}`);
-  };
-  
-  const handleArchiveProduct = (productId: string, productName: string) => {
-    // In a real app, this would open a confirmation dialog and then archive the product
-    toast({
-      title: "Produto arquivado",
-      description: `O produto "${productName}" foi arquivado com sucesso.`
-    });
-  };
+  if (ordersError) {
+    console.error('Error fetching orders:', ordersError);
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
@@ -57,129 +63,114 @@ const ProdutosVendorScreen: React.FC = () => {
         <button onClick={() => navigate('/vendor')} className="mr-4">
           <ArrowLeft size={24} />
         </button>
-        <h1 className="text-xl font-bold">Produtos</h1>
+        <h1 className="text-xl font-bold">Pedidos</h1>
       </div>
       
       <div className="p-6 space-y-6">
         {/* Search and filters */}
-        <div className="flex flex-col space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4">
+        <div className="space-y-4">
           <CustomInput
-            placeholder="Buscar por nome ou descrição..."
+            placeholder="Buscar por nome do cliente ou código do pedido..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             isSearch
-            className="w-full sm:w-2/3"
+            className="w-full"
           />
           
-          <div className="flex overflow-x-auto gap-2 pb-1">
+          <div className="flex overflow-x-auto gap-2 pb-2">
             <button
-              onClick={() => setFilterCategory(null)}
+              onClick={() => setFilterStatus(null)}
               className={`whitespace-nowrap px-3 py-1 text-sm rounded-full ${
-                filterCategory === null 
+                filterStatus === null 
                   ? 'bg-construPro-blue text-white' 
                   : 'bg-gray-200 text-gray-800'
               }`}
             >
-              Todas
+              Todos
             </button>
             
-            {categories.map(category => (
+            {orderStatuses.map(status => (
               <button
-                key={category}
-                onClick={() => setFilterCategory(category === filterCategory ? null : category)}
+                key={status.value}
+                onClick={() => setFilterStatus(status.value === filterStatus ? null : status.value)}
                 className={`whitespace-nowrap px-3 py-1 text-sm rounded-full ${
-                  category === filterCategory 
+                  status.value === filterStatus 
                     ? 'bg-construPro-blue text-white' 
                     : 'bg-gray-200 text-gray-800'
                 }`}
               >
-                {category}
+                {status.label}
               </button>
             ))}
           </div>
         </div>
         
-        {/* Add New Product Button */}
-        <CustomButton
-          variant="primary"
-          icon={<Plus size={18} />}
-          onClick={handleNewProduct}
-        >
-          Adicionar novo produto
-        </CustomButton>
-        
-        {/* Product List */}
-        <div className="space-y-4">
-          <h2 className="font-bold text-lg">Lista de produtos</h2>
+        {/* Order Stats */}
+        <div className="grid grid-cols-3 gap-4">
+          <Card className="p-4 text-center">
+            <p className="text-gray-500 text-sm">Pedidos Pendentes</p>
+            <p className="text-xl font-bold">
+              {orders.filter(order => order.status === 'pendente').length}
+            </p>
+          </Card>
           
-          {filteredProducts.length > 0 ? (
-            <div className="space-y-3">
-              {filteredProducts.map(produto => (
-                <Card key={produto.id} className="p-4">
-                  <div className="flex">
-                    <div 
-                      className="w-20 h-20 bg-gray-200 rounded-md mr-4 flex-shrink-0 bg-center bg-cover"
-                      style={{ backgroundImage: `url(${produto.imagemUrl || ''})` }}
-                    />
-                    
-                    <div className="flex-1">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h3 className="font-bold">{produto.nome}</h3>
-                          <p className="text-sm text-gray-600 line-clamp-1">{produto.descricao}</p>
-                        </div>
-                        
-                        <div className="flex">
-                          <button
-                            onClick={() => handleEditProduct(produto.id)}
-                            className="p-2 mr-2 text-blue-600 hover:bg-blue-50 rounded"
-                            title="Editar produto"
-                          >
-                            <Edit2 size={18} />
-                          </button>
-                          
-                          <button
-                            onClick={() => handleArchiveProduct(produto.id, produto.nome)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded"
-                            title="Arquivar produto"
-                          >
-                            <Archive size={18} />
-                          </button>
-                        </div>
-                      </div>
-                      
-                      <div className="mt-3 flex flex-wrap gap-2 text-sm">
-                        <div className="bg-gray-100 px-2 py-1 rounded">
-                          <span className="font-medium">Preço:</span>{' '}
-                          <span>R$ {produto.preco.toFixed(2)}</span>
-                        </div>
-                        
-                        <div className="bg-gray-100 px-2 py-1 rounded">
-                          <span className="font-medium">Estoque:</span>{' '}
-                          <span>{produto.estoque || 0}</span>
-                        </div>
-                        
-                        <div className="bg-gray-100 px-2 py-1 rounded">
-                          <span className="font-medium">Categoria:</span>{' '}
-                          <span>{produto.categoria}</span>
-                        </div>
-                        
-                        <div className="bg-construPro-orange/10 text-construPro-orange px-2 py-1 rounded flex items-center">
-                          <Tag size={14} className="mr-1" />
-                          <span>Pontos: </span>
-                          <span className="ml-1">{produto.pontos}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
+          <Card className="p-4 text-center">
+            <p className="text-gray-500 text-sm">Pedidos Recentes</p>
+            <p className="text-xl font-bold">
+              {orders.filter(order => {
+                const orderDate = new Date(order.created_at);
+                const threeDaysAgo = new Date();
+                threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+                return orderDate > threeDaysAgo;
+              }).length}
+            </p>
+          </Card>
+          
+          <Card className="p-4 text-center">
+            <p className="text-gray-500 text-sm">Total Vendido</p>
+            <p className="text-xl font-bold">
+              {new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+              }).format(
+                orders.reduce((sum, order) => sum + order.valor_total, 0)
+              )}
+            </p>
+          </Card>
+        </div>
+        
+        {/* Orders List */}
+        <div className="space-y-4">
+          <h2 className="font-bold text-lg">Lista de pedidos</h2>
+          
+          {filteredOrders.length > 0 ? (
+            <div className="space-y-4">
+              {filteredOrders.map(order => (
+                <OrderItem 
+                  key={order.id}
+                  order={order}
+                  onViewDetails={() => {}} // TODO: Implement view details functionality
+                />
               ))}
             </div>
           ) : (
             <ListEmptyState
               icon={<Search className="h-12 w-12 text-gray-400" />}
-              title="Nenhum produto encontrado"
-              description="Tente ajustar os filtros de busca ou adicione novos produtos"
+              title="Nenhum pedido encontrado"
+              description={
+                searchTerm || filterStatus 
+                  ? "Tente ajustar os filtros de busca" 
+                  : "Você ainda não tem nenhum pedido"
+              }
+              action={
+                (searchTerm || filterStatus) ? {
+                  label: "Limpar filtros",
+                  onClick: () => {
+                    setSearchTerm('');
+                    setFilterStatus(null);
+                  }
+                } : undefined
+              }
             />
           )}
         </div>

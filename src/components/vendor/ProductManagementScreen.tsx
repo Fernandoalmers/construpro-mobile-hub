@@ -1,55 +1,96 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ShoppingBag } from 'lucide-react';
-import produtos from '../../data/produtos.json';
-import { ProdutoVendor } from './ProductItem';
+import { ArrowLeft, ShoppingBag, Search } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getVendorProducts, updateProductStatus, deleteVendorProduct, VendorProduct } from '@/services/vendorService';
+import { toast } from '@/components/ui/sonner';
 import ProductFilters from './ProductFilters';
 import ProductList from './ProductList';
 import ProductActions from './ProductActions';
+import LoadingState from '../common/LoadingState';
 
 const ProductManagementScreen: React.FC = () => {
   const navigate = useNavigate();
-  
-  // Convert produtos data to include status
-  const [produtosVendor, setProdutosVendor] = useState<ProdutoVendor[]>(
-    produtos.map(produto => ({
-      ...produto,
-      status: Math.random() > 0.3 ? 'ativo' : (Math.random() > 0.5 ? 'inativo' : 'pendente')
-    }))
-  );
-  
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
   
+  // Fetch products
+  const { data: products = [], isLoading, error } = useQuery({
+    queryKey: ['vendorProducts'],
+    queryFn: getVendorProducts,
+  });
+  
+  // Toggle product status mutation
+  const toggleStatusMutation = useMutation({
+    mutationFn: async ({ productId, newStatus }: { productId: string; newStatus: 'pendente' | 'aprovado' | 'inativo' }) => {
+      return await updateProductStatus(productId, newStatus);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vendorProducts'] });
+      toast.success('Status do produto atualizado com sucesso');
+    },
+    onError: (error) => {
+      toast.error('Erro ao atualizar status do produto');
+      console.error('Error toggling product status:', error);
+    }
+  });
+  
+  // Delete product mutation
+  const deleteProductMutation = useMutation({
+    mutationFn: (productId: string) => {
+      return deleteVendorProduct(productId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vendorProducts'] });
+      toast.success('Produto excluído com sucesso');
+    },
+    onError: (error) => {
+      toast.error('Erro ao excluir produto');
+      console.error('Error deleting product:', error);
+    }
+  });
+
   // Filter products based on search and status
-  const filteredProducts = produtosVendor.filter(produto => {
+  const filteredProducts = products.filter(produto => {
     const matchesSearch = searchTerm === '' || 
-      produto.nome.toLowerCase().includes(searchTerm.toLowerCase());
+      produto.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      produto.descricao.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = filterStatus === null || produto.status === filterStatus;
     
     return matchesSearch && matchesStatus;
   });
 
-  const handleToggleStatus = (productId: string) => {
-    setProdutosVendor(
-      produtosVendor.map(produto => {
-        if (produto.id === productId) {
-          return {
-            ...produto,
-            status: produto.status === 'ativo' ? 'inativo' : 'ativo'
-          };
-        }
-        return produto;
-      })
-    );
+  const handleToggleStatus = (productId: string, currentStatus: string) => {
+    // Logic to determine the next status
+    let newStatus: 'pendente' | 'aprovado' | 'inativo';
+    
+    if (currentStatus === 'ativo' || currentStatus === 'aprovado') {
+      newStatus = 'inativo';
+    } else {
+      newStatus = 'pendente';
+    }
+    
+    toggleStatusMutation.mutate({ productId, newStatus });
+  };
+  
+  const handleDelete = (productId: string) => {
+    if (confirm('Tem certeza que deseja excluir este produto?')) {
+      deleteProductMutation.mutate(productId);
+    }
   };
 
   const handleClearFilters = () => {
     setSearchTerm('');
     setFilterStatus(null);
   };
+  
+  if (error) {
+    toast.error('Erro ao carregar produtos');
+    console.error('Error fetching products:', error);
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
@@ -73,11 +114,17 @@ const ProductManagementScreen: React.FC = () => {
         
         <ProductActions />
         
-        <ProductList
-          products={filteredProducts}
-          onToggleStatus={handleToggleStatus}
-          onClearFilters={handleClearFilters}
-        />
+        {isLoading ? (
+          <LoadingState text="Carregando produtos..." />
+        ) : (
+          <ProductList
+            products={filteredProducts}
+            onToggleStatus={handleToggleStatus}
+            onDelete={handleDelete}
+            onEdit={(id) => navigate(`/vendor/product-edit/${id}`)}
+            onClearFilters={handleClearFilters}
+          />
+        )}
       </div>
     </div>
   );

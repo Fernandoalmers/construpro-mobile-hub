@@ -1,6 +1,5 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { Json } from "@/integrations/supabase/types";
 
 export interface Product {
   id: string;
@@ -26,11 +25,24 @@ export interface Product {
 export const getProducts = async (): Promise<Product[]> => {
   try {
     const { data, error } = await supabase
-      .from('products')
+      .from('produtos')
       .select(`
-        *,
-        stores:loja_id (nome, logo_url)
+        id,
+        nome,
+        descricao,
+        preco_normal as preco,
+        preco_promocional as preco_anterior,
+        pontos_consumidor as pontos,
+        categoria,
+        imagens,
+        vendedor_id as loja_id,
+        estoque,
+        status,
+        created_at,
+        updated_at,
+        vendedores:vendedor_id (nome_loja as nome, logo as logo_url)
       `)
+      .eq('status', 'aprovado')
       .order('nome');
       
     if (error) {
@@ -38,7 +50,17 @@ export const getProducts = async (): Promise<Product[]> => {
       return [];
     }
     
-    return data as unknown as Product[] || [];
+    // Transform the data to match the expected format
+    const products = data.map(item => ({
+      ...item,
+      imagem_url: item.imagens && Array.isArray(item.imagens) && item.imagens.length > 0 
+        ? item.imagens[0] 
+        : undefined,
+      avaliacao: 5, // Default value for now
+      loja: item.vendedores
+    }));
+    
+    return products as unknown as Product[];
   } catch (error) {
     console.error('Error in getProducts:', error);
     return [];
@@ -49,12 +71,25 @@ export const getProducts = async (): Promise<Product[]> => {
 export const getProductsByCategory = async (category: string): Promise<Product[]> => {
   try {
     const { data, error } = await supabase
-      .from('products')
+      .from('produtos')
       .select(`
-        *,
-        stores:loja_id (nome, logo_url)
+        id,
+        nome,
+        descricao,
+        preco_normal as preco,
+        preco_promocional as preco_anterior,
+        pontos_consumidor as pontos,
+        categoria,
+        imagens,
+        vendedor_id as loja_id,
+        estoque,
+        status,
+        created_at,
+        updated_at,
+        vendedores:vendedor_id (nome_loja as nome, logo as logo_url)
       `)
       .eq('categoria', category)
+      .eq('status', 'aprovado')
       .order('nome');
       
     if (error) {
@@ -62,7 +97,17 @@ export const getProductsByCategory = async (category: string): Promise<Product[]
       return [];
     }
     
-    return data as unknown as Product[] || [];
+    // Transform the data to match the expected format
+    const products = data.map(item => ({
+      ...item,
+      imagem_url: item.imagens && Array.isArray(item.imagens) && item.imagens.length > 0 
+        ? item.imagens[0] 
+        : undefined,
+      avaliacao: 5, // Default value for now
+      loja: item.vendedores
+    }));
+    
+    return products as unknown as Product[];
   } catch (error) {
     console.error('Error in getProductsByCategory:', error);
     return [];
@@ -73,12 +118,25 @@ export const getProductsByCategory = async (category: string): Promise<Product[]
 export const getProductById = async (id: string): Promise<Product | null> => {
   try {
     const { data, error } = await supabase
-      .from('products')
+      .from('produtos')
       .select(`
-        *,
-        stores:loja_id (nome, logo_url)
+        id,
+        nome,
+        descricao,
+        preco_normal as preco,
+        preco_promocional as preco_anterior,
+        pontos_consumidor as pontos,
+        categoria,
+        imagens,
+        vendedor_id as loja_id,
+        estoque,
+        status,
+        created_at,
+        updated_at,
+        vendedores:vendedor_id (nome_loja as nome, logo as logo_url)
       `)
       .eq('id', id)
+      .eq('status', 'aprovado')
       .single();
       
     if (error) {
@@ -86,7 +144,17 @@ export const getProductById = async (id: string): Promise<Product | null> => {
       return null;
     }
     
-    return data as unknown as Product;
+    // Transform the data to match the expected format
+    const product = {
+      ...data,
+      imagem_url: data.imagens && Array.isArray(data.imagens) && data.imagens.length > 0 
+        ? data.imagens[0] 
+        : undefined,
+      avaliacao: 5, // Default value for now
+      loja: data.vendedores
+    };
+    
+    return product as unknown as Product;
   } catch (error) {
     console.error('Error in getProductById:', error);
     return null;
@@ -144,12 +212,26 @@ export const trackProductView = async (productId: string): Promise<void> => {
   }
 };
 
-// Add store product
+// Add product
 export const addProduct = async (product: Omit<Product, 'id' | 'created_at' | 'updated_at'>): Promise<Product | null> => {
   try {
+    // Convert to the new schema format
+    const newProduct = {
+      nome: product.nome,
+      descricao: product.descricao,
+      preco_normal: product.preco,
+      preco_promocional: product.preco_anterior,
+      estoque: product.estoque,
+      categoria: product.categoria,
+      pontos_consumidor: product.pontos,
+      imagens: product.imagem_url ? [product.imagem_url] : [],
+      vendedor_id: product.loja_id,
+      status: 'pendente' // All new products start as pending
+    };
+    
     const { data, error } = await supabase
-      .from('products')
-      .insert(product)
+      .from('produtos')
+      .insert(newProduct)
       .select()
       .single();
       
@@ -158,19 +240,46 @@ export const addProduct = async (product: Omit<Product, 'id' | 'created_at' | 'u
       return null;
     }
     
-    return data as unknown as Product;
+    // Transform back to the expected format
+    const createdProduct = {
+      ...data,
+      preco: data.preco_normal,
+      preco_anterior: data.preco_promocional,
+      pontos: data.pontos_consumidor,
+      imagem_url: data.imagens && Array.isArray(data.imagens) && data.imagens.length > 0 
+        ? data.imagens[0] 
+        : undefined,
+      loja_id: data.vendedor_id,
+      avaliacao: 5 // Default value for now
+    };
+    
+    return createdProduct as unknown as Product;
   } catch (error) {
     console.error('Error in addProduct:', error);
     return null;
   }
 };
 
-// Update store product
+// Update product
 export const updateProduct = async (id: string, updates: Partial<Omit<Product, 'id' | 'created_at' | 'updated_at'>>): Promise<Product | null> => {
   try {
+    // Convert to the new schema format
+    const productUpdates: any = {};
+    
+    if (updates.nome !== undefined) productUpdates.nome = updates.nome;
+    if (updates.descricao !== undefined) productUpdates.descricao = updates.descricao;
+    if (updates.preco !== undefined) productUpdates.preco_normal = updates.preco;
+    if (updates.preco_anterior !== undefined) productUpdates.preco_promocional = updates.preco_anterior;
+    if (updates.pontos !== undefined) productUpdates.pontos_consumidor = updates.pontos;
+    if (updates.categoria !== undefined) productUpdates.categoria = updates.categoria;
+    if (updates.estoque !== undefined) productUpdates.estoque = updates.estoque;
+    if (updates.imagem_url !== undefined) {
+      productUpdates.imagens = [updates.imagem_url];
+    }
+    
     const { data, error } = await supabase
-      .from('products')
-      .update(updates)
+      .from('produtos')
+      .update(productUpdates)
       .eq('id', id)
       .select()
       .single();
@@ -180,7 +289,20 @@ export const updateProduct = async (id: string, updates: Partial<Omit<Product, '
       return null;
     }
     
-    return data as unknown as Product;
+    // Transform back to the expected format
+    const updatedProduct = {
+      ...data,
+      preco: data.preco_normal,
+      preco_anterior: data.preco_promocional,
+      pontos: data.pontos_consumidor,
+      imagem_url: data.imagens && Array.isArray(data.imagens) && data.imagens.length > 0 
+        ? data.imagens[0] 
+        : undefined,
+      loja_id: data.vendedor_id,
+      avaliacao: 5 // Default value for now
+    };
+    
+    return updatedProduct as unknown as Product;
   } catch (error) {
     console.error('Error in updateProduct:', error);
     return null;
@@ -191,7 +313,7 @@ export const updateProduct = async (id: string, updates: Partial<Omit<Product, '
 export const deleteProduct = async (id: string): Promise<boolean> => {
   try {
     const { error } = await supabase
-      .from('products')
+      .from('produtos')
       .delete()
       .eq('id', id);
       
