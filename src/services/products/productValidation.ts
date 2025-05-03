@@ -1,6 +1,7 @@
 
 import { VendorProduct } from './productBase';
 import { getProductImages } from './productImages';
+import { supabase } from '@/integrations/supabase/client';
 
 /**
  * Interface for validation errors

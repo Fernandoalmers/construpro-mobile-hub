@@ -27,7 +27,9 @@ const ProductManagementScreen: React.FC = () => {
   // Fetch products
   const { data: products = [], isLoading, error } = useQuery({
     queryKey: ['vendorProducts'],
-    queryFn: getVendorProducts,
+    queryFn: async () => {
+      return await getVendorProducts();
+    },
   });
 
   // Estado para armazenar o canal de realtime

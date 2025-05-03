@@ -44,15 +44,14 @@ export interface AdminProduct extends BaseProduct {
 
 /**
  * Get products for a specific vendor
- * @param vendorId - The vendor's ID
  * @returns Promise with an array of vendor products
  */
-export const getProductsByVendor = async (vendorId: string): Promise<VendorProduct[]> => {
+export const getProductsByVendor = async (): Promise<VendorProduct[]> => {
   try {
     const { data, error } = await supabase
       .from('produtos')
       .select('*')
-      .eq('vendedor_id', vendorId)
+      .eq('vendedor_id', await getVendorId())
       .order('created_at', { ascending: false });
     
     if (error) {
@@ -66,6 +65,32 @@ export const getProductsByVendor = async (vendorId: string): Promise<VendorProdu
     return [];
   }
 };
+
+/**
+ * Helper function to get the current vendor ID
+ */
+async function getVendorId(): Promise<string> {
+  try {
+    // Get the current authenticated user
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) throw new Error('User not authenticated');
+    
+    // Get the vendor profile from the vendedor table
+    const { data, error } = await supabase
+      .from('vendedores')
+      .select('id')
+      .eq('usuario_id', user.id)
+      .single();
+    
+    if (error) throw error;
+    
+    return data.id;
+  } catch (error) {
+    console.error('Error getting vendor ID:', error);
+    throw error;
+  }
+}
 
 /**
  * Get a specific product by ID
@@ -100,15 +125,27 @@ export const getProductById = async (id: string): Promise<VendorProduct | null> 
 export const createProduct = async (product: Partial<VendorProduct>): Promise<VendorProduct | null> => {
   try {
     // Make sure required fields are present
-    if (!product.nome || !product.descricao || !product.categoria || !product.vendedor_id) {
-      throw new Error('Nome, descrição, categoria e vendedor são obrigatórios');
+    if (!product.nome || !product.descricao || !product.categoria) {
+      throw new Error('Nome, descrição e categoria são obrigatórios');
     }
     
+    const vendorId = await getVendorId();
+    
     const newProduct = {
-      ...product,
+      nome: product.nome,
+      descricao: product.descricao,
+      categoria: product.categoria,
+      vendedor_id: vendorId,
       status: 'pendente' as const,
       preco_normal: product.preco_normal || 0,
-      estoque: product.estoque || 0
+      estoque: product.estoque || 0,
+      pontos_consumidor: product.pontos_consumidor || 0,
+      pontos_profissional: product.pontos_profissional || 0,
+      codigo_barras: product.codigo_barras,
+      sku: product.sku,
+      segmento: product.segmento,
+      preco_promocional: product.preco_promocional,
+      imagens: product.imagens || []
     };
     
     const { data, error } = await supabase
@@ -229,7 +266,7 @@ export const getAllProducts = async (): Promise<AdminProduct[]> => {
         lojaNome: item.vendedores?.nome_loja || 'Loja desconhecida',
         status: item.status as 'pendente' | 'aprovado' | 'inativo',
         created_at: item.created_at,
-        imagens: item.imagens
+        imagens: Array.isArray(item.imagens) ? item.imagens : []
       };
     });
     
