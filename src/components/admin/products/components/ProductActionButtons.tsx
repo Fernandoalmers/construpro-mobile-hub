@@ -2,6 +2,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Check, X, Eye } from 'lucide-react';
+import { toast } from '@/components/ui/sonner';
 
 interface ProductActionButtonsProps {
   status: string;
@@ -26,15 +27,32 @@ const ProductActionButtons: React.FC<ProductActionButtonsProps> = ({
   const handleApprove = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    
     console.log('Approve button clicked, status:', status);
-    onApprove();
+    
+    try {
+      onApprove();
+      console.log('Product approval function called');
+      // No need to show toast here as it should be handled in the parent component
+    } catch (error) {
+      console.error('Error approving product:', error);
+      toast.error('Erro ao aprovar produto');
+    }
   };
   
   const handleReject = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    
     console.log('Reject button clicked, status:', status);
-    onReject();
+    
+    try {
+      onReject();
+      console.log('Product rejection function called');
+    } catch (error) {
+      console.error('Error rejecting product:', error);
+      toast.error('Erro ao rejeitar produto');
+    }
   };
 
   return (
@@ -57,6 +75,7 @@ const ProductActionButtons: React.FC<ProductActionButtonsProps> = ({
             className="h-8 w-8 p-0 text-green-600"
             onClick={handleApprove}
             title="Aprovar produto"
+            data-testid="approve-product-button"
           >
             <Check className="h-4 w-4" />
           </Button>
