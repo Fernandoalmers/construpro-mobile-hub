@@ -134,7 +134,7 @@ export const referralService = {
         throw new Error('Could not fetch referral code');
       }
 
-      // Get referrals made by the user - fix the embedded relation by specifying the column name
+      // Get referrals made by the user - need to explicitly specify the column name for profiles
       const { data: referralsData, error: referralsError } = await supabase
         .from('referrals')
         .select(`
