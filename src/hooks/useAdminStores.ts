@@ -37,7 +37,12 @@ export const useAdminStores = (initialFilter: string = 'all') => {
     
     // Apply status filter
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(store => store.status === statusFilter);
+      // Handle "aprovado" to include both "aprovado" and "ativa"
+      if (statusFilter === 'aprovado') {
+        filtered = filtered.filter(store => store.status === 'aprovado' || store.status === 'ativa');
+      } else {
+        filtered = filtered.filter(store => store.status === statusFilter);
+      }
     }
     
     // Apply search filter

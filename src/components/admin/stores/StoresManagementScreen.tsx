@@ -32,6 +32,17 @@ const StoresManagementScreen: React.FC = () => {
     rejectStore
   } = useAdminStores();
 
+  // Helper function to map store status for display
+  const getStatusDisplay = (status: string) => {
+    switch(status) {
+      case 'aprovado': return 'Aprovado';
+      case 'pendente': return 'Pendente';
+      case 'inativo': return 'Inativo';
+      case 'ativa': return 'Ativa';
+      default: return status;
+    }
+  };
+
   return (
     <AdminLayout currentSection="lojas">
       <div className="space-y-6">
@@ -72,26 +83,26 @@ const StoresManagementScreen: React.FC = () => {
               )}
             </Button>
             <Button
-              variant={filter === 'ativa' ? 'default' : 'outline'}
-              onClick={() => setFilter('ativa')}
+              variant={filter === 'aprovado' ? 'default' : 'outline'}
+              onClick={() => setFilter('aprovado')}
               className="min-w-24"
             >
               Ativas
-              {filter === 'ativa' && (
+              {filter === 'aprovado' && (
                 <Badge variant="secondary" className="ml-2 bg-white/20">
-                  {stores.filter(store => store.status === 'ativa').length}
+                  {stores.filter(store => store.status === 'aprovado' || store.status === 'ativa').length}
                 </Badge>
               )}
             </Button>
             <Button
-              variant={filter === 'inativa' ? 'default' : 'outline'}
-              onClick={() => setFilter('inativa')}
+              variant={filter === 'inativo' ? 'default' : 'outline'}
+              onClick={() => setFilter('inativo')}
               className="min-w-24"
             >
               Inativas
-              {filter === 'inativa' && (
+              {filter === 'inativo' && (
                 <Badge variant="secondary" className="ml-2 bg-white/20">
-                  {stores.filter(store => store.status === 'inativa').length}
+                  {stores.filter(store => store.status === 'inativo').length}
                 </Badge>
               )}
             </Button>
@@ -173,11 +184,8 @@ const StoresManagementScreen: React.FC = () => {
                       </TooltipProvider>
                     </TableCell>
                     <TableCell>
-                      <Badge className={getStoreBadgeColor(store.status || 'pendente')}>
-                        {store.status === 'ativa' ? 'Ativa' : 
-                         store.status === 'pendente' ? 'Pendente' :
-                         store.status === 'inativa' ? 'Inativa' : 
-                         store.status === 'excluida' ? 'Excluída' : 'Desconhecido'}
+                      <Badge className={getStoreBadgeColor(store.status)}>
+                        {getStatusDisplay(store.status)}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right space-x-2">
@@ -203,7 +211,7 @@ const StoresManagementScreen: React.FC = () => {
                           </Button>
                         </>
                       )}
-                      {store.status === 'ativa' && (
+                      {(store.status === 'aprovado' || store.status === 'ativa') && (
                         <>
                           <Button 
                             size="sm" 
@@ -224,7 +232,7 @@ const StoresManagementScreen: React.FC = () => {
                           </Button>
                         </>
                       )}
-                      {store.status === 'inativa' && (
+                      {store.status === 'inativo' && (
                         <Button 
                           size="sm" 
                           variant="outline" 
