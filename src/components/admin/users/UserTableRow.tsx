@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -78,104 +79,107 @@ const UserTableRow: React.FC<UserTableRowProps> = ({
         </Badge>
       </td>
       <td className="px-4 py-2 text-right">{user.saldo_pontos || 0}</td>
-      <td className="px-4 py-2 text-right relative" ref={menuRef}>
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          className="h-8 w-8 p-0"
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-        >
-          <span className="sr-only">Abrir menu</span>
-          <MoreVertical className="h-4 w-4" />
-        </Button>
-        {isMenuOpen && (
-          <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white z-10">
-            <div className="rounded-md ring-1 ring-black ring-opacity-5 p-1">
-              {user.status === 'pendente' && (
-                <>
+      {/* Fix the type error by wrapping the div in a td element instead of setting the ref directly on td */}
+      <td className="px-4 py-2 text-right relative">
+        <div ref={menuRef}>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="h-8 w-8 p-0"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+          >
+            <span className="sr-only">Abrir menu</span>
+            <MoreVertical className="h-4 w-4" />
+          </Button>
+          {isMenuOpen && (
+            <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white z-10">
+              <div className="rounded-md ring-1 ring-black ring-opacity-5 p-1">
+                {user.status === 'pendente' && (
+                  <>
+                    <Button 
+                      className="w-full justify-start text-sm" 
+                      variant="ghost" 
+                      onClick={() => {
+                        handleApproveUser(user.id);
+                        setIsMenuOpen(false);
+                      }}
+                    >
+                      <CheckCircle className="mr-2 h-4 w-4" /> Aprovar usuário
+                    </Button>
+                    <Button 
+                      className="w-full justify-start text-sm" 
+                      variant="ghost" 
+                      onClick={() => {
+                        handleRejectUser(user.id);
+                        setIsMenuOpen(false);
+                      }}
+                    >
+                      <XCircle className="mr-2 h-4 w-4" /> Recusar usuário
+                    </Button>
+                  </>
+                )}
+                {user.status === 'ativo' && (
                   <Button 
                     className="w-full justify-start text-sm" 
                     variant="ghost" 
                     onClick={() => {
-                      handleApproveUser(user.id);
+                      handleBlockUser(user.id);
                       setIsMenuOpen(false);
                     }}
                   >
-                    <CheckCircle className="mr-2 h-4 w-4" /> Aprovar usuário
+                    <Lock className="mr-2 h-4 w-4" /> Bloquear usuário
                   </Button>
+                )}
+                {user.status === 'bloqueado' && (
                   <Button 
                     className="w-full justify-start text-sm" 
                     variant="ghost" 
                     onClick={() => {
-                      handleRejectUser(user.id);
+                      handleUnblockUser(user.id);
                       setIsMenuOpen(false);
                     }}
                   >
-                    <XCircle className="mr-2 h-4 w-4" /> Recusar usuário
+                    <Unlock className="mr-2 h-4 w-4" /> Desbloquear usuário
                   </Button>
-                </>
-              )}
-              {user.status === 'ativo' && (
+                )}
+                {!user.is_admin && (
+                  <Button 
+                    className="w-full justify-start text-sm" 
+                    variant="ghost" 
+                    onClick={() => {
+                      handleMakeAdmin(user.id);
+                      setIsMenuOpen(false);
+                    }}
+                  >
+                    <ShieldCheck className="mr-2 h-4 w-4" /> Tornar administrador
+                  </Button>
+                )}
+                {user.is_admin && (
+                  <Button 
+                    className="w-full justify-start text-sm" 
+                    variant="ghost" 
+                    onClick={() => {
+                      handleRemoveAdmin(user.id);
+                      setIsMenuOpen(false);
+                    }}
+                  >
+                    <ShieldOff className="mr-2 h-4 w-4" /> Remover administrador
+                  </Button>
+                )}
                 <Button 
-                  className="w-full justify-start text-sm" 
+                  className="w-full justify-start text-sm text-red-600 hover:text-red-700 hover:bg-red-100" 
                   variant="ghost" 
                   onClick={() => {
-                    handleBlockUser(user.id);
+                    setIsDeleteModalOpen(true);
                     setIsMenuOpen(false);
                   }}
                 >
-                  <Lock className="mr-2 h-4 w-4" /> Bloquear usuário
+                  <Trash2 className="mr-2 h-4 w-4" /> Excluir usuário
                 </Button>
-              )}
-              {user.status === 'bloqueado' && (
-                <Button 
-                  className="w-full justify-start text-sm" 
-                  variant="ghost" 
-                  onClick={() => {
-                    handleUnblockUser(user.id);
-                    setIsMenuOpen(false);
-                  }}
-                >
-                  <Unlock className="mr-2 h-4 w-4" /> Desbloquear usuário
-                </Button>
-              )}
-              {!user.is_admin && (
-                <Button 
-                  className="w-full justify-start text-sm" 
-                  variant="ghost" 
-                  onClick={() => {
-                    handleMakeAdmin(user.id);
-                    setIsMenuOpen(false);
-                  }}
-                >
-                  <ShieldCheck className="mr-2 h-4 w-4" /> Tornar administrador
-                </Button>
-              )}
-              {user.is_admin && (
-                <Button 
-                  className="w-full justify-start text-sm" 
-                  variant="ghost" 
-                  onClick={() => {
-                    handleRemoveAdmin(user.id);
-                    setIsMenuOpen(false);
-                  }}
-                >
-                  <ShieldOff className="mr-2 h-4 w-4" /> Remover administrador
-                </Button>
-              )}
-              <Button 
-                className="w-full justify-start text-sm text-red-600 hover:text-red-700 hover:bg-red-100" 
-                variant="ghost" 
-                onClick={() => {
-                  setIsDeleteModalOpen(true);
-                  setIsMenuOpen(false);
-                }}
-              >
-                <Trash2 className="mr-2 h-4 w-4" /> Excluir usuário
-              </Button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
         
         {/* Delete confirmation modal */}
         <AlertDialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>

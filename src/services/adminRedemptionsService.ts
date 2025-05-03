@@ -43,7 +43,8 @@ export const fetchRedemptions = async (): Promise<AdminRedemption[]> => {
     return data.map(item => ({
       id: item.id,
       cliente_id: item.cliente_id,
-      cliente_nome: item.profiles?.nome || 'Cliente',
+      // Fix the type issue with a type guard to ensure profiles is not an error
+      cliente_nome: item.profiles && typeof item.profiles === 'object' ? item.profiles.nome || 'Cliente' : 'Cliente',
       item: item.item,
       pontos: item.pontos,
       imagem_url: item.imagem_url,
