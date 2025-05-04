@@ -24,6 +24,9 @@ const ProductActions: React.FC<ProductActionsProps> = ({
 }) => {
   const navigate = useNavigate();
   const { addToCart } = useCart();
+  
+  // Added console log to verify this new implementation is being used
+  console.log('ProductActions component loaded - updated implementation');
 
   const handleAddToCart = () => {
     validateQuantity();
