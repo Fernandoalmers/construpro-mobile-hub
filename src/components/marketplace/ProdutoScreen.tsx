@@ -10,6 +10,7 @@ import { addToFavorites, isProductFavorited } from '@/services/cartService';
 import { useAuth } from '@/context/AuthContext';
 import LoadingState from '../common/LoadingState';
 import ErrorState from '../common/ErrorState';
+import { supabase } from '@/integrations/supabase/client';
 
 // Import our components
 import ProductBreadcrumbs from './components/ProductBreadcrumbs';
