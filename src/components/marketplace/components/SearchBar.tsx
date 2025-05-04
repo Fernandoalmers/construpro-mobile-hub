@@ -77,10 +77,14 @@ const SearchBar: React.FC<SearchBarProps> = ({
     setShowResults(false);
   };
 
+  // Implementação correta da função handleSearch
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (onSearch && searchTerm) {
       onSearch(searchTerm);
+    } else if (searchTerm.trim().length >= 2) {
+      // Se não houver uma função onSearch, navigate diretamente
+      navigate(`/marketplace/products?search=${encodeURIComponent(searchTerm)}`);
     }
     setShowResults(false);
   };

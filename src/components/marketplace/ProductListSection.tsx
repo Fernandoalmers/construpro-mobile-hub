@@ -69,6 +69,21 @@ const ProductListSection: React.FC<ProductListSectionProps> = ({
     }
   };
 
+  // Implementação da função handleBuyNow
+  const handleBuyNow = async (e: React.MouseEvent, productId: string) => {
+    e.stopPropagation();
+    try {
+      setAddingToCart(prev => ({ ...prev, [productId]: true }));
+      await addToCart(productId, 1);
+      navigate('/cart'); // Redireciona para o carrinho após adicionar o produto
+    } catch (error) {
+      console.error('Error buying now:', error);
+      toast.error('Erro ao adicionar ao carrinho');
+    } finally {
+      setAddingToCart(prev => ({ ...prev, [productId]: false }));
+    }
+  };
+
   if (isLoading) {
     return (
       <div className={viewType === 'grid' ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3' : 'space-y-3'}>
@@ -148,7 +163,9 @@ const ProductListSection: React.FC<ProductListSectionProps> = ({
               onClick={() => navigate(`/produto/${produto.id}`)}
               onLojaClick={onLojaClick}
               onAddToCart={(e) => handleAddToCart(e, produto.id)}
+              onAddToFavorites={undefined}
               isAddingToCart={addingToCart[produto.id]}
+              isFavorite={false}
             />
           ))}
         </div>
@@ -210,8 +227,9 @@ const ProductListSection: React.FC<ProductListSectionProps> = ({
                 )}
               </div>
               
-              {/* Add to cart button */}
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+              {/* Action Buttons */}
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex flex-col space-y-2">
+                {/* Add to cart button */}
                 <Button
                   size="icon"
                   variant="outline"
@@ -224,6 +242,17 @@ const ProductListSection: React.FC<ProductListSectionProps> = ({
                   ) : (
                     <Plus size={18} className="text-green-600" />
                   )}
+                </Button>
+                
+                {/* Buy Now button */}
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1"
+                  onClick={(e) => handleBuyNow(e, produto.id)}
+                  disabled={addingToCart[produto.id]}
+                >
+                  Comprar
                 </Button>
               </div>
             </div>

@@ -12,6 +12,7 @@ interface ProdutoCardProps {
   onLojaClick?: (lojaId: string) => void;
   onAddToFavorites?: (e: React.MouseEvent, produtoId: string) => void;
   onAddToCart?: (e: React.MouseEvent) => void;
+  onBuyNow?: (e: React.MouseEvent) => void;
   isFavorite?: boolean;
   isAddingToCart?: boolean;
 }
@@ -23,6 +24,7 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
   onLojaClick,
   onAddToFavorites,
   onAddToCart,
+  onBuyNow,
   isFavorite = false,
   isAddingToCart = false
 }) => {
@@ -79,25 +81,44 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
           </button>
         )}
         
-        {/* Add to Cart button */}
-        {onAddToCart && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddToCart(e);
-            }}
-            disabled={isAddingToCart}
-            className="absolute bottom-2 right-2 rounded-full bg-green-500 hover:bg-green-600 text-white border-0 shadow-md"
-          >
-            {isAddingToCart ? (
-              <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
-            ) : (
-              <Plus size={16} />
-            )}
-          </Button>
-        )}
+        {/* Action Buttons */}
+        <div className="absolute bottom-2 right-2 flex space-x-2">
+          {/* Add to Cart button */}
+          {onAddToCart && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddToCart(e);
+              }}
+              disabled={isAddingToCart}
+              className="rounded-full bg-green-500 hover:bg-green-600 text-white border-0 shadow-md h-8 w-8 p-0"
+            >
+              {isAddingToCart ? (
+                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+              ) : (
+                <Plus size={16} />
+              )}
+            </Button>
+          )}
+          
+          {/* Buy Now button */}
+          {onBuyNow && (
+            <Button
+              size="sm"
+              variant="default"
+              onClick={(e) => {
+                e.stopPropagation();
+                onBuyNow(e);
+              }}
+              disabled={isAddingToCart}
+              className="bg-green-600 hover:bg-green-700 text-white text-xs px-2"
+            >
+              Comprar
+            </Button>
+          )}
+        </div>
       </div>
       
       <div className="p-3 flex flex-col flex-grow">

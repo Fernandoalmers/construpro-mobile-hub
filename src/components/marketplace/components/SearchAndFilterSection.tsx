@@ -70,6 +70,13 @@ const SearchAndFilterSection: React.FC<SearchAndFilterSectionProps> = ({
     // The handleSearchChange will be triggered by the debounced effect
   };
 
+  // Implementar a funcionalidade de pesquisa explícita (quando o usuário pressiona enter ou clica no botão)
+  const handleExplicitSearch = () => {
+    if (searchTerm.trim().length >= 2) {
+      onSearch(searchTerm);
+    }
+  };
+
   return (
     <MarketplaceHeader 
       hideHeader={hideHeader}
@@ -80,10 +87,10 @@ const SearchAndFilterSection: React.FC<SearchAndFilterSectionProps> = ({
       allCategories={allCategories}
       ratingOptions={ratingOptions}
       onSearchChange={handleSearchInputChange}
+      onSearch={handleExplicitSearch}
       onLojaClick={onLojaClick}
       onCategoryClick={onCategoryClick}
       onRatingClick={onRatingClick}
-      onSearch={onSearch}
       clearFilters={clearFilters}
       stores={stores}
     />
