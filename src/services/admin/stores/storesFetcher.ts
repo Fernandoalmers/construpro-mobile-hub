@@ -41,8 +41,8 @@ export const getAdminStores = async (): Promise<AdminStore[]> => {
     
     // Transform data to AdminStore format
     const stores = (data || []).map(item => {
-      // Access profile data directly since we're joining properly
-      const profile = item.profiles || {};
+      // Access profile data directly but with type assertion to avoid TypeScript errors
+      const profile = (item.profiles as { nome?: string; email?: string }) || {};
       
       return {
         id: item.id,
