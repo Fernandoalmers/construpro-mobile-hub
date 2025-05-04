@@ -56,7 +56,7 @@ const CheckoutScreen: React.FC = () => {
     if (paymentMethod === 'money' && (!changeAmount || parseFloat(changeAmount) < 100)) {
       toast("Valor insuficiente", {
         description: "O troco deve ser maior que o valor total do pedido.",
-        variant: "destructive"
+        style: { backgroundColor: "red", color: "white" }
       });
       return;
     }
@@ -99,7 +99,7 @@ const CheckoutScreen: React.FC = () => {
       console.error("Error creating order:", error);
       toast("Erro ao finalizar pedido", {
         description: "Ocorreu um erro ao processar seu pedido. Tente novamente.",
-        variant: "destructive"
+        style: { backgroundColor: "red", color: "white" }
       });
       setIsSubmitting(false);
     }
