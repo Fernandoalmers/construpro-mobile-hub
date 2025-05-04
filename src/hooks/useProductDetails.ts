@@ -80,18 +80,22 @@ export function useProductDetails(id: string | undefined, isAuthenticated: boole
           pontos_profissional: data.pontos_profissional || 0,
           loja_id: data.vendedor_id,
           status: data.status as "pendente" | "aprovado" | "rejeitado",
-          unidade_medida: data.unidade_medida || 'unidade',
+          // Handle unidade_medida which might not exist in the data
+          unidade_medida: 'unidade_medida' in data ? String(data.unidade_medida) : 'unidade',
           codigo_barras: data.codigo_barras,
           sku: data.sku,
         };
         
         // Only add store info if vendedores data is available and not an error
-        if (data.vendedores && typeof data.vendedores === 'object' && 'nome_loja' in data.vendedores) {
+        if (data.vendedores && 
+            typeof data.vendedores === 'object' && 
+            data.vendedores !== null &&
+            'nome_loja' in data.vendedores) {
           productData.stores = {
             id: data.vendedor_id,
-            nome: data.vendedores.nome_loja as string,
-            nome_loja: data.vendedores.nome_loja as string,
-            logo_url: data.vendedores.logo_url as string
+            nome: String(data.vendedores.nome_loja || ''),
+            nome_loja: String(data.vendedores.nome_loja || ''),
+            logo_url: String(data.vendedores.logo_url || '')
           };
         }
         
@@ -141,7 +145,10 @@ export function useProductDetails(id: string | undefined, isAuthenticated: boole
 
         // If we have vendedor delivery info, use it
         const vendedores = data.vendedores;
-        if (vendedores && typeof vendedores === 'object' && 'formas_entrega' in vendedores) {
+        if (vendedores && 
+            typeof vendedores === 'object' && 
+            vendedores !== null && 
+            'formas_entrega' in vendedores) {
           const deliveryMethods = vendedores.formas_entrega;
           
           if (Array.isArray(deliveryMethods) && deliveryMethods.length > 0) {
