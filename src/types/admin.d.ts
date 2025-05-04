@@ -1,6 +1,7 @@
 
 
 
+
 // If this file doesn't exist, create it with these types
 
 export interface AdminProduct {
