@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import MarketplaceHeader from '../MarketplaceHeader';
+import { FilterOption } from '@/hooks/use-product-filter';
 
 interface SearchAndFilterSectionProps {
   hideHeader: boolean;
@@ -10,8 +11,8 @@ interface SearchAndFilterSectionProps {
   selectedCategories: string[];
   selectedLojas: string[];
   selectedRatings: string[];
-  allCategories: { id: string; label: string }[];
-  ratingOptions: { value: string; label: string }[];
+  allCategories: FilterOption[];
+  ratingOptions: FilterOption[];
   onLojaClick: (lojaId: string) => void;
   onCategoryClick: (categoryId: string) => void;
   onRatingClick: (rating: string) => void;

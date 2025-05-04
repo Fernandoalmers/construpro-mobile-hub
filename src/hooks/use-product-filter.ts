@@ -25,7 +25,7 @@ export const useProductFilter = ({
   
   const ITEMS_PER_PAGE = 10;
   
-  // Rating options 
+  // Rating options - updated to match FilterOption structure
   const ratingOptions: FilterOption[] = useMemo(() => ([
     { id: '4', label: '4+' },
     { id: '3', label: '3+' },
