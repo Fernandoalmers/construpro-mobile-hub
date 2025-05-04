@@ -1,14 +1,14 @@
 
 // Re-export all admin product functions with explicit naming to avoid collisions
 
-// From adminProductApi
+// From API layer
 export { 
   getAdminProducts as getAdminProductsApi,
   getPendingProducts as getPendingProductsApi,
   debugFetchProducts,
   fetchPendingProducts,
   fetchAdminProducts
-} from './adminProductApi';
+} from './api';
 
 // From adminProductActions
 export {
