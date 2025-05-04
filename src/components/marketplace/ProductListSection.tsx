@@ -1,7 +1,7 @@
 
 import React, { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingBag, Grid, List } from 'lucide-react';
+import { ShoppingBag, Grid, List, Star } from 'lucide-react';
 import ProdutoCard from './ProdutoCard';
 import { Button } from '@/components/ui/button';
 

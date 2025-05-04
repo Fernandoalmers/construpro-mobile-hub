@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Heart, Star, Truck, ShoppingCart, ArrowLeft, Check, AlertCircle, Shield as ShieldIcon, ChevronRight } from 'lucide-react';
@@ -156,14 +155,18 @@ const ProdutoScreen: React.FC = () => {
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
-                <BreadcrumbLink as={Link} to="/marketplace">Marketplace</BreadcrumbLink>
+                <BreadcrumbLink asChild>
+                  <Link to="/marketplace">Marketplace</Link>
+                </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator>
                 <ChevronRight size={16} />
               </BreadcrumbSeparator>
               <BreadcrumbItem>
-                <BreadcrumbLink as={Link} to={`/marketplace?categoria=${produto.categoria}`}>
-                  {produto.categoria}
+                <BreadcrumbLink asChild>
+                  <Link to={`/marketplace?categoria=${produto.categoria}`}>
+                    {produto.categoria}
+                  </Link>
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator>
