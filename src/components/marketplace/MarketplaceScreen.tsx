@@ -3,15 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useProductFilter } from '@/hooks/use-product-filter';
 import { useScrollBehavior } from '@/hooks/use-scroll-behavior';
-import MarketplaceHeader from './MarketplaceHeader';
+import { useMarketplaceData } from '@/hooks/useMarketplaceData';
 import ProductListSection from './ProductListSection';
 import SegmentCardsHeader from './components/SegmentCardsHeader';
 import StoresSection from './components/StoresSection';
 import CategoryHeader from './components/CategoryHeader';
-import { getProducts } from '@/services/productService';
-import { getStores, Store } from '@/services/marketplace/marketplaceService';
+import SearchAndFilterSection from './components/SearchAndFilterSection';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/sonner';
 import LoadingState from '../common/LoadingState';
 
 const MarketplaceScreen: React.FC = () => {
@@ -26,45 +24,12 @@ const MarketplaceScreen: React.FC = () => {
   
   const initialCategories = categoryParam ? [categoryParam] : [];
   
-  const [isLoading, setIsLoading] = useState(true);
-  const [products, setProducts] = useState<any[]>([]);
-  const [stores, setStores] = useState<Store[]>([]);
-  const [storesError, setStoresError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState(searchQuery || '');
   const [selectedSegment, setSelectedSegment] = useState<string | null>(segmentParam);
   
   // Use our custom hooks
   const { hideHeader } = useScrollBehavior();
-  
-  // Fetch products and stores from Supabase
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        
-        // Fetch products
-        const productsData = await getProducts();
-        setProducts(productsData);
-        
-        // Fetch stores
-        try {
-          const storesData = await getStores();
-          setStores(storesData);
-        } catch (storeError) {
-          console.error('Error fetching stores:', storeError);
-          setStoresError((storeError as Error).message || 'Erro ao carregar lojas');
-          toast.error('Erro ao carregar lojas');
-        }
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        toast.error('Erro ao carregar dados');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchData();
-  }, []);
+  const { products, stores, isLoading, storesError } = useMarketplaceData(selectedSegment);
   
   // Extract all categories from products
   const categories = React.useMemo(() => {
@@ -94,30 +59,9 @@ const MarketplaceScreen: React.FC = () => {
     setPage
   } = useProductFilter({ 
     initialCategories, 
-    initialProducts: products.filter(p => !selectedSegment || p.segmento === selectedSegment),
+    initialProducts: products,
     initialSearch: searchQuery || '' 
   });
-
-  // Add debouncing for instant search
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (searchTerm.trim().length > 0) {
-        console.log('Debounced search for:', searchTerm);
-        handleSearchChange(searchTerm);
-        
-        // Update URL with search parameter
-        const newSearchParams = new URLSearchParams(searchParams);
-        if (searchTerm) {
-          newSearchParams.set('search', searchTerm);
-        } else {
-          newSearchParams.delete('search');
-        }
-        navigate(`${location.pathname}?${newSearchParams.toString()}`, { replace: true });
-      }
-    }, 300);
-    
-    return () => clearTimeout(timeout);
-  }, [searchTerm, location.pathname, handleSearchChange, navigate]);
 
   // Handle segment selection
   const handleSegmentClick = (segmentId: string) => {
@@ -142,12 +86,6 @@ const MarketplaceScreen: React.FC = () => {
   const handleLojaCardClick = (lojaId: string) => {
     setSelectedLojas([lojaId]);
     setPage(1);
-  };
-
-  // Adapter function to convert the event to string
-  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-    // The handleSearchChange will be triggered by the debounced effect
   };
 
   // Quick search for products
@@ -180,22 +118,23 @@ const MarketplaceScreen: React.FC = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 pb-20">
-      {/* Header with search and filters */}
-      <MarketplaceHeader 
+      {/* Search and Filter Header */}
+      <SearchAndFilterSection
         hideHeader={hideHeader}
         searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
         selectedCategories={selectedCategories}
         selectedLojas={selectedLojas}
         selectedRatings={selectedRatings}
         allCategories={categories}
         ratingOptions={ratingOptions}
-        onSearchChange={handleSearchInputChange}
         onLojaClick={handleLojaClick}
         onCategoryClick={handleCategoryClick}
         onRatingClick={handleRatingClick}
         onSearch={handleQuickSearch}
         clearFilters={clearFilters}
         stores={stores}
+        handleSearchChange={handleSearchChange}
       />
       
       {/* Segment Cards */}
@@ -213,7 +152,7 @@ const MarketplaceScreen: React.FC = () => {
       
       {/* Category Header */}
       <CategoryHeader 
-        currentCategoryName={currentCategoryName}
+        currentCategoryName={currentCategoryName || "Todos os Produtos"}
         productCount={filteredProdutos.length}
       />
       
