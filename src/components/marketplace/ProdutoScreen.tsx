@@ -59,23 +59,29 @@ const ProdutoScreen: React.FC = () => {
           setIsFavorited(favorited);
         }
         
-        // Get sample reviews (this would normally come from the backend)
-        setReviews([
-          {
-            id: '1',
-            user_name: 'João Silva',
-            rating: 5,
-            comment: 'Produto excelente! Chegou no prazo e a qualidade é muito boa.',
-            date: '12/04/2023'
-          },
-          {
-            id: '2',
-            user_name: 'Maria Oliveira',
-            rating: 4,
-            comment: 'Bom produto, mas a embalagem veio um pouco danificada.',
-            date: '05/03/2023'
-          }
-        ]);
+        // Fetch reviews for the product
+        const { data: reviewsData } = await supabase
+          .from('product_reviews')
+          .select(`
+            id,
+            cliente_id,
+            nota,
+            comentario,
+            data,
+            profiles:cliente_id (nome)
+          `)
+          .eq('produto_id', id)
+          .order('data', { ascending: false });
+        
+        if (reviewsData) {
+          setReviews(reviewsData.map(review => ({
+            id: review.id,
+            user_name: review.profiles?.nome || 'Usuário',
+            rating: review.nota,
+            comment: review.comentario,
+            date: new Date(review.data).toLocaleDateString('pt-BR')
+          })));
+        }
       } catch (err) {
         console.error('Error fetching product:', err);
         setError('Erro ao carregar detalhes do produto');
@@ -88,9 +94,31 @@ const ProdutoScreen: React.FC = () => {
   }, [id, isAuthenticated]);
 
   const handleQuantityChange = (delta: number) => {
-    const newValue = quantidade + delta;
-    if (newValue >= 1 && newValue <= (produto?.estoque || 1)) {
+    // For products sold by m² or with specific unit requirements
+    const isM2Product = produto?.unidade_medida?.toLowerCase().includes('m²') || 
+                        produto?.unidade_medida?.toLowerCase().includes('m2');
+    
+    // Default step is 1, but for m² products we might use a custom multiple
+    const step = isM2Product && produto?.unidade_medida ? parseFloat(produto.unidade_medida) || 1 : 1;
+    
+    const newValue = quantidade + (delta * step);
+    if (newValue >= step && newValue <= (produto?.estoque || step)) {
       setQuantidade(newValue);
+    }
+  };
+
+  const validateQuantity = () => {
+    const isM2Product = produto?.unidade_medida?.toLowerCase().includes('m²') || 
+                       produto?.unidade_medida?.toLowerCase().includes('m2');
+    
+    if (isM2Product && produto?.unidade_medida) {
+      const step = parseFloat(produto.unidade_medida) || 1;
+      // Round to the nearest multiple of step
+      const roundedValue = Math.round(quantidade / step) * step;
+      if (roundedValue !== quantidade) {
+        setQuantidade(roundedValue);
+        toast.info(`Quantidade ajustada para ${roundedValue} ${produto.unidade_medida}`);
+      }
     }
   };
 
@@ -101,6 +129,8 @@ const ProdutoScreen: React.FC = () => {
       navigate('/login', { state: { from: `/produto/${id}` } });
       return;
     }
+    
+    validateQuantity();
     
     try {
       setAddingToCart(true);
@@ -126,6 +156,8 @@ const ProdutoScreen: React.FC = () => {
       navigate('/login', { state: { from: `/produto/${id}` } });
       return;
     }
+    
+    validateQuantity();
     
     try {
       setAddingToCart(true);
@@ -220,7 +252,7 @@ const ProdutoScreen: React.FC = () => {
       <ProductBreadcrumbs 
         productName={produto.nome} 
         productCategory={produto.categoria} 
-        productCode={produto.id.substring(0, 8)}
+        productCode={produto.sku || produto.id.substring(0, 8)}
       />
 
       <main className="container mx-auto mt-4 px-4">
@@ -246,6 +278,7 @@ const ProdutoScreen: React.FC = () => {
             isFavorited={isFavorited}
             addingToCart={addingToCart}
             addingToFavorites={addingToFavorites}
+            validateQuantity={validateQuantity}
           />
         </div>
         
@@ -262,7 +295,7 @@ const ProdutoScreen: React.FC = () => {
           <Button 
             variant="outline" 
             className="flex items-center"
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/marketplace')}
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Voltar para os produtos

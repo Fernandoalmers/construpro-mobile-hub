@@ -15,11 +15,14 @@ export interface Product {
   estoque: number;
   pontos: number;
   pontos_consumidor?: number;
+  pontos_profissional?: number;
   loja_id: string;
   status: 'pendente' | 'aprovado' | 'rejeitado';
   avaliacao?: number;
   num_avaliacoes?: number;
   unidade_medida?: string;
+  codigo_barras?: string;
+  sku?: string;
   stores?: {
     id?: string;
     nome?: string;
@@ -66,11 +69,14 @@ const transformProduct = (dbProduct: any): Product => {
     estoque: dbProduct.estoque || 0,
     pontos: dbProduct.pontos_consumidor || 0,
     pontos_consumidor: dbProduct.pontos_consumidor || 0,
+    pontos_profissional: dbProduct.pontos_profissional || 0,
     loja_id: dbProduct.vendedor_id,
     status: dbProduct.status,
     avaliacao: dbProduct.avaliacao,
     num_avaliacoes: dbProduct.num_avaliacoes || 0,
     unidade_medida: dbProduct.unidade_medida || 'unidade',
+    codigo_barras: dbProduct.codigo_barras,
+    sku: dbProduct.sku,
     stores: dbProduct.vendedores ? {
       id: dbProduct.vendedor_id,
       nome: dbProduct.vendedores.nome_loja,
@@ -130,9 +136,17 @@ export async function getProductsByCategory(category: string): Promise<Product[]
 
 export async function getProductById(id: string): Promise<Product | null> {
   try {
+    // Enhanced query to get all required product details
     const { data, error } = await supabase
       .from('produtos')
-      .select('*, vendedores(nome_loja, id, logo_url)')
+      .select(`
+        *,
+        vendedores (
+          id, 
+          nome_loja, 
+          logo_url
+        )
+      `)
       .eq('id', id)
       .single();
     
@@ -144,7 +158,22 @@ export async function getProductById(id: string): Promise<Product | null> {
     // Track product view
     await trackProductView(id);
     
-    return transformProduct(data);
+    // Get reviews for the product
+    const { data: reviewsData } = await supabase
+      .from('product_reviews')
+      .select('*')
+      .eq('produto_id', id)
+      .order('data', { ascending: false });
+    
+    // Add reviews count and average rating to the product
+    const productWithStats = {
+      ...data,
+      num_avaliacoes: reviewsData?.length || 0,
+      avaliacao: reviewsData?.length ? 
+        reviewsData.reduce((sum: number, review: any) => sum + review.nota, 0) / reviewsData.length : 0
+    };
+    
+    return transformProduct(productWithStats);
   } catch (error) {
     console.error(`Error in getProductById for ${id}:`, error);
     return null;

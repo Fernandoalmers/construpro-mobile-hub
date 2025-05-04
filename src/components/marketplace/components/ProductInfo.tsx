@@ -16,6 +16,7 @@ interface ProductInfoProps {
   isFavorited: boolean;
   addingToCart: boolean;
   addingToFavorites: boolean;
+  validateQuantity?: () => void;
 }
 
 const ProductInfo: React.FC<ProductInfoProps> = ({
@@ -28,7 +29,8 @@ const ProductInfo: React.FC<ProductInfoProps> = ({
   handleChatWithStore,
   isFavorited,
   addingToCart,
-  addingToFavorites
+  addingToFavorites,
+  validateQuantity
 }) => {
   const hasDiscount = (produto.preco_anterior || 0) > (produto.preco || 0);
   const stars = Math.round(produto.avaliacao || 0);
@@ -44,12 +46,16 @@ const ProductInfo: React.FC<ProductInfoProps> = ({
   // Calculate estimated delivery
   const today = new Date();
   const deliveryDate = new Date();
-  deliveryDate.setDate(today.getDate() + 4);
+  deliveryDate.setDate(today.getDate() + 4); // 4 days from now
   
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' });
   };
 
+  // Check if the product is sold by m²
+  const isM2Product = produto.unidade_medida?.toLowerCase().includes('m²') || 
+                      produto.unidade_medida?.toLowerCase().includes('m2');
+  
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm">
       {/* Store info */}
@@ -71,9 +77,21 @@ const ProductInfo: React.FC<ProductInfoProps> = ({
     
       <h1 className="text-2xl font-bold mb-2">{produto.nome}</h1>
       
-      {/* Product code */}
+      {/* Product code/SKU */}
       <div className="text-sm text-gray-500 mb-3">
-        Código: {produto.id.substring(0, 8)}
+        {produto.sku ? (
+          <span>SKU: {produto.sku}</span>
+        ) : produto.codigo_barras ? (
+          <span>Código: {produto.codigo_barras}</span>
+        ) : (
+          <span>Código: {produto.id.substring(0, 8)}</span>
+        )}
+      </div>
+      
+      {/* Category/Segment */}
+      <div className="text-sm text-gray-500 mb-3">
+        <span>Categoria: {produto.categoria}</span>
+        {produto.segmento && <span className="ml-2"> | Segmento: {produto.segmento}</span>}
       </div>
       
       {/* Rating */}
@@ -127,7 +145,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({
                 {produto.pontos || produto.pontos_consumidor || 0} pts (consumidor)
               </span>
               <span className="px-1.5 py-0.5 bg-construPro-blue/10 rounded text-construPro-blue">
-                {Math.round((produto.pontos || produto.pontos_consumidor || 0) * 1.5)} pts (profissional)
+                {produto.pontos_profissional || Math.round((produto.pontos || produto.pontos_consumidor || 0) * 1.5)} pts (profissional)
               </span>
             </div>
           </div>
@@ -173,12 +191,12 @@ const ProductInfo: React.FC<ProductInfoProps> = ({
           <button 
             className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-l"
             onClick={() => handleQuantityChange(-1)}
-            disabled={quantidade <= 1}
+            disabled={quantidade <= (isM2Product ? parseFloat(produto.unidade_medida || '1') : 1)}
           >
             -
           </button>
           <span className="bg-white py-2 px-4 border-t border-b">
-            {quantidade}
+            {quantidade.toFixed(isM2Product ? 2 : 0)}
           </span>
           <button 
             className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-r"
@@ -194,6 +212,15 @@ const ProductInfo: React.FC<ProductInfoProps> = ({
             )}
           </div>
         </div>
+        
+        {isM2Product && (
+          <button 
+            className="text-sm text-blue-600 mt-2 hover:underline"
+            onClick={validateQuantity}
+          >
+            Ajustar para múltiplos exatos
+          </button>
+        )}
       </div>
       
       {/* Action Buttons */}

@@ -25,7 +25,7 @@ const ProductBreadcrumbs: React.FC<ProductBreadcrumbsProps> = ({ productName, pr
               <ChevronRight size={16} />
             </BreadcrumbSeparator>
             <BreadcrumbItem>
-              <Link to={`/marketplace?categoria=${productCategory}`} className="hover:underline">
+              <Link to={`/marketplace?categoria=${encodeURIComponent(productCategory)}`} className="hover:underline">
                 {productCategory}
               </Link>
             </BreadcrumbItem>
