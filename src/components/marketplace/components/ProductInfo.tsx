@@ -1,28 +1,55 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Star } from 'lucide-react';
+import { Star, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Product } from '@/services/productService';
 
 interface ProductInfoProps {
   produto: Product;
+  deliveryEstimate: {
+    minDays: number;
+    maxDays: number;
+  };
 }
 
-const ProductInfo: React.FC<ProductInfoProps> = ({ produto }) => {
+const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) => {
   // Product has a discount if previous price is higher than current price
   const hasDiscount = (produto.preco_anterior || 0) > produto.preco;
+  
+  // Calculate the discount percentage if applicable
+  const discountPercentage = hasDiscount && produto.preco_anterior
+    ? Math.round(((produto.preco_anterior - produto.preco) / produto.preco_anterior) * 100)
+    : 0;
+
+  // Format delivery estimate text
+  const getDeliveryText = () => {
+    if (deliveryEstimate.minDays === 0) {
+      return 'Entrega hoje';
+    } else if (deliveryEstimate.minDays === deliveryEstimate.maxDays) {
+      return `Entrega em ${deliveryEstimate.minDays} dias úteis`;
+    } else {
+      return `Chegará entre ${deliveryEstimate.minDays}-${deliveryEstimate.maxDays} dias úteis`;
+    }
+  };
 
   return (
     <div>
       <div className="flex items-center space-x-1 mb-2">
-        <Badge variant="outline" className="capitalize">
-          {produto.categoria}
-        </Badge>
+        {produto.categoria && (
+          <Badge variant="outline" className="capitalize">
+            {produto.categoria}
+          </Badge>
+        )}
         {produto.segmento && (
           <Badge variant="outline" className="bg-blue-50">
             {produto.segmento}
           </Badge>
+        )}
+        {produto.sku && (
+          <span className="text-xs text-gray-500 ml-auto">
+            SKU: {produto.sku}
+          </span>
         )}
       </div>
 
@@ -77,9 +104,9 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto }) => {
             R$ {produto.preco.toFixed(2)}
           </span>
           
-          {hasDiscount && produto.preco_anterior && (
+          {hasDiscount && produto.preco_anterior && discountPercentage > 0 && (
             <Badge className="ml-2 bg-red-500">
-              {Math.round(((produto.preco_anterior - produto.preco) / produto.preco_anterior) * 100)}% OFF
+              {discountPercentage}% OFF
             </Badge>
           )}
         </div>
@@ -114,11 +141,22 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto }) => {
       
       {/* Shipping info */}
       <div className="p-3 bg-gray-50 rounded-md border border-gray-200 mb-4">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-gray-600 flex items-center">
+          <Clock className="h-4 w-4 mr-2 text-green-600" />
           <span className="font-medium">Entrega: </span>
-          <span>Chegará entre 3-5 dias úteis</span>
+          <span className="ml-1">{getDeliveryText()}</span>
         </p>
       </div>
+      
+      {produto.unidade_medida && produto.unidade_medida !== 'unidade' && (
+        <div className="text-xs bg-yellow-50 p-2 rounded-md border border-yellow-100 mb-4">
+          <span className="font-bold">Nota: </span>
+          <span>Este produto é vendido por {produto.unidade_medida.toLowerCase()}</span>
+          {produto.unidade_medida.toLowerCase().includes('m²') && (
+            <span className="block mt-1">As quantidades serão ajustadas automaticamente para múltiplos da unidade de venda.</span>
+          )}
+        </div>
+      )}
     </div>
   );
 };

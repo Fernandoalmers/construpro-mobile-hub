@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -27,15 +27,26 @@ const ProdutoScreen: React.FC = () => {
   const [quantidade, setQuantidade] = useState(1);
   
   // Use our custom hook
-  const { product: produto, loading, error, isFavorited, reviews } = useProductDetails(id, isAuthenticated);
+  const { product: produto, loading, error, isFavorited, reviews, estimatedDelivery } = useProductDetails(id, isAuthenticated);
+
+  // Calculate the step value based on unit type
+  const getStepValue = () => {
+    if (!produto) return 1;
+    
+    const isM2Product = produto.unidade_medida?.toLowerCase().includes('m²') || 
+                        produto.unidade_medida?.toLowerCase().includes('m2');
+    
+    if (isM2Product && produto.unidade_medida) {
+      // Extract numeric value from unit measure if present
+      const match = produto.unidade_medida.match(/(\d+(\.\d+)?)/);
+      return match ? parseFloat(match[0]) : 1;
+    }
+    
+    return 1;
+  };
 
   const handleQuantityChange = (delta: number) => {
-    // For products sold by m² or with specific unit requirements
-    const isM2Product = produto?.unidade_medida?.toLowerCase().includes('m²') || 
-                        produto?.unidade_medida?.toLowerCase().includes('m2');
-    
-    // Default step is 1, but for m² products we might use a custom multiple
-    const step = isM2Product && produto?.unidade_medida ? parseFloat(produto.unidade_medida) || 1 : 1;
+    const step = getStepValue();
     
     const newValue = quantidade + (delta * step);
     if (newValue >= step && newValue <= (produto?.estoque || step)) {
@@ -44,16 +55,14 @@ const ProdutoScreen: React.FC = () => {
   };
 
   const validateQuantity = () => {
-    const isM2Product = produto?.unidade_medida?.toLowerCase().includes('m²') || 
-                       produto?.unidade_medida?.toLowerCase().includes('m2');
+    const step = getStepValue();
     
-    if (isM2Product && produto?.unidade_medida) {
-      const step = parseFloat(produto.unidade_medida) || 1;
+    if (step > 1) {
       // Round to the nearest multiple of step
       const roundedValue = Math.round(quantidade / step) * step;
       if (roundedValue !== quantidade) {
         setQuantidade(roundedValue);
-        toast.info(`Quantidade ajustada para ${roundedValue} ${produto.unidade_medida}`);
+        toast.info(`Quantidade ajustada para ${roundedValue} ${produto?.unidade_medida || 'unidades'}`);
       }
     }
   };
@@ -111,6 +120,7 @@ const ProdutoScreen: React.FC = () => {
           <div>
             <ProductInfo 
               produto={produto}
+              deliveryEstimate={estimatedDelivery}
             />
             
             {/* Quantity Selector */}

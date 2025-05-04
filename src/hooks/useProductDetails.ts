@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { getProductById, Product, trackProductView } from '@/services/productService';
+import { Product } from '@/services/productService';
 import { isProductFavorited } from '@/services/cartService';
 
 interface ProductDetailsState {
@@ -10,6 +10,10 @@ interface ProductDetailsState {
   error: string | null;
   isFavorited: boolean;
   reviews: any[];
+  estimatedDelivery: {
+    minDays: number;
+    maxDays: number;
+  };
 }
 
 export function useProductDetails(id: string | undefined, isAuthenticated: boolean) {
@@ -18,7 +22,11 @@ export function useProductDetails(id: string | undefined, isAuthenticated: boole
     loading: true,
     error: null,
     isFavorited: false,
-    reviews: []
+    reviews: [],
+    estimatedDelivery: {
+      minDays: 0,
+      maxDays: 4
+    }
   });
 
   useEffect(() => {
@@ -28,12 +36,64 @@ export function useProductDetails(id: string | undefined, isAuthenticated: boole
       try {
         setState(prev => ({ ...prev, loading: true, error: null }));
         
-        const productData = await getProductById(id);
+        // Enhanced query to get all required product details in a single call
+        const { data, error } = await supabase
+          .from('produtos')
+          .select(`
+            *,
+            vendedores:vendedor_id (
+              id, 
+              nome_loja, 
+              logo_url,
+              formas_entrega
+            ),
+            product_reviews:id (
+              id,
+              cliente_id,
+              nota,
+              comentario,
+              data,
+              profiles:cliente_id (nome)
+            )
+          `)
+          .eq('id', id)
+          .single();
         
-        if (!productData) {
+        if (error || !data) {
+          console.error('Error fetching product:', error);
           setState(prev => ({ ...prev, error: 'Produto não encontrado', loading: false }));
           return;
         }
+        
+        // Process product data
+        const productData: Product = {
+          id: data.id,
+          nome: data.nome,
+          descricao: data.descricao,
+          preco: data.preco_normal || 0,
+          preco_anterior: data.preco_promocional,
+          categoria: data.categoria,
+          segmento: data.segmento,
+          imagem_url: Array.isArray(data.imagens) && data.imagens.length > 0 
+            ? data.imagens[0] 
+            : undefined,
+          imagens: Array.isArray(data.imagens) ? data.imagens : [],
+          estoque: data.estoque || 0,
+          pontos: data.pontos_consumidor || 0,
+          pontos_consumidor: data.pontos_consumidor || 0,
+          pontos_profissional: data.pontos_profissional || 0,
+          loja_id: data.vendedor_id,
+          status: data.status,
+          unidade_medida: data.unidade_medida || 'unidade',
+          codigo_barras: data.codigo_barras,
+          sku: data.sku,
+          stores: data.vendedores ? {
+            id: data.vendedor_id,
+            nome: data.vendedores.nome_loja,
+            nome_loja: data.vendedores.nome_loja,
+            logo_url: data.vendedores.logo_url
+          } : undefined
+        };
         
         setState(prev => ({ ...prev, product: productData }));
         
@@ -48,22 +108,9 @@ export function useProductDetails(id: string | undefined, isAuthenticated: boole
           setState(prev => ({ ...prev, isFavorited: favorited }));
         }
         
-        // Fetch reviews for the product
-        const { data: reviewsData } = await supabase
-          .from('product_reviews')
-          .select(`
-            id,
-            cliente_id,
-            nota,
-            comentario,
-            data,
-            profiles:cliente_id (nome)
-          `)
-          .eq('produto_id', id)
-          .order('data', { ascending: false });
-        
-        if (reviewsData) {
-          const formattedReviews = reviewsData.map(review => ({
+        // Process reviews (from our single query)
+        if (data.product_reviews && data.product_reviews.length > 0) {
+          const formattedReviews = data.product_reviews.map((review: any) => ({
             id: review.id,
             user_name: review.profiles?.nome || 'Usuário',
             rating: review.nota,
@@ -71,18 +118,105 @@ export function useProductDetails(id: string | undefined, isAuthenticated: boole
             date: new Date(review.data).toLocaleDateString('pt-BR')
           }));
           
-          setState(prev => ({ ...prev, reviews: formattedReviews, loading: false }));
+          setState(prev => ({ 
+            ...prev, 
+            reviews: formattedReviews,
+            loading: false 
+          }));
         } else {
-          setState(prev => ({ ...prev, reviews: [], loading: false }));
+          // Fallback to separate query for reviews if the join didn't work
+          const { data: reviewsData } = await supabase
+            .from('product_reviews')
+            .select(`
+              id,
+              cliente_id,
+              nota,
+              comentario,
+              data,
+              profiles:cliente_id (nome)
+            `)
+            .eq('produto_id', id)
+            .order('data', { ascending: false });
+          
+          if (reviewsData) {
+            const formattedReviews = reviewsData.map(review => ({
+              id: review.id,
+              user_name: review.profiles?.nome || 'Usuário',
+              rating: review.nota,
+              comment: review.comentario,
+              date: new Date(review.data).toLocaleDateString('pt-BR')
+            }));
+            
+            setState(prev => ({ ...prev, reviews: formattedReviews }));
+          }
         }
+
+        // Calculate delivery estimates based on store policies
+        // Default values
+        let minDays = 1;
+        let maxDays = 5;
+
+        // If we have vendedor delivery info, use it
+        if (data.vendedores?.formas_entrega && Array.isArray(data.vendedores.formas_entrega)) {
+          const deliveryMethods = data.vendedores.formas_entrega;
+          
+          if (deliveryMethods.length > 0) {
+            // Find the fastest delivery option
+            const fastestOption = deliveryMethods.reduce((fastest, current) => {
+              const currentMin = current.prazo_min || Infinity;
+              const fastestMin = fastest.prazo_min || Infinity;
+              return currentMin < fastestMin ? current : fastest;
+            }, deliveryMethods[0]);
+            
+            if (fastestOption) {
+              minDays = fastestOption.prazo_min || minDays;
+              maxDays = fastestOption.prazo_max || maxDays;
+            }
+          }
+        }
+        
+        setState(prev => ({ 
+          ...prev, 
+          estimatedDelivery: {
+            minDays,
+            maxDays
+          },
+          loading: false 
+        }));
+        
       } catch (err) {
-        console.error('Error fetching product:', err);
-        setState(prev => ({ ...prev, error: 'Erro ao carregar detalhes do produto', loading: false }));
+        console.error('Error in useProductDetails:', err);
+        setState(prev => ({ 
+          ...prev, 
+          error: 'Erro ao carregar detalhes do produto', 
+          loading: false 
+        }));
       }
     };
     
     fetchProduct();
   }, [id, isAuthenticated]);
+  
+  // Function to track product views
+  const trackProductView = async (productId: string): Promise<void> => {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return;
+  
+      // Create or update recently viewed entry
+      await supabase
+        .from('recently_viewed')
+        .upsert({
+          user_id: userData.user.id,
+          produto_id: productId,
+          data_visualizacao: new Date().toISOString()
+        })
+        .select();
+  
+    } catch (error) {
+      console.error('Error tracking product view:', error);
+    }
+  };
 
   return state;
 }

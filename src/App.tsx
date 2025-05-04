@@ -92,8 +92,8 @@ function App() {
         
         {/* Store and Product routes */}
         <Route path="/store/:storeId" element={<ProtectedRoute><StoreDetailScreen /></ProtectedRoute>} />
-        <Route path="/product/:productId" element={<ProtectedRoute><ProductDetailScreen /></ProtectedRoute>} />
-        <Route path="/produto/:id" element={<ProtectedRoute><ProductDetailScreen /></ProtectedRoute>} />
+        <Route path="/produto/:id" element={<ProdutoScreen />} />
+        <Route path="/product/:id" element={<ProdutoScreen />} />
         
         {/* Cart and Checkout routes */}
         <Route path="/cart" element={<ProtectedRoute><CartScreen /></ProtectedRoute>} />
