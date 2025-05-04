@@ -16,7 +16,7 @@ import QuantitySelector from './components/QuantitySelector';
 import ProductActions from './components/ProductActions';
 import SearchHeader from './components/SearchHeader';
 
-// Import our hook
+// Import our refactored hook
 import { useProductDetails } from '@/hooks/useProductDetails';
 
 const ProdutoScreen: React.FC = () => {

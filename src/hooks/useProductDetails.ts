@@ -1,238 +1,45 @@
 
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useEffect } from 'react';
 import { Product } from '@/services/productService';
-import { isProductFavorited } from '@/services/cartService';
+import { useProductFetch } from './product/useProductFetch';
+import { trackProductView } from './product/useProductTracking';
+import { useProductReviews, ProductReview } from './product/useProductReviews';
+import { useProductFavorite } from './product/useProductFavorite';
+import { useDeliveryEstimate } from './product/useDeliveryEstimate';
 
 interface ProductDetailsState {
   product: Product | null;
   loading: boolean;
   error: string | null;
   isFavorited: boolean;
-  reviews: any[];
+  reviews: ProductReview[];
   estimatedDelivery: {
     minDays: number;
     maxDays: number;
   };
 }
 
-// Define interfaces for the vendor data structures
-interface VendorData {
-  id?: string | number;
-  nome_loja?: string;
-  logo?: string;  // Changed from logo_url to logo to match database schema
-  formas_entrega?: Array<{
-    prazo_min?: number;
-    prazo_max?: number;
-    [key: string]: any;
-  }>;
-  [key: string]: any; // Allow for other properties
-}
-
-export function useProductDetails(id: string | undefined, isAuthenticated: boolean) {
-  const [state, setState] = useState<ProductDetailsState>({
-    product: null,
-    loading: true,
-    error: null,
-    isFavorited: false,
-    reviews: [],
-    estimatedDelivery: {
-      minDays: 0,
-      maxDays: 4
-    }
-  });
-
+export function useProductDetails(id: string | undefined, isAuthenticated: boolean): ProductDetailsState {
+  // Use our separated hooks
+  const { product, loading, error } = useProductFetch(id);
+  const reviews = useProductReviews(id);
+  const isFavorited = useProductFavorite(id, isAuthenticated);
+  const estimatedDelivery = useDeliveryEstimate(product);
+  
+  // Track product view when authenticated
   useEffect(() => {
-    if (!id) return;
-    
-    const fetchProduct = async () => {
-      try {
-        setState(prev => ({ ...prev, loading: true, error: null }));
-        
-        // Enhanced query to get all required product details in a single call
-        // Update the select statement to use 'logo' instead of 'logo_url'
-        const { data, error } = await supabase
-          .from('produtos')
-          .select(`
-            *,
-            vendedores (
-              id, 
-              nome_loja, 
-              logo,
-              formas_entrega
-            )
-          `)
-          .eq('id', id)
-          .single();
-        
-        if (error || !data) {
-          console.error('Error fetching product:', error);
-          setState(prev => ({ ...prev, error: 'Produto não encontrado', loading: false }));
-          return;
-        }
-
-        console.log("Produto data:", data);
-        
-        // Process product data safely with type checking
-        const productData: Product = {
-          id: data.id,
-          nome: data.nome,
-          descricao: data.descricao,
-          preco: data.preco_normal || 0,
-          preco_anterior: data.preco_promocional,
-          categoria: data.categoria,
-          segmento: data.segmento || '',
-          imagem_url: Array.isArray(data.imagens) && data.imagens.length > 0 
-            ? String(data.imagens[0])
-            : undefined,
-          imagens: Array.isArray(data.imagens) 
-            ? data.imagens.map(img => String(img))
-            : [],
-          estoque: data.estoque || 0,
-          pontos: data.pontos_consumidor || 0,
-          pontos_consumidor: data.pontos_consumidor || 0,
-          pontos_profissional: data.pontos_profissional || 0,
-          loja_id: data.vendedor_id,
-          status: data.status as "pendente" | "aprovado" | "rejeitado",
-          // Handle unidade_medida which might not exist in the data
-          unidade_medida: 'unidade_medida' in data ? String(data.unidade_medida) : 'unidade',
-          codigo_barras: data.codigo_barras,
-          sku: data.sku,
-        };
-        
-        // Only add store info if vendedores data is available and not an error
-        // Using safe type checking with multiple validation checks
-        if (data.vendedores && 
-            typeof data.vendedores === 'object' && 
-            data.vendedores !== null) {
-          // Cast vendedorData to the explicit interface
-          const vendedorData = data.vendedores as VendorData;
-          
-          // Additional check to ensure nome_loja property exists
-          if ('nome_loja' in vendedorData) {
-            productData.stores = {
-              id: data.vendedor_id,
-              nome: String(vendedorData.nome_loja || ''),
-              nome_loja: String(vendedorData.nome_loja || ''),
-              logo_url: String(vendedorData.logo || '') // Changed here to use logo instead of logo_url
-            };
-          }
-        }
-        
-        setState(prev => ({ ...prev, product: productData }));
-        
-        // Track product view
-        if (isAuthenticated) {
-          trackProductView(id);
-        }
-        
-        // Check if favorited
-        if (isAuthenticated) {
-          const favorited = await isProductFavorited(id);
-          setState(prev => ({ ...prev, isFavorited: favorited }));
-        }
-        
-        // Fetch reviews separately
-        const { data: reviewsData, error: reviewsError } = await supabase
-          .from('product_reviews')
-          .select(`
-            id,
-            cliente_id,
-            nota,
-            comentario,
-            data,
-            profiles:cliente_id (nome)
-          `)
-          .eq('produto_id', id)
-          .order('data', { ascending: false });
-        
-        if (!reviewsError && reviewsData) {
-          const formattedReviews = reviewsData.map(review => ({
-            id: review.id,
-            user_name: review.profiles?.nome || 'Usuário',
-            rating: review.nota,
-            comment: review.comentario,
-            date: new Date(review.data).toLocaleDateString('pt-BR')
-          }));
-          
-          setState(prev => ({ ...prev, reviews: formattedReviews }));
-        }
-
-        // Calculate delivery estimates based on store policies
-        // Default values
-        let minDays = 1;
-        let maxDays = 5;
-
-        // If we have vendedor delivery info, use it - with proper null checks
-        if (data.vendedores && 
-            typeof data.vendedores === 'object' && 
-            data.vendedores !== null) {
-          
-          // Cast to our defined interface
-          const vendedorData = data.vendedores as VendorData;
-          
-          // Additional check to ensure formas_entrega property exists
-          if ('formas_entrega' in vendedorData && vendedorData.formas_entrega) {
-            const deliveryMethods = vendedorData.formas_entrega;
-            
-            if (Array.isArray(deliveryMethods) && deliveryMethods.length > 0) {
-              // Find the fastest delivery option
-              const fastestOption = deliveryMethods.reduce((fastest: any, current: any) => {
-                const currentMin = current.prazo_min || Infinity;
-                const fastestMin = fastest.prazo_min || Infinity;
-                return currentMin < fastestMin ? current : fastest;
-              }, deliveryMethods[0]);
-              
-              if (fastestOption) {
-                minDays = fastestOption.prazo_min || minDays;
-                maxDays = fastestOption.prazo_max || maxDays;
-              }
-            }
-          }
-        }
-        
-        setState(prev => ({ 
-          ...prev, 
-          estimatedDelivery: {
-            minDays,
-            maxDays
-          },
-          loading: false 
-        }));
-        
-      } catch (err) {
-        console.error('Error in useProductDetails:', err);
-        setState(prev => ({ 
-          ...prev, 
-          error: 'Erro ao carregar detalhes do produto', 
-          loading: false 
-        }));
-      }
-    };
-    
-    fetchProduct();
-  }, [id, isAuthenticated]);
-  
-  // Function to track product view
-  const trackProductView = async (productId: string): Promise<void> => {
-    try {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) return;
-  
-      // Create or update recently viewed entry
-      await supabase
-        .from('recently_viewed')
-        .upsert({
-          user_id: userData.user.id,
-          produto_id: productId,
-          data_visualizacao: new Date().toISOString()
-        })
-        .select();
-  
-    } catch (error) {
-      console.error('Error tracking product view:', error);
+    if (id && isAuthenticated && product) {
+      trackProductView(id);
     }
+  }, [id, isAuthenticated, product]);
+  
+  // Return a composite state that matches the original interface
+  return {
+    product,
+    loading,
+    error,
+    isFavorited,
+    reviews,
+    estimatedDelivery
   };
-
-  return state;
 }
