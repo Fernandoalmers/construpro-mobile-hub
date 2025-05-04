@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { Json } from '@/integrations/supabase/types';
@@ -15,9 +14,18 @@ export interface Product {
   imagens?: string[];
   estoque: number;
   pontos: number;
+  pontos_consumidor?: number;
   loja_id: string;
   status: 'pendente' | 'aprovado' | 'rejeitado';
   avaliacao?: number;
+  num_avaliacoes?: number;
+  unidade_medida?: string;
+  stores?: {
+    id?: string;
+    nome?: string;
+    nome_loja?: string;
+    logo_url?: string;
+  };
 }
 
 // Function to track product view
@@ -57,9 +65,18 @@ const transformProduct = (dbProduct: any): Product => {
     imagens: Array.isArray(dbProduct.imagens) ? dbProduct.imagens : [],
     estoque: dbProduct.estoque || 0,
     pontos: dbProduct.pontos_consumidor || 0,
+    pontos_consumidor: dbProduct.pontos_consumidor || 0,
     loja_id: dbProduct.vendedor_id,
     status: dbProduct.status,
-    avaliacao: dbProduct.avaliacao
+    avaliacao: dbProduct.avaliacao,
+    num_avaliacoes: dbProduct.num_avaliacoes || 0,
+    unidade_medida: dbProduct.unidade_medida || 'unidade',
+    stores: dbProduct.vendedores ? {
+      id: dbProduct.vendedor_id,
+      nome: dbProduct.vendedores.nome_loja,
+      nome_loja: dbProduct.vendedores.nome_loja,
+      logo_url: dbProduct.vendedores.logo_url
+    } : undefined
   };
 };
 
@@ -115,7 +132,7 @@ export async function getProductById(id: string): Promise<Product | null> {
   try {
     const { data, error } = await supabase
       .from('produtos')
-      .select('*, vendedores(nome_loja, id)')
+      .select('*, vendedores(nome_loja, id, logo_url)')
       .eq('id', id)
       .single();
     

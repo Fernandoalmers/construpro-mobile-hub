@@ -57,14 +57,14 @@ const ProductInfo: React.FC<ProductInfoProps> = ({
         <div className="flex items-center mb-4 pb-4 border-b border-gray-100">
           <div className="w-12 h-12 bg-gray-100 rounded-full overflow-hidden flex items-center justify-center mr-3">
             {produto.stores.logo_url ? (
-              <img src={produto.stores.logo_url} alt={produto.stores.nome} className="w-full h-full object-cover" />
+              <img src={produto.stores.logo_url} alt={produto.stores.nome_loja || 'Loja'} className="w-full h-full object-cover" />
             ) : (
               <ShoppingCart size={24} className="text-gray-400" />
             )}
           </div>
           <div>
             <p className="text-sm text-gray-600">Vendido por:</p>
-            <h3 className="font-medium">{produto.stores.nome}</h3>
+            <h3 className="font-medium">{produto.stores.nome_loja || produto.stores.nome || 'Loja'}</h3>
           </div>
         </div>
       )}
