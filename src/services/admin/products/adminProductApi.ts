@@ -1,6 +1,5 @@
-
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/sonner';
+import { toast } from '@/components/ui/use-toast';
 import { AdminProduct } from '@/types/admin';
 
 /**
@@ -56,8 +55,11 @@ export const getAdminProducts = async (status?: string): Promise<AdminProduct[]>
         imageUrl = item.imagens[0];
       }
       
-      // Use vendedor name directly from join
-      const vendorName = item.vendedores?.nome_loja || 'Loja desconhecida';
+      // Use vendedor name from join with vendedores table
+      // Use a type assertion to tell TypeScript about the structure
+      const vendorInfo = item.vendedores as { nome_loja?: string } || {};
+      const vendorName = vendorInfo.nome_loja || 'Loja desconhecida';
+      
       console.log(`[getAdminProducts] Produto ${item.id} - vendedor_id: ${item.vendedor_id}, nome_loja: ${vendorName}`);
       
       return {
@@ -86,7 +88,11 @@ export const getAdminProducts = async (status?: string): Promise<AdminProduct[]>
     return productsWithVendorInfo;
   } catch (error) {
     console.error('[getAdminProducts] Error in getAdminProducts:', error);
-    toast.error('Erro ao carregar produtos');
+    toast({
+      title: "Error",
+      description: "Erro ao carregar produtos",
+      variant: "destructive"
+    });
     throw error;
   }
 };

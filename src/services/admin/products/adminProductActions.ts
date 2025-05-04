@@ -1,6 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/sonner';
+import { toast } from '@/components/ui/use-toast';
 import { logAdminAction } from '@/services/adminService';
 
 /**
@@ -20,7 +20,11 @@ export const approveProduct = async (productId: string): Promise<boolean> => {
     
     if (error) {
       console.error('[AdminProductActions] Error approving product:', error);
-      toast.error('Erro ao aprovar produto: ' + error.message);
+      toast({
+        title: "Error",
+        description: `Erro ao aprovar produto: ${error.message}`,
+        variant: "destructive"
+      });
       return false;
     }
     
@@ -39,7 +43,11 @@ export const approveProduct = async (productId: string): Promise<boolean> => {
     return true;
   } catch (error) {
     console.error('[AdminProductActions] Unexpected error in approveProduct:', error);
-    toast.error('Erro inesperado ao aprovar produto');
+    toast({
+      title: "Error",
+      description: "Erro inesperado ao aprovar produto",
+      variant: "destructive"
+    });
     return false;
   }
 };
@@ -61,7 +69,11 @@ export const rejectProduct = async (productId: string): Promise<boolean> => {
     
     if (error) {
       console.error('[AdminProductActions] Error rejecting product:', error);
-      toast.error('Erro ao rejeitar produto: ' + error.message);
+      toast({
+        title: "Error",
+        description: `Erro ao rejeitar produto: ${error.message}`,
+        variant: "destructive"
+      });
       return false;
     }
     
@@ -80,7 +92,11 @@ export const rejectProduct = async (productId: string): Promise<boolean> => {
     return true;
   } catch (error) {
     console.error('[AdminProductActions] Unexpected error in rejectProduct:', error);
-    toast.error('Erro inesperado ao rejeitar produto');
+    toast({
+      title: "Error",
+      description: "Erro inesperado ao rejeitar produto",
+      variant: "destructive"
+    });
     return false;
   }
 };

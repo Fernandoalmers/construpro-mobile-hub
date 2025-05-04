@@ -9,8 +9,8 @@ import ProductFilters from './products/ProductFilters';
 import ProductsTable from './products/ProductsTable';
 import ProductsHeader from './products/ProductsHeader';
 import { debugFetchProducts } from '@/services/admin/products';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/sonner';
+import { toast } from '@/components/ui/use-toast';
+import { approveProduct, rejectProduct } from '@/services/admin/products/adminProductActions';
 
 const ProductsManagementScreen: React.FC = () => {
   useTitle('ConstruPro Admin - Produtos');
@@ -31,52 +31,76 @@ const ProductsManagementScreen: React.FC = () => {
     console.log('Debug result:', result);
   };
 
-  // Implementation for approve product handler
+  // Implementation for approve product handler using the service
   async function handleApproveProduct(productId: string) {
-    // Log antes da chamada ao Supabase
-    console.log('[ApproveProduct] iniciando update para id:', productId);
-    
-    // 1) Atualiza o status no Supabase
-    const { data, error } = await supabase
-      .from('produtos')
-      .update({ status: 'aprovado' })
-      .eq('id', productId);
+    try {
+      // Log before calling the service
+      console.log('[ApproveProduct] Approving product with ID:', productId);
+      
+      // Use the adminProductActions service
+      const success = await approveProduct(productId);
+      
+      console.log('[ApproveProduct] Result:', success);
+      
+      if (!success) {
+        toast({
+          title: "Error",
+          description: "Erro ao aprovar produto",
+          variant: "destructive"
+        });
+        return;
+      }
 
-    // Log após receber resposta do Supabase
-    console.log('[ApproveProduct] retorno Supabase data:', data, 'error:', error);
-    
-    if (error) {
-      toast.error('Erro ao aprovar: ' + error.message);
-      return;
+      // Refresh the products list
+      await refreshProducts();
+      toast({
+        title: "Sucesso",
+        description: "Produto aprovado com sucesso"
+      });
+    } catch (error) {
+      console.error('[ApproveProduct] Error:', error);
+      toast({
+        title: "Error",
+        description: "Erro inesperado ao aprovar produto",
+        variant: "destructive"
+      });
     }
-
-    // 2) Refetch explícito da lista pendente
-    await refreshProducts();
-    toast.success('Produto aprovado com sucesso');
   }
 
-  // Implementation for reject product handler
+  // Implementation for reject product handler using the service
   async function handleRejectProduct(productId: string) {
-    // Log antes da chamada ao Supabase
-    console.log('[RejectProduct] iniciando update para id:', productId);
-    
-    // 1) Atualiza o status no Supabase
-    const { data, error } = await supabase
-      .from('produtos')
-      .update({ status: 'inativo' })
-      .eq('id', productId);
+    try {
+      // Log before calling the service
+      console.log('[RejectProduct] Rejecting product with ID:', productId);
+      
+      // Use the adminProductActions service
+      const success = await rejectProduct(productId);
+      
+      console.log('[RejectProduct] Result:', success);
+      
+      if (!success) {
+        toast({
+          title: "Error",
+          description: "Erro ao rejeitar produto",
+          variant: "destructive"
+        });
+        return;
+      }
 
-    // Log após receber resposta do Supabase
-    console.log('[RejectProduct] retorno Supabase data:', data, 'error:', error);
-    
-    if (error) {
-      toast.error('Erro ao rejeitar: ' + error.message);
-      return;
+      // Refresh the products list
+      await refreshProducts();
+      toast({
+        title: "Sucesso",
+        description: "Produto rejeitado com sucesso"
+      });
+    } catch (error) {
+      console.error('[RejectProduct] Error:', error);
+      toast({
+        title: "Error",
+        description: "Erro inesperado ao rejeitar produto",
+        variant: "destructive"
+      });
     }
-
-    // 2) Refetch explícito da lista pendente
-    await refreshProducts();
-    toast.success('Produto rejeitado com sucesso');
   }
 
   useEffect(() => {
