@@ -54,8 +54,7 @@ const CheckoutScreen: React.FC = () => {
   const handlePlaceOrder = async () => {
     // Validate change amount if payment method is money
     if (paymentMethod === 'money' && (!changeAmount || parseFloat(changeAmount) < 100)) {
-      toast({
-        title: "Valor insuficiente",
+      toast("Valor insuficiente", {
         description: "O troco deve ser maior que o valor total do pedido.",
         variant: "destructive"
       });
@@ -90,8 +89,7 @@ const CheckoutScreen: React.FC = () => {
       if (error) throw error;
 
       // Mock successful order creation
-      toast({
-        title: "Pedido realizado com sucesso!",
+      toast("Pedido realizado com sucesso!", {
         description: "Você receberá detalhes por email."
       });
 
@@ -99,8 +97,7 @@ const CheckoutScreen: React.FC = () => {
       navigate(`/order-confirmation/${order.id}`);
     } catch (error) {
       console.error("Error creating order:", error);
-      toast({
-        title: "Erro ao finalizar pedido",
+      toast("Erro ao finalizar pedido", {
         description: "Ocorreu um erro ao processar seu pedido. Tente novamente.",
         variant: "destructive"
       });
