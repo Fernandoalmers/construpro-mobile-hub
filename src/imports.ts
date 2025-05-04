@@ -22,7 +22,6 @@ import ProfileScreen from './components/profile/ProfileScreen';
 import RewardsScreen from './components/resgates/ResgatesScreen';
 import RewardDetailScreen from './components/resgates/ResgateDetailScreen';
 import StoreDetailScreen from './components/marketplace/ProdutoScreen';
-import ProductDetailScreen from './components/marketplace/ProdutoDetailScreen';
 import CartScreen from './components/marketplace/CartScreen';
 import CheckoutScreen from './components/marketplace/CheckoutScreen';
 import OrdersScreen from './components/profile/OrdersScreen';
@@ -73,7 +72,6 @@ export {
   RewardsScreen,
   RewardDetailScreen,
   StoreDetailScreen,
-  ProductDetailScreen,
   CartScreen,
   CheckoutScreen,
   OrdersScreen,

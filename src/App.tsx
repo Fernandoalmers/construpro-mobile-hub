@@ -6,7 +6,7 @@ import {
   StoresManagementScreen, RedemptionsManagementScreen, OrdersManagementScreen,
   AdminLogsScreen, LoginScreen, SignUpScreen, OnboardingScreen,
   HomeScreen, ProfileScreen, RewardsScreen,
-  RewardDetailScreen, StoreDetailScreen, ProductDetailScreen,
+  RewardDetailScreen, StoreDetailScreen, 
   CartScreen, CheckoutScreen, OrdersScreen, OrderDetailScreen,
   FavoritesScreen, ChatScreen, SettingsScreen,
   NotFoundScreen, VendorDashboardScreen, VendorProductsScreen,

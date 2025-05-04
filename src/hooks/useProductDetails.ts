@@ -59,7 +59,7 @@ export function useProductDetails(id: string | undefined, isAuthenticated: boole
 
         console.log("Produto data:", data);
         
-        // Process product data
+        // Process product data safely with type checking
         const productData: Product = {
           id: data.id,
           nome: data.nome,
@@ -69,7 +69,7 @@ export function useProductDetails(id: string | undefined, isAuthenticated: boole
           categoria: data.categoria,
           segmento: data.segmento || '',
           imagem_url: Array.isArray(data.imagens) && data.imagens.length > 0 
-            ? (data.imagens[0] as string) 
+            ? String(data.imagens[0])
             : undefined,
           imagens: Array.isArray(data.imagens) 
             ? data.imagens.map(img => String(img))
@@ -79,17 +79,21 @@ export function useProductDetails(id: string | undefined, isAuthenticated: boole
           pontos_consumidor: data.pontos_consumidor || 0,
           pontos_profissional: data.pontos_profissional || 0,
           loja_id: data.vendedor_id,
-          status: (data.status as "pendente" | "aprovado" | "rejeitado") || "pendente",
+          status: data.status as "pendente" | "aprovado" | "rejeitado",
           unidade_medida: data.unidade_medida || 'unidade',
           codigo_barras: data.codigo_barras,
           sku: data.sku,
-          stores: data.vendedores ? {
-            id: data.vendedor_id,
-            nome: data.vendedores.nome_loja,
-            nome_loja: data.vendedores.nome_loja,
-            logo_url: data.vendedores.logo_url
-          } : undefined
         };
+        
+        // Only add store info if vendedores data is available and not an error
+        if (data.vendedores && typeof data.vendedores === 'object' && 'nome_loja' in data.vendedores) {
+          productData.stores = {
+            id: data.vendedor_id,
+            nome: data.vendedores.nome_loja as string,
+            nome_loja: data.vendedores.nome_loja as string,
+            logo_url: data.vendedores.logo_url as string
+          };
+        }
         
         setState(prev => ({ ...prev, product: productData }));
         
@@ -136,10 +140,11 @@ export function useProductDetails(id: string | undefined, isAuthenticated: boole
         let maxDays = 5;
 
         // If we have vendedor delivery info, use it
-        if (data.vendedores?.formas_entrega && Array.isArray(data.vendedores.formas_entrega)) {
-          const deliveryMethods = data.vendedores.formas_entrega;
+        const vendedores = data.vendedores;
+        if (vendedores && typeof vendedores === 'object' && 'formas_entrega' in vendedores) {
+          const deliveryMethods = vendedores.formas_entrega;
           
-          if (deliveryMethods.length > 0) {
+          if (Array.isArray(deliveryMethods) && deliveryMethods.length > 0) {
             // Find the fastest delivery option
             const fastestOption = deliveryMethods.reduce((fastest: any, current: any) => {
               const currentMin = current.prazo_min || Infinity;
