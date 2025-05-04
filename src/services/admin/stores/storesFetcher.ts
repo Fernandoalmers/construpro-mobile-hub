@@ -40,15 +40,10 @@ export const getAdminStores = async (): Promise<AdminStore[]> => {
       const profileData = item.profiles || {};
       
       // Type safety: extract properties with default values to handle any profile shape
-      const profileName = profileData && 
-                         typeof profileData === 'object' ? 
-                         (profileData as Record<string, any>).nome || 'Desconhecido' : 
-                         'Desconhecido';
-                         
-      const profileEmail = profileData && 
-                         typeof profileData === 'object' ? 
-                         (profileData as Record<string, any>).email || 'sem-email' : 
-                         'sem-email';
+      // Use type assertion to access properties safely
+      const profile = profileData as Record<string, any>;
+      const profileName = profile && typeof profile === 'object' ? profile.nome || 'Desconhecido' : 'Desconhecido';
+      const profileEmail = profile && typeof profile === 'object' ? profile.email || 'sem-email' : 'sem-email';
       
       return {
         id: item.id,
