@@ -23,7 +23,7 @@ const ProductActions: React.FC<ProductActionsProps> = ({
   isAuthenticated,
 }) => {
   const navigate = useNavigate();
-  const { addToCart } = useCart();
+  const { addToCart, cartCount } = useCart();
   
   // Added console log to verify this new implementation is being used
   console.log('ProductActions component loaded - updated implementation');

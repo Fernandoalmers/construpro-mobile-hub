@@ -98,6 +98,27 @@ const MarketplaceScreen: React.FC = () => {
     initialSearch: searchQuery || '' 
   });
 
+  // Add debouncing for instant search
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (searchTerm.trim().length > 0) {
+        console.log('Debounced search for:', searchTerm);
+        handleSearchChange(searchTerm);
+        
+        // Update URL with search parameter
+        const newSearchParams = new URLSearchParams(searchParams);
+        if (searchTerm) {
+          newSearchParams.set('search', searchTerm);
+        } else {
+          newSearchParams.delete('search');
+        }
+        navigate(`${location.pathname}?${newSearchParams.toString()}`, { replace: true });
+      }
+    }, 300);
+    
+    return () => clearTimeout(timeout);
+  }, [searchTerm]);
+
   // Handle segment selection
   const handleSegmentClick = (segmentId: string) => {
     // Toggle segment selection
@@ -128,14 +149,7 @@ const MarketplaceScreen: React.FC = () => {
     handleSearchChange(e.target.value);
     setSearchTerm(e.target.value);
     
-    // Update URL with search parameter
-    const newSearchParams = new URLSearchParams(searchParams);
-    if (e.target.value) {
-      newSearchParams.set('search', e.target.value);
-    } else {
-      newSearchParams.delete('search');
-    }
-    navigate(`${location.pathname}?${newSearchParams.toString()}`, { replace: true });
+    // URL update now handled by the debounced effect
   };
 
   // Quick search for products
