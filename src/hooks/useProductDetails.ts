@@ -41,19 +41,11 @@ export function useProductDetails(id: string | undefined, isAuthenticated: boole
           .from('produtos')
           .select(`
             *,
-            vendedores:vendedor_id (
+            vendedores (
               id, 
               nome_loja, 
               logo_url,
               formas_entrega
-            ),
-            product_reviews:id (
-              id,
-              cliente_id,
-              nota,
-              comentario,
-              data,
-              profiles:cliente_id (nome)
             )
           `)
           .eq('id', id)
@@ -64,6 +56,8 @@ export function useProductDetails(id: string | undefined, isAuthenticated: boole
           setState(prev => ({ ...prev, error: 'Produto não encontrado', loading: false }));
           return;
         }
+
+        console.log("Produto data:", data);
         
         // Process product data
         const productData: Product = {
@@ -73,17 +67,19 @@ export function useProductDetails(id: string | undefined, isAuthenticated: boole
           preco: data.preco_normal || 0,
           preco_anterior: data.preco_promocional,
           categoria: data.categoria,
-          segmento: data.segmento,
+          segmento: data.segmento || '',
           imagem_url: Array.isArray(data.imagens) && data.imagens.length > 0 
-            ? data.imagens[0] 
+            ? (data.imagens[0] as string) 
             : undefined,
-          imagens: Array.isArray(data.imagens) ? data.imagens : [],
+          imagens: Array.isArray(data.imagens) 
+            ? data.imagens.map(img => String(img))
+            : [],
           estoque: data.estoque || 0,
           pontos: data.pontos_consumidor || 0,
           pontos_consumidor: data.pontos_consumidor || 0,
           pontos_profissional: data.pontos_profissional || 0,
           loja_id: data.vendedor_id,
-          status: data.status,
+          status: (data.status as "pendente" | "aprovado" | "rejeitado") || "pendente",
           unidade_medida: data.unidade_medida || 'unidade',
           codigo_barras: data.codigo_barras,
           sku: data.sku,
@@ -108,9 +104,22 @@ export function useProductDetails(id: string | undefined, isAuthenticated: boole
           setState(prev => ({ ...prev, isFavorited: favorited }));
         }
         
-        // Process reviews (from our single query)
-        if (data.product_reviews && data.product_reviews.length > 0) {
-          const formattedReviews = data.product_reviews.map((review: any) => ({
+        // Fetch reviews separately
+        const { data: reviewsData, error: reviewsError } = await supabase
+          .from('product_reviews')
+          .select(`
+            id,
+            cliente_id,
+            nota,
+            comentario,
+            data,
+            profiles:cliente_id (nome)
+          `)
+          .eq('produto_id', id)
+          .order('data', { ascending: false });
+        
+        if (!reviewsError && reviewsData) {
+          const formattedReviews = reviewsData.map(review => ({
             id: review.id,
             user_name: review.profiles?.nome || 'Usuário',
             rating: review.nota,
@@ -118,37 +127,7 @@ export function useProductDetails(id: string | undefined, isAuthenticated: boole
             date: new Date(review.data).toLocaleDateString('pt-BR')
           }));
           
-          setState(prev => ({ 
-            ...prev, 
-            reviews: formattedReviews,
-            loading: false 
-          }));
-        } else {
-          // Fallback to separate query for reviews if the join didn't work
-          const { data: reviewsData } = await supabase
-            .from('product_reviews')
-            .select(`
-              id,
-              cliente_id,
-              nota,
-              comentario,
-              data,
-              profiles:cliente_id (nome)
-            `)
-            .eq('produto_id', id)
-            .order('data', { ascending: false });
-          
-          if (reviewsData) {
-            const formattedReviews = reviewsData.map(review => ({
-              id: review.id,
-              user_name: review.profiles?.nome || 'Usuário',
-              rating: review.nota,
-              comment: review.comentario,
-              date: new Date(review.data).toLocaleDateString('pt-BR')
-            }));
-            
-            setState(prev => ({ ...prev, reviews: formattedReviews }));
-          }
+          setState(prev => ({ ...prev, reviews: formattedReviews }));
         }
 
         // Calculate delivery estimates based on store policies
@@ -162,7 +141,7 @@ export function useProductDetails(id: string | undefined, isAuthenticated: boole
           
           if (deliveryMethods.length > 0) {
             // Find the fastest delivery option
-            const fastestOption = deliveryMethods.reduce((fastest, current) => {
+            const fastestOption = deliveryMethods.reduce((fastest: any, current: any) => {
               const currentMin = current.prazo_min || Infinity;
               const fastestMin = fastest.prazo_min || Infinity;
               return currentMin < fastestMin ? current : fastest;

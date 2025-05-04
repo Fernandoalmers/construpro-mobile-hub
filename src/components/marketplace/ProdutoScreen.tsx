@@ -1,9 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import LoadingState from '../common/LoadingState';
 import ErrorState from '../common/ErrorState';
@@ -24,7 +23,7 @@ const ProdutoScreen: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   
-  const [quantidade, setQuantidade] = useState(1);
+  const [quantidade, setQuantidade] = React.useState(1);
   
   // Use our custom hook
   const { product: produto, loading, error, isFavorited, reviews, estimatedDelivery } = useProductDetails(id, isAuthenticated);
@@ -62,19 +61,8 @@ const ProdutoScreen: React.FC = () => {
       const roundedValue = Math.round(quantidade / step) * step;
       if (roundedValue !== quantidade) {
         setQuantidade(roundedValue);
-        toast.info(`Quantidade ajustada para ${roundedValue} ${produto?.unidade_medida || 'unidades'}`);
       }
     }
-  };
-
-  const handleAddReview = () => {
-    if (!isAuthenticated) {
-      navigate('/login', { state: { from: `/produto/${id}` } });
-      return;
-    }
-    
-    // In a full implementation, this would open a review dialog
-    toast.info('Funcionalidade de avaliação em desenvolvimento');
   };
 
   if (loading) {
@@ -146,7 +134,12 @@ const ProdutoScreen: React.FC = () => {
           description={produto.descricao}
           reviews={reviews}
           canReview={isAuthenticated}
-          onAddReview={handleAddReview}
+          onAddReview={() => {
+            if (!isAuthenticated) {
+              navigate('/login', { state: { from: `/produto/${id}` } });
+              return;
+            }
+          }}
         />
         
         {/* Back button */}

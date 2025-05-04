@@ -28,6 +28,7 @@ import ClientesVendorScreen from './components/vendor/ClientesVendorScreen';
 import ConfiguracoesVendorScreen from './components/vendor/ConfiguracoesVendorScreen';
 import AjustePontosVendorScreen from './components/vendor/AjustePontosVendorScreen';
 import ProdutosVendorScreen from './components/vendor/ProdutosVendorScreen';
+import ProdutoScreen from './components/marketplace/ProdutoScreen';
 
 function App() {
   const location = useLocation();
