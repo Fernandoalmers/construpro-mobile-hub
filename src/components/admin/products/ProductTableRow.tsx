@@ -38,13 +38,13 @@ const ProductTableRow: React.FC<ProductTableRowProps> = ({
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger>
-              <div className="font-medium">{product.lojaNome || 'N/A'}</div>
+              <div className="font-medium">{product.vendedores?.nome_loja || 'N/A'}</div>
               {product.vendedor_id && (
                 <div className="text-xs text-gray-500">ID: {product.vendedor_id.substring(0, 8)}...</div>
               )}
             </TooltipTrigger>
             <TooltipContent>
-              <p>Vendedor: {product.lojaNome}</p>
+              <p>Vendedor: {product.vendedores?.nome_loja || product.lojaNome}</p>
               {product.vendedor_id && <p>ID completo: {product.vendedor_id}</p>}
             </TooltipContent>
           </Tooltip>

@@ -22,7 +22,7 @@ const ProductsManagementScreen: React.FC = () => {
     setFilter,
     searchTerm,
     setSearchTerm,
-    refreshProducts
+    refreshProducts: productsRefetch
   } = useAdminProducts();
 
   // Debug function to help troubleshoot data issues
@@ -52,10 +52,10 @@ const ProductsManagementScreen: React.FC = () => {
       title: "Sucesso",
       description: 'Produto aprovado com sucesso'
     });
-    await refreshProducts();  // refetch products list
+    await productsRefetch();  // refetch products list
   }
 
-  // Implementation for reject product handler using the service
+  // Implementation for reject product handler using direct Supabase call
   async function handleRejectProduct(productId: string) {
     try {
       // Log before calling the service
@@ -78,7 +78,7 @@ const ProductsManagementScreen: React.FC = () => {
       }
 
       // Refresh the products list
-      await refreshProducts();
+      await productsRefetch();
       toast({
         title: "Sucesso",
         description: "Produto rejeitado com sucesso"

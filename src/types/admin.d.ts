@@ -1,3 +1,4 @@
+
 // If this file doesn't exist, create it with these types
 
 export interface AdminProduct {
@@ -20,6 +21,9 @@ export interface AdminProduct {
   created_at?: string;
   updated_at?: string;
   imagens?: string[];
+  vendedores?: {
+    nome_loja?: string;
+  };
 }
 
 export interface AdminRedemption {
@@ -40,6 +44,7 @@ export interface AdminRedemption {
 export interface AdminStore {
   id: string;
   nome: string;
+  nome_loja?: string;
   logo_url: string | null;
   banner_url?: string | null;
   descricao?: string;

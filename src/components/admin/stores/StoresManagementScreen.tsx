@@ -22,12 +22,14 @@ const StoresManagementScreen: React.FC = () => {
   } = useQuery({
     queryKey: ['adminStores'],
     queryFn: getAdminStores,
-    onError: (err: any) => {
-      toast({
-        title: "Erro",
-        description: `Falha ao carregar lojas: ${err.message}`,
-        variant: "destructive"
-      });
+    meta: {
+      onError: (err: any) => {
+        toast({
+          title: "Erro",
+          description: `Falha ao carregar lojas: ${err.message}`,
+          variant: "destructive"
+        });
+      }
     }
   });
 

@@ -23,7 +23,7 @@ export const getAdminStores = async (): Promise<AdminStore[]> => {
         logo,
         created_at,
         updated_at,
-        profiles!inner(nome, email),
+        profiles:usuario_id(nome, email),
         produtos(id)
       `)
       .order('created_at', { ascending: false });
@@ -37,24 +37,31 @@ export const getAdminStores = async (): Promise<AdminStore[]> => {
     console.log(`[getAdminStores] Found ${data?.length || 0} stores in 'vendedores' table`);
     
     // Transform data to AdminStore format
-    const stores = (data || []).map(item => ({
-      id: item.id,
-      nome: item.nome_loja,
-      nome_loja: item.nome_loja,
-      descricao: item.descricao || '',
-      status: item.status || 'pendente',
-      usuarioId: item.usuario_id,
-      proprietario_id: item.usuario_id,
-      proprietario_nome: item.profiles.nome || 'Desconhecido',
-      proprietario_email: item.profiles.email || 'sem-email',
-      telefone: item.telefone || '',
-      whatsapp: item.whatsapp || '',
-      logo_url: item.logo || '',
-      produtos_count: Array.isArray(item.produtos) ? item.produtos.length : 0, 
-      contato: item.telefone || item.whatsapp || '',
-      created_at: item.created_at,
-      updated_at: item.updated_at
-    }));
+    const stores = (data || []).map(item => {
+      // Handle profiles data safely
+      const profileData = item.profiles || {};
+      const profileName = typeof profileData === 'object' ? profileData.nome : 'Desconhecido';
+      const profileEmail = typeof profileData === 'object' ? profileData.email : 'sem-email';
+      
+      return {
+        id: item.id,
+        nome: item.nome_loja,
+        nome_loja: item.nome_loja,
+        descricao: item.descricao || '',
+        status: item.status || 'pendente',
+        usuarioId: item.usuario_id,
+        proprietario_id: item.usuario_id,
+        proprietario_nome: profileName || 'Desconhecido',
+        proprietario_email: profileEmail || 'sem-email',
+        telefone: item.telefone || '',
+        whatsapp: item.whatsapp || '',
+        logo_url: item.logo || '',
+        produtos_count: Array.isArray(item.produtos) ? item.produtos.length : 0, 
+        contato: item.telefone || item.whatsapp || '',
+        created_at: item.created_at,
+        updated_at: item.updated_at
+      };
+    });
 
     // Log um exemplo de loja processada para depuração
     if (stores.length > 0) {

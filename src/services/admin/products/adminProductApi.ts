@@ -82,7 +82,8 @@ export const getAdminProducts = async (status?: string): Promise<AdminProduct[]>
         status: item.status as 'pendente' | 'aprovado' | 'inativo',
         created_at: item.created_at,
         updated_at: item.updated_at,
-        imagens: Array.isArray(item.imagens) ? item.imagens.filter(img => typeof img === 'string') : []
+        imagens: Array.isArray(item.imagens) ? item.imagens.filter(img => typeof img === 'string') : [],
+        vendedores: item.vendedores
       };
     });
     
@@ -110,19 +111,12 @@ export const getPendingProducts = async (): Promise<AdminProduct[]> => {
       .select(`
         id,
         nome,
-        descricao,
-        preco_normal,
-        preco_promocional,
-        pontos_consumidor,
-        pontos_profissional,
-        categoria,
-        imagens,
-        vendedor_id,
+        preco_normal as preco,
         estoque,
         status,
-        created_at,
-        updated_at,
-        vendedores!inner(nome_loja)
+        vendedor_id,
+        vendedores!inner(nome_loja),
+        imagens
       `)
       .eq('status', 'pendente')
       .order('created_at', { ascending: false });
@@ -156,23 +150,24 @@ export const getPendingProducts = async (): Promise<AdminProduct[]> => {
       return {
         id: item.id,
         nome: item.nome,
-        descricao: item.descricao,
-        categoria: item.categoria,
+        descricao: "",
+        categoria: "",
         imagemUrl: imageUrl,
-        preco: item.preco_normal,
-        preco_normal: item.preco_normal,
-        preco_promocional: item.preco_promocional,
+        preco: item.preco,
+        preco_normal: item.preco,
+        preco_promocional: null,
         estoque: item.estoque,
-        pontos: item.pontos_consumidor || 0,
-        pontos_consumidor: item.pontos_consumidor || 0,
-        pontos_profissional: item.pontos_profissional || 0,
+        pontos: 0,
+        pontos_consumidor: 0,
+        pontos_profissional: 0,
         lojaId: item.vendedor_id,
         vendedor_id: item.vendedor_id,
         lojaNome: vendorName,
         status: item.status as 'pendente' | 'aprovado' | 'inativo',
-        created_at: item.created_at,
-        updated_at: item.updated_at,
-        imagens: Array.isArray(item.imagens) ? item.imagens.filter(img => typeof img === 'string') : []
+        created_at: "",
+        updated_at: "",
+        imagens: Array.isArray(item.imagens) ? item.imagens.filter(img => typeof img === 'string') : [],
+        vendedores: item.vendedores
       };
     });
     
