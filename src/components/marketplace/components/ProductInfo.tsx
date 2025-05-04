@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Star, Clock } from 'lucide-react';
+import { Star, Clock, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Product } from '@/services/productService';
 
@@ -113,7 +113,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
         
         <div className="text-sm text-gray-700 mt-1">
           {produto.estoque > 0 ? (
-            <span className="text-green-700">Em estoque ({produto.estoque} disponíveis)</span>
+            <span className="text-green-700">Em estoque ({produto.estoque} {produto.estoque === 1 ? 'unidade disponível' : 'unidades disponíveis'})</span>
           ) : (
             <span className="text-red-500">Fora de estoque</span>
           )}
@@ -146,6 +146,14 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
           <span className="font-medium">Entrega: </span>
           <span className="ml-1">{getDeliveryText()}</span>
         </p>
+        
+        {/* Rural delivery warning */}
+        <div className="mt-2 pt-2 border-t border-gray-200 flex items-start">
+          <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 mr-2 flex-shrink-0" />
+          <p className="text-xs text-gray-600">
+            <span className="font-medium">Aviso:</span> Entrega em zona rural favor combinar o frete com a loja após fechar o pedido.
+          </p>
+        </div>
       </div>
       
       {produto.unidade_medida && produto.unidade_medida !== 'unidade' && (

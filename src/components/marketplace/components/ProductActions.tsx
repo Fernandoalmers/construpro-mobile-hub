@@ -7,6 +7,7 @@ import { addToCart } from '@/services/cartService';
 import { addToFavorites } from '@/services/cartService';
 import { Heart, ShoppingCart, MessageCircle } from 'lucide-react';
 import { Product } from '@/services/productService';
+import CartPopup from '../CartPopup';
 
 interface ProductActionsProps {
   produto: Product;
@@ -26,6 +27,7 @@ const ProductActions: React.FC<ProductActionsProps> = ({
   const navigate = useNavigate();
   const [addingToCart, setAddingToCart] = useState(false);
   const [addingToFavorites, setAddingToFavorites] = useState(false);
+  const [showCartAnimation, setShowCartAnimation] = useState(false);
 
   const handleAddToCart = async () => {
     if (!produto?.id) return;
@@ -42,8 +44,14 @@ const ProductActions: React.FC<ProductActionsProps> = ({
       const result = await addToCart(produto.id, quantidade);
       
       if (result) {
+        // Show animation and toast
+        setShowCartAnimation(true);
         toast.success(`${produto.nome} adicionado ao carrinho`);
-        navigate('/cart');
+        
+        // Hide animation after 3 seconds
+        setTimeout(() => {
+          setShowCartAnimation(false);
+        }, 3000);
       } else {
         toast.error('Erro ao adicionar ao carrinho');
       }
@@ -123,44 +131,49 @@ const ProductActions: React.FC<ProductActionsProps> = ({
   };
 
   return (
-    <div className="flex flex-col gap-3 mt-4">
-      <div className="flex items-center gap-2">
+    <>
+      <div className="flex flex-col gap-3 mt-4">
+        <div className="flex items-center gap-2">
+          <Button 
+            className="flex-1 gap-2" 
+            onClick={handleAddToCart}
+            disabled={addingToCart}
+          >
+            <ShoppingCart size={18} />
+            Adicionar ao Carrinho
+          </Button>
+          <Button 
+            variant="outline" 
+            className={`aspect-square p-0 ${isFavorited ? 'text-red-500 border-red-500' : ''}`}
+            onClick={handleToggleFavorite}
+            disabled={addingToFavorites}
+          >
+            <Heart size={18} className={isFavorited ? "fill-red-500" : ""} />
+          </Button>
+        </div>
         <Button 
-          className="flex-1 gap-2" 
-          onClick={handleAddToCart}
+          variant="secondary" 
+          className="w-full"
+          onClick={handleBuyNow}
           disabled={addingToCart}
         >
-          <ShoppingCart size={18} />
-          Adicionar ao Carrinho
+          Comprar Agora
         </Button>
-        <Button 
-          variant="outline" 
-          className={`aspect-square p-0 ${isFavorited ? 'text-red-500 border-red-500' : ''}`}
-          onClick={handleToggleFavorite}
-          disabled={addingToFavorites}
-        >
-          <Heart size={18} className={isFavorited ? "fill-red-500" : ""} />
-        </Button>
+        {produto.stores?.id && (
+          <Button 
+            variant="outline" 
+            className="w-full gap-2"
+            onClick={handleChatWithStore}
+          >
+            <MessageCircle size={18} />
+            Chat com a Loja
+          </Button>
+        )}
       </div>
-      <Button 
-        variant="secondary" 
-        className="w-full"
-        onClick={handleBuyNow}
-        disabled={addingToCart}
-      >
-        Comprar Agora
-      </Button>
-      {produto.stores?.id && (
-        <Button 
-          variant="outline" 
-          className="w-full gap-2"
-          onClick={handleChatWithStore}
-        >
-          <MessageCircle size={18} />
-          Chat com a Loja
-        </Button>
-      )}
-    </div>
+      
+      {/* Show cart animation popup when item is added to cart */}
+      {showCartAnimation && <CartPopup />}
+    </>
   );
 };
 
