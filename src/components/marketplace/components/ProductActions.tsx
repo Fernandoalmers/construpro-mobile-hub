@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { Button } from '@/components/ui/button';
 import { addToCart } from '@/services/cartService';
 import { addToFavorites } from '@/services/cartService';
@@ -69,7 +69,7 @@ const ProductActions: React.FC<ProductActionsProps> = ({
       const result = await addToCart(produto.id, quantidade);
       
       if (result) {
-        navigate('/cart?checkout=true');
+        navigate('/checkout');
       } else {
         toast.error('Erro ao processar compra');
       }

@@ -212,7 +212,7 @@ export function useProductDetails(id: string | undefined, isAuthenticated: boole
     fetchProduct();
   }, [id, isAuthenticated]);
   
-  // Function to track product views
+  // Function to track product view
   const trackProductView = async (productId: string): Promise<void> => {
     try {
       const { data: userData } = await supabase.auth.getUser();

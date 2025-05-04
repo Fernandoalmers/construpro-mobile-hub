@@ -102,13 +102,16 @@ function App() {
         <Route path="/orders" element={<ProtectedRoute><OrdersScreen /></ProtectedRoute>} />
         <Route path="/order/:orderId" element={<ProtectedRoute><OrderDetailScreen /></ProtectedRoute>} />
         
+        {/* Add route for order confirmation */}
+        <Route path="/order-confirmation/:orderId" element={<ProtectedRoute><OrderDetailScreen /></ProtectedRoute>} />
+        
         {/* Other user routes */}
         <Route path="/favorites" element={<ProtectedRoute><FavoritesScreen /></ProtectedRoute>} />
         <Route path="/chat/:chatId" element={<ProtectedRoute><ChatScreen /></ProtectedRoute>} />
         <Route path="/chat" element={<ProtectedRoute><ChatScreen /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><SettingsScreen /></ProtectedRoute>} />
         
-        {/* Vendor routes - all corrected and organized */}
+        {/* Vendor routes */}
         <Route path="/vendor" element={<ProtectedRoute><VendorModeScreen /></ProtectedRoute>} />
         <Route path="/vendor/products" element={<ProtectedRoute><ProductManagementScreen /></ProtectedRoute>} />
         <Route path="/vendor/product-new" element={<ProtectedRoute><ProductFormScreen /></ProtectedRoute>} />
@@ -132,7 +135,7 @@ function App() {
         <Route path="/marketplace" element={<ProtectedRoute><MarketplaceScreenWrapper /></ProtectedRoute>} />
         <Route path="/marketplace/products" element={<ProtectedRoute><MarketplaceScreenWrapper /></ProtectedRoute>} />
         
-        {/* Admin routes - using ProtectedRoute with requireAdmin flag */}
+        {/* Admin routes */}
         <Route path="/admin" element={<ProtectedRoute requireAdmin={true}><AdminDashboard /></ProtectedRoute>} />
         <Route path="/admin/users" element={<ProtectedRoute requireAdmin={true}><UsersManagement /></ProtectedRoute>} />
         <Route path="/admin/products" element={<ProtectedRoute requireAdmin={true}><ProductsManagementScreen /></ProtectedRoute>} />
