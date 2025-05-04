@@ -87,18 +87,22 @@ export function useProductDetails(id: string | undefined, isAuthenticated: boole
         };
         
         // Only add store info if vendedores data is available and not an error
-        // Using non-null assertion with multiple validation checks
+        // Using safe type checking with multiple validation checks
         if (data.vendedores && 
             typeof data.vendedores === 'object' && 
-            data.vendedores !== null &&
-            'nome_loja' in data.vendedores) {
-          const vendedores = data.vendedores;
-          productData.stores = {
-            id: data.vendedor_id,
-            nome: String(vendedores?.nome_loja || ''),
-            nome_loja: String(vendedores?.nome_loja || ''),
-            logo_url: String(vendedores?.logo_url || '')
-          };
+            data.vendedores !== null) {
+          // Create a local variable to avoid repeating the null check
+          const vendedorData = data.vendedores;
+          
+          // Additional check to ensure nome_loja property exists
+          if ('nome_loja' in vendedorData) {
+            productData.stores = {
+              id: data.vendedor_id,
+              nome: String(vendedorData.nome_loja || ''),
+              nome_loja: String(vendedorData.nome_loja || ''),
+              logo_url: String(vendedorData.logo_url || '')
+            };
+          }
         }
         
         setState(prev => ({ ...prev, product: productData }));
@@ -145,26 +149,30 @@ export function useProductDetails(id: string | undefined, isAuthenticated: boole
         let minDays = 1;
         let maxDays = 5;
 
-        // If we have vendedor delivery info, use it
-        const vendedores = data.vendedores;
-        if (vendedores && 
-            typeof vendedores === 'object' && 
-            vendedores !== null && 
-            'formas_entrega' in vendedores) {
-          // Use optional chaining to safely access the formas_entrega property
-          const deliveryMethods = vendedores?.formas_entrega;
+        // If we have vendedor delivery info, use it - with proper null checks
+        if (data.vendedores && 
+            typeof data.vendedores === 'object' && 
+            data.vendedores !== null) {
           
-          if (Array.isArray(deliveryMethods) && deliveryMethods.length > 0) {
-            // Find the fastest delivery option
-            const fastestOption = deliveryMethods.reduce((fastest: any, current: any) => {
-              const currentMin = current.prazo_min || Infinity;
-              const fastestMin = fastest.prazo_min || Infinity;
-              return currentMin < fastestMin ? current : fastest;
-            }, deliveryMethods[0]);
+          // Create a local variable to avoid repeating the null check
+          const vendedorData = data.vendedores;
+          
+          // Additional check to ensure formas_entrega property exists
+          if ('formas_entrega' in vendedorData && vendedorData.formas_entrega) {
+            const deliveryMethods = vendedorData.formas_entrega;
             
-            if (fastestOption) {
-              minDays = fastestOption.prazo_min || minDays;
-              maxDays = fastestOption.prazo_max || maxDays;
+            if (Array.isArray(deliveryMethods) && deliveryMethods.length > 0) {
+              // Find the fastest delivery option
+              const fastestOption = deliveryMethods.reduce((fastest: any, current: any) => {
+                const currentMin = current.prazo_min || Infinity;
+                const fastestMin = fastest.prazo_min || Infinity;
+                return currentMin < fastestMin ? current : fastest;
+              }, deliveryMethods[0]);
+              
+              if (fastestOption) {
+                minDays = fastestOption.prazo_min || minDays;
+                maxDays = fastestOption.prazo_max || maxDays;
+              }
             }
           }
         }
