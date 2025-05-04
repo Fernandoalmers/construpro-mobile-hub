@@ -87,15 +87,17 @@ export function useProductDetails(id: string | undefined, isAuthenticated: boole
         };
         
         // Only add store info if vendedores data is available and not an error
+        // Using non-null assertion with multiple validation checks
         if (data.vendedores && 
             typeof data.vendedores === 'object' && 
             data.vendedores !== null &&
             'nome_loja' in data.vendedores) {
+          const vendedores = data.vendedores;
           productData.stores = {
             id: data.vendedor_id,
-            nome: String(data.vendedores.nome_loja || ''),
-            nome_loja: String(data.vendedores.nome_loja || ''),
-            logo_url: String(data.vendedores.logo_url || '')
+            nome: String(vendedores?.nome_loja || ''),
+            nome_loja: String(vendedores?.nome_loja || ''),
+            logo_url: String(vendedores?.logo_url || '')
           };
         }
         
@@ -149,7 +151,8 @@ export function useProductDetails(id: string | undefined, isAuthenticated: boole
             typeof vendedores === 'object' && 
             vendedores !== null && 
             'formas_entrega' in vendedores) {
-          const deliveryMethods = vendedores.formas_entrega;
+          // Use optional chaining to safely access the formas_entrega property
+          const deliveryMethods = vendedores?.formas_entrega;
           
           if (Array.isArray(deliveryMethods) && deliveryMethods.length > 0) {
             // Find the fastest delivery option
