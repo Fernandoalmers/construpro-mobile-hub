@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { AdminProduct } from '@/types/admin';
@@ -111,11 +110,11 @@ export const getPendingProducts = async (): Promise<AdminProduct[]> => {
       .select(`
         id,
         nome,
-        preco_normal as preco,
+        preco_normal,
         estoque,
         status,
         vendedor_id,
-        vendedores!inner(nome_loja),
+        vendedores:vendedor_id (nome_loja),
         imagens
       `)
       .eq('status', 'pendente')
@@ -153,8 +152,8 @@ export const getPendingProducts = async (): Promise<AdminProduct[]> => {
         descricao: "",
         categoria: "",
         imagemUrl: imageUrl,
-        preco: item.preco,
-        preco_normal: item.preco,
+        preco: item.preco_normal,
+        preco_normal: item.preco_normal,
         preco_promocional: null,
         estoque: item.estoque,
         pontos: 0,

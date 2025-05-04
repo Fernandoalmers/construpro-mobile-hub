@@ -40,8 +40,8 @@ export const getAdminStores = async (): Promise<AdminStore[]> => {
     const stores = (data || []).map(item => {
       // Handle profiles data safely
       const profileData = item.profiles || {};
-      const profileName = typeof profileData === 'object' ? profileData.nome : 'Desconhecido';
-      const profileEmail = typeof profileData === 'object' ? profileData.email : 'sem-email';
+      const profileName = typeof profileData === 'object' ? (profileData as any).nome : 'Desconhecido';
+      const profileEmail = typeof profileData === 'object' ? (profileData as any).email : 'sem-email';
       
       return {
         id: item.id,
