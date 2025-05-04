@@ -1,13 +1,11 @@
 
-import React, { useState } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Search, ShoppingCart } from 'lucide-react';
+import React from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
 import LoadingState from '../common/LoadingState';
 import ErrorState from '../common/ErrorState';
-import CustomInput from '../common/CustomInput';
-import { useCart } from '@/hooks/use-cart';
 
 // Import our components
 import ProductBreadcrumbs from './components/ProductBreadcrumbs';
@@ -16,6 +14,7 @@ import ProductInfo from './components/ProductInfo';
 import ProductDetails from './components/ProductDetails';
 import QuantitySelector from './components/QuantitySelector';
 import ProductActions from './components/ProductActions';
+import SearchHeader from './components/SearchHeader';
 
 // Import our hook
 import { useProductDetails } from '@/hooks/useProductDetails';
@@ -23,23 +22,12 @@ import { useProductDetails } from '@/hooks/useProductDetails';
 const ProdutoScreen: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const location = useLocation();
   const { isAuthenticated } = useAuth();
-  const { cartCount = 0 } = useCart();
   
   const [quantidade, setQuantidade] = React.useState(1);
-  const [searchTerm, setSearchTerm] = useState('');
   
   // Use our custom hook
   const { product: produto, loading, error, isFavorited, reviews, estimatedDelivery } = useProductDetails(id, isAuthenticated);
-
-  // Handle search submission
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchTerm.trim()) {
-      navigate(`/marketplace?search=${encodeURIComponent(searchTerm)}`);
-    }
-  };
 
   // Calculate the step value based on unit type
   const getStepValue = () => {
@@ -79,7 +67,7 @@ const ProdutoScreen: React.FC = () => {
   };
 
   const handleGoBack = () => {
-    navigate(-1); // Navigate to previous page instead of fixed /marketplace route
+    navigate(-1); // Navigate to previous page
   };
 
   if (loading) {
@@ -104,44 +92,7 @@ const ProdutoScreen: React.FC = () => {
   return (
     <div className="bg-gray-100 min-h-screen pb-16">
       {/* Header with search and cart */}
-      <div className="bg-white shadow-sm py-3">
-        <div className="container mx-auto px-4 flex items-center justify-between">
-          <div className="flex items-center flex-1 mr-4">
-            <button 
-              onClick={handleGoBack} 
-              className="mr-3"
-            >
-              <ArrowLeft size={20} />
-            </button>
-            <form onSubmit={handleSearch} className="flex-1 max-w-md">
-              <CustomInput
-                type="text"
-                placeholder="Buscar produtos..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                isSearch
-                className="w-full"
-              />
-            </form>
-          </div>
-          
-          <div className="relative">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="relative"
-              onClick={() => navigate('/cart')}
-            >
-              <ShoppingCart size={22} />
-              {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-construPro-orange text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  {cartCount}
-                </span>
-              )}
-            </Button>
-          </div>
-        </div>
-      </div>
+      <SearchHeader onGoBack={handleGoBack} />
 
       {/* Breadcrumb navigation */}
       <ProductBreadcrumbs 
