@@ -11,32 +11,8 @@ export const approveProduct = async (productId: string): Promise<boolean> => {
   try {
     console.log('[statusUpdates] Approving product:', productId);
     
-    // Try using the dedicated Supabase function first
-    try {
-      const { data: funcResult, error: funcError } = await supabase.rpc('approve_product', {
-        product_id: productId // Using correct parameter name: product_id
-      });
-      
-      if (!funcError) {
-        console.log('[statusUpdates] Product approved using RPC function');
-        
-        // Log the admin action
-        await logAdminAction({
-          action: 'approve_product',
-          entityType: 'produto',
-          entityId: productId,
-          details: { status: 'aprovado' }
-        });
-        
-        return true;
-      }
-      
-      console.log('[statusUpdates] RPC function failed, falling back to direct update:', funcError);
-    } catch (rpcError) {
-      console.log('[statusUpdates] RPC function not available, using direct update');
-    }
-    
-    // Direct update (fallback)
+    // Simplified approach: directly update the product status
+    // This bypasses the RPC function and directly performs the update
     const { error } = await supabase
       .from('produtos')
       .update({ 
@@ -50,15 +26,20 @@ export const approveProduct = async (productId: string): Promise<boolean> => {
       return false;
     }
     
-    console.log('[statusUpdates] Product approved via direct update');
+    console.log('[statusUpdates] Product approved successfully');
     
     // Log the admin action
-    await logAdminAction({
-      action: 'approve_product',
-      entityType: 'produto',
-      entityId: productId,
-      details: { status: 'aprovado' }
-    });
+    try {
+      await logAdminAction({
+        action: 'approve_product',
+        entityType: 'produto',
+        entityId: productId,
+        details: { status: 'aprovado' }
+      });
+    } catch (logError) {
+      console.error('[statusUpdates] Error logging admin action:', logError);
+      // Continue even if logging fails
+    }
     
     return true;
   } catch (error) {
@@ -92,12 +73,17 @@ export const rejectProduct = async (productId: string): Promise<boolean> => {
     console.log('[statusUpdates] Product rejected successfully');
     
     // Log the admin action
-    await logAdminAction({
-      action: 'reject_product',
-      entityType: 'produto',
-      entityId: productId,
-      details: { status: 'inativo' }
-    });
+    try {
+      await logAdminAction({
+        action: 'reject_product',
+        entityType: 'produto',
+        entityId: productId,
+        details: { status: 'inativo' }
+      });
+    } catch (logError) {
+      console.error('[statusUpdates] Error logging admin action:', logError);
+      // Continue even if logging fails
+    }
     
     return true;
   } catch (error) {
@@ -137,12 +123,17 @@ export const updateProductStatus = async (
     // Log admin action for status changes
     if (status === 'aprovado' || status === 'inativo') {
       const action = status === 'aprovado' ? 'approve_product' : 'reject_product';
-      await logAdminAction({
-        action,
-        entityType: 'produto',
-        entityId: productId,
-        details: { status }
-      });
+      try {
+        await logAdminAction({
+          action,
+          entityType: 'produto',
+          entityId: productId,
+          details: { status }
+        });
+      } catch (logError) {
+        console.error('[statusUpdates] Error logging admin action:', logError);
+        // Continue even if logging fails
+      }
     }
     
     return true;
