@@ -1,4 +1,5 @@
 
+
 // If this file doesn't exist, create it with these types
 
 export interface AdminProduct {
@@ -56,3 +57,4 @@ export interface AdminStore {
   created_at: string;
   updated_at: string;
 }
+
