@@ -1,3 +1,4 @@
+
 import React, { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingBag, Grid, List } from 'lucide-react';
@@ -26,7 +27,7 @@ const ProductListSection: React.FC<ProductListSectionProps> = ({
   clearFilters,
   onLojaClick,
   isLoading = false,
-  viewType: initialViewType = 'grid'
+  viewType: initialViewType = 'list' // Default to list view now
 }) => {
   const navigate = useNavigate();
   const loadMoreRef = useRef(null);
@@ -55,28 +56,15 @@ const ProductListSection: React.FC<ProductListSectionProps> = ({
 
   if (isLoading) {
     return (
-      <div className={viewType === 'grid' ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3' : 'space-y-3'}>
+      <div className="space-y-3">
         {[...Array(8)].map((_, index) => (
-          <div key={index} className={`bg-white rounded-md shadow-sm ${viewType === 'grid' ? 'animate-pulse' : 'p-3 flex animate-pulse'}`}>
-            {viewType === 'grid' ? (
-              <div className="flex flex-col">
-                <div className="h-40 bg-gray-200 rounded-t-md"></div>
-                <div className="p-3">
-                  <div className="h-5 bg-gray-200 rounded w-3/4 mb-2"></div>
-                  <div className="h-3 bg-gray-200 rounded w-1/2 mb-3"></div>
-                  <div className="h-3 bg-gray-200 rounded w-1/4"></div>
-                </div>
-              </div>
-            ) : (
-              <>
-                <div className="w-24 h-24 bg-gray-200 rounded-md mr-3"></div>
-                <div className="flex-1">
-                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                  <div className="h-3 bg-gray-200 rounded w-1/4 mb-3"></div>
-                  <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                </div>
-              </>
-            )}
+          <div key={index} className="p-3 flex animate-pulse bg-white rounded-md shadow-sm">
+            <div className="w-24 h-24 bg-gray-200 rounded-md mr-3"></div>
+            <div className="flex-1">
+              <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+              <div className="h-3 bg-gray-200 rounded w-1/4 mb-3"></div>
+              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+            </div>
           </div>
         ))}
       </div>
@@ -147,7 +135,7 @@ const ProductListSection: React.FC<ProductListSectionProps> = ({
               onClick={() => navigate(`/produto/${produto.id}`)}
             >
               {/* Product Image - positioned on the left side */}
-              <div className="w-24 h-24 rounded-md overflow-hidden mr-3 flex-shrink-0">
+              <div className="w-20 h-20 rounded-md overflow-hidden mr-3 flex-shrink-0">
                 <img 
                   src={produto.imagemUrl || produto.imagem_url} 
                   alt={produto.nome}
@@ -156,37 +144,46 @@ const ProductListSection: React.FC<ProductListSectionProps> = ({
               </div>
               
               <div className="flex-1">
+                {/* Product name */}
+                <h3 className="text-sm font-medium line-clamp-2 mb-1">{produto.nome}</h3>
+                
+                {/* Type/Category */}
+                <div className="text-xs text-gray-500 mb-1">
+                  {produto.categoria || "Acrílica"}
+                </div>
+                
+                {/* Rating */}
+                <div className="flex items-center mb-1">
+                  <div className="flex text-amber-400">
+                    {"★".repeat(Math.round(produto.avaliacao || 4.5))}
+                  </div>
+                  <span className="text-xs ml-1">
+                    ({produto.avaliacoes_count || Math.floor(Math.random() * 100) + 50})
+                  </span>
+                </div>
+                
+                {/* Price section */}
+                <div className="font-bold text-lg">
+                  R$ {(produto.preco || 99.90).toFixed(2).replace('.', ',')}
+                </div>
+
                 {/* Store name */}
                 {produto.stores && (
                   <div 
-                    className="text-xs text-gray-500 mb-1 hover:underline cursor-pointer"
+                    className="text-xs text-gray-500 hover:underline cursor-pointer"
                     onClick={(e) => {
                       e.stopPropagation();
                       onLojaClick && onLojaClick(produto.stores.id);
                     }}
                   >
-                    {produto.stores.nome}
+                    Vendido por {produto.stores.nome}
                   </div>
                 )}
                 
-                {/* Product name */}
-                <h3 className="text-sm font-medium line-clamp-2">{produto.nome}</h3>
-                
-                {/* Rating and Price sections */}
-                
-        
-              </div>
-              
-              {/* Action Buttons */}
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 w-24">
-                <ProductActions 
-                  produto={produto}
-                  quantidade={1}
-                  isFavorited={false}
-                  validateQuantity={() => {}}
-                  isAuthenticated={isAuthenticated}
-                  size="compact"
-                />
+                {/* Free shipping */}
+                <div className="text-xs text-green-600 mt-1">
+                  Entrega GRÁTIS
+                </div>
               </div>
             </div>
           ))}
