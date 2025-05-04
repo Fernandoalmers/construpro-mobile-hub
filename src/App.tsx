@@ -29,6 +29,7 @@ import ConfiguracoesVendorScreen from './components/vendor/ConfiguracoesVendorSc
 import AjustePontosVendorScreen from './components/vendor/AjustePontosVendorScreen';
 import ProdutosVendorScreen from './components/vendor/ProdutosVendorScreen';
 import ProdutoScreen from './components/marketplace/ProdutoScreen';
+import OrderConfirmationScreen from './components/marketplace/OrderConfirmationScreen';
 
 function App() {
   const location = useLocation();
@@ -102,8 +103,8 @@ function App() {
         <Route path="/orders" element={<ProtectedRoute><OrdersScreen /></ProtectedRoute>} />
         <Route path="/order/:orderId" element={<ProtectedRoute><OrderDetailScreen /></ProtectedRoute>} />
         
-        {/* Add route for order confirmation */}
-        <Route path="/order-confirmation/:orderId" element={<ProtectedRoute><OrderDetailScreen /></ProtectedRoute>} />
+        {/* Order confirmation route */}
+        <Route path="/order-confirmation/:orderId" element={<ProtectedRoute><OrderConfirmationScreen /></ProtectedRoute>} />
         
         {/* Other user routes */}
         <Route path="/favorites" element={<ProtectedRoute><FavoritesScreen /></ProtectedRoute>} />

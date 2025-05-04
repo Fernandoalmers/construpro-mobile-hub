@@ -43,6 +43,7 @@ const ProductActions: React.FC<ProductActionsProps> = ({
       
       if (result) {
         toast.success(`${produto.nome} adicionado ao carrinho`);
+        navigate('/cart');
       } else {
         toast.error('Erro ao adicionar ao carrinho');
       }

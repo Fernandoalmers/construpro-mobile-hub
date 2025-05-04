@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CustomButton from '../common/CustomButton';
@@ -9,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/components/ui/sonner";
+import { supabase } from '@/integrations/supabase/client';
 
 type PaymentMethod = 'credit' | 'debit' | 'pix' | 'money';
 
@@ -51,7 +51,7 @@ const CheckoutScreen: React.FC = () => {
     }
   ];
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
     // Validate change amount if payment method is money
     if (paymentMethod === 'money' && (!changeAmount || parseFloat(changeAmount) < 100)) {
       toast({
@@ -64,23 +64,48 @@ const CheckoutScreen: React.FC = () => {
     
     setIsSubmitting(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      // Get user data
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData || !userData.user) {
+        throw new Error("Usuário não autenticado");
+      }
+
+      // Create order in database
+      const orderData = {
+        cliente_id: userData.user.id,
+        valor_total: 665.70, // In a real app, this would come from cart calculation
+        pontos_ganhos: 1300, // In a real app, this would be calculated based on products
+        status: 'confirmado',
+        forma_pagamento: paymentMethod,
+        endereco_entrega: address // Use the selected address
+      };
+
+      const { data: order, error } = await supabase
+        .from('orders')
+        .insert(orderData)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Mock successful order creation
       toast({
         title: "Pedido realizado com sucesso!",
-        description: "Você receberá detalhes por email.",
-        action: (
-          <button 
-            onClick={() => navigate('/home')}
-            className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
-          >
-            Ver detalhes
-          </button>
-        ),
+        description: "Você receberá detalhes por email."
       });
-      navigate('/pedidos');
-    }, 1500);
+
+      // Navigate to order confirmation page
+      navigate(`/order-confirmation/${order.id}`);
+    } catch (error) {
+      console.error("Error creating order:", error);
+      toast({
+        title: "Erro ao finalizar pedido",
+        description: "Ocorreu um erro ao processar seu pedido. Tente novamente.",
+        variant: "destructive"
+      });
+      setIsSubmitting(false);
+    }
   };
   
   const selectAddress = (addr: typeof savedAddresses[0]) => {
