@@ -115,9 +115,10 @@ export interface AdminProduct {
   created_at?: string;
   updated_at?: string;
   imagens?: string[];
+  /** Join com a tabela `vendedores` para acessar nome da loja */
   vendedores?: {
     nome_loja?: string;
-  };
+  } | null;
 }
 
 export interface AdminStore {

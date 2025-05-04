@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { AdminProduct } from '@/types/admin';
@@ -27,7 +28,7 @@ export const getAdminProducts = async (status?: string): Promise<AdminProduct[]>
         status,
         created_at,
         updated_at,
-        vendedores:vendedor_id (nome_loja)
+        vendedores!inner(nome_loja)
       `)
       .order('created_at', { ascending: false });
       
@@ -114,7 +115,7 @@ export const getPendingProducts = async (): Promise<AdminProduct[]> => {
         estoque,
         status,
         vendedor_id,
-        vendedores:vendedor_id (nome_loja),
+        vendedores!inner(nome_loja),
         imagens
       `)
       .eq('status', 'pendente')
