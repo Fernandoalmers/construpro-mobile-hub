@@ -13,13 +13,18 @@ export const approveProduct = async (productId: string): Promise<boolean> => {
     
     const { data, error } = await supabase
       .from('produtos')
-      .update({ status: 'aprovado', updated_at: new Date().toISOString() })
-      .eq('id', productId)
-      .select();
+      .update({ 
+        status: 'aprovado', 
+        updated_at: new Date().toISOString() 
+      })
+      .eq('id', productId);
       
     console.log('[statusUpdates] Approve result:', data, error);
     
-    if (error) throw error;
+    if (error) {
+      console.error('[statusUpdates] Error approving product:', error);
+      return false;
+    }
     
     // Log the admin action
     await logAdminAction({
@@ -32,7 +37,7 @@ export const approveProduct = async (productId: string): Promise<boolean> => {
     return true;
   } catch (error) {
     console.error('[statusUpdates] Error approving product:', error);
-    throw error;
+    return false;
   }
 };
 
@@ -47,13 +52,18 @@ export const rejectProduct = async (productId: string): Promise<boolean> => {
     
     const { data, error } = await supabase
       .from('produtos')
-      .update({ status: 'inativo', updated_at: new Date().toISOString() })
-      .eq('id', productId)
-      .select();
+      .update({ 
+        status: 'inativo', 
+        updated_at: new Date().toISOString() 
+      })
+      .eq('id', productId);
       
     console.log('[statusUpdates] Reject result:', data, error);
     
-    if (error) throw error;
+    if (error) {
+      console.error('[statusUpdates] Error rejecting product:', error);
+      return false;
+    }
     
     // Log the admin action
     await logAdminAction({
@@ -66,7 +76,7 @@ export const rejectProduct = async (productId: string): Promise<boolean> => {
     return true;
   } catch (error) {
     console.error('[statusUpdates] Error rejecting product:', error);
-    throw error;
+    return false;
   }
 };
 
@@ -85,13 +95,18 @@ export const updateProductStatus = async (
     
     const { data, error } = await supabase
       .from('produtos')
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq('id', productId)
-      .select();
+      .update({ 
+        status, 
+        updated_at: new Date().toISOString() 
+      })
+      .eq('id', productId);
     
     console.log('[statusUpdates] Update status result:', data, error);
     
-    if (error) throw error;
+    if (error) {
+      console.error(`[statusUpdates] Error updating product status to ${status}:`, error);
+      return false;
+    }
     
     // Log admin action for status changes
     if (status === 'aprovado' || status === 'inativo') {

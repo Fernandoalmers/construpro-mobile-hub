@@ -10,7 +10,7 @@ import ProductsTable from './products/ProductsTable';
 import ProductsHeader from './products/ProductsHeader';
 import { debugFetchProducts } from '@/services/admin/products';
 import { toast } from '@/components/ui/use-toast';
-import { approveProduct, rejectProduct } from '@/services/admin/products/productApproval';
+import { approveProduct, rejectProduct } from '@/services/admin/products/productApproval/statusUpdates';
 
 const ProductsManagementScreen: React.FC = () => {
   useTitle('ConstruPro Admin - Produtos');
