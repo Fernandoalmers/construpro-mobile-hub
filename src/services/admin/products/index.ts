@@ -10,7 +10,7 @@ export {
   fetchAdminProducts
 } from './api';
 
-// From adminProductActions
+// From adminProductActions - but mark as deprecated
 export {
   approveProduct as approveProductAction,
   rejectProduct as rejectProductAction
@@ -19,5 +19,5 @@ export {
 // From adminProductRealtime
 export * from './adminProductRealtime';
 
-// From productApproval
+// From productApproval - these are the ones to use
 export * from './productApproval';

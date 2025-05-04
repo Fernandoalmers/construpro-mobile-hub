@@ -65,12 +65,14 @@ const transformProduct = (dbProduct: any): Product => {
 // Individual function exports
 export async function getProducts(): Promise<Product[]> {
   try {
+    console.log('[productService] Fetching approved products with stock > 0');
+    
     // Get approved products only with stock > 0
     const { data, error } = await supabase
       .from('produtos')
       .select('*, vendedores(nome_loja)')
-      .eq('status', 'aprovado')
-      .gt('estoque', 0)  // Added filter for stock > 0
+      .eq('status', 'aprovado')  // We check for 'aprovado' here, not 'ativo'
+      .gt('estoque', 0)  // Only products with stock > 0
       .order('created_at', { ascending: false });
     
     if (error) {
@@ -78,6 +80,7 @@ export async function getProducts(): Promise<Product[]> {
       return [];
     }
     
+    console.log(`[productService] Fetched ${data.length} approved products`);
     return data.map(transformProduct) || [];
   } catch (error) {
     console.error('Error in getProducts:', error);

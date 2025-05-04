@@ -28,6 +28,8 @@ export const fetchAdminLogs = async (limit = 10) => {
 
 export const logAdminAction = async (logData: AdminLogData) => {
   try {
+    console.log('[adminService] Logging admin action:', logData);
+    
     // Call the RPC function to log admin action
     const { error } = await supabase.rpc('log_admin_action', {
       action: logData.action,
@@ -36,11 +38,16 @@ export const logAdminAction = async (logData: AdminLogData) => {
       details: logData.details || null
     });
     
-    if (error) throw error;
+    if (error) {
+      console.error('[adminService] Error logging admin action:', error);
+      throw error;
+    }
+    
+    console.log('[adminService] Admin action logged successfully');
     return true;
   } catch (error) {
-    console.error('Error logging admin action:', error);
-    toast.error('Erro ao registrar ação administrativa');
+    console.error('[adminService] Error logging admin action:', error);
+    // Don't show toast here as it might disrupt user flow for non-critical logging operations
     return false;
   }
 };
