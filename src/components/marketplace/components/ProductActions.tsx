@@ -1,13 +1,11 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
 import { Button } from '@/components/ui/button';
-import { addToCart } from '@/services/cartService';
-import { addToFavorites } from '@/services/cartService';
 import { Heart, ShoppingCart, MessageCircle } from 'lucide-react';
 import { Product } from '@/services/productService';
 import CartPopup from '../CartPopup';
+import { useCart } from '@/hooks/use-cart';
 
 interface ProductActionsProps {
   produto: Product;
@@ -25,6 +23,7 @@ const ProductActions: React.FC<ProductActionsProps> = ({
   isAuthenticated
 }) => {
   const navigate = useNavigate();
+  const { addToCart } = useCart();
   const [addingToCart, setAddingToCart] = useState(false);
   const [addingToFavorites, setAddingToFavorites] = useState(false);
   const [showCartAnimation, setShowCartAnimation] = useState(false);
@@ -41,20 +40,16 @@ const ProductActions: React.FC<ProductActionsProps> = ({
     
     try {
       setAddingToCart(true);
-      const result = await addToCart(produto.id, quantidade);
+      await addToCart(produto.id, quantidade);
       
-      if (result) {
-        // Show animation and toast
-        setShowCartAnimation(true);
-        toast.success(`${produto.nome} adicionado ao carrinho`);
-        
-        // Hide animation after 3 seconds
-        setTimeout(() => {
-          setShowCartAnimation(false);
-        }, 3000);
-      } else {
-        toast.error('Erro ao adicionar ao carrinho');
-      }
+      // Show animation and toast
+      setShowCartAnimation(true);
+      toast.success(`${produto.nome} adicionado ao carrinho`);
+      
+      // Hide animation after 3 seconds
+      setTimeout(() => {
+        setShowCartAnimation(false);
+      }, 3000);
     } catch (err) {
       console.error('Error adding to cart:', err);
       toast.error('Erro ao adicionar ao carrinho');
@@ -75,13 +70,9 @@ const ProductActions: React.FC<ProductActionsProps> = ({
     
     try {
       setAddingToCart(true);
-      const result = await addToCart(produto.id, quantidade);
-      
-      if (result) {
-        navigate('/checkout');
-      } else {
-        toast.error('Erro ao processar compra');
-      }
+      await addToCart(produto.id, quantidade);
+      // Navigate directly to cart page after adding product
+      navigate('/cart');
     } catch (err) {
       console.error('Error in buy now:', err);
       toast.error('Erro ao processar compra');
@@ -101,6 +92,8 @@ const ProductActions: React.FC<ProductActionsProps> = ({
     try {
       setAddingToFavorites(true);
       if (!isFavorited) {
+        // Keep existing favorite functionality
+        const { addToFavorites } = await import('@/services/cartService');
         const result = await addToFavorites(produto.id);
         
         if (result) {
