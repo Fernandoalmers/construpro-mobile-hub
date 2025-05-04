@@ -92,7 +92,8 @@ export function useProductDetails(id: string | undefined, isAuthenticated: boole
             typeof data.vendedores === 'object' && 
             data.vendedores !== null) {
           // Create a local variable to avoid repeating the null check
-          const vendedorData = data.vendedores;
+          // Use non-null assertion since we've already checked it's not null
+          const vendedorData = data.vendedores as NonNullable<typeof data.vendedores>;
           
           // Additional check to ensure nome_loja property exists
           if ('nome_loja' in vendedorData) {
@@ -155,7 +156,8 @@ export function useProductDetails(id: string | undefined, isAuthenticated: boole
             data.vendedores !== null) {
           
           // Create a local variable to avoid repeating the null check
-          const vendedorData = data.vendedores;
+          // Use non-null assertion since we've already checked it's not null
+          const vendedorData = data.vendedores as NonNullable<typeof data.vendedores>;
           
           // Additional check to ensure formas_entrega property exists
           if ('formas_entrega' in vendedorData && vendedorData.formas_entrega) {
