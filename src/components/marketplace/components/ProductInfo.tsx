@@ -1,16 +1,18 @@
 
 import React from 'react';
-import { Star, Check, AlertCircle, Truck } from 'lucide-react';
+import { Star, Check, AlertCircle, Truck, ShoppingCart, MessageSquare, Heart, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Heart, ShoppingCart } from 'lucide-react';
 import { Product } from '@/services/productService';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface ProductInfoProps {
   produto: Product;
   quantidade: number;
   handleQuantityChange: (delta: number) => void;
   handleAddToCart: () => void;
+  handleBuyNow?: () => void;
   handleToggleFavorite: () => void;
+  handleChatWithStore?: () => void;
   isFavorited: boolean;
   addingToCart: boolean;
   addingToFavorites: boolean;
@@ -21,7 +23,9 @@ const ProductInfo: React.FC<ProductInfoProps> = ({
   quantidade,
   handleQuantityChange,
   handleAddToCart,
+  handleBuyNow,
   handleToggleFavorite,
+  handleChatWithStore,
   isFavorited,
   addingToCart,
   addingToFavorites
@@ -31,10 +35,46 @@ const ProductInfo: React.FC<ProductInfoProps> = ({
   const hasFreeShipping = (produto.preco || 0) >= 100;
   const disponibilidade = produto.estoque > 0 ? "Em estoque" : "Indisponível";
   const disponibilidadeColor = produto.estoque > 0 ? "text-green-600" : "text-red-600";
+  
+  // Calculate discount percentage
+  const discountPercentage = hasDiscount 
+    ? Math.round(((produto.preco_anterior - produto.preco) / produto.preco_anterior) * 100)
+    : 0;
+  
+  // Calculate estimated delivery
+  const today = new Date();
+  const deliveryDate = new Date();
+  deliveryDate.setDate(today.getDate() + 4);
+  
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' });
+  };
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm">
+      {/* Store info */}
+      {produto.stores && (
+        <div className="flex items-center mb-4 pb-4 border-b border-gray-100">
+          <div className="w-12 h-12 bg-gray-100 rounded-full overflow-hidden flex items-center justify-center mr-3">
+            {produto.stores.logo_url ? (
+              <img src={produto.stores.logo_url} alt={produto.stores.nome} className="w-full h-full object-cover" />
+            ) : (
+              <ShoppingCart size={24} className="text-gray-400" />
+            )}
+          </div>
+          <div>
+            <p className="text-sm text-gray-600">Vendido por:</p>
+            <h3 className="font-medium">{produto.stores.nome}</h3>
+          </div>
+        </div>
+      )}
+    
       <h1 className="text-2xl font-bold mb-2">{produto.nome}</h1>
+      
+      {/* Product code */}
+      <div className="text-sm text-gray-500 mb-3">
+        Código: {produto.id.substring(0, 8)}
+      </div>
       
       {/* Rating */}
       <div className="flex items-center mb-4">
@@ -48,26 +88,26 @@ const ProductInfo: React.FC<ProductInfoProps> = ({
           ))}
         </div>
         <span className="ml-2 text-sm text-gray-600">
-          {produto.avaliacao?.toFixed(1) || "0.0"}
+          {produto.avaliacao?.toFixed(1) || "0.0"} ({produto.num_avaliacoes || 0} avaliações)
         </span>
       </div>
       
       {/* Price */}
-      <div className="mb-4">
+      <div className="mb-4 bg-gray-50 p-4 rounded-lg">
         {hasDiscount && (
-          <div className="text-sm text-gray-500 line-through">
-            R$ {produto.preco_anterior?.toFixed(2)}
+          <div className="flex items-center mb-1">
+            <div className="text-sm text-gray-500 line-through">
+              R$ {produto.preco_anterior?.toFixed(2)}
+            </div>
+            <span className="ml-2 bg-red-100 text-red-800 text-xs px-2 py-1 rounded">
+              {discountPercentage}% OFF
+            </span>
           </div>
         )}
         <div className="flex items-center">
           <span className="text-3xl font-bold text-blue-700">
             R$ {produto.preco?.toFixed(2)}
           </span>
-          {hasDiscount && (
-            <span className="ml-2 bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
-              {Math.round(((produto.preco_anterior - produto.preco) / produto.preco_anterior) * 100)}% de desconto
-            </span>
-          )}
         </div>
         
         {/* Payment methods info */}
@@ -76,8 +116,26 @@ const ProductInfo: React.FC<ProductInfoProps> = ({
         </div>
       </div>
       
+      {/* Points */}
+      <Card className="mb-4">
+        <CardContent className="p-3 flex items-center">
+          <Star size={18} className="text-construPro-orange mr-2" />
+          <div>
+            <p className="text-sm font-medium">Ganhe pontos com essa compra</p>
+            <div className="flex gap-2 text-xs mt-1">
+              <span className="px-1.5 py-0.5 bg-construPro-orange/10 rounded text-construPro-orange">
+                {produto.pontos || produto.pontos_consumidor || 0} pts (consumidor)
+              </span>
+              <span className="px-1.5 py-0.5 bg-construPro-blue/10 rounded text-construPro-blue">
+                {Math.round((produto.pontos || produto.pontos_consumidor || 0) * 1.5)} pts (profissional)
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      
       {/* Shipping & Stock */}
-      <div className="mb-6 space-y-2">
+      <div className="mb-6 space-y-3">
         <div className={`flex items-center ${disponibilidadeColor}`}>
           {produto.estoque > 0 ? (
             <Check size={18} className="mr-2" />
@@ -99,12 +157,11 @@ const ProductInfo: React.FC<ProductInfoProps> = ({
           </div>
         )}
         
-        {produto.pontos > 0 && (
-          <div className="flex items-center text-orange-500">
-            <Star size={18} className="mr-2" />
-            <span className="font-medium">Ganhe {produto.pontos} pontos</span>
-          </div>
-        )}
+        {/* Estimated delivery */}
+        <div className="flex items-center text-gray-600">
+          <Clock size={18} className="mr-2" />
+          <span>Chegará entre <span className="font-medium">hoje</span> e <span className="font-medium">{formatDate(deliveryDate)}</span></span>
+        </div>
       </div>
       
       {/* Quantity */}
@@ -130,6 +187,12 @@ const ProductInfo: React.FC<ProductInfoProps> = ({
           >
             +
           </button>
+          
+          <div className="ml-3 text-sm text-gray-500">
+            {produto.unidade_medida && (
+              <span>Unidade: {produto.unidade_medida}</span>
+            )}
+          </div>
         </div>
       </div>
       
@@ -153,24 +216,49 @@ const ProductInfo: React.FC<ProductInfoProps> = ({
           )}
         </Button>
         
-        <Button
-          variant="outline"
-          className="border border-blue-500 text-blue-500 hover:bg-blue-50 py-3 rounded-full"
-          onClick={handleToggleFavorite}
-          disabled={addingToFavorites}
-        >
-          {addingToFavorites ? (
-            <div className="flex items-center justify-center">
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500 mr-2"></div>
-              <span>Processando...</span>
-            </div>
-          ) : (
-            <div className="flex items-center justify-center">
-              <Heart className={`mr-2 ${isFavorited ? 'fill-red-500 text-red-500' : ''}`} />
-              <span>{isFavorited ? "Salvo nos favoritos" : "Adicionar aos favoritos"}</span>
-            </div>
+        {handleBuyNow && (
+          <Button
+            className="bg-construPro-blue hover:bg-blue-700 text-white py-3 rounded-full"
+            onClick={handleBuyNow}
+            disabled={addingToCart || produto.estoque <= 0}
+          >
+            <span>Comprar agora</span>
+          </Button>
+        )}
+        
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            className="border border-blue-500 text-blue-500 hover:bg-blue-50 py-3 rounded-full flex-1"
+            onClick={handleToggleFavorite}
+            disabled={addingToFavorites}
+          >
+            {addingToFavorites ? (
+              <div className="flex items-center justify-center">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500 mr-2"></div>
+                <span>Processando...</span>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center">
+                <Heart className={`mr-2 ${isFavorited ? 'fill-red-500 text-red-500' : ''}`} />
+                <span>{isFavorited ? "Salvo" : "Favoritar"}</span>
+              </div>
+            )}
+          </Button>
+          
+          {handleChatWithStore && (
+            <Button
+              variant="outline"
+              className="border border-gray-300 text-gray-700 hover:bg-gray-50 py-3 rounded-full flex-1"
+              onClick={handleChatWithStore}
+            >
+              <div className="flex items-center justify-center">
+                <MessageSquare className="mr-2" />
+                <span>Chat com loja</span>
+              </div>
+            </Button>
           )}
-        </Button>
+        </div>
       </div>
     </div>
   );

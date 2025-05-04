@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { getProductById, trackProductView, Product } from '@/services/productService';
@@ -11,7 +11,7 @@ import { useAuth } from '@/context/AuthContext';
 import LoadingState from '../common/LoadingState';
 import ErrorState from '../common/ErrorState';
 
-// Import our new components
+// Import our components
 import ProductBreadcrumbs from './components/ProductBreadcrumbs';
 import ProductImageGallery from './components/ProductImageGallery';
 import ProductInfo from './components/ProductInfo';
@@ -29,7 +29,7 @@ const ProdutoScreen: React.FC = () => {
   const [isFavorited, setIsFavorited] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
   const [addingToFavorites, setAddingToFavorites] = useState(false);
-  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
+  const [reviews, setReviews] = useState<any[]>([]);
 
   useEffect(() => {
     if (!id) return;
@@ -58,6 +58,24 @@ const ProdutoScreen: React.FC = () => {
           const favorited = await isProductFavorited(id);
           setIsFavorited(favorited);
         }
+        
+        // Get sample reviews (this would normally come from the backend)
+        setReviews([
+          {
+            id: '1',
+            user_name: 'João Silva',
+            rating: 5,
+            comment: 'Produto excelente! Chegou no prazo e a qualidade é muito boa.',
+            date: '12/04/2023'
+          },
+          {
+            id: '2',
+            user_name: 'Maria Oliveira',
+            rating: 4,
+            comment: 'Bom produto, mas a embalagem veio um pouco danificada.',
+            date: '05/03/2023'
+          }
+        ]);
       } catch (err) {
         console.error('Error fetching product:', err);
         setError('Erro ao carregar detalhes do produto');
@@ -100,6 +118,31 @@ const ProdutoScreen: React.FC = () => {
       setAddingToCart(false);
     }
   };
+  
+  const handleBuyNow = async () => {
+    if (!produto?.id) return;
+    
+    if (!isAuthenticated) {
+      navigate('/login', { state: { from: `/produto/${id}` } });
+      return;
+    }
+    
+    try {
+      setAddingToCart(true);
+      const result = await addToCart(produto.id, quantidade);
+      
+      if (result) {
+        navigate('/cart?checkout=true');
+      } else {
+        toast.error('Erro ao processar compra');
+      }
+    } catch (err) {
+      console.error('Error in buy now:', err);
+      toast.error('Erro ao processar compra');
+    } finally {
+      setAddingToCart(false);
+    }
+  };
 
   const handleToggleFavorite = async () => {
     if (!produto?.id) return;
@@ -131,6 +174,26 @@ const ProdutoScreen: React.FC = () => {
       setAddingToFavorites(false);
     }
   };
+  
+  const handleChatWithStore = () => {
+    if (!isAuthenticated) {
+      navigate('/login', { state: { from: `/produto/${id}` } });
+      return;
+    }
+    
+    // In a full implementation, this would open a chat with the store
+    toast.info('Funcionalidade de chat em desenvolvimento');
+  };
+  
+  const handleAddReview = () => {
+    if (!isAuthenticated) {
+      navigate('/login', { state: { from: `/produto/${id}` } });
+      return;
+    }
+    
+    // In a full implementation, this would open a review dialog
+    toast.info('Funcionalidade de avaliação em desenvolvimento');
+  };
 
   if (loading) {
     return <LoadingState text="Carregando detalhes do produto..." />;
@@ -154,7 +217,11 @@ const ProdutoScreen: React.FC = () => {
   return (
     <div className="bg-gray-100 min-h-screen pb-16">
       {/* Breadcrumb navigation */}
-      <ProductBreadcrumbs productName={produto.nome} productCategory={produto.categoria} />
+      <ProductBreadcrumbs 
+        productName={produto.nome} 
+        productCategory={produto.categoria} 
+        productCode={produto.id.substring(0, 8)}
+      />
 
       <main className="container mx-auto mt-4 px-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -173,15 +240,22 @@ const ProdutoScreen: React.FC = () => {
             quantidade={quantidade}
             handleQuantityChange={handleQuantityChange}
             handleAddToCart={handleAddToCart}
+            handleBuyNow={handleBuyNow}
             handleToggleFavorite={handleToggleFavorite}
+            handleChatWithStore={handleChatWithStore}
             isFavorited={isFavorited}
             addingToCart={addingToCart}
             addingToFavorites={addingToFavorites}
           />
         </div>
         
-        {/* Product Description and Policies */}
-        <ProductDetails description={produto.descricao} />
+        {/* Product Description and Reviews */}
+        <ProductDetails 
+          description={produto.descricao}
+          reviews={reviews}
+          canReview={isAuthenticated}
+          onAddReview={handleAddReview}
+        />
         
         {/* Back button */}
         <div className="mt-6">

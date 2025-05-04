@@ -1,9 +1,11 @@
 
 import React, { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingBag, Grid, List, Star } from 'lucide-react';
+import { ShoppingBag, Grid, List, Star, ShoppingCart, Plus } from 'lucide-react';
 import ProdutoCard from './ProdutoCard';
 import { Button } from '@/components/ui/button';
+import { useCart } from '@/hooks/use-cart';
+import { toast } from '@/components/ui/sonner';
 
 interface ProductListSectionProps {
   displayedProducts: any[];
@@ -13,6 +15,7 @@ interface ProductListSectionProps {
   clearFilters: () => void;
   onLojaClick?: (lojaId: string) => void;
   isLoading?: boolean;
+  viewType?: 'grid' | 'list';
 }
 
 const ProductListSection: React.FC<ProductListSectionProps> = ({ 
@@ -22,13 +25,16 @@ const ProductListSection: React.FC<ProductListSectionProps> = ({
   loadMoreProducts,
   clearFilters,
   onLojaClick,
-  isLoading = false
+  isLoading = false,
+  viewType: initialViewType = 'grid'
 }) => {
   const navigate = useNavigate();
   const loadMoreRef = useRef(null);
+  const { addToCart } = useCart();
   
   // State for view type (grid or list)
-  const [viewType, setViewType] = useState<'grid' | 'list'>('grid');
+  const [viewType, setViewType] = useState<'grid' | 'list'>(initialViewType);
+  const [addingToCart, setAddingToCart] = useState<Record<string, boolean>>({});
 
   // Set up intersection observer for infinite scroll
   React.useEffect(() => {
@@ -47,6 +53,21 @@ const ProductListSection: React.FC<ProductListSectionProps> = ({
     
     return () => observer.disconnect();
   }, [loadMoreRef, hasMore, loadMoreProducts]);
+
+  const handleAddToCart = async (e: React.MouseEvent, productId: string) => {
+    e.stopPropagation();
+    
+    try {
+      setAddingToCart(prev => ({ ...prev, [productId]: true }));
+      await addToCart(productId, 1);
+      toast.success('Produto adicionado ao carrinho');
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      toast.error('Erro ao adicionar ao carrinho');
+    } finally {
+      setAddingToCart(prev => ({ ...prev, [productId]: false }));
+    }
+  };
 
   if (isLoading) {
     return (
@@ -126,19 +147,25 @@ const ProductListSection: React.FC<ProductListSectionProps> = ({
               loja={produto.stores}
               onClick={() => navigate(`/produto/${produto.id}`)}
               onLojaClick={onLojaClick}
+              onAddToCart={(e) => handleAddToCart(e, produto.id)}
+              isAddingToCart={addingToCart[produto.id]}
             />
           ))}
         </div>
       ) : (
         <div className="flex flex-col gap-2">
           {displayedProducts.map(produto => (
-            <div key={produto.id} className="bg-white rounded-md shadow-sm p-3 flex border border-gray-100">
+            <div 
+              key={produto.id} 
+              className="bg-white rounded-md shadow-sm p-3 flex border border-gray-100 relative"
+              onClick={() => navigate(`/produto/${produto.id}`)}
+            >
               {/* Product Image - positioned on the left side */}
               <div className="w-24 h-24 rounded-md overflow-hidden mr-3 flex-shrink-0">
                 <img 
                   src={produto.imagemUrl || produto.imagem_url} 
                   alt={produto.nome}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                 />
               </div>
               
@@ -146,7 +173,7 @@ const ProductListSection: React.FC<ProductListSectionProps> = ({
                 {/* Store name */}
                 {produto.stores && (
                   <div 
-                    className="text-xs text-gray-500 mb-1 hover:underline"
+                    className="text-xs text-gray-500 mb-1 hover:underline cursor-pointer"
                     onClick={(e) => {
                       e.stopPropagation();
                       onLojaClick && onLojaClick(produto.stores.id);
@@ -176,11 +203,28 @@ const ProductListSection: React.FC<ProductListSectionProps> = ({
                 </div>
                 
                 {/* Points */}
-                {produto.pontos && (
+                {(produto.pontos > 0 || produto.pontos_consumidor > 0) && (
                   <div className="text-xs text-construPro-orange mt-1">
-                    Ganhe {produto.pontos} pontos
+                    Ganhe {produto.pontos || produto.pontos_consumidor} pontos
                   </div>
                 )}
+              </div>
+              
+              {/* Add to cart button */}
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="rounded-full bg-green-50 border-green-200 hover:bg-green-100 hover:border-green-300"
+                  onClick={(e) => handleAddToCart(e, produto.id)}
+                  disabled={addingToCart[produto.id]}
+                >
+                  {addingToCart[produto.id] ? (
+                    <div className="animate-spin h-4 w-4 border-2 border-green-500 border-t-transparent rounded-full" />
+                  ) : (
+                    <Plus size={18} className="text-green-600" />
+                  )}
+                </Button>
               </div>
             </div>
           ))}

@@ -5,20 +5,29 @@ export function useScrollBehavior() {
   const [hideHeader, setHideHeader] = useState(false);
   const [lastScrollY, setLastScrollY] = useState(0);
   const [scrollDirection, setScrollDirection] = useState<'up' | 'down'>('up');
+  
+  // Threshold for how much scroll is needed to trigger hiding
+  const SCROLL_THRESHOLD = 50;
 
   // Handle scroll events for showing/hiding header
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
       
+      // Determine scroll direction
       if (currentScrollY > lastScrollY + 10) {
+        // Scrolling down
         setScrollDirection('down');
-        setHideHeader(true);
+        if (currentScrollY > SCROLL_THRESHOLD) {
+          setHideHeader(true);
+        }
       } else if (currentScrollY < lastScrollY - 10) {
+        // Scrolling up
         setScrollDirection('up');
         setHideHeader(false);
       }
       
+      // Update last scroll position
       setLastScrollY(currentScrollY);
     };
 
@@ -26,5 +35,5 @@ export function useScrollBehavior() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [lastScrollY]);
 
-  return { hideHeader, scrollDirection };
+  return { hideHeader, scrollDirection, lastScrollY };
 }

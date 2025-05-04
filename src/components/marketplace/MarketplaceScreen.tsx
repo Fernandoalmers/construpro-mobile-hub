@@ -5,6 +5,7 @@ import { useProductFilter } from '@/hooks/use-product-filter';
 import { useScrollBehavior } from '@/hooks/use-scroll-behavior';
 import MarketplaceHeader from './MarketplaceHeader';
 import ProductListSection from './ProductListSection';
+import SegmentCardsHeader from './components/SegmentCardsHeader';
 import { getProducts } from '@/services/productService';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
@@ -18,12 +19,15 @@ const MarketplaceScreen: React.FC = () => {
   const searchParams = new URLSearchParams(location.search);
   const categoryParam = searchParams.get('categoria');
   const searchQuery = searchParams.get('search');
+  const segmentParam = searchParams.get('segmento');
+  
   const initialCategories = categoryParam ? [categoryParam] : [];
   
   const [isLoading, setIsLoading] = useState(true);
   const [products, setProducts] = useState<any[]>([]);
   const [stores, setStores] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState(searchQuery || '');
+  const [selectedSegment, setSelectedSegment] = useState<string | null>(segmentParam);
   
   // Use our custom hooks
   const { hideHeader } = useScrollBehavior();
@@ -66,7 +70,7 @@ const MarketplaceScreen: React.FC = () => {
     }));
   }, [products]);
   
-  // Filter products
+  // Filter products based on segment as well
   const {
     selectedCategories,
     selectedLojas,
@@ -85,9 +89,28 @@ const MarketplaceScreen: React.FC = () => {
     setPage
   } = useProductFilter({ 
     initialCategories, 
-    initialProducts: products,
+    initialProducts: products.filter(p => !selectedSegment || p.segmento === selectedSegment),
     initialSearch: searchQuery || '' 
   });
+
+  // Handle segment selection
+  const handleSegmentClick = (segmentId: string) => {
+    // Toggle segment selection
+    const newSegment = selectedSegment === segmentId ? null : segmentId;
+    setSelectedSegment(newSegment);
+    
+    // Update URL
+    const newSearchParams = new URLSearchParams(searchParams);
+    if (newSegment) {
+      newSearchParams.set('segmento', newSegment);
+    } else {
+      newSearchParams.delete('segmento');
+    }
+    navigate(`${location.pathname}?${newSearchParams.toString()}`, { replace: true });
+    
+    // Reset page
+    setPage(1);
+  };
 
   // Handle loja click from product card
   const handleLojaCardClick = (lojaId: string) => {
@@ -134,7 +157,9 @@ const MarketplaceScreen: React.FC = () => {
   // Current category name for display
   const currentCategoryName = selectedCategories.length === 1 ? 
     categories.find(cat => cat.id === selectedCategories[0])?.label : 
-    "Produtos";
+    selectedSegment ? 
+      "Produtos no segmento selecionado" : 
+      "Todos os Produtos";
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 pb-20">
@@ -154,6 +179,12 @@ const MarketplaceScreen: React.FC = () => {
         onSearch={handleQuickSearch}
         clearFilters={clearFilters}
         stores={stores}
+      />
+      
+      {/* Segment Cards */}
+      <SegmentCardsHeader 
+        selectedSegment={selectedSegment} 
+        onSegmentClick={handleSegmentClick}
       />
       
       {/* Simple category header */}
@@ -177,6 +208,7 @@ const MarketplaceScreen: React.FC = () => {
             clearFilters={clearFilters}
             onLojaClick={handleLojaCardClick}
             isLoading={isLoading}
+            viewType="list" // Default to list view to match Mercado Livre style
           />
         )}
       </div>

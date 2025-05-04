@@ -1,7 +1,8 @@
 
 import React from 'react';
-import { Star, Heart, Truck, Percent } from 'lucide-react';
+import { Star, Heart, Truck, Percent, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface ProdutoCardProps {
@@ -10,7 +11,9 @@ interface ProdutoCardProps {
   onClick: () => void;
   onLojaClick?: (lojaId: string) => void;
   onAddToFavorites?: (e: React.MouseEvent, produtoId: string) => void;
+  onAddToCart?: (e: React.MouseEvent) => void;
   isFavorite?: boolean;
+  isAddingToCart?: boolean;
 }
 
 const ProdutoCard: React.FC<ProdutoCardProps> = ({ 
@@ -19,7 +22,9 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
   onClick,
   onLojaClick,
   onAddToFavorites,
-  isFavorite = false
+  onAddToCart,
+  isFavorite = false,
+  isAddingToCart = false
 }) => {
   // Calculate discount percentage if applicable
   const hasDiscount = produto.precoAnterior > produto.preco || produto.preco_anterior > produto.preco;
@@ -37,7 +42,7 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
   return (
     <div 
       onClick={onClick}
-      className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 border border-gray-100 overflow-hidden flex flex-col"
+      className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 border border-gray-100 overflow-hidden flex flex-col relative"
     >
       {/* Product Image - positioned on the top */}
       <div className="relative w-full h-40 overflow-hidden bg-gray-50">
@@ -72,6 +77,26 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
               )} 
             />
           </button>
+        )}
+        
+        {/* Add to Cart button */}
+        {onAddToCart && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddToCart(e);
+            }}
+            disabled={isAddingToCart}
+            className="absolute bottom-2 right-2 rounded-full bg-green-500 hover:bg-green-600 text-white border-0 shadow-md"
+          >
+            {isAddingToCart ? (
+              <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+            ) : (
+              <Plus size={16} />
+            )}
+          </Button>
         )}
       </div>
       
