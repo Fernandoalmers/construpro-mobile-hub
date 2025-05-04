@@ -103,13 +103,82 @@ export const getAdminProducts = async (status?: string): Promise<AdminProduct[]>
  */
 export const getPendingProducts = async (): Promise<AdminProduct[]> => {
   try {
-    console.log('[getAdminProducts] executando query pendentes');
-    const products = await getAdminProducts('pendente');
-    console.log('[getPendingProducts] produtos pendentes:', products.length);
-    return products;
+    console.log('[getPendingProducts] query pendentes');
+    
+    const { data, error } = await supabase
+      .from('produtos')
+      .select(`
+        id,
+        nome,
+        descricao,
+        preco_normal,
+        preco_promocional,
+        pontos_consumidor,
+        pontos_profissional,
+        categoria,
+        imagens,
+        vendedor_id,
+        estoque,
+        status,
+        created_at,
+        updated_at,
+        vendedores!inner(nome_loja)
+      `)
+      .eq('status', 'pendente')
+      .order('created_at', { ascending: false });
+    
+    console.log('[getPendingProducts] data:', data, 'error:', error);
+    
+    if (error) {
+      console.error('[getPendingProducts] Error fetching pending products:', error);
+      toast({
+        title: "Error",
+        description: "Erro ao carregar produtos pendentes",
+        variant: "destructive"
+      });
+      throw error;
+    }
+
+    console.log(`[getPendingProducts] Found ${data?.length || 0} pending products`);
+    
+    // Transform data to AdminProduct format
+    const productsWithVendorInfo = (data || []).map(item => {
+      // Get the first image URL from the images array if available
+      let imageUrl = null;
+      if (item.imagens && Array.isArray(item.imagens) && item.imagens.length > 0) {
+        imageUrl = item.imagens[0];
+      }
+      
+      // Use vendedor name from join with vendedores table
+      const vendorInfo = item.vendedores as { nome_loja?: string } || {};
+      const vendorName = vendorInfo.nome_loja || 'Loja desconhecida';
+      
+      return {
+        id: item.id,
+        nome: item.nome,
+        descricao: item.descricao,
+        categoria: item.categoria,
+        imagemUrl: imageUrl,
+        preco: item.preco_normal,
+        preco_normal: item.preco_normal,
+        preco_promocional: item.preco_promocional,
+        estoque: item.estoque,
+        pontos: item.pontos_consumidor || 0,
+        pontos_consumidor: item.pontos_consumidor || 0,
+        pontos_profissional: item.pontos_profissional || 0,
+        lojaId: item.vendedor_id,
+        vendedor_id: item.vendedor_id,
+        lojaNome: vendorName,
+        status: item.status as 'pendente' | 'aprovado' | 'inativo',
+        created_at: item.created_at,
+        updated_at: item.updated_at,
+        imagens: Array.isArray(item.imagens) ? item.imagens.filter(img => typeof img === 'string') : []
+      };
+    });
+    
+    return productsWithVendorInfo;
   } catch (error) {
-    console.error('[getAdminProducts] Error fetching pending products:', error);
-    // Fix the error by changing toast.error to the proper toast format
+    console.error('[getPendingProducts] Error in getPendingProducts:', error);
     toast({
       title: "Error",
       description: "Erro ao carregar produtos pendentes",
