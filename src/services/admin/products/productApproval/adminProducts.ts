@@ -46,11 +46,15 @@ export const getAdminProducts = async (): Promise<AdminProduct[]> => {
         preco_normal: item.preco_normal,
         estoque: item.estoque,
         pontos: item.pontos_consumidor || 0,
+        pontos_consumidor: item.pontos_consumidor || 0,
+        pontos_profissional: 0,
         lojaId: item.vendedor_id,
+        vendedor_id: item.vendedor_id,
         lojaNome: item.vendedores?.nome_loja || 'Loja desconhecida',
         status: item.status as 'pendente' | 'aprovado' | 'inativo',
         created_at: item.created_at,
-        imagens: Array.isArray(item.imagens) ? item.imagens.filter(img => typeof img === 'string') : []
+        imagens: Array.isArray(item.imagens) ? item.imagens.filter(img => typeof img === 'string') : [],
+        vendedores: item.vendedores
       };
     });
     
