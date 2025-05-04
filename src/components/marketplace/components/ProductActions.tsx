@@ -13,6 +13,8 @@ interface ProductActionsProps {
   isFavorited: boolean;
   validateQuantity: () => void;
   isAuthenticated: boolean;
+  onSuccess?: () => void; // New prop for optional callback after successful cart operation
+  size?: 'default' | 'compact'; // New prop to control the size variant
 }
 
 const ProductActions: React.FC<ProductActionsProps> = ({
@@ -21,16 +23,19 @@ const ProductActions: React.FC<ProductActionsProps> = ({
   isFavorited,
   validateQuantity,
   isAuthenticated,
+  onSuccess,
+  size = 'default',
 }) => {
   const navigate = useNavigate();
-  const { addToCart, cartCount } = useCart();
+  const { addToCart } = useCart();
   
-  // Added console log to verify this new implementation is being used
-  console.log('ProductActions component loaded - updated implementation');
-  console.log('Product being viewed:', produto);
-  console.log('Authentication status:', isAuthenticated);
+  // Track loading state for cart operations
+  const [isAddingToCart, setIsAddingToCart] = React.useState(false);
+  const [isBuyingNow, setIsBuyingNow] = React.useState(false);
+  
+  console.log('ProductActions rendering for product:', produto.id);
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     validateQuantity();
     
     if (!isAuthenticated) {
@@ -39,19 +44,22 @@ const ProductActions: React.FC<ProductActionsProps> = ({
       return;
     }
     
-    // Pass the product ID, not the whole product object
-    console.log('Adding to cart:', { productId: produto.id, quantity: quantidade });
-    addToCart(produto.id, quantidade)
-      .then(() => {
-        toast.success(`${quantidade} unidade(s) adicionada(s) ao carrinho`);
-      })
-      .catch(err => {
-        console.error('Error adding to cart:', err);
-        toast.error('Erro: ' + (err.message || 'Erro ao adicionar ao carrinho'));
-      });
+    setIsAddingToCart(true);
+    try {
+      // Pass the product ID, not the whole product object
+      console.log('Adding to cart:', { productId: produto.id, quantity: quantidade });
+      await addToCart(produto.id, quantidade);
+      toast.success(`${quantidade} unidade(s) adicionada(s) ao carrinho`);
+      if (onSuccess) onSuccess();
+    } catch (err: any) {
+      console.error('Error adding to cart:', err);
+      toast.error('Erro: ' + (err.message || 'Erro ao adicionar ao carrinho'));
+    } finally {
+      setIsAddingToCart(false);
+    }
   };
 
-  const handleBuyNow = () => {
+  const handleBuyNow = async () => {
     validateQuantity();
     
     if (!isAuthenticated) {
@@ -60,17 +68,19 @@ const ProductActions: React.FC<ProductActionsProps> = ({
       return;
     }
     
-    // Pass the product ID, not the whole product object
-    console.log('Buying now:', { productId: produto.id, quantity: quantidade });
-    addToCart(produto.id, quantidade)
-      .then(() => {
-        toast.success(`${quantidade} unidade(s) adicionada(s) ao carrinho`);
-        navigate('/cart');
-      })
-      .catch(err => {
-        console.error('Error buying now:', err);
-        toast.error('Erro: ' + (err.message || 'Erro ao adicionar ao carrinho'));
-      });
+    setIsBuyingNow(true);
+    try {
+      // Pass the product ID, not the whole product object
+      console.log('Buying now:', { productId: produto.id, quantity: quantidade });
+      await addToCart(produto.id, quantidade);
+      toast.success(`${quantidade} unidade(s) adicionada(s) ao carrinho`);
+      navigate('/cart');
+    } catch (err: any) {
+      console.error('Error buying now:', err);
+      toast.error('Erro: ' + (err.message || 'Erro ao adicionar ao carrinho'));
+    } finally {
+      setIsBuyingNow(false);
+    }
   };
 
   const handleFavorite = async () => {
@@ -89,6 +99,41 @@ const ProductActions: React.FC<ProductActionsProps> = ({
     }
   };
 
+  // Compact variant for product cards in list/grid views
+  if (size === 'compact') {
+    return (
+      <div className="flex flex-col space-y-2">
+        <Button 
+          size="sm"
+          variant="outline"
+          className="w-full flex items-center justify-center bg-green-50 border-green-200 hover:bg-green-100"
+          onClick={handleAddToCart}
+          disabled={isAddingToCart || isBuyingNow}
+        >
+          {isAddingToCart ? (
+            <div className="animate-spin h-4 w-4 border-2 border-green-500 border-t-transparent rounded-full" />
+          ) : (
+            <ShoppingCart className="mr-1 h-4 w-4" />
+          )}
+          <span>Adicionar</span>
+        </Button>
+        
+        <Button 
+          size="sm" 
+          className="w-full bg-green-600 hover:bg-green-700"
+          onClick={handleBuyNow}
+          disabled={isAddingToCart || isBuyingNow}
+        >
+          {isBuyingNow ? (
+            <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-1" />
+          ) : null}
+          Comprar
+        </Button>
+      </div>
+    );
+  }
+
+  // Default size for product detail pages
   return (
     <div className="space-y-3 mt-6">
       <div className="grid grid-cols-2 gap-3">
@@ -97,8 +142,13 @@ const ProductActions: React.FC<ProductActionsProps> = ({
           size="lg" 
           className="w-full flex items-center justify-center"
           onClick={handleAddToCart}
+          disabled={isAddingToCart || isBuyingNow}
         >
-          <ShoppingCart className="mr-2 h-5 w-5" />
+          {isAddingToCart ? (
+            <div className="animate-spin h-5 w-5 border-2 border-gray-500 border-t-transparent rounded-full mr-2" />
+          ) : (
+            <ShoppingCart className="mr-2 h-5 w-5" />
+          )}
           Adicionar ao Carrinho
         </Button>
         
@@ -106,7 +156,11 @@ const ProductActions: React.FC<ProductActionsProps> = ({
           size="lg" 
           className="w-full"
           onClick={handleBuyNow}
+          disabled={isAddingToCart || isBuyingNow}
         >
+          {isBuyingNow ? (
+            <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full mr-2" />
+          ) : null}
           Comprar Agora
         </Button>
       </div>

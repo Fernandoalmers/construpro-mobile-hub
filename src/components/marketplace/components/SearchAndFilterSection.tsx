@@ -22,6 +22,30 @@ interface SearchAndFilterSectionProps {
   handleSearchChange: (term: string) => void;
 }
 
+// Separate hook for search functionality
+export const useProductSearch = (initialTerm = '', onSearch: (term: string) => void) => {
+  const [searchTerm, setSearchTerm] = useState(initialTerm);
+  const [debouncedTerm, setDebouncedTerm] = useState(initialTerm);
+  
+  // Debounce search term changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedTerm(searchTerm);
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+  
+  // Trigger search when debounced term changes
+  useEffect(() => {
+    if (debouncedTerm.trim().length >= 2) {
+      onSearch(debouncedTerm);
+    }
+  }, [debouncedTerm, onSearch]);
+  
+  return { searchTerm, setSearchTerm, debouncedTerm };
+};
+
 const SearchAndFilterSection: React.FC<SearchAndFilterSectionProps> = ({
   hideHeader,
   searchTerm,
@@ -43,31 +67,26 @@ const SearchAndFilterSection: React.FC<SearchAndFilterSectionProps> = ({
   const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
 
-  // Add debouncing for instant search
+  // Use our custom search hook
+  const { debouncedTerm } = useProductSearch(searchTerm, handleSearchChange);
+
+  // Update URL when search term changes
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (searchTerm.trim().length > 0) {
-        console.log('Debounced search for:', searchTerm);
-        handleSearchChange(searchTerm);
-        
-        // Update URL with search parameter
-        const newSearchParams = new URLSearchParams(searchParams);
-        if (searchTerm) {
-          newSearchParams.set('search', searchTerm);
-        } else {
-          newSearchParams.delete('search');
-        }
-        navigate(`${location.pathname}?${newSearchParams.toString()}`, { replace: true });
+    if (debouncedTerm && debouncedTerm.trim().length >= 2) {
+      // Update URL with search parameter
+      const newSearchParams = new URLSearchParams(searchParams);
+      if (debouncedTerm) {
+        newSearchParams.set('search', debouncedTerm);
+      } else {
+        newSearchParams.delete('search');
       }
-    }, 300);
-    
-    return () => clearTimeout(timeout);
-  }, [searchTerm, location.pathname, handleSearchChange, navigate, searchParams]);
+      navigate(`${location.pathname}?${newSearchParams.toString()}`, { replace: true });
+    }
+  }, [debouncedTerm, location.pathname, navigate, searchParams]);
 
   // Adapter function to convert the event to string
   const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
-    // The handleSearchChange will be triggered by the debounced effect
   };
 
   // Implementar a funcionalidade de pesquisa explícita (quando o usuário pressiona enter ou clica no botão)

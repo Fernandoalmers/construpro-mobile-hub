@@ -3,15 +3,20 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingCart, X } from 'lucide-react';
 import { useCart } from '@/hooks/use-cart';
+import { Button } from '@/components/ui/button';
 
-const CartPopup: React.FC = () => {
+interface CartPopupProps {
+  triggerShow?: boolean;
+}
+
+const CartPopup: React.FC<CartPopupProps> = ({ triggerShow }) => {
   const [show, setShow] = useState(false);
   const { cart, cartCount = 0, isLoading } = useCart();
   const navigate = useNavigate();
   
   // Show popup briefly when cart is updated
   useEffect(() => {
-    if (cartCount && cartCount > 0) {
+    if ((cartCount > 0 && triggerShow) || (cartCount > 0 && cart?.lastAddedItem)) {
       setShow(true);
       const timer = setTimeout(() => {
         setShow(false);
@@ -19,7 +24,7 @@ const CartPopup: React.FC = () => {
       
       return () => clearTimeout(timer);
     }
-  }, [cartCount]);
+  }, [cartCount, cart, triggerShow]);
   
   // Don't show anything while loading or if cart is empty
   if (isLoading || !cart || cartCount === 0) {
@@ -47,19 +52,22 @@ const CartPopup: React.FC = () => {
         </div>
         
         <div className="flex justify-between items-center">
-          <button 
+          <Button 
             onClick={() => navigate('/cart')}
-            className="bg-construPro-orange hover:bg-construPro-orange/90 text-white px-4 py-2 rounded text-sm"
+            variant="outline"
+            size="sm"
+            className="border-construPro-orange text-construPro-orange hover:bg-construPro-orange/10"
           >
             Ver carrinho
-          </button>
+          </Button>
           
-          <button 
+          <Button 
             onClick={() => navigate('/checkout')}
-            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm"
+            size="sm"
+            className="bg-green-600 hover:bg-green-700 text-white"
           >
             Finalizar compra
-          </button>
+          </Button>
         </div>
       </div>
     </div>

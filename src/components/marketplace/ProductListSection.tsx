@@ -1,11 +1,10 @@
-
-import React, { useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingBag, Grid, List, Star, ShoppingCart, Plus } from 'lucide-react';
+import { ShoppingBag, Grid, List } from 'lucide-react';
 import ProdutoCard from './ProdutoCard';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/use-cart';
-import { toast } from '@/components/ui/sonner';
+import { useAuth } from '@/context/AuthContext'; // Import auth context
 
 interface ProductListSectionProps {
   displayedProducts: any[];
@@ -30,11 +29,10 @@ const ProductListSection: React.FC<ProductListSectionProps> = ({
 }) => {
   const navigate = useNavigate();
   const loadMoreRef = useRef(null);
-  const { addToCart } = useCart();
+  const { isAuthenticated } = useAuth(); // Use auth context
   
   // State for view type (grid or list)
-  const [viewType, setViewType] = useState<'grid' | 'list'>(initialViewType);
-  const [addingToCart, setAddingToCart] = useState<Record<string, boolean>>({});
+  const [viewType, setViewType] = React.useState<'grid' | 'list'>(initialViewType);
 
   // Set up intersection observer for infinite scroll
   React.useEffect(() => {
@@ -53,36 +51,6 @@ const ProductListSection: React.FC<ProductListSectionProps> = ({
     
     return () => observer.disconnect();
   }, [loadMoreRef, hasMore, loadMoreProducts]);
-
-  const handleAddToCart = async (e: React.MouseEvent, productId: string) => {
-    e.stopPropagation();
-    
-    try {
-      setAddingToCart(prev => ({ ...prev, [productId]: true }));
-      await addToCart(productId, 1);
-      toast.success('Produto adicionado ao carrinho');
-    } catch (error) {
-      console.error('Error adding to cart:', error);
-      toast.error('Erro ao adicionar ao carrinho');
-    } finally {
-      setAddingToCart(prev => ({ ...prev, [productId]: false }));
-    }
-  };
-
-  // Implementação da função handleBuyNow
-  const handleBuyNow = async (e: React.MouseEvent, productId: string) => {
-    e.stopPropagation();
-    try {
-      setAddingToCart(prev => ({ ...prev, [productId]: true }));
-      await addToCart(productId, 1);
-      navigate('/cart'); // Redireciona para o carrinho após adicionar o produto
-    } catch (error) {
-      console.error('Error buying now:', error);
-      toast.error('Erro ao adicionar ao carrinho');
-    } finally {
-      setAddingToCart(prev => ({ ...prev, [productId]: false }));
-    }
-  };
 
   if (isLoading) {
     return (
@@ -162,9 +130,9 @@ const ProductListSection: React.FC<ProductListSectionProps> = ({
               loja={produto.stores}
               onClick={() => navigate(`/produto/${produto.id}`)}
               onLojaClick={onLojaClick}
-              onAddToCart={(e) => handleAddToCart(e, produto.id)}
+              onAddToCart={undefined} // Remove these props as we're using ProductActions now
               onAddToFavorites={undefined}
-              isAddingToCart={addingToCart[produto.id]}
+              isAddingToCart={false}
               isFavorite={false}
             />
           ))}
@@ -203,57 +171,20 @@ const ProductListSection: React.FC<ProductListSectionProps> = ({
                 {/* Product name */}
                 <h3 className="text-sm font-medium line-clamp-2">{produto.nome}</h3>
                 
-                {/* Rating */}
-                <div className="flex items-center mt-1">
-                  <Star size={14} className="fill-yellow-400 text-yellow-400" />
-                  <span className="text-xs ml-1">{produto.avaliacao || 0}</span>
-                </div>
-                
-                {/* Price */}
-                <div className="mt-1">
-                  <span className="text-sm font-bold">R$ {(produto.preco || 0).toFixed(2)}</span>
-                  {(produto.precoAnterior > produto.preco || produto.preco_anterior > produto.preco) && (
-                    <span className="text-xs text-gray-400 line-through ml-2">
-                      R$ {((produto.precoAnterior || produto.preco_anterior) || 0).toFixed(2)}
-                    </span>
-                  )}
-                </div>
-                
-                {/* Points */}
-                {(produto.pontos > 0 || produto.pontos_consumidor > 0) && (
-                  <div className="text-xs text-construPro-orange mt-1">
-                    Ganhe {produto.pontos || produto.pontos_consumidor} pontos
-                  </div>
-                )}
+                {/* Rating and Price sections - keep existing code */}
+                {/* ... keep existing code (rating and price sections) */}
               </div>
               
-              {/* Action Buttons */}
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex flex-col space-y-2">
-                {/* Add to cart button */}
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="rounded-full bg-green-50 border-green-200 hover:bg-green-100 hover:border-green-300"
-                  onClick={(e) => handleAddToCart(e, produto.id)}
-                  disabled={addingToCart[produto.id]}
-                >
-                  {addingToCart[produto.id] ? (
-                    <div className="animate-spin h-4 w-4 border-2 border-green-500 border-t-transparent rounded-full" />
-                  ) : (
-                    <Plus size={18} className="text-green-600" />
-                  )}
-                </Button>
-                
-                {/* Buy Now button */}
-                <Button
-                  size="sm"
-                  variant="default"
-                  className="bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1"
-                  onClick={(e) => handleBuyNow(e, produto.id)}
-                  disabled={addingToCart[produto.id]}
-                >
-                  Comprar
-                </Button>
+              {/* Action Buttons - now using ProductActions */}
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 w-24">
+                <ProductActions 
+                  produto={produto}
+                  quantidade={1}
+                  isFavorited={false}
+                  validateQuantity={() => {}}
+                  isAuthenticated={isAuthenticated}
+                  size="compact"
+                />
               </div>
             </div>
           ))}

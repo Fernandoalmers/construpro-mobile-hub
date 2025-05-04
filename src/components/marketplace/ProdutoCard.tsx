@@ -1,8 +1,9 @@
 
 import React from 'react';
-import { Star, Heart, Truck, Percent, Plus } from 'lucide-react';
+import { Star, Heart, Truck, Percent } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { useAuth } from '@/context/AuthContext';
+import ProductActions from './components/ProductActions';
 import { cn } from '@/lib/utils';
 
 interface ProdutoCardProps {
@@ -23,11 +24,10 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
   onClick,
   onLojaClick,
   onAddToFavorites,
-  onAddToCart,
-  onBuyNow,
   isFavorite = false,
-  isAddingToCart = false
 }) => {
+  const { isAuthenticated } = useAuth();
+  
   // Calculate discount percentage if applicable
   const hasDiscount = produto.precoAnterior > produto.preco || produto.preco_anterior > produto.preco;
   const precoAnterior = produto.precoAnterior || produto.preco_anterior || 0;
@@ -81,43 +81,16 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
           </button>
         )}
         
-        {/* Action Buttons */}
-        <div className="absolute bottom-2 right-2 flex space-x-2">
-          {/* Add to Cart button */}
-          {onAddToCart && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={(e) => {
-                e.stopPropagation();
-                onAddToCart(e);
-              }}
-              disabled={isAddingToCart}
-              className="rounded-full bg-green-500 hover:bg-green-600 text-white border-0 shadow-md h-8 w-8 p-0"
-            >
-              {isAddingToCart ? (
-                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
-              ) : (
-                <Plus size={16} />
-              )}
-            </Button>
-          )}
-          
-          {/* Buy Now button */}
-          {onBuyNow && (
-            <Button
-              size="sm"
-              variant="default"
-              onClick={(e) => {
-                e.stopPropagation();
-                onBuyNow(e);
-              }}
-              disabled={isAddingToCart}
-              className="bg-green-600 hover:bg-green-700 text-white text-xs px-2"
-            >
-              Comprar
-            </Button>
-          )}
+        {/* Product Actions - now using the ProductActions component */}
+        <div className="absolute bottom-2 right-2 w-20">
+          <ProductActions
+            produto={produto}
+            quantidade={1}
+            isFavorited={isFavorite}
+            validateQuantity={() => {}}
+            isAuthenticated={isAuthenticated}
+            size="compact"
+          />
         </div>
       </div>
       

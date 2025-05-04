@@ -3,6 +3,8 @@ import React, { useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import SearchResults from './SearchResults';
 import { useNavigate } from 'react-router-dom';
+import { Search } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface SearchBarProps {
   searchTerm: string;
@@ -77,16 +79,28 @@ const SearchBar: React.FC<SearchBarProps> = ({
     setShowResults(false);
   };
 
-  // Implementação correta da função handleSearch
+  // Handle explicit search via button click or Enter key
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (onSearch && searchTerm) {
+    if (searchTerm.trim().length < 2) return;
+
+    // Close search results dropdown
+    setShowResults(false);
+    
+    // Use provided onSearch handler if available
+    if (onSearch) {
       onSearch(searchTerm);
-    } else if (searchTerm.trim().length >= 2) {
-      // Se não houver uma função onSearch, navigate diretamente
+    } else {
+      // Default behavior: navigate to marketplace with search parameter
       navigate(`/marketplace/products?search=${encodeURIComponent(searchTerm)}`);
     }
-    setShowResults(false);
+  };
+
+  // Handle keyboard navigation
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSearchSubmit(e);
+    }
   };
 
   // Add click outside handler to close search results
@@ -103,21 +117,36 @@ const SearchBar: React.FC<SearchBarProps> = ({
   }, [showResults]);
 
   return (
-    <form onSubmit={handleSearchSubmit} className="relative mb-4 search-container">
-      <input
-        type="text"
-        placeholder="Buscar produtos..."
-        value={searchTerm}
-        onChange={handleInputChange}
-        className="w-full px-4 py-2 border border-gray-300 rounded-md bg-white text-sm focus:outline-none"
-      />
+    <form onSubmit={handleSearchSubmit} className="relative mb-4 search-container flex items-center">
+      <div className="relative flex-grow">
+        <input
+          type="text"
+          placeholder="Buscar produtos..."
+          value={searchTerm}
+          onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
+          className="w-full px-4 py-2 border border-gray-300 rounded-md bg-white text-sm focus:outline-none"
+        />
+        
+        {/* Search loading indicator */}
+        {isSearching && (
+          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+            <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-construPro-blue"></div>
+          </div>
+        )}
+      </div>
       
-      {/* Search loading indicator */}
-      {isSearching && (
-        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-          <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-construPro-blue"></div>
-        </div>
-      )}
+      {/* Search button */}
+      <Button 
+        type="submit" 
+        variant="default"
+        size="sm"
+        className="ml-2"
+        onClick={(e) => handleSearchSubmit(e)}
+      >
+        <Search size={16} className="mr-1" />
+        Buscar
+      </Button>
       
       {/* Search results dropdown */}
       <SearchResults 
