@@ -15,6 +15,7 @@ import ProductDetails from './components/ProductDetails';
 import QuantitySelector from './components/QuantitySelector';
 import ProductActions from './components/ProductActions';
 import SearchHeader from './components/SearchHeader';
+import CartPopup from './CartPopup';
 
 // Import our refactored hook
 import { useProductDetails } from '@/hooks/useProductDetails';
@@ -25,6 +26,7 @@ const ProdutoScreen: React.FC = () => {
   const { isAuthenticated } = useAuth();
   
   const [quantidade, setQuantidade] = React.useState(1);
+  const [showCartPopup, setShowCartPopup] = React.useState(false);
   
   // Use our custom hook
   const { product: produto, loading, error, isFavorited, reviews, estimatedDelivery } = useProductDetails(id, isAuthenticated);
@@ -68,6 +70,10 @@ const ProdutoScreen: React.FC = () => {
 
   const handleGoBack = () => {
     navigate(-1); // Navigate to previous page
+  };
+
+  const handleProductActionSuccess = () => {
+    setShowCartPopup(true);
   };
 
   if (loading) {
@@ -133,6 +139,7 @@ const ProdutoScreen: React.FC = () => {
               isFavorited={isFavorited}
               validateQuantity={validateQuantity}
               isAuthenticated={isAuthenticated}
+              onSuccess={handleProductActionSuccess}
             />
           </div>
         </div>
@@ -162,6 +169,9 @@ const ProdutoScreen: React.FC = () => {
           </Button>
         </div>
       </main>
+      
+      {/* Cart popup when item is added to cart */}
+      <CartPopup triggerShow={showCartPopup} />
     </div>
   );
 };
