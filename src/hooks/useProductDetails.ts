@@ -20,7 +20,7 @@ interface ProductDetailsState {
 interface VendorData {
   id?: string | number;
   nome_loja?: string;
-  logo_url?: string;
+  logo?: string;  // Changed from logo_url to logo to match database schema
   formas_entrega?: Array<{
     prazo_min?: number;
     prazo_max?: number;
@@ -50,6 +50,7 @@ export function useProductDetails(id: string | undefined, isAuthenticated: boole
         setState(prev => ({ ...prev, loading: true, error: null }));
         
         // Enhanced query to get all required product details in a single call
+        // Update the select statement to use 'logo' instead of 'logo_url'
         const { data, error } = await supabase
           .from('produtos')
           .select(`
@@ -57,7 +58,7 @@ export function useProductDetails(id: string | undefined, isAuthenticated: boole
             vendedores (
               id, 
               nome_loja, 
-              logo_url,
+              logo,
               formas_entrega
             )
           `)
@@ -113,7 +114,7 @@ export function useProductDetails(id: string | undefined, isAuthenticated: boole
               id: data.vendedor_id,
               nome: String(vendedorData.nome_loja || ''),
               nome_loja: String(vendedorData.nome_loja || ''),
-              logo_url: String(vendedorData.logo_url || '')
+              logo_url: String(vendedorData.logo || '') // Changed here to use logo instead of logo_url
             };
           }
         }
