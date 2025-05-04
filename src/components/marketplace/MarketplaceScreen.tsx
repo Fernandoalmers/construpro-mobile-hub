@@ -7,9 +7,12 @@ import MarketplaceHeader from './MarketplaceHeader';
 import ProductListSection from './ProductListSection';
 import SegmentCardsHeader from './components/SegmentCardsHeader';
 import { getProducts } from '@/services/productService';
+import { getStores, Store } from '@/services/marketplace/marketplaceService';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import LoadingState from '../common/LoadingState';
+import Card from '../common/Card';
+import CustomInput from '../common/CustomInput';
 
 const MarketplaceScreen: React.FC = () => {
   const location = useLocation();
@@ -25,7 +28,8 @@ const MarketplaceScreen: React.FC = () => {
   
   const [isLoading, setIsLoading] = useState(true);
   const [products, setProducts] = useState<any[]>([]);
-  const [stores, setStores] = useState<any[]>([]);
+  const [stores, setStores] = useState<Store[]>([]);
+  const [storesError, setStoresError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState(searchQuery || '');
   const [selectedSegment, setSelectedSegment] = useState<string | null>(segmentParam);
   
@@ -43,13 +47,14 @@ const MarketplaceScreen: React.FC = () => {
         setProducts(productsData);
         
         // Fetch stores
-        const { data: storesData, error: storesError } = await supabase
-          .from('stores')
-          .select('*');
-        
-        if (storesError) throw storesError;
-        
-        setStores(storesData || []);
+        try {
+          const storesData = await getStores();
+          setStores(storesData);
+        } catch (storeError) {
+          console.error('Error fetching stores:', storeError);
+          setStoresError((storeError as Error).message || 'Erro ao carregar lojas');
+          toast.error('Erro ao carregar lojas');
+        }
       } catch (error) {
         console.error('Error fetching data:', error);
         toast.error('Erro ao carregar dados');
@@ -161,6 +166,33 @@ const MarketplaceScreen: React.FC = () => {
       "Produtos no segmento selecionado" : 
       "Todos os Produtos";
 
+  // Simple store card component
+  const StoreCard: React.FC<{ store: Store }> = ({ store }) => {
+    return (
+      <Card 
+        className="p-3 flex flex-col items-center justify-center gap-2"
+        onClick={() => handleLojaClick(store.id)}
+      >
+        <div className="w-12 h-12 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center">
+          {store.logo_url ? (
+            <img 
+              src={store.logo_url} 
+              alt={store.nome_loja} 
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="text-2xl font-semibold text-gray-400">
+              {store.nome_loja.charAt(0)}
+            </div>
+          )}
+        </div>
+        <span className="text-sm font-medium text-center line-clamp-2">
+          {store.nome_loja}
+        </span>
+      </Card>
+    );
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 pb-20">
       {/* Header with search and filters */}
@@ -186,6 +218,18 @@ const MarketplaceScreen: React.FC = () => {
         selectedSegment={selectedSegment} 
         onSegmentClick={handleSegmentClick}
       />
+      
+      {/* Stores Section */}
+      {stores.length > 0 && (
+        <div className="px-3 py-4 bg-white border-b">
+          <h2 className="text-lg font-semibold mb-3">Lojas Disponíveis</h2>
+          <div className="grid grid-cols-4 gap-3">
+            {stores.map(store => (
+              <StoreCard key={store.id} store={store} />
+            ))}
+          </div>
+        </div>
+      )}
       
       {/* Simple category header */}
       <div className="bg-white px-3 py-2 border-b shadow-sm">
