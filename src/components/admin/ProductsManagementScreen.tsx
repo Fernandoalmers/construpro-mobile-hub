@@ -9,8 +9,9 @@ import ProductFilters from './products/ProductFilters';
 import ProductsTable from './products/ProductsTable';
 import ProductsHeader from './products/ProductsHeader';
 import { debugFetchProducts } from '@/services/admin/products';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/components/ui/sonner';
 import { approveProduct, rejectProduct } from '@/services/admin/products/productApproval/statusUpdates';
+import { supabase } from '@/integrations/supabase/client';
 
 const ProductsManagementScreen: React.FC = () => {
   useTitle('ConstruPro Admin - Produtos');
@@ -43,27 +44,16 @@ const ProductsManagementScreen: React.FC = () => {
       console.log('[ApproveProduct] Result:', success);
       
       if (!success) {
-        toast({
-          title: "Error",
-          description: "Erro ao aprovar produto",
-          variant: "destructive"
-        });
+        toast.error("Erro ao aprovar produto");
         return;
       }
 
       // Refresh the products list
       await refreshProducts();
-      toast({
-        title: "Sucesso",
-        description: "Produto aprovado com sucesso"
-      });
+      toast.success("Produto aprovado com sucesso");
     } catch (error) {
       console.error('[ApproveProduct] Error:', error);
-      toast({
-        title: "Error",
-        description: "Erro inesperado ao aprovar produto",
-        variant: "destructive"
-      });
+      toast.error("Erro inesperado ao aprovar produto");
     }
   }
 
@@ -79,27 +69,16 @@ const ProductsManagementScreen: React.FC = () => {
       console.log('[RejectProduct] Result:', success);
       
       if (!success) {
-        toast({
-          title: "Error",
-          description: "Erro ao rejeitar produto",
-          variant: "destructive"
-        });
+        toast.error("Erro ao rejeitar produto");
         return;
       }
 
       // Refresh the products list
       await refreshProducts();
-      toast({
-        title: "Sucesso",
-        description: "Produto rejeitado com sucesso"
-      });
+      toast.success("Produto rejeitado com sucesso");
     } catch (error) {
       console.error('[RejectProduct] Error:', error);
-      toast({
-        title: "Error",
-        description: "Erro inesperado ao rejeitar produto",
-        variant: "destructive"
-      });
+      toast.error("Erro inesperado ao rejeitar produto");
     }
   }
 

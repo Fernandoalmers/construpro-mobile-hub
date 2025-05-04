@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { Json } from '@/integrations/supabase/types';
@@ -71,16 +72,16 @@ export async function getProducts(): Promise<Product[]> {
     const { data, error } = await supabase
       .from('produtos')
       .select('*, vendedores(nome_loja)')
-      .eq('status', 'aprovado')  // We check for 'aprovado' here, not 'ativo'
+      .eq('status', 'aprovado')  // Explicitly check for 'aprovado' status
       .gt('estoque', 0)  // Only products with stock > 0
       .order('created_at', { ascending: false });
     
     if (error) {
-      console.error('Error fetching products:', error);
+      console.error('[productService] Error fetching products:', error);
       return [];
     }
     
-    console.log(`[productService] Fetched ${data.length} approved products`);
+    console.log(`[productService] Fetched ${data?.length || 0} approved products with data:`, data);
     return data.map(transformProduct) || [];
   } catch (error) {
     console.error('Error in getProducts:', error);

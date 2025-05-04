@@ -2,7 +2,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Check, X, Eye } from 'lucide-react';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/components/ui/sonner';
 
 interface ProductActionButtonsProps {
   status: string;
@@ -35,11 +35,7 @@ const ProductActionButtons: React.FC<ProductActionButtonsProps> = ({
       console.log('Product approval function called');
     } catch (error) {
       console.error('Error approving product:', error);
-      toast({
-        title: "Error",
-        description: "Erro ao aprovar produto",
-        variant: "destructive"
-      });
+      toast.error("Erro ao aprovar produto");
     }
   };
   
@@ -54,11 +50,7 @@ const ProductActionButtons: React.FC<ProductActionButtonsProps> = ({
       console.log('Product rejection function called');
     } catch (error) {
       console.error('Error rejecting product:', error);
-      toast({
-        title: "Error",
-        description: "Erro ao rejeitar produto",
-        variant: "destructive"
-      });
+      toast.error("Erro ao rejeitar produto");
     }
   };
 
