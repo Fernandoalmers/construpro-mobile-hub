@@ -1,98 +1,33 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MessageCircle } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { getProductById, trackProductView, Product } from '@/services/productService';
-import { addToCart } from '@/services/cartService';
-import { addToFavorites, isProductFavorited } from '@/services/cartService';
 import { useAuth } from '@/context/AuthContext';
 import LoadingState from '../common/LoadingState';
 import ErrorState from '../common/ErrorState';
-import { supabase } from '@/integrations/supabase/client';
 
 // Import our components
 import ProductBreadcrumbs from './components/ProductBreadcrumbs';
 import ProductImageGallery from './components/ProductImageGallery';
 import ProductInfo from './components/ProductInfo';
 import ProductDetails from './components/ProductDetails';
+import QuantitySelector from './components/QuantitySelector';
+import ProductActions from './components/ProductActions';
+
+// Import our hook
+import { useProductDetails } from '@/hooks/useProductDetails';
 
 const ProdutoScreen: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   
-  const [produto, setProduto] = useState<Product | null>(null);
   const [quantidade, setQuantidade] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isFavorited, setIsFavorited] = useState(false);
-  const [addingToCart, setAddingToCart] = useState(false);
-  const [addingToFavorites, setAddingToFavorites] = useState(false);
-  const [reviews, setReviews] = useState<any[]>([]);
-
-  useEffect(() => {
-    if (!id) return;
-    
-    const fetchProduct = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const productData = await getProductById(id);
-        
-        if (!productData) {
-          setError('Produto não encontrado');
-          return;
-        }
-        
-        setProduto(productData);
-        
-        // Track product view
-        if (isAuthenticated) {
-          trackProductView(id);
-        }
-        
-        // Check if favorited
-        if (isAuthenticated) {
-          const favorited = await isProductFavorited(id);
-          setIsFavorited(favorited);
-        }
-        
-        // Fetch reviews for the product
-        const { data: reviewsData } = await supabase
-          .from('product_reviews')
-          .select(`
-            id,
-            cliente_id,
-            nota,
-            comentario,
-            data,
-            profiles:cliente_id (nome)
-          `)
-          .eq('produto_id', id)
-          .order('data', { ascending: false });
-        
-        if (reviewsData) {
-          setReviews(reviewsData.map(review => ({
-            id: review.id,
-            user_name: review.profiles?.nome || 'Usuário',
-            rating: review.nota,
-            comment: review.comentario,
-            date: new Date(review.data).toLocaleDateString('pt-BR')
-          })));
-        }
-      } catch (err) {
-        console.error('Error fetching product:', err);
-        setError('Erro ao carregar detalhes do produto');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchProduct();
-  }, [id, isAuthenticated]);
+  
+  // Use our custom hook
+  const { product: produto, loading, error, isFavorited, reviews } = useProductDetails(id, isAuthenticated);
 
   const handleQuantityChange = (delta: number) => {
     // For products sold by m² or with specific unit requirements
@@ -123,101 +58,6 @@ const ProdutoScreen: React.FC = () => {
     }
   };
 
-  const handleAddToCart = async () => {
-    if (!produto?.id) return;
-    
-    if (!isAuthenticated) {
-      navigate('/login', { state: { from: `/produto/${id}` } });
-      return;
-    }
-    
-    validateQuantity();
-    
-    try {
-      setAddingToCart(true);
-      const result = await addToCart(produto.id, quantidade);
-      
-      if (result) {
-        toast.success(`${produto.nome} adicionado ao carrinho`);
-      } else {
-        toast.error('Erro ao adicionar ao carrinho');
-      }
-    } catch (err) {
-      console.error('Error adding to cart:', err);
-      toast.error('Erro ao adicionar ao carrinho');
-    } finally {
-      setAddingToCart(false);
-    }
-  };
-  
-  const handleBuyNow = async () => {
-    if (!produto?.id) return;
-    
-    if (!isAuthenticated) {
-      navigate('/login', { state: { from: `/produto/${id}` } });
-      return;
-    }
-    
-    validateQuantity();
-    
-    try {
-      setAddingToCart(true);
-      const result = await addToCart(produto.id, quantidade);
-      
-      if (result) {
-        navigate('/cart?checkout=true');
-      } else {
-        toast.error('Erro ao processar compra');
-      }
-    } catch (err) {
-      console.error('Error in buy now:', err);
-      toast.error('Erro ao processar compra');
-    } finally {
-      setAddingToCart(false);
-    }
-  };
-
-  const handleToggleFavorite = async () => {
-    if (!produto?.id) return;
-    
-    if (!isAuthenticated) {
-      navigate('/login', { state: { from: `/produto/${id}` } });
-      return;
-    }
-    
-    try {
-      setAddingToFavorites(true);
-      if (!isFavorited) {
-        const result = await addToFavorites(produto.id);
-        
-        if (result) {
-          setIsFavorited(true);
-          toast.success(`${produto.nome} adicionado aos favoritos`);
-        } else {
-          toast.error('Erro ao adicionar aos favoritos');
-        }
-      } else {
-        // For now just show a success message as we're not implementing remove yet
-        toast.info('Produto já está nos favoritos');
-      }
-    } catch (err) {
-      console.error('Error adding to favorites:', err);
-      toast.error('Erro ao modificar favoritos');
-    } finally {
-      setAddingToFavorites(false);
-    }
-  };
-  
-  const handleChatWithStore = () => {
-    if (!isAuthenticated) {
-      navigate('/login', { state: { from: `/produto/${id}` } });
-      return;
-    }
-    
-    // In a full implementation, this would open a chat with the store
-    toast.info('Funcionalidade de chat em desenvolvimento');
-  };
-  
   const handleAddReview = () => {
     if (!isAuthenticated) {
       navigate('/login', { state: { from: `/produto/${id}` } });
@@ -268,19 +108,27 @@ const ProdutoScreen: React.FC = () => {
           />
 
           {/* Product Info Section */}
-          <ProductInfo
-            produto={produto}
-            quantidade={quantidade}
-            handleQuantityChange={handleQuantityChange}
-            handleAddToCart={handleAddToCart}
-            handleBuyNow={handleBuyNow}
-            handleToggleFavorite={handleToggleFavorite}
-            handleChatWithStore={handleChatWithStore}
-            isFavorited={isFavorited}
-            addingToCart={addingToCart}
-            addingToFavorites={addingToFavorites}
-            validateQuantity={validateQuantity}
-          />
+          <div>
+            <ProductInfo 
+              produto={produto}
+            />
+            
+            {/* Quantity Selector */}
+            <QuantitySelector 
+              produto={produto}
+              quantidade={quantidade}
+              onQuantityChange={handleQuantityChange}
+            />
+            
+            {/* Product Actions */}
+            <ProductActions
+              produto={produto}
+              quantidade={quantidade}
+              isFavorited={isFavorited}
+              validateQuantity={validateQuantity}
+              isAuthenticated={isAuthenticated}
+            />
+          </div>
         </div>
         
         {/* Product Description and Reviews */}
