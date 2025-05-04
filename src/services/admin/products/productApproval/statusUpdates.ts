@@ -9,11 +9,16 @@ import { logAdminAction } from '@/services/adminService';
  */
 export const approveProduct = async (productId: string): Promise<boolean> => {
   try {
-    const { error } = await supabase
+    console.log('[statusUpdates] Approving product:', productId);
+    
+    const { data, error } = await supabase
       .from('produtos')
       .update({ status: 'aprovado', updated_at: new Date().toISOString() })
-      .eq('id', productId);
+      .eq('id', productId)
+      .select();
       
+    console.log('[statusUpdates] Approve result:', data, error);
+    
     if (error) throw error;
     
     // Log the admin action
@@ -26,7 +31,7 @@ export const approveProduct = async (productId: string): Promise<boolean> => {
     
     return true;
   } catch (error) {
-    console.error('Error approving product:', error);
+    console.error('[statusUpdates] Error approving product:', error);
     throw error;
   }
 };
@@ -38,11 +43,16 @@ export const approveProduct = async (productId: string): Promise<boolean> => {
  */
 export const rejectProduct = async (productId: string): Promise<boolean> => {
   try {
-    const { error } = await supabase
+    console.log('[statusUpdates] Rejecting product:', productId);
+    
+    const { data, error } = await supabase
       .from('produtos')
       .update({ status: 'inativo', updated_at: new Date().toISOString() })
-      .eq('id', productId);
+      .eq('id', productId)
+      .select();
       
+    console.log('[statusUpdates] Reject result:', data, error);
+    
     if (error) throw error;
     
     // Log the admin action
@@ -55,7 +65,7 @@ export const rejectProduct = async (productId: string): Promise<boolean> => {
     
     return true;
   } catch (error) {
-    console.error('Error rejecting product:', error);
+    console.error('[statusUpdates] Error rejecting product:', error);
     throw error;
   }
 };
@@ -71,10 +81,15 @@ export const updateProductStatus = async (
   status: 'pendente' | 'aprovado' | 'inativo'
 ): Promise<boolean> => {
   try {
-    const { error } = await supabase
+    console.log('[statusUpdates] Updating product status:', productId, status);
+    
+    const { data, error } = await supabase
       .from('produtos')
       .update({ status, updated_at: new Date().toISOString() })
-      .eq('id', productId);
+      .eq('id', productId)
+      .select();
+    
+    console.log('[statusUpdates] Update status result:', data, error);
     
     if (error) throw error;
     
@@ -90,7 +105,7 @@ export const updateProductStatus = async (
     
     return true;
   } catch (error) {
-    console.error(`Error updating product status to ${status}:`, error);
+    console.error(`[statusUpdates] Error updating product status to ${status}:`, error);
     return false;
   }
 };

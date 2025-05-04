@@ -10,7 +10,7 @@ import ProductsTable from './products/ProductsTable';
 import ProductsHeader from './products/ProductsHeader';
 import { debugFetchProducts } from '@/services/admin/products';
 import { toast } from '@/components/ui/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { approveProduct, rejectProduct } from '@/services/admin/products/productApproval';
 
 const ProductsManagementScreen: React.FC = () => {
   useTitle('ConstruPro Admin - Produtos');
@@ -22,7 +22,7 @@ const ProductsManagementScreen: React.FC = () => {
     setFilter,
     searchTerm,
     setSearchTerm,
-    refreshProducts: productsRefetch
+    refreshProducts
   } = useAdminProducts();
 
   // Debug function to help troubleshoot data issues
@@ -31,54 +31,64 @@ const ProductsManagementScreen: React.FC = () => {
     console.log('Debug result:', result);
   };
 
-  // Implementation for approve product handler using direct Supabase call
+  // Implementation for approve product handler using the productApproval service
   async function handleApproveProduct(productId: string) {
-    console.log('[ApproveProduct] iniciando para id:', productId);
-    const { data, error } = await supabase
-      .from('produtos')
-      .update({ status: 'aprovado' })
-      .eq('id', productId);
-
-    console.log('[ApproveProduct] retorno:', data, error);
-    if (error) {
-      toast({
-        title: "Error",
-        description: 'Erro ao aprovar: ' + error.message,
-        variant: "destructive"
-      });
-      return;
-    }
-    toast({
-      title: "Sucesso",
-      description: 'Produto aprovado com sucesso'
-    });
-    await productsRefetch();  // refetch products list
-  }
-
-  // Implementation for reject product handler using direct Supabase call
-  async function handleRejectProduct(productId: string) {
     try {
       // Log before calling the service
-      console.log('[RejectProduct] Rejecting product with ID:', productId);
+      console.log('[ApproveProduct] iniciando para id:', productId);
       
-      const { data, error } = await supabase
-        .from('produtos')
-        .update({ status: 'inativo' })
-        .eq('id', productId);
+      // Use the productApproval service
+      const success = await approveProduct(productId);
       
-      console.log('[RejectProduct] Result:', data, error);
+      console.log('[ApproveProduct] Result:', success);
       
-      if (error) {
+      if (!success) {
         toast({
           title: "Error",
-          description: "Erro ao rejeitar produto: " + error.message,
+          description: "Erro ao aprovar produto",
           variant: "destructive"
         });
         return;
       }
 
       // Refresh the products list
-      await productsRefetch();
+      await refreshProducts();
+      toast({
+        title: "Sucesso",
+        description: "Produto aprovado com sucesso"
+      });
+    } catch (error) {
+      console.error('[ApproveProduct] Error:', error);
+      toast({
+        title: "Error",
+        description: "Erro inesperado ao aprovar produto",
+        variant: "destructive"
+      });
+    }
+  }
+
+  // Implementation for reject product handler using the productApproval service
+  async function handleRejectProduct(productId: string) {
+    try {
+      // Log before calling the service
+      console.log('[RejectProduct] Rejecting product with ID:', productId);
+      
+      // Use the productApproval service
+      const success = await rejectProduct(productId);
+      
+      console.log('[RejectProduct] Result:', success);
+      
+      if (!success) {
+        toast({
+          title: "Error",
+          description: "Erro ao rejeitar produto",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Refresh the products list
+      await refreshProducts();
       toast({
         title: "Sucesso",
         description: "Produto rejeitado com sucesso"
