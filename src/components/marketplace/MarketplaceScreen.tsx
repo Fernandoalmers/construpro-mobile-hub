@@ -117,7 +117,7 @@ const MarketplaceScreen: React.FC = () => {
     }, 300);
     
     return () => clearTimeout(timeout);
-  }, [searchTerm]);
+  }, [searchTerm, location.pathname, handleSearchChange, navigate]);
 
   // Handle segment selection
   const handleSegmentClick = (segmentId: string) => {
@@ -146,10 +146,8 @@ const MarketplaceScreen: React.FC = () => {
 
   // Adapter function to convert the event to string
   const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    handleSearchChange(e.target.value);
     setSearchTerm(e.target.value);
-    
-    // URL update now handled by the debounced effect
+    // The handleSearchChange will be triggered by the debounced effect
   };
 
   // Quick search for products

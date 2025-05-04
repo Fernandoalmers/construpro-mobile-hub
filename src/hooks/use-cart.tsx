@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from '@/components/ui/sonner';
 import { useAuth } from '@/context/AuthContext';
@@ -50,8 +51,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const addToCart = async (productId: string, quantity: number): Promise<void> => {
     if (!user) {
       console.log('Cannot add to cart: user not authenticated');
-      toast.error('Faça login para adicionar produtos ao carrinho');
-      return;
+      throw new Error('Faça login para adicionar produtos ao carrinho');
     }
 
     try {
@@ -62,16 +62,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const product = await cartApi.fetchProductInfo(productId);
       if (!product) {
         console.error('Product not found:', productId);
-        toast.error('Produto não encontrado');
-        return;
+        throw new Error('Produto não encontrado');
       }
 
       console.log('Product info:', product);
 
       if (product.estoque < quantity) {
         console.log('Not enough stock:', { available: product.estoque, requested: quantity });
-        toast.error('Quantidade solicitada não disponível em estoque');
-        return;
+        throw new Error('Quantidade solicitada não disponível em estoque');
       }
 
       // Get or create a cart
@@ -90,19 +88,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           
           if (product.estoque < newQuantity) {
             console.log('Combined quantity exceeds stock:', { available: product.estoque, requested: newQuantity });
-            toast.error('Quantidade solicitada excede o estoque disponível');
-            return;
+            throw new Error('Quantidade solicitada excede o estoque disponível');
           }
           
           const updated = await cartApi.updateItemQuantity(existingItem.id, newQuantity);
           if (!updated) {
             console.error('Failed to update cart item');
-            toast.error('Erro ao atualizar o carrinho');
-            return;
+            throw new Error('Erro ao atualizar o carrinho');
           }
-          
-          await refreshCart();
-          return;
+        } else {
+          // Add new item
+          const added = await cartApi.addItemToCart(cartId, productId, quantity, product.preco);
+          if (!added) {
+            console.error('[useCart] erro ao adicionar ao carrinho');
+            throw new Error('Erro ao adicionar ao carrinho');
+          }
         }
       } else {
         // Create new cart
@@ -110,27 +110,24 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         cartId = await cartApi.createCart(user.id);
         if (!cartId) {
           console.error('Failed to create cart');
-          toast.error('Erro ao criar o carrinho');
-          return;
+          throw new Error('Erro ao criar o carrinho');
         }
         console.log('New cart created:', cartId);
-      }
-
-      // Add new item to cart
-      console.log('Adding new item to cart:', { cartId, productId, quantity, price: product.preco });
-      const added = await cartApi.addItemToCart(cartId, productId, quantity, product.preco);
-      if (!added) {
-        console.error('[useCart] erro ao adicionar ao carrinho');
-        toast.error('Erro ao adicionar ao carrinho');
-        return;
+        
+        // Add new item to cart
+        console.log('Adding new item to cart:', { cartId, productId, quantity, price: product.preco });
+        const added = await cartApi.addItemToCart(cartId, productId, quantity, product.preco);
+        if (!added) {
+          console.error('[useCart] erro ao adicionar ao carrinho');
+          throw new Error('Erro ao adicionar ao carrinho');
+        }
       }
 
       await refreshCart();
       console.log('[useCart] carrinho agora:', cart?.summary?.totalItems ? cart.summary.totalItems + 1 : 1);
-      toast.success('Produto adicionado ao carrinho');
+      return Promise.resolve();
     } catch (error) {
       console.error('[useCart] erro ao adicionar ao carrinho', error);
-      toast.error('Erro ao adicionar ao carrinho');
       throw error;
     } finally {
       setIsLoading(false);
@@ -204,7 +201,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Calculate total items in cart
-  const cartCount = cart?.summary.totalItems || 0;
+  const cartCount = cart?.summary?.totalItems || 0;
 
   const value: CartContextType = {
     cart,

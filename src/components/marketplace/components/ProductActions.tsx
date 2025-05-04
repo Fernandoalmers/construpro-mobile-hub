@@ -42,8 +42,13 @@ const ProductActions: React.FC<ProductActionsProps> = ({
     // Pass the product ID, not the whole product object
     console.log('Adding to cart:', { productId: produto.id, quantity: quantidade });
     addToCart(produto.id, quantidade)
-      .catch(err => toast.error('Erro: ' + (err.message || 'Erro ao adicionar ao carrinho')));
-    toast.success(`${quantidade} unidade(s) adicionada(s) ao carrinho`);
+      .then(() => {
+        toast.success(`${quantidade} unidade(s) adicionada(s) ao carrinho`);
+      })
+      .catch(err => {
+        console.error('Error adding to cart:', err);
+        toast.error('Erro: ' + (err.message || 'Erro ao adicionar ao carrinho'));
+      });
   };
 
   const handleBuyNow = () => {
@@ -58,8 +63,14 @@ const ProductActions: React.FC<ProductActionsProps> = ({
     // Pass the product ID, not the whole product object
     console.log('Buying now:', { productId: produto.id, quantity: quantidade });
     addToCart(produto.id, quantidade)
-      .then(() => navigate('/cart'))
-      .catch(err => toast.error('Erro: ' + (err.message || 'Erro ao adicionar ao carrinho')));
+      .then(() => {
+        toast.success(`${quantidade} unidade(s) adicionada(s) ao carrinho`);
+        navigate('/cart');
+      })
+      .catch(err => {
+        console.error('Error buying now:', err);
+        toast.error('Erro: ' + (err.message || 'Erro ao adicionar ao carrinho'));
+      });
   };
 
   const handleFavorite = async () => {
