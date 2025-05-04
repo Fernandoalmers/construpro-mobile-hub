@@ -11,22 +11,22 @@ export const approveProduct = async (productId: string): Promise<boolean> => {
   try {
     console.log('[statusUpdates] Approving product:', productId);
     
-    // Simplified approach: directly update the product status
-    // This bypasses the RPC function and directly performs the update
-    const { error } = await supabase
+    // Directly update the product status with the new RLS policy in place
+    const { error, data } = await supabase
       .from('produtos')
       .update({ 
         status: 'aprovado', 
         updated_at: new Date().toISOString() 
       })
-      .eq('id', productId);
+      .eq('id', productId)
+      .select();
       
     if (error) {
       console.error('[statusUpdates] Error approving product:', error);
       return false;
     }
     
-    console.log('[statusUpdates] Product approved successfully');
+    console.log('[statusUpdates] Product approved successfully:', data);
     
     // Log the admin action
     try {
@@ -36,6 +36,7 @@ export const approveProduct = async (productId: string): Promise<boolean> => {
         entityId: productId,
         details: { status: 'aprovado' }
       });
+      console.log('[statusUpdates] Admin action logged successfully');
     } catch (logError) {
       console.error('[statusUpdates] Error logging admin action:', logError);
       // Continue even if logging fails
@@ -43,7 +44,7 @@ export const approveProduct = async (productId: string): Promise<boolean> => {
     
     return true;
   } catch (error) {
-    console.error('[statusUpdates] Error approving product:', error);
+    console.error('[statusUpdates] Exception in approveProduct:', error);
     return false;
   }
 };
@@ -57,20 +58,21 @@ export const rejectProduct = async (productId: string): Promise<boolean> => {
   try {
     console.log('[statusUpdates] Rejecting product:', productId);
     
-    const { error } = await supabase
+    const { error, data } = await supabase
       .from('produtos')
       .update({ 
         status: 'inativo', 
         updated_at: new Date().toISOString() 
       })
-      .eq('id', productId);
+      .eq('id', productId)
+      .select();
       
     if (error) {
       console.error('[statusUpdates] Error rejecting product:', error);
       return false;
     }
     
-    console.log('[statusUpdates] Product rejected successfully');
+    console.log('[statusUpdates] Product rejected successfully:', data);
     
     // Log the admin action
     try {
@@ -80,6 +82,7 @@ export const rejectProduct = async (productId: string): Promise<boolean> => {
         entityId: productId,
         details: { status: 'inativo' }
       });
+      console.log('[statusUpdates] Admin action logged successfully');
     } catch (logError) {
       console.error('[statusUpdates] Error logging admin action:', logError);
       // Continue even if logging fails
@@ -87,7 +90,7 @@ export const rejectProduct = async (productId: string): Promise<boolean> => {
     
     return true;
   } catch (error) {
-    console.error('[statusUpdates] Error rejecting product:', error);
+    console.error('[statusUpdates] Exception in rejectProduct:', error);
     return false;
   }
 };
@@ -105,20 +108,21 @@ export const updateProductStatus = async (
   try {
     console.log('[statusUpdates] Updating product status:', productId, status);
     
-    const { error } = await supabase
+    const { error, data } = await supabase
       .from('produtos')
       .update({ 
         status, 
         updated_at: new Date().toISOString() 
       })
-      .eq('id', productId);
+      .eq('id', productId)
+      .select();
     
     if (error) {
       console.error(`[statusUpdates] Error updating product status to ${status}:`, error);
       return false;
     }
     
-    console.log(`[statusUpdates] Product status updated to ${status} successfully`);
+    console.log(`[statusUpdates] Product status updated to ${status} successfully:`, data);
     
     // Log admin action for status changes
     if (status === 'aprovado' || status === 'inativo') {
@@ -130,6 +134,7 @@ export const updateProductStatus = async (
           entityId: productId,
           details: { status }
         });
+        console.log('[statusUpdates] Admin action logged successfully');
       } catch (logError) {
         console.error('[statusUpdates] Error logging admin action:', logError);
         // Continue even if logging fails
@@ -138,7 +143,7 @@ export const updateProductStatus = async (
     
     return true;
   } catch (error) {
-    console.error(`[statusUpdates] Error updating product status to ${status}:`, error);
+    console.error(`[statusUpdates] Exception in updateProductStatus to ${status}:`, error);
     return false;
   }
 };
