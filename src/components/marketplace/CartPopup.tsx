@@ -16,7 +16,7 @@ const CartPopup: React.FC<CartPopupProps> = ({ triggerShow }) => {
   
   // Show popup briefly when cart is updated
   useEffect(() => {
-    if ((cartCount > 0 && triggerShow) || (cartCount > 0 && cart?.lastAddedItem)) {
+    if ((cartCount > 0 && triggerShow) || (cartCount > 0 && cart)) {
       setShow(true);
       const timer = setTimeout(() => {
         setShow(false);

@@ -4,7 +4,8 @@ import { ShoppingBag, Grid, List } from 'lucide-react';
 import ProdutoCard from './ProdutoCard';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/use-cart';
-import { useAuth } from '@/context/AuthContext'; // Import auth context
+import { useAuth } from '@/context/AuthContext'; 
+import ProductActions from './components/ProductActions';
 
 interface ProductListSectionProps {
   displayedProducts: any[];
@@ -130,7 +131,7 @@ const ProductListSection: React.FC<ProductListSectionProps> = ({
               loja={produto.stores}
               onClick={() => navigate(`/produto/${produto.id}`)}
               onLojaClick={onLojaClick}
-              onAddToCart={undefined} // Remove these props as we're using ProductActions now
+              onAddToCart={undefined} 
               onAddToFavorites={undefined}
               isAddingToCart={false}
               isFavorite={false}
