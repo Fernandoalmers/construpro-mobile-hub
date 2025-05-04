@@ -23,8 +23,13 @@ export const getAdminStores = async (): Promise<AdminStore[]> => {
         logo,
         created_at,
         updated_at,
-        profiles:usuario_id(nome, email)
-      `);
+        profiles:usuario_id (
+          nome,
+          email
+        ),
+        produtos (id)
+      `)
+      .order('created_at', { ascending: false });
     
     console.log('[getAdminStores] data:', data, 'error:', error);
     
@@ -36,14 +41,8 @@ export const getAdminStores = async (): Promise<AdminStore[]> => {
     
     // Transform data to AdminStore format
     const stores = (data || []).map(item => {
-      // Handle possible null profiles or missing properties
-      const profileData = item.profiles || {};
-      
-      // Type safety: extract properties with default values to handle any profile shape
-      // Use type assertion to access properties safely
-      const profile = profileData as Record<string, any>;
-      const profileName = profile && typeof profile === 'object' ? profile.nome || 'Desconhecido' : 'Desconhecido';
-      const profileEmail = profile && typeof profile === 'object' ? profile.email || 'sem-email' : 'sem-email';
+      // Access profile data directly since we're joining properly
+      const profile = item.profiles || {};
       
       return {
         id: item.id,
@@ -52,13 +51,13 @@ export const getAdminStores = async (): Promise<AdminStore[]> => {
         status: item.status || 'pendente',
         usuarioId: item.usuario_id,
         proprietario_id: item.usuario_id,
-        proprietario_nome: profileName,
-        proprietario_email: profileEmail,
+        proprietario_nome: profile.nome || 'Desconhecido',
+        proprietario_email: profile.email || 'sem-email',
         telefone: item.telefone || '',
         whatsapp: item.whatsapp || '',
         logo_url: item.logo || '',
-        produtos_count: 0, // Adding the missing property with default value
-        contato: item.telefone || item.whatsapp || '', // Adding contato from telefone/whatsapp
+        produtos_count: Array.isArray(item.produtos) ? item.produtos.length : 0, 
+        contato: item.telefone || item.whatsapp || '',
         created_at: item.created_at,
         updated_at: item.updated_at
       };
