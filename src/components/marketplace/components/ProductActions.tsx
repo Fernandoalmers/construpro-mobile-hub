@@ -27,15 +27,20 @@ const ProductActions: React.FC<ProductActionsProps> = ({
   
   // Added console log to verify this new implementation is being used
   console.log('ProductActions component loaded - updated implementation');
+  console.log('Product being viewed:', produto);
+  console.log('Authentication status:', isAuthenticated);
 
   const handleAddToCart = () => {
     validateQuantity();
     
     if (!isAuthenticated) {
+      console.log('User not authenticated, redirecting to login');
       navigate('/login', { state: { from: `/produto/${produto.id}` } });
       return;
     }
     
+    // Pass the product ID, not the whole product object
+    console.log('Adding to cart:', { productId: produto.id, quantity: quantidade });
     addToCart(produto.id, quantidade);
     toast.success(`${quantidade} unidade(s) adicionada(s) ao carrinho`);
   };
@@ -44,16 +49,20 @@ const ProductActions: React.FC<ProductActionsProps> = ({
     validateQuantity();
     
     if (!isAuthenticated) {
+      console.log('User not authenticated, redirecting to login');
       navigate('/login', { state: { from: `/produto/${produto.id}` } });
       return;
     }
     
+    // Pass the product ID, not the whole product object
+    console.log('Buying now:', { productId: produto.id, quantity: quantidade });
     addToCart(produto.id, quantidade);
     navigate('/cart');
   };
 
   const handleFavorite = async () => {
     if (!isAuthenticated) {
+      console.log('User not authenticated, redirecting to login');
       navigate('/login', { state: { from: `/produto/${produto.id}` } });
       return;
     }

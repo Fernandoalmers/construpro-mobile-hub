@@ -15,8 +15,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // Load cart when user is authenticated
   useEffect(() => {
     if (isAuthenticated && user) {
+      console.log('User authenticated, refreshing cart');
       refreshCart();
     } else {
+      console.log('User not authenticated, clearing cart');
       setCart(null);
       setIsLoading(false);
     }
@@ -25,14 +27,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // Get current cart
   const refreshCart = async (): Promise<void> => {
     if (!user) {
+      console.log('Cannot refresh cart: user not available');
       setCart(null);
       setIsLoading(false);
       return;
     }
 
     try {
+      console.log('Refreshing cart for user:', user.id);
       setIsLoading(true);
       const cartData = await cartApi.fetchCart(user.id);
+      console.log('Cart data retrieved:', cartData);
       setCart(cartData);
     } catch (error) {
       console.error('Error in refreshCart:', error);
@@ -45,21 +50,27 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // Add product to cart
   const addToCart = async (productId: string, quantity: number): Promise<void> => {
     if (!user) {
+      console.log('Cannot add to cart: user not authenticated');
       toast.error('Faça login para adicionar produtos ao carrinho');
       return;
     }
 
     try {
+      console.log('Adding to cart:', { productId, quantity });
       setIsLoading(true);
 
       // Get the product price
       const product = await cartApi.fetchProductInfo(productId);
       if (!product) {
+        console.error('Product not found:', productId);
         toast.error('Produto não encontrado');
         return;
       }
 
+      console.log('Product info:', product);
+
       if (product.estoque < quantity) {
+        console.log('Not enough stock:', { available: product.estoque, requested: quantity });
         toast.error('Quantidade solicitada não disponível em estoque');
         return;
       }
@@ -68,21 +79,25 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       let cartId;
       if (cart) {
         cartId = cart.id;
+        console.log('Using existing cart:', cartId);
         
         // Check if product already exists in cart
         const existingItem = await cartApi.findCartItem(cartId, productId);
 
         if (existingItem) {
           // Update existing item
+          console.log('Product exists in cart, updating quantity:', existingItem);
           const newQuantity = existingItem.quantity + quantity;
           
           if (product.estoque < newQuantity) {
+            console.log('Combined quantity exceeds stock:', { available: product.estoque, requested: newQuantity });
             toast.error('Quantidade solicitada excede o estoque disponível');
             return;
           }
           
           const updated = await cartApi.updateItemQuantity(existingItem.id, newQuantity);
           if (!updated) {
+            console.error('Failed to update cart item');
             toast.error('Erro ao atualizar o carrinho');
             return;
           }
@@ -92,16 +107,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         }
       } else {
         // Create new cart
+        console.log('Creating new cart for user:', user.id);
         cartId = await cartApi.createCart(user.id);
         if (!cartId) {
+          console.error('Failed to create cart');
           toast.error('Erro ao criar o carrinho');
           return;
         }
+        console.log('New cart created:', cartId);
       }
 
       // Add new item to cart
+      console.log('Adding new item to cart:', { cartId, productId, quantity, price: product.preco });
       const added = await cartApi.addItemToCart(cartId, productId, quantity, product.preco);
       if (!added) {
+        console.error('Failed to add item to cart');
         toast.error('Erro ao adicionar ao carrinho');
         return;
       }
