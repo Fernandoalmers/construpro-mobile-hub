@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from '@/components/ui/sonner';
 import { useAuth } from '@/context/AuthContext';
@@ -56,7 +55,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      console.log('Adding to cart:', { productId, quantity });
+      console.log('[useCart] adicionando', productId, 'qty:', quantity);
       setIsLoading(true);
 
       // Get the product price
@@ -121,16 +120,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       console.log('Adding new item to cart:', { cartId, productId, quantity, price: product.preco });
       const added = await cartApi.addItemToCart(cartId, productId, quantity, product.preco);
       if (!added) {
-        console.error('Failed to add item to cart');
+        console.error('[useCart] erro ao adicionar ao carrinho');
         toast.error('Erro ao adicionar ao carrinho');
         return;
       }
 
       await refreshCart();
+      console.log('[useCart] carrinho agora:', cart?.summary?.totalItems ? cart.summary.totalItems + 1 : 1);
       toast.success('Produto adicionado ao carrinho');
     } catch (error) {
-      console.error('Error adding to cart:', error);
+      console.error('[useCart] erro ao adicionar ao carrinho', error);
       toast.error('Erro ao adicionar ao carrinho');
+      throw error;
     } finally {
       setIsLoading(false);
     }

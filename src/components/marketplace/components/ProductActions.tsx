@@ -41,7 +41,8 @@ const ProductActions: React.FC<ProductActionsProps> = ({
     
     // Pass the product ID, not the whole product object
     console.log('Adding to cart:', { productId: produto.id, quantity: quantidade });
-    addToCart(produto.id, quantidade);
+    addToCart(produto.id, quantidade)
+      .catch(err => toast.error('Erro: ' + (err.message || 'Erro ao adicionar ao carrinho')));
     toast.success(`${quantidade} unidade(s) adicionada(s) ao carrinho`);
   };
 
@@ -56,8 +57,9 @@ const ProductActions: React.FC<ProductActionsProps> = ({
     
     // Pass the product ID, not the whole product object
     console.log('Buying now:', { productId: produto.id, quantity: quantidade });
-    addToCart(produto.id, quantidade);
-    navigate('/cart');
+    addToCart(produto.id, quantidade)
+      .then(() => navigate('/cart'))
+      .catch(err => toast.error('Erro: ' + (err.message || 'Erro ao adicionar ao carrinho')));
   };
 
   const handleFavorite = async () => {
