@@ -30,7 +30,7 @@ const ProductListSection: React.FC<ProductListSectionProps> = ({
 }) => {
   const navigate = useNavigate();
   const loadMoreRef = useRef(null);
-  const { isAuthenticated } = useAuth(); // Use auth context
+  const { isAuthenticated } = useAuth();
   
   // State for view type (grid or list)
   const [viewType, setViewType] = React.useState<'grid' | 'list'>(initialViewType);
@@ -172,11 +172,12 @@ const ProductListSection: React.FC<ProductListSectionProps> = ({
                 {/* Product name */}
                 <h3 className="text-sm font-medium line-clamp-2">{produto.nome}</h3>
                 
-                {/* Rating and Price sections - keep existing code */}
-                {/* ... keep existing code (rating and price sections) */}
+                {/* Rating and Price sections */}
+                
+        
               </div>
               
-              {/* Action Buttons - now using ProductActions */}
+              {/* Action Buttons */}
               <div className="absolute right-3 top-1/2 transform -translate-y-1/2 w-24">
                 <ProductActions 
                   produto={produto}
