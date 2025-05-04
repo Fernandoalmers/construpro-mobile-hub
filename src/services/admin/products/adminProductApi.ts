@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { AdminProduct } from '@/types/admin';
@@ -108,7 +109,12 @@ export const getPendingProducts = async (): Promise<AdminProduct[]> => {
     return products;
   } catch (error) {
     console.error('[getAdminProducts] Error fetching pending products:', error);
-    toast.error('Erro ao carregar produtos pendentes');
+    // Fix the error by changing toast.error to the proper toast format
+    toast({
+      title: "Error",
+      description: "Erro ao carregar produtos pendentes",
+      variant: "destructive"
+    });
     throw error;
   }
 };
