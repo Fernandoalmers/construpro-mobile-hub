@@ -14,7 +14,7 @@ export const approveProduct = async (productId: string): Promise<boolean> => {
     // Try using the dedicated Supabase function first
     try {
       const { data: funcResult, error: funcError } = await supabase.rpc('approve_product', {
-        p_product_id: productId
+        product_id: productId // Changed from p_product_id to product_id
       });
       
       if (!funcError) {
