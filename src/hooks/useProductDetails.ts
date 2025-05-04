@@ -16,6 +16,19 @@ interface ProductDetailsState {
   };
 }
 
+// Define interfaces for the vendor data structures
+interface VendorData {
+  id?: string | number;
+  nome_loja?: string;
+  logo_url?: string;
+  formas_entrega?: Array<{
+    prazo_min?: number;
+    prazo_max?: number;
+    [key: string]: any;
+  }>;
+  [key: string]: any; // Allow for other properties
+}
+
 export function useProductDetails(id: string | undefined, isAuthenticated: boolean) {
   const [state, setState] = useState<ProductDetailsState>({
     product: null,
@@ -91,9 +104,8 @@ export function useProductDetails(id: string | undefined, isAuthenticated: boole
         if (data.vendedores && 
             typeof data.vendedores === 'object' && 
             data.vendedores !== null) {
-          // Create a local variable to avoid repeating the null check
-          // Use non-null assertion since we've already checked it's not null
-          const vendedorData = data.vendedores as NonNullable<typeof data.vendedores>;
+          // Cast vendedorData to the explicit interface
+          const vendedorData = data.vendedores as VendorData;
           
           // Additional check to ensure nome_loja property exists
           if ('nome_loja' in vendedorData) {
@@ -155,9 +167,8 @@ export function useProductDetails(id: string | undefined, isAuthenticated: boole
             typeof data.vendedores === 'object' && 
             data.vendedores !== null) {
           
-          // Create a local variable to avoid repeating the null check
-          // Use non-null assertion since we've already checked it's not null
-          const vendedorData = data.vendedores as NonNullable<typeof data.vendedores>;
+          // Cast to our defined interface
+          const vendedorData = data.vendedores as VendorData;
           
           // Additional check to ensure formas_entrega property exists
           if ('formas_entrega' in vendedorData && vendedorData.formas_entrega) {
