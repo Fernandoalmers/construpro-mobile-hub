@@ -1,5 +1,3 @@
-
-
 export interface UserData {
   id: string;
   nome?: string;
@@ -105,15 +103,19 @@ export interface AdminProduct {
   preco_promocional?: number;
   estoque: number;
   pontos: number;
-  pontos_consumidor?: number;
+  pontos_consumidor: number;
   pontos_profissional?: number;
   lojaId: string;
+  vendedor_id: string;
   lojaNome: string;
-  status: "pendente" | "aprovado" | "inativo";
+  status: 'pendente' | 'aprovado' | 'inativo';
   created_at?: string;
   updated_at?: string;
   imagens?: string[];
-  vendedor_id?: string;
+  /** Join com a tabela `vendedores` para acessar nome da loja */
+  vendedores?: {
+    nome_loja?: string;
+  } | null;
 }
 
 export interface AdminStore {
@@ -130,4 +132,3 @@ export interface AdminStore {
   created_at: string;
   updated_at: string;
 }
-
