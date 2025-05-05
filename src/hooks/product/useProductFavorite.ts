@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { isProductFavorited } from '@/services/cartService';
+import { cartService } from '@/services/cart';
 
 export function useProductFavorite(productId: string | undefined, isAuthenticated: boolean) {
   const [isFavorited, setIsFavorited] = useState(false);
@@ -10,7 +10,7 @@ export function useProductFavorite(productId: string | undefined, isAuthenticate
     
     const checkFavoriteStatus = async () => {
       try {
-        const favorited = await isProductFavorited(productId);
+        const favorited = await cartService.isProductFavorited(productId);
         setIsFavorited(favorited);
       } catch (error) {
         console.error('Error checking favorite status:', error);

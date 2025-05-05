@@ -31,6 +31,12 @@ export const productFetcher = {
       
       console.log('Product data retrieved:', data);
       
+      // Get the first image from the array safely
+      let firstImage = null;
+      if (data.imagens && Array.isArray(data.imagens) && data.imagens.length > 0) {
+        firstImage = data.imagens[0];
+      }
+      
       // Map the fields correctly
       const productInfo = {
         id: data.id,
@@ -39,7 +45,7 @@ export const productFetcher = {
         estoque: data.estoque,
         pontos: data.pontos_consumidor,
         vendedor_id: data.vendedor_id,
-        imagem_url: data.imagens && data.imagens.length > 0 ? data.imagens[0] : null
+        imagem_url: firstImage
       };
       
       console.log('Product info processed:', productInfo);
