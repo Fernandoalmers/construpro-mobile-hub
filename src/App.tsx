@@ -1,23 +1,20 @@
+
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import MarketplaceScreen from '@/components/marketplace/MarketplaceScreen';
-import ProductScreen from '@/components/marketplace/ProductScreen';
-import { AuthProvider } from '@/context/AuthContext';
-import { CartProvider } from '@/hooks/use-cart';
-import LoginScreen from '@/components/auth/LoginScreen';
-import RegisterScreen from '@/components/auth/RegisterScreen';
-import ProfileScreen from '@/components/profile/ProfileScreen';
-import CheckoutScreen from '@/components/checkout/CheckoutScreen';
-import OrderConfirmationScreen from '@/components/checkout/OrderConfirmationScreen';
-import AdminLayout from '@/components/admin/AdminLayout';
-import AdminDashboardScreen from '@/components/admin/AdminDashboardScreen';
-import StoresManagementScreen from '@/components/admin/stores/StoresManagementScreen';
-import AdminSettingsScreen from '@/components/admin/settings/AdminSettingsScreen';
-import AdminRewardsScreen from '@/components/admin/rewards/AdminRewardsScreen';
-import RedemptionsManagementScreen from '@/components/admin/redemptions/RedemptionsManagementScreen';
-import { Toaster } from '@/components/ui/sonner';
-import { ThemeProvider } from "@/components/theme-provider"
+import MarketplaceScreen from './components/marketplace/MarketplaceScreen';
+import ProdutoScreen from './components/marketplace/ProdutoScreen';
+import { AuthProvider } from './context/AuthContext';
+import { CartProvider } from './hooks/use-cart';
+import { Toaster } from './components/ui/sonner';
+import { ThemeProvider } from './components/theme-provider';
 import CartPage from './pages/CartPage';
+import ProfileScreen from './components/profile/ProfileScreen';
+import AdminLayout from './components/admin/AdminLayout';
+import AdminDashboardScreen from './components/admin/dashboard/AdminDashboard';
+import StoresManagementScreen from './components/admin/stores/StoresManagementScreen';
+import AdminSettingsScreen from './components/admin/settings/AdminSettingsScreen';
+import AdminRewardsScreen from './components/admin/rewards/AdminRewardsScreen';
+import RedemptionsManagementScreen from './components/admin/redemptions/RedemptionsManagementScreen';
 
 function App() {
   return (
@@ -28,21 +25,17 @@ function App() {
             <Routes>
               <Route path="/" element={<MarketplaceScreen />} />
               <Route path="/marketplace" element={<MarketplaceScreen />} />
-              <Route path="/produto/:productId" element={<ProductScreen />} />
-              <Route path="/login" element={<LoginScreen />} />
-              <Route path="/register" element={<RegisterScreen />} />
+              <Route path="/produto/:productId" element={<ProdutoScreen />} />
               <Route path="/profile" element={<ProfileScreen />} />
-              <Route path="/checkout" element={<CheckoutScreen />} />
-              <Route path="/order-confirmation" element={<OrderConfirmationScreen />} />
               <Route path="/cart" element={<CartPage />} />
               
               {/* Admin Routes */}
-              <Route path="/admin" element={<AdminLayout><AdminDashboardScreen /></AdminLayout>} />
-              <Route path="/admin/dashboard" element={<AdminLayout><AdminDashboardScreen /></AdminLayout>} />
-              <Route path="/admin/lojas" element={<AdminLayout><StoresManagementScreen /></AdminLayout>} />
-              <Route path="/admin/configuracoes" element={<AdminLayout><AdminSettingsScreen /></AdminLayout>} />
-              <Route path="/admin/recompensas" element={<AdminLayout><AdminRewardsScreen /></AdminLayout>} />
-              <Route path="/admin/resgates" element={<AdminLayout><RedemptionsManagementScreen /></AdminLayout>} />
+              <Route path="/admin" element={<AdminLayout currentSection="dashboard"><AdminDashboardScreen /></AdminLayout>} />
+              <Route path="/admin/dashboard" element={<AdminLayout currentSection="dashboard"><AdminDashboardScreen /></AdminLayout>} />
+              <Route path="/admin/lojas" element={<AdminLayout currentSection="stores"><StoresManagementScreen /></AdminLayout>} />
+              <Route path="/admin/configuracoes" element={<AdminLayout currentSection="settings"><AdminSettingsScreen /></AdminLayout>} />
+              <Route path="/admin/recompensas" element={<AdminLayout currentSection="rewards"><AdminRewardsScreen /></AdminLayout>} />
+              <Route path="/admin/resgates" element={<AdminLayout currentSection="redemptions"><RedemptionsManagementScreen /></AdminLayout>} />
             </Routes>
           </Router>
           <Toaster />
