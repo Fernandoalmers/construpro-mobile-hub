@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { toast } from '@/components/ui/sonner';
 import { Cart } from '@/types/cart';
@@ -55,7 +56,9 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
         } else {
           // Add new item
           try {
-            const added = await cartApi.addItemToCart(cartId, productId, quantity, product.preco);
+            // Use the correct price property - either preco_promocional or preco_normal
+            const productPrice = product.preco_promocional || product.preco_normal;
+            const added = await cartApi.addItemToCart(cartId, productId, quantity, productPrice);
             if (!added) {
               console.error('[useCartOperations] erro ao adicionar ao carrinho');
               throw new Error('Erro ao adicionar ao carrinho');
@@ -83,9 +86,11 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
         console.log('New cart created:', cartId);
         
         // Add new item to cart
-        console.log('Adding new item to cart:', { cartId, productId, quantity, price: product.preco });
+        // Use the correct price property - either preco_promocional or preco_normal
+        const productPrice = product.preco_promocional || product.preco_normal;
+        console.log('Adding new item to cart:', { cartId, productId, quantity, price: productPrice });
         try {
-          const added = await cartApi.addItemToCart(cartId, productId, quantity, product.preco);
+          const added = await cartApi.addItemToCart(cartId, productId, quantity, productPrice);
           if (!added) {
             console.error('[useCartOperations] erro ao adicionar ao carrinho');
             throw new Error('Erro ao adicionar ao carrinho');

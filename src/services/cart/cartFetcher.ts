@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { getCart } from "./cartOperations";
+import { getCart } from "./cartCore";
 
 /**
  * Fetch user's cart
