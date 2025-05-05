@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
 import SearchBar from './SearchBar';
-import CartButton from '../CartButton';
+import CartButton from './CartButton';
 
 interface SearchHeaderProps {
   onGoBack?: () => void;
