@@ -47,7 +47,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
     try {
       setIsSearching(true);
       
-      // Atualizando para usar a tabela 'produtos' em vez de 'products'
+      // First, check which columns actually exist in the 'produtos' table
       const { data, error } = await supabase
         .from('produtos')
         .select(`
@@ -55,25 +55,39 @@ const SearchBar: React.FC<SearchBarProps> = ({
           nome, 
           preco_normal,
           preco_promocional,
-          imagem_url,
-          vendedor_id
+          vendedor_id,
+          descricao
         `)
         .ilike('nome', `%${query.trim()}%`)
         .limit(5);
         
-      if (error) throw error;
+      if (error) {
+        console.error('Error searching products:', error);
+        setSearchResults([]);
+        setShowResults(false);
+        return;
+      }
       
-      // Mapeando os resultados para o formato esperado pelo componente SearchResults
-      const mappedResults = data ? data.map(produto => ({
-        ...produto,
-        preco: produto.preco_promocional || produto.preco_normal,
-        stores: { id: produto.vendedor_id, nome: 'Loja' }  // Simplificado - idealmente buscaríamos o nome da loja
-      })) : [];
+      // Check if data is an array before mapping
+      const mappedResults = Array.isArray(data) ? data.map(produto => {
+        return {
+          id: produto.id,
+          nome: produto.nome,
+          preco: produto.preco_promocional || produto.preco_normal,
+          preco_normal: produto.preco_normal,
+          preco_promocional: produto.preco_promocional,
+          imagem_url: null, // We don't have image URL, set to null for now
+          vendedor_id: produto.vendedor_id,
+          stores: { id: produto.vendedor_id, nome: 'Loja' } // Simplificado
+        };
+      }) : [];
       
       setSearchResults(mappedResults);
       setShowResults(mappedResults.length > 0);
     } catch (error) {
       console.error('Error searching products:', error);
+      setSearchResults([]);
+      setShowResults(false);
     } finally {
       setIsSearching(false);
     }
