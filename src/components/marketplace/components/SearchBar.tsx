@@ -26,6 +26,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onSearchChange(e);
     const query = e.target.value;
+    console.log('[SearchBar] Input changed:', query);
     
     // Clear any existing timeout
     if (searchTimeoutRef.current) {
@@ -45,7 +46,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
   
   const fetchSearchResults = async (query: string) => {
     try {
-      console.log('Searching products for query:', query);
+      console.log('[SearchBar] Fetching search results for query:', query);
       setIsSearching(true);
       
       // Search in the 'produtos' table with correct column names
@@ -64,13 +65,13 @@ const SearchBar: React.FC<SearchBarProps> = ({
         .limit(5);
         
       if (error) {
-        console.error('Error searching products:', error);
+        console.error('[SearchBar] Error searching products:', error);
         setSearchResults([]);
         setShowResults(false);
         return;
       }
       
-      console.log('Search results:', data);
+      console.log('[SearchBar] Search results:', data);
       
       // Map the results to the expected format
       const mappedResults = Array.isArray(data) ? data.map(produto => {
@@ -94,7 +95,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
       setSearchResults(mappedResults);
       setShowResults(mappedResults.length > 0);
     } catch (error) {
-      console.error('Error searching products:', error);
+      console.error('[SearchBar] Error searching products:', error);
       setSearchResults([]);
       setShowResults(false);
     } finally {
@@ -103,7 +104,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
   };
   
   const handleResultClick = (productId: string) => {
-    console.log('Search result clicked, navigating to product:', productId);
+    console.log('[SearchBar] Search result clicked, navigating to product:', productId);
     navigate(`/produto/${productId}`);
     setShowResults(false);
   };
@@ -111,10 +112,10 @@ const SearchBar: React.FC<SearchBarProps> = ({
   // Handle explicit search via button click or Enter key
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Search form submitted with term:', searchTerm);
+    console.log('[SearchBar] Search form submitted with term:', searchTerm);
     
     if (searchTerm.trim().length < 2) {
-      console.log('Search term too short, not searching');
+      console.log('[SearchBar] Search term too short, not searching');
       return;
     }
 
@@ -123,19 +124,20 @@ const SearchBar: React.FC<SearchBarProps> = ({
     
     // Use provided onSearch handler if available
     if (onSearch) {
-      console.log('Calling provided onSearch handler');
+      console.log('[SearchBar] Calling provided onSearch handler');
       onSearch(searchTerm);
     } else {
       // Default behavior: navigate to marketplace with search parameter
-      console.log('Navigating to marketplace with search term');
-      navigate(`/marketplace/products?search=${encodeURIComponent(searchTerm)}`);
+      const searchUrl = `/marketplace/products?search=${encodeURIComponent(searchTerm)}`;
+      console.log('[SearchBar] Navigating to:', searchUrl);
+      navigate(searchUrl);
     }
   };
 
   // Handle keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      console.log('Enter key pressed in search input');
+      console.log('[SearchBar] Enter key pressed in search input');
       handleSearchSubmit(e);
     }
   };
@@ -163,6 +165,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           className="w-full px-4 py-2 border border-gray-300 rounded-md bg-white text-sm focus:outline-none"
+          data-testid="search-input"
         />
         
         {/* Search loading indicator */}
@@ -180,6 +183,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
         size="sm"
         className="ml-2"
         onClick={(e) => handleSearchSubmit(e)}
+        data-testid="search-button"
       >
         <Search size={16} className="mr-1" />
         Buscar

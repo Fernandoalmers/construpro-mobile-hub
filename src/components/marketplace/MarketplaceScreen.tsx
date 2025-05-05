@@ -66,7 +66,7 @@ const MarketplaceScreen: React.FC = () => {
 
   // Enhanced search functionality with our custom hook
   const fetchProducts = (term: string) => {
-    console.log('Searching for:', term);
+    console.log('[MarketplaceScreen] Searching for:', term);
     handleSearchChange(term);
     
     // Update URL with search term
@@ -102,15 +102,21 @@ const MarketplaceScreen: React.FC = () => {
 
   // Handle loja click from product card
   const handleLojaCardClick = (lojaId: string) => {
+    console.log('[MarketplaceScreen] Loja card clicked:', lojaId);
     setSelectedLojas([lojaId]);
     setPage(1);
   };
 
-  // Quick search for products
+  // Quick search for products with improved logging
   const handleQuickSearch = async (term: string) => {
-    if (!term || term.trim().length < 2) return;
+    console.log('[MarketplaceScreen] Quick search for:', term);
+    if (!term || term.trim().length < 2) {
+      console.log('[MarketplaceScreen] Search term too short, ignoring');
+      return;
+    }
     
     try {
+      console.log('[MarketplaceScreen] Running quick search Supabase query');
       const { data, error } = await supabase
         .from('products')
         .select('id')
@@ -118,18 +124,23 @@ const MarketplaceScreen: React.FC = () => {
         .limit(1)
         .single();
       
-      if (error || !data) return;
+      if (error || !data) {
+        console.error('[MarketplaceScreen] Quick search error or no results:', error);
+        return;
+      }
       
       // Navigate to first product that matches the search
+      console.log('[MarketplaceScreen] Quick search found product, navigating to:', data.id);
       navigate(`/produto/${data.id}`);
     } catch (error) {
-      console.error('Error in quick search:', error);
+      console.error('[MarketplaceScreen] Error in quick search:', error);
     }
   };
 
   // Initialize search term from URL
   useEffect(() => {
     if (searchQuery) {
+      console.log('[MarketplaceScreen] Setting search term from URL:', searchQuery);
       setTerm(searchQuery);
     }
   }, [searchQuery]);

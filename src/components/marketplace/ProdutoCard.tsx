@@ -22,7 +22,10 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
   loja,
   onClick,
   onLojaClick,
+  onAddToCart,
+  onBuyNow,
   isFavorite = false,
+  isAddingToCart = false,
   showActions = false
 }) => {
   // Calculate discount percentage if applicable
@@ -35,6 +38,19 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
   
   // Free shipping threshold (products above R$ 100 qualify for free shipping)
   const hasFreeShipping = precoExibir >= 100;
+  
+  // Handle cart actions with logging
+  const handleAddToCartClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    console.log('[ProdutoCard] Add to cart clicked for product:', produto.id);
+    if (onAddToCart) onAddToCart(e);
+  };
+  
+  const handleBuyNowClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    console.log('[ProdutoCard] Buy now clicked for product:', produto.id);
+    if (onBuyNow) onBuyNow(e);
+  };
   
   return (
     <div 
@@ -88,6 +104,7 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
             className="text-xs text-gray-500 hover:underline cursor-pointer"
             onClick={(e) => {
               e.stopPropagation();
+              console.log('[ProdutoCard] Store clicked:', loja.id);
               onLojaClick && onLojaClick(loja.id);
             }}
           >
@@ -99,6 +116,30 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
         {showActions && produto?.id && (
           <div className="mt-2" onClick={e => e.stopPropagation()}>
             <ProductActions productId={produto.id} quantity={1} />
+          </div>
+        )}
+        
+        {/* Custom action buttons if provided */}
+        {(onAddToCart || onBuyNow) && (
+          <div className="mt-2 flex flex-col gap-1" onClick={e => e.stopPropagation()}>
+            {onAddToCart && (
+              <button 
+                onClick={handleAddToCartClick}
+                className="text-xs bg-blue-600 hover:bg-blue-700 text-white py-1 px-2 rounded"
+                disabled={isAddingToCart}
+              >
+                {isAddingToCart ? 'Adicionando...' : 'Adicionar ao Carrinho'}
+              </button>
+            )}
+            
+            {onBuyNow && (
+              <button 
+                onClick={handleBuyNowClick}
+                className="text-xs bg-green-600 hover:bg-green-700 text-white py-1 px-2 rounded"
+              >
+                Comprar Agora
+              </button>
+            )}
           </div>
         )}
       </div>

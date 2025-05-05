@@ -6,6 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
  */
 export const fetchProductInfo = async (productId: string) => {
   try {
+    console.log('[ProductInfo] Fetching product info for:', productId);
+    
     // Try to get product from produtos table first (main products table)
     let { data: product, error } = await supabase
       .from('produtos')
@@ -15,6 +17,7 @@ export const fetchProductInfo = async (productId: string) => {
     
     // If not found in the main table, try the products table (older/alternative table)
     if (error || !product) {
+      console.log('[ProductInfo] Product not found in produtos table, checking products table');
       const { data: altProduct, error: altError } = await supabase
         .from('products')
         .select('id, nome, preco, preco_anterior, estoque, loja_id, pontos')
@@ -22,9 +25,11 @@ export const fetchProductInfo = async (productId: string) => {
         .single();
       
       if (altError || !altProduct) {
-        console.error('Product not found in any table:', productId);
+        console.error('[ProductInfo] Product not found in any table:', productId, altError);
         return null;
       }
+      
+      console.log('[ProductInfo] Found product in products table:', altProduct.id);
       
       // Return the transformed product from the alternative table
       return {
@@ -38,6 +43,8 @@ export const fetchProductInfo = async (productId: string) => {
       };
     }
     
+    console.log('[ProductInfo] Found product in produtos table:', product.id);
+    
     // Return the product from the main table with transformed fields
     return {
       id: product.id,
@@ -49,7 +56,7 @@ export const fetchProductInfo = async (productId: string) => {
       pontos: product.pontos_consumidor
     };
   } catch (error) {
-    console.error('Error fetching product info:', error);
+    console.error('[ProductInfo] Error fetching product info:', error);
     return null;
   }
 };

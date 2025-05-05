@@ -17,26 +17,37 @@ const ProductActions: React.FC<ProductActionsProps> = ({ productId, quantity }) 
   const [buying, setBuying] = useState(false);
 
   const handleAddToCart = async () => {
+    console.log('[ProductActions] Adding to cart:', productId, 'quantity:', quantity);
     try {
       setAdding(true);
-      await addToCart(productId, quantity);
+      const result = await addToCart(productId, quantity);
+      console.log('[ProductActions] Add to cart result:', result);
       toast.success('Produto adicionado ao carrinho');
+      return true;
     } catch (err) {
-      console.error('Error adding to cart:', err);
-      toast.error('Erro ao adicionar ao carrinho');
+      console.error('[ProductActions] Error adding to cart:', err);
+      toast.error(`Erro ao adicionar ao carrinho: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
+      return false;
     } finally {
       setAdding(false);
     }
   };
 
   const handleBuyNow = async () => {
+    console.log('[ProductActions] Buy now clicked:', productId, 'quantity:', quantity);
     try {
       setBuying(true);
-      await addToCart(productId, quantity);
-      navigate('/cart');
+      const success = await handleAddToCart();
+      
+      if (success) {
+        console.log('[ProductActions] Navigating to cart after successful add');
+        navigate('/cart');
+      } else {
+        console.error('[ProductActions] Not navigating to cart due to add failure');
+      }
     } catch (err) {
-      console.error('Error buying now:', err);
-      toast.error('Erro ao adicionar ao carrinho');
+      console.error('[ProductActions] Error buying now:', err);
+      toast.error(`Erro ao processar compra: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
     } finally {
       setBuying(false);
     }

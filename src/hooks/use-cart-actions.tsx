@@ -15,16 +15,16 @@ export function useCartActions() {
   // Add to cart function - properly handles authentication and updates state
   const handleAddToCart = async (productId: string, quantity: number = 1) => {
     if (!productId) {
-      console.error('Invalid product ID:', productId);
+      console.error('[useCartActions] Invalid product ID:', productId);
       toast.error('Erro: ID do produto inválido');
       return false;
     }
 
-    console.log('handleAddToCart called with:', { productId, quantity });
+    console.log('[useCartActions] handleAddToCart called with:', { productId, quantity });
     
     // Check authentication first before setting loading state
     if (!isAuthenticated) {
-      console.log('User not authenticated, redirecting to login');
+      console.log('[useCartActions] User not authenticated, redirecting to login');
       navigate('/login', { state: { from: `/produto/${productId}` } });
       return false;
     }
@@ -33,16 +33,17 @@ export function useCartActions() {
     setIsAddingToCart(prev => ({ ...prev, [productId]: true }));
     
     try {
-      console.log('Calling addToCart with:', { productId, quantity });
+      console.log('[useCartActions] Calling addToCart with:', { productId, quantity });
       await addToCart(productId, quantity);
       
       // Refresh cart to make sure the UI updates
+      console.log('[useCartActions] Product added to cart, refreshing cart data');
       await refreshCart();
       
       toast.success(`${quantity} unidade(s) adicionada(s) ao carrinho`);
       return true;
     } catch (error: any) {
-      console.error('Error adding to cart:', error);
+      console.error('[useCartActions] Error adding to cart:', error);
       toast.error('Erro: ' + (error.message || 'Erro ao adicionar ao carrinho'));
       return false;
     } finally {
@@ -54,16 +55,16 @@ export function useCartActions() {
   // Buy now function - adds to cart then immediately navigates to cart
   const handleBuyNow = async (productId: string, quantity: number = 1) => {
     if (!productId) {
-      console.error('Invalid product ID:', productId);
+      console.error('[useCartActions] Invalid product ID:', productId);
       toast.error('Erro: ID do produto inválido');
       return;
     }
 
-    console.log('handleBuyNow called with:', { productId, quantity });
+    console.log('[useCartActions] handleBuyNow called with:', { productId, quantity });
     
     // Check authentication first before setting loading state
     if (!isAuthenticated) {
-      console.log('User not authenticated, redirecting to login');
+      console.log('[useCartActions] User not authenticated, redirecting to login');
       navigate('/login', { state: { from: `/produto/${productId}` } });
       return;
     }
@@ -73,17 +74,18 @@ export function useCartActions() {
     
     try {
       // Use direct addToCart instead of handleAddToCart to avoid duplicate loading states
-      console.log('Adding to cart with:', { productId, quantity });
+      console.log('[useCartActions] Adding to cart with:', { productId, quantity });
       await addToCart(productId, quantity);
       
       // Refresh cart to make sure the UI updates
+      console.log('[useCartActions] Successfully added to cart, refreshing cart');
       await refreshCart();
-      console.log('Successfully added to cart, navigating to /cart');
       
+      console.log('[useCartActions] Successfully added to cart, navigating to /cart');
       // Navigate to cart page
       navigate('/cart');
     } catch (error: any) {
-      console.error('Error buying now:', error);
+      console.error('[useCartActions] Error buying now:', error);
       toast.error('Erro: ' + (error.message || 'Erro ao processar compra'));
     } finally {
       // Important: Always reset loading state, even on error
