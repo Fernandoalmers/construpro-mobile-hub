@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
 import { useAuth } from '@/context/AuthContext';
@@ -20,20 +20,19 @@ export function useCartActions() {
       return false;
     }
 
+    console.log('handleAddToCart called with:', { productId, quantity });
+    
+    // Check authentication first before setting loading state
+    if (!isAuthenticated) {
+      console.log('User not authenticated, redirecting to login');
+      navigate('/login', { state: { from: `/produto/${productId}` } });
+      return false;
+    }
+
     // Set loading state at the beginning
     setIsAddingToCart(prev => ({ ...prev, [productId]: true }));
     
     try {
-      console.log('handleAddToCart called with:', { productId, quantity });
-      
-      if (!isAuthenticated) {
-        console.log('User not authenticated, redirecting to login');
-        // Always reset loading state before redirecting
-        setIsAddingToCart(prev => ({ ...prev, [productId]: false }));
-        navigate('/login', { state: { from: `/produto/${productId}` } });
-        return false;
-      }
-      
       console.log('Calling addToCart with:', { productId, quantity });
       await addToCart(productId, quantity);
       
@@ -60,20 +59,19 @@ export function useCartActions() {
       return;
     }
 
+    console.log('handleBuyNow called with:', { productId, quantity });
+    
+    // Check authentication first before setting loading state
+    if (!isAuthenticated) {
+      console.log('User not authenticated, redirecting to login');
+      navigate('/login', { state: { from: `/produto/${productId}` } });
+      return;
+    }
+
     // Set loading state at the beginning
     setIsBuyingNow(prev => ({ ...prev, [productId]: true }));
     
     try {
-      console.log('handleBuyNow called with:', { productId, quantity });
-      
-      if (!isAuthenticated) {
-        console.log('User not authenticated, redirecting to login');
-        // Reset loading state before redirecting
-        setIsBuyingNow(prev => ({ ...prev, [productId]: false }));
-        navigate('/login', { state: { from: `/produto/${productId}` } });
-        return;
-      }
-      
       // Use direct addToCart instead of handleAddToCart to avoid duplicate loading states
       console.log('Adding to cart with:', { productId, quantity });
       await addToCart(productId, quantity);

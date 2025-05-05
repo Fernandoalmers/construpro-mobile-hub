@@ -10,8 +10,8 @@ export function useCartData(isAuthenticated: boolean, userId: string | null) {
 
   // Function to refresh cart data
   const refreshCart = async (): Promise<void> => {
-    if (!userId) {
-      console.log('Cannot refresh cart: user not available');
+    if (!isAuthenticated || !userId) {
+      console.log('Cannot refresh cart: user not authenticated or missing ID');
       setCart(null);
       setIsLoading(false);
       return;

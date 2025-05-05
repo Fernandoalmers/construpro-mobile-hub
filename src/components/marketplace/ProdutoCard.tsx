@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Star, Truck } from 'lucide-react';
+import { Truck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ProdutoCardProps {
@@ -23,12 +23,15 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
   isFavorite = false,
 }) => {
   // Calculate discount percentage if applicable
-  const hasDiscount = produto.precoAnterior > produto.preco || produto.preco_anterior > produto.preco;
-  const precoAnterior = produto.precoAnterior || produto.preco_anterior || 0;
-  const precoAtual = produto.preco || 0;
+  const precoRegular = produto.preco_normal || produto.precoNormal || produto.preco || 0;
+  const precoPromocional = produto.preco_promocional || produto.precoPromocional || null;
+  
+  // Only use promotional price if it exists and is less than regular price
+  const precoExibir = (precoPromocional && precoPromocional < precoRegular) ? precoPromocional : precoRegular;
+  const hasDiscount = precoPromocional && precoPromocional < precoRegular;
   
   // Free shipping threshold (products above R$ 100 qualify for free shipping)
-  const hasFreeShipping = precoAtual >= 100;
+  const hasFreeShipping = precoExibir >= 100;
   
   return (
     <div 
@@ -48,22 +51,23 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
         {/* Product name */}
         <h3 className="text-sm text-gray-700 line-clamp-2 mb-1">{produto.nome}</h3>
         
-        {/* Rating */}
+        {/* Rating - Using actual data from database */}
         <div className="flex items-center mb-1">
           <div className="flex text-amber-400">
-            {"★".repeat(Math.round(produto.avaliacao || 4.5))}
+            {"★".repeat(Math.round(produto.avaliacao || 0))}
+            {"☆".repeat(5 - Math.round(produto.avaliacao || 0))}
           </div>
           <span className="text-xs ml-1">
-            ({produto.avaliacoes_count || Math.floor(Math.random() * 100) + 50})
+            ({produto.avaliacoes_count || 0})
           </span>
         </div>
         
         {/* Price section */}
         <div className="mb-1">
-          <span className="text-lg font-bold">R$ {(precoAtual).toFixed(2)}</span>
+          <span className="text-lg font-bold">R$ {precoExibir.toFixed(2)}</span>
           {hasDiscount && (
             <span className="text-xs text-gray-400 line-through ml-2">
-              R$ {(precoAnterior).toFixed(2)}
+              R$ {precoRegular.toFixed(2)}
             </span>
           )}
         </div>

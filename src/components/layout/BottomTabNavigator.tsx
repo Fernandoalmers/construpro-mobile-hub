@@ -34,7 +34,7 @@ const BottomTabNavigator: React.FC = () => {
   const navigate = useNavigate();
   const [currentPath, setCurrentPath] = useState('');
   const { user, profile, isLoading } = useAuth();
-  const { cartCount = 0 } = useCart();  // Use the useCart hook to get the cart count
+  const { cartCount = 0 } = useCart();
   
   // Extract the first part of the path
   useEffect(() => {
@@ -81,7 +81,6 @@ const BottomTabNavigator: React.FC = () => {
       icon: <ShoppingBag size={24} />, 
       path: '/marketplace',
       tooltip: 'Navegar pela loja online',
-      // No badge here - we'll show it on the Cart menu item
       show: (role) => role === 'consumidor' || !role
     },
     { 
@@ -89,7 +88,7 @@ const BottomTabNavigator: React.FC = () => {
       icon: <ShoppingCart size={24} />, 
       path: '/cart',
       tooltip: 'Ver carrinho de compras',
-      badge: cartCount > 0 ? cartCount : undefined,  // Show badge on cart icon
+      badge: cartCount > 0 ? cartCount : undefined,
       show: (role) => role === 'consumidor' || !role 
     },
     { 
@@ -186,7 +185,7 @@ const BottomTabNavigator: React.FC = () => {
                   >
                     <div className="relative">
                       {item.icon}
-                      {item.badge && item.badge > 0 && (
+                      {item.badge !== undefined && item.badge > 0 && (
                         <div className="absolute -top-2 -right-2 bg-construPro-orange text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
                           {item.badge}
                         </div>

@@ -29,9 +29,12 @@ const ProductActions: React.FC<ProductActionsProps> = ({
   const navigate = useNavigate();
   const { isAddingToCart, isBuyingNow, handleAddToCart, handleBuyNow } = useCartActions();
   
-  const handleAddToCartClick = async () => {
+  const handleAddToCartClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     try {
-      console.log("ProductActions: handleAddToCartClick called");
+      console.log("ProductActions: handleAddToCartClick called for", produto?.id);
       // Validate quantity before adding to cart
       validateQuantity();
       
@@ -61,9 +64,12 @@ const ProductActions: React.FC<ProductActionsProps> = ({
     }
   };
 
-  const handleBuyNowClick = async () => {
+  const handleBuyNowClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     try {
-      console.log("ProductActions: handleBuyNowClick called");
+      console.log("ProductActions: handleBuyNowClick called for", produto?.id);
       // Validate quantity before buying
       validateQuantity();
       

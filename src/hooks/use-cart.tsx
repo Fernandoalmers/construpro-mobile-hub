@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { CartContextProvider, useCartContext } from '@/context/CartContext';
 import { useCartData } from './cart/use-cart-data';
@@ -19,6 +19,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const cartCount = cart?.summary?.totalItems || 0;
   
   console.log('CartProvider: cartCount =', cartCount, 'isLoading =', isLoading);
+
+  // Force refresh cart when authentication state changes
+  useEffect(() => {
+    if (isAuthenticated && user?.id) {
+      console.log('Authentication state changed, refreshing cart');
+      refreshCart();
+    }
+  }, [isAuthenticated, user?.id]);
 
   // Create context value
   const value: CartContextType = {

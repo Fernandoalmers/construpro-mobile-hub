@@ -1,7 +1,6 @@
 
 import { useState } from 'react';
 import { toast } from '@/components/ui/sonner';
-import { Cart } from '@/types/cart';
 import * as cartApi from '@/services/cart';
 
 export function useCartOperations(refreshCartData: () => Promise<void>) {
@@ -10,6 +9,12 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
   // Add product to cart
   const addToCart = async (productId: string, quantity: number): Promise<void> => {
     console.log('[useCartOperations] adicionando', productId, 'qty:', quantity);
+    
+    if (!productId) {
+      console.error('Invalid product ID provided to addToCart');
+      throw new Error('ID do produto inválido');
+    }
+    
     setIsLoading(true);
     
     try {
@@ -27,11 +32,6 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
         throw new Error('Quantidade solicitada não disponível em estoque');
       }
 
-      // Get or create a cart
-      const cart = await cartApi.getCart();
-      
-      console.log('Current cart:', cart);
-      
       // Call the addToCart function from cartApi
       await cartApi.addToCart(productId, quantity);
       console.log('Product successfully added to cart');
@@ -40,7 +40,7 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
       await refreshCartData();
       console.log('Cart data refreshed after adding product');
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('[useCartOperations] erro ao adicionar ao carrinho', error);
       // Re-throw the error to be handled by the caller
       throw error;
@@ -51,6 +51,11 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
 
   // Update item quantity - ensure we catch any errors
   const updateQuantity = async (cartItemId: string, newQuantity: number): Promise<void> => {
+    if (!cartItemId) {
+      console.error('Invalid cart item ID provided to updateQuantity');
+      throw new Error('ID do item no carrinho inválido');
+    }
+    
     try {
       setIsLoading(true);
       
@@ -72,6 +77,11 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
 
   // Remove item from cart - ensure we catch any errors
   const removeItem = async (cartItemId: string): Promise<void> => {
+    if (!cartItemId) {
+      console.error('Invalid cart item ID provided to removeItem');
+      throw new Error('ID do item no carrinho inválido');
+    }
+    
     try {
       setIsLoading(true);
       
@@ -95,9 +105,6 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
   const clearCart = async (): Promise<void> => {
     try {
       setIsLoading(true);
-      
-      const cart = await cartApi.getCart();
-      if (!cart) return;
       
       const cleared = await cartApi.clearCart();
       if (!cleared) {

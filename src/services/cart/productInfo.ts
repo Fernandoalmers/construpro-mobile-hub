@@ -6,6 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
  */
 export const fetchProductInfo = async (productId: string) => {
   try {
+    console.log('Fetching product info for ID:', productId);
+    
     const { data: product, error } = await supabase
       .from('produtos')
       .select('*')
@@ -15,6 +17,21 @@ export const fetchProductInfo = async (productId: string) => {
     if (error) {
       console.error('Error fetching product info:', error);
       return null;
+    }
+
+    // Ensure we're using the correct price fields
+    if (product) {
+      // Map price fields to ensure consistency
+      product.preco = product.preco_promocional || product.preco_normal;
+      
+      console.log('Product info retrieved successfully:', {
+        id: product.id,
+        nome: product.nome,
+        preco_normal: product.preco_normal,
+        preco_promocional: product.preco_promocional,
+        preco: product.preco,
+        estoque: product.estoque
+      });
     }
 
     return product;

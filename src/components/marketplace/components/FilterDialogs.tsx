@@ -1,31 +1,25 @@
 
 import React from 'react';
-import { ChevronDown, Star } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { FilterOption } from '@/hooks/use-product-filter';
 
 interface FilterDialogsProps {
   lojasOptions: FilterOption[];
   allCategories: FilterOption[];
-  ratingOptions: FilterOption[];
   selectedLojas: string[];
   selectedCategories: string[];
-  selectedRatings: string[];
   onLojaClick: (lojaId: string) => void;
   onCategoryClick: (categoryId: string) => void;
-  onRatingClick: (ratingId: string) => void;
 }
 
 const FilterDialogs: React.FC<FilterDialogsProps> = ({
   lojasOptions,
   allCategories,
-  ratingOptions,
   selectedLojas,
   selectedCategories,
-  selectedRatings,
   onLojaClick,
-  onCategoryClick,
-  onRatingClick
+  onCategoryClick
 }) => {
   return (
     <div className="flex space-x-2 overflow-x-auto pb-4">
@@ -75,34 +69,6 @@ const FilterDialogs: React.FC<FilterDialogsProps> = ({
                   onChange={() => onCategoryClick(category.id)}
                 />
                 {category.label}
-              </label>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog>
-        <DialogTrigger asChild>
-          <button className="flex items-center gap-1 bg-white text-gray-800 px-3 py-1.5 rounded-full text-sm whitespace-nowrap">
-            Avaliação <ChevronDown size={16} />
-          </button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Filtrar por Avaliação</DialogTitle>
-          </DialogHeader>
-          <div className="grid grid-cols-1 gap-2 mt-4">
-            {ratingOptions.map(rating => (
-              <label key={rating.id} className="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50">
-                <input 
-                  type="checkbox"
-                  className="mr-2" 
-                  checked={selectedRatings.includes(rating.id)} 
-                  onChange={() => onRatingClick(rating.id)}
-                />
-                <span className="flex items-center">
-                  {rating.label} <Star size={16} className="ml-1 fill-yellow-400 text-yellow-400" />
-                </span>
               </label>
             ))}
           </div>
