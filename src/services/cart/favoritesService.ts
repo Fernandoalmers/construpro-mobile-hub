@@ -119,7 +119,7 @@ export const getFavorites = async (): Promise<any[]> => {
           ...item,
           produtos: {
             ...item.produtos,
-            preco: preco
+            preco
           }
         };
       }
