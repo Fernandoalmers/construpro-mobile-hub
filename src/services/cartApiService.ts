@@ -34,12 +34,6 @@ export async function fetchCart(userId: string): Promise<Cart | null> {
 
     console.log('Found cart:', cartData);
 
-    // First check if product_id references 'produtos' or 'products' table
-    const { data: productInfo, error: productInfoError } = await supabase
-      .rpc('get_cart_items_table_reference', { cart_id_param: cartData.id });
-    
-    console.log('Product table reference:', productInfo);
-    
     // Fetch cart items with product details
     const { data: cartItems, error: itemsError } = await supabase
       .from('cart_items')
@@ -174,16 +168,6 @@ export async function addItemToCart(
   try {
     console.log('Adding item to cart:', { cartId, productId, quantity, price });
     
-    // Check if the cart_items table references 'produtos' or 'products'
-    const { data: tableInfo, error: tableError } = await supabase
-      .from('information_schema.table_constraints')
-      .select('constraint_name, table_name')
-      .eq('table_name', 'cart_items')
-      .like('constraint_name', '%_fkey')
-      .maybeSingle();
-    
-    console.log('Foreign key constraint info:', tableInfo);
-
     // First, directly check if product exists in 'produtos' table
     const { data: productCheck, error: productCheckError } = await supabase
       .from('produtos')
