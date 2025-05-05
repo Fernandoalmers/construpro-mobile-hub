@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { toast } from '@/components/ui/sonner';
 import { Cart } from '@/types/cart';
 import { supabase } from '@/integrations/supabase/client';
+import { productFetcher } from '@/services/cart/productFetcher';
 
 export function useCartData(isAuthenticated: boolean, userId: string | null) {
   const [cart, setCart] = useState<Cart | null>(null);
@@ -35,17 +36,7 @@ export function useCartData(isAuthenticated: boolean, userId: string | null) {
           id,
           quantity,
           price_at_add,
-          product_id,
-          produtos:product_id (
-            id,
-            nome,
-            preco_normal,
-            preco_promocional,
-            imagem_url,
-            estoque,
-            vendedor_id,
-            imagens
-          )
+          product_id
         `)
         .eq('cart_id', cartData.id);
       
@@ -54,9 +45,23 @@ export function useCartData(isAuthenticated: boolean, userId: string | null) {
         return null;
       }
       
+      // For each cart item, fetch the product details separately
+      const productDetailsPromises = cartItems.map(async (item) => {
+        const productInfo = await productFetcher.fetchProductInfo(item.product_id);
+        return {
+          cartItemId: item.id,
+          productId: item.product_id,
+          quantity: item.quantity,
+          price: item.price_at_add,
+          product: productInfo
+        };
+      });
+      
+      const itemsWithDetails = await Promise.all(productDetailsPromises);
+      
       // Get store information for products
-      const vendorIds = [...new Set(cartItems
-        .map(item => item.produtos?.vendedor_id)
+      const vendorIds = [...new Set(itemsWithDetails
+        .map(item => item.product?.vendedor_id)
         .filter(Boolean))];
       
       let stores = [];
@@ -66,7 +71,7 @@ export function useCartData(isAuthenticated: boolean, userId: string | null) {
           .select('id, nome_loja')
           .in('id', vendorIds);
           
-        if (!storesError) {
+        if (!storesError && storesData) {
           stores = storesData.map(store => ({
             id: store.id,
             nome: store.nome_loja,
@@ -76,28 +81,26 @@ export function useCartData(isAuthenticated: boolean, userId: string | null) {
       }
       
       // Format the cart items
-      const formattedItems = cartItems.map(item => {
-        const preco = item.price_at_add;
+      const formattedItems = itemsWithDetails.map(item => {
+        const preco = item.price;
         const quantidade = item.quantity;
         const subtotal = preco * quantidade;
         
-        const produto = item.produtos ? {
-          id: item.produtos.id,
-          nome: item.produtos.nome,
-          preco: item.produtos.preco_promocional || item.produtos.preco_normal,
-          imagem_url: item.produtos.imagem_url || (item.produtos.imagens && item.produtos.imagens.length > 0 ? item.produtos.imagens[0] : null),
-          estoque: item.produtos.estoque,
-          loja_id: item.produtos.vendedor_id,
-          pontos: 0
-        } : null;
-        
         return {
-          id: item.id,
-          produto_id: item.product_id,
+          id: item.cartItemId,
+          produto_id: item.productId,
           quantidade,
           preco,
           subtotal,
-          produto
+          produto: item.product ? {
+            id: item.product.id,
+            nome: item.product.nome,
+            preco: item.product.preco,
+            imagem_url: item.product.imagem_url,
+            estoque: item.product.estoque,
+            loja_id: item.product.vendedor_id,
+            pontos: item.product.pontos || 0
+          } : null
         };
       });
       
