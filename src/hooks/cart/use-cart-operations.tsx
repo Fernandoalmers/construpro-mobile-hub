@@ -42,70 +42,74 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
       
     } catch (error) {
       console.error('[useCartOperations] erro ao adicionar ao carrinho', error);
+      // Re-throw the error to be handled by the caller
       throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Update item quantity
+  // Update item quantity - ensure we catch any errors
   const updateQuantity = async (cartItemId: string, newQuantity: number): Promise<void> => {
     try {
       setIsLoading(true);
       
       const updated = await cartApi.updateCartItemQuantity(cartItemId, newQuantity);
       if (!updated) {
-        toast.error('Erro ao atualizar quantidade');
-        return;
+        throw new Error('Erro ao atualizar quantidade');
       }
 
       await refreshCartData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating quantity:', error);
-      toast.error('Erro ao atualizar quantidade');
+      toast.error('Erro ao atualizar quantidade: ' + (error.message || ''));
+      // Re-throw the error to be handled by the caller
+      throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Remove item from cart
+  // Remove item from cart - ensure we catch any errors
   const removeItem = async (cartItemId: string): Promise<void> => {
     try {
       setIsLoading(true);
       
       const removed = await cartApi.removeFromCart(cartItemId);
       if (!removed) {
-        toast.error('Erro ao remover item do carrinho');
-        return;
+        throw new Error('Erro ao remover item do carrinho');
       }
 
       await refreshCartData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error removing item:', error);
-      toast.error('Erro ao remover item');
+      toast.error('Erro ao remover item: ' + (error.message || ''));
+      // Re-throw the error to be handled by the caller
+      throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Clear entire cart
+  // Clear entire cart - ensure we catch any errors
   const clearCart = async (): Promise<void> => {
-    const cart = await cartApi.getCart();
-    if (!cart) return;
-
     try {
       setIsLoading(true);
       
+      const cart = await cartApi.getCart();
+      if (!cart) return;
+      
       const cleared = await cartApi.clearCart();
       if (!cleared) {
-        toast.error('Erro ao limpar o carrinho');
-        return;
+        throw new Error('Erro ao limpar o carrinho');
       }
 
       await refreshCartData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error clearing cart:', error);
-      toast.error('Erro ao limpar o carrinho');
+      toast.error('Erro ao limpar o carrinho: ' + (error.message || ''));
+      // Re-throw the error to be handled by the caller
+      throw error;
     } finally {
       setIsLoading(false);
     }

@@ -12,7 +12,8 @@ import {
   User, 
   MessageSquare,
   Store,
-  Wrench
+  Wrench,
+  ShoppingCart
 } from 'lucide-react';
 
 import { useAuth } from '@/context/AuthContext';
@@ -80,8 +81,16 @@ const BottomTabNavigator: React.FC = () => {
       icon: <ShoppingBag size={24} />, 
       path: '/marketplace',
       tooltip: 'Navegar pela loja online',
-      badge: cartCount > 0 ? cartCount : undefined,  // Add badge only if cart has items
+      // No badge here - we'll show it on the Cart menu item
       show: (role) => role === 'consumidor' || !role
+    },
+    { 
+      name: 'Carrinho', 
+      icon: <ShoppingCart size={24} />, 
+      path: '/cart',
+      tooltip: 'Ver carrinho de compras',
+      badge: cartCount > 0 ? cartCount : undefined,  // Show badge on cart icon
+      show: (role) => role === 'consumidor' || !role 
     },
     { 
       name: 'Resgates', 

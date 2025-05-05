@@ -28,6 +28,8 @@ export function useCartActions() {
       
       if (!isAuthenticated) {
         console.log('User not authenticated, redirecting to login');
+        // Always reset loading state before redirecting
+        setIsAddingToCart(prev => ({ ...prev, [productId]: false }));
         navigate('/login', { state: { from: `/produto/${productId}` } });
         return false;
       }
@@ -66,19 +68,22 @@ export function useCartActions() {
       
       if (!isAuthenticated) {
         console.log('User not authenticated, redirecting to login');
+        // Reset loading state before redirecting
+        setIsBuyingNow(prev => ({ ...prev, [productId]: false }));
         navigate('/login', { state: { from: `/produto/${productId}` } });
         return;
       }
       
-      // Use handleAddToCart to avoid duplicate code and ensure consistency
-      const success = await handleAddToCart(productId, quantity);
+      // Use direct addToCart instead of handleAddToCart to avoid duplicate loading states
+      console.log('Adding to cart with:', { productId, quantity });
+      await addToCart(productId, quantity);
       
-      console.log('Add to cart result:', success);
+      // Refresh cart to make sure the UI updates
+      await refreshCart();
+      console.log('Successfully added to cart, navigating to /cart');
       
-      if (success) {
-        console.log('Successfully added to cart, navigating to /cart');
-        navigate('/cart');
-      }
+      // Navigate to cart page
+      navigate('/cart');
     } catch (error: any) {
       console.error('Error buying now:', error);
       toast.error('Erro: ' + (error.message || 'Erro ao processar compra'));
