@@ -6,6 +6,8 @@ export { createCart } from "./cartManagement";
 export { clearCart as clearCartFromManagement } from "./cartManagement";
 export * from "./cartConsolidation";
 export * from "./cartItemOperations";
+export * from "./stockChecker";
+export * from "./cartItemModifier";
 export * from "./productInfo";
 
 // Re-export existing related services
@@ -17,6 +19,8 @@ import * as cartFetcher from "./cartFetcher";
 import * as cartManagement from "./cartManagement";
 import * as cartConsolidation from "./cartConsolidation";
 import * as cartItemOps from "./cartItemOperations";
+import * as stockChecker from "./stockChecker";
+import * as cartItemModifier from "./cartItemModifier";
 import * as productInfo from "./productInfo";
 import * as favoritesOps from "./favoritesService";
 import * as cartItems from "./cartItemsManager";
@@ -37,6 +41,17 @@ export const cartService = {
   addToCart: cartItemOps.addToCart,
   updateCartItemQuantity: cartItemOps.updateCartItemQuantity,
   removeFromCart: cartItemOps.removeFromCart,
+  
+  // Stock operations
+  checkProductStock: stockChecker.checkProductStock,
+  checkTotalStockAvailability: stockChecker.checkTotalStockAvailability,
+  
+  // Cart item modifier operations
+  addNewCartItem: cartItemModifier.addNewCartItem,
+  updateExistingCartItem: cartItemModifier.updateExistingCartItem,
+  findExistingCartItem: cartItemModifier.findExistingCartItem,
+  removeCartItem: cartItemModifier.removeCartItem,
+  clearCartItems: cartItemModifier.clearCartItems,
   
   // Favorites operations
   addToFavorites: favoritesOps.addToFavorites,

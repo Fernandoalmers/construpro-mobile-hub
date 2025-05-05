@@ -1,7 +1,19 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Cart } from "@/types/cart";
 import { getCart } from "./cartFetcher";
 import { ensureSingleActiveCart } from "./cartConsolidation";
+import { 
+  checkProductStock, 
+  checkTotalStockAvailability 
+} from "./stockChecker";
+import { 
+  addNewCartItem, 
+  updateExistingCartItem, 
+  findExistingCartItem, 
+  removeCartItem, 
+  clearCartItems as clearCartItemsFromCart 
+} from "./cartItemModifier";
 
 /**
  * Add item to cart
@@ -15,21 +27,10 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
       throw new Error('Usuário não autenticado');
     }
 
-    // Get product information to check stock and price
-    const { data: product, error: productError } = await supabase
-      .from('produtos')
-      .select('id, preco_normal, preco_promocional, estoque')
-      .eq('id', productId)
-      .single();
-
-    if (productError || !product) {
-      console.error('Error fetching product:', productError);
-      throw new Error('Produto não encontrado');
-    }
-
-    // Check inventory
-    if (product.estoque < quantity) {
-      throw new Error(`Apenas ${product.estoque} itens disponíveis em estoque`);
+    // Check product stock
+    const { hasStock, product, error: stockError } = await checkProductStock(productId, quantity);
+    if (!hasStock) {
+      throw stockError || new Error('Erro ao verificar estoque');
     }
 
     // Ensure we have a single active cart and get its ID
@@ -45,48 +46,35 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
     console.log('[cartItemOperations] Product price:', productPrice);
 
     // Check if the product is already in the cart
-    const { data: existingItem, error: existingItemError } = await supabase
-      .from('cart_items')
-      .select('id, quantity')
-      .eq('cart_id', cartId)
-      .eq('product_id', productId)
-      .maybeSingle();
+    const { item: existingItem, error: findError } = await findExistingCartItem(cartId, productId);
+    if (findError) {
+      throw findError;
+    }
 
-    console.log('[cartItemOperations] Existing cart item:', existingItem, existingItemError);
+    console.log('[cartItemOperations] Existing cart item:', existingItem);
 
     if (existingItem) {
-      // Update quantity of existing item
-      const newQuantity = existingItem.quantity + quantity;
-      
-      if (product.estoque < newQuantity) {
-        throw new Error(`Não é possível adicionar mais itens. Apenas ${product.estoque} disponíveis em estoque`);
+      // Check if we have enough stock for the increased quantity
+      const stockCheck = await checkTotalStockAvailability(cartId, productId, quantity, existingItem);
+      if (!stockCheck.hasStock) {
+        throw stockCheck.error || new Error('Sem estoque suficiente');
       }
 
+      // Update quantity of existing item
+      const newQuantity = existingItem.quantity + quantity;
       console.log('[cartItemOperations] Updating cart item quantity:', existingItem.id, 'to:', newQuantity);
-      const { error: updateError } = await supabase
-        .from('cart_items')
-        .update({ quantity: newQuantity })
-        .eq('id', existingItem.id);
-
-      if (updateError) {
-        console.error('Error updating cart item:', updateError);
-        throw new Error('Erro ao atualizar item no carrinho');
+      
+      const { success, error: updateError } = await updateExistingCartItem(existingItem.id, newQuantity);
+      if (!success) {
+        throw updateError || new Error('Erro ao atualizar item no carrinho');
       }
     } else {
       // Add new item to cart
       console.log('[cartItemOperations] Adding new item to cart:', cartId, productId, quantity, productPrice);
-      const { error: insertError } = await supabase
-        .from('cart_items')
-        .insert({
-          cart_id: cartId,
-          product_id: productId,
-          quantity: quantity,
-          price_at_add: productPrice
-        });
-
-      if (insertError) {
-        console.error('Error adding item to cart:', insertError);
-        throw new Error('Erro ao adicionar item ao carrinho');
+      
+      const { success, error: addError } = await addNewCartItem(cartId, productId, quantity, productPrice);
+      if (!success) {
+        throw addError || new Error('Erro ao adicionar item ao carrinho');
       }
     }
 
@@ -112,14 +100,9 @@ export const updateCartItemQuantity = async (itemId: string, quantity: number): 
     }
 
     // Update quantity
-    const { error: updateError } = await supabase
-      .from('cart_items')
-      .update({ quantity })
-      .eq('id', itemId);
-
-    if (updateError) {
-      console.error('Error updating quantity:', updateError);
-      return false;
+    const { success, error } = await updateExistingCartItem(itemId, quantity);
+    if (!success) {
+      throw error || new Error('Erro ao atualizar quantidade');
     }
 
     return true;
@@ -141,17 +124,8 @@ export const removeFromCart = async (itemId: string): Promise<boolean> => {
       return false;
     }
 
-    const { error } = await supabase
-      .from('cart_items')
-      .delete()
-      .eq('id', itemId);
-
-    if (error) {
-      console.error('Error removing cart item:', error);
-      return false;
-    }
-
-    return true;
+    const { success } = await removeCartItem(itemId);
+    return success;
   } catch (error) {
     console.error('Error removing from cart:', error);
     return false;
@@ -183,18 +157,9 @@ export const clearCart = async (): Promise<boolean> => {
       return false;
     }
 
-    // Delete all items in cart
-    const { error: deleteError } = await supabase
-      .from('cart_items')
-      .delete()
-      .eq('cart_id', cart.id);
-
-    if (deleteError) {
-      console.error('Error clearing cart:', deleteError);
-      return false;
-    }
-
-    return true;
+    // Clear all items from cart
+    const { success } = await clearCartItemsFromCart(cart.id);
+    return success;
   } catch (error) {
     console.error('Error clearing cart:', error);
     return false;
