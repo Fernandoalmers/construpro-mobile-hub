@@ -113,12 +113,12 @@ export const getFavorites = async (): Promise<any[]> => {
       // First check if produtos exists and is a valid object
       if (item.produtos && typeof item.produtos === 'object') {
         // Now it's safe to access properties with proper null checks
-        const preco = (item.produtos.preco_promocional || item.produtos.preco_normal) ?? 0;
+        const preco = ((item.produtos as any).preco_promocional || (item.produtos as any).preco_normal) ?? 0;
         
         return {
           ...item,
           produtos: {
-            ...item.produtos,
+            ...(item.produtos as object),
             preco
           }
         };
