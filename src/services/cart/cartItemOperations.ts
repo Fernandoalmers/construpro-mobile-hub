@@ -1,7 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { Cart } from "@/types/cart";
-import { getCart } from "./cartCore";
+import { getCart } from "./cartFetcher";
 
 /**
  * Add item to cart
