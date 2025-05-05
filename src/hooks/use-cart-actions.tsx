@@ -12,13 +12,13 @@ export function useCartActions() {
   const [isAddingToCart, setIsAddingToCart] = useState<Record<string, boolean>>({});
   const [isBuyingNow, setIsBuyingNow] = useState<Record<string, boolean>>({});
 
-  // Add to cart function
+  // Add to cart function - properly handles authentication and updates state
   const handleAddToCart = async (productId: string, quantity: number = 1) => {
     try {
       if (!isAuthenticated) {
         console.log('User not authenticated, redirecting to login');
         navigate('/login', { state: { from: `/produto/${productId}` } });
-        return;
+        return false;
       }
       
       setIsAddingToCart(prev => ({ ...prev, [productId]: true }));
@@ -34,7 +34,7 @@ export function useCartActions() {
     }
   };
 
-  // Buy now function (add to cart then navigate to cart)
+  // Buy now function - adds to cart then immediately navigates to cart
   const handleBuyNow = async (productId: string, quantity: number = 1) => {
     try {
       if (!isAuthenticated) {

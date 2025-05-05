@@ -27,7 +27,6 @@ const ProductActions: React.FC<ProductActionsProps> = ({
   size = 'default',
 }) => {
   const navigate = useNavigate();
-  const { addToCart } = useCart();
   const { isAddingToCart, isBuyingNow, handleAddToCart, handleBuyNow } = useCartActions();
   
   const handleAddToCartClick = async () => {
