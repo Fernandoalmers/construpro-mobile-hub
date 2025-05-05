@@ -113,7 +113,7 @@ export const getFavorites = async (): Promise<any[]> => {
       // First check if produtos exists and is a valid object
       if (item.produtos && typeof item.produtos === 'object') {
         // Now it's safe to access properties with proper null checks
-        const preco = item.produtos?.preco_promocional || item.produtos?.preco_normal;
+        const preco = (item.produtos.preco_promocional || item.produtos.preco_normal) ?? 0;
         
         return {
           ...item,
@@ -123,6 +123,7 @@ export const getFavorites = async (): Promise<any[]> => {
           }
         };
       }
+      
       // If produtos is not valid, return item as is without transformation
       return item;
     });
