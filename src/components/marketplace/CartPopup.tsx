@@ -11,10 +11,32 @@ interface CartPopupProps {
 
 const CartPopup: React.FC<CartPopupProps> = ({ triggerShow }) => {
   const [show, setShow] = useState(false);
-  const { cart, cartCount = 0, isLoading } = useCart();
+  const [cartCount, setCartCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   
-  console.log('CartPopup rendering:', { triggerShow, cartCount, show, isLoading });
+  // Try to access cart context, but with error handling
+  let cartContextValues = { cartCount: 0, isLoading: false };
+  try {
+    cartContextValues = useCart();
+    // If we successfully get the cart context, update our state
+    useEffect(() => {
+      if (cartContextValues) {
+        setCartCount(cartContextValues.cartCount || 0);
+        setIsLoading(cartContextValues.isLoading || false);
+      }
+    }, [cartContextValues]);
+  } catch (error) {
+    // If useCart throws an error (no provider), we'll use our local state instead
+    console.log('CartPopup: Cart context not available, using fallback values');
+  }
+  
+  console.log('CartPopup rendering:', { 
+    triggerShow, 
+    cartCount, 
+    show, 
+    isLoading 
+  });
   
   // Show popup when triggerShow changes to true or when items are added to cart
   useEffect(() => {

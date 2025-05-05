@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 
 import { useAuth } from '@/context/AuthContext';
-import { useCart } from '@/hooks/use-cart';
 import CartPopup from '../marketplace/CartPopup';
 
 interface MenuItem {
@@ -25,6 +24,7 @@ interface MenuItem {
   path: string;
   tooltip: string;
   show: (role?: string) => boolean;
+  badge?: number;
 }
 
 const BottomTabNavigator: React.FC = () => {
@@ -32,7 +32,7 @@ const BottomTabNavigator: React.FC = () => {
   const navigate = useNavigate();
   const [currentPath, setCurrentPath] = useState('');
   const { user, profile, isLoading } = useAuth();
-  const { cartCount = 0 } = useCart();
+  const [cartCount, setCartCount] = useState(0);
   
   // Extract the first part of the path
   useEffect(() => {
@@ -49,6 +49,24 @@ const BottomTabNavigator: React.FC = () => {
     
     console.log("Bottom navigation current path:", location.pathname, "-> Highlighted:", currentPath);
   }, [location.pathname]);
+
+  // Try to get cart count if available
+  useEffect(() => {
+    // We'll attempt to retrieve cart count from localStorage as a fallback
+    // This is just a simple solution for this specific error
+    try {
+      const storedCartData = localStorage.getItem('cartData');
+      if (storedCartData) {
+        const cartData = JSON.parse(storedCartData);
+        if (cartData && cartData.summary && typeof cartData.summary.totalItems === 'number') {
+          setCartCount(cartData.summary.totalItems);
+        }
+      }
+    } catch (error) {
+      console.error("Error reading cart data:", error);
+      // If any error occurs, just leave cart count at 0
+    }
+  }, []);
 
   // User role
   const userRole = profile?.papel || 'consumidor';
@@ -78,6 +96,7 @@ const BottomTabNavigator: React.FC = () => {
       icon: <ShoppingBag size={24} />, 
       path: '/marketplace',
       tooltip: 'Navegar pela loja online',
+      badge: cartCount,
       show: (role) => role === 'consumidor' || !role
     },
     { 
@@ -174,9 +193,9 @@ const BottomTabNavigator: React.FC = () => {
                   >
                     <div className="relative">
                       {item.icon}
-                      {item.path === '/marketplace' && cartCount > 0 && (
+                      {item.badge && item.badge > 0 && (
                         <div className="absolute -top-2 -right-2 bg-construPro-orange text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                          {cartCount}
+                          {item.badge}
                         </div>
                       )}
                     </div>

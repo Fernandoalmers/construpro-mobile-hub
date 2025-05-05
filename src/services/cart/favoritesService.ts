@@ -108,12 +108,12 @@ export const getFavorites = async (): Promise<any[]> => {
       return [];
     }
 
-    // Process to match expected format
+    // Process to match expected format with proper type checking
     const processedData = (data || []).map(item => {
       // First check if produtos exists and is a valid object
       if (item.produtos && typeof item.produtos === 'object') {
-        // Now it's safe to access properties
-        const preco = item.produtos.preco_promocional || item.produtos.preco_normal;
+        // Now it's safe to access properties with proper null checks
+        const preco = item.produtos?.preco_promocional || item.produtos?.preco_normal;
         
         return {
           ...item,
