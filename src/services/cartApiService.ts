@@ -28,7 +28,7 @@ export async function fetchCart(userId: string): Promise<Cart | null> {
       return null;
     }
 
-    // Fetch cart items - Fixed the column names to match the database
+    // Fetch cart items - Corrigido para usar corretamente a tabela 'produtos'
     const { data: cartItems, error: itemsError } = await supabase
       .from('cart_items')
       .select(`
