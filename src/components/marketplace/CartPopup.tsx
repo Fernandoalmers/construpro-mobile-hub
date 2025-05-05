@@ -16,18 +16,32 @@ const CartPopup: React.FC<CartPopupProps> = ({ triggerShow }) => {
   
   // Show popup briefly when cart is updated
   useEffect(() => {
-    if ((cartCount > 0 && triggerShow) || (cartCount > 0 && cart)) {
+    if (triggerShow && cartCount > 0) {
+      // Sempre exibir quando triggerShow for true e houver itens no carrinho
       setShow(true);
       const timer = setTimeout(() => {
         setShow(false);
-      }, 3000);
+      }, 5000); // Aumentado para 5 segundos para melhor visibilidade
       
       return () => clearTimeout(timer);
     }
-  }, [cartCount, cart, triggerShow]);
+  }, [triggerShow, cartCount]);
   
-  // Don't show anything while loading or if cart is empty
-  if (isLoading || !cart || cartCount === 0) {
+  // Efeito adicional para reagir a mudanças no carrinho
+  useEffect(() => {
+    if (cartCount > 0 && cart) {
+      // Mostrar quando o carrinho for atualizado e tiver itens
+      setShow(true);
+      const timer = setTimeout(() => {
+        setShow(false);
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [cart, cartCount]);
+  
+  // Não mostrar nada durante o carregamento ou se o carrinho estiver vazio
+  if (isLoading || cartCount === 0) {
     return null;
   }
   

@@ -36,14 +36,15 @@ export async function fetchCart(userId: string): Promise<Cart | null> {
         product_id,
         quantity,
         price_at_add,
-        products:product_id (
+        produtos:product_id (
           id,
           nome,
-          preco,
+          preco_normal,
+          preco_promocional,
           imagem_url,
           estoque,
-          loja_id,
-          pontos
+          vendedor_id,
+          pontos_consumidor
         )
       `)
       .eq('cart_id', cartData.id);
@@ -59,7 +60,12 @@ export async function fetchCart(userId: string): Promise<Cart | null> {
       produto_id: item.product_id,
       quantidade: item.quantity,
       preco: item.price_at_add,
-      produto: item.products,
+      produto: {
+        ...item.produtos,
+        preco: item.produtos.preco_promocional || item.produtos.preco_normal,
+        pontos: item.produtos.pontos_consumidor,
+        loja_id: item.produtos.vendedor_id
+      },
       subtotal: item.quantity * item.price_at_add
     }));
 
@@ -232,8 +238,8 @@ export async function fetchProductInfo(productId: string) {
     console.log('Fetching product info for:', productId);
     
     const { data, error } = await supabase
-      .from('products')
-      .select('preco, estoque')
+      .from('produtos')  // Corrigido: agora usando a tabela 'produtos' em vez de 'products'
+      .select('preco_normal, preco_promocional, estoque, pontos_consumidor')
       .eq('id', productId)
       .single();
       
@@ -242,8 +248,15 @@ export async function fetchProductInfo(productId: string) {
       return null;
     }
     
-    console.log('Product info retrieved:', data);
-    return data;
+    // Retorna o objeto com os campos mapeados corretamente
+    const productInfo = {
+      preco: data.preco_promocional || data.preco_normal, // Usa o preço promocional se disponível, senão o preço normal
+      estoque: data.estoque,
+      pontos: data.pontos_consumidor
+    };
+    
+    console.log('Product info retrieved:', productInfo);
+    return productInfo;
   } catch (error) {
     console.error('Error in fetchProductInfo:', error);
     return null;

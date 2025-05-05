@@ -15,13 +15,21 @@ export function useCartActions() {
   // Add to cart function - properly handles authentication and updates state
   const handleAddToCart = async (productId: string, quantity: number = 1) => {
     try {
+      if (!productId) {
+        console.error('Invalid product ID:', productId);
+        toast.error('Erro: ID do produto inválido');
+        return false;
+      }
+
       if (!isAuthenticated) {
         console.log('User not authenticated, redirecting to login');
         navigate('/login', { state: { from: `/produto/${productId}` } });
         return false;
       }
       
+      console.log(`Adding to cart: product=${productId}, quantity=${quantity}`);
       setIsAddingToCart(prev => ({ ...prev, [productId]: true }));
+      
       await addToCart(productId, quantity);
       toast.success(`${quantity} unidade(s) adicionada(s) ao carrinho`);
       return true;
@@ -37,18 +45,30 @@ export function useCartActions() {
   // Buy now function - adds to cart then immediately navigates to cart
   const handleBuyNow = async (productId: string, quantity: number = 1) => {
     try {
+      if (!productId) {
+        console.error('Invalid product ID:', productId);
+        toast.error('Erro: ID do produto inválido');
+        return;
+      }
+
       if (!isAuthenticated) {
         console.log('User not authenticated, redirecting to login');
         navigate('/login', { state: { from: `/produto/${productId}` } });
         return;
       }
       
+      console.log(`Buy now: product=${productId}, quantity=${quantity}`);
       setIsBuyingNow(prev => ({ ...prev, [productId]: true }));
+      
       const success = await handleAddToCart(productId, quantity);
       
       if (success) {
         navigate('/cart');
+        toast.success('Produto adicionado ao carrinho');
       }
+    } catch (error: any) {
+      console.error('Error buying now:', error);
+      toast.error('Erro: ' + (error.message || 'Erro ao processar compra'));
     } finally {
       setIsBuyingNow(prev => ({ ...prev, [productId]: false }));
     }

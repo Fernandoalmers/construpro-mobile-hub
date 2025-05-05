@@ -29,15 +29,31 @@ const ProductActions: React.FC<ProductActionsProps> = ({
   const navigate = useNavigate();
   const { isAddingToCart, isBuyingNow, handleAddToCart, handleBuyNow } = useCartActions();
   
+  // Melhoramos o gerenciamento de erros e feedback ao usuário
   const handleAddToCartClick = async () => {
-    // Validate quantity before adding to cart
-    validateQuantity();
-    
     try {
+      // Validate quantity before adding to cart
+      validateQuantity();
+      
+      if (!produto) {
+        toast.error("Produto não encontrado ou não está disponível");
+        console.error("Erro: produto inválido ou não disponível", produto);
+        return;
+      }
+      
+      if (!produto.id) {
+        toast.error("ID do produto não encontrado");
+        console.error("Erro: ID do produto não disponível", produto);
+        return;
+      }
+      
+      console.log("Adicionando ao carrinho:", produto.id, "quantidade:", quantidade);
+      
       // Use the cartActions hook to handle adding to cart
       const success = await handleAddToCart(produto.id, quantidade);
-      if (success && onSuccess) {
-        onSuccess();
+      if (success) {
+        if (onSuccess) onSuccess();
+        toast.success(`${quantidade} ${quantidade > 1 ? 'itens adicionados' : 'item adicionado'} ao carrinho`);
       }
     } catch (error: any) {
       console.error("Error adding to cart:", error);
@@ -46,10 +62,24 @@ const ProductActions: React.FC<ProductActionsProps> = ({
   };
 
   const handleBuyNowClick = async () => {
-    // Validate quantity before buying
-    validateQuantity();
-    
     try {
+      // Validate quantity before buying
+      validateQuantity();
+      
+      if (!produto) {
+        toast.error("Produto não encontrado ou não está disponível");
+        console.error("Erro: produto inválido ou não disponível", produto);
+        return;
+      }
+      
+      if (!produto.id) {
+        toast.error("ID do produto não encontrado");
+        console.error("Erro: ID do produto não disponível", produto);
+        return;
+      }
+      
+      console.log("Comprando agora:", produto.id, "quantidade:", quantidade);
+      
       // This will add to cart and navigate to cart page
       await handleBuyNow(produto.id, quantidade);
     } catch (error: any) {
@@ -58,7 +88,7 @@ const ProductActions: React.FC<ProductActionsProps> = ({
     }
   };
 
-  const isButtonDisabled = !produto.estoque || produto.estoque < 1;
+  const isButtonDisabled = !produto || !produto.estoque || produto.estoque < 1;
   
   if (size === 'compact') {
     return (
@@ -68,19 +98,19 @@ const ProductActions: React.FC<ProductActionsProps> = ({
           size="sm"
           className="flex-1"
           onClick={handleAddToCartClick}
-          disabled={isButtonDisabled || isAddingToCart[produto.id]}
+          disabled={isButtonDisabled || isAddingToCart[produto?.id]}
         >
           <ShoppingCart className="mr-1 h-4 w-4" />
-          {isAddingToCart[produto.id] ? "Adicionando..." : "Adicionar"}
+          {isAddingToCart[produto?.id] ? "Adicionando..." : "Adicionar"}
         </Button>
         <Button
           size="sm"
           className="flex-1 bg-green-600 hover:bg-green-700"
           onClick={handleBuyNowClick}
-          disabled={isButtonDisabled || isBuyingNow[produto.id]}
+          disabled={isButtonDisabled || isBuyingNow[produto?.id]}
         >
           <ShoppingBag className="mr-1 h-4 w-4" />
-          {isBuyingNow[produto.id] ? "Processando..." : "Comprar"}
+          {isBuyingNow[produto?.id] ? "Processando..." : "Comprar"}
         </Button>
       </div>
     );
@@ -91,19 +121,19 @@ const ProductActions: React.FC<ProductActionsProps> = ({
       <Button
         className="w-full bg-construPro-blue hover:bg-blue-700 text-white py-3 text-base flex items-center justify-center"
         onClick={handleAddToCartClick}
-        disabled={isButtonDisabled || isAddingToCart[produto.id]}
+        disabled={isButtonDisabled || isAddingToCart[produto?.id]}
       >
         <ShoppingCart className="mr-2 h-5 w-5" />
-        {isAddingToCart[produto.id] ? "Adicionando ao Carrinho..." : "Adicionar ao Carrinho"}
+        {isAddingToCart[produto?.id] ? "Adicionando ao Carrinho..." : "Adicionar ao Carrinho"}
       </Button>
       
       <Button
         className="w-full bg-green-600 hover:bg-green-700 text-white py-3 text-base flex items-center justify-center"
         onClick={handleBuyNowClick}
-        disabled={isButtonDisabled || isBuyingNow[produto.id]}
+        disabled={isButtonDisabled || isBuyingNow[produto?.id]}
       >
         <ShoppingBag className="mr-2 h-5 w-5" />
-        {isBuyingNow[produto.id] ? "Processando..." : "Comprar Agora"}
+        {isBuyingNow[produto?.id] ? "Processando..." : "Comprar Agora"}
       </Button>
       
       {isButtonDisabled && (

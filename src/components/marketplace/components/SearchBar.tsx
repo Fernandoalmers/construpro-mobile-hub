@@ -47,26 +47,31 @@ const SearchBar: React.FC<SearchBarProps> = ({
     try {
       setIsSearching(true);
       
+      // Atualizando para usar a tabela 'produtos' em vez de 'products'
       const { data, error } = await supabase
-        .from('products')
+        .from('produtos')
         .select(`
           id, 
           nome, 
-          preco, 
-          preco_anterior,
+          preco_normal,
+          preco_promocional,
           imagem_url,
-          stores:loja_id (
-            id,
-            nome
-          )
+          vendedor_id
         `)
         .ilike('nome', `%${query.trim()}%`)
         .limit(5);
         
       if (error) throw error;
       
-      setSearchResults(data || []);
-      setShowResults(data && data.length > 0);
+      // Mapeando os resultados para o formato esperado pelo componente SearchResults
+      const mappedResults = data ? data.map(produto => ({
+        ...produto,
+        preco: produto.preco_promocional || produto.preco_normal,
+        stores: { id: produto.vendedor_id, nome: 'Loja' }  // Simplificado - idealmente buscaríamos o nome da loja
+      })) : [];
+      
+      setSearchResults(mappedResults);
+      setShowResults(mappedResults.length > 0);
     } catch (error) {
       console.error('Error searching products:', error);
     } finally {
