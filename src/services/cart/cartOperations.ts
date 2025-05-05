@@ -113,6 +113,7 @@ export const getCart = async (): Promise<Cart | null> => {
     const subtotal = cartItems.reduce((sum, item) => sum + item.subtotal, 0);
     const shipping = storeIds.length * 15.9; // Fixed shipping per store
     const totalPoints = cartItems.reduce((sum, item) => sum + ((item.produto?.pontos || 0) * item.quantidade), 0);
+    const totalItems = cartItems.reduce((sum, item) => sum + item.quantidade, 0);
 
     return {
       id: cartData.id,
@@ -120,7 +121,8 @@ export const getCart = async (): Promise<Cart | null> => {
       summary: {
         subtotal,
         shipping,
-        totalPoints
+        totalPoints,
+        totalItems
       },
       stores
     };

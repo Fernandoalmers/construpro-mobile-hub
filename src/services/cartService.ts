@@ -8,3 +8,4 @@ export type { Cart, CartItem };
 
 // Re-export the cartService
 export { cartService } from "./cart";
+
