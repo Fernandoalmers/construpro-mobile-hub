@@ -98,10 +98,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           }
         } else {
           // Add new item
-          const added = await cartApi.addItemToCart(cartId, productId, quantity, product.preco);
-          if (!added) {
-            console.error('[useCart] erro ao adicionar ao carrinho');
-            throw new Error('Erro ao adicionar ao carrinho');
+          try {
+            const added = await cartApi.addItemToCart(cartId, productId, quantity, product.preco);
+            if (!added) {
+              console.error('[useCart] erro ao adicionar ao carrinho');
+              throw new Error('Erro ao adicionar ao carrinho');
+            }
+          } catch (error) {
+            console.error('[useCart] erro ao adicionar ao carrinho', error);
+            throw error;
           }
         }
       } else {
@@ -116,10 +121,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         
         // Add new item to cart
         console.log('Adding new item to cart:', { cartId, productId, quantity, price: product.preco });
-        const added = await cartApi.addItemToCart(cartId, productId, quantity, product.preco);
-        if (!added) {
-          console.error('[useCart] erro ao adicionar ao carrinho');
-          throw new Error('Erro ao adicionar ao carrinho');
+        try {
+          const added = await cartApi.addItemToCart(cartId, productId, quantity, product.preco);
+          if (!added) {
+            console.error('[useCart] erro ao adicionar ao carrinho');
+            throw new Error('Erro ao adicionar ao carrinho');
+          }
+        } catch (error) {
+          console.error('[useCart] erro ao adicionar ao carrinho', error);
+          throw error;
         }
       }
 

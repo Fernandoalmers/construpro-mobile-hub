@@ -1,11 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ShoppingBag, Trash2, Plus, Minus, Ticket } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/sonner';
-import { getCart, updateCartItemQuantity, removeFromCart } from '@/services/cartService';
-import { Cart, CartItem } from '@/services/cartService';
+import { Cart, CartItem } from '@/types/cart';
 import CustomButton from '../common/CustomButton';
 import Card from '../common/Card';
 import ListEmptyState from '../common/ListEmptyState';
@@ -197,6 +197,9 @@ const CartScreen: React.FC = () => {
                             src={item.produto?.imagem_url || 'https://via.placeholder.com/80'} 
                             alt={item.produto?.nome} 
                             className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'https://via.placeholder.com/80';
+                            }}
                           />
                         </div>
                         

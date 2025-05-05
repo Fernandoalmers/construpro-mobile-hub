@@ -34,7 +34,13 @@ export async function fetchCart(userId: string): Promise<Cart | null> {
 
     console.log('Found cart:', cartData);
 
-    // Fetch cart items with product details from 'produtos' table
+    // First check if product_id references 'produtos' or 'products' table
+    const { data: productInfo, error: productInfoError } = await supabase
+      .rpc('get_cart_items_table_reference', { cart_id_param: cartData.id });
+    
+    console.log('Product table reference:', productInfo);
+    
+    // Fetch cart items with product details
     const { data: cartItems, error: itemsError } = await supabase
       .from('cart_items')
       .select(`
@@ -47,7 +53,7 @@ export async function fetchCart(userId: string): Promise<Cart | null> {
           nome,
           preco_normal,
           preco_promocional,
-          imagem_url,
+          imagens,
           estoque,
           vendedor_id,
           pontos_consumidor
@@ -72,7 +78,8 @@ export async function fetchCart(userId: string): Promise<Cart | null> {
         ...item.produtos,
         preco: item.produtos.preco_promocional || item.produtos.preco_normal,
         pontos: item.produtos.pontos_consumidor,
-        loja_id: item.produtos.vendedor_id
+        loja_id: item.produtos.vendedor_id,
+        imagem_url: getFirstImage(item.produtos.imagens)
       } : null,
       subtotal: item.quantity * item.price_at_add
     }));
@@ -121,6 +128,14 @@ export async function fetchCart(userId: string): Promise<Cart | null> {
   }
 }
 
+// Utility function to extract the first image from imagens array
+function getFirstImage(imagens: any): string | null {
+  if (imagens && Array.isArray(imagens) && imagens.length > 0) {
+    return imagens[0];
+  }
+  return null;
+}
+
 /**
  * Creates a new cart for the user
  */
@@ -159,18 +174,42 @@ export async function addItemToCart(
   try {
     console.log('Adding item to cart:', { cartId, productId, quantity, price });
     
-    // First, check if product exists in 'produtos' table
+    // Check if the cart_items table references 'produtos' or 'products'
+    const { data: tableInfo, error: tableError } = await supabase
+      .from('information_schema.table_constraints')
+      .select('constraint_name, table_name')
+      .eq('table_name', 'cart_items')
+      .like('constraint_name', '%_fkey')
+      .maybeSingle();
+    
+    console.log('Foreign key constraint info:', tableInfo);
+
+    // First, directly check if product exists in 'produtos' table
     const { data: productCheck, error: productCheckError } = await supabase
       .from('produtos')
       .select('id')
       .eq('id', productId)
-      .single();
+      .maybeSingle();
       
-    if (productCheckError || !productCheck) {
-      console.error('Product does not exist in produtos table:', productCheckError || 'No product found');
+    if (productCheckError) {
+      console.error('Error checking product in produtos table:', productCheckError);
       return false;
     }
     
+    if (!productCheck) {
+      console.error('Product does not exist in produtos table');
+      throw new Error('Produto não encontrado');
+    }
+    
+    // Let's check if any cart_items exist for debugging
+    const { data: existingItems, error: existingError } = await supabase
+      .from('cart_items')
+      .select('*')
+      .limit(5);
+      
+    console.log('Example cart items:', existingItems);
+    
+    // Try to insert the new cart item
     const { error } = await supabase
       .from('cart_items')
       .insert([{
@@ -182,14 +221,22 @@ export async function addItemToCart(
 
     if (error) {
       console.error('Error adding to cart:', error);
+      
+      // Special handling for foreign key errors
+      if (error.code === '23503') {
+        console.log('Foreign key violation - attempting to update schema');
+        // We need to update the schemas, but this would require admin SQL access
+        throw new Error("Erro de configuração da tabela cart_items. Por favor, contate o suporte.");
+      }
+      
       return false;
     }
     
     console.log('Item successfully added to cart');
     return true;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in addItemToCart:', error);
-    return false;
+    throw error;
   }
 }
 
@@ -281,7 +328,7 @@ export async function fetchProductInfo(productId: string) {
     // Use 'produtos' table
     const { data, error } = await supabase
       .from('produtos')
-      .select('id, nome, preco_normal, preco_promocional, estoque, pontos_consumidor, vendedor_id')
+      .select('id, nome, preco_normal, preco_promocional, estoque, pontos_consumidor, vendedor_id, imagens')
       .eq('id', productId)
       .single();
       
@@ -304,7 +351,8 @@ export async function fetchProductInfo(productId: string) {
       preco: data.preco_promocional || data.preco_normal,
       estoque: data.estoque,
       pontos: data.pontos_consumidor,
-      vendedor_id: data.vendedor_id
+      vendedor_id: data.vendedor_id,
+      imagens: data.imagens
     };
     
     console.log('Product info processed:', productInfo);
