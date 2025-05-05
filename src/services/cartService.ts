@@ -502,13 +502,15 @@ export const getFavorites = async (): Promise<any[]> => {
       // First check if produtos exists and is a valid object
       if (item.produtos && typeof item.produtos === 'object' && !('error' in item.produtos)) {
         // Now it's safe to access properties and spread the item.produtos object
+        const preco = item.produtos?.preco_promocional || item.produtos?.preco_normal;
+        
         return {
           ...item,
           produtos: {
             // Use type assertion to ensure TypeScript knows this is an object
             ...(item.produtos as Record<string, any>),
             // Only access properties after null checks
-            preco: item.produtos.preco_promocional || item.produtos.preco_normal
+            preco: preco
           }
         };
       }
