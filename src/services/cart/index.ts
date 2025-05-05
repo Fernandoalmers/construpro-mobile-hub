@@ -1,25 +1,32 @@
 
-// Export cart operations
-export * from "./cartOperations";
+// Export core cart operations
+export * from "./cartCore";
+export * from "./cartItemOperations";
+export * from "./productInfo";
+
+// Re-export existing related services
 export * from "./favoritesService";
 export * from "./cartItemsManager";
 export * from "./cartFetcher";
-export * from "./productFetcher";
 
-// Combine services into a single export for backward compatibility
-import * as cartOps from "./cartOperations";
+// Create legacy exports for backward compatibility
+import * as cartCore from "./cartCore";
+import * as cartItemOps from "./cartItemOperations";
+import * as productInfo from "./productInfo";
 import * as favoritesOps from "./favoritesService";
 import * as cartItems from "./cartItemsManager";
 import * as cartFetcher from "./cartFetcher";
-import * as productFetcher from "./productFetcher";
 
 export const cartService = {
-  // Cart operations
-  getCart: cartOps.getCart,
-  addToCart: cartOps.addToCart,
-  updateCartItemQuantity: cartOps.updateCartItemQuantity,
-  removeFromCart: cartOps.removeFromCart,
-  clearCart: cartOps.clearCart,
+  // Cart core operations
+  getCart: cartCore.getCart,
+  createCart: cartCore.createCart,
+  clearCart: cartCore.clearCart,
+  
+  // Cart item operations
+  addToCart: cartItemOps.addToCart,
+  updateCartItemQuantity: cartItemOps.updateCartItemQuantity,
+  removeFromCart: cartItemOps.removeFromCart,
   
   // Favorites operations
   addToFavorites: favoritesOps.addToFavorites,
@@ -34,9 +41,8 @@ export const cartService = {
   clearCartItems: cartItems.clearCartItems,
   
   // Cart fetching and creation
-  fetchCart: cartOps.getCart, // Direct reference to getCart for consistency
-  createCart: cartFetcher.createCart,
+  fetchCart: cartCore.getCart,
   
   // Product info
-  fetchProductInfo: productFetcher.fetchProductInfo
+  fetchProductInfo: productInfo.fetchProductInfo
 };
