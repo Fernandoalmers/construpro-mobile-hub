@@ -1,9 +1,8 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from '@/components/ui/sonner';
 import { useAuth } from '@/context/AuthContext';
 import { Cart, CartContextType } from '@/types/cart';
-import * as cartApi from '@/services/cartApiService';
+import * as cartApi from '@/services/cart';
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
