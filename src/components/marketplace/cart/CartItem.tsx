@@ -17,10 +17,15 @@ const CartItem: React.FC<CartItemProps> = ({
   processingItem
 }) => {
   // Debug log to check the item data
-  console.log('[CartItem] Rendering item:', item);
+  console.log('[CartItem] Rendering item:', item?.id, item?.produto?.nome);
   
-  // For safety, check that the produto property exists
-  if (!item?.produto) {
+  // For safety, check that the item and produto properties exist
+  if (!item) {
+    console.error('[CartItem] Item is undefined or null');
+    return null;
+  }
+  
+  if (!item.produto) {
     console.error('[CartItem] Item missing produto property:', item);
     return (
       <div className="p-4 flex gap-4 bg-red-50 border border-red-200 rounded-md">
@@ -29,11 +34,17 @@ const CartItem: React.FC<CartItemProps> = ({
     );
   }
 
+  // Extract image URL safely
+  let imageUrl = 'https://via.placeholder.com/80';
+  if (item.produto?.imagem_url) {
+    imageUrl = item.produto.imagem_url;
+  }
+
   return (
     <div className="p-4 flex gap-4">
       <div className="w-20 h-20 bg-gray-100 rounded-md overflow-hidden">
         <img 
-          src={item.produto?.imagem_url || 'https://via.placeholder.com/80'} 
+          src={imageUrl} 
           alt={item.produto?.nome || 'Produto'} 
           className="w-full h-full object-cover"
           onError={(e) => {

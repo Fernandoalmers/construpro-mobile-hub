@@ -27,15 +27,17 @@ const StoreCartGroup: React.FC<StoreCartGroupProps> = ({
 }) => {
   // Debug the store and items data
   console.log('[StoreCartGroup] Rendering store:', store?.id, store?.nome);
-  console.log('[StoreCartGroup] Items for store:', items);
+  console.log('[StoreCartGroup] Items for store:', items.length, 'items');
+  console.log('[StoreCartGroup] First item sample:', items[0]?.id);
   
-  // Safety check that we have items
-  if (!items || items.length === 0) {
+  // Safety check that we have items and a valid store
+  if (!items || items.length === 0 || !store?.id) {
+    console.log('[StoreCartGroup] No items or invalid store, not rendering');
     return null;
   }
 
   return (
-    <div>
+    <div className="mb-6">
       <div className="flex items-center mb-3">
         <img 
           src={store.logo_url || 'https://via.placeholder.com/30'} 

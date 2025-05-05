@@ -8,9 +8,11 @@ import { consolidateUserCarts } from "./cartConsolidation";
  */
 export const getCart = async (): Promise<Cart | null> => {
   try {
+    console.log('[getCart] Starting cart retrieval');
+    
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {
-      console.error('User not authenticated');
+      console.error('[getCart] User not authenticated');
       return null;
     }
 
@@ -30,8 +32,12 @@ export const getCart = async (): Promise<Cart | null> => {
       .single();
 
     if (cartError) {
+      console.log('[getCart] Cart error code:', cartError.code);
+      
       if (cartError.code === 'PGRST116') {
         // No active cart found, create one
+        console.log('[getCart] No active cart found, creating one');
+        
         const { data: newCart, error: createError } = await supabase
           .from('carts')
           .insert({ 
@@ -42,44 +48,32 @@ export const getCart = async (): Promise<Cart | null> => {
           .single();
 
         if (createError) {
-          console.error('Error creating cart:', createError);
+          console.error('[getCart] Error creating cart:', createError);
           return null;
         }
 
         cartData = newCart;
         console.log('[getCart] Created new cart:', cartData.id);
       } else {
-        console.error('Error fetching cart:', cartError);
+        console.error('[getCart] Error fetching cart:', cartError);
         return null;
       }
     } else {
       console.log('[getCart] Found active cart:', cartData.id);
     }
 
-    // DIAGNOSTIC TEST: Retrieve cart items with simple query first
-    const { data: rawCartItems, error: rawCartItemsError } = await supabase
-      .from('cart_items')
-      .select('*')
-      .eq('cart_id', cartData.id);
-      
-    console.log('[CART FETCH RAW]', { 
-      cart_id: cartData.id,
-      items: rawCartItems, 
-      error: rawCartItemsError 
-    });
-
-    // Get cart items with the full join
+    // Get cart items
     const { data: cartItems, error: cartItemsError } = await supabase
       .from('cart_items')
       .select('*')
       .eq('cart_id', cartData.id);
 
     if (cartItemsError) {
-      console.error('Error fetching cart items:', cartItemsError);
+      console.error('[getCart] Error fetching cart items:', cartItemsError);
       return null;
     }
 
-    console.log('[cart → query]', cartItems);
+    console.log('[getCart] Retrieved cart items:', cartItems?.length || 0);
 
     // If there are no items, return empty cart
     if (!cartItems || cartItems.length === 0) {
@@ -100,6 +94,7 @@ export const getCart = async (): Promise<Cart | null> => {
 
     // Get product information separately for each item
     const productIds = cartItems.map(item => item.product_id);
+    console.log('[getCart] Product IDs to fetch:', productIds);
     
     // Get product details
     const { data: products, error: productsError } = await supabase
@@ -117,14 +112,15 @@ export const getCart = async (): Promise<Cart | null> => {
       .in('id', productIds);
 
     if (productsError) {
-      console.error('Error fetching products:', productsError);
+      console.error('[getCart] Error fetching products:', productsError);
       return null;
     }
 
-    console.log('[cart → product]', products);
+    console.log('[getCart] Retrieved products:', products?.length || 0);
 
     // Get store information
     const vendorIds = [...new Set(products?.map(product => product.vendedor_id).filter(Boolean) || [])];
+    console.log('[getCart] Vendor IDs to fetch:', vendorIds);
     
     let stores = [];
     if (vendorIds.length > 0) {
@@ -139,9 +135,9 @@ export const getCart = async (): Promise<Cart | null> => {
           nome: store.nome_loja,
           logo_url: null
         }));
-        console.log('[getCart] Retrieved stores:', stores);
+        console.log('[getCart] Retrieved stores:', stores.length);
       } else {
-        console.error('Error fetching stores:', storesError);
+        console.error('[getCart] Error fetching stores:', storesError);
       }
     }
 
@@ -150,7 +146,7 @@ export const getCart = async (): Promise<Cart | null> => {
       const product = products?.find(p => p.id === cartItem.product_id);
       
       if (!product) {
-        console.warn('Product not found for cart item:', cartItem.product_id);
+        console.warn('[getCart] Product not found for cart item:', cartItem.product_id);
         return null;
       }
       
@@ -186,9 +182,11 @@ export const getCart = async (): Promise<Cart | null> => {
         }
       };
       
-      console.log('[getCart] Formatted item:', formattedItem);
+      console.log('[getCart] Formatted item:', formattedItem.id, formattedItem.produto.nome);
       return formattedItem;
     }).filter(Boolean);
+
+    console.log('[getCart] Formatted items count:', formattedItems.length);
 
     // Calculate summary
     const subtotal = formattedItems.reduce((sum, item) => sum + (item?.subtotal || 0), 0);
@@ -209,7 +207,7 @@ export const getCart = async (): Promise<Cart | null> => {
         }
       }));
     } catch (err) {
-      console.warn('Could not save cart to localStorage:', err);
+      console.warn('[getCart] Could not save cart to localStorage:', err);
     }
 
     const finalCart = {
@@ -225,12 +223,11 @@ export const getCart = async (): Promise<Cart | null> => {
       stores
     };
     
-    console.log('[getCart] Returning final cart:', finalCart);
-    console.log('Cart has', formattedItems.length, 'items');
+    console.log('[getCart] Returning final cart with', formattedItems.length, 'items');
 
     return finalCart;
   } catch (error) {
-    console.error('Error in getCart:', error);
+    console.error('[getCart] Error in getCart:', error);
     return null;
   }
 };
@@ -242,7 +239,7 @@ export const fetchCart = async (userId: string) => {
   try {
     return await getCart();
   } catch (error) {
-    console.error('Error fetching cart:', error);
+    console.error('[fetchCart] Error fetching cart:', error);
     return null;
   }
 };

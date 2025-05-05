@@ -52,8 +52,8 @@ export const useCartScreen = () => {
 
   // Add debugging logs
   useEffect(() => {
-    console.log("CartScreen: Cart data updated:", cart);
-    console.log("CartScreen: Cart items:", cart?.items?.length || 0);
+    console.log("CartScreen: Cart data updated:", cart?.id);
+    console.log("CartScreen: Cart items count:", cart?.items?.length || 0);
     
     if (cart?.items?.length === 0) {
       console.log("CartScreen: Cart is empty, checking for items directly from Supabase");
@@ -83,7 +83,7 @@ export const useCartScreen = () => {
             
           console.log("[DIRECT CART CHECK]", {
             cart_id: cartData.id,
-            items: cartItems,
+            items: cartItems?.length || 0,
             error: itemsError
           });
           
@@ -96,7 +96,7 @@ export const useCartScreen = () => {
               .in('id', productIds);
               
             console.log("[DIRECT PRODUCTS CHECK]", {
-              products,
+              products: products?.length || 0,
               error: productsError
             });
             
@@ -110,7 +110,7 @@ export const useCartScreen = () => {
                   .in('id', vendorIds);
                   
                 console.log("[DIRECT VENDORS CHECK]", {
-                  vendors,
+                  vendors: vendors?.length || 0,
                   error: vendorsError
                 });
               }
@@ -197,7 +197,13 @@ export const useCartScreen = () => {
   console.log("CartScreen: Original cart items before grouping:", cartItems);
   
   const itemsByStore = cartItems.reduce((groups: Record<string, { loja: any, items: CartItem[] }>, item) => {
-    const storeId = item.produto?.loja_id;
+    // Safety check for item and product
+    if (!item || !item.produto) {
+      console.warn("CartScreen: Skipping invalid item:", item);
+      return groups;
+    }
+    
+    const storeId = item.produto.loja_id;
     
     // Debug log for the current item's store_id
     console.log(`CartScreen: Processing item ${item.id} with store_id:`, storeId);
@@ -216,7 +222,7 @@ export const useCartScreen = () => {
       }
       
       groups[storeId] = {
-        loja: store || { id: storeId, nome: 'Loja' },
+        loja: store || { id: storeId, nome: `Loja ${storeId.substring(0, 8)}` },
         items: []
       };
     }
