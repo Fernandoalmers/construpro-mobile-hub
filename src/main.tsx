@@ -6,7 +6,8 @@ import './index.css'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from './context/AuthContext.tsx'
 import { CartProvider } from './hooks/use-cart.tsx'
-import { Toaster } from './components/ui/toaster.tsx'
+import { Toaster } from './components/ui/sonner.tsx'
+import React from 'react'  // Garantindo que React está importado
 
 // Create a client with proper configuration
 const queryClient = new QueryClient({
@@ -20,14 +21,16 @@ const queryClient = new QueryClient({
 })
 
 createRoot(document.getElementById("root")!).render(
-  <QueryClientProvider client={queryClient}>
-    <Router>
-      <AuthProvider>
-        <CartProvider>
-          <App />
-          <Toaster />
-        </CartProvider>
-      </AuthProvider>
-    </Router>
-  </QueryClientProvider>
+  <React.StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <Router>
+        <AuthProvider>
+          <CartProvider>
+            <App />
+            <Toaster />
+          </CartProvider>
+        </AuthProvider>
+      </Router>
+    </QueryClientProvider>
+  </React.StrictMode>
 );
