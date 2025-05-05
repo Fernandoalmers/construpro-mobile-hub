@@ -9,7 +9,7 @@ export const fetchProductInfo = async (productId: string) => {
     // Try to get product from produtos table first (main products table)
     let { data: product, error } = await supabase
       .from('produtos')
-      .select('id, nome, preco_normal, preco_promocional, estoque, loja_id, pontos_consumidor')
+      .select('id, nome, preco_normal, preco_promocional, estoque, vendedor_id, pontos_consumidor')
       .eq('id', productId)
       .single();
     
@@ -26,24 +26,24 @@ export const fetchProductInfo = async (productId: string) => {
         return null;
       }
       
-      // Transform to match expected structure
-      product = {
+      // Return the transformed product from the alternative table
+      return {
         id: altProduct.id,
         nome: altProduct.nome,
-        preco_normal: altProduct.preco,
-        preco_promocional: altProduct.preco_anterior && altProduct.preco_anterior < altProduct.preco ? altProduct.preco_anterior : null,
+        preco: altProduct.preco,
         estoque: altProduct.estoque,
         loja_id: altProduct.loja_id,
-        pontos_consumidor: altProduct.pontos
+        pontos: altProduct.pontos
       };
     }
     
+    // Return the product from the main table with transformed fields
     return {
       id: product.id,
       nome: product.nome,
       preco: product.preco_promocional || product.preco_normal,
       estoque: product.estoque,
-      loja_id: product.loja_id,
+      loja_id: product.vendedor_id, // Use vendedor_id as loja_id in produtos table
       pontos: product.pontos_consumidor
     };
   } catch (error) {
