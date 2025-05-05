@@ -21,7 +21,6 @@ const GridProductView: React.FC<GridProductViewProps> = ({
         <ProdutoCard
           key={produto.id}
           produto={produto}
-          loja={produto.stores}
           onClick={() => navigateToProduct(produto.id)}
           onLojaClick={onLojaClick}
           onAddToCart={undefined} 
@@ -33,6 +32,6 @@ const GridProductView: React.FC<GridProductViewProps> = ({
       ))}
     </div>
   );
-};
+}
 
 export default GridProductView;
