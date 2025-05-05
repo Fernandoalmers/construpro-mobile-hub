@@ -16,12 +16,25 @@ const CartItem: React.FC<CartItemProps> = ({
   onRemoveItem,
   processingItem
 }) => {
+  // Debug log to check the item data
+  console.log('[CartItem] Rendering item:', item);
+  
+  // For safety, check that the produto property exists
+  if (!item?.produto) {
+    console.error('[CartItem] Item missing produto property:', item);
+    return (
+      <div className="p-4 flex gap-4 bg-red-50 border border-red-200 rounded-md">
+        <p className="text-red-500">Item inválido (ID: {item?.id || 'desconhecido'})</p>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 flex gap-4">
       <div className="w-20 h-20 bg-gray-100 rounded-md overflow-hidden">
         <img 
           src={item.produto?.imagem_url || 'https://via.placeholder.com/80'} 
-          alt={item.produto?.nome} 
+          alt={item.produto?.nome || 'Produto'} 
           className="w-full h-full object-cover"
           onError={(e) => {
             (e.target as HTMLImageElement).src = 'https://via.placeholder.com/80';
@@ -30,14 +43,14 @@ const CartItem: React.FC<CartItemProps> = ({
       </div>
       
       <div className="flex-1">
-        <h3 className="font-medium">{item.produto?.nome}</h3>
+        <h3 className="font-medium">{item.produto?.nome || 'Produto sem nome'}</h3>
         <div className="flex justify-between mt-2">
           <div>
             <p className="text-construPro-blue font-bold">
-              R$ {item.subtotal.toFixed(2)}
+              R$ {(item.subtotal || 0).toFixed(2)}
             </p>
             <p className="text-xs text-gray-500">
-              {item.quantidade} x R$ {item.preco.toFixed(2)}
+              {item.quantidade || 0} x R$ {(item.preco || 0).toFixed(2)}
             </p>
             <div className="bg-construPro-orange/10 text-construPro-orange text-xs rounded-full px-2 py-0.5 inline-block mt-1">
               {item.produto?.pontos || 0} pontos

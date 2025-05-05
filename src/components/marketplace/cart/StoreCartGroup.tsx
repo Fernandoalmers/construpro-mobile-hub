@@ -25,15 +25,27 @@ const StoreCartGroup: React.FC<StoreCartGroupProps> = ({
   onRemoveItem,
   processingItem
 }) => {
+  // Debug the store and items data
+  console.log('[StoreCartGroup] Rendering store:', store?.id, store?.nome);
+  console.log('[StoreCartGroup] Items for store:', items);
+  
+  // Safety check that we have items
+  if (!items || items.length === 0) {
+    return null;
+  }
+
   return (
     <div>
       <div className="flex items-center mb-3">
         <img 
           src={store.logo_url || 'https://via.placeholder.com/30'} 
-          alt={store.nome} 
+          alt={store.nome || 'Loja'} 
           className="w-6 h-6 rounded-full object-cover mr-2"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = 'https://via.placeholder.com/30';
+          }}
         />
-        <h2 className="font-bold">{store.nome}</h2>
+        <h2 className="font-bold">{store.nome || `Loja ${store.id.substring(0, 8)}`}</h2>
       </div>
       
       <Card className="divide-y divide-gray-100">

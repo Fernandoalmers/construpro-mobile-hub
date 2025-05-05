@@ -157,13 +157,18 @@ export const getCart = async (): Promise<Cart | null> => {
       // Extract first image from imagens array if available
       let imageUrl = null;
       if (product.imagens && Array.isArray(product.imagens) && product.imagens.length > 0) {
+        // Make sure to cast to string in case it's not already
         imageUrl = String(product.imagens[0]);
+      } else {
+        // Fallback to a placeholder
+        imageUrl = 'https://via.placeholder.com/80';
       }
       
-      const preco = cartItem.price_at_add;
-      const quantidade = cartItem.quantity;
+      const preco = cartItem.price_at_add || 0;
+      const quantidade = cartItem.quantity || 0;
       const subtotal = preco * quantidade;
       
+      // Debug log each transformed item
       const formattedItem = {
         id: cartItem.id,
         produto_id: cartItem.product_id,
@@ -172,8 +177,8 @@ export const getCart = async (): Promise<Cart | null> => {
         subtotal,
         produto: {
           id: product.id,
-          nome: product.nome,
-          preco: product.preco_promocional || product.preco_normal,
+          nome: product.nome || 'Produto sem nome',
+          preco: product.preco_promocional || product.preco_normal || 0,
           imagem_url: imageUrl,
           estoque: product.estoque || 0,
           loja_id: product.vendedor_id,

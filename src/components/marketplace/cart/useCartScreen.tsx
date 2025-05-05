@@ -86,6 +86,36 @@ export const useCartScreen = () => {
             items: cartItems,
             error: itemsError
           });
+          
+          if (cartItems && cartItems.length > 0) {
+            // Get product details to verify
+            const productIds = cartItems.map(item => item.product_id);
+            const { data: products, error: productsError } = await supabase
+              .from('produtos')
+              .select('id, nome, preco_normal, preco_promocional, imagens, estoque, vendedor_id')
+              .in('id', productIds);
+              
+            console.log("[DIRECT PRODUCTS CHECK]", {
+              products,
+              error: productsError
+            });
+            
+            // Check vendor information
+            if (products && products.length > 0) {
+              const vendorIds = [...new Set(products.map(p => p.vendedor_id).filter(Boolean))];
+              if (vendorIds.length > 0) {
+                const { data: vendors, error: vendorsError } = await supabase
+                  .from('vendedores')
+                  .select('id, nome_loja')
+                  .in('id', vendorIds);
+                  
+                console.log("[DIRECT VENDORS CHECK]", {
+                  vendors,
+                  error: vendorsError
+                });
+              }
+            }
+          }
         } catch (err) {
           console.error("Error in direct cart check:", err);
         }
@@ -163,12 +193,28 @@ export const useCartScreen = () => {
   const cartItems = cart?.items || [];
   const cartIsEmpty = cartItems.length === 0;
   
+  // Debug log to verify the original cart items
+  console.log("CartScreen: Original cart items before grouping:", cartItems);
+  
   const itemsByStore = cartItems.reduce((groups: Record<string, { loja: any, items: CartItem[] }>, item) => {
     const storeId = item.produto?.loja_id;
-    if (!storeId) return groups;
+    
+    // Debug log for the current item's store_id
+    console.log(`CartScreen: Processing item ${item.id} with store_id:`, storeId);
+    
+    if (!storeId) {
+      console.warn("CartScreen: Item missing store_id:", item);
+      return groups;
+    }
     
     if (!groups[storeId]) {
       const store = cart?.stores?.find(s => s.id === storeId);
+      if (store) {
+        console.log(`CartScreen: Creating new store group for ${storeId}:`, store);
+      } else {
+        console.warn(`CartScreen: Store ${storeId} not found in cart.stores`);
+      }
+      
       groups[storeId] = {
         loja: store || { id: storeId, nome: 'Loja' },
         items: []
@@ -178,6 +224,8 @@ export const useCartScreen = () => {
     groups[storeId].items.push(item);
     return groups;
   }, {});
+  
+  console.log("CartScreen: Grouped items by store:", itemsByStore);
 
   // Calculate discounts from coupon
   const subtotal = cart?.summary.subtotal || 0;
