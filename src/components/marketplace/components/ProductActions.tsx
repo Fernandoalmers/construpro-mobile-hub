@@ -51,12 +51,9 @@ const ProductActions: React.FC<ProductActionsProps> = ({
       
       // Use the cartActions hook to handle adding to cart
       const success = await handleAddToCart(produto.id, quantidade);
-      if (success) {
-        console.log("Product added to cart successfully");
-        if (onSuccess) {
-          console.log("Calling onSuccess callback");
-          onSuccess();
-        }
+      if (success && onSuccess) {
+        console.log("Product added to cart successfully, calling onSuccess");
+        onSuccess();
       }
     } catch (error: any) {
       console.error("Error adding to cart:", error);
@@ -92,7 +89,10 @@ const ProductActions: React.FC<ProductActionsProps> = ({
     }
   };
 
+  // Check if button should be disabled
   const isButtonDisabled = !produto || !produto.estoque || produto.estoque < 1;
+  const isAddingToCartActive = produto?.id ? isAddingToCart[produto.id] : false;
+  const isBuyingNowActive = produto?.id ? isBuyingNow[produto.id] : false;
   
   if (size === 'compact') {
     return (
@@ -102,19 +102,19 @@ const ProductActions: React.FC<ProductActionsProps> = ({
           size="sm"
           className="flex-1"
           onClick={handleAddToCartClick}
-          disabled={isButtonDisabled || isAddingToCart[produto?.id]}
+          disabled={isButtonDisabled || isAddingToCartActive}
         >
           <ShoppingCart className="mr-1 h-4 w-4" />
-          {isAddingToCart[produto?.id] ? "Adicionando..." : "Adicionar"}
+          {isAddingToCartActive ? "Adicionando..." : "Adicionar"}
         </Button>
         <Button
           size="sm"
           className="flex-1 bg-green-600 hover:bg-green-700"
           onClick={handleBuyNowClick}
-          disabled={isButtonDisabled || isBuyingNow[produto?.id]}
+          disabled={isButtonDisabled || isBuyingNowActive}
         >
           <ShoppingBag className="mr-1 h-4 w-4" />
-          {isBuyingNow[produto?.id] ? "Processando..." : "Comprar"}
+          {isBuyingNowActive ? "Processando..." : "Comprar"}
         </Button>
       </div>
     );
@@ -125,19 +125,19 @@ const ProductActions: React.FC<ProductActionsProps> = ({
       <Button
         className="w-full bg-construPro-blue hover:bg-blue-700 text-white py-3 text-base flex items-center justify-center"
         onClick={handleAddToCartClick}
-        disabled={isButtonDisabled || isAddingToCart[produto?.id]}
+        disabled={isButtonDisabled || isAddingToCartActive}
       >
         <ShoppingCart className="mr-2 h-5 w-5" />
-        {isAddingToCart[produto?.id] ? "Adicionando ao Carrinho..." : "Adicionar ao Carrinho"}
+        {isAddingToCartActive ? "Adicionando ao Carrinho..." : "Adicionar ao Carrinho"}
       </Button>
       
       <Button
         className="w-full bg-green-600 hover:bg-green-700 text-white py-3 text-base flex items-center justify-center"
         onClick={handleBuyNowClick}
-        disabled={isButtonDisabled || isBuyingNow[produto?.id]}
+        disabled={isButtonDisabled || isBuyingNowActive}
       >
         <ShoppingBag className="mr-2 h-5 w-5" />
-        {isBuyingNow[produto?.id] ? "Processando..." : "Comprar Agora"}
+        {isBuyingNowActive ? "Processando..." : "Comprar Agora"}
       </Button>
       
       {isButtonDisabled && (

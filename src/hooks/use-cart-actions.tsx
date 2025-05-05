@@ -14,6 +14,9 @@ export function useCartActions() {
 
   // Add to cart function - properly handles authentication and updates state
   const handleAddToCart = async (productId: string, quantity: number = 1) => {
+    // Set loading state at the beginning
+    setIsAddingToCart(prev => ({ ...prev, [productId]: true }));
+    
     try {
       console.log('handleAddToCart called with:', { productId, quantity });
       
@@ -29,9 +32,6 @@ export function useCartActions() {
         return false;
       }
       
-      // Set loading state
-      setIsAddingToCart(prev => ({ ...prev, [productId]: true }));
-      
       console.log('Calling addToCart with:', { productId, quantity });
       await addToCart(productId, quantity);
       
@@ -45,13 +45,16 @@ export function useCartActions() {
       toast.error('Erro: ' + (error.message || 'Erro ao adicionar ao carrinho'));
       return false;
     } finally {
-      // Always reset loading state, even on error
+      // Important: Always reset loading state, even on error
       setIsAddingToCart(prev => ({ ...prev, [productId]: false }));
     }
   };
 
   // Buy now function - adds to cart then immediately navigates to cart
   const handleBuyNow = async (productId: string, quantity: number = 1) => {
+    // Set loading state at the beginning
+    setIsBuyingNow(prev => ({ ...prev, [productId]: true }));
+    
     try {
       console.log('handleBuyNow called with:', { productId, quantity });
       
@@ -67,24 +70,21 @@ export function useCartActions() {
         return;
       }
       
-      // Set loading state
-      setIsBuyingNow(prev => ({ ...prev, [productId]: true }));
+      // Added this for debugging
+      console.log('Before addToCart call in handleBuyNow');
       
-      // Attempt to add to cart first
-      const success = await handleAddToCart(productId, quantity);
+      // Use a direct call to addToCart from useCart instead of using our own handler
+      // to avoid potential issues with nested loading states
+      await addToCart(productId, quantity);
       
-      if (success) {
-        console.log('Successfully added to cart, navigating to /cart');
-        navigate('/cart');
-      } else {
-        console.error('Failed to add product to cart');
-        toast.error('Não foi possível adicionar o produto ao carrinho.');
-      }
+      console.log('Successfully added to cart, navigating to /cart');
+      navigate('/cart');
+      
     } catch (error: any) {
       console.error('Error buying now:', error);
       toast.error('Erro: ' + (error.message || 'Erro ao processar compra'));
     } finally {
-      // Always reset loading state, even on error
+      // Important: Always reset loading state, even on error
       setIsBuyingNow(prev => ({ ...prev, [productId]: false }));
     }
   };
