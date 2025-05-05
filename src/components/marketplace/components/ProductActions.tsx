@@ -49,14 +49,6 @@ const ProductActions: React.FC<ProductActionsProps> = ({
       
       console.log("Adicionando ao carrinho:", produto.id, "quantidade:", quantidade);
       
-      // Log product details for debugging
-      console.log("Produto detalhes:", {
-        id: produto.id,
-        nome: produto.nome,
-        estoque: produto.estoque,
-        produto_completo: produto
-      });
-      
       // Use the cartActions hook to handle adding to cart
       const success = await handleAddToCart(produto.id, quantidade);
       if (success) {

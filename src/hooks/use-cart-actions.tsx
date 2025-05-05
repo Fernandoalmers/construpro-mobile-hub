@@ -29,6 +29,7 @@ export function useCartActions() {
         return false;
       }
       
+      // Set loading state
       setIsAddingToCart(prev => ({ ...prev, [productId]: true }));
       
       console.log('Calling addToCart with:', { productId, quantity });
@@ -44,6 +45,7 @@ export function useCartActions() {
       toast.error('Erro: ' + (error.message || 'Erro ao adicionar ao carrinho'));
       return false;
     } finally {
+      // Always reset loading state, even on error
       setIsAddingToCart(prev => ({ ...prev, [productId]: false }));
     }
   };
@@ -65,8 +67,10 @@ export function useCartActions() {
         return;
       }
       
+      // Set loading state
       setIsBuyingNow(prev => ({ ...prev, [productId]: true }));
       
+      // Attempt to add to cart first
       const success = await handleAddToCart(productId, quantity);
       
       if (success) {
@@ -80,6 +84,7 @@ export function useCartActions() {
       console.error('Error buying now:', error);
       toast.error('Erro: ' + (error.message || 'Erro ao processar compra'));
     } finally {
+      // Always reset loading state, even on error
       setIsBuyingNow(prev => ({ ...prev, [productId]: false }));
     }
   };

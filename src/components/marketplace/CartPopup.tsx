@@ -48,13 +48,6 @@ const CartPopup: React.FC<CartPopupProps> = ({ triggerShow }) => {
     }, []);
   }
   
-  console.log('CartPopup rendering:', { 
-    triggerShow, 
-    cartCount, 
-    show, 
-    isLoading 
-  });
-  
   // Clear any existing timer when component unmounts or when we show/hide the popup
   useEffect(() => {
     return () => {
