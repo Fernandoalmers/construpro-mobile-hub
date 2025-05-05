@@ -117,6 +117,7 @@ export const getCart = async (): Promise<Cart | null> => {
 
     return {
       id: cartData.id,
+      user_id: userData.user.id, // Adding the missing user_id property
       items: cartItems,
       summary: {
         subtotal,

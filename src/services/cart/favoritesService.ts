@@ -117,10 +117,10 @@ export const getFavorites = async (): Promise<any[]> => {
         
         return {
           ...item,
-          produtos: item.produtos ? {
+          produtos: {
             ...item.produtos,
             preco: preco
-          } : null
+          }
         };
       }
       // If produtos is not valid, return item as is without transformation
