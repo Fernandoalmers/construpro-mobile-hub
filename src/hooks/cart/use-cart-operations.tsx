@@ -92,6 +92,7 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
     try {
       setIsLoading(true);
       
+      // Explicitly use clearCart from cartItemOperations
       const cleared = await cartApi.clearCart();
       if (!cleared) {
         throw new Error('Erro ao limpar o carrinho');

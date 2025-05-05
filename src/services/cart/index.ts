@@ -1,7 +1,9 @@
 
 // Export core cart operations
 export * from "./cartFetcher";
-export * from "./cartManagement";
+export { createCart } from "./cartManagement";
+// Rename clearCart from cartManagement to avoid conflict
+export { clearCart as clearCartFromManagement } from "./cartManagement";
 export * from "./cartConsolidation";
 export * from "./cartItemOperations";
 export * from "./productInfo";
@@ -26,7 +28,7 @@ export const cartService = {
   
   // Cart management operations
   createCart: cartManagement.createCart,
-  clearCart: cartManagement.clearCart,
+  clearCart: cartItemOps.clearCart, // Use clearCart from cartItemOperations
   
   // Cart consolidation
   consolidateUserCarts: cartConsolidation.consolidateUserCarts,
