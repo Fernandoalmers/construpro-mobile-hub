@@ -138,13 +138,7 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
           </div>
         )}
         
-        {/* Only show actions if hideActions is false */}
-        {!hideActions && showActions && produto?.id && (
-          <div className="mt-2" onClick={e => e.stopPropagation()}>
-            <ProductActions productId={produto.id} quantity={1} maxStock={produto.estoque} />
-          </div>
-        )}
-        
+        {/* Remove the ProductActions component reference which was causing the error */}
         {/* Custom action buttons */}
         {!hideActions && showActions && (onAddToCart || onBuyNow) && (
           <div className="mt-2 flex flex-col gap-1" onClick={e => e.stopPropagation()}>
