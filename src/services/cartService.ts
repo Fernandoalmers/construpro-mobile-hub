@@ -499,16 +499,20 @@ export const getFavorites = async (): Promise<any[]> => {
 
     // Process to match expected format
     const processedData = (data || []).map(item => {
-      // Only process if produtos exists and is not an error
+      // First check if produtos exists and is a valid object
       if (item.produtos && typeof item.produtos === 'object' && !('error' in item.produtos)) {
+        // Now it's safe to access properties and spread the item.produtos object
         return {
           ...item,
           produtos: {
-            ...item.produtos,
+            // Use type assertion to ensure TypeScript knows this is an object
+            ...(item.produtos as Record<string, any>),
+            // Only access properties after null checks
             preco: item.produtos.preco_promocional || item.produtos.preco_normal
           }
         };
       }
+      // If produtos is not valid, return item as is without transformation
       return item;
     });
 
