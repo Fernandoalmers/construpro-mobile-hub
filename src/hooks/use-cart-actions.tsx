@@ -4,10 +4,11 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from './use-cart';
+import { supabase } from '@/integrations/supabase/client';
 
 export function useCartActions() {
-  const { addToCart, refreshCart } = useCart();
-  const { isAuthenticated } = useAuth();
+  const { refreshCart } = useCart();
+  const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const [isAddingToCart, setIsAddingToCart] = useState<Record<string, boolean>>({});
   const [isBuyingNow, setIsBuyingNow] = useState<Record<string, boolean>>({});
@@ -52,7 +53,7 @@ export function useCartActions() {
     console.log('[useCartActions] handleAddToCart called with:', { productId, quantity });
     
     // Check authentication first before setting loading state
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !user) {
       console.log('[useCartActions] User not authenticated, redirecting to login');
       navigate('/login', { state: { from: `/produto/${productId}` } });
       return false;
@@ -62,8 +63,84 @@ export function useCartActions() {
     setLoadingWithTimeout(setIsAddingToCart, productId, true);
     
     try {
-      console.log('[useCartActions] Calling addToCart with:', { productId, quantity });
-      await addToCart(productId, quantity);
+      console.log('[useCartActions] User authenticated, adding to cart:', { userId: user.id, productId, quantity });
+      
+      // Get or create active cart
+      let { data: cartData, error: cartError } = await supabase
+        .from('carts')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .single();
+
+      if (cartError) {
+        if (cartError.code === 'PGRST116') {
+          // No active cart found, create one
+          const { data: newCart, error: createError } = await supabase
+            .from('carts')
+            .insert({
+              user_id: user.id,
+              status: 'active'
+            })
+            .select('id')
+            .single();
+
+          if (createError) {
+            throw createError;
+          }
+
+          cartData = newCart;
+        } else {
+          throw cartError;
+        }
+      }
+      
+      // Get product price 
+      const { data: product, error: productError } = await supabase
+        .from('produtos')
+        .select('preco_normal, preco_promocional')
+        .eq('id', productId)
+        .single();
+        
+      if (productError) {
+        throw productError;
+      }
+      
+      const price = product.preco_promocional || product.preco_normal;
+      
+      // Check if product exists in cart
+      const { data: existingItem, error: existingItemError } = await supabase
+        .from('cart_items')
+        .select('id, quantity')
+        .eq('cart_id', cartData.id)
+        .eq('product_id', productId)
+        .maybeSingle();
+        
+      if (existingItem) {
+        // Update quantity
+        const { error: updateError } = await supabase
+          .from('cart_items')
+          .update({ quantity: existingItem.quantity + quantity })
+          .eq('id', existingItem.id);
+          
+        if (updateError) {
+          throw updateError;
+        }
+      } else {
+        // Insert new item
+        const { error: insertError } = await supabase
+          .from('cart_items')
+          .insert({
+            cart_id: cartData.id,
+            product_id: productId,
+            quantity: quantity,
+            price_at_add: price
+          });
+          
+        if (insertError) {
+          throw insertError;
+        }
+      }
       
       // Refresh cart to make sure the UI updates
       console.log('[useCartActions] Product added to cart, refreshing cart data');
@@ -93,7 +170,7 @@ export function useCartActions() {
     console.log('[useCartActions] handleBuyNow called with:', { productId, quantity });
     
     // Check authentication first before setting loading state
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !user) {
       console.log('[useCartActions] User not authenticated, redirecting to login');
       navigate('/login', { state: { from: `/produto/${productId}` } });
       return false;
@@ -105,14 +182,17 @@ export function useCartActions() {
     try {
       console.log('[useCartActions] Adding to cart with:', { productId, quantity });
       
-      // Directly call addToCart to avoid the confirmation toast in handleAddToCart
-      await addToCart(productId, quantity);
-      await refreshCart();
+      // Add to cart first
+      const success = await handleAddToCart(productId, quantity);
       
-      console.log('[useCartActions] Successfully added to cart, navigating to /cart');
-      // Navigate to cart page
-      navigate('/cart');
-      return true;
+      if (success) {
+        console.log('[useCartActions] Successfully added to cart, navigating to /cart');
+        // Navigate to cart page
+        navigate('/cart');
+        return true;
+      } else {
+        throw new Error('Failed to add to cart');
+      }
     } catch (error: any) {
       console.error('[useCartActions] Error buying now:', error);
       toast.error('Erro: ' + (error.message || 'Erro ao processar compra'));

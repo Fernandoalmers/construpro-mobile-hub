@@ -2,6 +2,7 @@
 import React from 'react';
 import { Truck } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useCartActions } from '@/hooks/use-cart-actions';
 
 interface ProdutoCardProps {
   produto: any;
@@ -31,6 +32,8 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
   hideRating = false,
   hideActions = true
 }) => {
+  const { handleAddToCart, handleBuyNow, isAddingToCart: cartLoading, isBuyingNow } = useCartActions();
+  
   // Utilizar os dados reais do produto de forma consistente
   const precoRegular = produto.preco_normal || produto.precoNormal || produto.preco || 0;
   const precoPromocional = produto.preco_promocional || produto.precoPromocional || null;
@@ -56,13 +59,23 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
   const handleAddToCartClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     console.log('[ProdutoCard] Add to cart clicked for product:', produto.id);
-    if (onAddToCart) onAddToCart(e);
+    
+    if (produto && produto.id) {
+      handleAddToCart(produto.id, 1);
+    } else if (onAddToCart) {
+      onAddToCart(e);
+    }
   };
   
   const handleBuyNowClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     console.log('[ProdutoCard] Buy now clicked for product:', produto.id);
-    if (onBuyNow) onBuyNow(e);
+    
+    if (produto && produto.id) {
+      handleBuyNow(produto.id, 1);
+    } else if (onBuyNow) {
+      onBuyNow(e);
+    }
   };
   
   // Função para renderizar as estrelas baseadas nas avaliações reais
@@ -138,28 +151,24 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
           </div>
         )}
         
-        {/* Remove the ProductActions component reference which was causing the error */}
         {/* Custom action buttons */}
-        {!hideActions && showActions && (onAddToCart || onBuyNow) && (
+        {!hideActions && showActions && (
           <div className="mt-2 flex flex-col gap-1" onClick={e => e.stopPropagation()}>
-            {onAddToCart && (
-              <button 
-                onClick={handleAddToCartClick}
-                className="text-xs bg-blue-600 hover:bg-blue-700 text-white py-1 px-2 rounded"
-                disabled={isAddingToCart}
-              >
-                {isAddingToCart ? 'Adicionando...' : 'Adicionar ao Carrinho'}
-              </button>
-            )}
+            <button 
+              onClick={handleAddToCartClick}
+              className="text-xs bg-blue-600 hover:bg-blue-700 text-white py-1 px-2 rounded"
+              disabled={cartLoading[produto.id] || !produto.id}
+            >
+              {cartLoading[produto.id] ? 'Adicionando...' : 'Adicionar ao Carrinho'}
+            </button>
             
-            {onBuyNow && (
-              <button 
-                onClick={handleBuyNowClick}
-                className="text-xs bg-green-600 hover:bg-green-700 text-white py-1 px-2 rounded"
-              >
-                Comprar Agora
-              </button>
-            )}
+            <button 
+              onClick={handleBuyNowClick}
+              className="text-xs bg-green-600 hover:bg-green-700 text-white py-1 px-2 rounded"
+              disabled={isBuyingNow[produto.id] || !produto.id}
+            >
+              {isBuyingNow[produto.id] ? 'Processando...' : 'Comprar Agora'}
+            </button>
           </div>
         )}
       </div>

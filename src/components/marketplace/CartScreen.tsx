@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ShoppingBag, Trash2, Plus, Minus, Ticket } from 'lucide-react';
