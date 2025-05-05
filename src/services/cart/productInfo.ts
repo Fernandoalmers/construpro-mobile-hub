@@ -40,14 +40,14 @@ export const fetchProductInfo = async (productId: string) => {
       
       console.log('[ProductInfo] Found product in products table:', altProduct.id);
       
-      // Return the transformed product from the alternative table
+      // Transform products table data to match expected format
       return {
         id: altProduct.id,
         nome: altProduct.nome,
         preco: altProduct.preco,
         preco_anterior: altProduct.preco_anterior,
         estoque: altProduct.estoque,
-        vendedor_id: altProduct.loja_id, // Map loja_id to vendedor_id
+        vendedor_id: altProduct.loja_id, // Correctly map loja_id to vendedor_id
         pontos: altProduct.pontos
       };
     }
