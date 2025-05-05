@@ -48,6 +48,7 @@ export function useCartActions() {
       return false;
     } finally {
       // Important: Always reset loading state, even on error
+      console.log('[useCartActions] Resetting loading state for productId:', productId);
       setIsAddingToCart(prev => ({ ...prev, [productId]: false }));
     }
   };
@@ -69,26 +70,25 @@ export function useCartActions() {
       return;
     }
 
-    // Set buying state
+    // Set buying state independently of addToCart loading state
     setIsBuyingNow(prev => ({ ...prev, [productId]: true }));
     
     try {
       console.log('[useCartActions] Adding to cart with:', { productId, quantity });
-      // Use the handleAddToCart function to avoid duplication
-      const success = await handleAddToCart(productId, quantity);
       
-      if (success) {
-        console.log('[useCartActions] Successfully added to cart, navigating to /cart');
-        // Navigate to cart page
-        navigate('/cart');
-      } else {
-        console.log('[useCartActions] Failed to add to cart, not navigating');
-      }
+      // Directly call addToCart to avoid the confirmation toast in handleAddToCart
+      await addToCart(productId, quantity);
+      await refreshCart();
+      
+      console.log('[useCartActions] Successfully added to cart, navigating to /cart');
+      // Navigate to cart page
+      navigate('/cart');
     } catch (error: any) {
       console.error('[useCartActions] Error buying now:', error);
       toast.error('Erro: ' + (error.message || 'Erro ao processar compra'));
     } finally {
       // Important: Reset buying state regardless of outcome
+      console.log('[useCartActions] Resetting buying state for productId:', productId);
       setIsBuyingNow(prev => ({ ...prev, [productId]: false }));
     }
   };
