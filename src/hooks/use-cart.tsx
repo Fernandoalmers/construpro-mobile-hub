@@ -36,9 +36,24 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log('Refreshing cart for user:', user.id);
       setIsLoading(true);
-      const cartData = await cartApi.fetchCart(user.id);
+      // Directly use getCart from cartOperations to ensure we're getting the latest data
+      // This bypasses any caching issues that might occur with other methods
+      const cartData = await cartApi.getCart();
+      
       console.log('Cart data retrieved:', cartData);
       setCart(cartData);
+      
+      // Save to localStorage for CartPopup to use if context is unavailable
+      if (cartData) {
+        try {
+          localStorage.setItem('cartData', JSON.stringify({
+            id: cartData.id,
+            summary: cartData.summary
+          }));
+        } catch (err) {
+          console.warn('Could not save cart to localStorage:', err);
+        }
+      }
     } catch (error) {
       console.error('Error in refreshCart:', error);
       toast.error('Erro ao atualizar o carrinho');

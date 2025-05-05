@@ -34,7 +34,7 @@ export const cartService = {
   clearCartItems: cartItems.clearCartItems,
   
   // Cart fetching and creation
-  fetchCart: cartFetcher.fetchCart,
+  fetchCart: cartOps.getCart, // Direct reference to getCart for consistency
   createCart: cartFetcher.createCart,
   
   // Product info

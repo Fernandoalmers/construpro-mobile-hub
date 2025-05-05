@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingCart, X } from 'lucide-react';
 import { useCart } from '@/hooks/use-cart';
@@ -14,21 +14,38 @@ const CartPopup: React.FC<CartPopupProps> = ({ triggerShow }) => {
   const [cartCount, setCartCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const popupTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   // Try to access cart context, but with error handling
-  let cartContextValues = { cartCount: 0, isLoading: false };
+  let cartContextValues = { cartCount: 0, isLoading: false, refreshCart: () => Promise.resolve() };
   try {
     cartContextValues = useCart();
+    
     // If we successfully get the cart context, update our state
     useEffect(() => {
       if (cartContextValues) {
         setCartCount(cartContextValues.cartCount || 0);
         setIsLoading(cartContextValues.isLoading || false);
       }
-    }, [cartContextValues]);
+    }, [cartContextValues.cartCount, cartContextValues.isLoading]);
   } catch (error) {
     // If useCart throws an error (no provider), we'll use our local state instead
     console.log('CartPopup: Cart context not available, using fallback values');
+    
+    // Try to get cart count from localStorage
+    useEffect(() => {
+      try {
+        const storedCartData = localStorage.getItem('cartData');
+        if (storedCartData) {
+          const cartData = JSON.parse(storedCartData);
+          if (cartData && cartData.summary && typeof cartData.summary.totalItems === 'number') {
+            setCartCount(cartData.summary.totalItems);
+          }
+        }
+      } catch (error) {
+        console.error("Error reading cart data:", error);
+      }
+    }, []);
   }
   
   console.log('CartPopup rendering:', { 
@@ -38,16 +55,30 @@ const CartPopup: React.FC<CartPopupProps> = ({ triggerShow }) => {
     isLoading 
   });
   
+  // Clear any existing timer when component unmounts or when we show/hide the popup
+  useEffect(() => {
+    return () => {
+      if (popupTimerRef.current) {
+        clearTimeout(popupTimerRef.current);
+      }
+    };
+  }, [show]);
+  
   // Show popup when triggerShow changes to true or when items are added to cart
   useEffect(() => {
     if (triggerShow && cartCount > 0 && !isLoading) {
       console.log('CartPopup: triggerShow is true and cart has items, showing popup');
       setShow(true);
-      const timer = setTimeout(() => {
+      
+      // Clear any existing timer
+      if (popupTimerRef.current) {
+        clearTimeout(popupTimerRef.current);
+      }
+      
+      // Set new timer
+      popupTimerRef.current = setTimeout(() => {
         setShow(false);
       }, 5000); // 5 seconds for better visibility
-      
-      return () => clearTimeout(timer);
     }
   }, [triggerShow, cartCount, isLoading]);
   
@@ -56,11 +87,16 @@ const CartPopup: React.FC<CartPopupProps> = ({ triggerShow }) => {
     if (cartCount > 0 && !isLoading) {
       console.log('CartPopup: cart updated with items, showing popup');
       setShow(true);
-      const timer = setTimeout(() => {
+      
+      // Clear any existing timer
+      if (popupTimerRef.current) {
+        clearTimeout(popupTimerRef.current);
+      }
+      
+      // Set new timer
+      popupTimerRef.current = setTimeout(() => {
         setShow(false);
       }, 5000);
-      
-      return () => clearTimeout(timer);
     }
   }, [cartCount, isLoading]);
   

@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Cart, CartItem } from "@/types/cart";
 
@@ -11,12 +10,17 @@ export const getCart = async (): Promise<Cart | null> => {
       return null;
     }
 
-    // Get or create active cart
+    // First, let's consolidate user's carts to ensure consistency
+    await consolidateUserCarts(userData.user.id);
+
+    // Get active cart, ordered by most recent first
     let { data: cartData, error: cartError } = await supabase
       .from('carts')
       .select('id')
       .eq('user_id', userData.user.id)
       .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1)
       .single();
 
     if (cartError) {
@@ -37,10 +41,13 @@ export const getCart = async (): Promise<Cart | null> => {
         }
 
         cartData = newCart;
+        console.log('Created new cart:', cartData.id);
       } else {
         console.error('Error fetching cart:', cartError);
         return null;
       }
+    } else {
+      console.log('Found active cart:', cartData.id);
     }
 
     // Get cart items with product information from 'produtos' table
@@ -115,9 +122,24 @@ export const getCart = async (): Promise<Cart | null> => {
     const totalPoints = cartItems.reduce((sum, item) => sum + ((item.produto?.pontos || 0) * item.quantidade), 0);
     const totalItems = cartItems.reduce((sum, item) => sum + item.quantidade, 0);
 
+    // Save cart data to localStorage as a fallback for CartPopup
+    try {
+      localStorage.setItem('cartData', JSON.stringify({
+        id: cartData.id,
+        summary: {
+          subtotal,
+          shipping,
+          totalPoints,
+          totalItems
+        }
+      }));
+    } catch (err) {
+      console.warn('Could not save cart to localStorage:', err);
+    }
+
     return {
       id: cartData.id,
-      user_id: userData.user.id, // Adding the missing user_id property
+      user_id: userData.user.id,
       items: cartItems,
       summary: {
         subtotal,
@@ -130,6 +152,120 @@ export const getCart = async (): Promise<Cart | null> => {
   } catch (error) {
     console.error('Error fetching cart:', error);
     return null;
+  }
+};
+
+// New function to consolidate user's carts
+const consolidateUserCarts = async (userId: string): Promise<void> => {
+  try {
+    // Get all active carts for user
+    const { data: carts, error } = await supabase
+      .from('carts')
+      .select('id, created_at')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching user carts:', error);
+      return;
+    }
+    
+    // If there's only 0 or 1 cart, no need to consolidate
+    if (!carts || carts.length <= 1) {
+      return;
+    }
+    
+    console.log(`Found ${carts.length} active carts for user, consolidating...`);
+    
+    // Keep the most recent cart and move items from other carts to it
+    const primaryCart = carts[0];
+    const cartIdsToMerge = carts.slice(1).map(cart => cart.id);
+    
+    // Transfer all items from other carts to primary cart
+    for (const cartId of cartIdsToMerge) {
+      // Get items from cart to merge
+      const { data: itemsToMove, error: itemsError } = await supabase
+        .from('cart_items')
+        .select('*')
+        .eq('cart_id', cartId);
+        
+      if (itemsError) {
+        console.error(`Error fetching items from cart ${cartId}:`, itemsError);
+        continue;
+      }
+      
+      if (itemsToMove && itemsToMove.length > 0) {
+        console.log(`Moving ${itemsToMove.length} items from cart ${cartId} to ${primaryCart.id}`);
+        
+        // For each item to move
+        for (const item of itemsToMove) {
+          // Check if the product already exists in primary cart
+          const { data: existingItem, error: checkError } = await supabase
+            .from('cart_items')
+            .select('id, quantity')
+            .eq('cart_id', primaryCart.id)
+            .eq('product_id', item.product_id)
+            .maybeSingle();
+            
+          if (checkError && checkError.code !== 'PGRST116') {
+            console.error('Error checking for existing item:', checkError);
+            continue;
+          }
+          
+          if (existingItem) {
+            // Update quantity of existing item
+            const newQuantity = existingItem.quantity + item.quantity;
+            const { error: updateError } = await supabase
+              .from('cart_items')
+              .update({ quantity: newQuantity })
+              .eq('id', existingItem.id);
+              
+            if (updateError) {
+              console.error('Error updating item quantity:', updateError);
+            }
+          } else {
+            // Add item to primary cart
+            const { error: insertError } = await supabase
+              .from('cart_items')
+              .insert({
+                cart_id: primaryCart.id,
+                product_id: item.product_id,
+                quantity: item.quantity,
+                price_at_add: item.price_at_add
+              });
+              
+            if (insertError) {
+              console.error('Error moving item to primary cart:', insertError);
+            }
+          }
+        }
+      }
+      
+      // Delete items from the old cart
+      const { error: deleteItemsError } = await supabase
+        .from('cart_items')
+        .delete()
+        .eq('cart_id', cartId);
+        
+      if (deleteItemsError) {
+        console.error(`Error deleting items from cart ${cartId}:`, deleteItemsError);
+      }
+      
+      // Mark old cart as 'merged'
+      const { error: updateCartError } = await supabase
+        .from('carts')
+        .update({ status: 'merged' })
+        .eq('id', cartId);
+        
+      if (updateCartError) {
+        console.error(`Error updating cart ${cartId} status:`, updateCartError);
+      }
+    }
+    
+    console.log('Cart consolidation complete');
+  } catch (error) {
+    console.error('Error in consolidateUserCarts:', error);
   }
 };
 
