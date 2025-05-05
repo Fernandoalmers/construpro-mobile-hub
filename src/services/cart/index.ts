@@ -7,12 +7,26 @@ export { clearCart as clearCartFromManagement } from "./cartManagement";
 export * from "./cartConsolidation";
 export * from "./cartItemOperations";
 export * from "./stockChecker";
-export * from "./cartItemModifier";
+// Use aliases for cartItemModifier exports to avoid conflicts with cartItemsManager
+export { 
+  addNewCartItem,
+  updateExistingCartItem,
+  findExistingCartItem,
+  removeCartItem as removeItemFromCart,
+  clearCartItems as clearItemsFromCart 
+} from "./cartItemModifier";
 export * from "./productInfo";
 
 // Re-export existing related services
 export * from "./favoritesService";
-export * from "./cartItemsManager";
+// Use aliases for cartItemsManager exports to avoid conflicts with cartItemModifier
+export { 
+  findCartItem,
+  addItemToCart,
+  updateItemQuantity,
+  removeCartItem as removeCartItemFromManager,
+  clearCartItems as clearCartItemsFromManager
+} from "./cartItemsManager";
 
 // Create legacy exports for backward compatibility
 import * as cartFetcher from "./cartFetcher";
@@ -50,8 +64,8 @@ export const cartService = {
   addNewCartItem: cartItemModifier.addNewCartItem,
   updateExistingCartItem: cartItemModifier.updateExistingCartItem,
   findExistingCartItem: cartItemModifier.findExistingCartItem,
-  removeCartItem: cartItemModifier.removeCartItem,
-  clearCartItems: cartItemModifier.clearCartItems,
+  removeItemFromCart: cartItemModifier.removeCartItem, // Renamed to avoid duplicate
+  clearItemsFromCart: cartItemModifier.clearCartItems, // Renamed to avoid duplicate
   
   // Favorites operations
   addToFavorites: favoritesOps.addToFavorites,
@@ -62,8 +76,8 @@ export const cartService = {
   findCartItem: cartItems.findCartItem,
   addItemToCart: cartItems.addItemToCart,
   updateItemQuantity: cartItems.updateItemQuantity,
-  removeCartItem: cartItems.removeCartItem,
-  clearCartItems: cartItems.clearCartItems,
+  removeCartItemFromManager: cartItems.removeCartItem, // Renamed to avoid duplicate
+  clearCartItemsFromManager: cartItems.clearCartItems, // Renamed to avoid duplicate
   
   // Product info
   fetchProductInfo: productInfo.fetchProductInfo
