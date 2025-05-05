@@ -25,12 +25,12 @@ const MarketplaceScreen: React.FC = () => {
   
   const initialCategories = categoryParam ? [categoryParam] : [];
   
+  // State for segment selection - moved above useMarketplaceData
+  const [selectedSegment, setSelectedSegment] = useState<string | null>(segmentParam);
+  
   // Use our custom hooks
   const { hideHeader } = useScrollBehavior();
   const { products, stores, isLoading, storesError } = useMarketplaceData(selectedSegment);
-  
-  // State for segment selection
-  const [selectedSegment, setSelectedSegment] = useState<string | null>(segmentParam);
   
   // Extract all categories from products
   const categories = React.useMemo(() => {
