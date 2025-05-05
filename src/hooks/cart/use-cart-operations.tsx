@@ -9,10 +9,10 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
 
   // Add product to cart
   const addToCart = async (productId: string, quantity: number): Promise<void> => {
+    console.log('[useCartOperations] adicionando', productId, 'qty:', quantity);
+    setIsLoading(true);
+    
     try {
-      console.log('[useCartOperations] adicionando', productId, 'qty:', quantity);
-      setIsLoading(true);
-
       // Get the product price
       const product = await cartApi.fetchProductInfo(productId);
       if (!product) {
@@ -40,7 +40,6 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
       await refreshCartData();
       console.log('Cart data refreshed after adding product');
       
-      return Promise.resolve();
     } catch (error) {
       console.error('[useCartOperations] erro ao adicionar ao carrinho', error);
       throw error;

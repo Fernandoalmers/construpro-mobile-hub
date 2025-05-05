@@ -17,6 +17,7 @@ import {
 
 import { useAuth } from '@/context/AuthContext';
 import CartPopup from '../marketplace/CartPopup';
+import { useCart } from '@/hooks/use-cart';
 
 interface MenuItem {
   name: string;
@@ -32,7 +33,7 @@ const BottomTabNavigator: React.FC = () => {
   const navigate = useNavigate();
   const [currentPath, setCurrentPath] = useState('');
   const { user, profile, isLoading } = useAuth();
-  const [cartCount, setCartCount] = useState(0);
+  const { cartCount = 0 } = useCart();  // Use the useCart hook to get the cart count
   
   // Extract the first part of the path
   useEffect(() => {
@@ -50,24 +51,6 @@ const BottomTabNavigator: React.FC = () => {
     console.log("Bottom navigation current path:", location.pathname, "-> Highlighted:", currentPath);
   }, [location.pathname]);
 
-  // Try to get cart count if available
-  useEffect(() => {
-    // We'll attempt to retrieve cart count from localStorage as a fallback
-    // This is just a simple solution for this specific error
-    try {
-      const storedCartData = localStorage.getItem('cartData');
-      if (storedCartData) {
-        const cartData = JSON.parse(storedCartData);
-        if (cartData && cartData.summary && typeof cartData.summary.totalItems === 'number') {
-          setCartCount(cartData.summary.totalItems);
-        }
-      }
-    } catch (error) {
-      console.error("Error reading cart data:", error);
-      // If any error occurs, just leave cart count at 0
-    }
-  }, []);
-
   // User role
   const userRole = profile?.papel || 'consumidor';
 
@@ -78,9 +61,10 @@ const BottomTabNavigator: React.FC = () => {
       currentPath,
       userRole,
       isAuthenticated: !!user,
-      isLoading
+      isLoading,
+      cartCount
     });
-  }, [location.pathname, currentPath, userRole, user, isLoading]);
+  }, [location.pathname, currentPath, userRole, user, isLoading, cartCount]);
 
   // Menu Items
   const menuItems: MenuItem[] = [
@@ -96,7 +80,7 @@ const BottomTabNavigator: React.FC = () => {
       icon: <ShoppingBag size={24} />, 
       path: '/marketplace',
       tooltip: 'Navegar pela loja online',
-      badge: cartCount,
+      badge: cartCount > 0 ? cartCount : undefined,  // Add badge only if cart has items
       show: (role) => role === 'consumidor' || !role
     },
     { 
