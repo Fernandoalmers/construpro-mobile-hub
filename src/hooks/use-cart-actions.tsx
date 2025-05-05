@@ -90,9 +90,12 @@ export function useCartActions() {
           }
 
           cartData = newCart;
+          console.log('[useCartActions] Created new cart:', cartData.id);
         } else {
           throw cartError;
         }
+      } else {
+        console.log('[useCartActions] Using existing cart:', cartData.id);
       }
       
       // Get product price 
@@ -103,10 +106,12 @@ export function useCartActions() {
         .single();
         
       if (productError) {
+        console.error('[useCartActions] Error fetching product:', productError);
         throw productError;
       }
       
       const price = product.preco_promocional || product.preco_normal;
+      console.log('[useCartActions] Product price:', price);
       
       // Check if product exists in cart
       const { data: existingItem, error: existingItemError } = await supabase
@@ -131,10 +136,12 @@ export function useCartActions() {
           .select('*');
           
         if (updateError) {
+          console.error('[useCartActions] Error updating cart item:', updateError);
           throw updateError;
         }
         
         result = { data, error: null };
+        console.log('[useCartActions] Updated existing cart item:', data);
       } else {
         // Insert new item
         const { data, error: insertError } = await supabase
@@ -148,13 +155,24 @@ export function useCartActions() {
           .select('*');
           
         if (insertError) {
+          console.error('[useCartActions] Error inserting cart item:', insertError);
           throw insertError;
         }
         
         result = { data, error: null };
+        console.log('[useCartActions] Inserted new cart item:', data);
       }
       
-      console.log('[supabase result]', result);
+      console.log('[CART UPSERT]', result);
+      
+      // Verify the insert was successful by directly querying
+      const { data: verifyData, error: verifyError } = await supabase
+        .from('cart_items')
+        .select('*')
+        .eq('cart_id', cartData.id)
+        .eq('product_id', productId);
+        
+      console.log('[CART VERIFY]', { data: verifyData, error: verifyError });
       
       // Refresh cart to make sure the UI updates
       console.log('[useCartActions] Product added to cart, refreshing cart data');

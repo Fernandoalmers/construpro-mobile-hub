@@ -45,8 +45,36 @@ export const addNewCartItem = async (cartId: string, productId: string, quantity
     
     if (error) {
       console.error('Error adding cart item:', error);
+      
+      // Additional diagnostics if insert fails
+      const { data: cartCheck, error: cartCheckError } = await supabase
+        .from('carts')
+        .select('*')
+        .eq('id', cartId)
+        .single();
+        
+      console.log('[cartItemModifier] Cart check:', { cartCheck, cartCheckError });
+      
+      const { data: productCheck, error: productCheckError } = await supabase
+        .from('produtos')
+        .select('id')
+        .eq('id', productId)
+        .single();
+        
+      console.log('[cartItemModifier] Product check:', { productCheck, productCheckError });
+      
       return { success: false, error };
     }
+
+    // Verify insert succeeded by querying the item back
+    const { data: verifyData, error: verifyError } = await supabase
+      .from('cart_items')
+      .select('*')
+      .eq('cart_id', cartId)
+      .eq('product_id', productId)
+      .single();
+      
+    console.log('[cartItemModifier] Verification:', { verifyData, verifyError });
 
     return { success: true, data };
   } catch (error) {

@@ -18,6 +18,7 @@ export const useCartScreen = () => {
 
   useEffect(() => {
     if (!isAuthenticated) {
+      console.log("CartScreen: User not authenticated, redirecting to login");
       navigate('/login', { state: { from: '/cart' } });
       return;
     }
@@ -27,6 +28,7 @@ export const useCartScreen = () => {
     const loadCart = async () => {
       try {
         setLoading(true);
+        setError(null);
         await refreshCart();
       } catch (err) {
         console.error("Error refreshing cart:", err);
@@ -37,12 +39,59 @@ export const useCartScreen = () => {
     };
     
     loadCart();
+    
+    // Set a periodic refresh to ensure the cart stays updated
+    const intervalId = setInterval(() => {
+      console.log("CartScreen: Periodic cart refresh");
+      refreshCart().catch(err => console.error("Error in periodic refresh:", err));
+    }, 30000); // Every 30 seconds
+    
+    return () => clearInterval(intervalId);
   }, [isAuthenticated, navigate, refreshCart]);
 
   // Add debugging logs
   useEffect(() => {
     console.log("CartScreen: Cart data updated:", cart);
     console.log("CartScreen: Cart items:", cart?.items?.length || 0);
+    
+    if (cart?.items?.length === 0) {
+      console.log("CartScreen: Cart is empty, checking for items directly from Supabase");
+      const checkCartItems = async () => {
+        try {
+          const { data: userData } = await supabase.auth.getUser();
+          if (!userData.user) return;
+          
+          // Get active cart
+          const { data: cartData, error: cartError } = await supabase
+            .from('carts')
+            .select('id')
+            .eq('user_id', userData.user.id)
+            .eq('status', 'active')
+            .maybeSingle();
+            
+          if (cartError || !cartData) {
+            console.log("No active cart found in direct query");
+            return;
+          }
+          
+          // Check for cart items
+          const { data: cartItems, error: itemsError } = await supabase
+            .from('cart_items')
+            .select('*')
+            .eq('cart_id', cartData.id);
+            
+          console.log("[DIRECT CART CHECK]", {
+            cart_id: cartData.id,
+            items: cartItems,
+            error: itemsError
+          });
+        } catch (err) {
+          console.error("Error in direct cart check:", err);
+        }
+      };
+      
+      checkCartItems();
+    }
   }, [cart]);
 
   const handleUpdateQuantity = async (item: CartItem, newQuantity: number) => {
@@ -55,8 +104,12 @@ export const useCartScreen = () => {
 
     try {
       setProcessingItem(item.id);
+      console.log("CartScreen: Updating quantity for item:", item.id, "to", newQuantity);
       await updateQuantity(item.id, newQuantity);
       toast.success('Carrinho atualizado com sucesso');
+      
+      // Force a refresh to ensure UI is updated
+      await refreshCart();
     } catch (err) {
       console.error('Failed to update quantity:', err);
       toast.error('Erro ao atualizar quantidade');
@@ -68,8 +121,12 @@ export const useCartScreen = () => {
   const handleRemoveItem = async (itemId: string) => {
     try {
       setProcessingItem(itemId);
+      console.log("CartScreen: Removing item:", itemId);
       await removeItem(itemId);
       toast.success('Item removido do carrinho');
+      
+      // Force a refresh to ensure UI is updated
+      await refreshCart();
     } catch (err) {
       console.error('Failed to remove item:', err);
       toast.error('Erro ao remover item do carrinho');

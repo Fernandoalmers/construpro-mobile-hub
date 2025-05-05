@@ -47,16 +47,28 @@ export const getCart = async (): Promise<Cart | null> => {
         }
 
         cartData = newCart;
-        console.log('Created new cart:', cartData.id);
+        console.log('[getCart] Created new cart:', cartData.id);
       } else {
         console.error('Error fetching cart:', cartError);
         return null;
       }
     } else {
-      console.log('Found active cart:', cartData.id);
+      console.log('[getCart] Found active cart:', cartData.id);
     }
 
-    // Get cart items
+    // DIAGNOSTIC TEST: Retrieve cart items with simple query first
+    const { data: rawCartItems, error: rawCartItemsError } = await supabase
+      .from('cart_items')
+      .select('*')
+      .eq('cart_id', cartData.id);
+      
+    console.log('[CART FETCH RAW]', { 
+      cart_id: cartData.id,
+      items: rawCartItems, 
+      error: rawCartItemsError 
+    });
+
+    // Get cart items with the full join
     const { data: cartItems, error: cartItemsError } = await supabase
       .from('cart_items')
       .select('*')
@@ -71,6 +83,7 @@ export const getCart = async (): Promise<Cart | null> => {
 
     // If there are no items, return empty cart
     if (!cartItems || cartItems.length === 0) {
+      console.log('[getCart] No items in cart, returning empty cart');
       return {
         id: cartData.id,
         user_id: userData.user.id,
@@ -126,6 +139,9 @@ export const getCart = async (): Promise<Cart | null> => {
           nome: store.nome_loja,
           logo_url: null
         }));
+        console.log('[getCart] Retrieved stores:', stores);
+      } else {
+        console.error('Error fetching stores:', storesError);
       }
     }
 
@@ -148,7 +164,7 @@ export const getCart = async (): Promise<Cart | null> => {
       const quantidade = cartItem.quantity;
       const subtotal = preco * quantidade;
       
-      return {
+      const formattedItem = {
         id: cartItem.id,
         produto_id: cartItem.product_id,
         quantidade,
@@ -164,6 +180,9 @@ export const getCart = async (): Promise<Cart | null> => {
           pontos: product.pontos_consumidor || 0
         }
       };
+      
+      console.log('[getCart] Formatted item:', formattedItem);
+      return formattedItem;
     }).filter(Boolean);
 
     // Calculate summary
@@ -188,9 +207,7 @@ export const getCart = async (): Promise<Cart | null> => {
       console.warn('Could not save cart to localStorage:', err);
     }
 
-    console.log('Returning formatted cart with', formattedItems.length, 'items');
-
-    return {
+    const finalCart = {
       id: cartData.id,
       user_id: userData.user.id,
       items: formattedItems as any[],
@@ -202,6 +219,11 @@ export const getCart = async (): Promise<Cart | null> => {
       },
       stores
     };
+    
+    console.log('[getCart] Returning final cart:', finalCart);
+    console.log('Cart has', formattedItems.length, 'items');
+
+    return finalCart;
   } catch (error) {
     console.error('Error in getCart:', error);
     return null;
