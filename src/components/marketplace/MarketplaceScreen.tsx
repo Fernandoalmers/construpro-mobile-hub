@@ -64,7 +64,7 @@ const MarketplaceScreen: React.FC = () => {
     initialSearch: searchQuery || '' 
   });
 
-  // Use our new product search hook
+  // Enhanced search functionality with our custom hook
   const fetchProducts = (term: string) => {
     console.log('Searching for:', term);
     handleSearchChange(term);

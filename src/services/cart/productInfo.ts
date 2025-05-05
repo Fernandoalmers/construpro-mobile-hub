@@ -31,6 +31,7 @@ export const fetchProductInfo = async (productId: string) => {
         id: altProduct.id,
         nome: altProduct.nome,
         preco: altProduct.preco,
+        preco_anterior: altProduct.preco_anterior,
         estoque: altProduct.estoque,
         loja_id: altProduct.loja_id,
         pontos: altProduct.pontos
@@ -42,6 +43,7 @@ export const fetchProductInfo = async (productId: string) => {
       id: product.id,
       nome: product.nome,
       preco: product.preco_promocional || product.preco_normal,
+      preco_anterior: product.preco_normal,
       estoque: product.estoque,
       loja_id: product.vendedor_id, // Use vendedor_id as loja_id in produtos table
       pontos: product.pontos_consumidor
