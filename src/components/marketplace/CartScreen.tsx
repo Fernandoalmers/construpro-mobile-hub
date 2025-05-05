@@ -13,6 +13,7 @@ const CartScreen: React.FC = () => {
     loading,
     error,
     cartIsEmpty,
+    cart,
     itemsByStore,
     processingItem,
     appliedCoupon,
@@ -59,7 +60,7 @@ const CartScreen: React.FC = () => {
       ) : (
         <>
           <CartContent
-            cart={refreshCart.cart}
+            cart={cart}
             itemsByStore={itemsByStore}
             processingItem={processingItem}
             appliedCoupon={appliedCoupon}
