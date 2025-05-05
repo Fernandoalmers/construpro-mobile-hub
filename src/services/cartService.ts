@@ -102,7 +102,8 @@ export const getCart = async (): Promise<Cart | null> => {
       // Extract first image from imagens array if available
       let imageUrl: string | undefined;
       if (item.produtos && item.produtos.imagens && Array.isArray(item.produtos.imagens) && item.produtos.imagens.length > 0) {
-        imageUrl = item.produtos.imagens[0];
+        // Ensure we're converting to string if the image is not already a string
+        imageUrl = String(item.produtos.imagens[0]);
       }
 
       return {
@@ -497,13 +498,19 @@ export const getFavorites = async (): Promise<any[]> => {
     }
 
     // Process to match expected format
-    const processedData = (data || []).map(item => ({
-      ...item,
-      produtos: item.produtos ? {
-        ...item.produtos,
-        preco: item.produtos.preco_promocional || item.produtos.preco_normal
-      } : null
-    }));
+    const processedData = (data || []).map(item => {
+      // Only process if produtos exists and is not an error
+      if (item.produtos && typeof item.produtos === 'object' && !('error' in item.produtos)) {
+        return {
+          ...item,
+          produtos: {
+            ...item.produtos,
+            preco: item.produtos.preco_promocional || item.produtos.preco_normal
+          }
+        };
+      }
+      return item;
+    });
 
     return processedData;
   } catch (error) {
