@@ -29,6 +29,10 @@ const SearchResults: React.FC<SearchResultsProps> = ({
                 src={product.imagem_url} 
                 alt={product.nome} 
                 className="w-12 h-12 object-contain rounded-sm mr-3 bg-white border border-gray-200"
+                onError={(e) => {
+                  // If image fails to load, replace with placeholder
+                  (e.target as HTMLImageElement).src = 'https://via.placeholder.com/80';
+                }}
               />
             ) : (
               <div className="w-12 h-12 flex items-center justify-center rounded-sm mr-3 bg-gray-100 border border-gray-200 text-gray-400 text-xs">

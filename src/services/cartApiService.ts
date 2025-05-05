@@ -8,6 +8,8 @@ import { toast } from '@/components/ui/sonner';
  */
 export async function fetchCart(userId: string): Promise<Cart | null> {
   try {
+    console.log('Fetching cart for user:', userId);
+    
     // Get cart
     const { data: cartData, error: cartError } = await supabase
       .from('carts')
@@ -21,14 +23,18 @@ export async function fetchCart(userId: string): Promise<Cart | null> {
         console.error('Error fetching cart:', cartError);
         return null;
       }
+      console.log('No active cart found for user');
       return null;
     }
 
     if (!cartData) {
+      console.log('No cart data returned');
       return null;
     }
 
-    // Fetch cart items - using 'produtos' table
+    console.log('Found cart:', cartData);
+
+    // Fetch cart items with product details from 'produtos' table
     const { data: cartItems, error: itemsError } = await supabase
       .from('cart_items')
       .select(`
@@ -54,18 +60,20 @@ export async function fetchCart(userId: string): Promise<Cart | null> {
       return null;
     }
 
+    console.log('Retrieved cart items:', cartItems);
+
     // Process items
     const items = cartItems.map((item: any) => ({
       id: item.id,
       produto_id: item.product_id,
       quantidade: item.quantity,
       preco: item.price_at_add,
-      produto: {
+      produto: item.produtos ? {
         ...item.produtos,
         preco: item.produtos.preco_promocional || item.produtos.preco_normal,
         pontos: item.produtos.pontos_consumidor,
         loja_id: item.produtos.vendedor_id
-      },
+      } : null,
       subtotal: item.quantity * item.price_at_add
     }));
 
@@ -87,6 +95,14 @@ export async function fetchCart(userId: string): Promise<Cart | null> {
         
       stores = storesData || [];
     }
+
+    console.log('Processed cart data:', {
+      items: items.length,
+      subtotal,
+      totalItems,
+      totalPoints,
+      stores: stores.length
+    });
 
     return {
       ...cartData,
@@ -110,6 +126,8 @@ export async function fetchCart(userId: string): Promise<Cart | null> {
  */
 export async function createCart(userId: string): Promise<string | null> {
   try {
+    console.log('Creating new cart for user:', userId);
+    
     const { data, error } = await supabase
       .from('carts')
       .insert([{ user_id: userId, status: 'active' }])
@@ -121,6 +139,7 @@ export async function createCart(userId: string): Promise<string | null> {
       return null;
     }
     
+    console.log('New cart created:', data.id);
     return data.id;
   } catch (error) {
     console.error('Error in createCart:', error);
@@ -140,6 +159,18 @@ export async function addItemToCart(
   try {
     console.log('Adding item to cart:', { cartId, productId, quantity, price });
     
+    // First, check if product exists in 'produtos' table
+    const { data: productCheck, error: productCheckError } = await supabase
+      .from('produtos')
+      .select('id')
+      .eq('id', productId)
+      .single();
+      
+    if (productCheckError || !productCheck) {
+      console.error('Product does not exist in produtos table:', productCheckError || 'No product found');
+      return false;
+    }
+    
     const { error } = await supabase
       .from('cart_items')
       .insert([{
@@ -154,6 +185,7 @@ export async function addItemToCart(
       return false;
     }
     
+    console.log('Item successfully added to cart');
     return true;
   } catch (error) {
     console.error('Error in addItemToCart:', error);
@@ -169,6 +201,8 @@ export async function updateItemQuantity(
   quantity: number
 ): Promise<boolean> {
   try {
+    console.log('Updating item quantity:', { cartItemId, quantity });
+    
     const { error } = await supabase
       .from('cart_items')
       .update({ quantity: quantity })
@@ -179,6 +213,7 @@ export async function updateItemQuantity(
       return false;
     }
     
+    console.log('Item quantity updated successfully');
     return true;
   } catch (error) {
     console.error('Error in updateItemQuantity:', error);
@@ -191,6 +226,8 @@ export async function updateItemQuantity(
  */
 export async function removeCartItem(cartItemId: string): Promise<boolean> {
   try {
+    console.log('Removing item from cart:', cartItemId);
+    
     const { error } = await supabase
       .from('cart_items')
       .delete()
@@ -201,6 +238,7 @@ export async function removeCartItem(cartItemId: string): Promise<boolean> {
       return false;
     }
     
+    console.log('Item removed from cart successfully');
     return true;
   } catch (error) {
     console.error('Error in removeCartItem:', error);
@@ -213,6 +251,8 @@ export async function removeCartItem(cartItemId: string): Promise<boolean> {
  */
 export async function clearCartItems(cartId: string): Promise<boolean> {
   try {
+    console.log('Clearing all items from cart:', cartId);
+    
     const { error } = await supabase
       .from('cart_items')
       .delete()
@@ -223,6 +263,7 @@ export async function clearCartItems(cartId: string): Promise<boolean> {
       return false;
     }
     
+    console.log('Cart cleared successfully');
     return true;
   } catch (error) {
     console.error('Error in clearCartItems:', error);
@@ -231,16 +272,16 @@ export async function clearCartItems(cartId: string): Promise<boolean> {
 }
 
 /**
- * Fetches product information
+ * Fetches product information from the 'produtos' table
  */
 export async function fetchProductInfo(productId: string) {
   try {
     console.log('Fetching product info for:', productId);
     
-    // Updated to use 'produtos' table instead of 'products'
+    // Use 'produtos' table
     const { data, error } = await supabase
       .from('produtos')
-      .select('preco_normal, preco_promocional, estoque, pontos_consumidor')
+      .select('id, nome, preco_normal, preco_promocional, estoque, pontos_consumidor, vendedor_id')
       .eq('id', productId)
       .single();
       
@@ -249,14 +290,24 @@ export async function fetchProductInfo(productId: string) {
       return null;
     }
     
-    // Map the fields correctly based on 'produtos' table schema
+    if (!data) {
+      console.error('Product not found:', productId);
+      return null;
+    }
+    
+    console.log('Product data retrieved:', data);
+    
+    // Map the fields correctly
     const productInfo = {
-      preco: data.preco_promocional || data.preco_normal, // Use promotional price if available, else normal price
+      id: data.id,
+      nome: data.nome,
+      preco: data.preco_promocional || data.preco_normal,
       estoque: data.estoque,
-      pontos: data.pontos_consumidor
+      pontos: data.pontos_consumidor,
+      vendedor_id: data.vendedor_id
     };
     
-    console.log('Product info retrieved:', productInfo);
+    console.log('Product info processed:', productInfo);
     return productInfo;
   } catch (error) {
     console.error('Error in fetchProductInfo:', error);
@@ -269,6 +320,8 @@ export async function fetchProductInfo(productId: string) {
  */
 export async function findCartItem(cartId: string, productId: string) {
   try {
+    console.log('Finding cart item:', { cartId, productId });
+    
     const { data, error } = await supabase
       .from('cart_items')
       .select('id, quantity')
@@ -281,6 +334,7 @@ export async function findCartItem(cartId: string, productId: string) {
       return null;
     }
     
+    console.log('Cart item found:', data || 'No item found');
     return data;
   } catch (error) {
     console.error('Error in findCartItem:', error);

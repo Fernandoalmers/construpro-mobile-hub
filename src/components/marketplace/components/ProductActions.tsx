@@ -29,9 +29,9 @@ const ProductActions: React.FC<ProductActionsProps> = ({
   const navigate = useNavigate();
   const { isAddingToCart, isBuyingNow, handleAddToCart, handleBuyNow } = useCartActions();
   
-  // Melhoramos o gerenciamento de erros e feedback ao usuário
   const handleAddToCartClick = async () => {
     try {
+      console.log("ProductActions: handleAddToCartClick called");
       // Validate quantity before adding to cart
       validateQuantity();
       
@@ -52,8 +52,11 @@ const ProductActions: React.FC<ProductActionsProps> = ({
       // Use the cartActions hook to handle adding to cart
       const success = await handleAddToCart(produto.id, quantidade);
       if (success) {
-        if (onSuccess) onSuccess();
-        toast.success(`${quantidade} ${quantidade > 1 ? 'itens adicionados' : 'item adicionado'} ao carrinho`);
+        console.log("Product added to cart successfully");
+        if (onSuccess) {
+          console.log("Calling onSuccess callback");
+          onSuccess();
+        }
       }
     } catch (error: any) {
       console.error("Error adding to cart:", error);
@@ -63,6 +66,7 @@ const ProductActions: React.FC<ProductActionsProps> = ({
 
   const handleBuyNowClick = async () => {
     try {
+      console.log("ProductActions: handleBuyNowClick called");
       // Validate quantity before buying
       validateQuantity();
       

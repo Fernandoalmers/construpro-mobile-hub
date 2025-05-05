@@ -6,8 +6,8 @@ import { useAuth } from '@/context/AuthContext';
 import { useCart } from './use-cart';
 
 export function useCartActions() {
-  const { addToCart } = useCart();
-  const { isAuthenticated } = useAuth();
+  const { addToCart, refreshCart } = useCart();
+  const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const [isAddingToCart, setIsAddingToCart] = useState<Record<string, boolean>>({});
   const [isBuyingNow, setIsBuyingNow] = useState<Record<string, boolean>>({});
@@ -15,6 +15,8 @@ export function useCartActions() {
   // Add to cart function - properly handles authentication and updates state
   const handleAddToCart = async (productId: string, quantity: number = 1) => {
     try {
+      console.log('handleAddToCart called with:', { productId, quantity });
+      
       if (!productId) {
         console.error('Invalid product ID:', productId);
         toast.error('Erro: ID do produto inválido');
@@ -27,10 +29,14 @@ export function useCartActions() {
         return false;
       }
       
-      console.log(`Adding to cart: product=${productId}, quantity=${quantity}`);
       setIsAddingToCart(prev => ({ ...prev, [productId]: true }));
       
+      console.log('Calling addToCart with:', { productId, quantity });
       await addToCart(productId, quantity);
+      
+      // Refresh cart to make sure the UI updates
+      await refreshCart();
+      
       toast.success(`${quantity} unidade(s) adicionada(s) ao carrinho`);
       return true;
     } catch (error: any) {
@@ -45,6 +51,8 @@ export function useCartActions() {
   // Buy now function - adds to cart then immediately navigates to cart
   const handleBuyNow = async (productId: string, quantity: number = 1) => {
     try {
+      console.log('handleBuyNow called with:', { productId, quantity });
+      
       if (!productId) {
         console.error('Invalid product ID:', productId);
         toast.error('Erro: ID do produto inválido');
@@ -57,14 +65,16 @@ export function useCartActions() {
         return;
       }
       
-      console.log(`Buy now: product=${productId}, quantity=${quantity}`);
       setIsBuyingNow(prev => ({ ...prev, [productId]: true }));
       
       const success = await handleAddToCart(productId, quantity);
       
       if (success) {
+        console.log('Successfully added to cart, navigating to /cart');
         navigate('/cart');
-        toast.success('Produto adicionado ao carrinho');
+      } else {
+        console.error('Failed to add product to cart');
+        toast.error('Não foi possível adicionar o produto ao carrinho.');
       }
     } catch (error: any) {
       console.error('Error buying now:', error);

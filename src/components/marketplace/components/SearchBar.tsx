@@ -45,9 +45,10 @@ const SearchBar: React.FC<SearchBarProps> = ({
   
   const fetchSearchResults = async (query: string) => {
     try {
+      console.log('Searching products for query:', query);
       setIsSearching(true);
       
-      // Use the 'produtos' table with correct column names
+      // Search in the 'produtos' table with correct column names
       const { data, error } = await supabase
         .from('produtos')
         .select(`
@@ -56,7 +57,8 @@ const SearchBar: React.FC<SearchBarProps> = ({
           preco_normal,
           preco_promocional,
           vendedor_id,
-          descricao
+          descricao,
+          imagem_url
         `)
         .ilike('nome', `%${query.trim()}%`)
         .limit(5);
@@ -68,6 +70,8 @@ const SearchBar: React.FC<SearchBarProps> = ({
         return;
       }
       
+      console.log('Search results:', data);
+      
       // Map the results to the expected format
       const mappedResults = Array.isArray(data) ? data.map(produto => {
         return {
@@ -76,7 +80,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
           preco: produto.preco_promocional || produto.preco_normal,
           preco_normal: produto.preco_normal,
           preco_promocional: produto.preco_promocional,
-          imagem_url: null, // We don't have image URL in this query
+          imagem_url: produto.imagem_url, // Use image URL if available
           vendedor_id: produto.vendedor_id,
           stores: { id: produto.vendedor_id, nome: 'Loja' } // Simplified
         };
@@ -94,6 +98,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
   };
   
   const handleResultClick = (productId: string) => {
+    console.log('Search result clicked, navigating to product:', productId);
     navigate(`/produto/${productId}`);
     setShowResults(false);
   };
@@ -101,16 +106,23 @@ const SearchBar: React.FC<SearchBarProps> = ({
   // Handle explicit search via button click or Enter key
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchTerm.trim().length < 2) return;
+    console.log('Search form submitted with term:', searchTerm);
+    
+    if (searchTerm.trim().length < 2) {
+      console.log('Search term too short, not searching');
+      return;
+    }
 
     // Close search results dropdown
     setShowResults(false);
     
     // Use provided onSearch handler if available
     if (onSearch) {
+      console.log('Calling provided onSearch handler');
       onSearch(searchTerm);
     } else {
       // Default behavior: navigate to marketplace with search parameter
+      console.log('Navigating to marketplace with search term');
       navigate(`/marketplace/products?search=${encodeURIComponent(searchTerm)}`);
     }
   };
@@ -118,6 +130,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
   // Handle keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
+      console.log('Enter key pressed in search input');
       handleSearchSubmit(e);
     }
   };

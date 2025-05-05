@@ -14,13 +14,16 @@ const CartPopup: React.FC<CartPopupProps> = ({ triggerShow }) => {
   const { cart, cartCount = 0, isLoading } = useCart();
   const navigate = useNavigate();
   
+  console.log('CartPopup rendering:', { triggerShow, cartCount, show, isLoading });
+  
   // Show popup when triggerShow changes to true
   useEffect(() => {
     if (triggerShow && cartCount > 0) {
+      console.log('CartPopup: triggerShow is true and cart has items, showing popup');
       setShow(true);
       const timer = setTimeout(() => {
         setShow(false);
-      }, 5000); // Increased to 5 seconds for better visibility
+      }, 5000); // 5 seconds for better visibility
       
       return () => clearTimeout(timer);
     }
@@ -29,6 +32,7 @@ const CartPopup: React.FC<CartPopupProps> = ({ triggerShow }) => {
   // Also show popup when cartCount increases
   useEffect(() => {
     if (cartCount > 0 && cart) {
+      console.log('CartPopup: cart updated with items, showing popup');
       setShow(true);
       const timer = setTimeout(() => {
         setShow(false);
@@ -43,7 +47,9 @@ const CartPopup: React.FC<CartPopupProps> = ({ triggerShow }) => {
     return null;
   }
   
-  if (!show) return null;
+  if (!show) {
+    return null;
+  }
 
   return (
     <div className="fixed bottom-20 right-4 bg-white rounded-lg shadow-lg z-50 w-72 overflow-hidden">
@@ -65,7 +71,10 @@ const CartPopup: React.FC<CartPopupProps> = ({ triggerShow }) => {
         
         <div className="flex justify-between items-center">
           <Button 
-            onClick={() => navigate('/cart')}
+            onClick={() => {
+              console.log('CartPopup: Navigating to cart page');
+              navigate('/cart');
+            }}
             variant="outline"
             size="sm"
             className="border-construPro-orange text-construPro-orange hover:bg-construPro-orange/10"
@@ -74,7 +83,10 @@ const CartPopup: React.FC<CartPopupProps> = ({ triggerShow }) => {
           </Button>
           
           <Button 
-            onClick={() => navigate('/checkout')}
+            onClick={() => {
+              console.log('CartPopup: Navigating to checkout page');
+              navigate('/checkout');
+            }}
             size="sm"
             className="bg-green-600 hover:bg-green-700 text-white"
           >
