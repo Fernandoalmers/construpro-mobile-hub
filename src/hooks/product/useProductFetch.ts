@@ -64,8 +64,9 @@ export function useProductFetch(id: string | undefined) {
           id: data.id,
           nome: data.nome,
           descricao: data.descricao,
-          preco: data.preco_normal || 0,
-          preco_anterior: data.preco_promocional,
+          preco: data.preco_promocional || data.preco_normal || 0,
+          preco_normal: data.preco_normal || 0,
+          preco_promocional: data.preco_promocional,
           categoria: data.categoria,
           segmento: data.segmento || '',
           imagem_url: Array.isArray(data.imagens) && data.imagens.length > 0 

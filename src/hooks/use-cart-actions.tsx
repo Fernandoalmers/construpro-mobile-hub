@@ -29,10 +29,10 @@ export function useCartActions() {
       return false;
     }
 
-    // Set loading state at the beginning
-    setIsAddingToCart(prev => ({ ...prev, [productId]: true }));
-    
     try {
+      // Set loading state at the beginning
+      setIsAddingToCart(prev => ({ ...prev, [productId]: true }));
+      
       console.log('[useCartActions] Calling addToCart with:', { productId, quantity });
       await addToCart(productId, quantity);
       
@@ -69,11 +69,10 @@ export function useCartActions() {
       return;
     }
 
-    // Set loading state at the beginning
+    // Set buying state
     setIsBuyingNow(prev => ({ ...prev, [productId]: true }));
     
     try {
-      // Use direct addToCart instead of handleAddToCart to avoid duplicate loading states
       console.log('[useCartActions] Adding to cart with:', { productId, quantity });
       await addToCart(productId, quantity);
       
@@ -88,7 +87,7 @@ export function useCartActions() {
       console.error('[useCartActions] Error buying now:', error);
       toast.error('Erro: ' + (error.message || 'Erro ao processar compra'));
     } finally {
-      // Important: Always reset loading state, even on error
+      // Important: Reset buying state regardless of outcome
       setIsBuyingNow(prev => ({ ...prev, [productId]: false }));
     }
   };

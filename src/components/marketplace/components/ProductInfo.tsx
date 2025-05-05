@@ -14,12 +14,16 @@ interface ProductInfoProps {
 }
 
 const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) => {
-  // Product has a discount if previous price is higher than current price
-  const hasDiscount = (produto.preco_anterior || 0) > produto.preco;
+  // Calculate if there's a valid promotional price
+  const hasDiscount = produto.preco_promocional && produto.preco_promocional > 0 && produto.preco_promocional < produto.preco_normal;
+  
+  // Use preco_normal as the regular price and preco_promocional as the discounted price
+  const regularPrice = produto.preco_normal || produto.preco;
+  const currentPrice = hasDiscount ? produto.preco_promocional : regularPrice;
   
   // Calculate the discount percentage if applicable
-  const discountPercentage = hasDiscount && produto.preco_anterior
-    ? Math.round(((produto.preco_anterior - produto.preco) / produto.preco_anterior) * 100)
+  const discountPercentage = hasDiscount
+    ? Math.round(((regularPrice - currentPrice) / regularPrice) * 100)
     : 0;
 
   // Format delivery estimate text
@@ -92,19 +96,19 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
         </span>
       </div>
       
-      {/* Price section */}
+      {/* Price section - Updated to display promotional price correctly */}
       <div className="mb-4">
         <div className="flex items-baseline">
-          {hasDiscount && produto.preco_anterior && (
+          {hasDiscount && (
             <span className="text-gray-500 line-through mr-2">
-              R$ {produto.preco_anterior.toFixed(2)}
+              R$ {regularPrice.toFixed(2)}
             </span>
           )}
           <span className="text-2xl font-bold text-green-700">
-            R$ {produto.preco.toFixed(2)}
+            R$ {currentPrice.toFixed(2)}
           </span>
           
-          {hasDiscount && produto.preco_anterior && discountPercentage > 0 && (
+          {hasDiscount && discountPercentage > 0 && (
             <Badge className="ml-2 bg-red-500">
               {discountPercentage}% OFF
             </Badge>

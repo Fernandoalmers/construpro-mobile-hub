@@ -8,13 +8,14 @@ import { getCart } from "./cartFetcher";
  */
 export const addToCart = async (productId: string, quantity: number = 1): Promise<Cart | null> => {
   try {
+    console.log('[cartItemOperations] Adding to cart:', productId, 'quantity:', quantity);
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {
       console.error('User not authenticated');
       throw new Error('Usuário não autenticado');
     }
 
-    // Get product information to check stock
+    // Get product information to check stock and price
     const { data: product, error: productError } = await supabase
       .from('produtos')
       .select('id, preco_normal, preco_promocional, estoque')
@@ -38,10 +39,14 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
       .select('id')
       .eq('user_id', userData.user.id)
       .eq('status', 'active')
-      .single();
+      .maybeSingle();
 
-    if (cartError) {
+    console.log('[cartItemOperations] Existing cart result:', existingCart, cartError);
+
+    if (!existingCart) {
       // Create a new cart if one doesn't exist
+      console.log('[cartItemOperations] Creating new cart for user:', userData.user.id);
+      
       const { data: newCart, error: createError } = await supabase
         .from('carts')
         .insert({ 
@@ -56,10 +61,16 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
         throw new Error('Erro ao criar carrinho');
       }
       
+      console.log('[cartItemOperations] New cart created:', newCart);
       cartId = newCart.id;
     } else {
+      console.log('[cartItemOperations] Using existing cart:', existingCart.id);
       cartId = existingCart.id;
     }
+
+    // Use the correct price field from the produtos table
+    const productPrice = product.preco_promocional || product.preco_normal;
+    console.log('[cartItemOperations] Product price:', productPrice);
 
     // Check if the product is already in the cart
     const { data: existingItem, error: existingItemError } = await supabase
@@ -69,8 +80,7 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
       .eq('product_id', productId)
       .maybeSingle();
 
-    // Use the correct price field from the produtos table
-    const productPrice = product.preco_promocional || product.preco_normal;
+    console.log('[cartItemOperations] Existing cart item:', existingItem, existingItemError);
 
     if (existingItem) {
       // Update quantity of existing item
@@ -80,6 +90,7 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
         throw new Error(`Não é possível adicionar mais itens. Apenas ${product.estoque} disponíveis em estoque`);
       }
 
+      console.log('[cartItemOperations] Updating cart item quantity:', existingItem.id, 'to:', newQuantity);
       const { error: updateError } = await supabase
         .from('cart_items')
         .update({ quantity: newQuantity })
@@ -91,6 +102,7 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
       }
     } else {
       // Add new item to cart
+      console.log('[cartItemOperations] Adding new item to cart:', cartId, productId, quantity, productPrice);
       const { error: insertError } = await supabase
         .from('cart_items')
         .insert({
@@ -107,6 +119,7 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
     }
 
     // Return updated cart
+    console.log('[cartItemOperations] Item added successfully, getting updated cart');
     return await getCart();
   } catch (error: any) {
     console.error('Error adding to cart:', error);
@@ -119,6 +132,7 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
  */
 export const updateCartItemQuantity = async (itemId: string, quantity: number): Promise<boolean> => {
   try {
+    console.log('[cartItemOperations] Updating cart item quantity:', itemId, quantity);
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {
       console.error('User not authenticated');
@@ -148,6 +162,7 @@ export const updateCartItemQuantity = async (itemId: string, quantity: number): 
  */
 export const removeFromCart = async (itemId: string): Promise<boolean> => {
   try {
+    console.log('[cartItemOperations] Removing item from cart:', itemId);
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {
       console.error('User not authenticated');
@@ -176,6 +191,7 @@ export const removeFromCart = async (itemId: string): Promise<boolean> => {
  */
 export const clearCart = async (): Promise<boolean> => {
   try {
+    console.log('[cartItemOperations] Clearing cart');
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {
       console.error('User not authenticated');
@@ -188,9 +204,9 @@ export const clearCart = async (): Promise<boolean> => {
       .select('id')
       .eq('user_id', userData.user.id)
       .eq('status', 'active')
-      .single();
+      .maybeSingle();
 
-    if (cartError) {
+    if (cartError || !cart) {
       console.error('Error finding active cart:', cartError);
       return false;
     }
