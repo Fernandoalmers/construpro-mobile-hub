@@ -58,7 +58,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
           preco_promocional,
           vendedor_id,
           descricao,
-          imagem_url
+          imagens
         `)
         .ilike('nome', `%${query.trim()}%`)
         .limit(5);
@@ -74,13 +74,18 @@ const SearchBar: React.FC<SearchBarProps> = ({
       
       // Map the results to the expected format
       const mappedResults = Array.isArray(data) ? data.map(produto => {
+        // Extract first image from the imagens JSON array
+        let imageUrl = null;
+        if (produto.imagens && Array.isArray(produto.imagens) && produto.imagens.length > 0) {
+          imageUrl = produto.imagens[0];
+        }
+        
         return {
           id: produto.id,
           nome: produto.nome,
           preco: produto.preco_promocional || produto.preco_normal,
-          preco_normal: produto.preco_normal,
-          preco_promocional: produto.preco_promocional,
-          imagem_url: produto.imagem_url, // Use image URL if available
+          preco_anterior: produto.preco_promocional ? produto.preco_normal : null,
+          imagem_url: imageUrl, // Use the first image from the array
           vendedor_id: produto.vendedor_id,
           stores: { id: produto.vendedor_id, nome: 'Loja' } // Simplified
         };
