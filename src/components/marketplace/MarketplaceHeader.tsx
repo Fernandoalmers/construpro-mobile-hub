@@ -51,53 +51,51 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
   }));
 
   return (
-    <AnimatePresence>
+    <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
       <motion.div 
-        className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm"
-        initial={{ translateY: 0 }}
+        className="bg-construPro-blue p-4 pt-8"
+        initial={{ opacity: 1 }}
         animate={{ 
-          translateY: hideHeader ? '-60%' : 0,
-          opacity: hideHeader ? 0.5 : 1
+          opacity: hideHeader ? 0.95 : 1,
+          // Removemos a transformação translateY que estava causando problemas visuais
         }}
         transition={{ duration: 0.3 }}
       >
-        <div className="bg-construPro-blue p-4 pt-8">
-          {/* Header Top with Back Button and Cart */}
-          <MarketplaceHeaderTop cartCount={cartCount} />
-          
-          {/* Search Bar */}
-          <SearchBar
-            searchTerm={searchTerm}
-            onSearchChange={onSearchChange}
-            onSearch={onSearch}
-          />
+        {/* Header Top with Back Button and Cart */}
+        <MarketplaceHeaderTop cartCount={cartCount} />
+        
+        {/* Search Bar */}
+        <SearchBar
+          searchTerm={searchTerm}
+          onSearchChange={onSearchChange}
+          onSearch={onSearch}
+        />
 
-          {/* Filter Dialogs - removed ratingOptions prop as we removed the rating filter */}
-          <FilterDialogs
-            lojasOptions={lojasOptions}
-            allCategories={allCategories}
-            selectedLojas={selectedLojas}
-            selectedCategories={selectedCategories}
-            onLojaClick={onLojaClick}
-            onCategoryClick={onCategoryClick}
-          />
-          
-          {/* Selected Filter Chips */}
-          <FilterChips
-            selectedCategories={selectedCategories}
-            selectedLojas={selectedLojas}
-            selectedRatings={selectedRatings}
-            allCategories={allCategories}
-            lojasOptions={lojasOptions}
-            ratingOptions={ratingOptions}
-            onCategoryClick={onCategoryClick}
-            onLojaClick={onLojaClick}
-            onRatingClick={onRatingClick}
-            clearFilters={clearFilters}
-          />
-        </div>
+        {/* Filter Dialogs */}
+        <FilterDialogs
+          lojasOptions={lojasOptions}
+          allCategories={allCategories}
+          selectedLojas={selectedLojas}
+          selectedCategories={selectedCategories}
+          onLojaClick={onLojaClick}
+          onCategoryClick={onCategoryClick}
+        />
+        
+        {/* Selected Filter Chips */}
+        <FilterChips
+          selectedCategories={selectedCategories}
+          selectedLojas={selectedLojas}
+          selectedRatings={selectedRatings}
+          allCategories={allCategories}
+          lojasOptions={lojasOptions}
+          ratingOptions={ratingOptions}
+          onCategoryClick={onCategoryClick}
+          onLojaClick={onLojaClick}
+          onRatingClick={onRatingClick}
+          clearFilters={clearFilters}
+        />
       </motion.div>
-    </AnimatePresence>
+    </div>
   );
 };
 

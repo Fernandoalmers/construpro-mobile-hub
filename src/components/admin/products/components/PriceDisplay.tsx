@@ -26,6 +26,11 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({ preco, preco_promocional })
                            preco_promocional > 0 &&
                            preco_promocional < preco;
   
+  // Calcular a porcentagem de desconto se houver promoção
+  const discountPercentage = hasValidPromotion 
+    ? Math.round(((preco - preco_promocional) / preco) * 100) 
+    : 0;
+  
   return (
     <TooltipProvider>
       <Tooltip>
@@ -44,7 +49,10 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({ preco, preco_promocional })
         <TooltipContent>
           <p>Preço regular: {formatCurrency(preco)}</p>
           {hasValidPromotion && (
-            <p>Preço promocional: {formatCurrency(preco_promocional)}</p>
+            <>
+              <p>Preço promocional: {formatCurrency(preco_promocional)}</p>
+              <p>Desconto: {discountPercentage}%</p>
+            </>
           )}
         </TooltipContent>
       </Tooltip>

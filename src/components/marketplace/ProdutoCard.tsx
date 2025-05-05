@@ -28,7 +28,7 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
   isAddingToCart = false,
   showActions = false
 }) => {
-  // Utilizar os dados reais do produto
+  // Utilizar os dados reais do produto de forma consistente
   const precoRegular = produto.preco_normal || produto.precoNormal || produto.preco || 0;
   const precoPromocional = produto.preco_promocional || produto.precoPromocional || null;
   
@@ -36,9 +36,15 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
   const hasDiscount = precoPromocional && precoPromocional < precoRegular;
   const precoExibir = hasDiscount ? precoPromocional : precoRegular;
   
-  // Garantir valores numéricos reais para exibição de avaliações
-  const avaliacao = produto.avaliacao || 0;
-  const avaliacoesCount = produto.avaliacoes_count || produto.num_avaliacoes || 0;
+  // Garantir a consistência das avaliações através da memoização dos valores
+  // para que não mudem durante a renderização ou rolagem
+  const avaliacao = React.useMemo(() => {
+    return typeof produto.avaliacao === 'number' ? produto.avaliacao : 0;
+  }, [produto.id, produto.avaliacao]);
+  
+  const avaliacoesCount = React.useMemo(() => {
+    return produto.avaliacoes_count || produto.num_avaliacoes || 0;
+  }, [produto.id, produto.avaliacoes_count, produto.num_avaliacoes]);
   
   // Free shipping threshold (products above R$ 100 qualify for free shipping)
   const hasFreeShipping = precoExibir >= 100;

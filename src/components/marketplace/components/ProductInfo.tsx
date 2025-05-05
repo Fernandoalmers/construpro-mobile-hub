@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Star, Clock, AlertCircle } from 'lucide-react';
@@ -30,9 +31,14 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
     ? Math.round(((regularPrice - currentPrice) / regularPrice) * 100)
     : 0;
 
-  // Obter a avaliação real do produto
-  const productRating = produto.avaliacao || 0;
-  const reviewCount = produto.num_avaliacoes || 0;
+  // Obter a avaliação real do produto e memoizar para evitar mudanças durante a renderização
+  const productRating = React.useMemo(() => 
+    produto.avaliacao || 0
+  , [produto.id, produto.avaliacao]);
+  
+  const reviewCount = React.useMemo(() => 
+    produto.num_avaliacoes || 0
+  , [produto.id, produto.num_avaliacoes]);
 
   // Format delivery estimate text
   const getDeliveryText = () => {
