@@ -5,7 +5,7 @@ import StoreCartGroup from './StoreCartGroup';
 import CouponSection from './CouponSection';
 
 interface CartContentProps {
-  cart: Cart;
+  cart: Cart | null;
   itemsByStore: Record<string, { loja: any, items: any[] }>;
   processingItem: string | null;
   appliedCoupon: {code: string, discount: number} | null;

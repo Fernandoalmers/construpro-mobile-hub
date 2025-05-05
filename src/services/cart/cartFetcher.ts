@@ -67,7 +67,7 @@ export const getCart = async (): Promise<Cart | null> => {
       return null;
     }
 
-    console.log('Cart items found:', cartItems?.length || 0);
+    console.log('[cart → query]', cartItems);
 
     // If there are no items, return empty cart
     if (!cartItems || cartItems.length === 0) {
@@ -108,7 +108,7 @@ export const getCart = async (): Promise<Cart | null> => {
       return null;
     }
 
-    console.log('Products found:', products?.length || 0);
+    console.log('[cart → product]', products);
 
     // Get store information
     const vendorIds = [...new Set(products?.map(product => product.vendedor_id).filter(Boolean) || [])];

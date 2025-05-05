@@ -63,7 +63,7 @@ export function useCartActions() {
     setLoadingWithTimeout(setIsAddingToCart, productId, true);
     
     try {
-      console.log('[useCartActions] User authenticated, adding to cart:', { userId: user.id, productId, quantity });
+      console.log('[cart → insert]', { user_id: user.id, product_id: productId });
       
       // Get or create active cart
       let { data: cartData, error: cartError } = await supabase
@@ -121,42 +121,40 @@ export function useCartActions() {
       console.log('[useCartActions] Product:', product);
       console.log('[useCartActions] Existing item:', existingItem);
         
+      let result;
       if (existingItem) {
         // Update quantity
-        const { error: updateError } = await supabase
+        const { data, error: updateError } = await supabase
           .from('cart_items')
           .update({ quantity: existingItem.quantity + quantity })
-          .eq('id', existingItem.id);
+          .eq('id', existingItem.id)
+          .select('*');
           
         if (updateError) {
           throw updateError;
         }
+        
+        result = { data, error: null };
       } else {
         // Insert new item
-        const { data: insertData, error: insertError } = await supabase
+        const { data, error: insertError } = await supabase
           .from('cart_items')
           .insert({
             cart_id: cartData.id,
             product_id: productId,
             quantity: quantity,
             price_at_add: price
-          });
+          })
+          .select('*');
           
         if (insertError) {
           throw insertError;
         }
         
-        console.log('[useCartActions] New item inserted:', insertData);
+        result = { data, error: null };
       }
       
-      // Double-check insertion by directly querying
-      const { data: checkData, error: checkError } = await supabase
-        .from('cart_items')
-        .select('*')
-        .eq('cart_id', cartData.id)
-        .eq('product_id', productId);
-        
-      console.log('[useCartActions] Verification check:', { data: checkData, error: checkError });
+      console.log('[supabase result]', result);
       
       // Refresh cart to make sure the UI updates
       console.log('[useCartActions] Product added to cart, refreshing cart data');
