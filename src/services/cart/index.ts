@@ -7,7 +7,10 @@ export * from "./productInfo";
 // Re-export existing related services
 export * from "./favoritesService";
 export * from "./cartItemsManager";
-export * from "./cartFetcher";
+
+// Export cartFetcher separately to avoid naming conflicts
+import * as cartFetcherModule from "./cartFetcher";
+export { fetchCart } from "./cartFetcher";
 
 // Create legacy exports for backward compatibility
 import * as cartCore from "./cartCore";
