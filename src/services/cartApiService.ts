@@ -28,7 +28,7 @@ export async function fetchCart(userId: string): Promise<Cart | null> {
       return null;
     }
 
-    // Fetch cart items - Corrigido para usar corretamente a tabela 'produtos'
+    // Fetch cart items - using 'produtos' table
     const { data: cartItems, error: itemsError } = await supabase
       .from('cart_items')
       .select(`
@@ -237,8 +237,9 @@ export async function fetchProductInfo(productId: string) {
   try {
     console.log('Fetching product info for:', productId);
     
+    // Updated to use 'produtos' table instead of 'products'
     const { data, error } = await supabase
-      .from('produtos')  // Corrigido: agora usando a tabela 'produtos' em vez de 'products'
+      .from('produtos')
       .select('preco_normal, preco_promocional, estoque, pontos_consumidor')
       .eq('id', productId)
       .single();
@@ -248,9 +249,9 @@ export async function fetchProductInfo(productId: string) {
       return null;
     }
     
-    // Retorna o objeto com os campos mapeados corretamente
+    // Map the fields correctly based on 'produtos' table schema
     const productInfo = {
-      preco: data.preco_promocional || data.preco_normal, // Usa o preço promocional se disponível, senão o preço normal
+      preco: data.preco_promocional || data.preco_normal, // Use promotional price if available, else normal price
       estoque: data.estoque,
       pontos: data.pontos_consumidor
     };

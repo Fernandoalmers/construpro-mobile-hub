@@ -47,7 +47,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
     try {
       setIsSearching(true);
       
-      // First, check which columns actually exist in the 'produtos' table
+      // Use the 'produtos' table with correct column names
       const { data, error } = await supabase
         .from('produtos')
         .select(`
@@ -68,7 +68,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
         return;
       }
       
-      // Check if data is an array before mapping
+      // Map the results to the expected format
       const mappedResults = Array.isArray(data) ? data.map(produto => {
         return {
           id: produto.id,
@@ -76,9 +76,9 @@ const SearchBar: React.FC<SearchBarProps> = ({
           preco: produto.preco_promocional || produto.preco_normal,
           preco_normal: produto.preco_normal,
           preco_promocional: produto.preco_promocional,
-          imagem_url: null, // We don't have image URL, set to null for now
+          imagem_url: null, // We don't have image URL in this query
           vendedor_id: produto.vendedor_id,
-          stores: { id: produto.vendedor_id, nome: 'Loja' } // Simplificado
+          stores: { id: produto.vendedor_id, nome: 'Loja' } // Simplified
         };
       }) : [];
       
