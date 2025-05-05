@@ -1,10 +1,8 @@
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { toast } from '@/components/ui/sonner';
-import { Button } from '@/components/ui/button';
+import React from 'react';
 import { ShoppingCart, ShoppingBag } from 'lucide-react';
-import { addToCart } from '@/services/cart';
+import { Button } from '@/components/ui/button';
+import { useCartActions } from '@/hooks/use-cart-actions';
 
 interface ProductActionsProps {
   productId: string;
@@ -12,65 +10,29 @@ interface ProductActionsProps {
 }
 
 const ProductActions: React.FC<ProductActionsProps> = ({ productId, quantity }) => {
-  const navigate = useNavigate();
-  const [adding, setAdding] = useState(false);
-  const [buying, setBuying] = useState(false);
-
-  const handleAddToCart = async () => {
-    console.log('[ProductActions] Adding to cart:', productId, 'quantity:', quantity);
-    try {
-      setAdding(true);
-      const result = await addToCart(productId, quantity);
-      console.log('[ProductActions] Add to cart result:', result);
-      toast.success('Produto adicionado ao carrinho');
-      return true;
-    } catch (err) {
-      console.error('[ProductActions] Error adding to cart:', err);
-      toast.error(`Erro ao adicionar ao carrinho: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
-      return false;
-    } finally {
-      setAdding(false);
-    }
-  };
-
-  const handleBuyNow = async () => {
-    console.log('[ProductActions] Buy now clicked:', productId, 'quantity:', quantity);
-    try {
-      setBuying(true);
-      const success = await handleAddToCart();
-      
-      if (success) {
-        console.log('[ProductActions] Navigating to cart after successful add');
-        navigate('/cart');
-      } else {
-        console.error('[ProductActions] Not navigating to cart due to add failure');
-      }
-    } catch (err) {
-      console.error('[ProductActions] Error buying now:', err);
-      toast.error(`Erro ao processar compra: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
-    } finally {
-      setBuying(false);
-    }
-  };
+  const { handleAddToCart, handleBuyNow, isAddingToCart, isBuyingNow } = useCartActions();
+  
+  const isAddingThisToCart = productId ? isAddingToCart[productId] : false;
+  const isBuyingThisNow = productId ? isBuyingNow[productId] : false;
 
   return (
     <div className="flex flex-col space-y-3">
       <Button 
         className="w-full bg-construPro-blue hover:bg-blue-700 text-white py-3 text-base flex items-center justify-center"
-        onClick={handleAddToCart}
-        disabled={adding}
+        onClick={() => handleAddToCart(productId, quantity)}
+        disabled={isAddingThisToCart}
       >
         <ShoppingCart className="mr-2 h-5 w-5" />
-        {adding ? 'Adicionando...' : 'Adicionar ao Carrinho'}
+        {isAddingThisToCart ? 'Adicionando...' : 'Adicionar ao Carrinho'}
       </Button>
       
       <Button
         className="w-full bg-green-600 hover:bg-green-700 text-white py-3 text-base flex items-center justify-center"
-        onClick={handleBuyNow}
-        disabled={buying}
+        onClick={() => handleBuyNow(productId, quantity)}
+        disabled={isBuyingThisNow}
       >
         <ShoppingBag className="mr-2 h-5 w-5" />
-        {buying ? 'Processando...' : 'Comprar Agora'}
+        {isBuyingThisNow ? 'Processando...' : 'Comprar Agora'}
       </Button>
     </div>
   );

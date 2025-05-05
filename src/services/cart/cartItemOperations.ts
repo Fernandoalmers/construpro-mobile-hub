@@ -1,7 +1,7 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Cart } from "@/types/cart";
 import { getCart } from "./cartFetcher";
+import { ensureSingleActiveCart } from "./cartConsolidation";
 
 /**
  * Add item to cart
@@ -32,41 +32,13 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
       throw new Error(`Apenas ${product.estoque} itens disponíveis em estoque`);
     }
 
-    // Get or create active cart
-    let cartId;
-    const { data: existingCart, error: cartError } = await supabase
-      .from('carts')
-      .select('id')
-      .eq('user_id', userData.user.id)
-      .eq('status', 'active')
-      .maybeSingle();
-
-    console.log('[cartItemOperations] Existing cart result:', existingCart, cartError);
-
-    if (!existingCart) {
-      // Create a new cart if one doesn't exist
-      console.log('[cartItemOperations] Creating new cart for user:', userData.user.id);
-      
-      const { data: newCart, error: createError } = await supabase
-        .from('carts')
-        .insert({ 
-          user_id: userData.user.id,
-          status: 'active'
-        })
-        .select('id')
-        .single();
-
-      if (createError) {
-        console.error('Error creating cart:', createError);
-        throw new Error('Erro ao criar carrinho');
-      }
-      
-      console.log('[cartItemOperations] New cart created:', newCart);
-      cartId = newCart.id;
-    } else {
-      console.log('[cartItemOperations] Using existing cart:', existingCart.id);
-      cartId = existingCart.id;
+    // Ensure we have a single active cart and get its ID
+    const cartId = await ensureSingleActiveCart(userData.user.id);
+    if (!cartId) {
+      throw new Error('Não foi possível criar ou acessar o carrinho');
     }
+
+    console.log('[cartItemOperations] Using cart:', cartId);
 
     // Use the correct price field from the produtos table
     const productPrice = product.preco_promocional || product.preco_normal;
