@@ -2,6 +2,7 @@
 import React from 'react';
 import { Truck } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import ProductActions from '@/components/product/ProductActions';
 
 interface ProdutoCardProps {
   produto: any;
@@ -13,6 +14,7 @@ interface ProdutoCardProps {
   onBuyNow?: (e: React.MouseEvent) => void;
   isFavorite?: boolean;
   isAddingToCart?: boolean;
+  showActions?: boolean;
 }
 
 const ProdutoCard: React.FC<ProdutoCardProps> = ({ 
@@ -21,6 +23,7 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
   onClick,
   onLojaClick,
   isFavorite = false,
+  showActions = false
 }) => {
   // Calculate discount percentage if applicable
   const precoRegular = produto.preco_normal || produto.precoNormal || produto.preco || 0;
@@ -89,6 +92,13 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
             }}
           >
             Vendido por {loja.nome}
+          </div>
+        )}
+        
+        {/* Product Actions */}
+        {showActions && produto?.id && (
+          <div className="mt-2" onClick={e => e.stopPropagation()}>
+            <ProductActions productId={produto.id} quantity={1} />
           </div>
         )}
       </div>

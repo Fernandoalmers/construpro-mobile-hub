@@ -6,12 +6,14 @@ interface GridProductViewProps {
   products: any[];
   navigateToProduct: (productId: string) => void;
   onLojaClick?: (lojaId: string) => void;
+  showActions?: boolean;
 }
 
 const GridProductView: React.FC<GridProductViewProps> = ({ 
   products, 
   navigateToProduct, 
-  onLojaClick
+  onLojaClick,
+  showActions = false
 }) => {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -26,6 +28,7 @@ const GridProductView: React.FC<GridProductViewProps> = ({
           onAddToFavorites={undefined}
           isAddingToCart={false}
           isFavorite={false}
+          showActions={showActions}
         />
       ))}
     </div>

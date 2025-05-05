@@ -3,7 +3,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext'; 
 
-// Import our new components
+// Import our components
 import ViewTypeSelector from './components/ViewTypeSelector';
 import GridProductView from './components/GridProductView';
 import ListProductView from './components/ListProductView';
@@ -20,6 +20,7 @@ interface ProductListSectionProps {
   onLojaClick?: (lojaId: string) => void;
   isLoading?: boolean;
   viewType?: 'grid' | 'list';
+  showActions?: boolean;
 }
 
 const ProductListSection: React.FC<ProductListSectionProps> = ({ 
@@ -30,7 +31,8 @@ const ProductListSection: React.FC<ProductListSectionProps> = ({
   clearFilters,
   onLojaClick,
   isLoading = false,
-  viewType: initialViewType = 'list' // Default to list view
+  viewType: initialViewType = 'list',
+  showActions = false
 }) => {
   const navigate = useNavigate();
   const loadMoreRef = useRef(null);
@@ -83,12 +85,14 @@ const ProductListSection: React.FC<ProductListSectionProps> = ({
           products={displayedProducts} 
           navigateToProduct={navigateToProduct}
           onLojaClick={onLojaClick}
+          showActions={showActions}
         />
       ) : (
         <ListProductView 
           products={displayedProducts} 
           navigateToProduct={navigateToProduct}
           onLojaClick={onLojaClick}
+          showActions={showActions}
         />
       )}
       

@@ -1,17 +1,20 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import ProductActions from '@/components/product/ProductActions';
 
 interface ListProductViewProps {
   products: any[];
   navigateToProduct: (productId: string) => void;
   onLojaClick?: (lojaId: string) => void;
+  showActions?: boolean;
 }
 
 const ListProductView: React.FC<ListProductViewProps> = ({ 
   products, 
   navigateToProduct,
-  onLojaClick
+  onLojaClick,
+  showActions = false
 }) => {
   return (
     <div className="flex flex-col gap-2">
@@ -51,7 +54,7 @@ const ListProductView: React.FC<ListProductViewProps> = ({
             
             {/* Price section */}
             <div className="font-bold text-lg">
-              R$ {(produto.preco || 99.90).toFixed(2).replace('.', ',')}
+              R$ {((produto.preco_promocional || produto.preco_normal) || 99.90).toFixed(2).replace('.', ',')}
             </div>
 
             {/* Store name */}
@@ -71,6 +74,17 @@ const ListProductView: React.FC<ListProductViewProps> = ({
             <div className="text-xs text-green-600 mt-1">
               Entrega GRÁTIS
             </div>
+            
+            {/* Product Actions */}
+            {showActions && produto?.id && (
+              <div 
+                className="mt-2" 
+                onClick={e => e.stopPropagation()}
+                style={{ maxWidth: '200px' }}
+              >
+                <ProductActions productId={produto.id} quantity={1} />
+              </div>
+            )}
           </div>
         </div>
       ))}

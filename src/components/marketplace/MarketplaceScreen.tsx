@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useProductFilter } from '@/hooks/use-product-filter';
 import { useScrollBehavior } from '@/hooks/use-scroll-behavior';
 import { useMarketplaceData } from '@/hooks/useMarketplaceData';
+import { useProductSearch } from '@/hooks/useProductSearch';
 import ProductListSection from './ProductListSection';
 import SegmentCardsHeader from './components/SegmentCardsHeader';
 import StoresSection from './components/StoresSection';
@@ -24,12 +25,12 @@ const MarketplaceScreen: React.FC = () => {
   
   const initialCategories = categoryParam ? [categoryParam] : [];
   
-  const [searchTerm, setSearchTerm] = useState(searchQuery || '');
-  const [selectedSegment, setSelectedSegment] = useState<string | null>(segmentParam);
-  
   // Use our custom hooks
   const { hideHeader } = useScrollBehavior();
   const { products, stores, isLoading, storesError } = useMarketplaceData(selectedSegment);
+  
+  // State for segment selection
+  const [selectedSegment, setSelectedSegment] = useState<string | null>(segmentParam);
   
   // Extract all categories from products
   const categories = React.useMemo(() => {
@@ -62,6 +63,23 @@ const MarketplaceScreen: React.FC = () => {
     initialProducts: products,
     initialSearch: searchQuery || '' 
   });
+
+  // Use our new product search hook
+  const fetchProducts = (term: string) => {
+    console.log('Searching for:', term);
+    handleSearchChange(term);
+    
+    // Update URL with search term
+    const newSearchParams = new URLSearchParams(searchParams);
+    if (term) {
+      newSearchParams.set('search', term);
+    } else {
+      newSearchParams.delete('search');
+    }
+    navigate(`${location.pathname}?${newSearchParams.toString()}`, { replace: true });
+  };
+  
+  const { term, setTerm, handleSubmit } = useProductSearch(fetchProducts);
 
   // Handle segment selection
   const handleSegmentClick = (segmentId: string) => {
@@ -109,6 +127,13 @@ const MarketplaceScreen: React.FC = () => {
     }
   };
 
+  // Initialize search term from URL
+  useEffect(() => {
+    if (searchQuery) {
+      setTerm(searchQuery);
+    }
+  }, [searchQuery]);
+
   // Current category name for display
   const currentCategoryName = selectedCategories.length === 1 ? 
     categories.find(cat => cat.id === selectedCategories[0])?.label : 
@@ -121,8 +146,8 @@ const MarketplaceScreen: React.FC = () => {
       {/* Search and Filter Header */}
       <SearchAndFilterSection
         hideHeader={hideHeader}
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
+        searchTerm={term}
+        setSearchTerm={setTerm}
         selectedCategories={selectedCategories}
         selectedLojas={selectedLojas}
         selectedRatings={selectedRatings}
@@ -131,10 +156,10 @@ const MarketplaceScreen: React.FC = () => {
         onLojaClick={handleLojaClick}
         onCategoryClick={handleCategoryClick}
         onRatingClick={handleRatingClick}
-        onSearch={handleQuickSearch}
+        onSearch={handleSubmit}
         clearFilters={clearFilters}
         stores={stores}
-        handleSearchChange={handleSearchChange}
+        handleSearchChange={(term) => setTerm(term)}
       />
       
       {/* Segment Cards */}
@@ -170,6 +195,7 @@ const MarketplaceScreen: React.FC = () => {
             onLojaClick={handleLojaCardClick}
             isLoading={isLoading}
             viewType="list" // Default to list view to match Mercado Livre style
+            showActions={true}
           />
         )}
       </div>
