@@ -112,15 +112,16 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
           </div>
         )}
         
-        {/* Product Actions */}
+        {/* Product Actions - REMOVED as requested */}
+        {/* Only show action buttons if specifically requested */}
         {showActions && produto?.id && (
           <div className="mt-2" onClick={e => e.stopPropagation()}>
             <ProductActions productId={produto.id} quantity={1} />
           </div>
         )}
         
-        {/* Custom action buttons if provided */}
-        {(onAddToCart || onBuyNow) && (
+        {/* Custom action buttons - Only show if provided and requested */}
+        {showActions && (onAddToCart || onBuyNow) && (
           <div className="mt-2 flex flex-col gap-1" onClick={e => e.stopPropagation()}>
             {onAddToCart && (
               <button 

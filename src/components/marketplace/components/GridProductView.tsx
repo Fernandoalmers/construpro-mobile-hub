@@ -24,11 +24,7 @@ const GridProductView: React.FC<GridProductViewProps> = ({
           loja={produto.stores}
           onClick={() => navigateToProduct(produto.id)}
           onLojaClick={onLojaClick}
-          onAddToCart={undefined} 
-          onAddToFavorites={undefined}
-          isAddingToCart={false}
-          isFavorite={false}
-          showActions={showActions}
+          showActions={false} // Always set to false to hide action buttons
         />
       ))}
     </div>
