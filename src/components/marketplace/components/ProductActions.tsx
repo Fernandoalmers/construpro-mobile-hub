@@ -34,7 +34,7 @@ const ProductActions: React.FC<ProductActionsProps> = ({
     e.stopPropagation();
     
     try {
-      console.log("[ProductActions] handleAddToCartClick called for", produto?.id);
+      console.log("[ProductActions] handleAddToCartClick called for", produto?.id, "quantity:", quantidade);
       // Validate quantity before adding to cart
       validateQuantity();
       
@@ -50,16 +50,18 @@ const ProductActions: React.FC<ProductActionsProps> = ({
         return;
       }
       
-      console.log("[ProductActions] Adicionando ao carrinho:", produto.id, "quantidade:", quantidade);
-      
       // Use the cartActions hook to handle adding to cart
       const success = await handleAddToCart(produto.id, quantidade);
-      if (success && onSuccess) {
-        console.log("Product added to cart successfully, calling onSuccess");
-        onSuccess();
+      
+      if (success) {
+        toast.success(`${quantidade} unidade(s) adicionada(s) ao carrinho`);
+        if (onSuccess) {
+          console.log("[ProductActions] Product added to cart successfully, calling onSuccess");
+          onSuccess();
+        }
       }
     } catch (error: any) {
-      console.error("Error adding to cart:", error);
+      console.error("[ProductActions] Error adding to cart:", error);
       toast.error(error.message || "Erro ao adicionar ao carrinho");
     }
   };
@@ -69,7 +71,7 @@ const ProductActions: React.FC<ProductActionsProps> = ({
     e.stopPropagation();
     
     try {
-      console.log("[ProductActions] handleBuyNowClick called for", produto?.id);
+      console.log("[ProductActions] handleBuyNowClick called for", produto?.id, "quantity:", quantidade);
       // Validate quantity before buying
       validateQuantity();
       
@@ -85,12 +87,10 @@ const ProductActions: React.FC<ProductActionsProps> = ({
         return;
       }
       
-      console.log("[ProductActions] Comprando agora:", produto.id, "quantidade:", quantidade);
-      
       // This will add to cart and navigate to cart page
       await handleBuyNow(produto.id, quantidade);
     } catch (error: any) {
-      console.error("Error buying now:", error);
+      console.error("[ProductActions] Error buying now:", error);
       toast.error(error.message || "Erro ao processar compra");
     }
   };

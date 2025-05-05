@@ -8,25 +8,34 @@ export const fetchProductInfo = async (productId: string) => {
   try {
     console.log('[ProductInfo] Fetching product info for:', productId);
     
-    // Try to get product from produtos table first (main products table)
-    let { data: product, error } = await supabase
+    // Enhanced query to get product info with additional error handling
+    const { data, error } = await supabase
       .from('produtos')
-      .select('id, nome, preco_normal, preco_promocional, estoque, vendedor_id, pontos_consumidor')
+      .select(`
+        id, 
+        nome, 
+        preco_normal, 
+        preco_promocional, 
+        estoque, 
+        vendedor_id,
+        pontos_consumidor
+      `)
       .eq('id', productId)
       .single();
     
-    // If not found in the main table, try the products table (older/alternative table)
-    if (error || !product) {
-      console.log('[ProductInfo] Product not found in produtos table, checking products table');
+    if (error) {
+      console.error('[ProductInfo] Error fetching from produtos table:', error);
+      
+      // Fallback to products table if needed
       const { data: altProduct, error: altError } = await supabase
         .from('products')
         .select('id, nome, preco, preco_anterior, estoque, loja_id, pontos')
         .eq('id', productId)
         .single();
       
-      if (altError || !altProduct) {
+      if (altError) {
         console.error('[ProductInfo] Product not found in any table:', productId, altError);
-        return null;
+        throw new Error('Produto não encontrado');
       }
       
       console.log('[ProductInfo] Found product in products table:', altProduct.id);
@@ -43,20 +52,20 @@ export const fetchProductInfo = async (productId: string) => {
       };
     }
     
-    console.log('[ProductInfo] Found product in produtos table:', product.id);
+    console.log('[ProductInfo] Found product in produtos table:', data.id);
     
     // Return the product from the main table with transformed fields
     return {
-      id: product.id,
-      nome: product.nome,
-      preco: product.preco_promocional || product.preco_normal,
-      preco_anterior: product.preco_normal,
-      estoque: product.estoque,
-      vendedor_id: product.vendedor_id, // Correctly use vendedor_id from produtos table
-      pontos: product.pontos_consumidor
+      id: data.id,
+      nome: data.nome,
+      preco: data.preco_promocional || data.preco_normal,
+      preco_anterior: data.preco_normal,
+      estoque: data.estoque,
+      vendedor_id: data.vendedor_id,
+      pontos: data.pontos_consumidor
     };
   } catch (error) {
     console.error('[ProductInfo] Error fetching product info:', error);
-    return null;
+    throw error;
   }
 };

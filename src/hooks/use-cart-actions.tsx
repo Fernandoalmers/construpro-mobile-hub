@@ -40,7 +40,6 @@ export function useCartActions() {
       console.log('[useCartActions] Product added to cart, refreshing cart data');
       await refreshCart();
       
-      toast.success(`${quantity} unidade(s) adicionada(s) ao carrinho`);
       return true;
     } catch (error: any) {
       console.error('[useCartActions] Error adding to cart:', error);

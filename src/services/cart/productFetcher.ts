@@ -3,12 +3,13 @@ import { supabase } from '@/integrations/supabase/client';
 
 /**
  * Fetches product information from the 'produtos' table
+ * with additional error handling and improved logging
  */
 export async function fetchProductInfo(productId: string) {
   try {
     console.log('[productFetcher] Fetching product info for:', productId);
     
-    // Use 'produtos' table
+    // Use 'produtos' table with a more detailed query
     const { data, error } = await supabase
       .from('produtos')
       .select(`
@@ -30,12 +31,47 @@ export async function fetchProductInfo(productId: string) {
       .single();
       
     if (error) {
-      console.error('[productFetcher] Error fetching product:', error);
-      return null;
+      console.error('[productFetcher] Error fetching product from produtos table:', error);
+      
+      // Try fallback to 'products' table if it exists
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('products')
+        .select(`
+          id, 
+          nome, 
+          preco, 
+          preco_anterior, 
+          estoque, 
+          pontos,
+          loja_id,
+          imagem_url
+        `)
+        .eq('id', productId)
+        .single();
+      
+      if (fallbackError) {
+        console.error('[productFetcher] Product not found in any table:', productId);
+        return null;
+      }
+      
+      console.log('[productFetcher] Product found in fallback products table:', fallbackData);
+      
+      // Map the fallback data to the expected format
+      return {
+        id: fallbackData.id,
+        nome: fallbackData.nome,
+        preco: fallbackData.preco,
+        preco_anterior: fallbackData.preco_anterior,
+        estoque: fallbackData.estoque,
+        pontos: fallbackData.pontos,
+        vendedor_id: fallbackData.loja_id,
+        imagens: [fallbackData.imagem_url],
+        vendedor: null // No joined data in fallback
+      };
     }
     
     if (!data) {
-      console.error('[productFetcher] Product not found:', productId);
+      console.error('[productFetcher] Product data not found:', productId);
       return null;
     }
     
