@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export interface CartItem {
@@ -70,7 +71,7 @@ export const getCart = async (): Promise<Cart | null> => {
       }
     }
 
-    // Get cart items
+    // Get cart items with product information from 'produtos' table
     const { data: items, error: itemsError } = await supabase
       .from('cart_items')
       .select(`
@@ -78,14 +79,15 @@ export const getCart = async (): Promise<Cart | null> => {
         product_id,
         quantity,
         price_at_add,
-        products:product_id (
+        produtos:product_id (
           id,
           nome,
-          preco,
-          imagem_url,
-          loja_id,
+          preco_normal,
+          preco_promocional,
+          imagens,
           estoque,
-          pontos
+          vendedor_id,
+          pontos_consumidor
         )
       `)
       .eq('cart_id', cartData.id);
@@ -96,14 +98,31 @@ export const getCart = async (): Promise<Cart | null> => {
     }
 
     // Process cart items
-    const cartItems: CartItem[] = (items || []).map(item => ({
-      id: item.id,
-      produto: item.products,
-      produto_id: item.product_id,
-      quantidade: item.quantity,
-      preco: item.price_at_add,
-      subtotal: item.price_at_add * item.quantity
-    }));
+    const cartItems: CartItem[] = (items || []).map(item => {
+      // Extract first image from imagens array if available
+      let imageUrl: string | undefined;
+      if (item.produtos && item.produtos.imagens && Array.isArray(item.produtos.imagens) && item.produtos.imagens.length > 0) {
+        imageUrl = item.produtos.imagens[0];
+      }
+
+      return {
+        id: item.id,
+        produto: item.produtos ? {
+          id: item.produtos.id,
+          nome: item.produtos.nome,
+          preco: item.produtos.preco_promocional || item.produtos.preco_normal,
+          pontos: item.produtos.pontos_consumidor,
+          imagem_url: imageUrl,
+          loja_id: item.produtos.vendedor_id,
+          estoque: item.produtos.estoque || 0
+        } : undefined,
+        produto_id: item.product_id,
+        quantidade: item.quantity,
+        preco: item.price_at_add,
+        subtotal: item.price_at_add * item.quantity,
+        pontos: item.produtos?.pontos_consumidor
+      };
+    });
 
     // Get store information for items in cart
     const storeIds = [...new Set(cartItems.map(item => item.produto?.loja_id).filter(Boolean))];
@@ -149,8 +168,8 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
 
     // Get product information
     const { data: product, error: productError } = await supabase
-      .from('products')
-      .select('id, preco, estoque')
+      .from('produtos')  // Changed from 'products' to 'produtos'
+      .select('id, preco_normal, preco_promocional, estoque')
       .eq('id', productId)
       .single();
 
@@ -209,6 +228,9 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
       return null;
     }
 
+    // Use the correct price field from the produtos table
+    const productPrice = product.preco_promocional || product.preco_normal;
+
     if (existingItem) {
       // Update quantity of existing item
       const newQuantity = existingItem.quantity + quantity;
@@ -234,7 +256,7 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
           cart_id: cartData.id,
           product_id: productId,
           quantity: quantity,
-          price_at_add: product.preco
+          price_at_add: productPrice
         });
 
       if (insertError) {
@@ -266,7 +288,7 @@ export const updateCartItemQuantity = async (itemId: string, quantity: number): 
       .select(`
         id,
         product_id,
-        products:product_id (estoque)
+        produtos:product_id (estoque)
       `)
       .eq('id', itemId)
       .single();
@@ -277,8 +299,8 @@ export const updateCartItemQuantity = async (itemId: string, quantity: number): 
     }
 
     // Check inventory
-    if (item.products.estoque < quantity) {
-      throw new Error(`Cannot update quantity. Only ${item.products.estoque} available in stock`);
+    if (item.produtos.estoque < quantity) {
+      throw new Error(`Cannot update quantity. Only ${item.produtos.estoque} available in stock`);
     }
 
     // Update quantity
@@ -458,11 +480,12 @@ export const getFavorites = async (): Promise<any[]> => {
           id,
           nome,
           descricao,
-          preco,
+          preco_normal,
+          preco_promocional,
           imagem_url,
           categoria,
           avaliacao,
-          stores:loja_id ( nome, id )
+          stores:vendedor_id ( nome, id )
         )
       `)
       .eq('user_id', userData.user.id)
@@ -473,7 +496,16 @@ export const getFavorites = async (): Promise<any[]> => {
       return [];
     }
 
-    return data || [];
+    // Process to match expected format
+    const processedData = (data || []).map(item => ({
+      ...item,
+      produtos: item.produtos ? {
+        ...item.produtos,
+        preco: item.produtos.preco_promocional || item.produtos.preco_normal
+      } : null
+    }));
+
+    return processedData;
   } catch (error) {
     console.error('Error in getFavorites:', error);
     return [];
