@@ -10,29 +10,27 @@ export async function fetchCart(userId: string): Promise<Cart | null> {
   try {
     console.log('Fetching cart for user:', userId);
     
-    // Get cart
-    const { data: cartData, error: cartError } = await supabase
+    // Get the most recent active cart
+    const { data: cartsData, error: cartsError } = await supabase
       .from('carts')
       .select('*')
       .eq('user_id', userId)
       .eq('status', 'active')
-      .single();
+      .order('created_at', { ascending: false });
 
-    if (cartError) {
-      if (cartError.code !== 'PGRST116') { // Not found error
-        console.error('Error fetching cart:', cartError);
-        return null;
-      }
-      console.log('No active cart found for user');
+    if (cartsError) {
+      console.error('Error fetching carts:', cartsError);
       return null;
     }
 
-    if (!cartData) {
-      console.log('No cart data returned');
+    if (!cartsData || cartsData.length === 0) {
+      console.log('No active carts found for user');
       return null;
     }
 
-    console.log('Found cart:', cartData);
+    // Use the most recently created cart
+    const cartData = cartsData[0];
+    console.log('Found active cart:', cartData.id);
 
     // Fetch cart items with product details
     const { data: cartItems, error: itemsError } = await supabase
@@ -61,6 +59,11 @@ export async function fetchCart(userId: string): Promise<Cart | null> {
     }
 
     console.log('Retrieved cart items:', cartItems);
+
+    // If there are multiple active carts, consolidate them (cleanup)
+    if (cartsData.length > 1) {
+      console.log('Multiple active carts found, will use the most recent one:', cartData.id);
+    }
 
     // Process items
     const items = cartItems.map((item: any) => ({

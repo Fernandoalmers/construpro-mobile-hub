@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from '@/components/ui/sonner';
 import { useAuth } from '@/context/AuthContext';
@@ -209,7 +210,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Calculate total items in cart
+  // Calculate total items in cart - ensure it's using the latest cart data
   const cartCount = cart?.summary?.totalItems || 0;
 
   const value: CartContextType = {

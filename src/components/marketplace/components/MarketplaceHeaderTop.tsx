@@ -2,6 +2,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ShoppingBag } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 interface MarketplaceHeaderTopProps {
   cartCount: number;
@@ -29,10 +30,11 @@ const MarketplaceHeaderTop: React.FC<MarketplaceHeaderTopProps> = ({ cartCount }
         <button 
           onClick={() => navigate('/cart')} 
           className="relative text-white"
+          aria-label={`Carrinho com ${cartCount} itens`}
         >
           <ShoppingBag size={24} />
           {cartCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
               {cartCount}
             </span>
           )}

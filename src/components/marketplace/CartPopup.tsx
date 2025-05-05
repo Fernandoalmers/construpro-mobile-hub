@@ -16,9 +16,9 @@ const CartPopup: React.FC<CartPopupProps> = ({ triggerShow }) => {
   
   console.log('CartPopup rendering:', { triggerShow, cartCount, show, isLoading });
   
-  // Show popup when triggerShow changes to true
+  // Show popup when triggerShow changes to true or when items are added to cart
   useEffect(() => {
-    if (triggerShow && cartCount > 0) {
+    if (triggerShow && cartCount > 0 && !isLoading) {
       console.log('CartPopup: triggerShow is true and cart has items, showing popup');
       setShow(true);
       const timer = setTimeout(() => {
@@ -27,11 +27,11 @@ const CartPopup: React.FC<CartPopupProps> = ({ triggerShow }) => {
       
       return () => clearTimeout(timer);
     }
-  }, [triggerShow, cartCount]);
+  }, [triggerShow, cartCount, isLoading]);
   
   // Also show popup when cartCount increases
   useEffect(() => {
-    if (cartCount > 0 && cart) {
+    if (cartCount > 0 && !isLoading) {
       console.log('CartPopup: cart updated with items, showing popup');
       setShow(true);
       const timer = setTimeout(() => {
@@ -40,7 +40,7 @@ const CartPopup: React.FC<CartPopupProps> = ({ triggerShow }) => {
       
       return () => clearTimeout(timer);
     }
-  }, [cart, cartCount]);
+  }, [cartCount, isLoading]);
   
   // Don't show anything during loading or if cart is empty
   if (isLoading || cartCount === 0) {
