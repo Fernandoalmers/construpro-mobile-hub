@@ -1,64 +1,59 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ShoppingCart } from 'lucide-react';
-import CustomInput from '../../common/CustomInput';
-import { Button } from '@/components/ui/button';
-import { useCart } from '@/hooks/use-cart';
+import { ChevronLeft } from 'lucide-react';
+import SearchBar from './SearchBar';
+import CartButton from '../CartButton';
 
 interface SearchHeaderProps {
-  onGoBack: () => void;
+  onGoBack?: () => void;
 }
 
 const SearchHeader: React.FC<SearchHeaderProps> = ({ onGoBack }) => {
   const navigate = useNavigate();
-  const { cartCount = 0 } = useCart();
   const [searchTerm, setSearchTerm] = useState('');
-  
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchTerm.trim()) {
-      navigate(`/marketplace?search=${encodeURIComponent(searchTerm)}`);
+
+  const handleBackClick = () => {
+    if (onGoBack) {
+      onGoBack();
+    } else {
+      navigate(-1);
+    }
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  };
+
+  // Add this function to handle search submissions from the product detail page
+  const handleSearch = (term: string) => {
+    console.log('Search submitted from product detail page:', term);
+    if (term.trim().length >= 2) {
+      navigate(`/marketplace/products?search=${encodeURIComponent(term)}`);
     }
   };
 
   return (
-    <div className="bg-white shadow-sm py-3">
-      <div className="container mx-auto px-4 flex items-center justify-between">
-        <div className="flex items-center flex-1 mr-4">
-          <button 
-            onClick={onGoBack} 
-            className="mr-3"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <form onSubmit={handleSearch} className="flex-1 max-w-md">
-            <CustomInput
-              type="text"
-              placeholder="Buscar produtos..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              isSearch
-              className="w-full"
-            />
-          </form>
+    <div className="bg-white sticky top-0 z-10 shadow-sm border-b pb-2">
+      <div className="container mx-auto px-4 pt-4 flex items-center justify-between">
+        {/* Back button */}
+        <button 
+          onClick={handleBackClick}
+          className="p-2 rounded-full text-gray-600 hover:bg-gray-100"
+          aria-label="Voltar"
+        >
+          <ChevronLeft size={24} />
+        </button>
+        
+        <div className="flex-1 mx-3">
+          <SearchBar 
+            searchTerm={searchTerm} 
+            onSearchChange={handleSearchChange}
+            onSearch={handleSearch}
+          />
         </div>
         
-        <div className="relative">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="relative"
-            onClick={() => navigate('/cart')}
-          >
-            <ShoppingCart size={22} />
-            {cartCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-construPro-orange text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                {cartCount}
-              </span>
-            )}
-          </Button>
-        </div>
+        <CartButton />
       </div>
     </div>
   );
