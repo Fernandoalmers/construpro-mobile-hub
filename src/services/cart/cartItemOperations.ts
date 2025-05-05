@@ -41,6 +41,8 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
       throw new Error('Usuário não autenticado');
     }
 
+    console.log('[addToCart] IDs', { user_id: userData.user?.id, product_id: productId });
+
     // Check product stock
     const { hasStock, product, error: stockError } = await checkProductStock(productId, quantity);
     if (!hasStock) {
@@ -90,6 +92,16 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
       if (!success) {
         throw addError || new Error('Erro ao adicionar item ao carrinho');
       }
+
+      // For debugging, directly check if item was added
+      const { data: inserted, error: checkError } = await supabase
+        .from('cart_items')
+        .select('*')
+        .eq('cart_id', cartId)
+        .eq('product_id', productId)
+        .single();
+        
+      console.log('[addToCart result]', { data: inserted, error: checkError });
     }
 
     // Return updated cart

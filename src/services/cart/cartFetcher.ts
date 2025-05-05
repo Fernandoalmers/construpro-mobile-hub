@@ -14,6 +14,8 @@ export const getCart = async (): Promise<Cart | null> => {
       return null;
     }
 
+    console.log('[getCart] Getting cart for user:', userData.user.id);
+
     // First, let's consolidate user's carts to ensure consistency
     await consolidateUserCarts(userData.user.id);
 
@@ -54,107 +56,154 @@ export const getCart = async (): Promise<Cart | null> => {
       console.log('Found active cart:', cartData.id);
     }
 
-    // Get cart items with product information from 'produtos' table
-    const { data: items, error: itemsError } = await supabase
+    // Get cart items
+    const { data: cartItems, error: cartItemsError } = await supabase
       .from('cart_items')
-      .select(`
-        id,
-        product_id,
-        quantity,
-        price_at_add,
-        produtos:product_id (
-          id,
-          nome,
-          preco_normal,
-          preco_promocional,
-          imagens,
-          estoque,
-          vendedor_id,
-          pontos_consumidor
-        )
-      `)
+      .select('*')
       .eq('cart_id', cartData.id);
 
-    if (itemsError) {
-      console.error('Error fetching cart items:', itemsError);
+    if (cartItemsError) {
+      console.error('Error fetching cart items:', cartItemsError);
       return null;
     }
 
-    // Process cart items
-    const cartItems = (items || []).map(item => {
-      // Extract first image from imagens array if available
-      let imageUrl: string | undefined;
-      if (item.produtos && item.produtos.imagens && Array.isArray(item.produtos.imagens) && item.produtos.imagens.length > 0) {
-        // Ensure we're converting to string if the image is not already a string
-        imageUrl = String(item.produtos.imagens[0]);
-      }
+    console.log('Cart items found:', cartItems?.length || 0);
 
+    // If there are no items, return empty cart
+    if (!cartItems || cartItems.length === 0) {
       return {
-        id: item.id,
-        produto: item.produtos ? {
-          id: item.produtos.id,
-          nome: item.produtos.nome,
-          preco: item.produtos.preco_promocional || item.produtos.preco_normal,
-          pontos: item.produtos.pontos_consumidor,
-          imagem_url: imageUrl,
-          loja_id: item.produtos.vendedor_id,
-          estoque: item.produtos.estoque || 0
-        } : undefined,
-        produto_id: item.product_id,
-        quantidade: item.quantity,
-        preco: item.price_at_add,
-        subtotal: item.price_at_add * item.quantity,
-        pontos: item.produtos?.pontos_consumidor
+        id: cartData.id,
+        user_id: userData.user.id,
+        items: [],
+        summary: {
+          subtotal: 0,
+          shipping: 0,
+          totalItems: 0,
+          totalPoints: 0
+        },
+        stores: []
       };
-    });
-
-    // Get store information for items in cart
-    const storeIds = [...new Set(cartItems.map(item => item.produto?.loja_id).filter(Boolean))];
-    let stores = [];
-    if (storeIds.length > 0) {
-      const { data: storesData } = await supabase
-        .from('stores')
-        .select('id, nome, logo_url')
-        .in('id', storeIds);
-
-      stores = storesData || [];
     }
 
-    // Calculate summary
-    const subtotal = cartItems.reduce((sum, item) => sum + item.subtotal, 0);
-    const shipping = storeIds.length * 15.9; // Fixed shipping per store
-    const totalPoints = cartItems.reduce((sum, item) => sum + ((item.produto?.pontos || 0) * item.quantidade), 0);
-    const totalItems = cartItems.reduce((sum, item) => sum + item.quantidade, 0);
+    // Get product information separately for each item
+    const productIds = cartItems.map(item => item.product_id);
+    
+    // Get product details
+    const { data: products, error: productsError } = await supabase
+      .from('produtos')
+      .select(`
+        id, 
+        nome, 
+        preco_normal, 
+        preco_promocional, 
+        imagens, 
+        estoque,
+        vendedor_id,
+        pontos_consumidor
+      `)
+      .in('id', productIds);
 
-    // Save cart data to localStorage as a fallback for CartPopup
+    if (productsError) {
+      console.error('Error fetching products:', productsError);
+      return null;
+    }
+
+    console.log('Products found:', products?.length || 0);
+
+    // Get store information
+    const vendorIds = [...new Set(products?.map(product => product.vendedor_id).filter(Boolean) || [])];
+    
+    let stores = [];
+    if (vendorIds.length > 0) {
+      const { data: storesData, error: storesError } = await supabase
+        .from('vendedores')
+        .select('id, nome_loja')
+        .in('id', vendorIds);
+        
+      if (!storesError && storesData) {
+        stores = storesData.map(store => ({
+          id: store.id,
+          nome: store.nome_loja,
+          logo_url: null
+        }));
+      }
+    }
+
+    // Format cart items with product details
+    const formattedItems = cartItems.map(cartItem => {
+      const product = products?.find(p => p.id === cartItem.product_id);
+      
+      if (!product) {
+        console.warn('Product not found for cart item:', cartItem.product_id);
+        return null;
+      }
+      
+      // Extract first image from imagens array if available
+      let imageUrl = null;
+      if (product.imagens && Array.isArray(product.imagens) && product.imagens.length > 0) {
+        imageUrl = String(product.imagens[0]);
+      }
+      
+      const preco = cartItem.price_at_add;
+      const quantidade = cartItem.quantity;
+      const subtotal = preco * quantidade;
+      
+      return {
+        id: cartItem.id,
+        produto_id: cartItem.product_id,
+        quantidade,
+        preco,
+        subtotal,
+        produto: {
+          id: product.id,
+          nome: product.nome,
+          preco: product.preco_promocional || product.preco_normal,
+          imagem_url: imageUrl,
+          estoque: product.estoque || 0,
+          loja_id: product.vendedor_id,
+          pontos: product.pontos_consumidor || 0
+        }
+      };
+    }).filter(Boolean);
+
+    // Calculate summary
+    const subtotal = formattedItems.reduce((sum, item) => sum + (item?.subtotal || 0), 0);
+    const totalItems = formattedItems.reduce((sum, item) => sum + (item?.quantidade || 0), 0);
+    const shipping = stores.length * 15.90; // Fixed shipping per store
+    const totalPoints = formattedItems.reduce((sum, item) => 
+      sum + ((item?.produto?.pontos || 0) * (item?.quantidade || 0)), 0);
+
+    // Save cart data to localStorage as a fallback
     try {
       localStorage.setItem('cartData', JSON.stringify({
         id: cartData.id,
         summary: {
           subtotal,
           shipping,
-          totalPoints,
-          totalItems
+          totalItems,
+          totalPoints
         }
       }));
     } catch (err) {
       console.warn('Could not save cart to localStorage:', err);
     }
 
+    console.log('Returning formatted cart with', formattedItems.length, 'items');
+
     return {
       id: cartData.id,
       user_id: userData.user.id,
-      items: cartItems,
+      items: formattedItems as any[],
       summary: {
         subtotal,
         shipping,
-        totalPoints,
-        totalItems
+        totalItems,
+        totalPoints
       },
       stores
     };
   } catch (error) {
-    console.error('Error fetching cart:', error);
+    console.error('Error in getCart:', error);
     return null;
   }
 };

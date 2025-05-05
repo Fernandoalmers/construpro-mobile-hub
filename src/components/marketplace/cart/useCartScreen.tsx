@@ -24,18 +24,25 @@ export const useCartScreen = () => {
     
     console.log("CartScreen: Refreshing cart data");
     // Explicitly refresh the cart when the component mounts
-    refreshCart().catch(err => {
-      console.error("Error refreshing cart:", err);
-      setError("Erro ao carregar o carrinho. Por favor, tente novamente.");
-    });
+    const loadCart = async () => {
+      try {
+        setLoading(true);
+        await refreshCart();
+      } catch (err) {
+        console.error("Error refreshing cart:", err);
+        setError("Erro ao carregar o carrinho. Por favor, tente novamente.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadCart();
   }, [isAuthenticated, navigate, refreshCart]);
 
+  // Add debugging logs
   useEffect(() => {
-    // Add debugging logs to understand cart state
     console.log("CartScreen: Cart data updated:", cart);
     console.log("CartScreen: Cart items:", cart?.items?.length || 0);
-    // Update loading state based on cart loading
-    setLoading(false);
   }, [cart]);
 
   const handleUpdateQuantity = async (item: CartItem, newQuantity: number) => {

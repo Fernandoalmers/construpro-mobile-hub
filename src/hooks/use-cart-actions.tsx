@@ -98,7 +98,7 @@ export function useCartActions() {
       // Get product price 
       const { data: product, error: productError } = await supabase
         .from('produtos')
-        .select('preco_normal, preco_promocional')
+        .select('preco_normal, preco_promocional, estoque')
         .eq('id', productId)
         .single();
         
@@ -115,6 +115,11 @@ export function useCartActions() {
         .eq('cart_id', cartData.id)
         .eq('product_id', productId)
         .maybeSingle();
+      
+      // Debug logs
+      console.log('[useCartActions] Cart ID:', cartData.id);
+      console.log('[useCartActions] Product:', product);
+      console.log('[useCartActions] Existing item:', existingItem);
         
       if (existingItem) {
         // Update quantity
@@ -128,7 +133,7 @@ export function useCartActions() {
         }
       } else {
         // Insert new item
-        const { error: insertError } = await supabase
+        const { data: insertData, error: insertError } = await supabase
           .from('cart_items')
           .insert({
             cart_id: cartData.id,
@@ -140,7 +145,18 @@ export function useCartActions() {
         if (insertError) {
           throw insertError;
         }
+        
+        console.log('[useCartActions] New item inserted:', insertData);
       }
+      
+      // Double-check insertion by directly querying
+      const { data: checkData, error: checkError } = await supabase
+        .from('cart_items')
+        .select('*')
+        .eq('cart_id', cartData.id)
+        .eq('product_id', productId);
+        
+      console.log('[useCartActions] Verification check:', { data: checkData, error: checkError });
       
       // Refresh cart to make sure the UI updates
       console.log('[useCartActions] Product added to cart, refreshing cart data');
