@@ -15,6 +15,7 @@ import StoresManagementScreen from './components/admin/stores/StoresManagementSc
 import AdminSettingsScreen from './components/admin/settings/AdminSettingsScreen';
 import AdminRewardsScreen from './components/admin/rewards/AdminRewardsScreen';
 import RedemptionsManagementScreen from './components/admin/redemptions/RedemptionsManagementScreen';
+import NotFound from './pages/NotFound';
 
 function App() {
   return (
@@ -36,9 +37,10 @@ function App() {
               <Route path="/admin/configuracoes" element={<AdminLayout currentSection="settings"><AdminSettingsScreen /></AdminLayout>} />
               <Route path="/admin/recompensas" element={<AdminLayout currentSection="rewards"><AdminRewardsScreen /></AdminLayout>} />
               <Route path="/admin/resgates" element={<AdminLayout currentSection="redemptions"><RedemptionsManagementScreen /></AdminLayout>} />
+              <Route path="*" element={<NotFound />} />
             </Routes>
+            <Toaster />
           </Router>
-          <Toaster />
         </CartProvider>
       </AuthProvider>
     </ThemeProvider>

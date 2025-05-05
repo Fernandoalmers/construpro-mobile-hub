@@ -69,8 +69,8 @@ export default function CartPage() {
                   <div className="flex-1">
                     <h3 className="font-medium">{item.produto?.nome || 'Produto'}</h3>
                     <p className="text-sm text-gray-500">
-                      {/* Use the vendedor_id as a fallback if loja_id doesn't exist */}
-                      Vendedor: {item.produto?.vendedor?.nome_loja || 'Loja'}
+                      {/* Use the loja_id as a fallback */}
+                      Vendedor: {item.produto?.loja_id || 'Loja'}
                     </p>
                     
                     <div className="flex justify-between items-center mt-2">
