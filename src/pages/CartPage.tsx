@@ -8,11 +8,11 @@ import { useCart } from '@/hooks/use-cart';
 
 const CartPage: React.FC = () => {
   const navigate = useNavigate();
-  const { cart, removeFromCart, updateQuantity } = useCart();
+  const { cart, cartItems, updateQuantity, removeItem } = useCart();
   const [isUpdating, setIsUpdating] = useState<Record<string, boolean>>({});
 
   // If cart is empty or loading
-  if (!cart || !cart.items || cart.items.length === 0) {
+  if (!cart || !cartItems || cartItems.length === 0) {
     return (
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-2xl font-bold mb-6">Seu Carrinho</h1>
@@ -27,7 +27,7 @@ const CartPage: React.FC = () => {
   const handleRemoveItem = async (itemId: string) => {
     setIsUpdating(prev => ({ ...prev, [itemId]: true }));
     try {
-      await removeFromCart(itemId);
+      await removeItem(itemId);
     } catch (error) {
       console.error('Failed to remove item:', error);
     } finally {
@@ -54,7 +54,7 @@ const CartPage: React.FC = () => {
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <div className="md:col-span-2">
-          {cart.items.map((item) => (
+          {cartItems.map((item) => (
             <div key={item.id} className="bg-white p-4 rounded-lg shadow mb-4 flex items-start">
               <div className="w-20 h-20 flex-shrink-0 bg-gray-100 rounded overflow-hidden mr-4">
                 <img 
@@ -113,19 +113,19 @@ const CartPage: React.FC = () => {
             
             <div className="space-y-2 mb-4">
               <div className="flex justify-between">
-                <span>Subtotal ({cart.items.length} itens)</span>
+                <span>Subtotal ({cartItems.length} itens)</span>
                 <span>R$ {cart.summary?.subtotal?.toFixed(2) || '0.00'}</span>
               </div>
               <div className="flex justify-between">
                 <span>Frete</span>
-                <span>{cart.summary?.frete ? `R$ ${cart.summary.frete.toFixed(2)}` : 'Grátis'}</span>
+                <span>{cart.summary?.shipping ? `R$ ${cart.summary.shipping.toFixed(2)}` : 'Grátis'}</span>
               </div>
               
               <Separator className="my-2" />
               
               <div className="flex justify-between font-bold">
                 <span>Total</span>
-                <span>R$ {cart.summary?.total?.toFixed(2) || '0.00'}</span>
+                <span>R$ {(cart.summary?.subtotal + (cart.summary?.shipping || 0)).toFixed(2) || '0.00'}</span>
               </div>
             </div>
             
