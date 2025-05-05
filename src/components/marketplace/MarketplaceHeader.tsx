@@ -72,17 +72,14 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
             onSearch={onSearch}
           />
 
-          {/* Filter Dialogs */}
+          {/* Filter Dialogs - removed ratingOptions prop as we removed the rating filter */}
           <FilterDialogs
             lojasOptions={lojasOptions}
             allCategories={allCategories}
-            ratingOptions={ratingOptions}
             selectedLojas={selectedLojas}
             selectedCategories={selectedCategories}
-            selectedRatings={selectedRatings}
             onLojaClick={onLojaClick}
             onCategoryClick={onCategoryClick}
-            onRatingClick={onRatingClick}
           />
           
           {/* Selected Filter Chips */}

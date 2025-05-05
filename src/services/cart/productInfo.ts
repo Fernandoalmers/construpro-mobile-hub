@@ -21,17 +21,26 @@ export const fetchProductInfo = async (productId: string) => {
 
     // Ensure we're using the correct price fields
     if (product) {
-      // Map price fields to ensure consistency
-      product.preco = product.preco_promocional || product.preco_normal;
+      // Map price fields to ensure consistency - using preco_normal and preco_promocional
+      // which are the actual fields in the produtos table
+      const finalPrice = product.preco_promocional || product.preco_normal;
       
       console.log('Product info retrieved successfully:', {
         id: product.id,
         nome: product.nome,
         preco_normal: product.preco_normal,
         preco_promocional: product.preco_promocional,
-        preco: product.preco,
+        finalPrice: finalPrice,
         estoque: product.estoque
       });
+      
+      // Add a calculated preco field for compatibility with existing code
+      const enrichedProduct = {
+        ...product,
+        preco: finalPrice
+      };
+      
+      return enrichedProduct;
     }
 
     return product;

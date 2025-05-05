@@ -7,10 +7,13 @@ import { FilterOption } from '@/hooks/use-product-filter';
 interface FilterDialogsProps {
   lojasOptions: FilterOption[];
   allCategories: FilterOption[];
+  ratingOptions?: FilterOption[];
   selectedLojas: string[];
   selectedCategories: string[];
+  selectedRatings?: string[];
   onLojaClick: (lojaId: string) => void;
   onCategoryClick: (categoryId: string) => void;
+  onRatingClick?: (ratingId: string) => void;
 }
 
 const FilterDialogs: React.FC<FilterDialogsProps> = ({
