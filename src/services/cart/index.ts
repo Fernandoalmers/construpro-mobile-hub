@@ -1,6 +1,8 @@
 
 // Export core cart operations
-export * from "./cartCore";
+export * from "./cartFetcher";
+export * from "./cartManagement";
+export * from "./cartConsolidation";
 export * from "./cartItemOperations";
 export * from "./productInfo";
 
@@ -8,23 +10,26 @@ export * from "./productInfo";
 export * from "./favoritesService";
 export * from "./cartItemsManager";
 
-// Export cartFetcher separately to avoid naming conflicts
-import * as cartFetcherModule from "./cartFetcher";
-export { fetchCart } from "./cartFetcher";
-
 // Create legacy exports for backward compatibility
-import * as cartCore from "./cartCore";
+import * as cartFetcher from "./cartFetcher";
+import * as cartManagement from "./cartManagement";
+import * as cartConsolidation from "./cartConsolidation";
 import * as cartItemOps from "./cartItemOperations";
 import * as productInfo from "./productInfo";
 import * as favoritesOps from "./favoritesService";
 import * as cartItems from "./cartItemsManager";
-import * as cartFetcher from "./cartFetcher";
 
 export const cartService = {
-  // Cart core operations
-  getCart: cartCore.getCart,
-  createCart: cartCore.createCart,
-  clearCart: cartCore.clearCart,
+  // Cart fetching operations
+  getCart: cartFetcher.getCart,
+  fetchCart: cartFetcher.fetchCart,
+  
+  // Cart management operations
+  createCart: cartManagement.createCart,
+  clearCart: cartManagement.clearCart,
+  
+  // Cart consolidation
+  consolidateUserCarts: cartConsolidation.consolidateUserCarts,
   
   // Cart item operations
   addToCart: cartItemOps.addToCart,
@@ -42,9 +47,6 @@ export const cartService = {
   updateItemQuantity: cartItems.updateItemQuantity,
   removeCartItem: cartItems.removeCartItem,
   clearCartItems: cartItems.clearCartItems,
-  
-  // Cart fetching and creation
-  fetchCart: cartCore.getCart,
   
   // Product info
   fetchProductInfo: productInfo.fetchProductInfo
