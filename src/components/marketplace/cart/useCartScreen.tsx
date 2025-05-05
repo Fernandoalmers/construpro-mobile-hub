@@ -5,6 +5,7 @@ import { toast } from '@/components/ui/sonner';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/hooks/use-cart';
 import { CartItem } from '@/types/cart';
+import { supabase } from '@/integrations/supabase/client';
 
 export const useCartScreen = () => {
   const navigate = useNavigate();
