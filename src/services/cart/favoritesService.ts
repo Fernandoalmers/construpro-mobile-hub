@@ -112,7 +112,7 @@ export const getFavorites = async (): Promise<any[]> => {
     const processedData = (data || []).map(item => {
       // First check if produtos exists and is a valid object
       if (item.produtos && typeof item.produtos === 'object') {
-        // Now it's safe to access properties and spread the item.produtos object
+        // Now it's safe to access properties
         const preco = item.produtos.preco_promocional || item.produtos.preco_normal;
         
         return {
