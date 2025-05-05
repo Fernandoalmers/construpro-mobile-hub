@@ -3,6 +3,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingCart, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useCart } from '@/hooks/use-cart';
 import { useCartActions } from '@/hooks/use-cart-actions';
 import { toast } from '@/components/ui/sonner';
 
@@ -33,9 +34,10 @@ const ProductActions: React.FC<ProductActionsProps> = ({
     e.stopPropagation();
     
     try {
-      console.log("[ProductActions] handleAddToCartClick called for", produto?.id, "quantity:", quantidade);
+      console.log("ProductActions: handleAddToCartClick called for", produto?.id);
+      // Validate quantity before adding to cart
+      validateQuantity();
       
-      // Validate product first
       if (!produto) {
         toast.error("Produto não encontrado ou não está disponível");
         console.error("Erro: produto inválido ou não disponível", produto);
@@ -48,18 +50,16 @@ const ProductActions: React.FC<ProductActionsProps> = ({
         return;
       }
       
-      // Validate quantity before adding to cart
-      validateQuantity();
+      console.log("Adicionando ao carrinho:", produto.id, "quantidade:", quantidade);
       
       // Use the cartActions hook to handle adding to cart
       const success = await handleAddToCart(produto.id, quantidade);
-      
       if (success && onSuccess) {
-        console.log("[ProductActions] Product added to cart successfully, calling onSuccess");
+        console.log("Product added to cart successfully, calling onSuccess");
         onSuccess();
       }
     } catch (error: any) {
-      console.error("[ProductActions] Error adding to cart:", error);
+      console.error("Error adding to cart:", error);
       toast.error(error.message || "Erro ao adicionar ao carrinho");
     }
   };
@@ -69,9 +69,10 @@ const ProductActions: React.FC<ProductActionsProps> = ({
     e.stopPropagation();
     
     try {
-      console.log("[ProductActions] handleBuyNowClick called for", produto?.id, "quantity:", quantidade);
+      console.log("ProductActions: handleBuyNowClick called for", produto?.id);
+      // Validate quantity before buying
+      validateQuantity();
       
-      // Validate product first
       if (!produto) {
         toast.error("Produto não encontrado ou não está disponível");
         console.error("Erro: produto inválido ou não disponível", produto);
@@ -84,13 +85,12 @@ const ProductActions: React.FC<ProductActionsProps> = ({
         return;
       }
       
-      // Validate quantity before buying
-      validateQuantity();
+      console.log("Comprando agora:", produto.id, "quantidade:", quantidade);
       
       // This will add to cart and navigate to cart page
       await handleBuyNow(produto.id, quantidade);
     } catch (error: any) {
-      console.error("[ProductActions] Error buying now:", error);
+      console.error("Error buying now:", error);
       toast.error(error.message || "Erro ao processar compra");
     }
   };

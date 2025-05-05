@@ -27,6 +27,7 @@ createRoot(document.getElementById("root")!).render(
         <AuthProvider>
           <CartProvider>
             <App />
+            <Toaster />
           </CartProvider>
         </AuthProvider>
       </Router>
