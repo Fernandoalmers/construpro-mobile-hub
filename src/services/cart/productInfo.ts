@@ -18,7 +18,8 @@ export const fetchProductInfo = async (productId: string) => {
         preco_promocional, 
         estoque, 
         vendedor_id,
-        pontos_consumidor
+        pontos_consumidor,
+        imagens
       `)
       .eq('id', productId)
       .single();
@@ -38,7 +39,7 @@ export const fetchProductInfo = async (productId: string) => {
         throw new Error('Produto não encontrado');
       }
       
-      console.log('[ProductInfo] Found product in products table:', altProduct.id);
+      console.log('[ProductInfo] Found product in products table:', altProduct);
       
       // Transform products table data to match expected format
       return {
@@ -47,12 +48,13 @@ export const fetchProductInfo = async (productId: string) => {
         preco: altProduct.preco,
         preco_anterior: altProduct.preco_anterior,
         estoque: altProduct.estoque,
-        vendedor_id: altProduct.loja_id, // Correctly map loja_id to vendedor_id
-        pontos: altProduct.pontos
+        vendedor_id: altProduct.loja_id, // Map loja_id to vendedor_id
+        pontos: altProduct.pontos,
+        imagens: []
       };
     }
     
-    console.log('[ProductInfo] Found product in produtos table:', data.id);
+    console.log('[ProductInfo] Found product in produtos table:', data);
     
     // Return the product from the main table with transformed fields
     return {
@@ -62,7 +64,8 @@ export const fetchProductInfo = async (productId: string) => {
       preco_anterior: data.preco_normal,
       estoque: data.estoque,
       vendedor_id: data.vendedor_id,
-      pontos: data.pontos_consumidor
+      pontos: data.pontos_consumidor,
+      imagens: data.imagens
     };
   } catch (error) {
     console.error('[ProductInfo] Error fetching product info:', error);

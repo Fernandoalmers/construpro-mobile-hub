@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { toast } from '@/components/ui/sonner';
 import * as cartApi from '@/services/cart';
+import { fetchProductInfo } from '@/services/cart/productInfo';
 
 export function useCartOperations(refreshCartData: () => Promise<void>) {
   const [isLoading, setIsLoading] = useState(false);
@@ -18,8 +19,8 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
     setIsLoading(true);
     
     try {
-      // Get the product price
-      const product = await cartApi.fetchProductInfo(productId);
+      // Get the product price and inventory info
+      const product = await fetchProductInfo(productId);
       if (!product) {
         console.error('Product not found:', productId);
         throw new Error('Produto não encontrado');
@@ -27,9 +28,10 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
 
       console.log('Product info:', product);
 
+      // Check if inventory is sufficient
       if (product.estoque < quantity) {
         console.log('Not enough stock:', { available: product.estoque, requested: quantity });
-        throw new Error('Quantidade solicitada não disponível em estoque');
+        throw new Error(`Quantidade solicitada (${quantity}) não disponível em estoque (${product.estoque})`);
       }
 
       // Call the addToCart function from cartApi
@@ -58,6 +60,7 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
     
     try {
       setIsLoading(true);
+      console.log('[useCartOperations] updating quantity for item', cartItemId, 'new quantity:', newQuantity);
       
       const updated = await cartApi.updateCartItemQuantity(cartItemId, newQuantity);
       if (!updated) {
@@ -65,6 +68,7 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
       }
 
       await refreshCartData();
+      console.log('[useCartOperations] cart refreshed after quantity update');
     } catch (error: any) {
       console.error('Error updating quantity:', error);
       toast.error('Erro ao atualizar quantidade: ' + (error.message || ''));
@@ -84,6 +88,7 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
     
     try {
       setIsLoading(true);
+      console.log('[useCartOperations] removing item from cart', cartItemId);
       
       const removed = await cartApi.removeFromCart(cartItemId);
       if (!removed) {
@@ -91,6 +96,7 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
       }
 
       await refreshCartData();
+      console.log('[useCartOperations] cart refreshed after item removal');
     } catch (error: any) {
       console.error('Error removing item:', error);
       toast.error('Erro ao remover item: ' + (error.message || ''));
@@ -105,6 +111,7 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
   const clearCart = async (): Promise<void> => {
     try {
       setIsLoading(true);
+      console.log('[useCartOperations] clearing cart');
       
       const cleared = await cartApi.clearCart();
       if (!cleared) {
@@ -112,6 +119,7 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
       }
 
       await refreshCartData();
+      console.log('[useCartOperations] cart refreshed after clearing');
     } catch (error: any) {
       console.error('Error clearing cart:', error);
       toast.error('Erro ao limpar o carrinho: ' + (error.message || ''));

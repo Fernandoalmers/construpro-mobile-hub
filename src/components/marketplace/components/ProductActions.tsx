@@ -3,7 +3,6 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingCart, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useCart } from '@/hooks/use-cart';
 import { useCartActions } from '@/hooks/use-cart-actions';
 import { toast } from '@/components/ui/sonner';
 
@@ -35,9 +34,8 @@ const ProductActions: React.FC<ProductActionsProps> = ({
     
     try {
       console.log("[ProductActions] handleAddToCartClick called for", produto?.id, "quantity:", quantidade);
-      // Validate quantity before adding to cart
-      validateQuantity();
       
+      // Validate product first
       if (!produto) {
         toast.error("Produto não encontrado ou não está disponível");
         console.error("Erro: produto inválido ou não disponível", produto);
@@ -50,15 +48,15 @@ const ProductActions: React.FC<ProductActionsProps> = ({
         return;
       }
       
+      // Validate quantity before adding to cart
+      validateQuantity();
+      
       // Use the cartActions hook to handle adding to cart
       const success = await handleAddToCart(produto.id, quantidade);
       
-      if (success) {
-        toast.success(`${quantidade} unidade(s) adicionada(s) ao carrinho`);
-        if (onSuccess) {
-          console.log("[ProductActions] Product added to cart successfully, calling onSuccess");
-          onSuccess();
-        }
+      if (success && onSuccess) {
+        console.log("[ProductActions] Product added to cart successfully, calling onSuccess");
+        onSuccess();
       }
     } catch (error: any) {
       console.error("[ProductActions] Error adding to cart:", error);
@@ -72,9 +70,8 @@ const ProductActions: React.FC<ProductActionsProps> = ({
     
     try {
       console.log("[ProductActions] handleBuyNowClick called for", produto?.id, "quantity:", quantidade);
-      // Validate quantity before buying
-      validateQuantity();
       
+      // Validate product first
       if (!produto) {
         toast.error("Produto não encontrado ou não está disponível");
         console.error("Erro: produto inválido ou não disponível", produto);
@@ -86,6 +83,9 @@ const ProductActions: React.FC<ProductActionsProps> = ({
         console.error("Erro: ID do produto não disponível", produto);
         return;
       }
+      
+      // Validate quantity before buying
+      validateQuantity();
       
       // This will add to cart and navigate to cart page
       await handleBuyNow(produto.id, quantidade);
