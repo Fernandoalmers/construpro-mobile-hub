@@ -22,6 +22,9 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
       await cartApi.addToCart(productId, quantity);
       console.log('Product successfully added to cart');
 
+      // Also run the fixCartStockIssues function to ensure cart is valid
+      await cartApi.fixCartStockIssues();
+
       // Refresh cart data to update UI
       await refreshCartData();
       console.log('Cart data refreshed after adding product');
@@ -50,6 +53,9 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
         throw new Error('Erro ao atualizar quantidade');
       }
 
+      // Run fixCartStockIssues to validate the cart
+      await cartApi.fixCartStockIssues();
+      
       await refreshCartData();
     } catch (error: any) {
       console.error('Error updating quantity:', error);
@@ -109,12 +115,28 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
     }
   };
 
+  // Fix cart stock issues
+  const fixCartStockIssues = async (): Promise<void> => {
+    try {
+      setIsLoading(true);
+      
+      await cartApi.fixCartStockIssues();
+      await refreshCartData();
+    } catch (error: any) {
+      console.error('Error fixing cart stock issues:', error);
+      // Don't show toast for this operation as it's typically called internally
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return {
     isLoading,
     setIsLoading,
     addToCart,
     updateQuantity,
     removeItem,
-    clearCart
+    clearCart,
+    fixCartStockIssues
   };
 }

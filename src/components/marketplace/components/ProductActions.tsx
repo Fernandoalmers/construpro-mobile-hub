@@ -1,9 +1,8 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingCart, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useCart } from '@/hooks/use-cart';
 import { useCartActions } from '@/hooks/use-cart-actions';
 import { toast } from '@/components/ui/sonner';
 
@@ -27,8 +26,15 @@ const ProductActions: React.FC<ProductActionsProps> = ({
   size = 'default',
 }) => {
   const navigate = useNavigate();
-  const { isAddingToCart, isBuyingNow, handleAddToCart, handleBuyNow } = useCartActions();
+  const { isAddingToCart, isBuyingNow, handleAddToCart, handleBuyNow, clearAllTimeouts } = useCartActions();
   
+  // Clean up timeouts when component unmounts
+  useEffect(() => {
+    return () => {
+      clearAllTimeouts();
+    };
+  }, [clearAllTimeouts]);
+
   const handleAddToCartClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -99,6 +105,7 @@ const ProductActions: React.FC<ProductActionsProps> = ({
   const isButtonDisabled = !produto || !produto.estoque || produto.estoque < 1;
   const isAddingToCartActive = produto?.id ? isAddingToCart[produto.id] : false;
   const isBuyingNowActive = produto?.id ? isBuyingNow[produto.id] : false;
+  const anyActionInProgress = isAddingToCartActive || isBuyingNowActive;
   
   if (size === 'compact') {
     return (
@@ -108,7 +115,7 @@ const ProductActions: React.FC<ProductActionsProps> = ({
           size="sm"
           className="flex-1"
           onClick={handleAddToCartClick}
-          disabled={isButtonDisabled || isAddingToCartActive}
+          disabled={isButtonDisabled || anyActionInProgress}
         >
           <ShoppingCart className="mr-1 h-4 w-4" />
           {isAddingToCartActive ? "Adicionando..." : "Adicionar"}
@@ -117,7 +124,7 @@ const ProductActions: React.FC<ProductActionsProps> = ({
           size="sm"
           className="flex-1 bg-green-600 hover:bg-green-700"
           onClick={handleBuyNowClick}
-          disabled={isButtonDisabled || isBuyingNowActive}
+          disabled={isButtonDisabled || anyActionInProgress}
         >
           <ShoppingBag className="mr-1 h-4 w-4" />
           {isBuyingNowActive ? "Processando..." : "Comprar"}
@@ -131,7 +138,7 @@ const ProductActions: React.FC<ProductActionsProps> = ({
       <Button
         className="w-full bg-construPro-blue hover:bg-blue-700 text-white py-3 text-base flex items-center justify-center"
         onClick={handleAddToCartClick}
-        disabled={isButtonDisabled || isAddingToCartActive}
+        disabled={isButtonDisabled || anyActionInProgress}
       >
         <ShoppingCart className="mr-2 h-5 w-5" />
         {isAddingToCartActive ? "Adicionando ao Carrinho..." : "Adicionar ao Carrinho"}
@@ -140,7 +147,7 @@ const ProductActions: React.FC<ProductActionsProps> = ({
       <Button
         className="w-full bg-green-600 hover:bg-green-700 text-white py-3 text-base flex items-center justify-center"
         onClick={handleBuyNowClick}
-        disabled={isButtonDisabled || isBuyingNowActive}
+        disabled={isButtonDisabled || anyActionInProgress}
       >
         <ShoppingBag className="mr-2 h-5 w-5" />
         {isBuyingNowActive ? "Processando..." : "Comprar Agora"}

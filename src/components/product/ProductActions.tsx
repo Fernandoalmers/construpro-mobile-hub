@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ShoppingCart, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCartActions } from '@/hooks/use-cart-actions';
@@ -8,17 +8,31 @@ import { toast } from '@/components/ui/sonner';
 interface ProductActionsProps {
   productId: string;
   quantity: number;
+  maxStock?: number;
 }
 
-const ProductActions: React.FC<ProductActionsProps> = ({ productId, quantity }) => {
-  const { handleAddToCart, handleBuyNow, isAddingToCart, isBuyingNow } = useCartActions();
+const ProductActions: React.FC<ProductActionsProps> = ({ productId, quantity, maxStock }) => {
+  const { handleAddToCart, handleBuyNow, isAddingToCart, isBuyingNow, clearAllTimeouts } = useCartActions();
   
   const isAddingThisToCart = productId ? isAddingToCart[productId] : false;
   const isBuyingThisNow = productId ? isBuyingNow[productId] : false;
+  const isOutOfStock = maxStock !== undefined && maxStock <= 0;
+
+  // Clean up timeouts when component unmounts
+  useEffect(() => {
+    return () => {
+      clearAllTimeouts();
+    };
+  }, [clearAllTimeouts]);
 
   const onAddToCart = async () => {
     if (!productId) {
       toast.error("ID do produto inválido");
+      return;
+    }
+    
+    if (isOutOfStock) {
+      toast.error("Produto sem estoque disponível");
       return;
     }
     
@@ -36,6 +50,11 @@ const ProductActions: React.FC<ProductActionsProps> = ({ productId, quantity }) 
       return;
     }
     
+    if (isOutOfStock) {
+      toast.error("Produto sem estoque disponível");
+      return;
+    }
+    
     try {
       await handleBuyNow(productId, quantity);
     } catch (error) {
@@ -50,7 +69,7 @@ const ProductActions: React.FC<ProductActionsProps> = ({ productId, quantity }) 
         variant="default"
         className="w-full bg-construPro-blue hover:bg-blue-700 text-white py-3 text-base flex items-center justify-center"
         onClick={onAddToCart}
-        disabled={isAddingThisToCart}
+        disabled={isAddingThisToCart || isBuyingThisNow || isOutOfStock}
       >
         <ShoppingCart className="mr-2 h-5 w-5" />
         {isAddingThisToCart ? 'Adicionando...' : 'Adicionar ao Carrinho'}
@@ -60,11 +79,17 @@ const ProductActions: React.FC<ProductActionsProps> = ({ productId, quantity }) 
         variant="default"
         className="w-full bg-green-600 hover:bg-green-700 text-white py-3 text-base flex items-center justify-center"
         onClick={onBuyNow}
-        disabled={isBuyingThisNow}
+        disabled={isAddingThisToCart || isBuyingThisNow || isOutOfStock}
       >
         <ShoppingBag className="mr-2 h-5 w-5" />
         {isBuyingThisNow ? 'Processando...' : 'Comprar Agora'}
       </Button>
+      
+      {isOutOfStock && (
+        <p className="text-red-500 text-center text-sm">
+          Produto fora de estoque
+        </p>
+      )}
     </div>
   );
 };

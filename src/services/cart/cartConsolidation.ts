@@ -1,9 +1,10 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Consolidate multiple active carts for a user into one
  */
-export const consolidateUserCarts = async (userId: string): Promise<void> => {
+export const consolidateUserCarts = async (userId: string): Promise<string | null> => {
   try {
     console.log("Starting cart consolidation for user:", userId);
     
@@ -17,13 +18,13 @@ export const consolidateUserCarts = async (userId: string): Promise<void> => {
     
     if (error) {
       console.error('Error fetching user carts:', error);
-      return;
+      return null;
     }
     
     // If there's only 0 or 1 cart, no need to consolidate
     if (!carts || carts.length <= 1) {
       console.log('No need to consolidate carts, found:', carts?.length || 0);
-      return;
+      return carts?.[0]?.id || null;
     }
     
     console.log(`Found ${carts.length} active carts for user, consolidating...`);
@@ -72,7 +73,7 @@ export const consolidateUserCarts = async (userId: string): Promise<void> => {
             
             if (existingItem) {
               // Update quantity of existing item
-              const newQuantity = existingItem.quantity + item.quantity;
+              const newQuantity = Math.min(existingItem.quantity + item.quantity, 99); // Cap at reasonable max
               const { error: updateError } = await supabase
                 .from('cart_items')
                 .update({ quantity: newQuantity })
@@ -88,7 +89,7 @@ export const consolidateUserCarts = async (userId: string): Promise<void> => {
                 .insert({
                   cart_id: primaryCart.id,
                   product_id: item.product_id,
-                  quantity: item.quantity,
+                  quantity: Math.min(item.quantity, 99), // Cap at reasonable max
                   price_at_add: item.price_at_add
                 });
                 
@@ -109,8 +110,7 @@ export const consolidateUserCarts = async (userId: string): Promise<void> => {
           console.error(`Error deleting items from cart ${cartId}:`, deleteItemsError);
         }
         
-        // Update cart status to 'abandoned' instead of 'inactive'
-        // 'abandoned' is a valid value according to the constraint
+        // Update cart status to 'abandoned' instead of deleting
         const { error: updateCartError } = await supabase
           .from('carts')
           .update({ status: 'abandoned' })
@@ -124,9 +124,11 @@ export const consolidateUserCarts = async (userId: string): Promise<void> => {
       }
     }
     
-    console.log(`Cart consolidation complete. Processed ${processedCount} carts.`);
+    console.log(`Cart consolidation complete. Processed ${processedCount} carts. Primary cart ID: ${primaryCart.id}`);
+    return primaryCart.id;
   } catch (error) {
     console.error('Error in consolidateUserCarts:', error);
+    return null;
   }
 };
 
@@ -137,9 +139,12 @@ export const consolidateUserCarts = async (userId: string): Promise<void> => {
 export const ensureSingleActiveCart = async (userId: string): Promise<string | null> => {
   try {
     // First consolidate existing carts
-    await consolidateUserCarts(userId);
+    const consolidatedCartId = await consolidateUserCarts(userId);
+    if (consolidatedCartId) {
+      return consolidatedCartId;
+    }
     
-    // Get or create a single active cart
+    // If consolidation didn't return a cart ID, try to find or create one
     const { data, error } = await supabase
       .from('carts')
       .select('id')
@@ -155,10 +160,12 @@ export const ensureSingleActiveCart = async (userId: string): Promise<string | n
     }
     
     if (data) {
+      console.log('Found existing active cart:', data.id);
       return data.id;
     }
     
     // Create a new cart if none exists
+    console.log('No active cart found, creating new cart for user:', userId);
     const { data: newCart, error: createError } = await supabase
       .from('carts')
       .insert({
@@ -173,6 +180,7 @@ export const ensureSingleActiveCart = async (userId: string): Promise<string | n
       return null;
     }
     
+    console.log('Created new cart:', newCart.id);
     return newCart.id;
   } catch (error) {
     console.error('Error in ensureSingleActiveCart:', error);

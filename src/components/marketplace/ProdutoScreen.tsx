@@ -47,11 +47,18 @@ const ProdutoScreen: React.FC = () => {
     return 1;
   };
 
+  // Enforce stock limits on quantity
+  React.useEffect(() => {
+    if (produto && quantidade > (produto.estoque || 0)) {
+      setQuantidade(Math.max(1, produto.estoque || 0));
+    }
+  }, [produto, quantidade]);
+
   const handleQuantityChange = (delta: number) => {
     const step = getStepValue();
     
     const newValue = quantidade + (delta * step);
-    if (newValue >= step && newValue <= (produto?.estoque || step)) {
+    if (newValue >= step && (!produto || newValue <= (produto.estoque || step))) {
       setQuantidade(newValue);
     }
   };
@@ -65,6 +72,11 @@ const ProdutoScreen: React.FC = () => {
       if (roundedValue !== quantidade) {
         setQuantidade(roundedValue);
       }
+    }
+    
+    // Ensure quantity doesn't exceed stock
+    if (produto && quantidade > produto.estoque) {
+      setQuantidade(Math.max(1, produto.estoque));
     }
   };
 
@@ -94,6 +106,9 @@ const ProdutoScreen: React.FC = () => {
   const discountPercentage = hasDiscount 
     ? Math.round(((produto.preco_anterior - produto.preco) / produto.preco_anterior) * 100)
     : 0;
+
+  // Log product data for debugging
+  console.log("Produto data:", produto);
 
   return (
     <div className="bg-gray-100 min-h-screen pb-16">
@@ -141,6 +156,17 @@ const ProdutoScreen: React.FC = () => {
               isAuthenticated={isAuthenticated}
               onSuccess={handleProductActionSuccess}
             />
+
+            {/* Stock status */}
+            {produto.estoque > 0 ? (
+              <p className="text-sm text-green-600 mt-2">
+                {produto.estoque} {produto.estoque === 1 ? 'unidade' : 'unidades'} em estoque
+              </p>
+            ) : (
+              <p className="text-sm text-red-600 mt-2">
+                Produto fora de estoque
+              </p>
+            )}
           </div>
         </div>
         

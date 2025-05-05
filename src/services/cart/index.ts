@@ -50,15 +50,18 @@ export const cartService = {
   
   // Cart consolidation
   consolidateUserCarts: cartConsolidation.consolidateUserCarts,
+  ensureSingleActiveCart: cartConsolidation.ensureSingleActiveCart,
   
   // Cart item operations
   addToCart: cartItemOps.addToCart,
   updateCartItemQuantity: cartItemOps.updateCartItemQuantity,
   removeFromCart: cartItemOps.removeFromCart,
+  fixCartStockIssues: cartItemOps.fixCartStockIssues,
   
   // Stock operations
   checkProductStock: stockChecker.checkProductStock,
   checkTotalStockAvailability: stockChecker.checkTotalStockAvailability,
+  validateCartItemsStock: stockChecker.validateCartItemsStock,
   
   // Cart item modifier operations
   addNewCartItem: cartItemModifier.addNewCartItem,
