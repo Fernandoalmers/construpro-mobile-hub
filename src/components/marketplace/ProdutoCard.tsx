@@ -2,7 +2,6 @@
 import React from 'react';
 import { Truck } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import ProductActions from '@/components/product/ProductActions';
 
 interface ProdutoCardProps {
   produto: any;
@@ -15,6 +14,8 @@ interface ProdutoCardProps {
   isFavorite?: boolean;
   isAddingToCart?: boolean;
   showActions?: boolean;
+  hideRating?: boolean;
+  hideActions?: boolean;
 }
 
 const ProdutoCard: React.FC<ProdutoCardProps> = ({ 
@@ -26,7 +27,9 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
   onBuyNow,
   isFavorite = false,
   isAddingToCart = false,
-  showActions = false
+  showActions = false,
+  hideRating = false,
+  hideActions = true
 }) => {
   // Utilizar os dados reais do produto de forma consistente
   const precoRegular = produto.preco_normal || produto.precoNormal || produto.preco || 0;
@@ -102,7 +105,7 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
         <h3 className="text-sm text-gray-700 line-clamp-2 mb-1">{produto.nome}</h3>
         
         {/* Rating - Usando dados reais de avaliações */}
-        {renderStars()}
+        {!hideRating && renderStars()}
         
         {/* Price section - Mostrando preço promocional quando disponível */}
         <div className="mb-1">
@@ -135,15 +138,15 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
           </div>
         )}
         
-        {/* Product Actions */}
-        {showActions && produto?.id && (
+        {/* Only show actions if hideActions is false */}
+        {!hideActions && showActions && produto?.id && (
           <div className="mt-2" onClick={e => e.stopPropagation()}>
             <ProductActions productId={produto.id} quantity={1} maxStock={produto.estoque} />
           </div>
         )}
         
         {/* Custom action buttons */}
-        {showActions && (onAddToCart || onBuyNow) && (
+        {!hideActions && showActions && (onAddToCart || onBuyNow) && (
           <div className="mt-2 flex flex-col gap-1" onClick={e => e.stopPropagation()}>
             {onAddToCart && (
               <button 

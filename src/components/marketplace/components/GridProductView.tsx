@@ -13,7 +13,6 @@ const GridProductView: React.FC<GridProductViewProps> = ({
   products, 
   navigateToProduct, 
   onLojaClick,
-  showActions = false
 }) => {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -24,7 +23,8 @@ const GridProductView: React.FC<GridProductViewProps> = ({
           loja={produto.stores}
           onClick={() => navigateToProduct(produto.id)}
           onLojaClick={onLojaClick}
-          showActions={false} // Always set to false to hide action buttons
+          hideRating={true}
+          hideActions={true}
         />
       ))}
     </div>

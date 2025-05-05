@@ -32,7 +32,6 @@ const ProductListSection: React.FC<ProductListSectionProps> = ({
   onLojaClick,
   isLoading = false,
   viewType: initialViewType = 'list',
-  showActions = false
 }) => {
   const navigate = useNavigate();
   const loadMoreRef = useRef(null);
@@ -85,14 +84,12 @@ const ProductListSection: React.FC<ProductListSectionProps> = ({
           products={displayedProducts} 
           navigateToProduct={navigateToProduct}
           onLojaClick={onLojaClick}
-          showActions={showActions}
         />
       ) : (
         <ListProductView 
           products={displayedProducts} 
           navigateToProduct={navigateToProduct}
           onLojaClick={onLojaClick}
-          showActions={showActions}
         />
       )}
       
