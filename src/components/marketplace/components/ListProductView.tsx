@@ -75,9 +75,8 @@ const ListProductView: React.FC<ListProductViewProps> = ({
               Entrega GRÁTIS
             </div>
             
-            {/* Product Actions - REMOVED as requested */}
-            {/* Only show if specifically requested */}
-            {false && showActions && produto?.id && (
+            {/* Product Actions - Re-enable actions */}
+            {showActions && produto?.id && (
               <div 
                 className="mt-2" 
                 onClick={e => e.stopPropagation()}

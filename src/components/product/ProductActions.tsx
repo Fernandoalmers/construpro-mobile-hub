@@ -28,16 +28,20 @@ const ProductActions: React.FC<ProductActionsProps> = ({ productId, quantity, ma
   const onAddToCart = async () => {
     if (!productId) {
       toast.error("ID do produto inválido");
+      console.error("ProductActions: Invalid product ID");
       return;
     }
     
     if (isOutOfStock) {
       toast.error("Produto sem estoque disponível");
+      console.error("ProductActions: Product out of stock");
       return;
     }
     
     try {
-      await handleAddToCart(productId, quantity);
+      console.log("ProductActions: Adding to cart, productId:", productId, "quantity:", quantity);
+      const result = await handleAddToCart(productId, quantity);
+      console.log("ProductActions: Add to cart result:", result);
     } catch (error) {
       console.error('Error in onAddToCart:', error);
       // Error is already handled in handleAddToCart
@@ -47,15 +51,18 @@ const ProductActions: React.FC<ProductActionsProps> = ({ productId, quantity, ma
   const onBuyNow = async () => {
     if (!productId) {
       toast.error("ID do produto inválido");
+      console.error("ProductActions: Invalid product ID");
       return;
     }
     
     if (isOutOfStock) {
       toast.error("Produto sem estoque disponível");
+      console.error("ProductActions: Product out of stock");
       return;
     }
     
     try {
+      console.log("ProductActions: Buying now, productId:", productId, "quantity:", quantity);
       await handleBuyNow(productId, quantity);
     } catch (error) {
       console.error('Error in onBuyNow:', error);

@@ -7,7 +7,7 @@ import { useCart } from './use-cart';
 
 export function useCartActions() {
   const { addToCart, refreshCart } = useCart();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [isAddingToCart, setIsAddingToCart] = useState<Record<string, boolean>>({});
   const [isBuyingNow, setIsBuyingNow] = useState<Record<string, boolean>>({});

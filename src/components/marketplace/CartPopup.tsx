@@ -14,16 +14,20 @@ const CartPopup: React.FC<CartPopupProps> = ({ triggerShow }) => {
   const [cartCount, setCartCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const popupTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const popupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // Try to access cart context, but with error handling
-  let cartContextValues = { cartCount: 0, isLoading: false, refreshCart: () => Promise.resolve() };
+  let cartContextValues;
   try {
     cartContextValues = useCart();
     
     // If we successfully get the cart context, update our state
     useEffect(() => {
       if (cartContextValues) {
+        console.log('CartPopup: Cart context values:', { 
+          cartCount: cartContextValues.cartCount,
+          isLoading: cartContextValues.isLoading
+        });
         setCartCount(cartContextValues.cartCount || 0);
         setIsLoading(cartContextValues.isLoading || false);
       }
@@ -59,8 +63,9 @@ const CartPopup: React.FC<CartPopupProps> = ({ triggerShow }) => {
   
   // Show popup when triggerShow changes to true or when items are added to cart
   useEffect(() => {
-    if (triggerShow && cartCount > 0 && !isLoading) {
-      console.log('CartPopup: triggerShow is true and cart has items, showing popup');
+    console.log('CartPopup: triggerShow changed:', triggerShow, 'cartCount:', cartCount, 'isLoading:', isLoading);
+    if (triggerShow === true) {
+      console.log('CartPopup: Setting show to true based on triggerShow');
       setShow(true);
       
       // Clear any existing timer
@@ -70,6 +75,7 @@ const CartPopup: React.FC<CartPopupProps> = ({ triggerShow }) => {
       
       // Set new timer
       popupTimerRef.current = setTimeout(() => {
+        console.log('CartPopup: Auto-hiding popup after timeout');
         setShow(false);
       }, 5000); // 5 seconds for better visibility
     }
@@ -78,7 +84,7 @@ const CartPopup: React.FC<CartPopupProps> = ({ triggerShow }) => {
   // Also show popup when cartCount increases
   useEffect(() => {
     if (cartCount > 0 && !isLoading) {
-      console.log('CartPopup: cart updated with items, showing popup');
+      console.log('CartPopup: Cart updated with items, showing popup');
       setShow(true);
       
       // Clear any existing timer
@@ -103,48 +109,30 @@ const CartPopup: React.FC<CartPopupProps> = ({ triggerShow }) => {
   }
 
   return (
-    <div className="fixed bottom-20 right-4 bg-white rounded-lg shadow-lg z-50 w-72 overflow-hidden">
-      <div className="p-3 bg-construPro-blue text-white flex justify-between items-center">
-        <div className="flex items-center">
-          <ShoppingCart size={18} className="mr-2" />
-          <span className="font-medium">Item adicionado ao carrinho</span>
+    <div className="fixed bottom-4 right-4 z-50 bg-white shadow-lg rounded-lg p-4 w-64 border border-gray-200 animate-fade-in">
+      <div className="flex justify-between items-center mb-3">
+        <div className="flex items-center text-green-600">
+          <ShoppingCart size={16} className="mr-2" />
+          <span className="font-semibold">Produto adicionado</span>
         </div>
-        <button onClick={() => setShow(false)} className="text-white">
-          <X size={18} />
+        <button 
+          onClick={() => setShow(false)} 
+          className="text-gray-500 hover:text-gray-700"
+        >
+          <X size={16} />
         </button>
       </div>
       
-      <div className="p-4">
-        <div className="mb-3">
-          <span className="text-sm text-gray-600">Itens no carrinho:</span>
-          <span className="font-bold ml-2">{cartCount}</span>
-        </div>
-        
-        <div className="flex justify-between items-center">
-          <Button 
-            onClick={() => {
-              console.log('CartPopup: Navigating to cart page');
-              navigate('/cart');
-            }}
-            variant="outline"
-            size="sm"
-            className="border-construPro-orange text-construPro-orange hover:bg-construPro-orange/10"
-          >
-            Ver carrinho
-          </Button>
-          
-          <Button 
-            onClick={() => {
-              console.log('CartPopup: Navigating to checkout page');
-              navigate('/checkout');
-            }}
-            size="sm"
-            className="bg-green-600 hover:bg-green-700 text-white"
-          >
-            Finalizar compra
-          </Button>
-        </div>
+      <div className="text-sm mb-3">
+        <span>Você tem <b>{cartCount} {cartCount === 1 ? 'item' : 'itens'}</b> no carrinho</span>
       </div>
+      
+      <Button 
+        onClick={() => navigate('/cart')} 
+        className="w-full bg-construPro-blue hover:bg-blue-700"
+      >
+        Ver carrinho
+      </Button>
     </div>
   );
 };

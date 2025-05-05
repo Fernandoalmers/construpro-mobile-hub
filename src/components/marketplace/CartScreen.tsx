@@ -30,10 +30,18 @@ const CartScreen: React.FC = () => {
       return;
     }
     
-    refreshCart();
+    console.log("CartScreen: Refreshing cart data");
+    // Explicitly refresh the cart when the component mounts
+    refreshCart().catch(err => {
+      console.error("Error refreshing cart:", err);
+      setError("Erro ao carregar o carrinho. Por favor, tente novamente.");
+    });
   }, [isAuthenticated, navigate, refreshCart]);
 
   useEffect(() => {
+    // Add debugging logs to understand cart state
+    console.log("CartScreen: Cart data updated:", cart);
+    console.log("CartScreen: Cart items:", cart?.items?.length || 0);
     // Update loading state based on cart loading
     setLoading(false);
   }, [cart]);
