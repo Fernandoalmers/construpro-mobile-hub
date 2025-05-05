@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 
 export function useCartPopup() {
   const [showCartPopup, setShowCartPopup] = useState(false);
-  const cartPopupTimerRef = useRef<number | null>(null);
+  const cartPopupTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     return () => {
@@ -15,6 +15,7 @@ export function useCartPopup() {
   }, []);
 
   const handleProductActionSuccess = () => {
+    console.log("useCartPopup: Showing cart popup after successful action");
     setShowCartPopup(true);
     
     // Clear any existing timer
@@ -24,6 +25,7 @@ export function useCartPopup() {
     
     // Auto-hide popup after 5 seconds
     cartPopupTimerRef.current = window.setTimeout(() => {
+      console.log("useCartPopup: Auto-hiding cart popup after timeout");
       setShowCartPopup(false);
     }, 5000);
   };
