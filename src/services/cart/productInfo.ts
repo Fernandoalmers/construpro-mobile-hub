@@ -38,7 +38,7 @@ export const fetchProductInfo = async (productId: string) => {
         preco: altProduct.preco,
         preco_anterior: altProduct.preco_anterior,
         estoque: altProduct.estoque,
-        loja_id: altProduct.loja_id,
+        vendedor_id: altProduct.loja_id, // Map loja_id to vendedor_id
         pontos: altProduct.pontos
       };
     }
@@ -52,7 +52,7 @@ export const fetchProductInfo = async (productId: string) => {
       preco: product.preco_promocional || product.preco_normal,
       preco_anterior: product.preco_normal,
       estoque: product.estoque,
-      loja_id: product.vendedor_id, // Use vendedor_id as loja_id in produtos table
+      vendedor_id: product.vendedor_id, // Correctly use vendedor_id from produtos table
       pontos: product.pontos_consumidor
     };
   } catch (error) {

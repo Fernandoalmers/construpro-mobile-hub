@@ -60,9 +60,12 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
       {/* Product Image - positioned on the top */}
       <div className="relative w-full h-40 overflow-hidden bg-gray-50">
         <img 
-          src={produto.imagemUrl || produto.imagem_url} 
+          src={produto.imagemUrl || produto.imagem_url || (produto.imagens && produto.imagens[0])} 
           alt={produto.nome}
           className="w-full h-full object-contain hover:scale-105 transition-transform duration-300"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150';
+          }}
         />
       </div>
       
@@ -98,17 +101,18 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
           </span>
         )}
         
-        {/* Store name */}
-        {loja && (
+        {/* Store name - Show either from direct loja prop or from produto.vendedor */}
+        {(loja || produto.vendedor || produto.vendedores) && (
           <div 
             className="text-xs text-gray-500 hover:underline cursor-pointer"
             onClick={(e) => {
               e.stopPropagation();
-              console.log('[ProdutoCard] Store clicked:', loja.id);
-              onLojaClick && onLojaClick(loja.id);
+              const vendedorId = loja?.id || produto.vendedor?.id || produto.vendedor_id;
+              console.log('[ProdutoCard] Store clicked:', vendedorId);
+              onLojaClick && onLojaClick(vendedorId);
             }}
           >
-            Vendido por {loja.nome}
+            Vendido por {loja?.nome || produto.vendedor?.nome_loja || (produto.vendedores && produto.vendedores.nome_loja) || 'Loja'}
           </div>
         )}
         

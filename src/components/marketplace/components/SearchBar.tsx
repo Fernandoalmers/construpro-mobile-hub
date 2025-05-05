@@ -59,7 +59,11 @@ const SearchBar: React.FC<SearchBarProps> = ({
           preco_promocional,
           vendedor_id,
           descricao,
-          imagens
+          imagens,
+          vendedores:vendedor_id (
+            id, 
+            nome_loja
+          )
         `)
         .ilike('nome', `%${query.trim()}%`)
         .limit(5);
@@ -87,8 +91,10 @@ const SearchBar: React.FC<SearchBarProps> = ({
           preco: produto.preco_promocional || produto.preco_normal,
           preco_anterior: produto.preco_promocional ? produto.preco_normal : null,
           imagem_url: imageUrl, // Use the first image from the array
-          vendedor_id: produto.vendedor_id,
-          stores: { id: produto.vendedor_id, nome: 'Loja' } // Simplified
+          vendedor: produto.vendedores ? {
+            id: produto.vendedores.id,
+            nome_loja: produto.vendedores.nome_loja
+          } : null
         };
       }) : [];
       
@@ -128,7 +134,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
       onSearch(searchTerm);
     } else {
       // Default behavior: navigate to marketplace with search parameter
-      const searchUrl = `/marketplace/products?search=${encodeURIComponent(searchTerm)}`;
+      const searchUrl = `/marketplace?search=${encodeURIComponent(searchTerm)}`;
       console.log('[SearchBar] Navigating to:', searchUrl);
       navigate(searchUrl);
     }

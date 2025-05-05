@@ -34,7 +34,7 @@ const ProductActions: React.FC<ProductActionsProps> = ({
     e.stopPropagation();
     
     try {
-      console.log("ProductActions: handleAddToCartClick called for", produto?.id);
+      console.log("[ProductActions] handleAddToCartClick called for", produto?.id);
       // Validate quantity before adding to cart
       validateQuantity();
       
@@ -50,7 +50,7 @@ const ProductActions: React.FC<ProductActionsProps> = ({
         return;
       }
       
-      console.log("Adicionando ao carrinho:", produto.id, "quantidade:", quantidade);
+      console.log("[ProductActions] Adicionando ao carrinho:", produto.id, "quantidade:", quantidade);
       
       // Use the cartActions hook to handle adding to cart
       const success = await handleAddToCart(produto.id, quantidade);
@@ -69,7 +69,7 @@ const ProductActions: React.FC<ProductActionsProps> = ({
     e.stopPropagation();
     
     try {
-      console.log("ProductActions: handleBuyNowClick called for", produto?.id);
+      console.log("[ProductActions] handleBuyNowClick called for", produto?.id);
       // Validate quantity before buying
       validateQuantity();
       
@@ -85,7 +85,7 @@ const ProductActions: React.FC<ProductActionsProps> = ({
         return;
       }
       
-      console.log("Comprando agora:", produto.id, "quantidade:", quantidade);
+      console.log("[ProductActions] Comprando agora:", produto.id, "quantidade:", quantidade);
       
       // This will add to cart and navigate to cart page
       await handleBuyNow(produto.id, quantidade);
