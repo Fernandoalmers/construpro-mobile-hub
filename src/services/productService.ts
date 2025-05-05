@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { Json } from '@/integrations/supabase/types';
@@ -7,6 +8,8 @@ export interface Product {
   nome: string;
   descricao: string;
   preco: number;
+  preco_normal: number;
+  preco_promocional?: number;
   preco_anterior?: number;
   categoria: string;
   segmento?: string;
@@ -58,7 +61,9 @@ const transformProduct = (dbProduct: any): Product => {
     id: dbProduct.id,
     nome: dbProduct.nome,
     descricao: dbProduct.descricao,
-    preco: dbProduct.preco_normal || 0,
+    preco: dbProduct.preco_promocional || dbProduct.preco_normal || 0,
+    preco_normal: dbProduct.preco_normal || 0,
+    preco_promocional: dbProduct.preco_promocional,
     preco_anterior: dbProduct.preco_promocional,
     categoria: dbProduct.categoria,
     segmento: dbProduct.segmento,
