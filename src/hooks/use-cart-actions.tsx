@@ -29,10 +29,10 @@ export function useCartActions() {
       return false;
     }
 
+    // Set loading state at the beginning and make sure it gets cleared in finally block
+    setIsAddingToCart(prev => ({ ...prev, [productId]: true }));
+    
     try {
-      // Set loading state at the beginning
-      setIsAddingToCart(prev => ({ ...prev, [productId]: true }));
-      
       console.log('[useCartActions] Calling addToCart with:', { productId, quantity });
       await addToCart(productId, quantity);
       
@@ -74,15 +74,16 @@ export function useCartActions() {
     
     try {
       console.log('[useCartActions] Adding to cart with:', { productId, quantity });
-      await addToCart(productId, quantity);
+      // Use the handleAddToCart function to avoid duplication
+      const success = await handleAddToCart(productId, quantity);
       
-      // Refresh cart to make sure the UI updates
-      console.log('[useCartActions] Successfully added to cart, refreshing cart');
-      await refreshCart();
-      
-      console.log('[useCartActions] Successfully added to cart, navigating to /cart');
-      // Navigate to cart page
-      navigate('/cart');
+      if (success) {
+        console.log('[useCartActions] Successfully added to cart, navigating to /cart');
+        // Navigate to cart page
+        navigate('/cart');
+      } else {
+        console.log('[useCartActions] Failed to add to cart, not navigating');
+      }
     } catch (error: any) {
       console.error('[useCartActions] Error buying now:', error);
       toast.error('Erro: ' + (error.message || 'Erro ao processar compra'));

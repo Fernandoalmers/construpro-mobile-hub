@@ -99,11 +99,11 @@ export const consolidateUserCarts = async (userId: string): Promise<void> => {
         console.error(`Error deleting items from cart ${cartId}:`, deleteItemsError);
       }
       
-      // Fix: Update cart status to 'inactive' instead of trying to set 'merged'
-      // which might not be an allowed value in the status constraint
+      // Fix: Update cart status to 'abandoned' instead of 'inactive'
+      // 'abandoned' is a valid value according to the constraint
       const { error: updateCartError } = await supabase
         .from('carts')
-        .update({ status: 'inactive' })
+        .update({ status: 'abandoned' })
         .eq('id', cartId);
         
       if (updateCartError) {
