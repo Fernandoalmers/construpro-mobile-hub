@@ -1,144 +1,154 @@
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, ShoppingBag } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { toast } from '@/components/ui/sonner';
-import { useCartActions } from '@/hooks/use-cart-actions';
+import React from 'react';
+import { Truck } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import ProductActions from '@/components/product/ProductActions';
 
 interface ProdutoCardProps {
-  produto: {
-    id: string;
-    nome: string;
-    imagem_url?: string;
-    imagens?: string[];
-    preco?: number;
-    preco_normal?: number;
-    preco_promocional?: number;
-    vendedor?: {
-      id?: string;
-      nome_loja?: string;
-    };
-    vendedor_id?: string;
-    vendedores?: {
-      nome_loja?: string;
-    };
-    estoque?: number;
-  };
-  onClick?: () => void;
+  produto: any;
+  loja?: any;
+  onClick: () => void;
+  onLojaClick?: (lojaId: string) => void;
+  onAddToFavorites?: (e: React.MouseEvent, produtoId: string) => void;
+  onAddToCart?: (e: React.MouseEvent) => void;
+  onBuyNow?: (e: React.MouseEvent) => void;
+  isFavorite?: boolean;
+  isAddingToCart?: boolean;
+  showActions?: boolean;
 }
 
-export function ProdutoCard({ produto, onClick }: ProdutoCardProps) {
-  const navigate = useNavigate();
-  const { handleAddToCart, handleBuyNow, isAddingToCart, isBuyingNow } = useCartActions();
+const ProdutoCard: React.FC<ProdutoCardProps> = ({ 
+  produto, 
+  loja,
+  onClick,
+  onLojaClick,
+  onAddToCart,
+  onBuyNow,
+  isFavorite = false,
+  isAddingToCart = false,
+  showActions = false
+}) => {
+  // Calculate discount percentage if applicable
+  const precoRegular = produto.preco_normal || produto.precoNormal || produto.preco || 0;
+  const precoPromocional = produto.preco_promocional || produto.precoPromocional || null;
   
-  // Determine the correct price to display
-  const precoExibir = produto.preco_promocional || produto.preco_normal || produto.preco || 0;
+  // Only use promotional price if it exists and is less than regular price
+  const precoExibir = (precoPromocional && precoPromocional < precoRegular) ? precoPromocional : precoRegular;
+  const hasDiscount = precoPromocional && precoPromocional < precoRegular;
   
-  // Handle clicking on the card (navigate to product details)
-  const handleCardClick = () => {
-    if (onClick) {
-      onClick();
-    } else if (produto.id) {
-      navigate(`/produto/${produto.id}`);
-    }
+  // Free shipping threshold (products above R$ 100 qualify for free shipping)
+  const hasFreeShipping = precoExibir >= 100;
+  
+  // Handle cart actions with logging
+  const handleAddToCartClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    console.log('[ProdutoCard] Add to cart clicked for product:', produto.id);
+    if (onAddToCart) onAddToCart(e);
   };
   
-  // Handle adding to cart with proper error handling
-  const onAddToCart = async (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent card click
-    e.preventDefault();
-    
-    if (!produto?.id) {
-      toast.error('Produto inválido');
-      return;
-    }
-    
-    try {
-      await handleAddToCart(produto.id, 1);
-    } catch (error: any) {
-      console.error('Erro ao adicionar ao carrinho:', error);
-    }
+  const handleBuyNowClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    console.log('[ProdutoCard] Buy now clicked for product:', produto.id);
+    if (onBuyNow) onBuyNow(e);
   };
   
-  // Handle buying now with proper error handling
-  const onBuyNow = async (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent card click
-    e.preventDefault();
-    
-    if (!produto?.id) {
-      toast.error('Produto inválido');
-      return;
-    }
-    
-    try {
-      await handleBuyNow(produto.id, 1);
-    } catch (error: any) {
-      console.error('Erro ao comprar:', error);
-    }
-  };
-  
-  // Get seller name from the appropriate field
-  const sellerName = produto.vendedor?.nome_loja || 
-                    (produto.vendedores && produto.vendedores.nome_loja) || 
-                    'Loja';
-  
-  // Get product image from the appropriate field
-  const imageUrl = produto.imagem_url || (produto.imagens && produto.imagens[0]) || '';
-  
-  // Check if the product is out of stock
-  const isOutOfStock = typeof produto.estoque === 'number' && produto.estoque <= 0;
-
   return (
     <div 
-      onClick={handleCardClick}
-      className="border rounded-lg p-4 shadow-md hover:shadow-lg transition-shadow cursor-pointer"
+      onClick={onClick}
+      className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 border border-gray-100 overflow-hidden flex flex-col relative"
     >
+      {/* Product Image - positioned on the top */}
       <div className="relative w-full h-40 overflow-hidden bg-gray-50">
         <img 
-          src={imageUrl} 
-          alt={produto.nome} 
-          className="w-full h-full object-cover rounded-md hover:scale-105 transition-transform"
+          src={produto.imagemUrl || produto.imagem_url || (produto.imagens && produto.imagens[0])} 
+          alt={produto.nome}
+          className="w-full h-full object-contain hover:scale-105 transition-transform duration-300"
           onError={(e) => {
             (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150';
           }}
         />
       </div>
       
-      <h3 className="text-lg font-semibold mt-2 line-clamp-2">{produto.nome}</h3>
-      <p className="text-sm text-gray-500">Loja: {sellerName}</p>
-      
-      <p className="text-xl font-bold text-green-700 mt-1">
-        R$ {precoExibir.toFixed(2)}
-      </p>
-      
-      <div className="mt-3 flex flex-col space-y-2" onClick={e => e.stopPropagation()}>
-        <Button
-          className="w-full flex items-center justify-center bg-blue-600 hover:bg-blue-700"
-          disabled={isAddingToCart[produto.id || ''] || isOutOfStock}
-          onClick={onAddToCart}
-        >
-          <ShoppingCart className="mr-2 h-4 w-4" />
-          {isAddingToCart[produto.id || ''] ? 'Adicionando...' : 'Adicionar ao Carrinho'}
-        </Button>
+      <div className="p-3 flex flex-col flex-grow">
+        {/* Product name */}
+        <h3 className="text-sm text-gray-700 line-clamp-2 mb-1">{produto.nome}</h3>
         
-        <Button
-          className="w-full flex items-center justify-center bg-green-600 hover:bg-green-700"
-          disabled={isBuyingNow[produto.id || ''] || isOutOfStock}
-          onClick={onBuyNow}
-        >
-          <ShoppingBag className="mr-2 h-4 w-4" />
-          {isBuyingNow[produto.id || ''] ? 'Processando...' : 'Comprar Agora'}
-        </Button>
+        {/* Rating - Using actual data from database */}
+        <div className="flex items-center mb-1">
+          <div className="flex text-amber-400">
+            {"★".repeat(Math.round(produto.avaliacao || 0))}
+            {"☆".repeat(5 - Math.round(produto.avaliacao || 0))}
+          </div>
+          <span className="text-xs ml-1">
+            ({produto.avaliacoes_count || 0})
+          </span>
+        </div>
         
-        {isOutOfStock && (
-          <p className="text-red-500 text-xs text-center">
-            Produto fora de estoque
-          </p>
+        {/* Price section */}
+        <div className="mb-1">
+          <span className="text-lg font-bold">R$ {precoExibir.toFixed(2)}</span>
+          {hasDiscount && (
+            <span className="text-xs text-gray-400 line-through ml-2">
+              R$ {precoRegular.toFixed(2)}
+            </span>
+          )}
+        </div>
+
+        {/* Free shipping badge */}
+        {hasFreeShipping && (
+          <span className="text-green-600 text-xs font-medium mb-1.5 flex items-center">
+            <Truck size={12} className="mr-1" /> Entrega GRÁTIS
+          </span>
+        )}
+        
+        {/* Store name - Show either from direct loja prop or from produto.vendedor */}
+        {(loja || produto.vendedor || produto.vendedores) && (
+          <div 
+            className="text-xs text-gray-500 hover:underline cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              const vendedorId = loja?.id || produto.vendedor?.id || produto.vendedor_id;
+              console.log('[ProdutoCard] Store clicked:', vendedorId);
+              onLojaClick && onLojaClick(vendedorId);
+            }}
+          >
+            Vendido por {loja?.nome || produto.vendedor?.nome_loja || (produto.vendedores && produto.vendedores.nome_loja) || 'Loja'}
+          </div>
+        )}
+        
+        {/* Product Actions */}
+        {showActions && produto?.id && (
+          <div className="mt-2" onClick={e => e.stopPropagation()}>
+            <ProductActions productId={produto.id} quantity={1} />
+          </div>
+        )}
+        
+        {/* Custom action buttons if provided */}
+        {(onAddToCart || onBuyNow) && (
+          <div className="mt-2 flex flex-col gap-1" onClick={e => e.stopPropagation()}>
+            {onAddToCart && (
+              <button 
+                onClick={handleAddToCartClick}
+                className="text-xs bg-blue-600 hover:bg-blue-700 text-white py-1 px-2 rounded"
+                disabled={isAddingToCart}
+              >
+                {isAddingToCart ? 'Adicionando...' : 'Adicionar ao Carrinho'}
+              </button>
+            )}
+            
+            {onBuyNow && (
+              <button 
+                onClick={handleBuyNowClick}
+                className="text-xs bg-green-600 hover:bg-green-700 text-white py-1 px-2 rounded"
+              >
+                Comprar Agora
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>
   );
-}
+};
 
 export default ProdutoCard;
