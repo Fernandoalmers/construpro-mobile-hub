@@ -28,13 +28,17 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
   isAddingToCart = false,
   showActions = false
 }) => {
-  // Calculate discount percentage if applicable
+  // Utilizar os dados reais do produto
   const precoRegular = produto.preco_normal || produto.precoNormal || produto.preco || 0;
   const precoPromocional = produto.preco_promocional || produto.precoPromocional || null;
   
-  // Only use promotional price if it exists and is less than regular price
-  const precoExibir = (precoPromocional && precoPromocional < precoRegular) ? precoPromocional : precoRegular;
+  // Garantir que o preço promocional só seja considerado se for menor que o preço regular
   const hasDiscount = precoPromocional && precoPromocional < precoRegular;
+  const precoExibir = hasDiscount ? precoPromocional : precoRegular;
+  
+  // Garantir valores numéricos reais para exibição de avaliações
+  const avaliacao = produto.avaliacao || 0;
+  const avaliacoesCount = produto.avaliacoes_count || produto.num_avaliacoes || 0;
   
   // Free shipping threshold (products above R$ 100 qualify for free shipping)
   const hasFreeShipping = precoExibir >= 100;
@@ -52,6 +56,27 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
     if (onBuyNow) onBuyNow(e);
   };
   
+  // Função para renderizar as estrelas baseadas nas avaliações reais
+  const renderStars = () => {
+    // Garantir que avaliacao seja um número entre 0 e 5
+    const rating = Math.max(0, Math.min(5, Number(avaliacao) || 0));
+    
+    return (
+      <div className="flex items-center mb-1">
+        <div className="flex text-amber-400">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <span key={star} className={star <= rating ? "text-amber-400 fill-amber-400" : "text-gray-300"}>
+              ★
+            </span>
+          ))}
+        </div>
+        <span className="text-xs ml-1">
+          ({avaliacoesCount})
+        </span>
+      </div>
+    );
+  };
+  
   return (
     <div 
       onClick={onClick}
@@ -60,7 +85,7 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
       {/* Product Image - positioned on the top */}
       <div className="relative w-full h-40 overflow-hidden bg-gray-50">
         <img 
-          src={produto.imagemUrl || produto.imagem_url} 
+          src={produto.imagemUrl || produto.imagem_url || (produto.imagens && produto.imagens.length > 0 ? produto.imagens[0] : '')} 
           alt={produto.nome}
           className="w-full h-full object-contain hover:scale-105 transition-transform duration-300"
         />
@@ -70,18 +95,10 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
         {/* Product name */}
         <h3 className="text-sm text-gray-700 line-clamp-2 mb-1">{produto.nome}</h3>
         
-        {/* Rating - Using actual data from database */}
-        <div className="flex items-center mb-1">
-          <div className="flex text-amber-400">
-            {"★".repeat(Math.round(produto.avaliacao || 0))}
-            {"☆".repeat(5 - Math.round(produto.avaliacao || 0))}
-          </div>
-          <span className="text-xs ml-1">
-            ({produto.avaliacoes_count || 0})
-          </span>
-        </div>
+        {/* Rating - Usando dados reais de avaliações */}
+        {renderStars()}
         
-        {/* Price section */}
+        {/* Price section - Mostrando preço promocional quando disponível */}
         <div className="mb-1">
           <span className="text-lg font-bold">R$ {precoExibir.toFixed(2)}</span>
           {hasDiscount && (
@@ -112,15 +129,14 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
           </div>
         )}
         
-        {/* Product Actions - REMOVED as requested */}
-        {/* Only show action buttons if specifically requested */}
+        {/* Product Actions */}
         {showActions && produto?.id && (
           <div className="mt-2" onClick={e => e.stopPropagation()}>
-            <ProductActions productId={produto.id} quantity={1} />
+            <ProductActions productId={produto.id} quantity={1} maxStock={produto.estoque} />
           </div>
         )}
         
-        {/* Custom action buttons - Only show if provided and requested */}
+        {/* Custom action buttons */}
         {showActions && (onAddToCart || onBuyNow) && (
           <div className="mt-2 flex flex-col gap-1" onClick={e => e.stopPropagation()}>
             {onAddToCart && (

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Star, Clock, AlertCircle } from 'lucide-react';
@@ -14,17 +13,26 @@ interface ProductInfoProps {
 }
 
 const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) => {
-  // Calculate if there's a valid promotional price
-  const hasDiscount = produto.preco_promocional && produto.preco_promocional > 0 && produto.preco_promocional < produto.preco_normal;
-  
-  // Use preco_normal as the regular price and preco_promocional as the discounted price
+  // Garantir valores corretos para preços
   const regularPrice = produto.preco_normal || produto.preco;
+  
+  // Verificar se há um preço promocional válido (menor que o preço regular)
+  const hasDiscount = produto.preco_promocional !== undefined && 
+                      produto.preco_promocional !== null && 
+                      produto.preco_promocional > 0 &&
+                      produto.preco_promocional < regularPrice;
+  
+  // Usar o preço promocional ou o regular, dependendo da verificação
   const currentPrice = hasDiscount ? produto.preco_promocional : regularPrice;
   
-  // Calculate the discount percentage if applicable
+  // Calcular a porcentagem de desconto, se aplicável
   const discountPercentage = hasDiscount
     ? Math.round(((regularPrice - currentPrice) / regularPrice) * 100)
     : 0;
+
+  // Obter a avaliação real do produto
+  const productRating = produto.avaliacao || 0;
+  const reviewCount = produto.num_avaliacoes || 0;
 
   // Format delivery estimate text
   const getDeliveryText = () => {
@@ -76,7 +84,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
         </Link>
       )}
       
-      {/* Rating */}
+      {/* Rating - Usando dados reais */}
       <div className="flex items-center mb-4">
         <div className="flex">
           {[1, 2, 3, 4, 5].map((star) => (
@@ -84,7 +92,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
               key={star}
               size={16}
               className={`${
-                star <= (produto.avaliacao || 0)
+                star <= productRating
                   ? 'text-yellow-400 fill-yellow-400'
                   : 'text-gray-300'
               }`}
@@ -92,11 +100,11 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
           ))}
         </div>
         <span className="text-xs text-gray-500 ml-2">
-          ({produto.num_avaliacoes || 0} {produto.num_avaliacoes === 1 ? 'avaliação' : 'avaliações'})
+          ({reviewCount} {reviewCount === 1 ? 'avaliação' : 'avaliações'})
         </span>
       </div>
       
-      {/* Price section - Updated to display promotional price correctly */}
+      {/* Price section - Mostrando preço promocional quando disponível */}
       <div className="mb-4">
         <div className="flex items-baseline">
           {hasDiscount && (
