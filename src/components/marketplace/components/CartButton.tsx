@@ -7,7 +7,9 @@ import { useCart } from '@/hooks/use-cart';
 
 const CartButton: React.FC = () => {
   const navigate = useNavigate();
-  const { cartCount = 0 } = useCart();
+  const { cartCount = 0, isLoading } = useCart();
+
+  console.log('CartButton rendering with count:', cartCount, 'isLoading:', isLoading);
 
   return (
     <div className="relative">
@@ -16,6 +18,7 @@ const CartButton: React.FC = () => {
         size="icon" 
         className="relative"
         onClick={() => navigate('/cart')}
+        aria-label={`Ver carrinho com ${cartCount} item(s)`}
       >
         <ShoppingCart size={22} />
         {cartCount > 0 && (

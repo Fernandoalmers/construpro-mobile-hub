@@ -17,6 +17,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   // Calculate total items in cart - ensure it's using the latest cart data
   const cartCount = cart?.summary?.totalItems || 0;
+  
+  console.log('CartProvider: cartCount =', cartCount, 'isLoading =', isLoading);
 
   // Create context value
   const value: CartContextType = {
@@ -35,5 +37,22 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
 // Re-export the useCartContext as useCart for backward compatibility
 export function useCart() {
-  return useCartContext();
+  const context = useCartContext();
+  
+  if (context === undefined) {
+    console.error('useCart must be used within a CartProvider');
+    // Return a fallback with no-op functions to prevent crashes
+    return {
+      cart: null,
+      cartCount: 0,
+      isLoading: false,
+      addToCart: async () => Promise.resolve(),
+      updateQuantity: async () => Promise.resolve(),
+      removeItem: async () => Promise.resolve(),
+      clearCart: async () => Promise.resolve(),
+      refreshCart: async () => Promise.resolve()
+    };
+  }
+  
+  return context;
 }

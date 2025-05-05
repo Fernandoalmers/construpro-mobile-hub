@@ -5,7 +5,7 @@ import { Cart } from '@/types/cart';
 import * as cartApi from '@/services/cart';
 
 export function useCartOperations(refreshCartData: () => Promise<void>) {
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Add product to cart
   const addToCart = async (productId: string, quantity: number): Promise<void> => {
@@ -29,79 +29,17 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
 
       // Get or create a cart
       const cart = await cartApi.getCart();
-      let cartId;
       
-      if (cart) {
-        cartId = cart.id;
-        console.log('Using existing cart:', cartId);
-        
-        // Check if product already exists in cart
-        const existingItem = await cartApi.findCartItem(cartId, productId);
+      console.log('Current cart:', cart);
+      
+      // Call the addToCart function from cartApi
+      await cartApi.addToCart(productId, quantity);
+      console.log('Product successfully added to cart');
 
-        if (existingItem) {
-          // Update existing item
-          console.log('Product exists in cart, updating quantity:', existingItem);
-          const newQuantity = existingItem.quantity + quantity;
-          
-          if (product.estoque < newQuantity) {
-            console.log('Combined quantity exceeds stock:', { available: product.estoque, requested: newQuantity });
-            throw new Error('Quantidade solicitada excede o estoque disponível');
-          }
-          
-          const updated = await cartApi.updateItemQuantity(existingItem.id, newQuantity);
-          if (!updated) {
-            console.error('Failed to update cart item');
-            throw new Error('Erro ao atualizar o carrinho');
-          }
-        } else {
-          // Add new item
-          try {
-            // Use the correct price property - either preco_promocional or preco_normal
-            const productPrice = product.preco_promocional || product.preco_normal;
-            const added = await cartApi.addItemToCart(cartId, productId, quantity, productPrice);
-            if (!added) {
-              console.error('[useCartOperations] erro ao adicionar ao carrinho');
-              throw new Error('Erro ao adicionar ao carrinho');
-            }
-          } catch (error) {
-            console.error('[useCartOperations] erro ao adicionar ao carrinho', error);
-            throw error;
-          }
-        }
-      } else {
-        // This case should not happen after our cart consolidation improvements
-        // but keeping it as a fallback
-        console.log('No cart found, creating new cart');
-        
-        const userId = localStorage.getItem('userId');
-        if (!userId) {
-          throw new Error('Usuário não identificado');
-        }
-        
-        cartId = await cartApi.createCart(userId);
-        if (!cartId) {
-          console.error('Failed to create cart');
-          throw new Error('Erro ao criar o carrinho');
-        }
-        console.log('New cart created:', cartId);
-        
-        // Add new item to cart
-        // Use the correct price property - either preco_promocional or preco_normal
-        const productPrice = product.preco_promocional || product.preco_normal;
-        console.log('Adding new item to cart:', { cartId, productId, quantity, price: productPrice });
-        try {
-          const added = await cartApi.addItemToCart(cartId, productId, quantity, productPrice);
-          if (!added) {
-            console.error('[useCartOperations] erro ao adicionar ao carrinho');
-            throw new Error('Erro ao adicionar ao carrinho');
-          }
-        } catch (error) {
-          console.error('[useCartOperations] erro ao adicionar ao carrinho', error);
-          throw error;
-        }
-      }
-
+      // Refresh cart data to update UI
       await refreshCartData();
+      console.log('Cart data refreshed after adding product');
+      
       return Promise.resolve();
     } catch (error) {
       console.error('[useCartOperations] erro ao adicionar ao carrinho', error);
@@ -116,7 +54,7 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
     try {
       setIsLoading(true);
       
-      const updated = await cartApi.updateItemQuantity(cartItemId, newQuantity);
+      const updated = await cartApi.updateCartItemQuantity(cartItemId, newQuantity);
       if (!updated) {
         toast.error('Erro ao atualizar quantidade');
         return;
@@ -136,7 +74,7 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
     try {
       setIsLoading(true);
       
-      const removed = await cartApi.removeCartItem(cartItemId);
+      const removed = await cartApi.removeFromCart(cartItemId);
       if (!removed) {
         toast.error('Erro ao remover item do carrinho');
         return;
@@ -159,7 +97,7 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
     try {
       setIsLoading(true);
       
-      const cleared = await cartApi.clearCartItems(cart.id);
+      const cleared = await cartApi.clearCart();
       if (!cleared) {
         toast.error('Erro ao limpar o carrinho');
         return;

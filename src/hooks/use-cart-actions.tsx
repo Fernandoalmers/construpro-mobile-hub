@@ -73,13 +73,15 @@ export function useCartActions() {
       // Added this for debugging
       console.log('Before addToCart call in handleBuyNow');
       
-      // Use a direct call to addToCart from useCart instead of using our own handler
-      // to avoid potential issues with nested loading states
-      await addToCart(productId, quantity);
+      // Use direct call to addToCart instead of handleAddToCart to avoid nested states
+      const success = await handleAddToCart(productId, quantity);
       
-      console.log('Successfully added to cart, navigating to /cart');
-      navigate('/cart');
+      console.log('Add to cart result:', success);
       
+      if (success) {
+        console.log('Successfully added to cart, navigating to /cart');
+        navigate('/cart');
+      }
     } catch (error: any) {
       console.error('Error buying now:', error);
       toast.error('Erro: ' + (error.message || 'Erro ao processar compra'));
