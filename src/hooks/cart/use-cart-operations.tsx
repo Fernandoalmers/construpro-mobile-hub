@@ -18,20 +18,6 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
     setIsLoading(true);
     
     try {
-      // Get the product price
-      const product = await cartApi.fetchProductInfo(productId);
-      if (!product) {
-        console.error('Product not found:', productId);
-        throw new Error('Produto não encontrado');
-      }
-
-      console.log('Product info:', product);
-
-      if (product.estoque < quantity) {
-        console.log('Not enough stock:', { available: product.estoque, requested: quantity });
-        throw new Error('Quantidade solicitada não disponível em estoque');
-      }
-
       // Call the addToCart function from cartApi
       await cartApi.addToCart(productId, quantity);
       console.log('Product successfully added to cart');

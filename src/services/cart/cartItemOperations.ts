@@ -11,10 +11,10 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {
       console.error('User not authenticated');
-      return null;
+      throw new Error('Usuário não autenticado');
     }
 
-    // Get product information
+    // Get product information to check stock
     const { data: product, error: productError } = await supabase
       .from('produtos')
       .select('id, preco_normal, preco_promocional, estoque')
@@ -23,16 +23,17 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
 
     if (productError || !product) {
       console.error('Error fetching product:', productError);
-      return null;
+      throw new Error('Produto não encontrado');
     }
 
     // Check inventory
     if (product.estoque < quantity) {
-      throw new Error(`Only ${product.estoque} items available in stock`);
+      throw new Error(`Apenas ${product.estoque} itens disponíveis em estoque`);
     }
 
     // Get or create active cart
-    let { data: cartData, error: cartError } = await supabase
+    let cartId;
+    const { data: existingCart, error: cartError } = await supabase
       .from('carts')
       .select('id')
       .eq('user_id', userData.user.id)
@@ -40,41 +41,33 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
       .single();
 
     if (cartError) {
-      if (cartError.code === 'PGRST116') {
-        // No active cart found, create one
-        const { data: newCart, error: createError } = await supabase
-          .from('carts')
-          .insert({ 
-            user_id: userData.user.id,
-            status: 'active'
-          })
-          .select('id')
-          .single();
+      // Create a new cart if one doesn't exist
+      const { data: newCart, error: createError } = await supabase
+        .from('carts')
+        .insert({ 
+          user_id: userData.user.id,
+          status: 'active'
+        })
+        .select('id')
+        .single();
 
-        if (createError) {
-          console.error('Error creating cart:', createError);
-          return null;
-        }
-
-        cartData = newCart;
-      } else {
-        console.error('Error fetching cart:', cartError);
-        return null;
+      if (createError) {
+        console.error('Error creating cart:', createError);
+        throw new Error('Erro ao criar carrinho');
       }
+      
+      cartId = newCart.id;
+    } else {
+      cartId = existingCart.id;
     }
 
     // Check if the product is already in the cart
     const { data: existingItem, error: existingItemError } = await supabase
       .from('cart_items')
       .select('id, quantity')
-      .eq('cart_id', cartData.id)
+      .eq('cart_id', cartId)
       .eq('product_id', productId)
-      .single();
-
-    if (existingItemError && existingItemError.code !== 'PGRST116') {
-      console.error('Error checking existing items:', existingItemError);
-      return null;
-    }
+      .maybeSingle();
 
     // Use the correct price field from the produtos table
     const productPrice = product.preco_promocional || product.preco_normal;
@@ -84,7 +77,7 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
       const newQuantity = existingItem.quantity + quantity;
       
       if (product.estoque < newQuantity) {
-        throw new Error(`Cannot add more items. Only ${product.estoque} available in stock`);
+        throw new Error(`Não é possível adicionar mais itens. Apenas ${product.estoque} disponíveis em estoque`);
       }
 
       const { error: updateError } = await supabase
@@ -94,14 +87,14 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
 
       if (updateError) {
         console.error('Error updating cart item:', updateError);
-        return null;
+        throw new Error('Erro ao atualizar item no carrinho');
       }
     } else {
       // Add new item to cart
       const { error: insertError } = await supabase
         .from('cart_items')
         .insert({
-          cart_id: cartData.id,
+          cart_id: cartId,
           product_id: productId,
           quantity: quantity,
           price_at_add: productPrice
@@ -109,13 +102,13 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
 
       if (insertError) {
         console.error('Error adding item to cart:', insertError);
-        return null;
+        throw new Error('Erro ao adicionar item ao carrinho');
       }
     }
 
     // Return updated cart
     return await getCart();
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error adding to cart:', error);
     throw error;
   }
@@ -124,33 +117,12 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
 /**
  * Update cart item quantity
  */
-export const updateCartItemQuantity = async (itemId: string, quantity: number): Promise<Cart | null> => {
+export const updateCartItemQuantity = async (itemId: string, quantity: number): Promise<boolean> => {
   try {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {
       console.error('User not authenticated');
-      return null;
-    }
-
-    // Get the cart item to check against current inventory
-    const { data: item, error: itemError } = await supabase
-      .from('cart_items')
-      .select(`
-        id,
-        product_id,
-        produtos:product_id (estoque)
-      `)
-      .eq('id', itemId)
-      .single();
-
-    if (itemError || !item) {
-      console.error('Error fetching cart item:', itemError);
-      return null;
-    }
-
-    // Check inventory
-    if (item.produtos.estoque < quantity) {
-      throw new Error(`Cannot update quantity. Only ${item.produtos.estoque} available in stock`);
+      throw new Error('Usuário não autenticado');
     }
 
     // Update quantity
@@ -161,26 +133,25 @@ export const updateCartItemQuantity = async (itemId: string, quantity: number): 
 
     if (updateError) {
       console.error('Error updating quantity:', updateError);
-      return null;
+      return false;
     }
 
-    // Return updated cart
-    return await getCart();
+    return true;
   } catch (error) {
     console.error('Error updating cart item quantity:', error);
-    throw error;
+    return false;
   }
 };
 
 /**
  * Remove item from cart
  */
-export const removeFromCart = async (itemId: string): Promise<Cart | null> => {
+export const removeFromCart = async (itemId: string): Promise<boolean> => {
   try {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {
       console.error('User not authenticated');
-      return null;
+      return false;
     }
 
     const { error } = await supabase
@@ -190,13 +161,54 @@ export const removeFromCart = async (itemId: string): Promise<Cart | null> => {
 
     if (error) {
       console.error('Error removing cart item:', error);
-      return null;
+      return false;
     }
 
-    // Return updated cart
-    return await getCart();
+    return true;
   } catch (error) {
     console.error('Error removing from cart:', error);
-    return null;
+    return false;
+  }
+};
+
+/**
+ * Clear cart
+ */
+export const clearCart = async (): Promise<boolean> => {
+  try {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
+      console.error('User not authenticated');
+      return false;
+    }
+
+    // Get active cart
+    const { data: cart, error: cartError } = await supabase
+      .from('carts')
+      .select('id')
+      .eq('user_id', userData.user.id)
+      .eq('status', 'active')
+      .single();
+
+    if (cartError) {
+      console.error('Error finding active cart:', cartError);
+      return false;
+    }
+
+    // Delete all items in cart
+    const { error: deleteError } = await supabase
+      .from('cart_items')
+      .delete()
+      .eq('cart_id', cart.id);
+
+    if (deleteError) {
+      console.error('Error clearing cart:', deleteError);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error clearing cart:', error);
+    return false;
   }
 };
