@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
@@ -31,6 +30,7 @@ import AjustePontosVendorScreen from './components/vendor/AjustePontosVendorScre
 import ProdutosVendorScreen from './components/vendor/ProdutosVendorScreen';
 import ProdutoScreen from './components/marketplace/ProdutoScreen';
 import OrderConfirmationScreen from './components/marketplace/OrderConfirmationScreen';
+import ProfileSelectionScreen from './components/auth/ProfileSelectionScreen';
 
 function App() {
   const location = useLocation();
@@ -74,6 +74,9 @@ function App() {
         <Route path="/login" element={<LoginScreen />} />
         <Route path="/signup" element={<SignUpScreen />} />
         <Route path="/onboarding" element={<OnboardingScreen />} />
+
+        {/* Authentication flow routes */}
+        <Route path="/auth/profile-selection" element={<ProtectedRoute><ProfileSelectionScreen /></ProtectedRoute>} />
 
         {/* Protected routes */}
         <Route path="/" element={<ProtectedRoute><HomeScreen /></ProtectedRoute>} />

@@ -1,100 +1,67 @@
+// Common
+export { default as LoadingState } from './components/common/LoadingState';
 
-// Core and Admin Components
-import AdminDashboard from './components/admin/dashboard/AdminDashboard';
-import UsersManagement from './components/admin/UsersManagement';
-import ProductsManagementScreen from './components/admin/ProductsManagement';
-import StoresManagementScreen from './components/admin/stores/StoresManagementScreen';
-import RedemptionsManagementScreen from './components/admin/redemptions/RedemptionsManagementScreen';
-import OrdersManagementScreen from './components/admin/orders/OrdersManagementScreen';
-import AdminLogsScreen from './components/admin/AdminLogs';
-import AdminSettingsScreen from './components/admin/settings/AdminSettingsScreen';
-import AdminRewardsScreen from './components/admin/rewards/AdminRewardsScreen';
-import AdminCategoriesScreen from './components/admin/categories/AdminCategoriesScreen';
+// Layout
+export { default as BottomTabNavigator } from './components/layout/BottomTabNavigator';
 
-// Auth Components
-import LoginScreen from './components/LoginScreen';
-import SignUpScreen from './components/SignupScreen';
-import OnboardingScreen from './components/auth/OnboardingScreen';
+// Admin
+export { default as AdminDashboard } from './pages/admin/AdminDashboard';
+export { default as UsersManagement } from './pages/admin/UsersManagement';
+export { default as ProductsManagementScreen } from './pages/admin/ProductsManagementScreen';
+export { default as StoresManagementScreen } from './pages/admin/StoresManagementScreen';
+export { default as RedemptionsManagementScreen } from './pages/admin/RedemptionsManagementScreen';
+export { default as OrdersManagementScreen } from './pages/admin/OrdersManagementScreen';
+export { default as AdminLogsScreen } from './pages/admin/AdminLogsScreen';
+export { default as AdminSettingsScreen } from './pages/admin/AdminSettingsScreen';
+export { default as AdminRewardsScreen } from './pages/admin/AdminRewardsScreen';
+export { default as AdminCategoriesScreen } from './pages/admin/AdminCategoriesScreen';
 
-// Main App Components
-import HomeScreen from './components/home/HomeScreen';
-import ProfileScreen from './components/profile/ProfileScreen';
-import RewardsScreen from './components/resgates/ResgatesScreen';
-import RewardDetailScreen from './components/resgates/ResgateDetailScreen';
-import StoreDetailScreen from './components/marketplace/ProdutoScreen';
-import CartScreen from './components/marketplace/CartScreen';
-import CheckoutScreen from './components/marketplace/CheckoutScreen';
-import OrdersScreen from './components/profile/OrdersScreen';
-import OrderDetailScreen from './components/profile/OrderDetailScreen';
-import FavoritesScreen from './components/profile/FavoritesScreen';
-import ChatScreen from './components/chat/ChatScreen';
-import SettingsScreen from './components/profile/SettingsScreen';
-import NotFoundScreen from './pages/NotFound';
-import MarketplaceScreenWrapper from './components/marketplace/MarketplaceScreenWrapper';
+// Auth
+export { default as AuthProvider } from './context/AuthContext';
+export { default as ProtectedRoute } from './components/auth/ProtectedRoute';
+export { default as LoginScreen } from './components/LoginScreen';
+export { default as SignUpScreen } from './components/SignupScreen';
+export { default as OnboardingScreen } from './components/OnboardingScreen';
+export { default as ProfileSelectionScreen } from './components/auth/ProfileSelectionScreen';
 
-// Profile Related Components
-import PhysicalPurchasesScreen from './components/profile/PhysicalPurchasesScreen';
-import PointsHistoryScreen from './components/profile/PointsHistoryScreen';
-import AddressScreen from './components/profile/AddressScreen';
-import ReferralsScreen from './components/profile/ReferralsScreen';
+// Home
+export { default as HomeScreen } from './pages/HomeScreen';
 
-// Vendor Components
-import VendorDashboardScreen from './components/vendor/VendorHomeScreen';
-import VendorProductsScreen from './components/vendor/ProdutosVendorScreen';
-import VendorCustomersScreen from './components/vendor/ClientesVendorScreen';
+// Profile
+export { default as ProfileScreen } from './pages/ProfileScreen';
 
-// Auth Context and Route Protection
-import { AuthProvider } from './context/AuthContext';
-import { CartProvider } from './hooks/use-cart';
-import ProtectedRoute from './components/auth/ProtectedRoute';
+// Rewards
+export { default as RewardsScreen } from './pages/RewardsScreen';
+export { default as RewardDetailScreen } from './pages/RewardDetailScreen';
 
-export {
-  // Admin Components
-  AdminDashboard,
-  UsersManagement,
-  ProductsManagementScreen,
-  StoresManagementScreen,
-  RedemptionsManagementScreen,
-  OrdersManagementScreen,
-  AdminLogsScreen,
-  AdminSettingsScreen,
-  AdminRewardsScreen,
-  AdminCategoriesScreen,
-  
-  // Auth Components
-  LoginScreen,
-  SignUpScreen,
-  OnboardingScreen,
-  
-  // Main App Components
-  HomeScreen,
-  ProfileScreen,
-  RewardsScreen,
-  RewardDetailScreen,
-  StoreDetailScreen,
-  CartScreen,
-  CheckoutScreen,
-  OrdersScreen,
-  OrderDetailScreen,
-  FavoritesScreen,
-  ChatScreen,
-  SettingsScreen,
-  NotFoundScreen,
-  MarketplaceScreenWrapper,
-  
-  // Profile Related Components
-  PhysicalPurchasesScreen,
-  PointsHistoryScreen,
-  AddressScreen,
-  ReferralsScreen,
-  
-  // Vendor Components
-  VendorDashboardScreen,
-  VendorProductsScreen,
-  VendorCustomersScreen,
-  
-  // Auth Context and Route Protection
-  AuthProvider,
-  CartProvider,
-  ProtectedRoute
-};
+// Store
+export { default as StoreDetailScreen } from './pages/StoreDetailScreen';
+
+// Cart
+export { default as CartScreen } from './pages/CartScreen';
+export { default as CheckoutScreen } from './pages/CheckoutScreen';
+export { default as CartProvider } from './context/CartContext';
+
+// Orders
+export { default as OrdersScreen } from './pages/OrdersScreen';
+export { default as OrderDetailScreen } from './pages/OrderDetailScreen';
+
+// Favorites
+export { default as FavoritesScreen } from './pages/FavoritesScreen';
+
+// Chat
+export { default as ChatScreen } from './pages/ChatScreen';
+
+// Settings
+export { default as SettingsScreen } from './pages/SettingsScreen';
+
+// Not Found
+export { default as NotFoundScreen } from './pages/NotFound';
+
+// Vendor
+export { default as VendorDashboardScreen } from './pages/vendor/VendorDashboardScreen';
+export { default as VendorProductsScreen } from './pages/vendor/VendorProductsScreen';
+export { default as VendorCustomersScreen } from './pages/vendor/VendorCustomersScreen';
+
+// Marketplace
+export { default as MarketplaceScreenWrapper } from './pages/MarketplaceScreenWrapper';
