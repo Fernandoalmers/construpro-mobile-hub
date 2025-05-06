@@ -15,7 +15,7 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
   /**
    * Add an item to the cart
    */
-  const handleAddToCart = async (productId: string, quantity: number) => {
+  const handleAddToCart = async (productId: string, quantity: number): Promise<void> => {
     try {
       console.log(`[useCartOperations] Adding ${quantity} of ${productId} to cart`);
       setIsLoading(true);
@@ -25,11 +25,10 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
       await refreshCartData();
       
       toast.success(`${quantity} ${quantity > 1 ? 'unidades' : 'unidade'} adicionada(s) ao carrinho`);
-      return true;
     } catch (error: any) {
       console.error('[useCartOperations] Error adding to cart:', error);
       toast.error(error.message || 'Erro ao adicionar ao carrinho');
-      return false;
+      throw error;
     } finally {
       setIsLoading(false);
       setOperationInProgress(null);
@@ -39,11 +38,11 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
   /**
    * Update the quantity of an item in the cart
    */
-  const handleUpdateQuantity = async (itemId: string, newQuantity: number) => {
+  const handleUpdateQuantity = async (itemId: string, newQuantity: number): Promise<void> => {
     try {
       if (newQuantity < 1) {
         console.log('[useCartOperations] Quantity must be at least 1');
-        return false;
+        return;
       }
       
       console.log(`[useCartOperations] Updating quantity for ${itemId} to ${newQuantity}`);
@@ -52,12 +51,10 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
       
       await updateCartItemQuantity(itemId, newQuantity);
       await refreshCartData();
-      
-      return true;
     } catch (error: any) {
       console.error('[useCartOperations] Error updating quantity:', error);
       toast.error(error.message || 'Erro ao atualizar quantidade');
-      return false;
+      throw error;
     } finally {
       setIsLoading(false);
       setOperationInProgress(null);
@@ -67,7 +64,7 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
   /**
    * Remove an item from the cart
    */
-  const handleRemoveItem = async (itemId: string) => {
+  const handleRemoveItem = async (itemId: string): Promise<void> => {
     try {
       console.log(`[useCartOperations] Removing item ${itemId}`);
       setIsLoading(true);
@@ -77,11 +74,10 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
       await refreshCartData();
       
       toast.success('Item removido do carrinho');
-      return true;
     } catch (error: any) {
       console.error('[useCartOperations] Error removing item:', error);
       toast.error(error.message || 'Erro ao remover item');
-      return false;
+      throw error;
     } finally {
       setIsLoading(false);
       setOperationInProgress(null);
@@ -91,7 +87,7 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
   /**
    * Clear all items from the cart
    */
-  const handleClearCart = async () => {
+  const handleClearCart = async (): Promise<void> => {
     try {
       console.log('[useCartOperations] Clearing cart');
       setIsLoading(true);
@@ -101,11 +97,10 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
       await refreshCartData();
       
       toast.success('Carrinho esvaziado');
-      return true;
     } catch (error: any) {
       console.error('[useCartOperations] Error clearing cart:', error);
       toast.error(error.message || 'Erro ao esvaziar o carrinho');
-      return false;
+      throw error;
     } finally {
       setIsLoading(false);
       setOperationInProgress(null);

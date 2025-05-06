@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Cart } from '@/types/cart';
 import { supabase } from '@/integrations/supabase/client';
+import { ensureSingleActiveCart } from '@/services/cart/cartConsolidation';
 
 export function useCartData(isAuthenticated: boolean, userId: string | null) {
   const [cart, setCart] = useState<Cart | null>(null);
@@ -18,85 +19,30 @@ export function useCartData(isAuthenticated: boolean, userId: string | null) {
 
       console.log('Fetching cart data for user:', userId);
       
-      // Primeiro, verifica se existem múltiplos carrinhos ativos e consolida se necessário
-      const { data: activeCarts, error: cartsError } = await supabase
-        .from('carts')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('status', 'active');
-
-      if (cartsError) {
-        console.error('Error checking for active carts:', cartsError);
-        throw new Error(`Error fetching carts: ${cartsError.message}`);
-      }
-
-      // Se encontrar múltiplos carrinhos ativos, manter apenas o mais recente
-      if (activeCarts && activeCarts.length > 1) {
-        console.warn(`Found ${activeCarts.length} active carts for user ${userId}, consolidating...`);
-        
-        // Buscar o carrinho mais recente
-        const { data: latestCart, error: latestError } = await supabase
-          .from('carts')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('status', 'active')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
-
-        if (latestError) {
-          console.error('Error fetching latest cart:', latestError);
-          throw new Error(`Error fetching latest cart: ${latestError.message}`);
-        }
-
-        // Marca os outros carrinhos como 'archived'
-        if (latestCart) {
-          const { error: updateError } = await supabase
-            .from('carts')
-            .update({ status: 'archived' })
-            .eq('user_id', userId)
-            .eq('status', 'active')
-            .neq('id', latestCart.id);
-
-          if (updateError) {
-            console.error('Error archiving old carts:', updateError);
-          } else {
-            console.log(`Archived ${activeCarts.length - 1} old carts`);
+      // Ensure there is only one active cart for this user
+      const activeCartId = await ensureSingleActiveCart(userId);
+      
+      if (!activeCartId) {
+        console.log('No active cart found or created for user');
+        return {
+          id: '',
+          user_id: userId,
+          items: [],
+          summary: {
+            subtotal: 0,
+            shipping: 0,
+            totalItems: 0,
+            totalPoints: 0
           }
-        }
+        };
       }
 
-      // Agora buscar o carrinho ativo (que deve ser único)
-      const { data: cart, error: cartError } = await supabase
+      // Fetch cart with the guaranteed single active cart ID
+      const { data: cart } = await supabase
         .from('carts')
         .select('id, user_id, created_at')
-        .eq('user_id', userId)
-        .eq('status', 'active')
-        .order('created_at', { ascending: false })
-        .limit(1)
+        .eq('id', activeCartId)
         .single();
-
-      if (cartError) {
-        // Se não encontrar carrinho, criar um novo
-        if (cartError.code === 'PGRST116') {
-          console.log('No active cart found for user, creating new cart');
-          const { data: newCart, error: createError } = await supabase
-            .from('carts')
-            .insert({ user_id: userId, status: 'active' })
-            .select('id, user_id, created_at')
-            .single();
-
-          if (createError) {
-            console.error('Error creating new cart:', createError);
-            throw new Error(`Error creating new cart: ${createError.message}`);
-          }
-
-          return fetchCartItems(newCart);
-        } else {
-          console.error('Error fetching cart:', cartError);
-          throw new Error(`Error fetching cart: ${cartError.message}`);
-        }
-      }
 
       return fetchCartItems(cart);
     } catch (err: any) {
@@ -111,7 +57,7 @@ export function useCartData(isAuthenticated: boolean, userId: string | null) {
       return null;
     }
 
-    // Fetch cart items with product details
+    // Fetch cart items with product details - fixed query to avoid the imagem_url error
     const { data: items, error: itemsError } = await supabase
       .from('cart_items')
       .select(`
@@ -124,7 +70,7 @@ export function useCartData(isAuthenticated: boolean, userId: string | null) {
           nome,
           preco:preco_normal,
           preco_promocional,
-          imagem_url,
+          imagens,
           estoque,
           loja_id:vendedor_id,
           pontos:pontos_consumidor
@@ -143,19 +89,58 @@ export function useCartData(isAuthenticated: boolean, userId: string | null) {
     let totalPoints = 0;
 
     const processedItems = items?.map(item => {
-      const produtoPreco = item.produto?.preco_promocional || item.produto?.preco || item.preco;
+      if (!item.produto || item.produto.error) {
+        console.warn('Invalid product data for cart item:', item.id);
+        return {
+          id: item.id,
+          produto_id: item.produto_id,
+          quantidade: item.quantidade || 0,
+          preco: item.preco || 0,
+          subtotal: 0,
+          pontos: 0,
+          produto: {
+            id: item.produto_id,
+            nome: 'Produto indisponível',
+            preco: item.preco || 0,
+            imagem_url: '',
+            estoque: 0,
+            loja_id: '',
+            pontos: 0
+          }
+        };
+      }
+
+      const produtoPreco = item.produto.preco_promocional || item.produto.preco || item.preco;
       const quantidade = item.quantidade || 0;
       const itemSubtotal = produtoPreco * quantidade;
-      const pontos = (item.produto?.pontos || 0) * quantidade;
+      const pontos = (item.produto.pontos || 0) * quantidade;
       
       subtotal += itemSubtotal;
       totalItems += quantidade;
       totalPoints += pontos;
       
+      // Extract image URL from imagens array if available
+      let imageUrl = '';
+      if (item.produto.imagens && Array.isArray(item.produto.imagens) && item.produto.imagens.length > 0) {
+        imageUrl = item.produto.imagens[0];
+      }
+
       return {
-        ...item,
+        id: item.id,
+        produto_id: item.produto_id,
+        quantidade: quantidade,
+        preco: produtoPreco,
         subtotal: itemSubtotal,
-        pontos: pontos
+        pontos,
+        produto: {
+          id: item.produto.id,
+          nome: item.produto.nome || 'Produto sem nome',
+          preco: produtoPreco,
+          imagem_url: imageUrl,
+          estoque: item.produto.estoque || 0,
+          loja_id: item.produto.loja_id || '',
+          pontos: item.produto.pontos || 0
+        }
       };
     }) || [];
 

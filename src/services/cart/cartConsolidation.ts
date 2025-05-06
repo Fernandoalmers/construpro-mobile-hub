@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 /**
@@ -57,7 +58,7 @@ export async function ensureSingleActiveCart(userId: string): Promise<string | n
       if (cartsToArchive.length > 0) {
         const cartsToArchiveIds = cartsToArchive.map(cart => cart.id);
         
-        // Archive older carts
+        // Archive older carts by updating status - use "archived" which is a valid value per the check constraint
         const { error: updateError } = await supabase
           .from('carts')
           .update({ status: 'archived' })
