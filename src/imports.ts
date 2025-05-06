@@ -36,12 +36,14 @@ export { default as RewardsScreen } from './components/resgates/ResgatesScreen';
 export { default as RewardDetailScreen } from './components/resgates/ResgateDetailScreen';
 
 // Store
-export { default as StoreDetailScreen } from './components/marketplace/StoreDetailScreen';
+// Updating the StoreDetailScreen import path to match existing file structure
+export { default as StoreDetailScreen } from './components/marketplace/ProdutoScreen';
 
 // Cart
 export { default as CartScreen } from './components/marketplace/CartScreen';
 export { default as CheckoutScreen } from './components/marketplace/CheckoutScreen';
-export { CartProvider } from './context/CartContext';
+// Fix CartProvider export - import from the CartContext hook file
+export { CartProvider } from './hooks/use-cart';
 
 // Orders
 export { default as OrdersScreen } from './components/profile/OrdersScreen';
