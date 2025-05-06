@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Coins } from 'lucide-react';
 import CustomButton from '@/components/common/CustomButton';
 
 interface CartSummaryProps {
@@ -21,7 +22,7 @@ const CartSummary: React.FC<CartSummaryProps> = ({
   const navigate = useNavigate();
 
   return (
-    <div className="bg-white p-6 shadow-md">
+    <div className="bg-white p-6 shadow-md fixed left-0 right-0 bottom-0">
       <div className="space-y-3 mb-6">
         <div className="flex justify-between">
           <span className="text-gray-600">Subtotal</span>
@@ -41,8 +42,11 @@ const CartSummary: React.FC<CartSummaryProps> = ({
           <span>Total</span>
           <span>R$ {total.toFixed(2)}</span>
         </div>
-        <div className="flex justify-between text-orange-500 text-base">
-          <span>Pontos a ganhar</span>
+        
+        <div className="flex justify-between text-orange-500 text-sm items-center">
+          <span className="flex items-center">
+            <Coins size={16} className="mr-1" /> Pontos a ganhar:
+          </span>
           <span className="font-medium">{totalPoints} pontos</span>
         </div>
       </div>
@@ -52,7 +56,7 @@ const CartSummary: React.FC<CartSummaryProps> = ({
         fullWidth
         size="lg"
         onClick={() => navigate('/checkout')}
-        className="py-4 text-lg"
+        className="py-4 text-lg font-medium"
       >
         Finalizar Compra
       </CustomButton>

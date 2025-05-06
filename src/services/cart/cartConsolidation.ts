@@ -1,115 +1,108 @@
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Ensures a user has only one active cart
- * If multiple active carts exist, consolidates them into one
+ * Consolidates multiple active carts for a user into a single cart
+ * This helps avoid data inconsistencies when multiple active carts are created
  */
-export const consolidateUserCarts = async (userId: string): Promise<boolean> => {
+export const consolidateUserCarts = async (userId: string): Promise<void> => {
   try {
-    console.log('[consolidateUserCarts] Checking carts for user:', userId);
+    console.log('[consolidateUserCarts] Starting consolidation for user:', userId);
     
-    // Get all active carts for this user
-    const { data: carts, error } = await supabase
+    // Find all active carts for the user
+    const { data: carts, error: cartError } = await supabase
       .from('carts')
-      .select('id')
+      .select('id, created_at')
       .eq('user_id', userId)
       .eq('status', 'active')
       .order('created_at', { ascending: false });
-      
-    if (error) {
-      console.error('[consolidateUserCarts] Error fetching carts:', error);
-      return false;
+    
+    if (cartError) {
+      console.error('[consolidateUserCarts] Error fetching carts:', cartError);
+      return;
     }
     
-    if (!carts || carts.length === 0) {
-      console.log('[consolidateUserCarts] No active carts found');
-      return true; // No carts to consolidate
+    // If there's 0 or 1 cart, no consolidation needed
+    if (!carts || carts.length <= 1) {
+      console.log('[consolidateUserCarts] No consolidation needed');
+      return;
     }
     
-    if (carts.length === 1) {
-      console.log('[consolidateUserCarts] User has exactly one active cart, no consolidation needed');
-      return true; // Already has exactly one cart
-    }
+    console.log(`[consolidateUserCarts] Found ${carts.length} active carts, will consolidate`);
     
-    console.log('[consolidateUserCarts] Found multiple active carts:', carts.length);
-    
-    // Keep the newest cart (first in the list since we ordered by created_at desc)
+    // Keep the most recent cart
     const primaryCartId = carts[0].id;
-    const cartsToMerge = carts.slice(1).map(c => c.id);
+    const cartsToMerge = carts.slice(1);
     
-    console.log('[consolidateUserCarts] Primary cart:', primaryCartId, 'Carts to merge:', cartsToMerge);
-    
-    // For each cart to merge, move its items to the primary cart
-    for (const cartId of cartsToMerge) {
+    for (const cart of cartsToMerge) {
       // Get items from this cart
       const { data: items, error: itemsError } = await supabase
         .from('cart_items')
         .select('*')
-        .eq('cart_id', cartId);
-        
+        .eq('cart_id', cart.id);
+      
       if (itemsError) {
-        console.error(`[consolidateUserCarts] Error fetching items for cart ${cartId}:`, itemsError);
+        console.error(`[consolidateUserCarts] Error fetching items for cart ${cart.id}:`, itemsError);
         continue;
       }
       
-      console.log(`[consolidateUserCarts] Found ${items?.length || 0} items in cart ${cartId}`);
-      
-      if (items && items.length > 0) {
-        // For each item, check if it exists in the primary cart
+      if (!items || items.length === 0) {
+        // Empty cart, just mark as inactive
+        console.log(`[consolidateUserCarts] Cart ${cart.id} is empty, marking as inactive`);
+      } else {
+        // Move items to primary cart
+        console.log(`[consolidateUserCarts] Moving ${items.length} items from cart ${cart.id} to ${primaryCartId}`);
+        
         for (const item of items) {
-          const { data: existingItem, error: checkError } = await supabase
+          // Check if this product already exists in primary cart
+          const { data: existingItem, error: existingError } = await supabase
             .from('cart_items')
             .select('id, quantity')
             .eq('cart_id', primaryCartId)
             .eq('product_id', item.product_id)
             .maybeSingle();
-            
-          if (checkError) {
-            console.error('[consolidateUserCarts] Error checking existing item:', checkError);
+          
+          if (existingError && existingError.code !== 'PGRST116') {
+            console.error('[consolidateUserCarts] Error checking existing item:', existingError);
             continue;
           }
           
           if (existingItem) {
             // Update quantity of existing item
-            const { error: updateError } = await supabase
+            await supabase
               .from('cart_items')
               .update({ quantity: existingItem.quantity + item.quantity })
               .eq('id', existingItem.id);
-              
-            if (updateError) {
-              console.error('[consolidateUserCarts] Error updating existing item:', updateError);
-            }
           } else {
             // Move item to primary cart
-            const { error: moveError } = await supabase
+            await supabase
               .from('cart_items')
-              .update({ cart_id: primaryCartId })
-              .eq('id', item.id);
-              
-            if (moveError) {
-              console.error('[consolidateUserCarts] Error moving item to primary cart:', moveError);
-            }
+              .insert({
+                cart_id: primaryCartId,
+                product_id: item.product_id,
+                quantity: item.quantity,
+                price_at_add: item.price_at_add
+              });
           }
+          
+          // Delete the original item
+          await supabase
+            .from('cart_items')
+            .delete()
+            .eq('id', item.id);
         }
       }
       
-      // Mark this cart as merged
-      const { error: updateCartError } = await supabase
+      // Mark this cart as merged/inactive
+      await supabase
         .from('carts')
         .update({ status: 'merged' })
-        .eq('id', cartId);
-        
-      if (updateCartError) {
-        console.error('[consolidateUserCarts] Error updating cart status:', updateCartError);
-      }
+        .eq('id', cart.id);
     }
     
-    console.log('[consolidateUserCarts] Consolidation complete');
-    return true;
+    console.log('[consolidateUserCarts] Cart consolidation completed successfully');
     
   } catch (error) {
-    console.error('[consolidateUserCarts] Error in consolidateUserCarts:', error);
-    return false;
+    console.error('[consolidateUserCarts] Error during cart consolidation:', error);
   }
 };
 

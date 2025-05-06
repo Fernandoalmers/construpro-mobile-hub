@@ -26,6 +26,8 @@ export function useCartAdd(refreshCartData: () => Promise<void>) {
         throw new Error('Usuário não autenticado');
       }
       
+      console.log('[useCartAdd] user authenticated:', userData.user.id);
+      
       // Get or create active cart
       let { data: cartData, error: cartError } = await supabase
         .from('carts')
@@ -35,8 +37,11 @@ export function useCartAdd(refreshCartData: () => Promise<void>) {
         .single();
 
       if (cartError) {
+        console.log('[useCartAdd] Error or no cart found:', cartError.code, cartError.message);
+        
         if (cartError.code === 'PGRST116') {
           // No active cart found, create one
+          console.log('[useCartAdd] Creating new cart for user');
           const { data: newCart, error: createError } = await supabase
             .from('carts')
             .insert({
@@ -47,13 +52,17 @@ export function useCartAdd(refreshCartData: () => Promise<void>) {
             .single();
 
           if (createError) {
+            console.error('[useCartAdd] Error creating cart:', createError);
             throw createError;
           }
 
           cartData = newCart;
+          console.log('[useCartAdd] New cart created:', cartData.id);
         } else {
           throw cartError;
         }
+      } else {
+        console.log('[useCartAdd] Existing cart found:', cartData.id);
       }
       
       // Get product price 
@@ -64,12 +73,16 @@ export function useCartAdd(refreshCartData: () => Promise<void>) {
         .single();
         
       if (productError) {
+        console.error('[useCartAdd] Error fetching product:', productError);
         throw productError;
       }
       
+      console.log('[useCartAdd] Product data fetched:', product);
+      
       // Check if there's enough stock
       if (product.estoque < quantity) {
-        throw new Error('Estoque insuficiente');
+        console.warn('[useCartAdd] Insufficient stock:', product.estoque, 'requested:', quantity);
+        throw new Error(`Estoque insuficiente (disponível: ${product.estoque})`);
       }
       
       const price = product.preco_promocional || product.preco_normal;
@@ -81,24 +94,32 @@ export function useCartAdd(refreshCartData: () => Promise<void>) {
         .eq('cart_id', cartData.id)
         .eq('product_id', productId)
         .maybeSingle();
+      
+      console.log('[useCartAdd] Checking existing item:', existingItem);
         
       if (existingItem) {
         // Check if new quantity exceeds stock
         if (existingItem.quantity + quantity > product.estoque) {
-          throw new Error('A quantidade total excede o estoque disponível');
+          console.warn('[useCartAdd] Total quantity would exceed stock');
+          throw new Error(`A quantidade total excederia o estoque disponível (${product.estoque})`);
         }
         
         // Update quantity
+        console.log('[useCartAdd] Updating existing item quantity');
         const { error: updateError } = await supabase
           .from('cart_items')
           .update({ quantity: existingItem.quantity + quantity })
           .eq('id', existingItem.id);
           
         if (updateError) {
+          console.error('[useCartAdd] Error updating quantity:', updateError);
           throw updateError;
         }
+        
+        console.log('[useCartAdd] Item quantity updated successfully');
       } else {
         // Insert new item
+        console.log('[useCartAdd] Adding new item to cart');
         const { error: insertError } = await supabase
           .from('cart_items')
           .insert({
@@ -109,12 +130,16 @@ export function useCartAdd(refreshCartData: () => Promise<void>) {
           });
           
         if (insertError) {
+          console.error('[useCartAdd] Error adding item:', insertError);
           throw insertError;
         }
+        
+        console.log('[useCartAdd] New item added to cart successfully');
       }
 
       // Refresh cart data to update UI
       await refreshCartData();
+      toast.success('Produto adicionado ao carrinho com sucesso');
       
     } catch (error: any) {
       console.error('[useCartAdd] erro ao adicionar ao carrinho', error);

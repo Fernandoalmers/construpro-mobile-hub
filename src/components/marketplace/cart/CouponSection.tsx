@@ -1,10 +1,8 @@
 
 import React, { useState } from 'react';
-import { Ticket } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { toast } from '@/components/ui/sonner';
-import Card from '@/components/common/Card';
+import { Input } from '@/components/ui/input';
 
 interface CouponSectionProps {
   appliedCoupon: {code: string, discount: number} | null;
@@ -18,43 +16,55 @@ const CouponSection: React.FC<CouponSectionProps> = ({
   onRemoveCoupon
 }) => {
   const [couponCode, setCouponCode] = useState('');
+  const [isApplying, setIsApplying] = useState(false);
 
-  const handleApplyCoupon = () => {
-    if (!couponCode) {
-      toast.error('Digite um cupom válido');
-      return;
-    }
-    onApplyCoupon(couponCode);
+  const handleApply = () => {
+    if (!couponCode.trim()) return;
+    
+    setIsApplying(true);
+    // Simulate API delay
+    setTimeout(() => {
+      onApplyCoupon(couponCode);
+      setIsApplying(false);
+      setCouponCode('');
+    }, 500);
   };
 
   return (
-    <Card className="p-4 shadow-sm mb-4">
-      <h3 className="text-sm font-medium mb-3">Cupom de desconto</h3>
+    <div className="bg-white p-4 rounded-lg shadow-sm mb-4">
+      <h3 className="font-medium text-gray-700 mb-3">Cupom de desconto</h3>
+      
       {appliedCoupon ? (
-        <div className="flex items-center justify-between bg-green-50 p-3 rounded-md">
-          <div className="flex items-center">
-            <Ticket size={18} className="text-green-600 mr-2" />
-            <div>
-              <p className="text-sm font-medium">{appliedCoupon.code.toUpperCase()}</p>
-              <p className="text-xs text-green-600">Desconto de {appliedCoupon.discount}% aplicado</p>
-            </div>
+        <div className="flex items-center justify-between bg-green-50 p-3 rounded-md border border-green-200">
+          <div>
+            <p className="font-medium text-green-700">{appliedCoupon.code}</p>
+            <p className="text-sm text-green-600">Desconto de {appliedCoupon.discount}% aplicado</p>
           </div>
-          <Button variant="ghost" size="sm" onClick={onRemoveCoupon} className="h-8">
-            Remover
-          </Button>
+          <button 
+            onClick={onRemoveCoupon}
+            className="text-gray-500 hover:text-red-500 p-1 rounded-full hover:bg-gray-100"
+          >
+            <X size={18} />
+          </button>
         </div>
       ) : (
-        <div className="flex gap-2">
+        <div className="flex items-stretch gap-2">
           <Input
             placeholder="Digite seu cupom"
             value={couponCode}
             onChange={(e) => setCouponCode(e.target.value)}
             className="flex-1"
           />
-          <Button onClick={handleApplyCoupon}>Aplicar</Button>
+          <Button 
+            onClick={handleApply} 
+            disabled={!couponCode.trim() || isApplying}
+            className="whitespace-nowrap"
+          >
+            {isApplying ? "Aplicando..." : "Aplicar"}
+          </Button>
         </div>
       )}
-    </Card>
+    </div>
   );
 };
 

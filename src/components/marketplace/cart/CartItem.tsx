@@ -2,6 +2,7 @@
 import React from 'react';
 import { Minus, Plus, Trash2 } from 'lucide-react';
 import { CartItem as CartItemType } from '@/types/cart';
+import { cn } from '@/lib/utils';
 
 interface CartItemProps {
   item: CartItemType;
@@ -36,6 +37,9 @@ const CartItem: React.FC<CartItemProps> = ({
   let imageUrl = 'https://via.placeholder.com/80';
   if (item.produto?.imagem_url) {
     imageUrl = item.produto.imagem_url;
+  } else if (item.produto?.imagens && Array.isArray(item.produto.imagens) && item.produto.imagens.length > 0) {
+    // Try to get image from imagens array if imagem_url is not available
+    imageUrl = String(item.produto.imagens[0]);
   }
 
   // Get price and quantity
@@ -47,12 +51,16 @@ const CartItem: React.FC<CartItemProps> = ({
 
   return (
     <div className="p-4 flex gap-4">
-      <div className="w-20 h-20 bg-gray-100 rounded-md overflow-hidden">
+      <div className="w-20 h-20 bg-gray-100 rounded-md overflow-hidden flex items-center justify-center">
         <img 
           src={imageUrl} 
           alt={item.produto?.nome || 'Produto'} 
-          className="w-full h-full object-cover"
+          className={cn(
+            "w-full h-full object-cover",
+            typeof imageUrl !== 'string' && "hidden" // Hide if not a string
+          )}
           onError={(e) => {
+            console.warn(`Failed to load image for product: ${item.produto_id}`);
             (e.target as HTMLImageElement).src = 'https://via.placeholder.com/80';
           }}
         />
@@ -78,7 +86,7 @@ const CartItem: React.FC<CartItemProps> = ({
           <div className="flex flex-col items-end">
             <button 
               onClick={() => onRemoveItem(item.id)} 
-              className="text-red-500 mb-2"
+              className="text-red-500 mb-2 p-1 hover:bg-red-50 rounded-full transition-colors"
               disabled={isDisabled}
               aria-label="Remover item"
             >
@@ -88,7 +96,10 @@ const CartItem: React.FC<CartItemProps> = ({
             <div className="flex items-center border border-gray-300 rounded-md">
               <button
                 onClick={() => onUpdateQuantity(item, quantity - 1)}
-                className="w-10 h-10 flex items-center justify-center text-gray-600"
+                className={cn(
+                  "w-10 h-10 flex items-center justify-center",
+                  quantity <= 1 ? "text-gray-300" : "text-gray-600 hover:bg-gray-100"
+                )}
                 disabled={isDisabled || quantity <= 1}
                 aria-label="Diminuir quantidade"
               >
@@ -99,7 +110,10 @@ const CartItem: React.FC<CartItemProps> = ({
               </span>
               <button
                 onClick={() => onUpdateQuantity(item, quantity + 1)}
-                className="w-10 h-10 flex items-center justify-center text-gray-600"
+                className={cn(
+                  "w-10 h-10 flex items-center justify-center",
+                  quantity >= maxStock ? "text-gray-300" : "text-gray-600 hover:bg-gray-100"
+                )}
                 disabled={isDisabled || quantity >= maxStock}
                 aria-label="Aumentar quantidade"
               >
