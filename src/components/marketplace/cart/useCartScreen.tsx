@@ -201,6 +201,8 @@ export const useCartScreen = () => {
     cartItems,
     itemsByStore,
     processingItem,
+    couponCode,
+    setCouponCode,
     appliedCoupon,
     subtotal,
     discount,

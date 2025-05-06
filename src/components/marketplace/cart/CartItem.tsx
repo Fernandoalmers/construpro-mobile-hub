@@ -36,6 +36,8 @@ const CartItem: React.FC<CartItemProps> = ({
   let imageUrl = 'https://via.placeholder.com/80';
   if (item.produto?.imagem_url) {
     imageUrl = item.produto.imagem_url;
+  } else if (item.produto?.imagens && Array.isArray(item.produto.imagens) && item.produto.imagens.length > 0) {
+    imageUrl = item.produto.imagens[0];
   }
 
   // Get price and quantity

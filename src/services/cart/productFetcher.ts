@@ -2,56 +2,68 @@
 import { supabase } from '@/integrations/supabase/client';
 
 /**
- * Utility for fetching product information 
+ * Fetches product info for cart items
  */
 export const productFetcher = {
   /**
-   * Fetches product information from the database
+   * Fetch product info by ID
    */
-  async fetchProductInfo(productId: string) {
+  fetchProductInfo: async (productId: string) => {
     try {
-      console.log('Fetching product info for:', productId);
+      if (!productId) {
+        console.error('[productFetcher] Invalid product ID');
+        return null;
+      }
       
-      // Use 'produtos' table
-      const { data, error } = await supabase
+      console.log('[productFetcher] Fetching product:', productId);
+      
+      const { data: product, error } = await supabase
         .from('produtos')
-        .select('id, nome, preco_normal, preco_promocional, estoque, pontos_consumidor, vendedor_id, imagens')
+        .select(`
+          id,
+          nome,
+          preco_normal,
+          preco_promocional,
+          imagens,
+          estoque,
+          vendedor_id,
+          pontos_consumidor,
+          descricao,
+          categoria
+        `)
         .eq('id', productId)
         .single();
         
       if (error) {
-        console.error('Error fetching product:', error);
+        console.error('[productFetcher] Error fetching product:', error);
         return null;
       }
       
-      if (!data) {
-        console.error('Product not found:', productId);
+      if (!product) {
+        console.log('[productFetcher] Product not found:', productId);
         return null;
       }
       
-      console.log('Product data retrieved:', data);
-      
-      // Get the first image from the array safely
-      let firstImage = null;
-      if (data.imagens && Array.isArray(data.imagens) && data.imagens.length > 0) {
-        firstImage = data.imagens[0];
+      // Extract first image from imagens array if available
+      let imageUrl = null;
+      if (product.imagens && Array.isArray(product.imagens) && product.imagens.length > 0) {
+        imageUrl = String(product.imagens[0]);
       }
       
-      // Map the fields correctly
-      const productInfo = {
-        id: data.id,
-        nome: data.nome,
-        preco: data.preco_promocional || data.preco_normal,
-        estoque: data.estoque,
-        pontos: data.pontos_consumidor,
-        vendedor_id: data.vendedor_id,
-        imagem_url: firstImage
+      return {
+        id: product.id,
+        nome: product.nome,
+        preco: product.preco_promocional || product.preco_normal,
+        imagem_url: imageUrl,
+        imagens: product.imagens,
+        estoque: product.estoque,
+        vendedor_id: product.vendedor_id,
+        pontos: product.pontos_consumidor,
+        descricao: product.descricao,
+        categoria: product.categoria
       };
-      
-      console.log('Product info processed:', productInfo);
-      return productInfo;
     } catch (error) {
-      console.error('Error in fetchProductInfo:', error);
+      console.error('[productFetcher] Error in fetchProductInfo:', error);
       return null;
     }
   }

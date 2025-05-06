@@ -1,201 +1,160 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Ensure user has only one active cart
- * @param userId The user ID
- * @returns The ID of the active cart
+ * Ensures a user has only one active cart
+ * If multiple active carts exist, consolidates them into one
  */
-export const ensureSingleActiveCart = async (userId: string): Promise<string | null> => {
+export const consolidateUserCarts = async (userId: string): Promise<boolean> => {
   try {
-    console.log('[ensureSingleActiveCart] Ensuring single active cart for user:', userId);
+    console.log('[consolidateUserCarts] Checking carts for user:', userId);
     
-    // Get all carts for user
-    const { data: carts, error: cartsError } = await supabase
+    // Get all active carts for this user
+    const { data: carts, error } = await supabase
       .from('carts')
-      .select('id, status, created_at')
+      .select('id')
       .eq('user_id', userId)
+      .eq('status', 'active')
       .order('created_at', { ascending: false });
       
-    if (cartsError) {
-      console.error('[ensureSingleActiveCart] Error fetching carts:', cartsError);
-      return null;
+    if (error) {
+      console.error('[consolidateUserCarts] Error fetching carts:', error);
+      return false;
     }
     
-    console.log('[ensureSingleActiveCart] Found', carts?.length || 0, 'carts for user');
-    
-    // If no carts, create one
     if (!carts || carts.length === 0) {
-      console.log('[ensureSingleActiveCart] No carts found, creating new cart');
-      const { data: newCart, error: createError } = await supabase
-        .from('carts')
-        .insert({ user_id: userId, status: 'active' })
-        .select('id')
-        .single();
-        
-      if (createError) {
-        console.error('[ensureSingleActiveCart] Error creating cart:', createError);
-        return null;
-      }
-      
-      return newCart.id;
+      console.log('[consolidateUserCarts] No active carts found');
+      return true; // No carts to consolidate
     }
     
-    // Find active carts
-    const activeCarts = carts.filter(cart => cart.status === 'active');
-    console.log('[ensureSingleActiveCart] Found', activeCarts.length, 'active carts');
-    
-    // If no active carts, make the newest cart active
-    if (activeCarts.length === 0) {
-      const newestCartId = carts[0].id;
-      console.log('[ensureSingleActiveCart] No active carts, updating newest cart:', newestCartId);
-      
-      const { error: updateError } = await supabase
-        .from('carts')
-        .update({ status: 'active' })
-        .eq('id', newestCartId);
-        
-      if (updateError) {
-        console.error('[ensureSingleActiveCart] Error updating cart status:', updateError);
-        return null;
-      }
-      
-      return newestCartId;
+    if (carts.length === 1) {
+      console.log('[consolidateUserCarts] User has exactly one active cart, no consolidation needed');
+      return true; // Already has exactly one cart
     }
     
-    // If multiple active carts, merge them
-    if (activeCarts.length > 1) {
-      return await mergeActiveCarts(userId, activeCarts);
-    }
+    console.log('[consolidateUserCarts] Found multiple active carts:', carts.length);
     
-    // Already has exactly one active cart
-    return activeCarts[0].id;
-  } catch (error) {
-    console.error('[ensureSingleActiveCart] Error:', error);
-    return null;
-  }
-};
-
-/**
- * Merge multiple active carts into one
- * @param userId User ID
- * @param activeCarts Array of active carts
- * @returns ID of the consolidated cart
- */
-const mergeActiveCarts = async (userId: string, activeCarts: any[]): Promise<string | null> => {
-  try {
-    console.log('[mergeActiveCarts] Merging', activeCarts.length, 'active carts');
+    // Keep the newest cart (first in the list since we ordered by created_at desc)
+    const primaryCartId = carts[0].id;
+    const cartsToMerge = carts.slice(1).map(c => c.id);
     
-    // Sort carts by creation date (newest first)
-    activeCarts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    console.log('[consolidateUserCarts] Primary cart:', primaryCartId, 'Carts to merge:', cartsToMerge);
     
-    // Get most recent cart as the primary cart
-    const primaryCartId = activeCarts[0].id;
-    console.log('[mergeActiveCarts] Primary cart:', primaryCartId);
-    
-    // Get all other cart IDs to merge
-    const cartsToMerge = activeCarts.slice(1).map(cart => cart.id);
-    console.log('[mergeActiveCarts] Carts to merge:', cartsToMerge);
-    
-    if (cartsToMerge.length === 0) {
-      return primaryCartId;
-    }
-    
-    // For each cart to merge
+    // For each cart to merge, move its items to the primary cart
     for (const cartId of cartsToMerge) {
-      // Get cart items
-      const { data: cartItems, error: itemsError } = await supabase
+      // Get items from this cart
+      const { data: items, error: itemsError } = await supabase
         .from('cart_items')
-        .select('product_id, quantity, price_at_add')
+        .select('*')
         .eq('cart_id', cartId);
         
       if (itemsError) {
-        console.error(`[mergeActiveCarts] Error fetching items for cart ${cartId}:`, itemsError);
+        console.error(`[consolidateUserCarts] Error fetching items for cart ${cartId}:`, itemsError);
         continue;
       }
       
-      console.log(`[mergeActiveCarts] Found ${cartItems?.length || 0} items in cart ${cartId}`);
+      console.log(`[consolidateUserCarts] Found ${items?.length || 0} items in cart ${cartId}`);
       
-      // Move each item to primary cart
-      for (const item of cartItems || []) {
-        // Check if product already exists in primary cart
-        const { data: existingItem, error: existingError } = await supabase
-          .from('cart_items')
-          .select('id, quantity')
-          .eq('cart_id', primaryCartId)
-          .eq('product_id', item.product_id)
-          .maybeSingle();
-          
-        if (existingError && existingError.code !== 'PGRST116') {
-          console.error('[mergeActiveCarts] Error checking existing item:', existingError);
-          continue;
-        }
-        
-        if (existingItem) {
-          // Update quantity in primary cart
-          console.log(`[mergeActiveCarts] Updating existing item ${existingItem.id} quantity from ${existingItem.quantity} to ${existingItem.quantity + item.quantity}`);
-          
-          const { error: updateError } = await supabase
+      if (items && items.length > 0) {
+        // For each item, check if it exists in the primary cart
+        for (const item of items) {
+          const { data: existingItem, error: checkError } = await supabase
             .from('cart_items')
-            .update({ quantity: existingItem.quantity + item.quantity })
-            .eq('id', existingItem.id);
+            .select('id, quantity')
+            .eq('cart_id', primaryCartId)
+            .eq('product_id', item.product_id)
+            .maybeSingle();
             
-          if (updateError) {
-            console.error('[mergeActiveCarts] Error updating quantity:', updateError);
+          if (checkError) {
+            console.error('[consolidateUserCarts] Error checking existing item:', checkError);
+            continue;
           }
-        } else {
-          // Add new item to primary cart
-          console.log(`[mergeActiveCarts] Adding new item to primary cart: ${item.product_id}`);
           
-          const { error: insertError } = await supabase
-            .from('cart_items')
-            .insert({
-              cart_id: primaryCartId,
-              product_id: item.product_id,
-              quantity: item.quantity,
-              price_at_add: item.price_at_add
-            });
-            
-          if (insertError) {
-            console.error('[mergeActiveCarts] Error inserting item:', insertError);
+          if (existingItem) {
+            // Update quantity of existing item
+            const { error: updateError } = await supabase
+              .from('cart_items')
+              .update({ quantity: existingItem.quantity + item.quantity })
+              .eq('id', existingItem.id);
+              
+            if (updateError) {
+              console.error('[consolidateUserCarts] Error updating existing item:', updateError);
+            }
+          } else {
+            // Move item to primary cart
+            const { error: moveError } = await supabase
+              .from('cart_items')
+              .update({ cart_id: primaryCartId })
+              .eq('id', item.id);
+              
+            if (moveError) {
+              console.error('[consolidateUserCarts] Error moving item to primary cart:', moveError);
+            }
           }
         }
       }
       
-      // Mark the merged cart as inactive
-      console.log(`[mergeActiveCarts] Marking cart ${cartId} as inactive`);
-      
-      const { error: updateError } = await supabase
+      // Mark this cart as merged
+      const { error: updateCartError } = await supabase
         .from('carts')
         .update({ status: 'merged' })
         .eq('id', cartId);
         
-      if (updateError) {
-        console.error(`[mergeActiveCarts] Error updating cart ${cartId} status:`, updateError);
+      if (updateCartError) {
+        console.error('[consolidateUserCarts] Error updating cart status:', updateCartError);
       }
     }
     
-    console.log('[mergeActiveCarts] Successfully merged all carts');
-    return primaryCartId;
+    console.log('[consolidateUserCarts] Consolidation complete');
+    return true;
+    
   } catch (error) {
-    console.error('[mergeActiveCarts] Error merging carts:', error);
-    return null;
+    console.error('[consolidateUserCarts] Error in consolidateUserCarts:', error);
+    return false;
   }
 };
 
 /**
- * Consolidate all user carts to have only one active cart
- * @param userId The user ID
- * @returns true if consolidated successfully
+ * Make sure user has a single active cart and return its ID
  */
-export const consolidateUserCarts = async (userId: string): Promise<boolean> => {
+export const ensureSingleActiveCart = async (userId: string): Promise<string | null> => {
   try {
-    console.log('[consolidateUserCarts] Starting consolidation for user:', userId);
-    const result = await ensureSingleActiveCart(userId);
-    console.log('[consolidateUserCarts] Consolidation completed, active cart:', result);
-    return result !== null;
+    // First, consolidate any existing carts
+    await consolidateUserCarts(userId);
+    
+    // Get or create active cart
+    const { data: cartData, error: cartError } = await supabase
+      .from('carts')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .maybeSingle();
+      
+    if (cartError && cartError.code !== 'PGRST116') {
+      console.error('[ensureSingleActiveCart] Error fetching cart:', cartError);
+      return null;
+    }
+    
+    if (cartData) {
+      console.log('[ensureSingleActiveCart] Found active cart:', cartData.id);
+      return cartData.id;
+    }
+    
+    // Create new cart
+    const { data: newCart, error: createError } = await supabase
+      .from('carts')
+      .insert({ user_id: userId, status: 'active' })
+      .select('id')
+      .single();
+      
+    if (createError) {
+      console.error('[ensureSingleActiveCart] Error creating cart:', createError);
+      return null;
+    }
+    
+    console.log('[ensureSingleActiveCart] Created new cart:', newCart.id);
+    return newCart.id;
   } catch (error) {
-    console.error('[consolidateUserCarts] Error consolidating carts:', error);
-    return false;
+    console.error('[ensureSingleActiveCart] Error in ensureSingleActiveCart:', error);
+    return null;
   }
 };
