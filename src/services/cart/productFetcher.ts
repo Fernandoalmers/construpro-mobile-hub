@@ -55,7 +55,6 @@ export const productFetcher = {
         nome: product.nome,
         preco: product.preco_promocional || product.preco_normal,
         imagem_url: imageUrl,
-        imagens: product.imagens,
         estoque: product.estoque,
         vendedor_id: product.vendedor_id,
         pontos: product.pontos_consumidor,
