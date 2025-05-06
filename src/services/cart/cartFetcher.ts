@@ -1,218 +1,173 @@
 
-import { supabase } from "@/integrations/supabase/client";
-import { Cart } from "@/types/cart";
-import { consolidateUserCarts } from "./cartConsolidation";
+import { supabase } from '@/integrations/supabase/client';
+import { Cart } from '@/types/cart';
 
 /**
- * Get cart for the current user
+ * Get the active cart for the current user
  */
 export const getCart = async (): Promise<Cart | null> => {
   try {
-    console.log('[getCart] Starting cart retrieval');
-    
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {
-      console.error('[getCart] User not authenticated');
+      console.log('[getCart] User not authenticated');
       return null;
     }
+    
+    const userId = userData.user.id;
+    console.log('[getCart] Fetching cart for user:', userId);
 
-    console.log('[getCart] Getting cart for user:', userData.user.id);
-
-    // First, let's consolidate user's carts to ensure consistency
-    await consolidateUserCarts(userData.user.id);
-
-    // Get active cart, ordered by most recent first
-    let { data: cartData, error: cartError } = await supabase
+    // Primeiro, vamos verificar se existem múltiplos carrinhos ativos
+    // e consolidar se necessário
+    const { data: activeCarts, error: cartsError } = await supabase
       .from('carts')
       .select('id')
-      .eq('user_id', userData.user.id)
+      .eq('user_id', userId)
+      .eq('status', 'active');
+
+    if (cartsError) {
+      console.error('[getCart] Error checking for active carts:', cartsError);
+      throw new Error(`Error fetching carts: ${cartsError.message}`);
+    }
+
+    if (activeCarts && activeCarts.length > 1) {
+      console.warn(`[getCart] Found ${activeCarts.length} active carts, consolidating...`);
+      
+      // Buscar o carrinho mais recente
+      const { data: latestCart, error: latestError } = await supabase
+        .from('carts')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (latestError) {
+        console.error('[getCart] Error fetching latest cart:', latestError);
+        throw latestError;
+      }
+
+      // Marcar os outros carrinhos como 'archived'
+      if (latestCart) {
+        const { error: updateError } = await supabase
+          .from('carts')
+          .update({ status: 'archived' })
+          .eq('user_id', userId)
+          .eq('status', 'active')
+          .neq('id', latestCart.id);
+
+        if (updateError) {
+          console.error('[getCart] Error archiving old carts:', updateError);
+        } else {
+          console.log(`[getCart] Archived ${activeCarts.length - 1} old carts`);
+        }
+      }
+    }
+
+    // Agora buscar o único carrinho ativo
+    const { data: cart, error: cartError } = await supabase
+      .from('carts')
+      .select('id, user_id')
+      .eq('user_id', userId)
       .eq('status', 'active')
-      .order('created_at', { ascending: false })
-      .limit(1)
       .single();
 
     if (cartError) {
-      console.log('[getCart] Cart error code:', cartError.code);
-      
       if (cartError.code === 'PGRST116') {
-        // No active cart found, create one
-        console.log('[getCart] No active cart found, creating one');
-        
+        // Não encontrou nenhum carrinho ativo, criar um novo
+        console.log('[getCart] No active cart found, creating a new one');
         const { data: newCart, error: createError } = await supabase
           .from('carts')
-          .insert({ 
-            user_id: userData.user.id,
-            status: 'active'
-          })
-          .select('id')
+          .insert({ user_id: userId, status: 'active' })
+          .select('id, user_id')
           .single();
 
         if (createError) {
           console.error('[getCart] Error creating cart:', createError);
-          return null;
+          throw createError;
         }
 
-        cartData = newCart;
-        console.log('[getCart] Created new cart:', cartData.id);
+        return {
+          id: newCart.id,
+          user_id: newCart.user_id,
+          items: [],
+          summary: {
+            subtotal: 0,
+            shipping: 0,
+            totalItems: 0,
+            totalPoints: 0
+          }
+        };
       } else {
         console.error('[getCart] Error fetching cart:', cartError);
-        return null;
+        throw cartError;
       }
-    } else {
-      console.log('[getCart] Found active cart:', cartData.id);
     }
 
-    // Get cart items with a direct query to simplify data retrieval
-    const { data: cartItems, error: cartItemsError } = await supabase
+    // Buscar os itens do carrinho
+    const { data: items, error: itemsError } = await supabase
       .from('cart_items')
-      .select('id, product_id, quantity, price_at_add, created_at')
-      .eq('cart_id', cartData.id);
-
-    if (cartItemsError) {
-      console.error('[getCart] Error fetching cart items:', cartItemsError);
-      return null;
-    }
-
-    console.log('[getCart] Retrieved cart items:', cartItems?.length || 0);
-
-    // If there are no items, return empty cart
-    if (!cartItems || cartItems.length === 0) {
-      console.log('[getCart] No items in cart, returning empty cart');
-      return {
-        id: cartData.id,
-        user_id: userData.user.id,
-        items: [],
-        summary: {
-          subtotal: 0,
-          shipping: 0,
-          totalItems: 0,
-          totalPoints: 0
-        },
-        stores: []
-      };
-    }
-
-    // Get product information for all cart items in a single query
-    const productIds = cartItems.map(item => item.product_id);
-    console.log('[getCart] Fetching products for IDs:', productIds);
-    
-    const { data: products, error: productsError } = await supabase
-      .from('produtos')
       .select(`
-        id, 
-        nome, 
-        preco_normal, 
-        preco_promocional, 
-        imagens, 
-        estoque,
-        vendedor_id,
-        pontos_consumidor
+        id,
+        quantidade: quantity,
+        preco: price_at_add,
+        produto_id: product_id,
+        produto:produtos(
+          id,
+          nome,
+          preco:preco_normal,
+          preco_promocional,
+          imagem_url,
+          estoque,
+          loja_id:vendedor_id,
+          pontos:pontos_consumidor
+        )
       `)
-      .in('id', productIds);
+      .eq('cart_id', cart.id);
 
-    if (productsError || !products) {
-      console.error('[getCart] Error fetching products:', productsError);
-      return null;
+    if (itemsError) {
+      console.error('[getCart] Error fetching cart items:', itemsError);
+      throw itemsError;
     }
 
-    console.log('[getCart] Retrieved products:', products.length);
+    // Processar itens e calcular resumo do carrinho
+    let subtotal = 0;
+    let totalItems = 0;
+    let totalPoints = 0;
 
-    // Get all vendor information in a single query
-    const vendorIds = [...new Set(products.map(p => p.vendedor_id).filter(Boolean))];
-    
-    let stores = [];
-    if (vendorIds.length > 0) {
-      console.log('[getCart] Fetching vendors for IDs:', vendorIds);
-      const { data: storesData, error: storesError } = await supabase
-        .from('vendedores')
-        .select('id, nome_loja')
-        .in('id', vendorIds);
-        
-      if (storesError || !storesData) {
-        console.error('[getCart] Error fetching vendors:', storesError);
-      } else {
-        stores = storesData.map(store => ({
-          id: store.id,
-          nome: store.nome_loja,
-          logo_url: null
-        }));
-        console.log('[getCart] Retrieved stores:', stores.length);
-      }
-    }
-
-    // Format cart items with product details
-    const formattedItems = cartItems.map(cartItem => {
-      const product = products.find(p => p.id === cartItem.product_id);
+    const processedItems = items?.map(item => {
+      const preco = item.produto?.preco_promocional || item.produto?.preco || item.preco;
+      const quantidade = item.quantidade || 0;
+      const itemSubtotal = preco * quantidade;
+      const pontos = (item.produto?.pontos || 0) * quantidade;
       
-      if (!product) {
-        console.warn('[getCart] Product not found for cart item:', cartItem.product_id);
-        return null;
-      }
-      
-      // Extract first image from imagens array if available
-      let imageUrl = null;
-      if (product.imagens && Array.isArray(product.imagens) && product.imagens.length > 0) {
-        imageUrl = String(product.imagens[0]);
-      }
-      
-      const preco = cartItem.price_at_add || product.preco_promocional || product.preco_normal || 0;
-      const quantidade = cartItem.quantity || 1;
-      const subtotal = preco * quantidade;
+      subtotal += itemSubtotal;
+      totalItems += quantidade;
+      totalPoints += pontos;
       
       return {
-        id: cartItem.id,
-        produto_id: cartItem.product_id,
-        quantidade,
-        preco,
-        subtotal,
-        produto: {
-          id: product.id,
-          nome: product.nome || 'Produto sem nome',
-          preco: product.preco_promocional || product.preco_normal || 0,
-          imagem_url: imageUrl,
-          estoque: product.estoque || 0,
-          loja_id: product.vendedor_id,
-          pontos: product.pontos_consumidor || 0
-        }
+        id: item.id,
+        produto_id: item.produto_id,
+        quantidade: quantidade,
+        preco: preco,
+        subtotal: itemSubtotal,
+        produto: item.produto
       };
-    }).filter(Boolean);
+    }) || [];
 
-    // Calculate summary
-    const subtotal = formattedItems.reduce((sum, item) => sum + (item?.subtotal || 0), 0);
-    const totalItems = formattedItems.reduce((sum, item) => sum + (item?.quantidade || 0), 0);
-    const shipping = stores.length * 15.90; // Fixed shipping per store
-    const totalPoints = formattedItems.reduce((sum, item) => 
-      sum + ((item?.produto?.pontos || 0) * (item?.quantidade || 0)), 0);
-
-    const finalCart = {
-      id: cartData.id,
-      user_id: userData.user.id,
-      items: formattedItems,
+    return {
+      id: cart.id,
+      user_id: cart.user_id,
+      items: processedItems,
       summary: {
         subtotal,
-        shipping,
+        shipping: subtotal > 0 ? 15.90 : 0, // Frete fixo ou grátis se carrinho vazio
         totalItems,
         totalPoints
-      },
-      stores
+      }
     };
-    
-    console.log('[getCart] Returning final cart with', formattedItems.length, 'items');
-    return finalCart;
   } catch (error) {
-    console.error('[getCart] Error in getCart:', error);
-    return null;
-  }
-};
-
-/**
- * Fetch user's cart
- */
-export const fetchCart = async (userId: string) => {
-  try {
-    return await getCart();
-  } catch (error) {
-    console.error('[fetchCart] Error fetching cart:', error);
-    return null;
+    console.error('[getCart] Error:', error);
+    throw error;
   }
 };
