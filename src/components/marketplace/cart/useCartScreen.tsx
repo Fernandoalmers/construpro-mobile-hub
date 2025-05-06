@@ -130,6 +130,12 @@ export const useCartScreen = () => {
     if (code.toUpperCase() === 'CONSTRUPROMO') {
       setAppliedCoupon({ code, discount: 10 });
       toast.success('Cupom aplicado! Desconto de 10% aplicado ao seu pedido.');
+    } else if (code.toUpperCase() === 'WELCOME20') {
+      setAppliedCoupon({ code, discount: 20 });
+      toast.success('Cupom aplicado! Desconto de 20% aplicado ao seu pedido.');
+    } else if (code.toUpperCase() === 'FRETE') {
+      setAppliedCoupon({ code, discount: 5 });
+      toast.success('Cupom aplicado! Desconto de 5% aplicado ao seu pedido.');
     } else {
       toast.error('O cupom informado não é válido ou expirou.');
     }
@@ -191,7 +197,8 @@ export const useCartScreen = () => {
   const discount = appliedCoupon ? (subtotal * appliedCoupon.discount / 100) : 0;
   const shipping = cart?.summary.shipping || 0;
   const total = subtotal + shipping - discount;
-  const totalPoints = cart?.summary.totalPoints || 0;
+  const totalPoints = cart?.summary.totalPoints || 
+                     Math.floor(total) * 2; // Calculate points based on total if not provided
 
   return {
     loading,

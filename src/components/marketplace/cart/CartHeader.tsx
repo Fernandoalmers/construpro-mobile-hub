@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ShoppingCart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const CartHeader: React.FC = () => {
@@ -11,7 +11,10 @@ const CartHeader: React.FC = () => {
       <button onClick={() => navigate(-1)} className="mr-4" aria-label="Voltar">
         <ArrowLeft size={24} />
       </button>
-      <h1 className="text-xl font-bold">Carrinho de Compras</h1>
+      <div className="flex items-center">
+        <ShoppingCart size={24} className="text-construPro-blue mr-2" />
+        <h1 className="text-xl font-bold">Carrinho de Compras</h1>
+      </div>
     </div>
   );
 };

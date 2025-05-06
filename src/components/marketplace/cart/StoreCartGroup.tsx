@@ -3,6 +3,7 @@ import React from 'react';
 import Card from '@/components/common/Card';
 import { CartItem as CartItemType } from '@/types/cart';
 import CartItem from './CartItem';
+import { Tag } from 'lucide-react';
 
 interface StoreInfo {
   id: string;
@@ -37,14 +38,20 @@ const StoreCartGroup: React.FC<StoreCartGroupProps> = ({
   return (
     <div className="mb-6">
       <div className="flex items-center mb-3 ml-2">
-        <img 
-          src={store.logo_url || 'https://via.placeholder.com/30'} 
-          alt={store.nome || 'Loja'} 
-          className="w-8 h-8 rounded-full object-cover mr-2"
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = 'https://via.placeholder.com/30';
-          }}
-        />
+        {store.logo_url ? (
+          <img 
+            src={store.logo_url} 
+            alt={store.nome || 'Loja'} 
+            className="w-8 h-8 rounded-full object-cover mr-2"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = 'https://via.placeholder.com/30';
+            }}
+          />
+        ) : (
+          <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center mr-2">
+            <Tag size={16} className="text-gray-500" />
+          </div>
+        )}
         <h2 className="font-bold text-xl">{store.nome || `Loja ${store.id.substring(0, 8)}`}</h2>
       </div>
       
@@ -58,6 +65,10 @@ const StoreCartGroup: React.FC<StoreCartGroupProps> = ({
             processingItem={processingItem}
           />
         ))}
+        <div className="p-3 bg-gray-50 text-right">
+          <span className="text-sm font-medium">Subtotal da loja: </span>
+          <span className="font-bold text-construPro-blue">R$ {storeSubtotal.toFixed(2)}</span>
+        </div>
       </Card>
     </div>
   );

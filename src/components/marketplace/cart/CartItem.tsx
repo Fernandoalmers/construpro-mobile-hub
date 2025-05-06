@@ -106,9 +106,14 @@ const CartItem: React.FC<CartItemProps> = ({
                 <Plus size={16} />
               </button>
             </div>
-            {maxStock > 0 && (
+            {maxStock > 0 && quantity < maxStock && (
               <span className="text-xs text-gray-500 mt-1">
                 Disponível: {maxStock}
+              </span>
+            )}
+            {quantity >= maxStock && (
+              <span className="text-xs text-yellow-500 mt-1">
+                Estoque máximo
               </span>
             )}
           </div>
