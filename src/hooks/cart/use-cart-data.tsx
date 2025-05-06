@@ -89,7 +89,8 @@ export function useCartData(isAuthenticated: boolean, userId: string | null) {
     let totalPoints = 0;
 
     const processedItems = items?.map(item => {
-      if (!item.produto || item.produto.error) {
+      // Check if produto exists and is valid without accessing 'error' property
+      if (!item.produto || typeof item.produto !== 'object') {
         console.warn('Invalid product data for cart item:', item.id);
         return {
           id: item.id,
@@ -122,7 +123,8 @@ export function useCartData(isAuthenticated: boolean, userId: string | null) {
       // Extract image URL from imagens array if available
       let imageUrl = '';
       if (item.produto.imagens && Array.isArray(item.produto.imagens) && item.produto.imagens.length > 0) {
-        imageUrl = item.produto.imagens[0];
+        // Convert the image value to string explicitly to fix the type error
+        imageUrl = String(item.produto.imagens[0]);
       }
 
       return {
