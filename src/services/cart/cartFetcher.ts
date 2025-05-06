@@ -62,10 +62,10 @@ export const getCart = async (): Promise<Cart | null> => {
       console.log('[getCart] Found active cart:', cartData.id);
     }
 
-    // Get cart items
+    // Get cart items with a direct query to simplify data retrieval
     const { data: cartItems, error: cartItemsError } = await supabase
       .from('cart_items')
-      .select('*')
+      .select('id, product_id, quantity, price_at_add, created_at')
       .eq('cart_id', cartData.id);
 
     if (cartItemsError) {
@@ -92,11 +92,10 @@ export const getCart = async (): Promise<Cart | null> => {
       };
     }
 
-    // Get product information separately for each item
+    // Get product information for all cart items in a single query
     const productIds = cartItems.map(item => item.product_id);
-    console.log('[getCart] Product IDs to fetch:', productIds);
+    console.log('[getCart] Fetching products for IDs:', productIds);
     
-    // Get product details
     const { data: products, error: productsError } = await supabase
       .from('produtos')
       .select(`
@@ -111,39 +110,39 @@ export const getCart = async (): Promise<Cart | null> => {
       `)
       .in('id', productIds);
 
-    if (productsError) {
+    if (productsError || !products) {
       console.error('[getCart] Error fetching products:', productsError);
       return null;
     }
 
-    console.log('[getCart] Retrieved products:', products?.length || 0);
+    console.log('[getCart] Retrieved products:', products.length);
 
-    // Get store information
-    const vendorIds = [...new Set(products?.map(product => product.vendedor_id).filter(Boolean) || [])];
-    console.log('[getCart] Vendor IDs to fetch:', vendorIds);
+    // Get all vendor information in a single query
+    const vendorIds = [...new Set(products.map(p => p.vendedor_id).filter(Boolean))];
     
     let stores = [];
     if (vendorIds.length > 0) {
+      console.log('[getCart] Fetching vendors for IDs:', vendorIds);
       const { data: storesData, error: storesError } = await supabase
         .from('vendedores')
         .select('id, nome_loja')
         .in('id', vendorIds);
         
-      if (!storesError && storesData) {
+      if (storesError || !storesData) {
+        console.error('[getCart] Error fetching vendors:', storesError);
+      } else {
         stores = storesData.map(store => ({
           id: store.id,
           nome: store.nome_loja,
           logo_url: null
         }));
         console.log('[getCart] Retrieved stores:', stores.length);
-      } else {
-        console.error('[getCart] Error fetching stores:', storesError);
       }
     }
 
     // Format cart items with product details
     const formattedItems = cartItems.map(cartItem => {
-      const product = products?.find(p => p.id === cartItem.product_id);
+      const product = products.find(p => p.id === cartItem.product_id);
       
       if (!product) {
         console.warn('[getCart] Product not found for cart item:', cartItem.product_id);
@@ -153,19 +152,14 @@ export const getCart = async (): Promise<Cart | null> => {
       // Extract first image from imagens array if available
       let imageUrl = null;
       if (product.imagens && Array.isArray(product.imagens) && product.imagens.length > 0) {
-        // Make sure to cast to string in case it's not already
         imageUrl = String(product.imagens[0]);
-      } else {
-        // Fallback to a placeholder
-        imageUrl = 'https://via.placeholder.com/80';
       }
       
-      const preco = cartItem.price_at_add || 0;
-      const quantidade = cartItem.quantity || 0;
+      const preco = cartItem.price_at_add || product.preco_promocional || product.preco_normal || 0;
+      const quantidade = cartItem.quantity || 1;
       const subtotal = preco * quantidade;
       
-      // Debug log each transformed item
-      const formattedItem = {
+      return {
         id: cartItem.id,
         produto_id: cartItem.product_id,
         quantidade,
@@ -181,12 +175,7 @@ export const getCart = async (): Promise<Cart | null> => {
           pontos: product.pontos_consumidor || 0
         }
       };
-      
-      console.log('[getCart] Formatted item:', formattedItem.id, formattedItem.produto.nome);
-      return formattedItem;
     }).filter(Boolean);
-
-    console.log('[getCart] Formatted items count:', formattedItems.length);
 
     // Calculate summary
     const subtotal = formattedItems.reduce((sum, item) => sum + (item?.subtotal || 0), 0);
@@ -195,25 +184,10 @@ export const getCart = async (): Promise<Cart | null> => {
     const totalPoints = formattedItems.reduce((sum, item) => 
       sum + ((item?.produto?.pontos || 0) * (item?.quantidade || 0)), 0);
 
-    // Save cart data to localStorage as a fallback
-    try {
-      localStorage.setItem('cartData', JSON.stringify({
-        id: cartData.id,
-        summary: {
-          subtotal,
-          shipping,
-          totalItems,
-          totalPoints
-        }
-      }));
-    } catch (err) {
-      console.warn('[getCart] Could not save cart to localStorage:', err);
-    }
-
     const finalCart = {
       id: cartData.id,
       user_id: userData.user.id,
-      items: formattedItems as any[],
+      items: formattedItems,
       summary: {
         subtotal,
         shipping,
@@ -224,7 +198,6 @@ export const getCart = async (): Promise<Cart | null> => {
     };
     
     console.log('[getCart] Returning final cart with', formattedItems.length, 'items');
-
     return finalCart;
   } catch (error) {
     console.error('[getCart] Error in getCart:', error);

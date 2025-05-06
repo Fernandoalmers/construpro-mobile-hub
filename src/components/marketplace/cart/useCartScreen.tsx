@@ -1,11 +1,10 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/hooks/use-cart';
 import { CartItem } from '@/types/cart';
-import { supabase } from '@/integrations/supabase/client';
 
 export const useCartScreen = () => {
   const navigate = useNavigate();
@@ -17,6 +16,7 @@ export const useCartScreen = () => {
   const [appliedCoupon, setAppliedCoupon] = useState<{code: string, discount: number} | null>(null);
   const [processingItem, setProcessingItem] = useState<string | null>(null);
 
+  // Fetch cart data when component mounts or auth state changes
   useEffect(() => {
     if (!isAuthenticated) {
       console.log("CartScreen: User not authenticated, redirecting to login");
@@ -45,7 +45,7 @@ export const useCartScreen = () => {
     const intervalId = setInterval(() => {
       console.log("CartScreen: Periodic cart refresh");
       refreshCart().catch(err => console.error("Error in periodic refresh:", err));
-    }, 30000); // Every 30 seconds
+    }, 60000); // Every minute
     
     return () => clearInterval(intervalId);
   }, [isAuthenticated, navigate, refreshCart]);
@@ -55,81 +55,27 @@ export const useCartScreen = () => {
     console.log("CartScreen: Cart data updated:", cart?.id);
     console.log("CartScreen: Cart items count:", cart?.items?.length || 0);
     
-    if (cart?.items?.length === 0) {
-      console.log("CartScreen: Cart is empty, checking for items directly from Supabase");
-      const checkCartItems = async () => {
-        try {
-          const { data: userData } = await supabase.auth.getUser();
-          if (!userData.user) return;
-          
-          // Get active cart
-          const { data: cartData, error: cartError } = await supabase
-            .from('carts')
-            .select('id')
-            .eq('user_id', userData.user.id)
-            .eq('status', 'active')
-            .maybeSingle();
-            
-          if (cartError || !cartData) {
-            console.log("No active cart found in direct query");
-            return;
-          }
-          
-          // Check for cart items
-          const { data: cartItems, error: itemsError } = await supabase
-            .from('cart_items')
-            .select('*')
-            .eq('cart_id', cartData.id);
-            
-          console.log("[DIRECT CART CHECK]", {
-            cart_id: cartData.id,
-            items: cartItems?.length || 0,
-            error: itemsError
-          });
-          
-          if (cartItems && cartItems.length > 0) {
-            // Get product details to verify
-            const productIds = cartItems.map(item => item.product_id);
-            const { data: products, error: productsError } = await supabase
-              .from('produtos')
-              .select('id, nome, preco_normal, preco_promocional, imagens, estoque, vendedor_id')
-              .in('id', productIds);
-              
-            console.log("[DIRECT PRODUCTS CHECK]", {
-              products: products?.length || 0,
-              error: productsError
-            });
-            
-            // Check vendor information
-            if (products && products.length > 0) {
-              const vendorIds = [...new Set(products.map(p => p.vendedor_id).filter(Boolean))];
-              if (vendorIds.length > 0) {
-                const { data: vendors, error: vendorsError } = await supabase
-                  .from('vendedores')
-                  .select('id, nome_loja')
-                  .in('id', vendorIds);
-                  
-                console.log("[DIRECT VENDORS CHECK]", {
-                  vendors: vendors?.length || 0,
-                  error: vendorsError
-                });
-              }
-            }
-          }
-        } catch (err) {
-          console.error("Error in direct cart check:", err);
-        }
-      };
-      
-      checkCartItems();
+    if (cart?.items) {
+      console.log("CartScreen: Cart items sample:", cart.items.slice(0, 2));
     }
   }, [cart]);
 
+  // Handle quantity updates with proper error handling
   const handleUpdateQuantity = async (item: CartItem, newQuantity: number) => {
-    if (newQuantity < 1) return;
+    if (!item || !item.id) {
+      console.error("CartScreen: Invalid item provided to handleUpdateQuantity", item);
+      toast.error('Item inválido');
+      return;
+    }
     
-    if (newQuantity > (item.produto?.estoque || 0)) {
-      toast.error('Quantidade solicitada não disponível em estoque');
+    if (newQuantity < 1) {
+      console.log("CartScreen: Quantity less than 1, not updating", newQuantity);
+      return;
+    }
+    
+    const maxStock = item.produto?.estoque || 0;
+    if (newQuantity > maxStock) {
+      toast.error(`Quantidade solicitada não disponível em estoque (máximo: ${maxStock})`);
       return;
     }
 
@@ -149,7 +95,14 @@ export const useCartScreen = () => {
     }
   };
 
+  // Handle item removal with proper error handling
   const handleRemoveItem = async (itemId: string) => {
+    if (!itemId) {
+      console.error("CartScreen: Invalid itemId provided to handleRemoveItem");
+      toast.error('ID do item inválido');
+      return;
+    }
+    
     try {
       setProcessingItem(itemId);
       console.log("CartScreen: Removing item:", itemId);
@@ -166,6 +119,7 @@ export const useCartScreen = () => {
     }
   };
 
+  // Apply coupon code
   const applyCoupon = (code: string) => {
     if (!code) {
       toast.error('Digite um cupom válido');
@@ -183,19 +137,18 @@ export const useCartScreen = () => {
     setCouponCode('');
   };
 
+  // Remove applied coupon
   const removeCoupon = () => {
     setAppliedCoupon(null);
     setCouponCode('');
     toast.success('Cupom removido');
   };
 
-  // Group items by store
+  // Group items by store with improved data handling
   const cartItems = cart?.items || [];
   const cartIsEmpty = cartItems.length === 0;
   
-  // Debug log to verify the original cart items
-  console.log("CartScreen: Original cart items before grouping:", cartItems);
-  
+  // Improved store grouping with safety checks
   const itemsByStore = cartItems.reduce((groups: Record<string, { loja: any, items: CartItem[] }>, item) => {
     // Safety check for item and product
     if (!item || !item.produto) {
@@ -205,35 +158,35 @@ export const useCartScreen = () => {
     
     const storeId = item.produto.loja_id;
     
-    // Debug log for the current item's store_id
-    console.log(`CartScreen: Processing item ${item.id} with store_id:`, storeId);
-    
+    // Skip items without store ID
     if (!storeId) {
-      console.warn("CartScreen: Item missing store_id:", item);
+      console.warn("CartScreen: Item missing loja_id:", item);
       return groups;
     }
     
+    // Create or update store group
     if (!groups[storeId]) {
+      // Find store info in cart.stores
       const store = cart?.stores?.find(s => s.id === storeId);
-      if (store) {
-        console.log(`CartScreen: Creating new store group for ${storeId}:`, store);
-      } else {
-        console.warn(`CartScreen: Store ${storeId} not found in cart.stores`);
-      }
       
       groups[storeId] = {
-        loja: store || { id: storeId, nome: `Loja ${storeId.substring(0, 8)}` },
+        loja: store || { 
+          id: storeId, 
+          nome: `Loja ${storeId.substring(0, 8)}`,
+          logo_url: null 
+        },
         items: []
       };
     }
     
+    // Add item to store group
     groups[storeId].items.push(item);
     return groups;
   }, {});
   
-  console.log("CartScreen: Grouped items by store:", itemsByStore);
+  console.log("CartScreen: Grouped items by store:", Object.keys(itemsByStore).length);
 
-  // Calculate discounts from coupon
+  // Calculate totals
   const subtotal = cart?.summary.subtotal || 0;
   const discount = appliedCoupon ? (subtotal * appliedCoupon.discount / 100) : 0;
   const shipping = cart?.summary.shipping || 0;

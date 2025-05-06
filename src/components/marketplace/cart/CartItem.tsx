@@ -16,15 +16,13 @@ const CartItem: React.FC<CartItemProps> = ({
   onRemoveItem,
   processingItem
 }) => {
-  // Debug log to check the item data
-  console.log('[CartItem] Rendering item:', item?.id, item?.produto?.nome);
-  
-  // For safety, check that the item and produto properties exist
+  // Safety check for item
   if (!item) {
     console.error('[CartItem] Item is undefined or null');
     return null;
   }
   
+  // Safety check for product data
   if (!item.produto) {
     console.error('[CartItem] Item missing produto property:', item);
     return (
@@ -39,6 +37,13 @@ const CartItem: React.FC<CartItemProps> = ({
   if (item.produto?.imagem_url) {
     imageUrl = item.produto.imagem_url;
   }
+
+  // Get price and quantity
+  const price = item.preco || 0;
+  const quantity = item.quantidade || 0;
+  const subtotal = price * quantity;
+  const isDisabled = processingItem === item.id;
+  const maxStock = item.produto?.estoque || 0;
 
   return (
     <div className="p-4 flex gap-4">
@@ -58,44 +63,51 @@ const CartItem: React.FC<CartItemProps> = ({
         <div className="flex justify-between mt-2">
           <div>
             <p className="text-construPro-blue font-bold">
-              R$ {(item.subtotal || 0).toFixed(2)}
+              R$ {subtotal.toFixed(2)}
             </p>
             <p className="text-xs text-gray-500">
-              {item.quantidade || 0} x R$ {(item.preco || 0).toFixed(2)}
+              {quantity} x R$ {price.toFixed(2)}
             </p>
-            <div className="bg-construPro-orange/10 text-construPro-orange text-xs rounded-full px-2 py-0.5 inline-block mt-1">
-              {item.produto?.pontos || 0} pontos
-            </div>
+            {item.produto?.pontos > 0 && (
+              <div className="bg-construPro-orange/10 text-construPro-orange text-xs rounded-full px-2 py-0.5 inline-block mt-1">
+                {item.produto.pontos} pontos
+              </div>
+            )}
           </div>
           
           <div className="flex flex-col items-end">
             <button 
               onClick={() => onRemoveItem(item.id)} 
               className="text-red-500 mb-2"
-              disabled={processingItem === item.id}
+              disabled={isDisabled}
             >
               <Trash2 size={16} />
             </button>
             
             <div className="flex items-center border border-gray-300 rounded-md">
               <button
-                onClick={() => onUpdateQuantity(item, item.quantidade - 1)}
+                onClick={() => onUpdateQuantity(item, quantity - 1)}
                 className="w-8 h-8 flex items-center justify-center text-gray-600"
-                disabled={processingItem === item.id || item.quantidade <= 1}
+                disabled={isDisabled || quantity <= 1}
               >
                 <Minus size={14} />
               </button>
               <span className="w-8 text-center">
-                {processingItem === item.id ? "..." : item.quantidade}
+                {isDisabled ? "..." : quantity}
               </span>
               <button
-                onClick={() => onUpdateQuantity(item, item.quantidade + 1)}
+                onClick={() => onUpdateQuantity(item, quantity + 1)}
                 className="w-8 h-8 flex items-center justify-center text-gray-600"
-                disabled={processingItem === item.id || item.quantidade >= (item.produto?.estoque || 0)}
+                disabled={isDisabled || quantity >= maxStock}
               >
                 <Plus size={14} />
               </button>
             </div>
+            {maxStock > 0 && (
+              <span className="text-xs text-gray-500 mt-1">
+                Disponível: {maxStock}
+              </span>
+            )}
           </div>
         </div>
       </div>

@@ -25,16 +25,14 @@ const StoreCartGroup: React.FC<StoreCartGroupProps> = ({
   onRemoveItem,
   processingItem
 }) => {
-  // Debug the store and items data
-  console.log('[StoreCartGroup] Rendering store:', store?.id, store?.nome);
-  console.log('[StoreCartGroup] Items for store:', items.length, 'items');
-  console.log('[StoreCartGroup] First item sample:', items[0]?.id);
-  
-  // Safety check that we have items and a valid store
+  // Safety check for items and store
   if (!items || items.length === 0 || !store?.id) {
     console.log('[StoreCartGroup] No items or invalid store, not rendering');
     return null;
   }
+
+  // Calculate store subtotal
+  const storeSubtotal = items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
 
   return (
     <div className="mb-6">
@@ -65,7 +63,11 @@ const StoreCartGroup: React.FC<StoreCartGroupProps> = ({
         <div className="p-3 bg-gray-50">
           <div className="flex justify-between text-sm">
             <span>Frete para esta loja</span>
-            <span>R$ 15,90</span>
+            <span className="font-medium">R$ 15,90</span>
+          </div>
+          <div className="flex justify-between text-sm mt-1">
+            <span className="font-medium">Subtotal da loja</span>
+            <span className="font-medium">R$ {storeSubtotal.toFixed(2)}</span>
           </div>
         </div>
       </Card>
