@@ -33,22 +33,22 @@ const StoreCartGroup: React.FC<StoreCartGroupProps> = ({
 
   // Calculate store subtotal
   const storeSubtotal = items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
-
+  
   return (
     <div className="mb-6">
-      <div className="flex items-center mb-3">
+      <div className="flex items-center mb-3 ml-2">
         <img 
           src={store.logo_url || 'https://via.placeholder.com/30'} 
           alt={store.nome || 'Loja'} 
-          className="w-6 h-6 rounded-full object-cover mr-2"
+          className="w-8 h-8 rounded-full object-cover mr-2"
           onError={(e) => {
             (e.target as HTMLImageElement).src = 'https://via.placeholder.com/30';
           }}
         />
-        <h2 className="font-bold">{store.nome || `Loja ${store.id.substring(0, 8)}`}</h2>
+        <h2 className="font-bold text-xl">{store.nome || `Loja ${store.id.substring(0, 8)}`}</h2>
       </div>
       
-      <Card className="divide-y divide-gray-100">
+      <Card className="divide-y divide-gray-100 shadow-sm">
         {items.map(item => (
           <CartItem 
             key={item.id} 
@@ -58,18 +58,6 @@ const StoreCartGroup: React.FC<StoreCartGroupProps> = ({
             processingItem={processingItem}
           />
         ))}
-        
-        {/* Store shipping */}
-        <div className="p-3 bg-gray-50">
-          <div className="flex justify-between text-sm">
-            <span>Frete para esta loja</span>
-            <span className="font-medium">R$ 15,90</span>
-          </div>
-          <div className="flex justify-between text-sm mt-1">
-            <span className="font-medium">Subtotal da loja</span>
-            <span className="font-medium">R$ {storeSubtotal.toFixed(2)}</span>
-          </div>
-        </div>
       </Card>
     </div>
   );

@@ -8,7 +8,7 @@ const CartHeader: React.FC = () => {
 
   return (
     <div className="bg-white p-4 flex items-center shadow-sm">
-      <button onClick={() => navigate(-1)} className="mr-4">
+      <button onClick={() => navigate(-1)} className="mr-4" aria-label="Voltar">
         <ArrowLeft size={24} />
       </button>
       <h1 className="text-xl font-bold">Carrinho de Compras</h1>

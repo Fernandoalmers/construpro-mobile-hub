@@ -59,18 +59,18 @@ const CartItem: React.FC<CartItemProps> = ({
       </div>
       
       <div className="flex-1">
-        <h3 className="font-medium">{item.produto?.nome || 'Produto sem nome'}</h3>
+        <h3 className="font-medium text-lg">{item.produto?.nome || 'Produto sem nome'}</h3>
         <div className="flex justify-between mt-2">
           <div>
-            <p className="text-construPro-blue font-bold">
+            <p className="text-construPro-blue font-bold text-lg">
               R$ {subtotal.toFixed(2)}
             </p>
-            <p className="text-xs text-gray-500">
+            <p className="text-sm text-gray-500">
               {quantity} x R$ {price.toFixed(2)}
             </p>
             {item.produto?.pontos > 0 && (
-              <div className="bg-construPro-orange/10 text-construPro-orange text-xs rounded-full px-2 py-0.5 inline-block mt-1">
-                {item.produto.pontos} pontos
+              <div className="bg-orange-100 text-orange-500 text-sm rounded-full px-3 py-0.5 inline-block mt-1">
+                {item.produto.pontos * quantity} pontos
               </div>
             )}
           </div>
@@ -80,27 +80,30 @@ const CartItem: React.FC<CartItemProps> = ({
               onClick={() => onRemoveItem(item.id)} 
               className="text-red-500 mb-2"
               disabled={isDisabled}
+              aria-label="Remover item"
             >
-              <Trash2 size={16} />
+              <Trash2 size={18} />
             </button>
             
             <div className="flex items-center border border-gray-300 rounded-md">
               <button
                 onClick={() => onUpdateQuantity(item, quantity - 1)}
-                className="w-8 h-8 flex items-center justify-center text-gray-600"
+                className="w-10 h-10 flex items-center justify-center text-gray-600"
                 disabled={isDisabled || quantity <= 1}
+                aria-label="Diminuir quantidade"
               >
-                <Minus size={14} />
+                <Minus size={16} />
               </button>
-              <span className="w-8 text-center">
+              <span className="w-10 text-center text-lg">
                 {isDisabled ? "..." : quantity}
               </span>
               <button
                 onClick={() => onUpdateQuantity(item, quantity + 1)}
-                className="w-8 h-8 flex items-center justify-center text-gray-600"
+                className="w-10 h-10 flex items-center justify-center text-gray-600"
                 disabled={isDisabled || quantity >= maxStock}
+                aria-label="Aumentar quantidade"
               >
-                <Plus size={14} />
+                <Plus size={16} />
               </button>
             </div>
             {maxStock > 0 && (

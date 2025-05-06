@@ -35,36 +35,34 @@ const CartContent: React.FC<CartContentProps> = ({
   console.log("[CartContent] Has items:", hasItems, "Has grouped items:", hasGroupedItems);
 
   return (
-    <div className="flex-1 p-6">
-      <div className="space-y-6">
-        {hasGroupedItems ? (
-          Object.entries(itemsByStore).map(([storeId, { loja, items }]) => (
-            <StoreCartGroup 
-              key={storeId}
-              store={loja}
-              items={items}
-              onUpdateQuantity={onUpdateQuantity}
-              onRemoveItem={onRemoveItem}
-              processingItem={processingItem}
-            />
-          ))
-        ) : (
-          <div className="text-center py-6 text-gray-500">
-            <p>Não há itens no carrinho ou dados ainda estão carregando.</p>
-            {hasItems && (
-              <p className="mt-2 text-sm">
-                Há {cart?.items.length} item(s) no carrinho, mas não foram agrupados corretamente.
-              </p>
-            )}
-          </div>
-        )}
-        
-        <CouponSection 
-          appliedCoupon={appliedCoupon}
-          onApplyCoupon={onApplyCoupon}
-          onRemoveCoupon={onRemoveCoupon}
-        />
-      </div>
+    <div className="space-y-4">
+      {hasGroupedItems ? (
+        Object.entries(itemsByStore).map(([storeId, { loja, items }]) => (
+          <StoreCartGroup 
+            key={storeId}
+            store={loja}
+            items={items}
+            onUpdateQuantity={onUpdateQuantity}
+            onRemoveItem={onRemoveItem}
+            processingItem={processingItem}
+          />
+        ))
+      ) : (
+        <div className="text-center py-6 text-gray-500">
+          <p>Não há itens no carrinho ou dados ainda estão carregando.</p>
+          {hasItems && (
+            <p className="mt-2 text-sm">
+              Há {cart?.items.length} item(s) no carrinho, mas não foram agrupados corretamente.
+            </p>
+          )}
+        </div>
+      )}
+      
+      <CouponSection 
+        appliedCoupon={appliedCoupon}
+        onApplyCoupon={onApplyCoupon}
+        onRemoveCoupon={onRemoveCoupon}
+      />
     </div>
   );
 };

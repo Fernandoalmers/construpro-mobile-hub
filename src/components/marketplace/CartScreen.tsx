@@ -31,7 +31,7 @@ const CartScreen: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-col min-h-screen bg-gray-100">
+      <div className="flex flex-col min-h-screen bg-gray-50">
         <CartHeader />
         <LoadingState type="spinner" text="Carregando seu carrinho..." count={3} />
       </div>
@@ -40,7 +40,7 @@ const CartScreen: React.FC = () => {
 
   if (error) {
     return (
-      <div className="flex flex-col min-h-screen bg-gray-100">
+      <div className="flex flex-col min-h-screen bg-gray-50">
         <CartHeader />
         <ErrorState 
           title="Erro ao carregar o carrinho" 
@@ -52,23 +52,25 @@ const CartScreen: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
+    <div className="flex flex-col min-h-screen bg-gray-50 pb-24">
       <CartHeader />
 
       {cartIsEmpty ? (
         <EmptyCart />
       ) : (
         <>
-          <CartContent
-            cart={cart}
-            itemsByStore={itemsByStore}
-            processingItem={processingItem}
-            appliedCoupon={appliedCoupon}
-            onUpdateQuantity={handleUpdateQuantity}
-            onRemoveItem={handleRemoveItem}
-            onApplyCoupon={applyCoupon}
-            onRemoveCoupon={removeCoupon}
-          />
+          <div className="flex-1 p-4">
+            <CartContent
+              cart={cart}
+              itemsByStore={itemsByStore}
+              processingItem={processingItem}
+              appliedCoupon={appliedCoupon}
+              onUpdateQuantity={handleUpdateQuantity}
+              onRemoveItem={handleRemoveItem}
+              onApplyCoupon={applyCoupon}
+              onRemoveCoupon={removeCoupon}
+            />
+          </div>
           
           <CartSummary
             subtotal={subtotal}

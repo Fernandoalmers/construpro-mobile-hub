@@ -28,7 +28,7 @@ const CouponSection: React.FC<CouponSectionProps> = ({
   };
 
   return (
-    <Card className="p-4">
+    <Card className="p-4 shadow-sm mb-4">
       <h3 className="text-sm font-medium mb-3">Cupom de desconto</h3>
       {appliedCoupon ? (
         <div className="flex items-center justify-between bg-green-50 p-3 rounded-md">
