@@ -1,3 +1,4 @@
+
 // Common
 export { default as LoadingState } from './components/common/LoadingState';
 
@@ -5,19 +6,19 @@ export { default as LoadingState } from './components/common/LoadingState';
 export { default as BottomTabNavigator } from './components/layout/BottomTabNavigator';
 
 // Admin
-export { default as AdminDashboard } from './pages/admin/AdminDashboard';
-export { default as UsersManagement } from './pages/admin/UsersManagement';
-export { default as ProductsManagementScreen } from './pages/admin/ProductsManagementScreen';
-export { default as StoresManagementScreen } from './pages/admin/StoresManagementScreen';
-export { default as RedemptionsManagementScreen } from './pages/admin/RedemptionsManagementScreen';
-export { default as OrdersManagementScreen } from './pages/admin/OrdersManagementScreen';
-export { default as AdminLogsScreen } from './pages/admin/AdminLogsScreen';
-export { default as AdminSettingsScreen } from './pages/admin/AdminSettingsScreen';
-export { default as AdminRewardsScreen } from './pages/admin/AdminRewardsScreen';
-export { default as AdminCategoriesScreen } from './pages/admin/AdminCategoriesScreen';
+export { default as AdminDashboard } from './components/admin/dashboard/AdminDashboard';
+export { default as UsersManagement } from './components/admin/UsersManagement';
+export { default as ProductsManagementScreen } from './components/admin/ProductsManagementScreen';
+export { default as StoresManagementScreen } from './components/admin/stores/StoresManagementScreen';
+export { default as RedemptionsManagementScreen } from './components/admin/redemptions/RedemptionsManagementScreen';
+export { default as OrdersManagementScreen } from './components/admin/orders/OrdersManagementScreen';
+export { default as AdminLogsScreen } from './components/admin/AdminLogs';
+export { default as AdminSettingsScreen } from './components/admin/settings/AdminSettingsScreen';
+export { default as AdminRewardsScreen } from './components/admin/rewards/AdminRewardsScreen';
+export { default as AdminCategoriesScreen } from './components/admin/categories/AdminCategoriesScreen';
 
 // Auth
-export { default as AuthProvider } from './context/AuthContext';
+export { AuthProvider } from './context/AuthContext';
 export { default as ProtectedRoute } from './components/auth/ProtectedRoute';
 export { default as LoginScreen } from './components/LoginScreen';
 export { default as SignUpScreen } from './components/SignupScreen';
@@ -25,43 +26,43 @@ export { default as OnboardingScreen } from './components/OnboardingScreen';
 export { default as ProfileSelectionScreen } from './components/auth/ProfileSelectionScreen';
 
 // Home
-export { default as HomeScreen } from './pages/HomeScreen';
+export { default as HomeScreen } from './components/home/HomeScreen';
 
 // Profile
-export { default as ProfileScreen } from './pages/ProfileScreen';
+export { default as ProfileScreen } from './components/profile/ProfileScreen';
 
 // Rewards
-export { default as RewardsScreen } from './pages/RewardsScreen';
-export { default as RewardDetailScreen } from './pages/RewardDetailScreen';
+export { default as RewardsScreen } from './components/resgates/ResgatesScreen';
+export { default as RewardDetailScreen } from './components/resgates/ResgateDetailScreen';
 
 // Store
-export { default as StoreDetailScreen } from './pages/StoreDetailScreen';
+export { default as StoreDetailScreen } from './components/marketplace/StoreDetailScreen';
 
 // Cart
-export { default as CartScreen } from './pages/CartScreen';
-export { default as CheckoutScreen } from './pages/CheckoutScreen';
-export { default as CartProvider } from './context/CartContext';
+export { default as CartScreen } from './components/marketplace/CartScreen';
+export { default as CheckoutScreen } from './components/marketplace/CheckoutScreen';
+export { CartProvider } from './context/CartContext';
 
 // Orders
-export { default as OrdersScreen } from './pages/OrdersScreen';
-export { default as OrderDetailScreen } from './pages/OrderDetailScreen';
+export { default as OrdersScreen } from './components/profile/OrdersScreen';
+export { default as OrderDetailScreen } from './components/profile/OrderDetailScreen';
 
 // Favorites
-export { default as FavoritesScreen } from './pages/FavoritesScreen';
+export { default as FavoritesScreen } from './components/profile/FavoritesScreen';
 
 // Chat
-export { default as ChatScreen } from './pages/ChatScreen';
+export { default as ChatScreen } from './components/chat/ChatScreen';
 
 // Settings
-export { default as SettingsScreen } from './pages/SettingsScreen';
+export { default as SettingsScreen } from './components/profile/SettingsScreen';
 
 // Not Found
 export { default as NotFoundScreen } from './pages/NotFound';
 
 // Vendor
-export { default as VendorDashboardScreen } from './pages/vendor/VendorDashboardScreen';
-export { default as VendorProductsScreen } from './pages/vendor/VendorProductsScreen';
-export { default as VendorCustomersScreen } from './pages/vendor/VendorCustomersScreen';
+export { default as VendorDashboardScreen } from './components/vendor/VendorModeScreen';
+export { default as VendorProductsScreen } from './components/vendor/ProdutosVendorScreen';
+export { default as VendorCustomersScreen } from './components/vendor/ClientesVendorScreen';
 
 // Marketplace
-export { default as MarketplaceScreenWrapper } from './pages/MarketplaceScreenWrapper';
+export { default as MarketplaceScreenWrapper } from './components/marketplace/MarketplaceScreenWrapper';
