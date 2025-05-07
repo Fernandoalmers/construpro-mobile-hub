@@ -87,7 +87,7 @@ export function useCartAdd(refreshCartData: () => Promise<void>) {
       
       const price = product.preco_promocional || product.preco_normal;
       
-      // Check if product exists in cart
+      // Check if product exists in cart - important to get the latest quantity
       const { data: existingItem, error: existingItemError } = await supabase
         .from('cart_items')
         .select('id, quantity')
@@ -104,8 +104,8 @@ export function useCartAdd(refreshCartData: () => Promise<void>) {
           throw new Error(`A quantidade total excederia o estoque disponível (${product.estoque})`);
         }
         
-        // Update quantity
-        console.log('[useCartAdd] Updating existing item quantity');
+        // Update quantity - ALWAYS ADD to existing quantity, not replace
+        console.log('[useCartAdd] Updating existing item quantity from', existingItem.quantity, 'to', existingItem.quantity + quantity);
         const { error: updateError } = await supabase
           .from('cart_items')
           .update({ quantity: existingItem.quantity + quantity })
@@ -119,7 +119,7 @@ export function useCartAdd(refreshCartData: () => Promise<void>) {
         console.log('[useCartAdd] Item quantity updated successfully');
       } else {
         // Insert new item
-        console.log('[useCartAdd] Adding new item to cart');
+        console.log('[useCartAdd] Adding new item to cart with quantity:', quantity);
         const { error: insertError } = await supabase
           .from('cart_items')
           .insert({

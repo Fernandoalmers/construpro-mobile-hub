@@ -11,21 +11,23 @@ export const useStoreInfo = (storeIds: string[]) => {
     if (!storeIds || storeIds.length === 0) return;
     
     setLoading(true);
-    console.log("Fetching store info for:", storeIds);
     
     try {
-      // Create initial store map with consistent defaults
+      // Create initial store map with stable IDs and names
       const initialStoreMap = storeIds.reduce((acc, id) => {
-        // Use more stable store name format to prevent flickering
+        // Use a stable format for store names - use full ID to avoid truncation
         acc[id] = {
           id: id,
-          nome: `Loja ${id.substring(0, 8)}`,
+          nome: `Loja ${id}`, // Use full ID for stability until real data loads
           logo_url: null
         };
         return acc;
       }, {} as Record<string, any>);
       
-      // Try to get data from vendedores table first (preferred)
+      // Set initial data first to prevent flickering
+      setStoreInfo(initialStoreMap);
+      
+      // Try to get data from vendedores table first
       const { data: vendedoresData, error: vendedoresError } = await supabase
         .from('vendedores')
         .select('id, nome_loja, logo')
@@ -35,7 +37,7 @@ export const useStoreInfo = (storeIds: string[]) => {
         console.error("Error fetching vendedores:", vendedoresError);
       }
       
-      // If we got data from vendedores, use that to update our base map
+      // If we got data from vendedores, use that
       if (vendedoresData && vendedoresData.length > 0) {
         const updatedMap = {...initialStoreMap};
         
@@ -43,7 +45,7 @@ export const useStoreInfo = (storeIds: string[]) => {
           if (store.id) {
             updatedMap[store.id] = {
               id: store.id,
-              nome: store.nome_loja || updatedMap[store.id].nome,
+              nome: store.nome_loja || initialStoreMap[store.id].nome,
               logo_url: store.logo || null
             };
           }
@@ -51,11 +53,9 @@ export const useStoreInfo = (storeIds: string[]) => {
         
         setStoreInfo(updatedMap);
         console.log("Store info updated with vendedores data:", updatedMap);
-        setLoading(false);
-        return; // Early return to avoid flickering
       }
       
-      // Fallback to stores table for any remaining stores without info
+      // Also try stores table as fallback for any remaining stores
       const remainingIds = Object.keys(initialStoreMap);
       
       if (remainingIds.length > 0) {
@@ -65,34 +65,26 @@ export const useStoreInfo = (storeIds: string[]) => {
           .in('id', remainingIds);
           
         if (storesData && storesData.length > 0) {
-          const updatedMap = {...initialStoreMap};
+          const finalMap = {...storeInfo}; // Use current state
           
           storesData.forEach(store => {
-            if (store.id && updatedMap[store.id]) {
-              updatedMap[store.id] = {
-                ...updatedMap[store.id],
-                nome: store.nome || updatedMap[store.id].nome,
-                logo_url: store.logo_url || updatedMap[store.id].logo_url
-              };
+            if (store.id && finalMap[store.id]) {
+              // Only update if we don't have a name from vendedores already
+              if (!vendedoresData?.some(v => v.id === store.id && v.nome_loja)) {
+                finalMap[store.id] = {
+                  ...finalMap[store.id],
+                  nome: store.nome || finalMap[store.id].nome,
+                  logo_url: store.logo_url || finalMap[store.id].logo_url
+                };
+              }
             }
           });
           
-          // Set final store info
-          setStoreInfo(updatedMap);
-          console.log("Store info updated with stores data:", updatedMap);
-        } else {
-          // If no data from either source, still use our initial placeholders
-          setStoreInfo(initialStoreMap);
+          setStoreInfo(finalMap);
         }
       }
     } catch (err) {
       console.error("Error fetching store info:", err);
-      // On error, still provide a default map instead of empty state
-      const fallbackMap = storeIds.reduce((acc, id) => {
-        acc[id] = { id, nome: `Loja ${id.substring(0, 8)}`, logo_url: null };
-        return acc;
-      }, {} as Record<string, any>);
-      setStoreInfo(fallbackMap);
     } finally {
       setLoading(false);
     }
