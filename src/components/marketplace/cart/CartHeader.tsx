@@ -9,14 +9,14 @@ const CartHeader: React.FC = () => {
   return (
     <div className="bg-white p-4 flex items-center shadow-sm sticky top-0 z-20 border-b border-gray-100">
       <button 
-        onClick={() => navigate(-1)} 
+        onClick={() => navigate('/marketplace')} 
         className="mr-4 p-2 rounded-full hover:bg-gray-100 transition-colors" 
-        aria-label="Voltar"
+        aria-label="Voltar para o marketplace"
       >
         <ArrowLeft size={22} />
       </button>
       <div className="flex items-center">
-        <ShoppingCart size={22} className="text-construPro-blue mr-2" />
+        <ShoppingCart size={24} className="text-green-600 mr-2" />
         <h1 className="text-xl font-bold">Seu Carrinho</h1>
       </div>
     </div>

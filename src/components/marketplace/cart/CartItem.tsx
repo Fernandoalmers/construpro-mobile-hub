@@ -3,6 +3,7 @@ import React from 'react';
 import { Minus, Plus, Trash2 } from 'lucide-react';
 import { CartItem as CartItemType } from '@/types/cart';
 import { cn } from '@/lib/utils';
+import { toast } from '@/components/ui/sonner';
 
 interface CartItemProps {
   item: CartItemType;
@@ -48,6 +49,38 @@ const CartItem: React.FC<CartItemProps> = ({
   const productName = item.produto?.nome || 'Produto sem nome';
   const isLoading = isDisabled;
 
+  // Handle add and remove item quantity
+  const handleIncreaseQuantity = async () => {
+    if (isDisabled || quantity >= maxStock) return;
+    
+    try {
+      await onUpdateQuantity(item, quantity + 1);
+    } catch (error) {
+      console.error('Error increasing quantity:', error);
+    }
+  };
+  
+  const handleDecreaseQuantity = async () => {
+    if (isDisabled || quantity <= 1) return;
+    
+    try {
+      await onUpdateQuantity(item, quantity - 1);
+    } catch (error) {
+      console.error('Error decreasing quantity:', error);
+    }
+  };
+  
+  const handleRemove = async () => {
+    if (isDisabled) return;
+    
+    try {
+      await onRemoveItem(item.id);
+      toast.success('Item removido do carrinho');
+    } catch (error) {
+      console.error('Error removing item:', error);
+    }
+  };
+
   return (
     <div className="p-4 flex gap-4 hover:bg-gray-50 transition-colors">
       <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0 border border-gray-200">
@@ -69,7 +102,7 @@ const CartItem: React.FC<CartItemProps> = ({
         <h3 className="font-medium text-base line-clamp-2">{productName}</h3>
         <div className="flex flex-col md:flex-row md:justify-between mt-2 gap-3">
           <div>
-            <p className="text-construPro-blue font-bold text-lg">
+            <p className="text-green-600 font-bold text-lg">
               R$ {subtotal.toFixed(2)}
             </p>
             <p className="text-xs text-gray-500">
@@ -84,7 +117,7 @@ const CartItem: React.FC<CartItemProps> = ({
           
           <div className="flex flex-col items-start md:items-end">
             <button 
-              onClick={() => onRemoveItem(item.id)} 
+              onClick={handleRemove} 
               className="text-red-500 mb-2 p-1 hover:bg-red-50 rounded-full transition-colors"
               disabled={isDisabled}
               aria-label="Remover item"
@@ -94,7 +127,7 @@ const CartItem: React.FC<CartItemProps> = ({
             
             <div className="flex items-center border border-gray-300 rounded-md bg-white">
               <button
-                onClick={() => onUpdateQuantity(item, quantity - 1)}
+                onClick={handleDecreaseQuantity}
                 className={cn(
                   "w-8 h-8 flex items-center justify-center",
                   quantity <= 1 ? "text-gray-300 cursor-not-allowed" : "text-gray-600 hover:bg-gray-100"
@@ -106,13 +139,13 @@ const CartItem: React.FC<CartItemProps> = ({
               </button>
               <div className="w-10 text-center text-md relative">
                 {isLoading ? (
-                  <span className="inline-block w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></span>
+                  <span className="inline-block w-4 h-4 border-2 border-gray-300 border-t-green-500 rounded-full animate-spin"></span>
                 ) : (
                   quantity
                 )}
               </div>
               <button
-                onClick={() => onUpdateQuantity(item, quantity + 1)}
+                onClick={handleIncreaseQuantity}
                 className={cn(
                   "w-8 h-8 flex items-center justify-center",
                   quantity >= maxStock ? "text-gray-300 cursor-not-allowed" : "text-gray-600 hover:bg-gray-100"

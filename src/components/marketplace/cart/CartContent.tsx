@@ -44,23 +44,25 @@ const CartContent: React.FC<CartContentProps> = ({
           <div className="flex items-center text-gray-700">
             <ShoppingBag size={16} className="mr-2" />
             <span className="text-sm font-medium">
-              {cart.items.length} {cart.items.length === 1 ? 'item' : 'itens'} em {storeCount} {storeCount === 1 ? 'loja' : 'lojas'}
+              {cart?.items.length} {cart?.items.length === 1 ? 'item' : 'itens'} em {storeCount} {storeCount === 1 ? 'loja' : 'lojas'}
             </span>
           </div>
         </div>
       )}
       
       {hasGroupedItems ? (
-        Object.entries(itemsByStore).map(([storeId, { loja, items }]) => (
-          <StoreCartGroup 
-            key={storeId}
-            store={loja}
-            items={items}
-            onUpdateQuantity={onUpdateQuantity}
-            onRemoveItem={onRemoveItem}
-            processingItem={processingItem}
-          />
-        ))
+        <div className="space-y-5">
+          {Object.entries(itemsByStore).map(([storeId, { loja, items }]) => (
+            <StoreCartGroup 
+              key={storeId}
+              store={loja}
+              items={items}
+              onUpdateQuantity={onUpdateQuantity}
+              onRemoveItem={onRemoveItem}
+              processingItem={processingItem}
+            />
+          ))}
+        </div>
       ) : (
         <div className="text-center py-6 text-gray-500 bg-white rounded-lg shadow p-8">
           {hasMappingIssue ? (

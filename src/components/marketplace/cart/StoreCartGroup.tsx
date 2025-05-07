@@ -36,11 +36,11 @@ const StoreCartGroup: React.FC<StoreCartGroupProps> = ({
   const storeSubtotal = items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
   
   // Format store name to be more user-friendly
-  const displayName = store.nome || `Loja ${store.id.substring(0, 4)}`;
+  const displayName = store.nome || `Loja ${store.id.substring(0, 4)}...`;
   
   return (
     <div className="mb-6">
-      <div className="flex items-center mb-3 px-4 py-3 bg-white rounded-lg border-l-4 border-construPro-blue shadow-sm">
+      <div className="flex items-center mb-3 px-4 py-3 bg-white rounded-lg border-l-4 border-green-600 shadow-sm">
         {store.logo_url ? (
           <img 
             src={store.logo_url} 
@@ -51,8 +51,8 @@ const StoreCartGroup: React.FC<StoreCartGroupProps> = ({
             }}
           />
         ) : (
-          <div className="w-10 h-10 bg-construPro-blue rounded-full flex items-center justify-center mr-3">
-            <Building size={18} className="text-white" />
+          <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-3">
+            <Building size={18} className="text-green-600" />
           </div>
         )}
         <div>
@@ -73,7 +73,7 @@ const StoreCartGroup: React.FC<StoreCartGroupProps> = ({
         ))}
         <div className="p-4 bg-gray-50 text-right rounded-b-xl">
           <span className="text-sm font-medium">Subtotal da loja: </span>
-          <span className="font-bold text-construPro-blue">R$ {storeSubtotal.toFixed(2)}</span>
+          <span className="font-bold text-green-600">R$ {storeSubtotal.toFixed(2)}</span>
         </div>
       </Card>
     </div>

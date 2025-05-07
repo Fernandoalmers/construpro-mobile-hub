@@ -59,7 +59,7 @@ const CartSummary: React.FC<CartSummaryProps> = ({
         
         <Button 
           onClick={() => navigate('/checkout')}
-          className="w-full py-6 text-white bg-construPro-blue hover:bg-blue-700 rounded-lg transition-colors flex items-center justify-center gap-2 h-auto"
+          className="w-full h-14 py-4 text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors flex items-center justify-center gap-2"
         >
           <span className="text-lg font-medium">Finalizar Compra</span>
           <ArrowRight size={20} />
