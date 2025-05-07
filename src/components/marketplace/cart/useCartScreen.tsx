@@ -1,11 +1,14 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from '@/components/ui/sonner';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/hooks/use-cart';
 import { CartItem } from '@/types/cart';
-import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/sonner';
+import { useStoreInfo } from '@/hooks/cart/use-store-info';
+import { useCoupon } from '@/hooks/cart/use-coupon';
+import { useCartTotals } from '@/hooks/cart/use-cart-totals';
+import { useGroupItemsByStore } from '@/hooks/cart/use-group-items-by-store';
 
 export const useCartScreen = () => {
   const navigate = useNavigate();
@@ -13,10 +16,31 @@ export const useCartScreen = () => {
   const { cart, updateQuantity, removeItem, refreshCart } = useCart();
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [couponCode, setCouponCode] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState<{code: string, discount: number} | null>(null);
   const [processingItem, setProcessingItem] = useState<string | null>(null);
-  const [storeInfo, setStoreInfo] = useState<Record<string, any>>({});
+  
+  // Get cart items
+  const cartItems = cart?.items || [];
+  const cartIsEmpty = cartItems.length === 0;
+
+  // Extract unique store IDs from cart items
+  const storeIds = cartItems
+    .map(item => item.produto?.loja_id)
+    .filter((id): id is string => !!id)
+    .filter((value, index, self) => self.indexOf(value) === index);
+
+  // Use our new custom hooks
+  const { storeInfo } = useStoreInfo(storeIds);
+  const { couponCode, setCouponCode, appliedCoupon, applyCoupon, removeCoupon } = useCoupon();
+  const itemsByStore = useGroupItemsByStore(cartItems, storeInfo);
+  
+  // Calculate totals
+  const storeCount = Object.keys(itemsByStore).length;
+  const { subtotal, discount, shipping, total, totalPoints } = useCartTotals(
+    cartItems, 
+    storeCount, 
+    appliedCoupon?.discount || 0,
+    cart?.summary.totalPoints
+  );
 
   // Fetch cart data when component mounts or auth state changes
   useEffect(() => {
@@ -51,76 +75,6 @@ export const useCartScreen = () => {
     
     return () => clearInterval(intervalId);
   }, [isAuthenticated, navigate, refreshCart]);
-
-  // Fetch store information when cart changes
-  useEffect(() => {
-    const fetchStoreInfo = async () => {
-      // Extract unique store IDs from cart items
-      const storeIds = cart?.items
-        ?.map(item => item.produto?.loja_id)
-        .filter((id): id is string => !!id)
-        .filter((value, index, self) => self.indexOf(value) === index);
-        
-      if (!storeIds || storeIds.length === 0) return;
-      
-      console.log("Fetching store info for:", storeIds);
-      
-      try {
-        // Try to get data from vendedores table first (preferred)
-        const { data: vendedoresData, error: vendedoresError } = await supabase
-          .from('vendedores')
-          .select('id, nome_loja, logo')
-          .in('id', storeIds);
-          
-        if (vendedoresError) {
-          console.error("Error fetching vendedores:", vendedoresError);
-        }
-        
-        // If we got data from vendedores, use that
-        if (vendedoresData && vendedoresData.length > 0) {
-          const vendedoresMap = vendedoresData.reduce((acc, store) => {
-            acc[store.id] = {
-              id: store.id,
-              nome: store.nome_loja,
-              logo_url: store.logo
-            };
-            return acc;
-          }, {} as Record<string, any>);
-          
-          setStoreInfo(vendedoresMap);
-          console.log("Store info fetched from vendedores:", vendedoresMap);
-          return;
-        }
-        
-        // Fallback to stores table
-        const { data: storesData, error: storesError } = await supabase
-          .from('stores')
-          .select('id, nome, logo_url')
-          .in('id', storeIds);
-          
-        if (storesError) {
-          throw storesError;
-        }
-        
-        if (storesData) {
-          // Create a lookup map of store info
-          const storeMap = storesData.reduce((acc, store) => {
-            acc[store.id] = store;
-            return acc;
-          }, {} as Record<string, any>);
-          
-          setStoreInfo(storeMap);
-          console.log("Store info fetched from stores:", storeMap);
-        }
-      } catch (err) {
-        console.error("Error fetching store info:", err);
-      }
-    };
-    
-    if (cart?.items?.length) {
-      fetchStoreInfo();
-    }
-  }, [cart]);
 
   // Handle quantity updates with proper error handling
   const handleUpdateQuantity = async (item: CartItem, newQuantity: number) => {
@@ -180,91 +134,6 @@ export const useCartScreen = () => {
       setProcessingItem(null);
     }
   };
-
-  // Apply coupon code
-  const applyCoupon = (code: string) => {
-    if (!code) {
-      toast.error('Digite um cupom válido');
-      return;
-    }
-
-    // Mock coupon validation
-    if (code.toUpperCase() === 'CONSTRUPROMO') {
-      setAppliedCoupon({ code, discount: 10 });
-      toast.success('Cupom aplicado! Desconto de 10% aplicado ao seu pedido.');
-    } else if (code.toUpperCase() === 'WELCOME20') {
-      setAppliedCoupon({ code, discount: 20 });
-      toast.success('Cupom aplicado! Desconto de 20% aplicado ao seu pedido.');
-    } else if (code.toUpperCase() === 'FRETE') {
-      setAppliedCoupon({ code, discount: 5 });
-      toast.success('Cupom aplicado! Desconto de 5% aplicado ao seu pedido.');
-    } else {
-      toast.error('O cupom informado não é válido ou expirou.');
-    }
-    
-    setCouponCode('');
-  };
-
-  // Remove applied coupon
-  const removeCoupon = () => {
-    setAppliedCoupon(null);
-    setCouponCode('');
-    toast.success('Cupom removido');
-  };
-
-  // Group items by store with improved data handling
-  const cartItems = cart?.items || [];
-  const cartIsEmpty = cartItems.length === 0;
-  
-  // Improved store grouping with safety checks
-  const itemsByStore = cartItems.reduce((groups: Record<string, { loja: any, items: CartItem[] }>, item) => {
-    // Safety check for item and product
-    if (!item || !item.produto) {
-      console.warn("CartScreen: Skipping invalid item:", item);
-      return groups;
-    }
-    
-    const storeId = item.produto.loja_id;
-    
-    // Skip items without store ID
-    if (!storeId) {
-      console.warn("CartScreen: Item missing loja_id:", item);
-      return groups;
-    }
-    
-    // Create or update store group
-    if (!groups[storeId]) {
-      // Get store info from our fetched storeInfo object
-      const store = storeInfo[storeId] || { 
-        id: storeId, 
-        nome: `Loja ${storeId.substring(0, 4)}`,
-        logo_url: null 
-      };
-      
-      groups[storeId] = {
-        loja: store,
-        items: []
-      };
-    }
-    
-    // Add item to store group
-    groups[storeId].items.push(item);
-    return groups;
-  }, {});
-  
-  console.log("CartScreen: Grouped items by store:", Object.keys(itemsByStore).length);
-
-  // Calculate totals with fixed shipping policy
-  const subtotal = cart?.summary.subtotal || 0;
-  const discount = appliedCoupon ? (subtotal * appliedCoupon.discount / 100) : 0;
-  
-  // Calculate shipping - Now showing "A calcular" instead of a fixed value
-  const storeCount = Object.keys(itemsByStore).length;
-  const shipping = 0; // No shipping cost for now, will be calculated later
-  
-  const total = subtotal + shipping - discount;
-  const totalPoints = cart?.summary.totalPoints || 
-                     Math.floor(total) * 2; // Calculate points based on total if not provided
 
   return {
     loading,
