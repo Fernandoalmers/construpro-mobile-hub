@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/sonner';
 
 export const useStoreInfo = (storeIds: string[]) => {
   const [storeInfo, setStoreInfo] = useState<Record<string, any>>({});
@@ -29,74 +30,81 @@ export const useStoreInfo = (storeIds: string[]) => {
       
       setStoreInfo(initialStoreMap); // Set initial values immediately to prevent flickering
       
-      // Try to get data from vendedores table first (preferred)
-      const { data: vendedoresData, error: vendedoresError } = await supabase
-        .from('vendedores')
-        .select('id, nome_loja, logo')
-        .in('id', storeIds);
-          
-      if (vendedoresError) {
-        console.error("Error fetching vendedores:", vendedoresError);
-      }
-      
-      // If we got data from vendedores, use that to update our base map
-      if (vendedoresData && vendedoresData.length > 0) {
-        const updatedMap = {...initialStoreMap};
+      try {
+        // Try to get data from vendedores table first (preferred)
+        const { data: vendedoresData, error: vendedoresError } = await supabase
+          .from('vendedores')
+          .select('id, nome_loja, logo')
+          .in('id', storeIds);
+              
+        if (vendedoresError) {
+          console.error("Error fetching vendedores:", vendedoresError);
+          // Don't throw - continue with initialStoreMap
+        }
         
-        vendedoresData.forEach(store => {
-          if (store.id) {
-            updatedMap[store.id] = {
-              id: store.id,
-              nome: store.nome_loja || updatedMap[store.id].nome,
-              logo_url: store.logo || null
-            };
-          }
-        });
-        
-        setStoreInfo(updatedMap);
-        console.log("Store info updated with vendedores data:", updatedMap);
-        setLoading(false);
-        return; // Early return to avoid flickering
-      }
-      
-      // Fallback to stores table for any remaining stores without info
-      const remainingIds = Object.keys(initialStoreMap);
-      
-      if (remainingIds.length > 0) {
-        const { data: storesData } = await supabase
-          .from('stores')
-          .select('id, nome, logo_url')
-          .in('id', remainingIds);
-          
-        if (storesData && storesData.length > 0) {
+        // If we got data from vendedores, use that to update our base map
+        if (vendedoresData && vendedoresData.length > 0) {
           const updatedMap = {...initialStoreMap};
           
-          storesData.forEach(store => {
-            if (store.id && updatedMap[store.id]) {
+          vendedoresData.forEach(store => {
+            if (store.id) {
               updatedMap[store.id] = {
-                ...updatedMap[store.id],
-                nome: store.nome || updatedMap[store.id].nome,
-                logo_url: store.logo_url || updatedMap[store.id].logo_url
+                id: store.id,
+                nome: store.nome_loja || updatedMap[store.id].nome,
+                logo_url: store.logo || null
               };
             }
           });
           
-          // Set final store info
           setStoreInfo(updatedMap);
-          console.log("Store info updated with stores data:", updatedMap);
+          console.log("Store info updated with vendedores data:", updatedMap);
+          setLoading(false);
+          return; // Early return to avoid flickering
         }
+      } catch (err) {
+        console.log("Failed to fetch vendedores data, continuing with fallback:", err);
+        // Continue with stores table fallback
+      }
+      
+      // Fallback to stores table for any remaining stores without info
+      try {
+        const remainingIds = Object.keys(initialStoreMap);
+        
+        if (remainingIds.length > 0) {
+          const { data: storesData, error: storesError } = await supabase
+            .from('stores')
+            .select('id, nome, logo_url')
+            .in('id', remainingIds);
+            
+          if (storesError) {
+            console.error("Error fetching stores:", storesError);
+            // Use initialStoreMap as fallback
+          }
+            
+          if (storesData && storesData.length > 0) {
+            const updatedMap = {...initialStoreMap};
+            
+            storesData.forEach(store => {
+              if (store.id && updatedMap[store.id]) {
+                updatedMap[store.id] = {
+                  ...updatedMap[store.id],
+                  nome: store.nome || updatedMap[store.id].nome,
+                  logo_url: store.logo_url || updatedMap[store.id].logo_url
+                };
+              }
+            });
+            
+            // Set final store info
+            setStoreInfo(updatedMap);
+            console.log("Store info updated with stores data:", updatedMap);
+          }
+        }
+      } catch (err) {
+        console.log("Failed to fetch stores data, using initial map:", err);
       }
     } catch (err) {
-      console.error("Error fetching store info:", err);
-      // On error, still ensure we have at least placeholders
-      if (Object.keys(storeInfo).length === 0) {
-        const fallbackMap = storeIds.reduce((acc, id) => {
-          if (!id) return acc;
-          acc[id] = { id, nome: `Loja ${id.substring(0, 4)}`, logo_url: null };
-          return acc;
-        }, {} as Record<string, any>);
-        setStoreInfo(fallbackMap);
-      }
+      console.error("Error in store info processing:", err);
+      // Ensure we still have the initial placeholder data
     } finally {
       setLoading(false);
     }
@@ -106,6 +114,8 @@ export const useStoreInfo = (storeIds: string[]) => {
   useEffect(() => {
     if (storeIds?.length) {
       fetchStoreInfo();
+    } else {
+      setStoreInfo({});
     }
   }, [storeIds, fetchStoreInfo]);
 

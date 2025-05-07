@@ -35,7 +35,8 @@ const StoreCartGroup: React.FC<StoreCartGroupProps> = ({
   // Calculate store subtotal
   const storeSubtotal = items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
   
-  // Format store name consistently to avoid flickering
+  // Format store name consistently to avoid flickering - use store.nome 
+  // but fallback to a consistent format based on ID
   const displayName = store.nome || `Loja ${store.id.substring(0, 6)}`;
   
   return (
