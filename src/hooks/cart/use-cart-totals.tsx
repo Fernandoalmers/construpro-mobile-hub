@@ -1,38 +1,41 @@
+
+import { useState, useMemo } from 'react';
 import { CartItem } from '@/types/cart';
 
-type Totals = {
-  subtotal: number;
-  discount: number;
-  shipping: number;
-  total: number;
-  totalPoints: number;
-};
-
 export const useCartTotals = (
-  cartItems: CartItem[], 
-  storeCount: number, 
-  appliedCouponDiscount: number = 0,
-  cartSummaryPoints: number = 0
-): Totals => {
-  // Calculate subtotal
-  const subtotal = cartItems.reduce((sum, item) => sum + (item.subtotal || 0), 0);
+  cartItems: CartItem[],
+  storeCount: number,
+  discountAmount: number = 0,
+  totalCartPoints: number = 0
+) => {
+  // Calculate subtotal from cart items
+  const subtotal = useMemo(() => {
+    return cartItems.reduce((sum, item) => {
+      const itemSubtotal = item.preco * item.quantidade;
+      return sum + itemSubtotal;
+    }, 0);
+  }, [cartItems]);
   
-  // Calculate discount from coupon
-  const discount = appliedCouponDiscount > 0 ? (subtotal * appliedCouponDiscount / 100) : 0;
+  // Calculate shipping based on store count
+  // Simple calculation: R$15.90 per store or free if cart empty
+  const shipping = subtotal > 0 ? (storeCount * 15.90) : 0;
   
-  // Calculate shipping - showing "A calcular" in UI, but keeps 0 for calculation
-  const shipping = 0; // No shipping cost for now, will be calculated later
+  // Calculate discount (if any)
+  const discount = Math.min(discountAmount, subtotal); // Can't discount more than subtotal
   
   // Calculate total
   const total = subtotal + shipping - discount;
   
-  // Calculate points - use cart summary or estimate based on total
-  const totalPoints = cartSummaryPoints || Math.floor(total) * 2;
+  // Use provided totalPoints or calculate
+  const totalPoints = totalCartPoints || cartItems.reduce((sum, item) => {
+    const itemPoints = (item.produto?.pontos || 0) * item.quantidade;
+    return sum + itemPoints;
+  }, 0);
   
   return {
     subtotal,
-    discount,
     shipping,
+    discount,
     total,
     totalPoints
   };

@@ -1,40 +1,42 @@
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { toast } from '@/components/ui/sonner';
 
 export const useCoupon = () => {
-  const [couponCode, setCouponCode] = useState('');
+  const [couponCode, setCouponCode] = useState<string>('');
   const [appliedCoupon, setAppliedCoupon] = useState<{code: string, discount: number} | null>(null);
   
-  // Apply coupon code
-  const applyCoupon = (code: string) => {
-    if (!code) {
-      toast.error('Digite um cupom válido');
+  const applyCoupon = useCallback((code: string) => {
+    // Simple validation
+    if (!code || code.trim() === '') {
+      toast.error("Por favor, insira um cupom válido");
       return;
     }
-
-    // Mock coupon validation
-    if (code.toUpperCase() === 'CONSTRUPROMO') {
-      setAppliedCoupon({ code, discount: 10 });
-      toast.success('Cupom aplicado! Desconto de 10% aplicado ao seu pedido.');
-    } else if (code.toUpperCase() === 'WELCOME20') {
-      setAppliedCoupon({ code, discount: 20 });
-      toast.success('Cupom aplicado! Desconto de 20% aplicado ao seu pedido.');
-    } else if (code.toUpperCase() === 'FRETE') {
-      setAppliedCoupon({ code, discount: 5 });
-      toast.success('Cupom aplicado! Desconto de 5% aplicado ao seu pedido.');
-    } else {
-      toast.error('O cupom informado não é válido ou expirou.');
-    }
     
-    setCouponCode('');
-  };
-
-  // Remove applied coupon
-  const removeCoupon = () => {
+    // For demo purposes, we'll use some hardcoded coupons
+    // In a real application, this would validate against a backend API
+    const validCoupons: Record<string, number> = {
+      'BEMVINDO10': 10.00,
+      'FRETE20': 20.00,
+      'CONSTRUPRO15': 15.00
+    };
+    
+    if (validCoupons[code.toUpperCase()]) {
+      setAppliedCoupon({
+        code: code.toUpperCase(),
+        discount: validCoupons[code.toUpperCase()]
+      });
+      toast.success(`Cupom ${code.toUpperCase()} aplicado com sucesso!`);
+    } else {
+      toast.error("Cupom inválido ou expirado");
+    }
+  }, []);
+  
+  const removeCoupon = useCallback(() => {
     setAppliedCoupon(null);
-    toast.success('Cupom removido');
-  };
+    setCouponCode('');
+    toast.success("Cupom removido");
+  }, []);
   
   return {
     couponCode,
