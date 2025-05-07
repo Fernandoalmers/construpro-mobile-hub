@@ -69,7 +69,7 @@ export const useCartScreen = () => {
         // Try to get data from vendedores table first (preferred)
         const { data: vendedoresData, error: vendedoresError } = await supabase
           .from('vendedores')
-          .select('id, nome_loja as nome, logo')
+          .select('id, nome_loja, logo')
           .in('id', storeIds);
           
         if (vendedoresError) {
@@ -81,7 +81,7 @@ export const useCartScreen = () => {
           const vendedoresMap = vendedoresData.reduce((acc, store) => {
             acc[store.id] = {
               id: store.id,
-              nome: store.nome,
+              nome: store.nome_loja,
               logo_url: store.logo
             };
             return acc;
@@ -258,11 +258,9 @@ export const useCartScreen = () => {
   const subtotal = cart?.summary.subtotal || 0;
   const discount = appliedCoupon ? (subtotal * appliedCoupon.discount / 100) : 0;
   
-  // Calculate shipping - placeholder as this would normally come from the backend
-  // For now, we'll use a fixed shipping per store if user has items in cart
+  // Calculate shipping - Now showing "A calcular" instead of a fixed value
   const storeCount = Object.keys(itemsByStore).length;
-  const baseShipping = storeCount > 0 ? 0 : 0; // No shipping cost for testing
-  const shipping = subtotal > 0 ? baseShipping : 0;
+  const shipping = 0; // No shipping cost for now, will be calculated later
   
   const total = subtotal + shipping - discount;
   const totalPoints = cart?.summary.totalPoints || 

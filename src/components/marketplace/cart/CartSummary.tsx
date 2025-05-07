@@ -30,8 +30,8 @@ const CartSummary: React.FC<CartSummaryProps> = ({
         </div>
         <div className="flex justify-between">
           <span className="text-gray-600">Frete</span>
-          <span className="font-medium">
-            {shipping > 0 ? `R$ ${shipping.toFixed(2)}` : 'A calcular'}
+          <span className="font-medium text-amber-600">
+            A calcular
           </span>
         </div>
         {discount > 0 && (

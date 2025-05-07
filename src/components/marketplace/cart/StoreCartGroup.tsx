@@ -40,7 +40,7 @@ const StoreCartGroup: React.FC<StoreCartGroupProps> = ({
   
   return (
     <div className="mb-6">
-      <div className="flex items-center mb-3 px-2 py-1 bg-gray-50 rounded-lg border border-gray-200">
+      <div className="flex items-center mb-3 px-4 py-2 bg-gray-50 rounded-lg border border-gray-200">
         {store.logo_url ? (
           <img 
             src={store.logo_url} 
@@ -68,7 +68,7 @@ const StoreCartGroup: React.FC<StoreCartGroupProps> = ({
             processingItem={processingItem}
           />
         ))}
-        <div className="p-3 bg-gray-50 text-right rounded-b-xl">
+        <div className="p-4 bg-gray-50 text-right rounded-b-xl">
           <span className="text-sm font-medium">Subtotal da loja: </span>
           <span className="font-bold text-construPro-blue">R$ {storeSubtotal.toFixed(2)}</span>
         </div>
