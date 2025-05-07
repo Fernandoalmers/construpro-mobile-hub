@@ -3,7 +3,7 @@ import React from 'react';
 import Card from '@/components/common/Card';
 import { CartItem as CartItemType } from '@/types/cart';
 import CartItem from './CartItem';
-import { Building } from 'lucide-react';
+import { Building, ShoppingBag } from 'lucide-react';
 
 interface StoreInfo {
   id: string;
@@ -35,11 +35,10 @@ const StoreCartGroup: React.FC<StoreCartGroupProps> = ({
   // Calculate store subtotal
   const storeSubtotal = items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
   
-  // Format store name to be more user-friendly and stable
-  // Don't use ID in display name to avoid flickering
-  const displayName = store.nome && !store.nome.includes(store.id) 
+  // Format store name to be more user-friendly - make it more stable
+  const displayName = store.nome && store.nome !== `Loja ${store.id.substring(0, 4)}...` 
     ? store.nome 
-    : `Loja`;
+    : `Loja ${store.id.substring(0, 8)}`;
   
   return (
     <div className="mb-6">
