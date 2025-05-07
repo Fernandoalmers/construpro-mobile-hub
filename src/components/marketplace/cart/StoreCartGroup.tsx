@@ -36,9 +36,7 @@ const StoreCartGroup: React.FC<StoreCartGroupProps> = ({
   const storeSubtotal = items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
   
   // Format store name to be more user-friendly
-  const displayName = store.nome && store.nome !== `Loja ${store.id.substring(0, 8)}` 
-    ? store.nome 
-    : `Loja ${store.id.substring(0, 4)}`;
+  const displayName = store.nome || `Loja ${store.id.substring(0, 4)}`;
   
   return (
     <div className="mb-6">
@@ -60,7 +58,7 @@ const StoreCartGroup: React.FC<StoreCartGroupProps> = ({
         <h2 className="font-bold text-md text-gray-700">{displayName}</h2>
       </div>
       
-      <Card className="divide-y divide-gray-100 shadow-sm">
+      <Card className="divide-y divide-gray-100 shadow-sm rounded-xl">
         {items.map(item => (
           <CartItem 
             key={item.id} 
@@ -70,7 +68,7 @@ const StoreCartGroup: React.FC<StoreCartGroupProps> = ({
             processingItem={processingItem}
           />
         ))}
-        <div className="p-3 bg-gray-50 text-right">
+        <div className="p-3 bg-gray-50 text-right rounded-b-xl">
           <span className="text-sm font-medium">Subtotal da loja: </span>
           <span className="font-bold text-construPro-blue">R$ {storeSubtotal.toFixed(2)}</span>
         </div>

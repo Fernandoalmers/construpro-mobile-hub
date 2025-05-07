@@ -66,22 +66,51 @@ export const useCartScreen = () => {
       console.log("Fetching store info for:", storeIds);
       
       try {
-        const { data, error } = await supabase
+        // Try to get data from vendedores table first (preferred)
+        const { data: vendedoresData, error: vendedoresError } = await supabase
+          .from('vendedores')
+          .select('id, nome_loja as nome, logo')
+          .in('id', storeIds);
+          
+        if (vendedoresError) {
+          console.error("Error fetching vendedores:", vendedoresError);
+        }
+        
+        // If we got data from vendedores, use that
+        if (vendedoresData && vendedoresData.length > 0) {
+          const vendedoresMap = vendedoresData.reduce((acc, store) => {
+            acc[store.id] = {
+              id: store.id,
+              nome: store.nome,
+              logo_url: store.logo
+            };
+            return acc;
+          }, {} as Record<string, any>);
+          
+          setStoreInfo(vendedoresMap);
+          console.log("Store info fetched from vendedores:", vendedoresMap);
+          return;
+        }
+        
+        // Fallback to stores table
+        const { data: storesData, error: storesError } = await supabase
           .from('stores')
           .select('id, nome, logo_url')
           .in('id', storeIds);
           
-        if (error) throw error;
+        if (storesError) {
+          throw storesError;
+        }
         
-        if (data) {
+        if (storesData) {
           // Create a lookup map of store info
-          const storeMap = data.reduce((acc, store) => {
+          const storeMap = storesData.reduce((acc, store) => {
             acc[store.id] = store;
             return acc;
           }, {} as Record<string, any>);
           
           setStoreInfo(storeMap);
-          console.log("Store info fetched:", storeMap);
+          console.log("Store info fetched from stores:", storeMap);
         }
       } catch (err) {
         console.error("Error fetching store info:", err);
@@ -90,16 +119,6 @@ export const useCartScreen = () => {
     
     if (cart?.items?.length) {
       fetchStoreInfo();
-    }
-  }, [cart]);
-
-  // Add debugging logs
-  useEffect(() => {
-    console.log("CartScreen: Cart data updated:", cart?.id);
-    console.log("CartScreen: Cart items count:", cart?.items?.length || 0);
-    
-    if (cart?.items) {
-      console.log("CartScreen: Cart items sample:", cart.items.slice(0, 2));
     }
   }, [cart]);
 
@@ -218,7 +237,7 @@ export const useCartScreen = () => {
       // Get store info from our fetched storeInfo object
       const store = storeInfo[storeId] || { 
         id: storeId, 
-        nome: `Loja ${storeId.substring(0, 8)}`,
+        nome: `Loja ${storeId.substring(0, 4)}`,
         logo_url: null 
       };
       
@@ -235,14 +254,15 @@ export const useCartScreen = () => {
   
   console.log("CartScreen: Grouped items by store:", Object.keys(itemsByStore).length);
 
-  // Calculate totals with dynamic shipping
+  // Calculate totals with fixed shipping policy
   const subtotal = cart?.summary.subtotal || 0;
   const discount = appliedCoupon ? (subtotal * appliedCoupon.discount / 100) : 0;
   
-  // Calculate shipping based on number of stores
+  // Calculate shipping - placeholder as this would normally come from the backend
+  // For now, we'll use a fixed shipping per store if user has items in cart
   const storeCount = Object.keys(itemsByStore).length;
-  const baseShipping = 15.90;
-  const shipping = subtotal > 0 ? (storeCount > 1 ? baseShipping * storeCount : baseShipping) : 0;
+  const baseShipping = storeCount > 0 ? 0 : 0; // No shipping cost for testing
+  const shipping = subtotal > 0 ? baseShipping : 0;
   
   const total = subtotal + shipping - discount;
   const totalPoints = cart?.summary.totalPoints || 

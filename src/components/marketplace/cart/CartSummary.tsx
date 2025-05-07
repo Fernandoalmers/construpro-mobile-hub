@@ -22,7 +22,7 @@ const CartSummary: React.FC<CartSummaryProps> = ({
   const navigate = useNavigate();
 
   return (
-    <div className="bg-white p-6 shadow-md fixed left-0 right-0 bottom-0">
+    <div className="bg-white p-6 shadow-md rounded-t-xl fixed left-0 right-0 bottom-0 border-t border-gray-200">
       <div className="space-y-3 mb-6">
         <div className="flex justify-between">
           <span className="text-gray-600">Subtotal</span>
@@ -31,7 +31,7 @@ const CartSummary: React.FC<CartSummaryProps> = ({
         <div className="flex justify-between">
           <span className="text-gray-600">Frete</span>
           <span className="font-medium">
-            {subtotal > 0 ? `R$ ${shipping.toFixed(2)}` : 'Grátis'}
+            {shipping > 0 ? `R$ ${shipping.toFixed(2)}` : 'A calcular'}
           </span>
         </div>
         {discount > 0 && (
