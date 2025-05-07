@@ -30,8 +30,7 @@ export const addNewCartItem = async (cartId: string, productId: string, quantity
   try {
     console.log('[cartItemModifiers] Adding new cart item:', { cartId, productId, quantity, price });
     
-    // MODIFIED: Removed the check for existing items
-    // Always insert as a new item
+    // MODIFIED: Always insert as a new item, no checking for existing items
     const { data, error } = await supabase
       .from('cart_items')
       .insert({
