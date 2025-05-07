@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { CartContextProvider, useCartContext } from '@/context/CartContext';
@@ -52,19 +51,6 @@ export async function addToCart(productId: string, quantity: number): Promise<vo
     
     console.log(`[addToCart] Using cart: ${cartData.id}`);
     
-    // Check if product exists in cart
-    const { data: existingItem, error: existingItemError } = await supabase
-      .from('cart_items')
-      .select('id, quantity')
-      .eq('cart_id', cartData.id)
-      .eq('product_id', productId)
-      .maybeSingle();
-      
-    if (existingItemError) {
-      console.error('[addToCart] Error checking existing items:', existingItemError);
-      throw existingItemError;
-    }
-      
     // Get product price 
     const { data: product, error: productError } = await supabase
       .from('produtos')
@@ -79,38 +65,23 @@ export async function addToCart(productId: string, quantity: number): Promise<vo
     
     const price = product.preco_promocional || product.preco_normal;
     
-    if (existingItem) {
-      // Update quantity - ADD to existing instead of replacing
-      console.log(`[addToCart] Item exists in cart, updating quantity from ${existingItem.quantity} to ${existingItem.quantity + quantity}`);
+    // MODIFIED: Always add as a new item, don't check for existing items
+    console.log(`[addToCart] Adding new item to cart`);
+    const { error: insertError } = await supabase
+      .from('cart_items')
+      .insert({
+        cart_id: cartData.id,
+        product_id: productId,
+        quantity: quantity,
+        price_at_add: price
+      });
       
-      const { error: updateError } = await supabase
-        .from('cart_items')
-        .update({ quantity: existingItem.quantity + quantity })
-        .eq('id', existingItem.id);
-        
-      if (updateError) {
-        console.error('[addToCart] Error updating quantity:', updateError);
-        throw updateError;
-      }
-    } else {
-      // Insert new item
-      console.log(`[addToCart] Adding new item to cart`);
-      const { error: insertError } = await supabase
-        .from('cart_items')
-        .insert({
-          cart_id: cartData.id,
-          product_id: productId,
-          quantity: quantity,
-          price_at_add: price
-        });
-        
-      if (insertError) {
-        console.error('[addToCart] Error inserting item:', insertError);
-        throw insertError;
-      }
+    if (insertError) {
+      console.error('[addToCart] Error inserting item:', insertError);
+      throw insertError;
     }
     
-    console.log('[addToCart] Successfully added/updated cart item');
+    console.log('[addToCart] Successfully added new cart item');
   } catch (error) {
     console.error('Error adding to cart:', error);
     throw error;
