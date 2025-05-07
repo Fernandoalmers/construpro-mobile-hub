@@ -33,7 +33,9 @@ const CartScreen: React.FC = () => {
     return (
       <div className="flex flex-col min-h-screen bg-gray-50">
         <CartHeader />
-        <LoadingState type="spinner" text="Carregando seu carrinho..." count={3} />
+        <div className="flex-1 flex items-center justify-center p-4">
+          <LoadingState type="spinner" text="Carregando seu carrinho..." count={1} />
+        </div>
       </div>
     );
   }
@@ -42,44 +44,46 @@ const CartScreen: React.FC = () => {
     return (
       <div className="flex flex-col min-h-screen bg-gray-50">
         <CartHeader />
-        <ErrorState 
-          title="Erro ao carregar o carrinho" 
-          message={error} 
-          onRetry={() => refreshCart()} 
-        />
+        <div className="flex-1 flex items-center justify-center p-4">
+          <ErrorState 
+            title="Erro ao carregar o carrinho" 
+            message={error} 
+            onRetry={() => refreshCart()} 
+          />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50 pb-24">
+    <div className="flex flex-col min-h-screen bg-gray-50 pb-36">
       <CartHeader />
 
-      {cartIsEmpty ? (
-        <EmptyCart />
-      ) : (
-        <>
-          <div className="flex-1 p-4">
-            <CartContent
-              cart={cart}
-              itemsByStore={itemsByStore}
-              processingItem={processingItem}
-              appliedCoupon={appliedCoupon}
-              onUpdateQuantity={handleUpdateQuantity}
-              onRemoveItem={handleRemoveItem}
-              onApplyCoupon={applyCoupon}
-              onRemoveCoupon={removeCoupon}
-            />
-          </div>
-          
-          <CartSummary
-            subtotal={subtotal}
-            shipping={shipping}
-            discount={discount}
-            total={total}
-            totalPoints={totalPoints}
+      <div className="flex-1 p-4 max-w-2xl mx-auto w-full">
+        {cartIsEmpty ? (
+          <EmptyCart />
+        ) : (
+          <CartContent
+            cart={cart}
+            itemsByStore={itemsByStore}
+            processingItem={processingItem}
+            appliedCoupon={appliedCoupon}
+            onUpdateQuantity={handleUpdateQuantity}
+            onRemoveItem={handleRemoveItem}
+            onApplyCoupon={applyCoupon}
+            onRemoveCoupon={removeCoupon}
           />
-        </>
+        )}
+      </div>
+      
+      {!cartIsEmpty && (
+        <CartSummary
+          subtotal={subtotal}
+          shipping={shipping}
+          discount={discount}
+          total={total}
+          totalPoints={totalPoints}
+        />
       )}
     </div>
   );

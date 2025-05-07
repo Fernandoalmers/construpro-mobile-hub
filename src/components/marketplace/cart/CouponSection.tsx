@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X } from 'lucide-react';
+import { Check, Ticket, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -32,17 +32,26 @@ const CouponSection: React.FC<CouponSectionProps> = ({
 
   return (
     <div className="bg-white p-4 rounded-lg shadow-sm mb-4">
-      <h3 className="font-medium text-gray-700 mb-3">Cupom de desconto</h3>
+      <h3 className="font-medium text-gray-700 mb-3 flex items-center">
+        <Ticket size={18} className="mr-2 text-construPro-blue" />
+        Cupom de desconto
+      </h3>
       
       {appliedCoupon ? (
         <div className="flex items-center justify-between bg-green-50 p-3 rounded-md border border-green-200">
-          <div>
-            <p className="font-medium text-green-700">{appliedCoupon.code}</p>
-            <p className="text-sm text-green-600">Desconto de {appliedCoupon.discount}% aplicado</p>
+          <div className="flex items-center">
+            <div className="bg-green-100 w-8 h-8 rounded-full flex items-center justify-center mr-2">
+              <Check size={16} className="text-green-600" />
+            </div>
+            <div>
+              <p className="font-medium text-green-700">{appliedCoupon.code}</p>
+              <p className="text-xs text-green-600">Desconto de {appliedCoupon.discount}% aplicado</p>
+            </div>
           </div>
           <button 
             onClick={onRemoveCoupon}
-            className="text-gray-500 hover:text-red-500 p-1 rounded-full hover:bg-gray-100"
+            className="text-gray-500 hover:text-red-500 p-2 rounded-full hover:bg-gray-100"
+            aria-label="Remover cupom"
           >
             <X size={18} />
           </button>
@@ -58,7 +67,7 @@ const CouponSection: React.FC<CouponSectionProps> = ({
           <Button 
             onClick={handleApply} 
             disabled={!couponCode.trim() || isApplying}
-            className="whitespace-nowrap"
+            className="whitespace-nowrap bg-construPro-blue hover:bg-blue-700"
           >
             {isApplying ? "Aplicando..." : "Aplicar"}
           </Button>

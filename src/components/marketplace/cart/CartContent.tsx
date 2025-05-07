@@ -3,7 +3,7 @@ import React from 'react';
 import { Cart } from '@/types/cart';
 import StoreCartGroup from './StoreCartGroup';
 import CouponSection from './CouponSection';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, ShoppingBag } from 'lucide-react';
 
 interface CartContentProps {
   cart: Cart | null;
@@ -27,19 +27,29 @@ const CartContent: React.FC<CartContentProps> = ({
   onRemoveCoupon
 }) => {
   console.log("[CartContent] Rendering with items by store:", itemsByStore);
-  console.log("[CartContent] Store keys:", Object.keys(itemsByStore));
   
   // Check cart has items
   const hasItems = cart?.items && cart.items.length > 0;
   const hasGroupedItems = Object.keys(itemsByStore).length > 0;
   
-  console.log("[CartContent] Has items:", hasItems, "Has grouped items:", hasGroupedItems);
-
+  const storeCount = Object.keys(itemsByStore).length;
+  
   // If cart has items but they're not grouped, we might have a mapping issue
   const hasMappingIssue = hasItems && !hasGroupedItems;
 
   return (
     <div className="space-y-4">
+      {hasItems && (
+        <div className="bg-white p-3 rounded-lg shadow-sm mb-2">
+          <div className="flex items-center text-gray-700">
+            <ShoppingBag size={16} className="mr-2" />
+            <span className="text-sm font-medium">
+              {cart.items.length} {cart.items.length === 1 ? 'item' : 'itens'} em {storeCount} {storeCount === 1 ? 'loja' : 'lojas'}
+            </span>
+          </div>
+        </div>
+      )}
+      
       {hasGroupedItems ? (
         Object.entries(itemsByStore).map(([storeId, { loja, items }]) => (
           <StoreCartGroup 

@@ -40,25 +40,28 @@ const StoreCartGroup: React.FC<StoreCartGroupProps> = ({
   
   return (
     <div className="mb-6">
-      <div className="flex items-center mb-3 px-4 py-2 bg-gray-50 rounded-lg border border-gray-200">
+      <div className="flex items-center mb-3 px-4 py-3 bg-white rounded-lg border-l-4 border-construPro-blue shadow-sm">
         {store.logo_url ? (
           <img 
             src={store.logo_url} 
             alt={displayName}
-            className="w-8 h-8 rounded-full object-cover mr-2"
+            className="w-10 h-10 rounded-full object-cover mr-3 border border-gray-200"
             onError={(e) => {
-              (e.target as HTMLImageElement).src = 'https://via.placeholder.com/30';
+              (e.target as HTMLImageElement).src = 'https://via.placeholder.com/40';
             }}
           />
         ) : (
-          <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center mr-2">
-            <Building size={16} className="text-gray-500" />
+          <div className="w-10 h-10 bg-construPro-blue rounded-full flex items-center justify-center mr-3">
+            <Building size={18} className="text-white" />
           </div>
         )}
-        <h2 className="font-bold text-md text-gray-700">{displayName}</h2>
+        <div>
+          <h2 className="font-bold text-md text-gray-800">{displayName}</h2>
+          <p className="text-xs text-gray-500">{items.length} {items.length === 1 ? 'produto' : 'produtos'}</p>
+        </div>
       </div>
       
-      <Card className="divide-y divide-gray-100 shadow-sm rounded-xl">
+      <Card className="divide-y divide-gray-100 shadow-md rounded-xl overflow-hidden">
         {items.map(item => (
           <CartItem 
             key={item.id} 
