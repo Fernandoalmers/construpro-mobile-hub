@@ -22,7 +22,7 @@ const CartSummary: React.FC<CartSummaryProps> = ({
   const navigate = useNavigate();
 
   return (
-    <div className="bg-white shadow-lg rounded-t-xl fixed left-0 right-0 bottom-0 border-t border-gray-200 z-10">
+    <div className="bg-white shadow-lg rounded-t-xl fixed left-0 right-0 bottom-0 border-t border-gray-200 z-20 pb-16 md:pb-4">
       <div className="max-w-md mx-auto py-4 px-6">
         <div className="space-y-2 mb-4">
           <div className="flex justify-between text-sm">
@@ -33,7 +33,7 @@ const CartSummary: React.FC<CartSummaryProps> = ({
           <div className="flex justify-between text-sm">
             <span className="text-gray-600">Frete</span>
             <span className="font-medium text-amber-600">
-              A calcular
+              {shipping > 0 ? `R$ ${shipping.toFixed(2)}` : 'A calcular'}
             </span>
           </div>
           
@@ -59,7 +59,7 @@ const CartSummary: React.FC<CartSummaryProps> = ({
         
         <Button 
           onClick={() => navigate('/checkout')}
-          className="w-full h-14 py-4 text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors flex items-center justify-center gap-2"
+          className="w-full h-14 py-4 text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md"
         >
           <span className="text-lg font-medium">Finalizar Compra</span>
           <ArrowRight size={20} />

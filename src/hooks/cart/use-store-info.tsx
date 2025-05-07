@@ -16,9 +16,10 @@ export const useStoreInfo = (storeIds: string[]) => {
     try {
       // Create initial store map with consistent defaults
       const initialStoreMap = storeIds.reduce((acc, id) => {
+        // Use more stable store name format to prevent flickering
         acc[id] = {
           id: id,
-          nome: `Loja ${id.substring(0, 4)}...`,
+          nome: `Loja ${id.substring(0, 8)}`,
           logo_url: null
         };
         return acc;
@@ -88,7 +89,7 @@ export const useStoreInfo = (storeIds: string[]) => {
       console.error("Error fetching store info:", err);
       // On error, still provide a default map instead of empty state
       const fallbackMap = storeIds.reduce((acc, id) => {
-        acc[id] = { id, nome: `Loja ${id.substring(0, 4)}...`, logo_url: null };
+        acc[id] = { id, nome: `Loja ${id.substring(0, 8)}`, logo_url: null };
         return acc;
       }, {} as Record<string, any>);
       setStoreInfo(fallbackMap);

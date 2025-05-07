@@ -99,7 +99,7 @@ const CartItem: React.FC<CartItemProps> = ({
       </div>
       
       <div className="flex-1">
-        <h3 className="font-medium text-base line-clamp-2">{productName}</h3>
+        <h3 className="font-medium text-base line-clamp-2 mb-1">{productName}</h3>
         <div className="flex flex-col md:flex-row md:justify-between mt-2 gap-3">
           <div>
             <p className="text-green-600 font-bold text-lg">
@@ -115,16 +115,7 @@ const CartItem: React.FC<CartItemProps> = ({
             )}
           </div>
           
-          <div className="flex flex-col items-start md:items-end">
-            <button 
-              onClick={handleRemove} 
-              className="text-red-500 mb-2 p-1 hover:bg-red-50 rounded-full transition-colors"
-              disabled={isDisabled}
-              aria-label="Remover item"
-            >
-              <Trash2 size={18} />
-            </button>
-            
+          <div className="flex flex-row md:flex-col items-center md:items-end justify-between w-full md:w-auto">
             <div className="flex items-center border border-gray-300 rounded-md bg-white">
               <button
                 onClick={handleDecreaseQuantity}
@@ -156,17 +147,27 @@ const CartItem: React.FC<CartItemProps> = ({
                 <Plus size={14} />
               </button>
             </div>
-            {maxStock > 0 && quantity < maxStock && (
-              <span className="text-xs text-gray-500 mt-1">
-                Disponível: {maxStock}
-              </span>
-            )}
-            {quantity >= maxStock && (
-              <span className="text-xs text-yellow-600 mt-1 font-medium">
-                Estoque máximo
-              </span>
-            )}
+            
+            <button 
+              onClick={handleRemove} 
+              className="text-red-500 p-2 hover:bg-red-50 rounded-full transition-colors"
+              disabled={isDisabled}
+              aria-label="Remover item"
+            >
+              <Trash2 size={18} />
+            </button>
           </div>
+        </div>
+        
+        <div className="text-xs text-gray-500 mt-1">
+          {maxStock > 0 && quantity < maxStock && (
+            <span>Disponível: {maxStock}</span>
+          )}
+          {quantity >= maxStock && (
+            <span className="text-yellow-600 font-medium">
+              Estoque máximo
+            </span>
+          )}
         </div>
       </div>
     </div>

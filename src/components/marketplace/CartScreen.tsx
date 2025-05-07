@@ -56,7 +56,7 @@ const CartScreen: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50 pb-36">
+    <div className="flex flex-col min-h-screen bg-gray-50 pb-48">
       <CartHeader />
 
       <div className="flex-1 p-4 max-w-2xl mx-auto w-full">
