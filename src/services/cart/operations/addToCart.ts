@@ -106,7 +106,6 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
       // If there are invalid items, warn the user but don't prevent the operation
       if (invalidItems.length > 0) {
         console.warn(`Found ${invalidItems.length} items with stock issues`);
-        // We could add a toast here if desired
       }
     }
     

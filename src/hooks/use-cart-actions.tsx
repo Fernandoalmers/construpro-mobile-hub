@@ -128,10 +128,11 @@ export function useCartActions() {
         
       let result;
       if (existingItem) {
-        // Update quantity
+        // Update quantity - IMPORTANT: ADD to existing quantity, not replace
+        const newQuantity = existingItem.quantity + quantity;
         const { data, error: updateError } = await supabase
           .from('cart_items')
-          .update({ quantity: existingItem.quantity + quantity })
+          .update({ quantity: newQuantity })
           .eq('id', existingItem.id)
           .select('*');
           

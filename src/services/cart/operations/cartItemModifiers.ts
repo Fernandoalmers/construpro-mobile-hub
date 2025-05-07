@@ -30,6 +30,16 @@ export const addNewCartItem = async (cartId: string, productId: string, quantity
   try {
     console.log('[cartItemModifiers] Adding new cart item:', { cartId, productId, quantity, price });
     
+    // First check if the item already exists
+    const { item: existingItem } = await findExistingCartItem(cartId, productId);
+    
+    if (existingItem) {
+      // If item exists, update its quantity instead of inserting
+      console.log('[cartItemModifiers] Item already exists, updating quantity');
+      return updateExistingCartItem(existingItem.id, existingItem.quantity + quantity);
+    }
+    
+    // Item doesn't exist, insert a new one
     const { data, error } = await supabase
       .from('cart_items')
       .insert({

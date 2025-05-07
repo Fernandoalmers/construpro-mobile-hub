@@ -22,7 +22,7 @@ const CartSummary: React.FC<CartSummaryProps> = ({
   const navigate = useNavigate();
 
   return (
-    <div className="bg-white shadow-lg rounded-t-xl fixed left-0 right-0 bottom-0 border-t border-gray-200 z-20 pb-16 md:pb-4">
+    <div className="bg-white shadow-lg rounded-t-xl fixed left-0 right-0 bottom-0 border-t border-gray-200 z-40 pb-20 md:pb-4">
       <div className="max-w-md mx-auto py-4 px-6">
         <div className="space-y-2 mb-4">
           <div className="flex justify-between text-sm">

@@ -16,14 +16,18 @@ export const useStoreInfo = (storeIds: string[]) => {
     try {
       // Create initial store map with consistent defaults
       const initialStoreMap = storeIds.reduce((acc, id) => {
+        if (!id) return acc; // Skip null/undefined ids
+        
         // Use more stable store name format to prevent flickering
         acc[id] = {
           id: id,
-          nome: `Loja ${id.substring(0, 8)}`,
+          nome: `Loja ${id.substring(0, 4)}`, // Shorter initial name
           logo_url: null
         };
         return acc;
       }, {} as Record<string, any>);
+      
+      setStoreInfo(initialStoreMap); // Set initial values immediately to prevent flickering
       
       // Try to get data from vendedores table first (preferred)
       const { data: vendedoresData, error: vendedoresError } = await supabase
@@ -80,19 +84,19 @@ export const useStoreInfo = (storeIds: string[]) => {
           // Set final store info
           setStoreInfo(updatedMap);
           console.log("Store info updated with stores data:", updatedMap);
-        } else {
-          // If no data from either source, still use our initial placeholders
-          setStoreInfo(initialStoreMap);
         }
       }
     } catch (err) {
       console.error("Error fetching store info:", err);
-      // On error, still provide a default map instead of empty state
-      const fallbackMap = storeIds.reduce((acc, id) => {
-        acc[id] = { id, nome: `Loja ${id.substring(0, 8)}`, logo_url: null };
-        return acc;
-      }, {} as Record<string, any>);
-      setStoreInfo(fallbackMap);
+      // On error, still ensure we have at least placeholders
+      if (Object.keys(storeInfo).length === 0) {
+        const fallbackMap = storeIds.reduce((acc, id) => {
+          if (!id) return acc;
+          acc[id] = { id, nome: `Loja ${id.substring(0, 4)}`, logo_url: null };
+          return acc;
+        }, {} as Record<string, any>);
+        setStoreInfo(fallbackMap);
+      }
     } finally {
       setLoading(false);
     }
