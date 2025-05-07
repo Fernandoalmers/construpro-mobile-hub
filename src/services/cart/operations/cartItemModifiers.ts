@@ -30,16 +30,8 @@ export const addNewCartItem = async (cartId: string, productId: string, quantity
   try {
     console.log('[cartItemModifiers] Adding new cart item:', { cartId, productId, quantity, price });
     
-    // First check if the item already exists
-    const { item: existingItem } = await findExistingCartItem(cartId, productId);
-    
-    if (existingItem) {
-      // If item exists, update its quantity instead of inserting
-      console.log('[cartItemModifiers] Item already exists, updating quantity');
-      return updateExistingCartItem(existingItem.id, existingItem.quantity + quantity);
-    }
-    
-    // Item doesn't exist, insert a new one
+    // MODIFIED: Removed the check for existing items
+    // Always insert as a new item
     const { data, error } = await supabase
       .from('cart_items')
       .insert({
@@ -75,16 +67,6 @@ export const addNewCartItem = async (cartId: string, productId: string, quantity
       
       return { success: false, error };
     }
-
-    // Verify insert succeeded by querying the item back
-    const { data: verifyData, error: verifyError } = await supabase
-      .from('cart_items')
-      .select('*')
-      .eq('cart_id', cartId)
-      .eq('product_id', productId)
-      .single();
-      
-    console.log('[cartItemModifiers] Verification:', { verifyData, verifyError });
 
     return { success: true, data };
   } catch (error) {

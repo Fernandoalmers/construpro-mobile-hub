@@ -87,55 +87,23 @@ export function useCartAdd(refreshCartData: () => Promise<void>) {
       
       const price = product.preco_promocional || product.preco_normal;
       
-      // Check if product exists in cart
-      const { data: existingItem, error: existingItemError } = await supabase
+      // MODIFIED: Always add as a new item without checking if it exists
+      console.log('[useCartAdd] Adding new item to cart');
+      const { error: insertError } = await supabase
         .from('cart_items')
-        .select('id, quantity')
-        .eq('cart_id', cartData.id)
-        .eq('product_id', productId)
-        .maybeSingle();
-      
-      console.log('[useCartAdd] Checking existing item:', existingItem);
+        .insert({
+          cart_id: cartData.id,
+          product_id: productId,
+          quantity: quantity,
+          price_at_add: price
+        });
         
-      if (existingItem) {
-        // Check if new quantity exceeds stock
-        if (existingItem.quantity + quantity > product.estoque) {
-          console.warn('[useCartAdd] Total quantity would exceed stock');
-          throw new Error(`A quantidade total excederia o estoque disponível (${product.estoque})`);
-        }
-        
-        // Update quantity
-        console.log('[useCartAdd] Updating existing item quantity');
-        const { error: updateError } = await supabase
-          .from('cart_items')
-          .update({ quantity: existingItem.quantity + quantity })
-          .eq('id', existingItem.id);
-          
-        if (updateError) {
-          console.error('[useCartAdd] Error updating quantity:', updateError);
-          throw updateError;
-        }
-        
-        console.log('[useCartAdd] Item quantity updated successfully');
-      } else {
-        // Insert new item
-        console.log('[useCartAdd] Adding new item to cart');
-        const { error: insertError } = await supabase
-          .from('cart_items')
-          .insert({
-            cart_id: cartData.id,
-            product_id: productId,
-            quantity: quantity,
-            price_at_add: price
-          });
-          
-        if (insertError) {
-          console.error('[useCartAdd] Error adding item:', insertError);
-          throw insertError;
-        }
-        
-        console.log('[useCartAdd] New item added to cart successfully');
+      if (insertError) {
+        console.error('[useCartAdd] Error adding item:', insertError);
+        throw insertError;
       }
+      
+      console.log('[useCartAdd] New item added to cart successfully');
 
       // Refresh cart data to update UI
       await refreshCartData();

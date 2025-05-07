@@ -3,7 +3,7 @@ import React from 'react';
 import Card from '@/components/common/Card';
 import { CartItem as CartItemType } from '@/types/cart';
 import CartItem from './CartItem';
-import { Building, ShoppingBag } from 'lucide-react';
+import { Building } from 'lucide-react';
 
 interface StoreInfo {
   id: string;
@@ -27,12 +27,23 @@ const StoreCartGroup: React.FC<StoreCartGroupProps> = ({
   processingItem
 }) => {
   // Safety check for items and store
-  if (!items || items.length === 0 || !store?.id) {
-    console.log('[StoreCartGroup] No items or invalid store, not rendering');
+  if (!items || items.length === 0) {
+    console.log('[StoreCartGroup] No items, not rendering');
     return null;
   }
+  
+  if (!store?.id) {
+    console.log('[StoreCartGroup] Invalid store, not rendering');
+    return (
+      <div className="mb-6">
+        <div className="p-4 bg-gray-100 rounded-lg">
+          <p className="text-gray-500 text-center">Carregando informações da loja...</p>
+        </div>
+      </div>
+    );
+  }
 
-  // Calculate store subtotal
+  // Calculate store subtotal - with safety check
   const storeSubtotal = items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
   
   // Format store name consistently to avoid flickering - use store.nome 

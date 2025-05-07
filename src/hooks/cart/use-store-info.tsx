@@ -1,22 +1,36 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/sonner';
 
 export const useStoreInfo = (storeIds: string[]) => {
   const [storeInfo, setStoreInfo] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   // Use memoized function to avoid recreating it on every render
   const fetchStoreInfo = useCallback(async () => {
-    if (!storeIds || storeIds.length === 0) return;
+    if (!storeIds || storeIds.length === 0) {
+      setStoreInfo({});
+      setLoading(false);
+      return;
+    }
+    
+    // Filter out any null/undefined IDs
+    const validStoreIds = storeIds.filter(id => id);
+    
+    if (validStoreIds.length === 0) {
+      setStoreInfo({});
+      setLoading(false);
+      return;
+    }
     
     setLoading(true);
-    console.log("Fetching store info for:", storeIds);
+    setError(null);
+    console.log("Fetching store info for:", validStoreIds);
     
     try {
       // Create initial store map with consistent defaults
-      const initialStoreMap = storeIds.reduce((acc, id) => {
+      const initialStoreMap = validStoreIds.reduce((acc, id) => {
         if (!id) return acc; // Skip null/undefined ids
         
         // Use more stable store name format to prevent flickering
@@ -35,11 +49,11 @@ export const useStoreInfo = (storeIds: string[]) => {
         const { data: vendedoresData, error: vendedoresError } = await supabase
           .from('vendedores')
           .select('id, nome_loja, logo')
-          .in('id', storeIds);
+          .in('id', validStoreIds);
               
         if (vendedoresError) {
           console.error("Error fetching vendedores:", vendedoresError);
-          // Don't throw - continue with initialStoreMap
+          // Don't throw - continue with initialStoreMap and try stores table
         }
         
         // If we got data from vendedores, use that to update our base map
@@ -58,53 +72,48 @@ export const useStoreInfo = (storeIds: string[]) => {
           
           setStoreInfo(updatedMap);
           console.log("Store info updated with vendedores data:", updatedMap);
-          setLoading(false);
-          return; // Early return to avoid flickering
         }
       } catch (err) {
         console.log("Failed to fetch vendedores data, continuing with fallback:", err);
         // Continue with stores table fallback
       }
       
-      // Fallback to stores table for any remaining stores without info
+      // Try stores table for any remaining stores without info
       try {
-        const remainingIds = Object.keys(initialStoreMap);
-        
-        if (remainingIds.length > 0) {
-          const { data: storesData, error: storesError } = await supabase
-            .from('stores')
-            .select('id, nome, logo_url')
-            .in('id', remainingIds);
+        const { data: storesData, error: storesError } = await supabase
+          .from('stores')
+          .select('id, nome, logo_url')
+          .in('id', validStoreIds);
             
-          if (storesError) {
-            console.error("Error fetching stores:", storesError);
-            // Use initialStoreMap as fallback
-          }
+        if (storesError) {
+          console.error("Error fetching stores:", storesError);
+          // Use initialStoreMap as fallback
+        }
             
-          if (storesData && storesData.length > 0) {
-            const updatedMap = {...initialStoreMap};
-            
-            storesData.forEach(store => {
-              if (store.id && updatedMap[store.id]) {
-                updatedMap[store.id] = {
-                  ...updatedMap[store.id],
-                  nome: store.nome || updatedMap[store.id].nome,
-                  logo_url: store.logo_url || updatedMap[store.id].logo_url
-                };
-              }
-            });
-            
-            // Set final store info
-            setStoreInfo(updatedMap);
-            console.log("Store info updated with stores data:", updatedMap);
-          }
+        if (storesData && storesData.length > 0) {
+          const updatedMap = {...storeInfo}; // Use the current state which might already have vendedores data
+          
+          storesData.forEach(store => {
+            if (store.id && updatedMap[store.id]) {
+              updatedMap[store.id] = {
+                ...updatedMap[store.id],
+                nome: store.nome || updatedMap[store.id].nome,
+                logo_url: store.logo_url || updatedMap[store.id].logo_url
+              };
+            }
+          });
+          
+          // Set final store info
+          setStoreInfo(updatedMap);
+          console.log("Store info updated with stores data:", updatedMap);
         }
       } catch (err) {
         console.log("Failed to fetch stores data, using initial map:", err);
+        setError("Erro ao carregar informações das lojas");
       }
     } catch (err) {
       console.error("Error in store info processing:", err);
-      // Ensure we still have the initial placeholder data
+      setError("Erro ao processar informações das lojas");
     } finally {
       setLoading(false);
     }
@@ -116,8 +125,9 @@ export const useStoreInfo = (storeIds: string[]) => {
       fetchStoreInfo();
     } else {
       setStoreInfo({});
+      setLoading(false);
     }
   }, [storeIds, fetchStoreInfo]);
 
-  return { storeInfo, loading };
+  return { storeInfo, loading, error, refetch: fetchStoreInfo };
 };
