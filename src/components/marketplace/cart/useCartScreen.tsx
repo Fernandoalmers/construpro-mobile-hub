@@ -5,6 +5,7 @@ import { toast } from '@/components/ui/sonner';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/hooks/use-cart';
 import { CartItem } from '@/types/cart';
+import { supabase } from '@/integrations/supabase/client';
 
 export const useCartScreen = () => {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ export const useCartScreen = () => {
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<{code: string, discount: number} | null>(null);
   const [processingItem, setProcessingItem] = useState<string | null>(null);
+  const [storeInfo, setStoreInfo] = useState<Record<string, any>>({});
 
   // Fetch cart data when component mounts or auth state changes
   useEffect(() => {
@@ -49,6 +51,47 @@ export const useCartScreen = () => {
     
     return () => clearInterval(intervalId);
   }, [isAuthenticated, navigate, refreshCart]);
+
+  // Fetch store information when cart changes
+  useEffect(() => {
+    const fetchStoreInfo = async () => {
+      // Extract unique store IDs from cart items
+      const storeIds = cart?.items
+        ?.map(item => item.produto?.loja_id)
+        .filter((id): id is string => !!id)
+        .filter((value, index, self) => self.indexOf(value) === index);
+        
+      if (!storeIds || storeIds.length === 0) return;
+      
+      console.log("Fetching store info for:", storeIds);
+      
+      try {
+        const { data, error } = await supabase
+          .from('stores')
+          .select('id, nome, logo_url')
+          .in('id', storeIds);
+          
+        if (error) throw error;
+        
+        if (data) {
+          // Create a lookup map of store info
+          const storeMap = data.reduce((acc, store) => {
+            acc[store.id] = store;
+            return acc;
+          }, {} as Record<string, any>);
+          
+          setStoreInfo(storeMap);
+          console.log("Store info fetched:", storeMap);
+        }
+      } catch (err) {
+        console.error("Error fetching store info:", err);
+      }
+    };
+    
+    if (cart?.items?.length) {
+      fetchStoreInfo();
+    }
+  }, [cart]);
 
   // Add debugging logs
   useEffect(() => {
@@ -172,15 +215,15 @@ export const useCartScreen = () => {
     
     // Create or update store group
     if (!groups[storeId]) {
-      // Find store info in cart.stores
-      const store = cart?.stores?.find(s => s.id === storeId);
+      // Get store info from our fetched storeInfo object
+      const store = storeInfo[storeId] || { 
+        id: storeId, 
+        nome: `Loja ${storeId.substring(0, 8)}`,
+        logo_url: null 
+      };
       
       groups[storeId] = {
-        loja: store || { 
-          id: storeId, 
-          nome: `Loja ${storeId.substring(0, 8)}`,
-          logo_url: null 
-        },
+        loja: store,
         items: []
       };
     }
@@ -192,10 +235,15 @@ export const useCartScreen = () => {
   
   console.log("CartScreen: Grouped items by store:", Object.keys(itemsByStore).length);
 
-  // Calculate totals
+  // Calculate totals with dynamic shipping
   const subtotal = cart?.summary.subtotal || 0;
   const discount = appliedCoupon ? (subtotal * appliedCoupon.discount / 100) : 0;
-  const shipping = cart?.summary.shipping || 0;
+  
+  // Calculate shipping based on number of stores
+  const storeCount = Object.keys(itemsByStore).length;
+  const baseShipping = 15.90;
+  const shipping = subtotal > 0 ? (storeCount > 1 ? baseShipping * storeCount : baseShipping) : 0;
+  
   const total = subtotal + shipping - discount;
   const totalPoints = cart?.summary.totalPoints || 
                      Math.floor(total) * 2; // Calculate points based on total if not provided

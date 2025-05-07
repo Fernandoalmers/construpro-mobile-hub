@@ -3,7 +3,7 @@ import React from 'react';
 import Card from '@/components/common/Card';
 import { CartItem as CartItemType } from '@/types/cart';
 import CartItem from './CartItem';
-import { Tag } from 'lucide-react';
+import { Building, ShoppingBag } from 'lucide-react';
 
 interface StoreInfo {
   id: string;
@@ -35,13 +35,18 @@ const StoreCartGroup: React.FC<StoreCartGroupProps> = ({
   // Calculate store subtotal
   const storeSubtotal = items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
   
+  // Format store name to be more user-friendly
+  const displayName = store.nome && store.nome !== `Loja ${store.id.substring(0, 8)}` 
+    ? store.nome 
+    : `Loja ${store.id.substring(0, 4)}`;
+  
   return (
     <div className="mb-6">
-      <div className="flex items-center mb-3 ml-2">
+      <div className="flex items-center mb-3 px-2 py-1 bg-gray-50 rounded-lg border border-gray-200">
         {store.logo_url ? (
           <img 
             src={store.logo_url} 
-            alt={store.nome || 'Loja'} 
+            alt={displayName}
             className="w-8 h-8 rounded-full object-cover mr-2"
             onError={(e) => {
               (e.target as HTMLImageElement).src = 'https://via.placeholder.com/30';
@@ -49,10 +54,10 @@ const StoreCartGroup: React.FC<StoreCartGroupProps> = ({
           />
         ) : (
           <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center mr-2">
-            <Tag size={16} className="text-gray-500" />
+            <Building size={16} className="text-gray-500" />
           </div>
         )}
-        <h2 className="font-bold text-xl">{store.nome || `Loja ${store.id.substring(0, 8)}`}</h2>
+        <h2 className="font-bold text-md text-gray-700">{displayName}</h2>
       </div>
       
       <Card className="divide-y divide-gray-100 shadow-sm">

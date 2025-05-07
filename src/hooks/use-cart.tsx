@@ -9,8 +9,11 @@ import { supabase } from '@/integrations/supabase/client';
 
 export async function addToCart(productId: string, quantity: number): Promise<void> {
   try {
+    console.log(`[addToCart] Adding ${quantity} of product ${productId} to cart`);
+    
     const { data: userData } = await supabase.auth.getUser();
     if (!userData?.user) {
+      console.error('[addToCart] User not authenticated');
       throw new Error('User not authenticated');
     }
     
@@ -25,6 +28,7 @@ export async function addToCart(productId: string, quantity: number): Promise<vo
     if (cartError) {
       if (cartError.code === 'PGRST116') {
         // No active cart found, create one
+        console.log('[addToCart] No active cart found, creating new one');
         const { data: newCart, error: createError } = await supabase
           .from('carts')
           .insert({
@@ -35,14 +39,18 @@ export async function addToCart(productId: string, quantity: number): Promise<vo
           .single();
 
         if (createError) {
+          console.error('[addToCart] Error creating cart:', createError);
           throw createError;
         }
 
         cartData = newCart;
       } else {
+        console.error('[addToCart] Error fetching cart:', cartError);
         throw cartError;
       }
     }
+    
+    console.log(`[addToCart] Using cart: ${cartData.id}`);
     
     // Check if product exists in cart
     const { data: existingItem, error: existingItemError } = await supabase
@@ -52,6 +60,11 @@ export async function addToCart(productId: string, quantity: number): Promise<vo
       .eq('product_id', productId)
       .maybeSingle();
       
+    if (existingItemError) {
+      console.error('[addToCart] Error checking existing items:', existingItemError);
+      throw existingItemError;
+    }
+      
     // Get product price 
     const { data: product, error: productError } = await supabase
       .from('produtos')
@@ -60,23 +73,28 @@ export async function addToCart(productId: string, quantity: number): Promise<vo
       .single();
       
     if (productError) {
+      console.error('[addToCart] Error fetching product:', productError);
       throw productError;
     }
     
     const price = product.preco_promocional || product.preco_normal;
     
     if (existingItem) {
-      // Update quantity
+      // Update quantity - ADD to existing instead of replacing
+      console.log(`[addToCart] Item exists in cart, updating quantity from ${existingItem.quantity} to ${existingItem.quantity + quantity}`);
+      
       const { error: updateError } = await supabase
         .from('cart_items')
         .update({ quantity: existingItem.quantity + quantity })
         .eq('id', existingItem.id);
         
       if (updateError) {
+        console.error('[addToCart] Error updating quantity:', updateError);
         throw updateError;
       }
     } else {
       // Insert new item
+      console.log(`[addToCart] Adding new item to cart`);
       const { error: insertError } = await supabase
         .from('cart_items')
         .insert({
@@ -87,9 +105,12 @@ export async function addToCart(productId: string, quantity: number): Promise<vo
         });
         
       if (insertError) {
+        console.error('[addToCart] Error inserting item:', insertError);
         throw insertError;
       }
     }
+    
+    console.log('[addToCart] Successfully added/updated cart item');
   } catch (error) {
     console.error('Error adding to cart:', error);
     throw error;

@@ -45,13 +45,14 @@ const CartItem: React.FC<CartItemProps> = ({
   const subtotal = price * quantity;
   const isDisabled = processingItem === item.id;
   const maxStock = item.produto?.estoque || 0;
+  const productName = item.produto?.nome || 'Produto sem nome';
 
   return (
-    <div className="p-4 flex gap-4">
+    <div className="p-4 flex gap-4 hover:bg-gray-50 transition-colors">
       <div className="w-20 h-20 bg-gray-100 rounded-md overflow-hidden flex items-center justify-center">
         <img 
           src={imageUrl} 
-          alt={item.produto?.nome || 'Produto'} 
+          alt={productName}
           className={cn(
             "w-full h-full object-cover",
             typeof imageUrl !== 'string' && "hidden" // Hide if not a string
@@ -64,8 +65,8 @@ const CartItem: React.FC<CartItemProps> = ({
       </div>
       
       <div className="flex-1">
-        <h3 className="font-medium text-lg">{item.produto?.nome || 'Produto sem nome'}</h3>
-        <div className="flex justify-between mt-2">
+        <h3 className="font-medium text-lg">{productName}</h3>
+        <div className="flex flex-col md:flex-row md:justify-between mt-2 gap-3">
           <div>
             <p className="text-construPro-blue font-bold text-lg">
               R$ {subtotal.toFixed(2)}
@@ -74,13 +75,13 @@ const CartItem: React.FC<CartItemProps> = ({
               {quantity} x R$ {price.toFixed(2)}
             </p>
             {item.produto?.pontos > 0 && (
-              <div className="bg-orange-100 text-orange-500 text-sm rounded-full px-3 py-0.5 inline-block mt-1">
+              <div className="bg-orange-100 text-orange-500 text-xs rounded-full px-3 py-0.5 inline-block mt-1">
                 {item.produto.pontos * quantity} pontos
               </div>
             )}
           </div>
           
-          <div className="flex flex-col items-end">
+          <div className="flex flex-col items-start md:items-end">
             <button 
               onClick={() => onRemoveItem(item.id)} 
               className="text-red-500 mb-2 p-1 hover:bg-red-50 rounded-full transition-colors"
@@ -94,27 +95,27 @@ const CartItem: React.FC<CartItemProps> = ({
               <button
                 onClick={() => onUpdateQuantity(item, quantity - 1)}
                 className={cn(
-                  "w-10 h-10 flex items-center justify-center",
+                  "w-8 h-8 flex items-center justify-center",
                   quantity <= 1 ? "text-gray-300" : "text-gray-600 hover:bg-gray-100"
                 )}
                 disabled={isDisabled || quantity <= 1}
                 aria-label="Diminuir quantidade"
               >
-                <Minus size={16} />
+                <Minus size={14} />
               </button>
-              <span className="w-10 text-center text-lg">
+              <span className="w-8 text-center text-md">
                 {isDisabled ? "..." : quantity}
               </span>
               <button
                 onClick={() => onUpdateQuantity(item, quantity + 1)}
                 className={cn(
-                  "w-10 h-10 flex items-center justify-center",
+                  "w-8 h-8 flex items-center justify-center",
                   quantity >= maxStock ? "text-gray-300" : "text-gray-600 hover:bg-gray-100"
                 )}
                 disabled={isDisabled || quantity >= maxStock}
                 aria-label="Aumentar quantidade"
               >
-                <Plus size={16} />
+                <Plus size={14} />
               </button>
             </div>
             {maxStock > 0 && quantity < maxStock && (
