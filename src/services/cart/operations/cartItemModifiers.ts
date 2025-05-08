@@ -33,7 +33,7 @@ export const addOrUpdateCartItem = async (cartId: string, productId: string, qua
     // First check if item already exists
     const { item: existingItem, error: findError } = await findExistingCartItem(cartId, productId);
     
-    if (findError) {
+    if (findError && findError.code !== 'PGRST116') {
       console.error('[cartItemModifiers] Error checking for existing item:', findError);
       return { success: false, error: findError };
     }
@@ -96,6 +96,16 @@ export const addNewCartItem = async (cartId: string, productId: string, quantity
       
       return { success: false, error };
     }
+
+    // Verify insert succeeded by querying the item back
+    const { data: verifyData, error: verifyError } = await supabase
+      .from('cart_items')
+      .select('*')
+      .eq('cart_id', cartId)
+      .eq('product_id', productId)
+      .single();
+      
+    console.log('[cartItemModifiers] Verification:', { verifyData, verifyError });
 
     return { success: true, data };
   } catch (error) {

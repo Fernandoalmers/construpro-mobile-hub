@@ -98,7 +98,7 @@ export function useCartActions() {
         console.log('[useCartActions] Using existing cart:', cartData.id);
       }
       
-      // Get product price 
+      // Get product price and check stock
       const { data: product, error: productError } = await supabase
         .from('produtos')
         .select('preco_normal, preco_promocional, estoque')
@@ -130,6 +130,12 @@ export function useCartActions() {
       if (existingItem) {
         // Update quantity - IMPORTANT: ADD to existing quantity, not replace
         const newQuantity = existingItem.quantity + quantity;
+        
+        // Verify updated quantity doesn't exceed stock
+        if (newQuantity > product.estoque) {
+          throw new Error(`Quantidade total excederia o estoque disponível (${product.estoque})`);
+        }
+        
         const { data, error: updateError } = await supabase
           .from('cart_items')
           .update({ quantity: newQuantity })
@@ -143,7 +149,13 @@ export function useCartActions() {
         
         result = { data, error: null };
         console.log('[useCartActions] Updated existing cart item:', data);
+        toast.success(`Quantidade atualizada para ${newQuantity}`);
       } else {
+        // Check if there's enough stock for the requested quantity
+        if (quantity > product.estoque) {
+          throw new Error(`Estoque insuficiente (disponível: ${product.estoque})`);
+        }
+      
         // Insert new item
         const { data, error: insertError } = await supabase
           .from('cart_items')
@@ -162,6 +174,7 @@ export function useCartActions() {
         
         result = { data, error: null };
         console.log('[useCartActions] Inserted new cart item:', data);
+        toast.success('Produto adicionado ao carrinho');
       }
       
       console.log('[CART UPSERT]', result);
@@ -179,7 +192,6 @@ export function useCartActions() {
       console.log('[useCartActions] Product added to cart, refreshing cart data');
       await refreshCart();
       
-      toast.success(`${quantity} unidade(s) adicionada(s) ao carrinho`);
       return true;
     } catch (error: any) {
       console.error('[useCartActions] Error adding to cart:', error);

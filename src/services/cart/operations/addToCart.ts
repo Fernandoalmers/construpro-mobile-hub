@@ -4,7 +4,7 @@ import { Cart } from "@/types/cart";
 import { getCart } from "../cartFetcher";
 import { ensureSingleActiveCart } from "../cartConsolidation";
 import { checkProductStock, checkTotalStockAvailability } from "./stockChecker";
-import { addOrUpdateCartItem } from "./cartItemModifiers";
+import { findExistingCartItem, addOrUpdateCartItem } from "./cartItemModifiers";
 import { toast } from "@/components/ui/sonner";
 
 /**
@@ -59,17 +59,19 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
         console.log('[addToCart] Product price:', productPrice);
         
         // Check if the item already exists in the cart and get current quantity
-        const { data: existingItems } = await supabase
-          .from('cart_items')
-          .select('id, quantity')
-          .eq('cart_id', cartId)
-          .eq('product_id', productId);
-          
-        const existingItem = existingItems && existingItems.length > 0 ? existingItems[0] : null;
+        const { item: existingItem, error: findError } = await findExistingCartItem(cartId, productId);
         
+        if (findError && findError.code !== 'PGRST116') {
+          console.error('[addToCart] Error finding existing item:', findError);
+          throw findError;
+        }
+        
+        let totalQuantity = quantity;
         if (existingItem) {
+          totalQuantity = existingItem.quantity + quantity;
+          console.log('[addToCart] Item exists, new total quantity will be:', totalQuantity);
+          
           // Check if total quantity would exceed stock
-          const totalQuantity = existingItem.quantity + quantity;
           if (totalQuantity > product.estoque) {
             throw new Error(`Quantidade total excederia o estoque disponível (${product.estoque})`);
           }

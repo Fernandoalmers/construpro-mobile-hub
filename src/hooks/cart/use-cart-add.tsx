@@ -65,7 +65,7 @@ export function useCartAdd(refreshCartData: () => Promise<void>) {
         console.log('[useCartAdd] Existing cart found:', cartData.id);
       }
       
-      // Get product price 
+      // Get product price and stock
       const { data: product, error: productError } = await supabase
         .from('produtos')
         .select('preco_normal, preco_promocional, estoque')
@@ -101,7 +101,7 @@ export function useCartAdd(refreshCartData: () => Promise<void>) {
       }
       
       if (existingItem) {
-        // Update existing item quantity
+        // Update existing item by ADDING the new quantity
         const newQuantity = existingItem.quantity + quantity;
         
         // Check if new quantity exceeds stock
@@ -122,6 +122,7 @@ export function useCartAdd(refreshCartData: () => Promise<void>) {
         }
         
         console.log('[useCartAdd] Existing item quantity updated successfully');
+        toast.success(`Quantidade atualizada para ${newQuantity}`);
       } else {
         // Add new item
         console.log('[useCartAdd] Adding new item to cart');
@@ -140,11 +141,11 @@ export function useCartAdd(refreshCartData: () => Promise<void>) {
         }
         
         console.log('[useCartAdd] New item added to cart successfully');
+        toast.success('Produto adicionado ao carrinho com sucesso');
       }
 
       // Refresh cart data to update UI
       await refreshCartData();
-      toast.success('Produto adicionado ao carrinho com sucesso');
       
     } catch (error: any) {
       console.error('[useCartAdd] erro ao adicionar ao carrinho', error);

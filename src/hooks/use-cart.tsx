@@ -6,6 +6,7 @@ import { useCartData } from './cart/use-cart-data';
 import { useCartOperations } from './cart/use-cart-operations';
 import { CartContextType } from '@/types/cart';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/sonner';
 
 export async function addToCart(productId: string, quantity: number): Promise<void> {
   try {
@@ -85,7 +86,7 @@ export async function addToCart(productId: string, quantity: number): Promise<vo
     }
     
     if (existingItem) {
-      // Calculate new quantity
+      // Calculate new quantity by ADDING the new amount
       const newQuantity = existingItem.quantity + quantity;
       
       // Check if new quantity exceeds stock
@@ -104,6 +105,8 @@ export async function addToCart(productId: string, quantity: number): Promise<vo
         console.error('[addToCart] Error updating item:', updateError);
         throw updateError;
       }
+      
+      toast.success(`Quantidade atualizada para ${newQuantity}`);
     } else {
       // Add new item
       console.log('[addToCart] Adding new item to cart');
@@ -120,6 +123,8 @@ export async function addToCart(productId: string, quantity: number): Promise<vo
         console.error('[addToCart] Error inserting item:', insertError);
         throw insertError;
       }
+      
+      toast.success('Produto adicionado ao carrinho');
     }
     
     console.log('[addToCart] Successfully added/updated cart item');
