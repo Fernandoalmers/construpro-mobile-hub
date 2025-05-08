@@ -55,13 +55,18 @@ export async function addToCart(productId: string, quantity: number): Promise<vo
     // Get product price 
     const { data: product, error: productError } = await supabase
       .from('produtos')
-      .select('preco_normal, preco_promocional')
+      .select('preco_normal, preco_promocional, estoque')
       .eq('id', productId)
       .single();
       
     if (productError) {
       console.error('[addToCart] Error fetching product:', productError);
       throw productError;
+    }
+
+    // Check if there's enough stock
+    if (product.estoque < quantity) {
+      throw new Error(`Estoque insuficiente (disponível: ${product.estoque})`);
     }
     
     const price = product.preco_promocional || product.preco_normal;
@@ -80,11 +85,19 @@ export async function addToCart(productId: string, quantity: number): Promise<vo
     }
     
     if (existingItem) {
+      // Calculate new quantity
+      const newQuantity = existingItem.quantity + quantity;
+      
+      // Check if new quantity exceeds stock
+      if (newQuantity > product.estoque) {
+        throw new Error(`Quantidade total excederia o estoque disponível (${product.estoque})`);
+      }
+      
       // Update existing item quantity
-      console.log('[addToCart] Item exists, updating quantity from', existingItem.quantity, 'to', existingItem.quantity + quantity);
+      console.log('[addToCart] Item exists, updating quantity from', existingItem.quantity, 'to', newQuantity);
       const { error: updateError } = await supabase
         .from('cart_items')
-        .update({ quantity: existingItem.quantity + quantity })
+        .update({ quantity: newQuantity })
         .eq('id', existingItem.id);
         
       if (updateError) {

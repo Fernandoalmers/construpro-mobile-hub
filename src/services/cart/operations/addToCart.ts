@@ -58,6 +58,23 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
         const productPrice = product.preco_promocional || product.preco_normal;
         console.log('[addToCart] Product price:', productPrice);
         
+        // Check if the item already exists in the cart and get current quantity
+        const { data: existingItems } = await supabase
+          .from('cart_items')
+          .select('id, quantity')
+          .eq('cart_id', cartId)
+          .eq('product_id', productId);
+          
+        const existingItem = existingItems && existingItems.length > 0 ? existingItems[0] : null;
+        
+        if (existingItem) {
+          // Check if total quantity would exceed stock
+          const totalQuantity = existingItem.quantity + quantity;
+          if (totalQuantity > product.estoque) {
+            throw new Error(`Quantidade total excederia o estoque disponível (${product.estoque})`);
+          }
+        }
+        
         // Add or update the cart item
         const { success, error: addError } = await addOrUpdateCartItem(cartId, productId, quantity, productPrice);
         if (!success) {

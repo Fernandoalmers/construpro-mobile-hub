@@ -39,9 +39,10 @@ export const addOrUpdateCartItem = async (cartId: string, productId: string, qua
     }
     
     if (existingItem) {
-      // Update existing item quantity
-      console.log('[cartItemModifiers] Item exists, updating quantity from', existingItem.quantity, 'to', existingItem.quantity + quantity);
-      return await updateExistingCartItem(existingItem.id, existingItem.quantity + quantity);
+      // Update existing item quantity by ADDING the new quantity
+      const newQuantity = existingItem.quantity + quantity;
+      console.log('[cartItemModifiers] Item exists, updating quantity from', existingItem.quantity, 'to', newQuantity);
+      return await updateExistingCartItem(existingItem.id, newQuantity);
     } else {
       // Add as new item
       console.log('[cartItemModifiers] Item does not exist, adding new item');

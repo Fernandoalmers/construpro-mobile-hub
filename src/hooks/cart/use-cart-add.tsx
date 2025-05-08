@@ -87,23 +87,60 @@ export function useCartAdd(refreshCartData: () => Promise<void>) {
       
       const price = product.preco_promocional || product.preco_normal;
       
-      // MODIFIED: Always add as a new item without checking if it exists
-      console.log('[useCartAdd] Adding new item to cart');
-      const { error: insertError } = await supabase
+      // Check if item already exists in cart
+      const { data: existingItem, error: findError } = await supabase
         .from('cart_items')
-        .insert({
-          cart_id: cartData.id,
-          product_id: productId,
-          quantity: quantity,
-          price_at_add: price
-        });
+        .select('id, quantity')
+        .eq('cart_id', cartData.id)
+        .eq('product_id', productId)
+        .maybeSingle();
         
-      if (insertError) {
-        console.error('[useCartAdd] Error adding item:', insertError);
-        throw insertError;
+      if (findError && findError.code !== 'PGRST116') {
+        console.error('[useCartAdd] Error checking for existing item:', findError);
+        throw findError;
       }
       
-      console.log('[useCartAdd] New item added to cart successfully');
+      if (existingItem) {
+        // Update existing item quantity
+        const newQuantity = existingItem.quantity + quantity;
+        
+        // Check if new quantity exceeds stock
+        if (newQuantity > product.estoque) {
+          console.warn('[useCartAdd] Total quantity exceeds stock:', product.estoque, 'requested total:', newQuantity);
+          throw new Error(`Quantidade total excederia o estoque disponível (${product.estoque})`);
+        }
+        
+        console.log('[useCartAdd] Item exists, updating quantity from', existingItem.quantity, 'to', newQuantity);
+        const { error: updateError } = await supabase
+          .from('cart_items')
+          .update({ quantity: newQuantity })
+          .eq('id', existingItem.id);
+          
+        if (updateError) {
+          console.error('[useCartAdd] Error updating item:', updateError);
+          throw updateError;
+        }
+        
+        console.log('[useCartAdd] Existing item quantity updated successfully');
+      } else {
+        // Add new item
+        console.log('[useCartAdd] Adding new item to cart');
+        const { error: insertError } = await supabase
+          .from('cart_items')
+          .insert({
+            cart_id: cartData.id,
+            product_id: productId,
+            quantity: quantity,
+            price_at_add: price
+          });
+          
+        if (insertError) {
+          console.error('[useCartAdd] Error adding item:', insertError);
+          throw insertError;
+        }
+        
+        console.log('[useCartAdd] New item added to cart successfully');
+      }
 
       // Refresh cart data to update UI
       await refreshCartData();
