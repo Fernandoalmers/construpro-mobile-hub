@@ -16,12 +16,12 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
     
     // Validate inputs
     if (!productId) {
-      console.error('Invalid product ID');
+      console.error('[addToCart] Invalid product ID');
       throw new Error('ID do produto inválido');
     }
     
     if (quantity <= 0) {
-      console.error('Invalid quantity:', quantity);
+      console.error('[addToCart] Invalid quantity:', quantity);
       throw new Error('Quantidade inválida');
     }
     
@@ -39,42 +39,48 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
 
       console.log('[addToCart] IDs', { user_id: userData.user?.id, product_id: productId });
 
-      // Check product stock
-      const { hasStock, product, error: stockError } = await checkProductStock(productId, quantity);
-      if (!hasStock) {
-        throw stockError || new Error('Erro ao verificar estoque');
+      // Check product stock with proper error handling
+      try {
+        const { hasStock, product, error: stockError } = await checkProductStock(productId, quantity);
+        if (!hasStock) {
+          throw stockError || new Error('Produto sem estoque disponível');
+        }
+
+        // Ensure we have a single active cart and get its ID
+        const cartId = await ensureSingleActiveCart(userData.user.id);
+        if (!cartId) {
+          throw new Error('Não foi possível criar ou acessar o carrinho');
+        }
+
+        console.log('[addToCart] Using cart:', cartId);
+
+        // Use the correct price field from the produtos table
+        const productPrice = product.preco_promocional || product.preco_normal;
+        console.log('[addToCart] Product price:', productPrice);
+        
+        // Add or update the cart item
+        const { success, error: addError } = await addOrUpdateCartItem(cartId, productId, quantity, productPrice);
+        if (!success) {
+          console.error('[addToCart] Error adding/updating item:', addError);
+          throw addError || new Error('Erro ao adicionar item ao carrinho');
+        }
+
+        // Return updated cart
+        console.log('[addToCart] Item added/updated successfully, getting updated cart');
+        const updatedCart = await getCart();
+        
+        return updatedCart;
+      } catch (stockErr: any) {
+        console.error('[addToCart] Stock check error:', stockErr);
+        throw new Error(stockErr.message || 'Erro ao verificar disponibilidade do produto');
       }
-
-      // Ensure we have a single active cart and get its ID
-      const cartId = await ensureSingleActiveCart(userData.user.id);
-      if (!cartId) {
-        throw new Error('Não foi possível criar ou acessar o carrinho');
-      }
-
-      console.log('[addToCart] Using cart:', cartId);
-
-      // Use the correct price field from the produtos table
-      const productPrice = product.preco_promocional || product.preco_normal;
-      console.log('[addToCart] Product price:', productPrice);
-      
-      // Add or update the cart item
-      const { success, error: addError } = await addOrUpdateCartItem(cartId, productId, quantity, productPrice);
-      if (!success) {
-        console.error('[addToCart] Error adding/updating item:', addError);
-        throw addError || new Error('Erro ao adicionar item ao carrinho');
-      }
-
-      // Return updated cart
-      console.log('[addToCart] Item added/updated successfully, getting updated cart');
-      const updatedCart = await getCart();
-      
-      return updatedCart;
-    } catch (fetchError) {
+    } catch (fetchError: any) {
       console.error('[addToCart] Fetch error:', fetchError);
-      throw new Error('Erro de conexão com o servidor. Verifique sua internet e tente novamente.');
+      throw new Error(fetchError.message || 'Erro de conexão com o servidor. Verifique sua internet e tente novamente.');
     }
   } catch (error: any) {
-    console.error('Error adding to cart:', error);
-    throw error;
+    console.error('[addToCart] Error adding to cart:', error);
+    // Ensure we always return an error with a message
+    throw new Error(error.message || 'Erro desconhecido ao adicionar ao carrinho');
   }
 };

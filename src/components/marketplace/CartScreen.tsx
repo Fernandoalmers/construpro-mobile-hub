@@ -7,8 +7,10 @@ import EmptyCart from './cart/EmptyCart';
 import CartContent from './cart/CartContent';
 import CartSummary from './cart/CartSummary';
 import { useCartScreen } from './cart/useCartScreen';
+import { useAuth } from '@/context/AuthContext';
 
 const CartScreen: React.FC = () => {
+  const { isAuthenticated, user } = useAuth();
   const {
     loading,
     error,
@@ -29,6 +31,23 @@ const CartScreen: React.FC = () => {
     removeCoupon
   } = useCartScreen();
 
+  // Show authentication check before loading state
+  if (!isAuthenticated || !user) {
+    return (
+      <div className="flex flex-col min-h-screen bg-gray-50">
+        <CartHeader />
+        <div className="flex-1 flex items-center justify-center p-4">
+          <ErrorState 
+            title="Acesso restrito" 
+            message="Você precisa estar logado para acessar o carrinho" 
+            onRetry={() => window.location.href = '/login?redirect=/cart'} 
+            retryText="Fazer Login"
+          />
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="flex flex-col min-h-screen bg-gray-50">
@@ -48,6 +67,22 @@ const CartScreen: React.FC = () => {
           <ErrorState 
             title="Erro ao carregar o carrinho" 
             message={error} 
+            onRetry={() => refreshCart()} 
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Safety check for cart data
+  if (!cart) {
+    return (
+      <div className="flex flex-col min-h-screen bg-gray-50">
+        <CartHeader />
+        <div className="flex-1 flex items-center justify-center p-4">
+          <ErrorState 
+            title="Carrinho indisponível" 
+            message="Não foi possível carregar os dados do carrinho. Tente novamente." 
             onRetry={() => refreshCart()} 
           />
         </div>
