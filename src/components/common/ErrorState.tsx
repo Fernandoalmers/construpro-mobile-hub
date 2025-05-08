@@ -8,13 +8,15 @@ type ErrorStateProps = {
   message: string;
   onRetry?: () => void;
   className?: string;
+  retryText?: string;
 };
 
 const ErrorState: React.FC<ErrorStateProps> = ({
   title,
   message,
   onRetry,
-  className = ''
+  className = '',
+  retryText = 'Tentar novamente'
 }) => {
   return (
     <div className={`flex flex-col items-center justify-center h-64 p-6 ${className}`}>
@@ -26,7 +28,7 @@ const ErrorState: React.FC<ErrorStateProps> = ({
           variant="primary"
           onClick={onRetry}
         >
-          Tentar novamente
+          {retryText}
         </CustomButton>
       )}
     </div>
