@@ -4,7 +4,7 @@ import { Cart } from "@/types/cart";
 import { getCart } from "../cartFetcher";
 import { ensureSingleActiveCart } from "../cartConsolidation";
 import { checkProductStock, checkTotalStockAvailability } from "./stockChecker";
-import { addNewCartItem } from "./cartItemModifiers";
+import { addOrUpdateCartItem } from "./cartItemModifiers";
 import { toast } from "@/components/ui/sonner";
 
 /**
@@ -57,17 +57,15 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
       const productPrice = product.preco_promocional || product.preco_normal;
       console.log('[addToCart] Product price:', productPrice);
       
-      // MODIFIED: Always add as a new item, don't check for existing items
-      console.log('[addToCart] Adding new item to cart:', cartId, productId, quantity, productPrice);
-      
-      const { success, error: addError } = await addNewCartItem(cartId, productId, quantity, productPrice);
+      // Add or update the cart item
+      const { success, error: addError } = await addOrUpdateCartItem(cartId, productId, quantity, productPrice);
       if (!success) {
-        console.error('[addToCart] Error adding new item:', addError);
+        console.error('[addToCart] Error adding/updating item:', addError);
         throw addError || new Error('Erro ao adicionar item ao carrinho');
       }
 
       // Return updated cart
-      console.log('[addToCart] Item added successfully, getting updated cart');
+      console.log('[addToCart] Item added/updated successfully, getting updated cart');
       const updatedCart = await getCart();
       
       return updatedCart;

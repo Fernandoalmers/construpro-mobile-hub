@@ -24,13 +24,42 @@ export const findExistingCartItem = async (cartId: string, productId: string) =>
 };
 
 /**
+ * Add or update cart item
+ */
+export const addOrUpdateCartItem = async (cartId: string, productId: string, quantity: number, price: number) => {
+  try {
+    console.log('[cartItemModifiers] Adding/updating cart item:', { cartId, productId, quantity, price });
+    
+    // First check if item already exists
+    const { item: existingItem, error: findError } = await findExistingCartItem(cartId, productId);
+    
+    if (findError) {
+      console.error('[cartItemModifiers] Error checking for existing item:', findError);
+      return { success: false, error: findError };
+    }
+    
+    if (existingItem) {
+      // Update existing item quantity
+      console.log('[cartItemModifiers] Item exists, updating quantity from', existingItem.quantity, 'to', existingItem.quantity + quantity);
+      return await updateExistingCartItem(existingItem.id, existingItem.quantity + quantity);
+    } else {
+      // Add as new item
+      console.log('[cartItemModifiers] Item does not exist, adding new item');
+      return await addNewCartItem(cartId, productId, quantity, price);
+    }
+  } catch (error) {
+    console.error('Error adding/updating cart item:', error);
+    return { success: false, error };
+  }
+};
+
+/**
  * Add new cart item
  */
 export const addNewCartItem = async (cartId: string, productId: string, quantity: number, price: number) => {
   try {
     console.log('[cartItemModifiers] Adding new cart item:', { cartId, productId, quantity, price });
     
-    // MODIFIED: Always insert as a new item, no checking for existing items
     const { data, error } = await supabase
       .from('cart_items')
       .insert({
@@ -45,7 +74,7 @@ export const addNewCartItem = async (cartId: string, productId: string, quantity
     console.log('[cartItemModifiers] Insert result:', { data, error });
     
     if (error) {
-      console.error('Error adding cart item:', error);
+      console.error('[cartItemModifiers] Error adding cart item:', error);
       
       // Additional diagnostics if insert fails
       const { data: cartCheck, error: cartCheckError } = await supabase

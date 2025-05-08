@@ -66,23 +66,50 @@ export async function addToCart(productId: string, quantity: number): Promise<vo
     
     const price = product.preco_promocional || product.preco_normal;
     
-    // MODIFIED: Always add as a new item, don't check for existing items
-    console.log(`[addToCart] Adding new item to cart`);
-    const { error: insertError } = await supabase
+    // First check if item already exists in cart
+    const { data: existingItem, error: findError } = await supabase
       .from('cart_items')
-      .insert({
-        cart_id: cartData.id,
-        product_id: productId,
-        quantity: quantity,
-        price_at_add: price
-      });
-      
-    if (insertError) {
-      console.error('[addToCart] Error inserting item:', insertError);
-      throw insertError;
+      .select('id, quantity')
+      .eq('cart_id', cartData.id)
+      .eq('product_id', productId)
+      .maybeSingle();
+    
+    if (findError && findError.code !== 'PGRST116') {
+      console.error('[addToCart] Error checking for existing item:', findError);
+      throw findError;
     }
     
-    console.log('[addToCart] Successfully added new cart item');
+    if (existingItem) {
+      // Update existing item quantity
+      console.log('[addToCart] Item exists, updating quantity from', existingItem.quantity, 'to', existingItem.quantity + quantity);
+      const { error: updateError } = await supabase
+        .from('cart_items')
+        .update({ quantity: existingItem.quantity + quantity })
+        .eq('id', existingItem.id);
+        
+      if (updateError) {
+        console.error('[addToCart] Error updating item:', updateError);
+        throw updateError;
+      }
+    } else {
+      // Add new item
+      console.log('[addToCart] Adding new item to cart');
+      const { error: insertError } = await supabase
+        .from('cart_items')
+        .insert({
+          cart_id: cartData.id,
+          product_id: productId,
+          quantity: quantity,
+          price_at_add: price
+        });
+        
+      if (insertError) {
+        console.error('[addToCart] Error inserting item:', insertError);
+        throw insertError;
+      }
+    }
+    
+    console.log('[addToCart] Successfully added/updated cart item');
   } catch (error) {
     console.error('Error adding to cart:', error);
     throw error;
