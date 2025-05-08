@@ -37,7 +37,7 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
         throw new Error('Usuário não autenticado');
       }
 
-      console.log('[addToCart] IDs', { user_id: userData.user?.id, product_id: productId });
+      console.log('[addToCart] User ID:', userData.user?.id, 'Product ID:', productId);
 
       // Check product stock with proper error handling
       try {
@@ -82,6 +82,13 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
         if (!success) {
           console.error('[addToCart] Error adding/updating item:', addError);
           throw addError || new Error('Erro ao adicionar item ao carrinho');
+        }
+
+        // Show appropriate toast message
+        if (existingItem) {
+          toast.success(`Quantidade atualizada para ${totalQuantity}`);
+        } else {
+          toast.success('Produto adicionado ao carrinho');
         }
 
         // Return updated cart
