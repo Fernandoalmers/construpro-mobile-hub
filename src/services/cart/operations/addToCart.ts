@@ -25,84 +25,80 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
       throw new Error('Quantidade inválida');
     }
     
+    // Get authenticated user
+    const { data: userData, error: authError } = await supabase.auth.getUser();
+    if (authError) {
+      console.error('[addToCart] Authentication error:', authError);
+      throw new Error('Erro de autenticação. Tente fazer login novamente.');
+    }
+    
+    if (!userData.user) {
+      console.error('[addToCart] User not authenticated');
+      throw new Error('Usuário não autenticado');
+    }
+
+    console.log('[addToCart] User ID:', userData.user?.id, 'Product ID:', productId);
+
+    // Check product stock with proper error handling
     try {
-      const { data: userData, error: authError } = await supabase.auth.getUser();
-      if (authError) {
-        console.error('[addToCart] Authentication error:', authError);
-        throw new Error('Erro de autenticação. Tente fazer login novamente.');
+      const { hasStock, product, error: stockError } = await checkProductStock(productId, quantity);
+      if (!hasStock) {
+        throw stockError || new Error('Produto sem estoque disponível');
+      }
+
+      // Ensure we have a single active cart and get its ID
+      const cartId = await ensureSingleActiveCart(userData.user.id);
+      if (!cartId) {
+        throw new Error('Não foi possível criar ou acessar o carrinho');
+      }
+
+      console.log('[addToCart] Using cart:', cartId);
+
+      // Use the correct price field from the produtos table
+      const productPrice = product.preco_promocional || product.preco_normal;
+      console.log('[addToCart] Product price:', productPrice);
+      
+      // Check if the item already exists in the cart and get current quantity
+      const { item: existingItem, error: findError } = await findExistingCartItem(cartId, productId);
+      
+      if (findError && findError.code !== 'PGRST116') {
+        console.error('[addToCart] Error finding existing item:', findError);
+        throw findError;
       }
       
-      if (!userData.user) {
-        console.error('[addToCart] User not authenticated');
-        throw new Error('Usuário não autenticado');
+      let totalQuantity = quantity;
+      if (existingItem) {
+        totalQuantity = existingItem.quantity + quantity;
+        console.log('[addToCart] Item exists, new total quantity will be:', totalQuantity);
+        
+        // Check if total quantity would exceed stock
+        if (totalQuantity > product.estoque) {
+          throw new Error(`Quantidade total excederia o estoque disponível (${product.estoque})`);
+        }
+      }
+      
+      // Add or update the cart item
+      const { success, error: addError } = await addOrUpdateCartItem(cartId, productId, quantity, productPrice);
+      if (!success) {
+        console.error('[addToCart] Error adding/updating item:', addError);
+        throw addError || new Error('Erro ao adicionar item ao carrinho');
       }
 
-      console.log('[addToCart] User ID:', userData.user?.id, 'Product ID:', productId);
-
-      // Check product stock with proper error handling
-      try {
-        const { hasStock, product, error: stockError } = await checkProductStock(productId, quantity);
-        if (!hasStock) {
-          throw stockError || new Error('Produto sem estoque disponível');
-        }
-
-        // Ensure we have a single active cart and get its ID
-        const cartId = await ensureSingleActiveCart(userData.user.id);
-        if (!cartId) {
-          throw new Error('Não foi possível criar ou acessar o carrinho');
-        }
-
-        console.log('[addToCart] Using cart:', cartId);
-
-        // Use the correct price field from the produtos table
-        const productPrice = product.preco_promocional || product.preco_normal;
-        console.log('[addToCart] Product price:', productPrice);
-        
-        // Check if the item already exists in the cart and get current quantity
-        const { item: existingItem, error: findError } = await findExistingCartItem(cartId, productId);
-        
-        if (findError && findError.code !== 'PGRST116') {
-          console.error('[addToCart] Error finding existing item:', findError);
-          throw findError;
-        }
-        
-        let totalQuantity = quantity;
-        if (existingItem) {
-          totalQuantity = existingItem.quantity + quantity;
-          console.log('[addToCart] Item exists, new total quantity will be:', totalQuantity);
-          
-          // Check if total quantity would exceed stock
-          if (totalQuantity > product.estoque) {
-            throw new Error(`Quantidade total excederia o estoque disponível (${product.estoque})`);
-          }
-        }
-        
-        // Add or update the cart item
-        const { success, error: addError } = await addOrUpdateCartItem(cartId, productId, quantity, productPrice);
-        if (!success) {
-          console.error('[addToCart] Error adding/updating item:', addError);
-          throw addError || new Error('Erro ao adicionar item ao carrinho');
-        }
-
-        // Show appropriate toast message
-        if (existingItem) {
-          toast.success(`Quantidade atualizada para ${totalQuantity}`);
-        } else {
-          toast.success('Produto adicionado ao carrinho');
-        }
-
-        // Return updated cart
-        console.log('[addToCart] Item added/updated successfully, getting updated cart');
-        const updatedCart = await getCart();
-        
-        return updatedCart;
-      } catch (stockErr: any) {
-        console.error('[addToCart] Stock check error:', stockErr);
-        throw new Error(stockErr.message || 'Erro ao verificar disponibilidade do produto');
+      // Show appropriate toast message
+      if (existingItem) {
+        toast.success(`Quantidade atualizada para ${totalQuantity}`);
+      } else {
+        toast.success('Produto adicionado ao carrinho');
       }
-    } catch (fetchError: any) {
-      console.error('[addToCart] Fetch error:', fetchError);
-      throw new Error(fetchError.message || 'Erro de conexão com o servidor. Verifique sua internet e tente novamente.');
+
+      // Return updated cart
+      console.log('[addToCart] Item added/updated successfully, getting updated cart');
+      const updatedCart = await getCart();
+      
+      return updatedCart;
+    } catch (stockErr: any) {
+      console.error('[addToCart] Stock check error:', stockErr);
+      throw new Error(stockErr.message || 'Erro ao verificar disponibilidade do produto');
     }
   } catch (error: any) {
     console.error('[addToCart] Error adding to cart:', error);
