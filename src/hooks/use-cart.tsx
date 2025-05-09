@@ -5,129 +5,14 @@ import { CartContextProvider, useCartContext } from '@/context/CartContext';
 import { useCartData } from './cart/use-cart-data';
 import { useCartOperations } from './cart/use-cart-operations';
 import { CartContextType } from '@/types/cart';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/sonner';
+import { addToCart as addToCartService } from '@/services/cart/operations/addToCart';
 
 export async function addToCart(productId: string, quantity: number): Promise<void> {
   try {
     console.log(`[addToCart] Adding ${quantity} of product ${productId} to cart`);
     
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData?.user) {
-      console.error('[addToCart] User not authenticated');
-      throw new Error('User not authenticated');
-    }
+    await addToCartService(productId, quantity);
     
-    // Get or create active cart
-    let { data: cartData, error: cartError } = await supabase
-      .from('carts')
-      .select('id')
-      .eq('user_id', userData.user.id)
-      .eq('status', 'active')
-      .single();
-
-    if (cartError) {
-      if (cartError.code === 'PGRST116') {
-        // No active cart found, create one
-        console.log('[addToCart] No active cart found, creating new one');
-        const { data: newCart, error: createError } = await supabase
-          .from('carts')
-          .insert({
-            user_id: userData.user.id,
-            status: 'active'
-          })
-          .select('id')
-          .single();
-
-        if (createError) {
-          console.error('[addToCart] Error creating cart:', createError);
-          throw createError;
-        }
-
-        cartData = newCart;
-      } else {
-        console.error('[addToCart] Error fetching cart:', cartError);
-        throw cartError;
-      }
-    }
-    
-    console.log(`[addToCart] Using cart: ${cartData.id}`);
-    
-    // Get product price 
-    const { data: product, error: productError } = await supabase
-      .from('produtos')
-      .select('preco_normal, preco_promocional, estoque')
-      .eq('id', productId)
-      .single();
-      
-    if (productError) {
-      console.error('[addToCart] Error fetching product:', productError);
-      throw productError;
-    }
-
-    // Check if there's enough stock
-    if (product.estoque < quantity) {
-      throw new Error(`Estoque insuficiente (disponível: ${product.estoque})`);
-    }
-    
-    const price = product.preco_promocional || product.preco_normal;
-    
-    // First check if item already exists in cart
-    const { data: existingItem, error: findError } = await supabase
-      .from('cart_items')
-      .select('id, quantity')
-      .eq('cart_id', cartData.id)
-      .eq('product_id', productId)
-      .maybeSingle();
-    
-    if (findError && findError.code !== 'PGRST116') {
-      console.error('[addToCart] Error checking for existing item:', findError);
-      throw findError;
-    }
-    
-    if (existingItem) {
-      // Calculate new quantity by ADDING the new amount
-      const newQuantity = existingItem.quantity + quantity;
-      
-      // Check if new quantity exceeds stock
-      if (newQuantity > product.estoque) {
-        throw new Error(`Quantidade total excederia o estoque disponível (${product.estoque})`);
-      }
-      
-      // Update existing item quantity
-      console.log('[addToCart] Item exists, updating quantity from', existingItem.quantity, 'to', newQuantity);
-      const { error: updateError } = await supabase
-        .from('cart_items')
-        .update({ quantity: newQuantity })
-        .eq('id', existingItem.id);
-        
-      if (updateError) {
-        console.error('[addToCart] Error updating item:', updateError);
-        throw updateError;
-      }
-      
-      toast.success(`Quantidade atualizada para ${newQuantity}`);
-    } else {
-      // Add new item
-      console.log('[addToCart] Adding new item to cart');
-      const { error: insertError } = await supabase
-        .from('cart_items')
-        .insert({
-          cart_id: cartData.id,
-          product_id: productId,
-          quantity: quantity,
-          price_at_add: price
-        });
-        
-      if (insertError) {
-        console.error('[addToCart] Error inserting item:', insertError);
-        throw insertError;
-      }
-      
-      toast.success('Produto adicionado ao carrinho');
-    }
-    
-    console.log('[addToCart] Successfully added/updated cart item');
   } catch (error) {
     console.error('Error adding to cart:', error);
     throw error;
