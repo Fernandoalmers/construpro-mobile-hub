@@ -28,7 +28,7 @@ export const useCartScreen = () => {
     .filter((id): id is string => !!id)
     .filter((value, index, self) => self.indexOf(value) === index);
 
-  // Use our new custom hooks
+  // Use our custom hooks
   const { storeInfo } = useStoreInfo(storeIds);
   const { couponCode, setCouponCode, appliedCoupon, applyCoupon, removeCoupon } = useCoupon();
   const itemsByStore = useGroupItemsByStore(cartItems, storeInfo);
