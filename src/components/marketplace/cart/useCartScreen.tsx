@@ -22,14 +22,16 @@ export const useCartScreen = () => {
   const cartItems = cart?.items || [];
   const cartIsEmpty = cartItems.length === 0;
 
-  // Extract unique store IDs from cart items
-  const storeIds = cartItems
-    .map(item => item.produto?.loja_id)
-    .filter((id): id is string => !!id)
-    .filter((value, index, self) => self.indexOf(value) === index);
+  // Extract unique store IDs from cart items - memoize this to prevent unnecessary recalculations
+  const storeIds = useCallback(() => {
+    return cartItems
+      .map(item => item.produto?.loja_id)
+      .filter((id): id is string => !!id)
+      .filter((value, index, self) => self.indexOf(value) === index);
+  }, [cartItems]);
 
   // Use our custom hooks
-  const { storeInfo } = useStoreInfo(storeIds);
+  const { storeInfo } = useStoreInfo(storeIds());
   const { couponCode, setCouponCode, appliedCoupon, applyCoupon, removeCoupon } = useCoupon();
   const itemsByStore = useGroupItemsByStore(cartItems, storeInfo);
   
