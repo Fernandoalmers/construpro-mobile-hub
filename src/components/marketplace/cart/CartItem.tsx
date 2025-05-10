@@ -6,34 +6,35 @@ import { CartItem as CartItemType } from '@/types/cart';
 
 interface CartItemProps {
   item: CartItemType;
-  onUpdate: (item: CartItemType, quantity: number) => Promise<void>;
-  onRemove: (itemId: string) => Promise<void>;
-  isProcessing: boolean;
+  onUpdateQuantity: (item: CartItemType, quantity: number) => Promise<void>;
+  onRemoveItem: (itemId: string) => Promise<void>;
+  processingItem: string | null;
 }
 
-const CartItem: React.FC<CartItemProps> = ({ item, onUpdate, onRemove, isProcessing }) => {
+const CartItem: React.FC<CartItemProps> = ({ item, onUpdateQuantity, onRemoveItem, processingItem }) => {
   if (!item) return null;
 
   const imageUrl = item.produto?.imagem_url || '';
   const maxStock = item.produto?.estoque || 0;
   const productPrice = item.preco || 0;
   const quantity = item.quantidade || 1;
+  const isProcessing = processingItem === item.id;
 
   const handleDecrease = () => {
     if (quantity > 1 && !isProcessing) {
-      onUpdate(item, quantity - 1);
+      onUpdateQuantity(item, quantity - 1);
     }
   };
 
   const handleIncrease = () => {
     if (quantity < maxStock && !isProcessing) {
-      onUpdate(item, quantity + 1);
+      onUpdateQuantity(item, quantity + 1);
     }
   };
 
   const handleRemove = () => {
     if (!isProcessing) {
-      onRemove(item.id);
+      onRemoveItem(item.id);
     }
   };
 
