@@ -1,174 +1,107 @@
 
 import React from 'react';
-import { Minus, Plus, Trash2 } from 'lucide-react';
+import { Trash2, Minus, Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { CartItem as CartItemType } from '@/types/cart';
-import { cn } from '@/lib/utils';
-import { toast } from '@/components/ui/sonner';
 
 interface CartItemProps {
   item: CartItemType;
-  onUpdateQuantity: (item: CartItemType, quantity: number) => Promise<void>;
-  onRemoveItem: (itemId: string) => Promise<void>;
-  processingItem: string | null;
+  onUpdate: (item: CartItemType, quantity: number) => Promise<void>;
+  onRemove: (itemId: string) => Promise<void>;
+  isProcessing: boolean;
 }
 
-const CartItem: React.FC<CartItemProps> = ({
-  item,
-  onUpdateQuantity,
-  onRemoveItem,
-  processingItem
-}) => {
-  // Safety check for item
-  if (!item) {
-    console.error('[CartItem] Item is undefined or null');
-    return null;
-  }
-  
-  // Safety check for product data
-  if (!item.produto) {
-    console.error('[CartItem] Item missing produto property:', item);
-    return (
-      <div className="p-4 flex gap-4 bg-red-50 border border-red-200 rounded-md">
-        <p className="text-red-500">Item inválido (ID: {item?.id || 'desconhecido'})</p>
-      </div>
-    );
-  }
+const CartItem: React.FC<CartItemProps> = ({ item, onUpdate, onRemove, isProcessing }) => {
+  if (!item) return null;
 
-  // Extract image URL safely
-  let imageUrl = 'https://via.placeholder.com/80';
-  if (item.produto?.imagem_url) {
-    imageUrl = item.produto.imagem_url;
-  }
-
-  // Get price and quantity
-  const price = item.preco || 0;
-  const quantity = item.quantidade || 0;
-  const subtotal = price * quantity;
-  const isDisabled = processingItem === item.id;
+  const imageUrl = item.produto?.imagem_url || '';
   const maxStock = item.produto?.estoque || 0;
-  const productName = item.produto?.nome || 'Produto sem nome';
-  const isLoading = isDisabled;
+  const productPrice = item.preco || 0;
+  const quantity = item.quantidade || 1;
 
-  // Handle add and remove item quantity
-  const handleIncreaseQuantity = async () => {
-    if (isDisabled || quantity >= maxStock) return;
-    
-    try {
-      await onUpdateQuantity(item, quantity + 1);
-    } catch (error) {
-      console.error('Error increasing quantity:', error);
+  const handleDecrease = () => {
+    if (quantity > 1 && !isProcessing) {
+      onUpdate(item, quantity - 1);
     }
   };
-  
-  const handleDecreaseQuantity = async () => {
-    if (isDisabled || quantity <= 1) return;
-    
-    try {
-      await onUpdateQuantity(item, quantity - 1);
-    } catch (error) {
-      console.error('Error decreasing quantity:', error);
+
+  const handleIncrease = () => {
+    if (quantity < maxStock && !isProcessing) {
+      onUpdate(item, quantity + 1);
     }
   };
-  
-  const handleRemove = async () => {
-    if (isDisabled) return;
-    
-    try {
-      await onRemoveItem(item.id);
-      toast.success('Item removido do carrinho');
-    } catch (error) {
-      console.error('Error removing item:', error);
+
+  const handleRemove = () => {
+    if (!isProcessing) {
+      onRemove(item.id);
     }
   };
 
   return (
-    <div className="p-4 flex gap-4 hover:bg-gray-50 transition-colors">
-      <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0 border border-gray-200">
-        <img 
-          src={imageUrl} 
-          alt={productName}
-          className={cn(
-            "w-full h-full object-cover",
-            typeof imageUrl !== 'string' && "hidden" // Hide if not a string
-          )}
-          onError={(e) => {
-            console.warn(`Failed to load image for product: ${item.produto_id}`);
-            (e.target as HTMLImageElement).src = 'https://via.placeholder.com/80';
-          }}
-        />
+    <div className="flex items-center p-3 bg-white rounded-lg shadow-sm border border-gray-100 gap-3">
+      {/* Product image */}
+      <div className="w-16 h-16 bg-gray-100 rounded overflow-hidden flex-shrink-0">
+        {imageUrl ? (
+          <img 
+            src={imageUrl} 
+            alt={item.produto?.nome || 'Produto'} 
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">
+            Imagem
+          </div>
+        )}
       </div>
-      
-      <div className="flex-1">
-        <h3 className="font-medium text-base line-clamp-2 mb-1">{productName}</h3>
-        <div className="flex flex-col md:flex-row md:justify-between mt-2 gap-3">
-          <div>
-            <p className="text-green-600 font-bold text-lg">
-              R$ {subtotal.toFixed(2)}
-            </p>
-            <p className="text-xs text-gray-500">
-              {quantity} x R$ {price.toFixed(2)}
-            </p>
-            {item.produto?.pontos > 0 && (
-              <div className="bg-orange-100 text-orange-600 text-xs rounded-full px-2 py-0.5 inline-block mt-1">
-                {item.produto.pontos * quantity} pontos
-              </div>
-            )}
-          </div>
+
+      {/* Product details */}
+      <div className="flex-1 min-w-0">
+        <h4 className="font-medium text-sm truncate">{item.produto?.nome || 'Produto sem nome'}</h4>
+        <p className="text-green-700 text-sm font-medium mt-1">
+          R$ {productPrice.toFixed(2)}
+        </p>
+        {maxStock > 0 && maxStock < 10 && (
+          <p className="text-amber-600 text-xs mt-1">
+            Apenas {maxStock} em estoque
+          </p>
+        )}
+      </div>
+
+      {/* Quantity controls */}
+      <div className="flex flex-col items-end gap-2">
+        <div className="flex items-center border border-gray-200 rounded-md">
+          <Button 
+            variant="ghost" 
+            size="icon"
+            className="h-8 w-8 rounded-r-none"
+            onClick={handleDecrease}
+            disabled={quantity <= 1 || isProcessing}
+          >
+            <Minus size={14} />
+          </Button>
           
-          <div className="flex flex-row md:flex-col items-center md:items-end justify-between w-full md:w-auto">
-            <div className="flex items-center border border-gray-300 rounded-md bg-white">
-              <button
-                onClick={handleDecreaseQuantity}
-                className={cn(
-                  "w-8 h-8 flex items-center justify-center",
-                  quantity <= 1 ? "text-gray-300 cursor-not-allowed" : "text-gray-600 hover:bg-gray-100"
-                )}
-                disabled={isLoading || quantity <= 1}
-                aria-label="Diminuir quantidade"
-              >
-                <Minus size={14} />
-              </button>
-              <div className="w-10 text-center text-md relative">
-                {isLoading ? (
-                  <span className="inline-block w-4 h-4 border-2 border-gray-300 border-t-green-500 rounded-full animate-spin"></span>
-                ) : (
-                  quantity
-                )}
-              </div>
-              <button
-                onClick={handleIncreaseQuantity}
-                className={cn(
-                  "w-8 h-8 flex items-center justify-center",
-                  quantity >= maxStock ? "text-gray-300 cursor-not-allowed" : "text-gray-600 hover:bg-gray-100"
-                )}
-                disabled={isLoading || quantity >= maxStock}
-                aria-label="Aumentar quantidade"
-              >
-                <Plus size={14} />
-              </button>
-            </div>
-            
-            <button 
-              onClick={handleRemove} 
-              className="text-red-500 p-2 hover:bg-red-50 rounded-full transition-colors"
-              disabled={isDisabled}
-              aria-label="Remover item"
-            >
-              <Trash2 size={18} />
-            </button>
-          </div>
+          <span className="w-8 text-center text-sm">{quantity}</span>
+          
+          <Button 
+            variant="ghost" 
+            size="icon"
+            className="h-8 w-8 rounded-l-none"
+            onClick={handleIncrease}
+            disabled={quantity >= maxStock || isProcessing}
+          >
+            <Plus size={14} />
+          </Button>
         </div>
         
-        <div className="text-xs text-gray-500 mt-1">
-          {maxStock > 0 && quantity < maxStock && (
-            <span>Disponível: {maxStock}</span>
-          )}
-          {quantity >= maxStock && (
-            <span className="text-yellow-600 font-medium">
-              Estoque máximo
-            </span>
-          )}
-        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+          onClick={handleRemove}
+          disabled={isProcessing}
+        >
+          <Trash2 size={15} />
+        </Button>
       </div>
     </div>
   );

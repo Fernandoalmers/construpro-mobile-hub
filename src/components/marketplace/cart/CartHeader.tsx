@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 
 const CartHeader: React.FC = () => {
   const navigate = useNavigate();
-  const { cartCount } = useCart();
+  const { cartCount, isLoading } = useCart();
   
   return (
     <div className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
@@ -28,8 +28,9 @@ const CartHeader: React.FC = () => {
           </h1>
           
           <div className={cn("px-2 py-1 rounded-full text-sm font-medium", 
+            isLoading ? "bg-gray-100 text-gray-400" : 
             cartCount > 0 ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-500")}>
-            {cartCount} {cartCount === 1 ? 'item' : 'itens'}
+            {isLoading ? "..." : cartCount} {cartCount === 1 ? 'item' : 'itens'}
           </div>
         </div>
       </div>

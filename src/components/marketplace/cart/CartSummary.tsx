@@ -1,76 +1,89 @@
 
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Coins } from 'lucide-react';
+import { ArrowRight, ShoppingBag, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 
 interface CartSummaryProps {
   subtotal: number;
-  shipping: number;
   discount: number;
+  shipping: number;
   total: number;
   totalPoints: number;
 }
 
-const CartSummary: React.FC<CartSummaryProps> = ({
-  subtotal,
-  shipping,
-  discount,
-  total,
-  totalPoints
+const CartSummary: React.FC<CartSummaryProps> = ({ 
+  subtotal, 
+  discount, 
+  shipping, 
+  total, 
+  totalPoints 
 }) => {
   const navigate = useNavigate();
-
-  // Added safety check to ensure values are valid numbers
-  const safeSubtotal = isNaN(subtotal) ? 0 : subtotal;
-  const safeShipping = isNaN(shipping) ? 0 : shipping;
-  const safeDiscount = isNaN(discount) ? 0 : discount;
-  const safeTotal = isNaN(total) ? 0 : total;
-  const safeTotalPoints = isNaN(totalPoints) ? 0 : totalPoints;
+  
+  const handleCheckout = () => {
+    navigate('/checkout');
+  };
 
   return (
-    <div className="bg-white shadow-lg rounded-t-xl fixed left-0 right-0 bottom-0 border-t border-gray-200 z-50 pb-20 md:pb-4">
-      <div className="max-w-md mx-auto py-4 px-6">
-        <div className="space-y-2 mb-4">
+    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg px-4 pt-4 pb-8 z-30">
+      <div className="max-w-2xl mx-auto">
+        {/* Summary items */}
+        <div className="space-y-2">
           <div className="flex justify-between text-sm">
             <span className="text-gray-600">Subtotal</span>
-            <span className="font-medium">R$ {safeSubtotal.toFixed(2)}</span>
+            <span className="font-medium">R$ {subtotal.toFixed(2)}</span>
           </div>
           
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Frete</span>
-            <span className="font-medium text-amber-600">
-              {safeShipping > 0 ? `R$ ${safeShipping.toFixed(2)}` : 'A calcular'}
-            </span>
-          </div>
-          
-          {safeDiscount > 0 && (
-            <div className="flex justify-between text-sm text-green-600">
-              <span>Desconto</span>
-              <span>-R$ {safeDiscount.toFixed(2)}</span>
+          {discount > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-green-600 font-medium">Desconto</span>
+              <span className="text-green-600 font-medium">-R$ {discount.toFixed(2)}</span>
             </div>
           )}
           
-          <div className="flex justify-between font-bold text-lg border-t border-gray-200 pt-3 mt-2">
-            <span>Total</span>
-            <span>R$ {safeTotal.toFixed(2)}</span>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600">Frete estimado</span>
+            <span className="font-medium">
+              {shipping > 0 ? `R$ ${shipping.toFixed(2)}` : "Grátis"}
+            </span>
           </div>
           
-          <div className="flex justify-between text-orange-500 text-xs items-center">
-            <span className="flex items-center">
-              <Coins size={16} className="mr-1" /> Pontos a ganhar:
-            </span>
-            <span className="font-medium">{safeTotalPoints} pontos</span>
+          <div className="border-t border-gray-200 my-3 pt-2 flex justify-between">
+            <span className="font-medium text-base">Total</span>
+            <div className="text-right">
+              <div className="font-semibold text-lg">R$ {total.toFixed(2)}</div>
+              <div className="flex items-center text-xs text-green-700 mt-1 font-medium">
+                <Gift size={12} className="mr-1" />
+                Ganhe {totalPoints} pontos
+              </div>
+            </div>
           </div>
         </div>
-        
-        <Button 
-          onClick={() => navigate('/checkout')}
-          className="w-full h-14 py-4 text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md"
-        >
-          <span className="text-lg font-medium">Finalizar Compra</span>
-          <ArrowRight size={20} />
-        </Button>
+
+        {/* Action buttons */}
+        <div className="mt-4">
+          <Button 
+            onClick={handleCheckout}
+            className={cn(
+              "w-full py-6 text-base flex items-center justify-center",
+              "bg-green-600 hover:bg-green-700"
+            )}
+          >
+            Finalizar Compra
+            <ArrowRight size={18} className="ml-2" />
+          </Button>
+          
+          <Button 
+            variant="outline"
+            className="w-full mt-2 border-gray-300"
+            onClick={() => navigate('/marketplace')}
+          >
+            <ShoppingBag size={16} className="mr-2" />
+            Continuar Comprando
+          </Button>
+        </div>
       </div>
     </div>
   );

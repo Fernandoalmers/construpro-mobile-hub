@@ -3,7 +3,7 @@ import React from 'react';
 import { Cart } from '@/types/cart';
 import StoreCartGroup from './StoreCartGroup';
 import CouponSection from './CouponSection';
-import { AlertTriangle, ShoppingBag } from 'lucide-react';
+import { AlertTriangle, ShoppingBag, Store } from 'lucide-react';
 
 interface CartContentProps {
   cart: Cart | null;
@@ -42,9 +42,9 @@ const CartContent: React.FC<CartContentProps> = ({
       {hasItems && (
         <div className="bg-white p-3 rounded-lg shadow-sm mb-2">
           <div className="flex items-center text-gray-700">
-            <ShoppingBag size={16} className="mr-2" />
+            <Store size={16} className="mr-2" />
             <span className="text-sm font-medium">
-              {cart?.items.length} {cart?.items.length === 1 ? 'item' : 'itens'} em {storeCount} {storeCount === 1 ? 'loja' : 'lojas'}
+              {storeCount} {storeCount === 1 ? 'loja' : 'lojas'} • {cart?.items.length} {cart?.items.length === 1 ? 'item' : 'itens'}
             </span>
           </div>
         </div>
@@ -64,7 +64,7 @@ const CartContent: React.FC<CartContentProps> = ({
           ))}
         </div>
       ) : (
-        <div className="text-center py-6 text-gray-500 bg-white rounded-lg shadow p-8">
+        <div className="text-center py-10 text-gray-500 bg-white rounded-lg shadow p-8">
           {hasMappingIssue ? (
             <div className="flex flex-col items-center">
               <AlertTriangle size={36} className="text-amber-500 mb-2" />
@@ -74,16 +74,24 @@ const CartContent: React.FC<CartContentProps> = ({
               </p>
             </div>
           ) : (
-            <p>Não há itens no carrinho ou dados ainda estão carregando.</p>
+            <div className="flex flex-col items-center">
+              <ShoppingBag size={48} className="text-gray-300 mb-4" />
+              <h3 className="text-lg font-semibold text-gray-700">Seu carrinho está vazio</h3>
+              <p className="mt-2 text-sm max-w-md mx-auto">
+                Adicione produtos ao carrinho para visualizá-los aqui.
+              </p>
+            </div>
           )}
         </div>
       )}
       
-      <CouponSection 
-        appliedCoupon={appliedCoupon}
-        onApplyCoupon={onApplyCoupon}
-        onRemoveCoupon={onRemoveCoupon}
-      />
+      {hasItems && (
+        <CouponSection 
+          appliedCoupon={appliedCoupon}
+          onApplyCoupon={onApplyCoupon}
+          onRemoveCoupon={onRemoveCoupon}
+        />
+      )}
     </div>
   );
 };
