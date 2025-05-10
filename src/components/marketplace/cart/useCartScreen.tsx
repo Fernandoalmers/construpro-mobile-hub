@@ -51,7 +51,6 @@ export const useCartScreen = () => {
     }
     
     console.log("CartScreen: Refreshing cart data");
-    // Explicitly refresh the cart when the component mounts
     const loadCart = async () => {
       try {
         setLoading(true);
@@ -61,7 +60,6 @@ export const useCartScreen = () => {
         console.error("Error refreshing cart:", err);
         setError("Erro ao carregar o carrinho. Por favor, tente novamente.");
       } finally {
-        // Ensure loading is set to false even if there's an error
         setLoading(false);
       }
     };
@@ -73,12 +71,11 @@ export const useCartScreen = () => {
       console.log("CartScreen: Periodic cart refresh");
       refreshCart().catch(err => {
         console.error("Error in periodic refresh:", err);
-        // Don't update loading state here to avoid disrupting the UI
       });
     }, 60000); // Every minute
     
     return () => clearInterval(intervalId);
-  }, [isAuthenticated, navigate, refreshCart]);
+  }, [isAuthenticated, navigate, refreshCart]); // Only depend on these values
 
   // Handle quantity updates with proper error handling
   const handleUpdateQuantity = async (item: CartItem, newQuantity: number) => {
