@@ -63,3 +63,64 @@ export const checkProductStock = async (productId: string, quantity: number) => 
     };
   }
 };
+
+/**
+ * Validate all items in cart against current stock levels
+ * Returns invalid items with available stock levels
+ */
+export const validateCartItemsStock = async (cartId: string) => {
+  try {
+    console.log('[stockChecker] Validating cart items stock for cart:', cartId);
+    
+    // Get all cart items
+    const { data: items, error: itemsError } = await supabase
+      .from('cart_items')
+      .select('id, product_id, quantity')
+      .eq('cart_id', cartId);
+      
+    if (itemsError || !items) {
+      console.error('[stockChecker] Error getting cart items:', itemsError);
+      return { invalidItems: [], error: itemsError };
+    }
+    
+    // Check each item
+    const invalidItems = [];
+    
+    for (const item of items) {
+      // Get product stock
+      const { data: product, error: productError } = await supabase
+        .from('produtos')
+        .select('estoque')
+        .eq('id', item.product_id)
+        .single();
+        
+      if (productError || !product) {
+        console.error(`[stockChecker] Error getting product ${item.product_id}:`, productError);
+        invalidItems.push({
+          id: item.id,
+          productId: item.product_id,
+          quantity: item.quantity,
+          availableStock: 0,
+          valid: false
+        });
+        continue;
+      }
+      
+      if (product.estoque < item.quantity) {
+        invalidItems.push({
+          id: item.id,
+          productId: item.product_id,
+          quantity: item.quantity,
+          availableStock: product.estoque,
+          valid: false
+        });
+      }
+    }
+    
+    console.log(`[stockChecker] Found ${invalidItems.length} items with stock issues`);
+    return { invalidItems, error: null };
+  } catch (error) {
+    console.error('[stockChecker] Error in validateCartItemsStock:', error);
+    return { invalidItems: [], error };
+  }
+};

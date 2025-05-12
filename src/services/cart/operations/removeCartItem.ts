@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { removeCartItem as removeCartItemFromCart } from "./cartItemModifiers";
+import { removeCartItem } from "./cartItemModifiers";
 
 /**
  * Remove item from cart
@@ -20,7 +20,7 @@ export const removeFromCart = async (itemId: string): Promise<boolean> => {
       return false;
     }
 
-    const { success, error } = await removeCartItemFromCart(itemId);
+    const { success, error } = await removeCartItem(itemId);
     if (!success) {
       console.error('Error removing item:', error);
       return false;

@@ -74,47 +74,91 @@ export const addOrUpdateCartItem = async (cartId: string, productId: string, qua
       
       if (error) {
         console.error('[cartItemModifiers] Error adding cart item:', error);
-        
-        // Additional diagnostics if insert fails
-        const { data: cartCheck, error: cartCheckError } = await supabase
-          .from('carts')
-          .select('id, status, user_id')
-          .eq('id', cartId)
-          .single();
-          
-        console.log('[cartItemModifiers] Cart check:', { cartCheck, cartCheckError });
-        
-        const { data: productCheck, error: productCheckError } = await supabase
-          .from('produtos')
-          .select('id')
-          .eq('id', productId)
-          .single();
-          
-        console.log('[cartItemModifiers] Product check:', { productCheck, productCheckError });
-        
         return { success: false, error };
       }
       
       console.log('[cartItemModifiers] Successfully added new cart item:', data);
-      
-      // Double-check that the item was actually inserted
-      const { data: verifyData, error: verifyError } = await supabase
-        .from('cart_items')
-        .select('*')
-        .eq('cart_id', cartId)
-        .eq('product_id', productId)
-        .maybeSingle();
-        
-      console.log('[cartItemModifiers] Verification:', { verifyData, verifyError });
-      
-      if (verifyError || !verifyData) {
-        console.warn('[cartItemModifiers] Item may not have been inserted properly');
-      }
-      
       return { success: true, error: null };
     }
   } catch (error) {
     console.error('[cartItemModifiers] Error in addOrUpdateCartItem:', error);
+    return { success: false, error };
+  }
+};
+
+/**
+ * Update an existing cart item's quantity
+ */
+export const updateExistingCartItem = async (itemId: string, quantity: number): Promise<{ success: boolean, error: any }> => {
+  try {
+    console.log('[cartItemModifiers] Updating cart item quantity:', { itemId, quantity });
+    
+    const { data, error } = await supabase
+      .from('cart_items')
+      .update({ quantity })
+      .eq('id', itemId)
+      .select('*')
+      .single();
+    
+    if (error) {
+      console.error('[cartItemModifiers] Error updating cart item:', error);
+      return { success: false, error };
+    }
+    
+    console.log('[cartItemModifiers] Successfully updated cart item:', data);
+    return { success: true, error: null };
+  } catch (error) {
+    console.error('[cartItemModifiers] Error updating cart item:', error);
+    return { success: false, error };
+  }
+};
+
+/**
+ * Remove a cart item
+ */
+export const removeCartItem = async (itemId: string): Promise<{ success: boolean, error: any }> => {
+  try {
+    console.log('[cartItemModifiers] Removing cart item:', itemId);
+    
+    const { error } = await supabase
+      .from('cart_items')
+      .delete()
+      .eq('id', itemId);
+    
+    if (error) {
+      console.error('[cartItemModifiers] Error removing cart item:', error);
+      return { success: false, error };
+    }
+    
+    console.log('[cartItemModifiers] Successfully removed cart item');
+    return { success: true, error: null };
+  } catch (error) {
+    console.error('[cartItemModifiers] Error removing cart item:', error);
+    return { success: false, error };
+  }
+};
+
+/**
+ * Clear all items from a cart
+ */
+export const clearCartItems = async (cartId: string): Promise<{ success: boolean, error: any }> => {
+  try {
+    console.log('[cartItemModifiers] Clearing all items from cart:', cartId);
+    
+    const { error } = await supabase
+      .from('cart_items')
+      .delete()
+      .eq('cart_id', cartId);
+    
+    if (error) {
+      console.error('[cartItemModifiers] Error clearing cart items:', error);
+      return { success: false, error };
+    }
+    
+    console.log('[cartItemModifiers] Successfully cleared all cart items');
+    return { success: true, error: null };
+  } catch (error) {
+    console.error('[cartItemModifiers] Error clearing cart items:', error);
     return { success: false, error };
   }
 };
