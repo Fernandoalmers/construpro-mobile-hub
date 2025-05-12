@@ -61,13 +61,17 @@ export async function processCartItems(cartId: string, userId: string): Promise<
       };
       
       // Check if produtos exists and is not an error before using it
-      // TypeScript needs the explicit check to ensure it's a valid product object
-      const isValidProduct = item.produtos && 
+      // First check if item.produtos is not null or undefined
+      const produtoExists = item.produtos !== null && item.produtos !== undefined;
+      
+      // Then check if it's a valid object (not an error)
+      const isValidProduct = produtoExists && 
         typeof item.produtos === 'object' && 
-        !('error' in item.produtos);
+        !('error' in (item.produtos as object || {}));
       
       // Use the valid product data or the default
-      const produto: ProdutoData = isValidProduct ? item.produtos as ProdutoData : defaultProduct;
+      const produto = isValidProduct && item.produtos ? 
+        item.produtos as ProdutoData : defaultProduct;
       
       const preco = item.price_at_add || produto.preco_promocional || produto.preco_normal || 0;
       const subtotal = item.quantity * preco;
