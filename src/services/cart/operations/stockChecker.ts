@@ -2,114 +2,64 @@
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Check if product has enough stock for the requested quantity
+ * Check if a product has sufficient stock for the requested quantity
  */
 export const checkProductStock = async (productId: string, quantity: number) => {
   try {
-    const { data: product, error } = await supabase
-      .from('produtos')
-      .select('estoque, preco_normal, preco_promocional')
-      .eq('id', productId)
-      .single();
-      
-    if (error) {
-      console.error('Error checking product stock:', error);
-      return { hasStock: false, error, product: null };
-    }
+    console.log('[stockChecker] Checking stock for product:', productId, 'quantity:', quantity);
     
-    if (!product) {
-      return { hasStock: false, error: new Error('Produto não encontrado'), product: null };
-    }
-    
-    if (product.estoque < quantity) {
+    if (!productId || quantity <= 0) {
       return { 
         hasStock: false, 
-        error: new Error(`Estoque insuficiente. Disponível: ${product.estoque}`),
-        product
+        product: null, 
+        error: new Error('Invalid product ID or quantity') 
       };
     }
     
-    return { hasStock: true, error: null, product };
-  } catch (error) {
-    console.error('Error in checkProductStock:', error);
-    return { hasStock: false, error, product: null };
-  }
-};
-
-/**
- * Check if product has enough stock for the requested quantity
- * taking into account existing cart items
- */
-export const checkTotalStockAvailability = async (
-  cartId: string, 
-  productId: string, 
-  additionalQuantity: number,
-  existingItem: { id: string; quantity: number }
-) => {
-  try {
-    // Get product stock
-    const { hasStock, error, product } = await checkProductStock(productId, existingItem.quantity + additionalQuantity);
-    return { hasStock, error, product };
-  } catch (error) {
-    console.error('Error in checkTotalStockAvailability:', error);
-    return { hasStock: false, error, product: null };
-  }
-};
-
-/**
- * Validate all items in cart against current stock levels
- * Returns invalid items with available stock levels
- */
-export const validateCartItemsStock = async (cartId: string) => {
-  try {
-    // Get all cart items
-    const { data: items, error: itemsError } = await supabase
-      .from('cart_items')
-      .select('id, product_id, quantity')
-      .eq('cart_id', cartId);
-      
-    if (itemsError || !items) {
-      console.error('Error getting cart items:', itemsError);
-      return { invalidItems: [], error: itemsError };
+    // Get product details including stock level
+    const { data: product, error } = await supabase
+      .from('produtos')
+      .select('id, nome, estoque, preco_normal, preco_promocional')
+      .eq('id', productId)
+      .single();
+    
+    if (error) {
+      console.error('[stockChecker] Error fetching product:', error);
+      return { 
+        hasStock: false, 
+        product: null, 
+        error: error 
+      };
     }
     
-    // Check each item
-    const invalidItems = [];
-    
-    for (const item of items) {
-      // Get product stock
-      const { data: product, error: productError } = await supabase
-        .from('produtos')
-        .select('estoque')
-        .eq('id', item.product_id)
-        .single();
-        
-      if (productError || !product) {
-        console.error(`Error getting product ${item.product_id}:`, productError);
-        invalidItems.push({
-          id: item.id,
-          productId: item.product_id,
-          quantity: item.quantity,
-          availableStock: 0,
-          valid: false
-        });
-        continue;
-      }
-      
-      if (product.estoque < item.quantity) {
-        invalidItems.push({
-          id: item.id,
-          productId: item.product_id,
-          quantity: item.quantity,
-          availableStock: product.estoque,
-          valid: false
-        });
-      }
+    if (!product) {
+      console.error('[stockChecker] Product not found:', productId);
+      return { 
+        hasStock: false, 
+        product: null, 
+        error: new Error('Produto não encontrado') 
+      };
     }
     
-    return { invalidItems, error: null };
+    const hasStock = product.estoque >= quantity;
+    
+    if (!hasStock) {
+      console.log(`[stockChecker] Insufficient stock for product ${productId}: requested ${quantity}, available ${product.estoque}`);
+      return { 
+        hasStock: false, 
+        product, 
+        error: new Error(`Quantidade solicitada indisponível (disponível: ${product.estoque})`) 
+      };
+    }
+    
+    console.log(`[stockChecker] Stock check passed for product ${productId}: ${product.estoque} available`);
+    return { hasStock: true, product, error: null };
   } catch (error) {
-    console.error('Error in validateCartItemsStock:', error);
-    return { invalidItems: [], error };
+    console.error('[stockChecker] Error checking product stock:', error);
+    return { 
+      hasStock: false, 
+      product: null, 
+      error: new Error('Erro ao verificar estoque do produto') 
+    };
   }
 };

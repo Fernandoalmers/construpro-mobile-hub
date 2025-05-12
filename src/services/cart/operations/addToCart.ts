@@ -58,35 +58,17 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
       const productPrice = product.preco_promocional || product.preco_normal;
       console.log('[addToCart] Product price:', productPrice);
       
-      // Check if the item already exists in the cart and get current quantity
-      const { item: existingItem, error: findError } = await findExistingCartItem(cartId, productId);
-      
-      if (findError && findError.code !== 'PGRST116') {
-        console.error('[addToCart] Error finding existing item:', findError);
-        throw findError;
-      }
-      
-      let totalQuantity = quantity;
-      if (existingItem) {
-        totalQuantity = existingItem.quantity + quantity;
-        console.log('[addToCart] Item exists, new total quantity will be:', totalQuantity);
-        
-        // Check if total quantity would exceed stock
-        if (totalQuantity > product.estoque) {
-          throw new Error(`Quantidade total excederia o estoque disponível (${product.estoque})`);
-        }
-      }
-      
-      // Add or update the cart item
+      // Add or update the cart item - this function handles both cases
       const { success, error: addError } = await addOrUpdateCartItem(cartId, productId, quantity, productPrice);
       if (!success) {
         console.error('[addToCart] Error adding/updating item:', addError);
         throw addError || new Error('Erro ao adicionar item ao carrinho');
       }
 
-      // Show appropriate toast message
+      // Check if the item exists to show appropriate toast message
+      const { item: existingItem } = await findExistingCartItem(cartId, productId);
       if (existingItem) {
-        toast.success(`Quantidade atualizada para ${totalQuantity}`);
+        toast.success(`Quantidade atualizada para ${existingItem.quantity}`);
       } else {
         toast.success('Produto adicionado ao carrinho');
       }
