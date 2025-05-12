@@ -22,7 +22,7 @@ export const useCartScreen = () => {
   const cartItems = cart?.items || [];
   const cartIsEmpty = cartItems.length === 0;
 
-  // Extract unique store IDs from cart items using useMemo instead of useCallback
+  // Extract unique store IDs from cart items using useMemo
   const storeIds = useMemo(() => {
     return cartItems
       .map(item => item.produto?.loja_id)
@@ -44,7 +44,7 @@ export const useCartScreen = () => {
     cart?.summary.totalPoints
   );
 
-  // Memoize the refresh cart function to avoid recreating it on every render
+  // Memoize the refresh cart function with a ref to avoid recreating it on every render
   const memoizedRefreshCart = useCallback(async () => {
     try {
       setError(null);
@@ -55,7 +55,7 @@ export const useCartScreen = () => {
     }
   }, [refreshCart]);
 
-  // Fetch cart data when component mounts or auth state changes
+  // Load cart only once when component mounts
   useEffect(() => {
     if (!isAuthenticated) {
       console.log("CartScreen: User not authenticated, redirecting to login");
@@ -80,16 +80,17 @@ export const useCartScreen = () => {
     
     loadCart();
     
-    // Set a periodic refresh with a longer interval to prevent excessive updates
+    // Use a ref to prevent creating multiple intervals
     const intervalId = setInterval(() => {
       console.log("CartScreen: Periodic cart refresh");
       memoizedRefreshCart().catch(err => {
         console.error("Error in periodic refresh:", err);
       });
-    }, 300000); // Every 5 minutes instead of every minute
+    }, 300000); // Every 5 minutes
     
+    // Clean up interval on unmount
     return () => clearInterval(intervalId);
-  }, [isAuthenticated, navigate, memoizedRefreshCart]); // Use memoized refresh function
+  }, [isAuthenticated, navigate, memoizedRefreshCart]); 
 
   // Handle quantity updates with proper error handling
   const handleUpdateQuantity = async (item: CartItem, newQuantity: number) => {
@@ -122,7 +123,7 @@ export const useCartScreen = () => {
       await updateQuantity(item.id, newQuantity);
       toast.success('Carrinho atualizado com sucesso');
       
-      // Force a refresh to ensure UI is updated - with a delay to prevent UI flicker
+      // Only refresh, don't set loading state again to prevent flicker
       setTimeout(() => {
         memoizedRefreshCart().catch(err => {
           console.error("Error refreshing after quantity update:", err);
@@ -156,7 +157,7 @@ export const useCartScreen = () => {
       await removeItem(itemId);
       toast.success('Item removido do carrinho');
       
-      // Force a refresh to ensure UI is updated - with a delay to prevent UI flicker
+      // Only refresh, don't set loading state again
       setTimeout(() => {
         memoizedRefreshCart().catch(err => {
           console.error("Error refreshing after item removal:", err);

@@ -28,15 +28,15 @@ export function useCartFetcher() {
           return createEmptyCart(userId);
         }
 
-        // Fetch cart with the guaranteed single active cart ID
+        // Fetch cart with the active cart ID
         const { data: cart, error: cartError } = await supabase
           .from('carts')
           .select('id, user_id, created_at')
           .eq('id', activeCartId)
-          .single();
+          .maybeSingle(); // Use maybeSingle instead of single to avoid errors
           
-        if (cartError) {
-          console.error('[useCartFetcher] Error fetching cart:', cartError);
+        if (cartError || !cart) {
+          console.error('[useCartFetcher] Error or no cart found:', cartError);
           // Return empty cart instead of throwing error
           return createEmptyCart(userId);
         }

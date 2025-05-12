@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export const useStoreInfo = (storeIds: string[]) => {
@@ -7,9 +7,12 @@ export const useStoreInfo = (storeIds: string[]) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Use memoized function to avoid recreating it on every render
+  // Use ref to track previous IDs to avoid unnecessary fetches
+  const prevStoreIdsRef = useRef<string[]>([]);
+  
+  // Memoized function without storeInfo dependency
   const fetchStoreInfo = useCallback(async () => {
-    // Skip fetch if no store IDs are provided or it's the same as current
+    // Skip fetch if no store IDs are provided
     if (!storeIds || storeIds.length === 0) {
       setStoreInfo({});
       setLoading(false);
@@ -25,12 +28,18 @@ export const useStoreInfo = (storeIds: string[]) => {
       return;
     }
     
-    // Check if we already have all the store info we need
-    const allStoresExist = validStoreIds.every(id => storeInfo[id]);
-    if (allStoresExist) {
-      console.log("All store info already exists, skipping fetch");
+    // Compare with previous IDs to avoid unnecessary fetches
+    const sameIds = 
+      validStoreIds.length === prevStoreIdsRef.current.length && 
+      validStoreIds.every(id => prevStoreIdsRef.current.includes(id));
+      
+    if (sameIds) {
+      console.log("Same store IDs, skipping fetch");
       return;
     }
+    
+    // Update ref with current IDs
+    prevStoreIdsRef.current = [...validStoreIds];
     
     setLoading(true);
     setError(null);
@@ -41,12 +50,6 @@ export const useStoreInfo = (storeIds: string[]) => {
       const initialStoreMap = validStoreIds.reduce((acc, id) => {
         if (!id) return acc; // Skip null/undefined ids
         
-        // Use previous store info if available
-        if (storeInfo[id]) {
-          acc[id] = storeInfo[id];
-          return acc;
-        }
-        
         // Use default store name format for new stores
         acc[id] = {
           id: id,
@@ -56,7 +59,8 @@ export const useStoreInfo = (storeIds: string[]) => {
         return acc;
       }, {} as Record<string, any>);
       
-      setStoreInfo(initialStoreMap); // Set initial values immediately to prevent flickering
+      // Using functional update to avoid stateInfo dependency
+      setStoreInfo(initialStoreMap); 
       
       try {
         // Try to get data from vendedores table first (preferred)
@@ -72,20 +76,24 @@ export const useStoreInfo = (storeIds: string[]) => {
         
         // If we got data from vendedores, use that to update our base map
         if (vendedoresData && vendedoresData.length > 0) {
-          const updatedMap = {...initialStoreMap};
-          
-          vendedoresData.forEach(store => {
-            if (store.id) {
-              updatedMap[store.id] = {
-                id: store.id,
-                nome: store.nome_loja || updatedMap[store.id].nome,
-                logo_url: store.logo || null
-              };
-            }
+          // Using functional update to safely access previous state
+          setStoreInfo(prevState => {
+            const updatedMap = {...prevState};
+            
+            vendedoresData.forEach(store => {
+              if (store.id) {
+                updatedMap[store.id] = {
+                  id: store.id,
+                  nome: store.nome_loja || updatedMap[store.id]?.nome || `Loja ${store.id.substring(0, 4)}`,
+                  logo_url: store.logo || null
+                };
+              }
+            });
+            
+            return updatedMap;
           });
           
-          setStoreInfo(updatedMap);
-          console.log("Store info updated with vendedores data:", updatedMap);
+          console.log("Store info updated with vendedores data");
         }
       } catch (err) {
         console.log("Failed to fetch vendedores data, continuing with fallback:", err);
@@ -101,28 +109,31 @@ export const useStoreInfo = (storeIds: string[]) => {
             
         if (storesError) {
           console.error("Error fetching stores:", storesError);
-          // Use initialStoreMap as fallback
+          // Continue with current state
         }
             
         if (storesData && storesData.length > 0) {
-          const updatedMap = {...storeInfo}; // Use the current state which might already have vendedores data
-          
-          storesData.forEach(store => {
-            if (store.id && updatedMap[store.id]) {
-              updatedMap[store.id] = {
-                ...updatedMap[store.id],
-                nome: store.nome || updatedMap[store.id].nome,
-                logo_url: store.logo_url || updatedMap[store.id].logo_url
-              };
-            }
+          // Using functional update to safely access previous state
+          setStoreInfo(prevState => {
+            const updatedMap = {...prevState};
+            
+            storesData.forEach(store => {
+              if (store.id) {
+                updatedMap[store.id] = {
+                  ...updatedMap[store.id],
+                  nome: store.nome || updatedMap[store.id]?.nome || `Loja ${store.id.substring(0, 4)}`,
+                  logo_url: store.logo_url || updatedMap[store.id]?.logo_url || null
+                };
+              }
+            });
+            
+            return updatedMap;
           });
           
-          // Set final store info
-          setStoreInfo(updatedMap);
-          console.log("Store info updated with stores data:", updatedMap);
+          console.log("Store info updated with stores data");
         }
       } catch (err) {
-        console.log("Failed to fetch stores data, using initial map:", err);
+        console.log("Failed to fetch stores data:", err);
         setError("Erro ao carregar informações das lojas");
       }
     } catch (err) {
@@ -131,7 +142,7 @@ export const useStoreInfo = (storeIds: string[]) => {
     } finally {
       setLoading(false);
     }
-  }, [storeIds, storeInfo]);
+  }, [storeIds]); // Remove storeInfo dependency
     
   // Call the fetch function when store IDs change
   useEffect(() => {

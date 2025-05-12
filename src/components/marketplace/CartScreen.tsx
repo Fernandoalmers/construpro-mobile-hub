@@ -31,7 +31,7 @@ const CartScreen: React.FC = () => {
     removeCoupon
   } = useCartScreen();
 
-  // Show authentication check before loading state
+  // Show authentication check first
   if (!isAuthenticated || !user) {
     return (
       <div className="flex flex-col min-h-screen bg-gray-50">
@@ -48,6 +48,7 @@ const CartScreen: React.FC = () => {
     );
   }
 
+  // Show loading state
   if (loading) {
     return (
       <div className="flex flex-col min-h-screen bg-gray-50">
@@ -59,6 +60,7 @@ const CartScreen: React.FC = () => {
     );
   }
 
+  // Show error state
   if (error) {
     return (
       <div className="flex flex-col min-h-screen bg-gray-50">
@@ -67,7 +69,7 @@ const CartScreen: React.FC = () => {
           <ErrorState 
             title="Erro ao carregar o carrinho" 
             message={error} 
-            onRetry={() => refreshCart()} 
+            onRetry={refreshCart} 
           />
         </div>
       </div>
@@ -83,7 +85,7 @@ const CartScreen: React.FC = () => {
           <ErrorState 
             title="Carrinho indisponível" 
             message="Não foi possível carregar os dados do carrinho. Tente novamente." 
-            onRetry={() => refreshCart()} 
+            onRetry={refreshCart} 
           />
         </div>
       </div>
