@@ -47,6 +47,9 @@ const CartItem: React.FC<CartItemProps> = ({ item, onUpdateQuantity, onRemoveIte
             src={imageUrl} 
             alt={item.produto?.nome || 'Produto'} 
             className="w-full h-full object-cover"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = 'https://via.placeholder.com/160x160?text=Sem+Imagem';
+            }}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">

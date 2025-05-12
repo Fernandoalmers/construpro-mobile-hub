@@ -9,10 +9,10 @@ type ProdutoData = {
   nome: string;
   preco_normal: number;
   preco_promocional?: number;
-  imagens?: string[]; // Changed from imagem_url to imagens array
+  imagens?: string[]; // Array of image URLs
   categoria?: string;
   estoque: number;
-  pontos?: number;
+  pontos_consumidor?: number; // Changed from pontos to pontos_consumidor to match DB
   loja_id?: string;
 };
 
@@ -39,7 +39,7 @@ export async function processCartItems(cartId: string, userId: string): Promise<
           imagens, 
           categoria, 
           estoque, 
-          pontos,
+          pontos_consumidor,
           loja_id
         )
       `)
@@ -49,6 +49,10 @@ export async function processCartItems(cartId: string, userId: string): Promise<
       console.error('[processCartItems] Error fetching cart items:', itemsError);
       throw itemsError;
     }
+    
+    // Debug log cart items to help troubleshoot
+    console.log('[processCartItems] Retrieved', cartItems?.length || 0, 'items from cart:', 
+      cartItems ? cartItems.map(i => ({id: i.id, product_id: i.product_id, has_produto: !!i.produtos})) : 'none');
     
     // Transform the cart items into the expected format
     const transformedItems: CartItem[] = (cartItems || []).map(item => {
@@ -69,6 +73,10 @@ export async function processCartItems(cartId: string, userId: string): Promise<
         typeof item.produtos === 'object' && 
         !('error' in (item.produtos as object || {}));
       
+      if (!isValidProduct || !item.produtos) {
+        console.warn('[processCartItems] Invalid product data for item:', item.id, 'product_id:', item.product_id);
+      }
+      
       // Use the valid product data or the default
       // Cast to unknown first then to ProdutoData to avoid TypeScript error
       const produto: ProdutoData = isValidProduct && item.produtos ? 
@@ -78,10 +86,16 @@ export async function processCartItems(cartId: string, userId: string): Promise<
       let imagemUrl = '';
       if (produto.imagens && Array.isArray(produto.imagens) && produto.imagens.length > 0) {
         imagemUrl = produto.imagens[0];
+        console.log('[processCartItems] Found image for product:', produto.id, 'URL:', imagemUrl);
+      } else {
+        console.log('[processCartItems] No images found for product:', produto.id);
       }
       
       const preco = item.price_at_add || produto.preco_promocional || produto.preco_normal || 0;
       const subtotal = item.quantity * preco;
+      
+      // Get points from pontos_consumidor, not pontos
+      const pontos = produto.pontos_consumidor || 0;
       
       return {
         id: item.id,
@@ -97,7 +111,7 @@ export async function processCartItems(cartId: string, userId: string): Promise<
           imagem_url: imagemUrl, // Use the first image from the array
           categoria: produto.categoria || '',
           estoque: produto.estoque,
-          pontos: produto.pontos || 0,
+          pontos: pontos,
           loja_id: produto.loja_id || ''
         }
       };
