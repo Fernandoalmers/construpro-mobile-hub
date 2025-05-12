@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/hooks/use-cart';
@@ -22,8 +22,8 @@ export const useCartScreen = () => {
   const cartItems = cart?.items || [];
   const cartIsEmpty = cartItems.length === 0;
 
-  // Extract unique store IDs from cart items - memoize this to prevent unnecessary recalculations
-  const storeIds = useCallback(() => {
+  // Extract unique store IDs from cart items using useMemo instead of useCallback
+  const storeIds = useMemo(() => {
     return cartItems
       .map(item => item.produto?.loja_id)
       .filter((id): id is string => !!id)
@@ -31,7 +31,7 @@ export const useCartScreen = () => {
   }, [cartItems]);
 
   // Use our custom hooks
-  const { storeInfo } = useStoreInfo(storeIds());
+  const { storeInfo } = useStoreInfo(storeIds);
   const { couponCode, setCouponCode, appliedCoupon, applyCoupon, removeCoupon } = useCoupon();
   const itemsByStore = useGroupItemsByStore(cartItems, storeInfo);
   
@@ -44,6 +44,17 @@ export const useCartScreen = () => {
     cart?.summary.totalPoints
   );
 
+  // Memoize the refresh cart function to avoid recreating it on every render
+  const memoizedRefreshCart = useCallback(async () => {
+    try {
+      setError(null);
+      await refreshCart();
+    } catch (err: any) {
+      console.error("Error refreshing cart:", err);
+      setError("Erro ao carregar o carrinho. Por favor, tente novamente.");
+    }
+  }, [refreshCart]);
+
   // Fetch cart data when component mounts or auth state changes
   useEffect(() => {
     if (!isAuthenticated) {
@@ -52,7 +63,8 @@ export const useCartScreen = () => {
       return;
     }
     
-    console.log("CartScreen: Refreshing cart data");
+    console.log("CartScreen: Loading initial cart data");
+    
     const loadCart = async () => {
       try {
         setLoading(true);
@@ -68,16 +80,16 @@ export const useCartScreen = () => {
     
     loadCart();
     
-    // Set a periodic refresh to ensure the cart stays updated
+    // Set a periodic refresh with a longer interval to prevent excessive updates
     const intervalId = setInterval(() => {
       console.log("CartScreen: Periodic cart refresh");
-      refreshCart().catch(err => {
+      memoizedRefreshCart().catch(err => {
         console.error("Error in periodic refresh:", err);
       });
-    }, 60000); // Every minute
+    }, 300000); // Every 5 minutes instead of every minute
     
     return () => clearInterval(intervalId);
-  }, [isAuthenticated, navigate, refreshCart]); // Only depend on these values
+  }, [isAuthenticated, navigate, memoizedRefreshCart]); // Use memoized refresh function
 
   // Handle quantity updates with proper error handling
   const handleUpdateQuantity = async (item: CartItem, newQuantity: number) => {
@@ -98,14 +110,24 @@ export const useCartScreen = () => {
       return;
     }
 
+    // Don't proceed if this item is already being processed
+    if (processingItem === item.id) {
+      console.log("CartScreen: Item already processing, ignoring request", item.id);
+      return;
+    }
+
     try {
       setProcessingItem(item.id);
       console.log("CartScreen: Updating quantity for item:", item.id, "to", newQuantity);
       await updateQuantity(item.id, newQuantity);
       toast.success('Carrinho atualizado com sucesso');
       
-      // Force a refresh to ensure UI is updated
-      await refreshCart();
+      // Force a refresh to ensure UI is updated - with a delay to prevent UI flicker
+      setTimeout(() => {
+        memoizedRefreshCart().catch(err => {
+          console.error("Error refreshing after quantity update:", err);
+        });
+      }, 300);
     } catch (err) {
       console.error('Failed to update quantity:', err);
       toast.error('Erro ao atualizar quantidade');
@@ -122,14 +144,24 @@ export const useCartScreen = () => {
       return;
     }
     
+    // Don't proceed if this item is already being processed
+    if (processingItem === itemId) {
+      console.log("CartScreen: Item already processing, ignoring removal request", itemId);
+      return;
+    }
+    
     try {
       setProcessingItem(itemId);
       console.log("CartScreen: Removing item:", itemId);
       await removeItem(itemId);
       toast.success('Item removido do carrinho');
       
-      // Force a refresh to ensure UI is updated
-      await refreshCart();
+      // Force a refresh to ensure UI is updated - with a delay to prevent UI flicker
+      setTimeout(() => {
+        memoizedRefreshCart().catch(err => {
+          console.error("Error refreshing after item removal:", err);
+        });
+      }, 300);
     } catch (err) {
       console.error('Failed to remove item:', err);
       toast.error('Erro ao remover item do carrinho');
@@ -154,7 +186,7 @@ export const useCartScreen = () => {
     shipping,
     total,
     totalPoints,
-    refreshCart,
+    refreshCart: memoizedRefreshCart,
     handleUpdateQuantity,
     handleRemoveItem,
     applyCoupon,

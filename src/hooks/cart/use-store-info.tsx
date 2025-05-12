@@ -9,6 +9,7 @@ export const useStoreInfo = (storeIds: string[]) => {
   
   // Use memoized function to avoid recreating it on every render
   const fetchStoreInfo = useCallback(async () => {
+    // Skip fetch if no store IDs are provided or it's the same as current
     if (!storeIds || storeIds.length === 0) {
       setStoreInfo({});
       setLoading(false);
@@ -24,6 +25,13 @@ export const useStoreInfo = (storeIds: string[]) => {
       return;
     }
     
+    // Check if we already have all the store info we need
+    const allStoresExist = validStoreIds.every(id => storeInfo[id]);
+    if (allStoresExist) {
+      console.log("All store info already exists, skipping fetch");
+      return;
+    }
+    
     setLoading(true);
     setError(null);
     console.log("Fetching store info for:", validStoreIds);
@@ -33,7 +41,13 @@ export const useStoreInfo = (storeIds: string[]) => {
       const initialStoreMap = validStoreIds.reduce((acc, id) => {
         if (!id) return acc; // Skip null/undefined ids
         
-        // Use more stable store name format to prevent flickering
+        // Use previous store info if available
+        if (storeInfo[id]) {
+          acc[id] = storeInfo[id];
+          return acc;
+        }
+        
+        // Use default store name format for new stores
         acc[id] = {
           id: id,
           nome: `Loja ${id.substring(0, 4)}`, // Shorter initial name
@@ -117,7 +131,7 @@ export const useStoreInfo = (storeIds: string[]) => {
     } finally {
       setLoading(false);
     }
-  }, [storeIds]);
+  }, [storeIds, storeInfo]);
     
   // Call the fetch function when store IDs change
   useEffect(() => {
