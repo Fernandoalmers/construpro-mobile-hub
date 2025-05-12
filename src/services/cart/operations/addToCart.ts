@@ -1,7 +1,6 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Cart } from "@/types/cart";
-import { getCart } from "../cartFetcher";
+import { getCart } from "../fetcher";
 import { ensureSingleActiveCart } from "../consolidation/consolidateActiveCart";
 import { checkProductStock } from "./stockChecker";
 import { findExistingCartItem, addOrUpdateCartItem } from "./cartItemModifiers";
