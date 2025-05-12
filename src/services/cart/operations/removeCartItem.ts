@@ -1,6 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { removeCartItem } from "./cartItemModifiers";
+import { ensureSingleActiveCart } from "../cartConsolidation";
 
 /**
  * Remove item from cart
@@ -20,6 +21,10 @@ export const removeFromCart = async (itemId: string): Promise<boolean> => {
       return false;
     }
 
+    // Ensure we have a single active cart
+    await ensureSingleActiveCart(userData.user.id);
+
+    // Remove the item
     const { success, error } = await removeCartItem(itemId);
     if (!success) {
       console.error('Error removing item:', error);

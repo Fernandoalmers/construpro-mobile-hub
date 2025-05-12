@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 /**
@@ -8,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 export async function ensureSingleActiveCart(userId: string): Promise<string | null> {
   try {
     if (!userId) {
-      console.error('Invalid user ID provided to ensureSingleActiveCart');
+      console.error('[cartConsolidation] Invalid user ID provided to ensureSingleActiveCart');
       return null;
     }
     
@@ -48,73 +47,50 @@ export async function ensureSingleActiveCart(userId: string): Promise<string | n
       return newCart.id;
     }
     
-    // If multiple active carts, keep only the most recent one
-    if (activeCarts.length > 1) {
-      console.warn(`[cartConsolidation] Multiple active carts found (${activeCarts.length}), consolidating...`);
-      
-      const mostRecentCart = activeCarts[0]; // Already sorted by created_at desc
-      const cartsToArchive = activeCarts.slice(1);
-      
-      if (cartsToArchive.length > 0) {
-        try {
-          // If there are too many carts to archive at once, do it in batches
-          if (cartsToArchive.length > 100) {
-            console.log(`[cartConsolidation] Large number of carts (${cartsToArchive.length}), processing in batches`);
-            
-            // First, consolidate items from the older carts into the most recent one
-            await consolidateCartItems(cartsToArchive.map(c => c.id), mostRecentCart.id);
-            
-            // Then archive carts in batches to avoid query size limits
-            const batchSize = 50;
-            for (let i = 0; i < cartsToArchive.length; i += batchSize) {
-              const batch = cartsToArchive.slice(i, i + batchSize);
-              const batchIds = batch.map(cart => cart.id);
-              
-              console.log(`[cartConsolidation] Archiving batch ${i / batchSize + 1}/${Math.ceil(cartsToArchive.length / batchSize)}`);
-              
-              const { error: batchError } = await supabase
-                .from('carts')
-                .update({ status: 'archived' })
-                .in('id', batchIds);
-                
-              if (batchError) {
-                console.error(`[cartConsolidation] Error archiving batch ${i / batchSize + 1}:`, batchError);
-                // Continue with the process - at least we've moved the items
-              } else {
-                console.log(`[cartConsolidation] Successfully archived batch ${i / batchSize + 1}`);
-              }
-            }
-          } else {
-            // For a smaller number of carts, first consolidate items
-            await consolidateCartItems(cartsToArchive.map(c => c.id), mostRecentCart.id);
-            
-            // Then archive all carts at once
-            const cartsToArchiveIds = cartsToArchive.map(cart => cart.id);
-            const { error: updateError } = await supabase
-              .from('carts')
-              .update({ status: 'archived' })
-              .in('id', cartsToArchiveIds);
-              
-            if (updateError) {
-              console.error('[cartConsolidation] Error archiving old carts:', updateError);
-              // Continue with the most recent cart anyway since we've consolidated items
-            } else {
-              console.log(`[cartConsolidation] Archived ${cartsToArchive.length} old carts`);
-            }
-          }
-        } catch (consolidateError) {
-          console.error('[cartConsolidation] Error during cart consolidation:', consolidateError);
-          // Continue with the most recent cart even if consolidation failed
-        }
-      }
-      
-      console.log(`[cartConsolidation] Using most recent cart: ${mostRecentCart.id}`);
-      return mostRecentCart.id;
+    // If only one active cart, return its ID
+    if (activeCarts.length === 1) {
+      console.log(`[cartConsolidation] Found one active cart: ${activeCarts[0].id}`);
+      return activeCarts[0].id;
     }
     
-    // Only one active cart, return its ID
-    console.log(`[cartConsolidation] Using existing cart: ${activeCarts[0].id}`);
-    return activeCarts[0].id;
+    // If multiple active carts, keep only the most recent one and consolidate items
+    console.log(`[cartConsolidation] Multiple active carts found (${activeCarts.length}), consolidating...`);
+    
+    const mostRecentCart = activeCarts[0]; // Already sorted by created_at desc
+    const cartsToArchive = activeCarts.slice(1);
+    
+    try {
+      // First consolidate items from old carts to the most recent cart
+      await consolidateCartItems(cartsToArchive.map(c => c.id), mostRecentCart.id);
+      
+      // Archive old carts in smaller batches to avoid timeouts
+      const batchSize = 10;
+      for (let i = 0; i < cartsToArchive.length; i += batchSize) {
+        const batch = cartsToArchive.slice(i, i + batchSize);
+        const batchIds = batch.map(cart => cart.id);
+        
+        console.log(`[cartConsolidation] Archiving batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(cartsToArchive.length / batchSize)}`);
+        
+        const { error: archiveError } = await supabase
+          .from('carts')
+          .update({ status: 'archived' })
+          .in('id', batchIds);
+          
+        if (archiveError) {
+          console.error(`[cartConsolidation] Error archiving batch:`, archiveError);
+          // Continue with next batch even if this one failed
+        } else {
+          console.log(`[cartConsolidation] Successfully archived batch of ${batch.length} carts`);
+        }
+      }
+    } catch (error) {
+      console.error('[cartConsolidation] Error during cart consolidation:', error);
+      // Continue anyway, at least return the most recent cart ID
+    }
+    
+    console.log(`[cartConsolidation] Using most recent cart: ${mostRecentCart.id}`);
+    return mostRecentCart.id;
+    
   } catch (error) {
     console.error('[cartConsolidation] Error in ensureSingleActiveCart:', error);
     
@@ -143,9 +119,13 @@ export async function ensureSingleActiveCart(userId: string): Promise<string | n
 
 /**
  * Helper function to consolidate items from source carts into a target cart
+ * Improved with error handling and better transaction management
  */
 async function consolidateCartItems(sourceCartIds: string[], targetCartId: string): Promise<void> {
-  if (!sourceCartIds.length || !targetCartId) return;
+  if (!sourceCartIds.length || !targetCartId) {
+    console.log('[consolidateCartItems] No source carts or invalid target cart, skipping consolidation');
+    return;
+  }
   
   console.log(`[consolidateCartItems] Consolidating items from ${sourceCartIds.length} carts into ${targetCartId}`);
   
@@ -204,69 +184,120 @@ async function consolidateCartItems(sourceCartIds: string[], targetCartId: strin
     });
     
     // Process items: update existing or insert new
-    const itemsToUpdate = [];
-    const itemsToInsert = [];
+    let successCount = 0;
+    let errorCount = 0;
     
-    groupedSourceItems.forEach((sourceItem, productId) => {
-      if (existingProducts.has(productId)) {
-        // Update quantity for existing product
-        const existing = existingProducts.get(productId);
-        itemsToUpdate.push({
-          id: existing.id,
-          quantity: existing.quantity + sourceItem.quantity
-        });
-      } else {
-        // Insert new product
-        itemsToInsert.push({
-          cart_id: targetCartId,
-          product_id: sourceItem.product_id,
-          quantity: sourceItem.quantity,
-          price_at_add: sourceItem.price_at_add
-        });
-      }
-    });
-    
-    // Update existing items (if any)
-    if (itemsToUpdate.length > 0) {
-      // Update items in batches if there are many
-      const updateBatchSize = 50;
-      for (let i = 0; i < itemsToUpdate.length; i += updateBatchSize) {
-        const batch = itemsToUpdate.slice(i, i + updateBatchSize);
-        
-        for (const item of batch) {
+    // First update existing items
+    for (const [productId, sourceItem] of groupedSourceItems.entries()) {
+      try {
+        if (existingProducts.has(productId)) {
+          // Update quantity for existing product
+          const existing = existingProducts.get(productId);
+          const newQuantity = existing.quantity + sourceItem.quantity;
+          
           const { error: updateError } = await supabase
             .from('cart_items')
-            .update({ quantity: item.quantity })
-            .eq('id', item.id);
+            .update({ quantity: newQuantity })
+            .eq('id', existing.id);
             
           if (updateError) {
-            console.error(`[consolidateCartItems] Error updating item ${item.id}:`, updateError);
+            console.error(`[consolidateCartItems] Error updating item ${existing.id}:`, updateError);
+            errorCount++;
+          } else {
+            console.log(`[consolidateCartItems] Updated item ${existing.id} quantity to ${newQuantity}`);
+            successCount++;
+          }
+        } else {
+          // Insert new product
+          const { error: insertError } = await supabase
+            .from('cart_items')
+            .insert({
+              cart_id: targetCartId,
+              product_id: sourceItem.product_id,
+              quantity: sourceItem.quantity,
+              price_at_add: sourceItem.price_at_add
+            });
+            
+          if (insertError) {
+            console.error('[consolidateCartItems] Error inserting new item:', insertError);
+            errorCount++;
+          } else {
+            console.log(`[consolidateCartItems] Inserted new item for product ${sourceItem.product_id}`);
+            successCount++;
           }
         }
+      } catch (itemError) {
+        console.error(`[consolidateCartItems] Error processing item for product ${productId}:`, itemError);
+        errorCount++;
       }
     }
     
-    // Insert new items (if any)
-    if (itemsToInsert.length > 0) {
-      // Insert items in batches if there are many
-      const insertBatchSize = 50;
-      for (let i = 0; i < itemsToInsert.length; i += insertBatchSize) {
-        const batch = itemsToInsert.slice(i, i + insertBatchSize);
-        
-        const { error: insertError } = await supabase
-          .from('cart_items')
-          .insert(batch);
-          
-        if (insertError) {
-          console.error('[consolidateCartItems] Error inserting batch of items:', insertError);
-        }
-      }
-    }
+    console.log(`[consolidateCartItems] Consolidation complete: Success: ${successCount}, Errors: ${errorCount}`);
     
-    console.log(`[consolidateCartItems] Consolidation complete: Updated ${itemsToUpdate.length} items, inserted ${itemsToInsert.length} items`);
+    // If we had too many errors, throw an error to indicate consolidation wasn't fully successful
+    if (errorCount > successCount) {
+      throw new Error(`Consolidation partially failed: ${errorCount} errors vs ${successCount} successes`);
+    }
     
   } catch (error) {
     console.error('[consolidateCartItems] Error during consolidation:', error);
     throw error;
+  }
+}
+
+/**
+ * Archive carts that have been inactive for a specified period
+ */
+export async function archiveAbandonedCarts(olderThanDays: number = 7): Promise<boolean> {
+  try {
+    console.log(`[cartConsolidation] Archiving carts older than ${olderThanDays} days`);
+    
+    // Calculate the cutoff date
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
+    
+    // Find active carts older than the cutoff date
+    const { data: oldCarts, error: findError } = await supabase
+      .from('carts')
+      .select('id')
+      .eq('status', 'active')
+      .lt('updated_at', cutoffDate.toISOString())
+      .limit(100); // Process in smaller batches
+      
+    if (findError) {
+      console.error('[cartConsolidation] Error finding old carts:', findError);
+      return false;
+    }
+    
+    if (!oldCarts || oldCarts.length === 0) {
+      console.log('[cartConsolidation] No abandoned carts found');
+      return true;
+    }
+    
+    console.log(`[cartConsolidation] Found ${oldCarts.length} abandoned carts to archive`);
+    
+    // Archive in smaller batches
+    const batchSize = 20;
+    const cartIds = oldCarts.map(cart => cart.id);
+    
+    for (let i = 0; i < cartIds.length; i += batchSize) {
+      const batch = cartIds.slice(i, i + batchSize);
+      
+      const { error: updateError } = await supabase
+        .from('carts')
+        .update({ status: 'archived' })
+        .in('id', batch);
+        
+      if (updateError) {
+        console.error(`[cartConsolidation] Error archiving batch ${i / batchSize + 1}:`, updateError);
+      } else {
+        console.log(`[cartConsolidation] Successfully archived batch ${i / batchSize + 1}, ${batch.length} carts`);
+      }
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('[cartConsolidation] Error archiving abandoned carts:', error);
+    return false;
   }
 }

@@ -19,6 +19,7 @@ export const getCart = async (): Promise<Cart | null> => {
 
     try {
       // Ensure there is only one active cart for this user
+      console.log('[getCart] Ensuring single active cart');
       const activeCartId = await ensureSingleActiveCart(userId);
       
       if (!activeCartId) {
@@ -36,11 +37,14 @@ export const getCart = async (): Promise<Cart | null> => {
         };
       }
 
+      console.log('[getCart] Using active cart:', activeCartId);
+
       // Fetch cart using the guaranteed single active cart ID
       const { data: cart, error: cartError } = await supabase
         .from('carts')
         .select('id, user_id')
         .eq('id', activeCartId)
+        .eq('status', 'active')
         .single();
 
       if (cartError) {
@@ -102,7 +106,7 @@ export const getCart = async (): Promise<Cart | null> => {
       let totalPoints = 0;
 
       const processedItems = items?.map(item => {
-        // Check if produto exists and is valid without accessing 'error' property
+        // Check if produto exists and is valid
         if (!item.produto || typeof item.produto !== 'object') {
           console.warn('[getCart] Invalid product data for cart item:', item.id);
           return {
@@ -161,6 +165,8 @@ export const getCart = async (): Promise<Cart | null> => {
         };
       }) || [];
 
+      console.log(`[getCart] Processed ${processedItems.length} cart items with total: ${subtotal}`);
+      
       return {
         id: cart.id,
         user_id: cart.user_id,

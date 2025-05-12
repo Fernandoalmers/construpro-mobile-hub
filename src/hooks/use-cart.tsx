@@ -6,6 +6,7 @@ import { useCartData } from './cart/use-cart-data';
 import { useCartOperations } from './cart/use-cart-operations';
 import { CartContextType } from '@/types/cart';
 import { addToCart as addToCartService } from '@/services/cart/operations/addToCart';
+import { cleanupAbandonedCarts } from '@/services/cart/cartCleanup';
 
 export async function addToCart(productId: string, quantity: number): Promise<void> {
   try {
@@ -41,6 +42,29 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       refreshCart();
     }
   }, [isAuthenticated, user?.id, refreshCart]);
+  
+  // Cleanup abandoned carts periodically
+  useEffect(() => {
+    if (isAuthenticated && user?.id) {
+      // Run cart cleanup once when component mounts
+      const runCleanup = async () => {
+        try {
+          console.log('Running cart cleanup');
+          await cleanupAbandonedCarts();
+        } catch (error) {
+          console.error('Error during cart cleanup:', error);
+        }
+      };
+      
+      // Run once on mount
+      runCleanup();
+      
+      // Then run weekly
+      const cleanupInterval = setInterval(runCleanup, 7 * 24 * 60 * 60 * 1000);
+      
+      return () => clearInterval(cleanupInterval);
+    }
+  }, [isAuthenticated, user?.id]);
 
   // Create context value
   const value: CartContextType = {

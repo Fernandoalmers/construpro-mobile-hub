@@ -47,12 +47,26 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
       }
 
       // Ensure we have a single active cart and get its ID
+      console.log('[addToCart] Ensuring single active cart for user:', userData.user.id);
       const cartId = await ensureSingleActiveCart(userData.user.id);
       if (!cartId) {
+        console.error('[addToCart] Failed to get or create active cart');
         throw new Error('Não foi possível criar ou acessar o carrinho');
       }
 
       console.log('[addToCart] Using cart:', cartId);
+
+      // Verify the cart exists and is active
+      const { data: cartCheck, error: cartCheckError } = await supabase
+        .from('carts')
+        .select('id, status')
+        .eq('id', cartId)
+        .single();
+        
+      if (cartCheckError || !cartCheck || cartCheck.status !== 'active') {
+        console.error('[addToCart] Cart validation failed:', cartCheckError || 'Cart not active');
+        throw new Error('Erro ao validar carrinho');
+      }
 
       // Use the correct price field from the produtos table
       const productPrice = product.preco_promocional || product.preco_normal;
@@ -73,9 +87,14 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
         toast.success('Produto adicionado ao carrinho');
       }
 
-      // Return updated cart
+      // Refresh the cart to make sure we have the latest data
       console.log('[addToCart] Item added/updated successfully, getting updated cart');
+      
+      // Small delay to ensure database consistency
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const updatedCart = await getCart();
+      console.log('[addToCart] Updated cart:', updatedCart);
       
       return updatedCart;
     } catch (stockErr: any) {
