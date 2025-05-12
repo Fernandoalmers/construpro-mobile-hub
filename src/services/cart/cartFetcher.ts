@@ -1,7 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { Cart } from '@/types/cart';
-import { ensureSingleActiveCart } from './cartConsolidation';
+import { ensureSingleActiveCart } from './consolidation/consolidateActiveCart';
 
 /**
  * Get the active cart for the current user

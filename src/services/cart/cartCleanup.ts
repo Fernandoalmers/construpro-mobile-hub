@@ -1,5 +1,6 @@
+
+import { archiveAbandonedCarts } from "./consolidation/abandonedCarts";
 import { supabase } from "@/integrations/supabase/client";
-import { archiveAbandonedCarts } from "./cartConsolidation";
 
 /**
  * Archive carts that have been inactive for a specified period

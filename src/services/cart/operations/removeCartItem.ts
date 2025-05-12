@@ -1,7 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { removeCartItem } from "./cartItemModifiers";
-import { ensureSingleActiveCart } from "../cartConsolidation";
+import { ensureSingleActiveCart } from "../consolidation/consolidateActiveCart";
 
 /**
  * Remove item from cart

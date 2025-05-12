@@ -2,7 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Cart } from "@/types/cart";
 import { getCart } from "../cartFetcher";
-import { ensureSingleActiveCart } from "../cartConsolidation";
+import { ensureSingleActiveCart } from "../consolidation/consolidateActiveCart";
 import { checkProductStock } from "./stockChecker";
 import { findExistingCartItem, addOrUpdateCartItem } from "./cartItemModifiers";
 import { toast } from "@/components/ui/sonner";
