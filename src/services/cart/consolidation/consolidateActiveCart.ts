@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { consolidateCartItems } from "./cartMerger";
 
@@ -14,13 +15,14 @@ export async function ensureSingleActiveCart(userId: string): Promise<string | n
     
     console.log('[consolidateActiveCart] Checking for active carts for user:', userId);
     
-    // Check for active carts
+    // Check for active carts - limit to a reasonable number to avoid timeouts
     const { data: activeCarts, error: cartsError } = await supabase
       .from('carts')
       .select('id, created_at')
       .eq('user_id', userId)
       .eq('status', 'active')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(50); // Limit to prevent loading too many carts at once
       
     if (cartsError) {
       console.error('[consolidateActiveCart] Error fetching active carts:', cartsError);
@@ -61,27 +63,40 @@ export async function ensureSingleActiveCart(userId: string): Promise<string | n
     const cartsToArchive = activeCarts.slice(1);
     
     try {
-      // First consolidate items from old carts to the most recent cart
-      await consolidateCartItems(cartsToArchive.map(c => c.id), mostRecentCart.id);
-      
-      // Archive old carts in smaller batches to avoid timeouts
-      const batchSize = 10;
-      for (let i = 0; i < cartsToArchive.length; i += batchSize) {
-        const batch = cartsToArchive.slice(i, i + batchSize);
-        const batchIds = batch.map(cart => cart.id);
+      if (cartsToArchive.length > 0) {
+        // Process in smaller batches to avoid timeouts
+        const batchSize = 5;
         
-        console.log(`[consolidateActiveCart] Archiving batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(cartsToArchive.length / batchSize)}`);
-        
-        const { error: archiveError } = await supabase
-          .from('carts')
-          .update({ status: 'archived' })
-          .in('id', batchIds);
+        // First archive old carts to prevent race conditions
+        for (let i = 0; i < cartsToArchive.length; i += batchSize) {
+          const batch = cartsToArchive.slice(i, i + batchSize);
+          const batchIds = batch.map(cart => cart.id);
           
-        if (archiveError) {
-          console.error(`[consolidateActiveCart] Error archiving batch:`, archiveError);
-          // Continue with next batch even if this one failed
-        } else {
-          console.log(`[consolidateActiveCart] Successfully archived batch of ${batch.length} carts`);
+          console.log(`[consolidateActiveCart] Archiving batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(cartsToArchive.length / batchSize)}`);
+          
+          const { error: archiveError } = await supabase
+            .from('carts')
+            .update({ status: 'archived' })
+            .in('id', batchIds);
+            
+          if (archiveError) {
+            console.error(`[consolidateActiveCart] Error archiving batch:`, archiveError);
+          } else {
+            console.log(`[consolidateActiveCart] Successfully archived batch of ${batch.length} carts`);
+          }
+        }
+        
+        // Then move items from archived carts to the most recent one
+        for (let i = 0; i < cartsToArchive.length; i += batchSize) {
+          const batch = cartsToArchive.slice(i, i + batchSize);
+          const batchIds = batch.map(cart => cart.id);
+          
+          console.log(`[consolidateActiveCart] Consolidating items from batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(cartsToArchive.length / batchSize)}`);
+          
+          // Process one cart at a time to avoid overwhelming the database
+          for (const cartId of batchIds) {
+            await consolidateCartItems([cartId], mostRecentCart.id);
+          }
         }
       }
     } catch (error) {

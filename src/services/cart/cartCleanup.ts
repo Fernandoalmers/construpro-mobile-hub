@@ -1,95 +1,136 @@
-
-import { archiveAbandonedCarts } from "./consolidation/abandonedCarts";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from '@/integrations/supabase/client';
 
 /**
- * Archive carts that have been inactive for a specified period
+ * Clean up abandoned carts for the current user
  */
-export async function cleanupAbandonedCarts(olderThanDays: number = 7): Promise<boolean> {
-  return archiveAbandonedCarts(olderThanDays);
+export async function cleanupAbandonedCarts(): Promise<void> {
+  try {
+    console.log('[cartCleanup] Running cart cleanup');
+    
+    // Get current user
+    const { data: userData, error: authError } = await supabase.auth.getUser();
+    if (authError || !userData.user) {
+      console.log('[cartCleanup] No authenticated user, skipping cleanup');
+      return;
+    }
+    
+    const userId = userData.user.id;
+    
+    // Get all carts for this user
+    const { data: carts, error: cartsError } = await supabase
+      .from('carts')
+      .select('id, status, created_at')
+      .eq('user_id', userId);
+      
+    if (cartsError) {
+      console.error('[cartCleanup] Error fetching carts:', cartsError);
+      return;
+    }
+    
+    if (!carts || carts.length === 0) {
+      console.log('[cartCleanup] No carts found for user');
+      return;
+    }
+    
+    console.log(`[cartCleanup] Found ${carts.length} carts for user`);
+    
+    // Find active carts - should only be one
+    const activeCarts = carts.filter(cart => cart.status === 'active');
+    
+    if (activeCarts.length <= 1) {
+      console.log('[cartCleanup] User has 0-1 active carts, no cleanup needed');
+      return;
+    }
+    
+    // Keep most recent active cart
+    activeCarts.sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+    
+    const keepCartId = activeCarts[0].id;
+    const cartsToArchive = activeCarts.slice(1).map(cart => cart.id);
+    
+    console.log(`[cartCleanup] Keeping cart ${keepCartId}, archiving ${cartsToArchive.length} carts`);
+    
+    // Archive old carts in batches
+    const batchSize = 10;
+    for (let i = 0; i < cartsToArchive.length; i += batchSize) {
+      const batch = cartsToArchive.slice(i, i + batchSize);
+      
+      const { error: archiveError } = await supabase
+        .from('carts')
+        .update({ status: 'archived' })
+        .in('id', batch);
+        
+      if (archiveError) {
+        console.error('[cartCleanup] Error archiving carts:', archiveError);
+      }
+    }
+    
+    console.log('[cartCleanup] Cleanup complete');
+  } catch (error) {
+    console.error('[cartCleanup] Error during cart cleanup:', error);
+  }
 }
 
 /**
- * Remove duplicate cart items (if somehow duplicates were created)
- * This should be rare but can happen if there are race conditions
+ * Remove empty carts (carts with no items) for the current user
  */
-export async function cleanupDuplicateCartItems(cartId: string): Promise<boolean> {
+export async function removeEmptyCarts(): Promise<void> {
   try {
-    console.log(`[cartCleanup] Checking for duplicate items in cart ${cartId}`);
+    console.log('[cartCleanup] Running empty cart cleanup');
     
-    // Get all items in the cart
-    const { data: items, error: fetchError } = await supabase
-      .from('cart_items')
-      .select('id, product_id, quantity')
-      .eq('cart_id', cartId);
+    // Get current user
+    const { data: userData, error: authError } = await supabase.auth.getUser();
+    if (authError || !userData.user) {
+      console.log('[cartCleanup] No authenticated user, skipping empty cart cleanup');
+      return;
+    }
+    
+    const userId = userData.user.id;
+    
+    // Get all active carts for this user
+    const { data: carts, error: cartsError } = await supabase
+      .from('carts')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('status', 'active');
       
-    if (fetchError) {
-      console.error('[cartCleanup] Error fetching cart items:', fetchError);
-      return false;
+    if (cartsError || !carts || carts.length === 0) {
+      console.log('[cartCleanup] No active carts found or error fetching carts');
+      return;
     }
     
-    if (!items || items.length === 0) {
-      console.log('[cartCleanup] No items in cart, nothing to clean up');
-      return true;
-    }
-    
-    // Group items by product_id
-    const productGroups = new Map();
-    items.forEach(item => {
-      if (!productGroups.has(item.product_id)) {
-        productGroups.set(item.product_id, []);
+    // Check each cart for items
+    for (const cart of carts) {
+      const { data: items, error: itemsError } = await supabase
+        .from('cart_items')
+        .select('id')
+        .eq('cart_id', cart.id)
+        .limit(1);
+        
+      if (itemsError) {
+        console.error(`[cartCleanup] Error checking items for cart ${cart.id}:`, itemsError);
+        continue;
       }
-      productGroups.get(item.product_id).push(item);
-    });
-    
-    // Check for duplicates
-    let duplicatesFound = false;
-    
-    for (const [productId, productItems] of productGroups.entries()) {
-      if (productItems.length > 1) {
-        duplicatesFound = true;
-        console.log(`[cartCleanup] Found ${productItems.length} duplicate items for product ${productId}`);
+      
+      // If cart has no items, archive it
+      if (!items || items.length === 0) {
+        console.log(`[cartCleanup] Archiving empty cart: ${cart.id}`);
         
-        // Calculate total quantity
-        const totalQuantity = productItems.reduce((sum, item) => sum + item.quantity, 0);
-        
-        // Keep the first item and update its quantity
-        const itemToKeep = productItems[0];
-        const itemsToRemove = productItems.slice(1).map(item => item.id);
-        
-        // Update the quantity of the item to keep
-        const { error: updateError } = await supabase
-          .from('cart_items')
-          .update({ quantity: totalQuantity })
-          .eq('id', itemToKeep.id);
+        const { error: archiveError } = await supabase
+          .from('carts')
+          .update({ status: 'archived' })
+          .eq('id', cart.id);
           
-        if (updateError) {
-          console.error(`[cartCleanup] Error updating quantity for item ${itemToKeep.id}:`, updateError);
-          // Continue anyway
-        }
-        
-        // Remove duplicate items
-        const { error: deleteError } = await supabase
-          .from('cart_items')
-          .delete()
-          .in('id', itemsToRemove);
-          
-        if (deleteError) {
-          console.error('[cartCleanup] Error deleting duplicate items:', deleteError);
-          // Continue anyway
+        if (archiveError) {
+          console.error(`[cartCleanup] Error archiving empty cart ${cart.id}:`, archiveError);
         }
       }
     }
     
-    if (duplicatesFound) {
-      console.log('[cartCleanup] Cleaned up duplicate cart items');
-    } else {
-      console.log('[cartCleanup] No duplicate items found');
-    }
-    
-    return true;
+    console.log('[cartCleanup] Empty cart cleanup complete');
   } catch (error) {
-    console.error('[cartCleanup] Error cleaning up duplicate cart items:', error);
-    return false;
+    console.error('[cartCleanup] Error during empty cart cleanup:', error);
   }
 }
