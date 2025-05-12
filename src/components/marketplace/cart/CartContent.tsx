@@ -26,8 +26,6 @@ const CartContent: React.FC<CartContentProps> = ({
   onApplyCoupon,
   onRemoveCoupon
 }) => {
-  console.log("[CartContent] Rendering with items by store:", itemsByStore);
-  
   // Check cart has items
   const hasItems = cart?.items && cart.items.length > 0;
   const hasGroupedItems = Object.keys(itemsByStore).length > 0;
@@ -36,6 +34,16 @@ const CartContent: React.FC<CartContentProps> = ({
   
   // If cart has items but they're not grouped, we might have a mapping issue
   const hasMappingIssue = hasItems && !hasGroupedItems;
+
+  // Add some debug information to help troubleshoot cart issues
+  console.log("[CartContent] Rendering with:", { 
+    hasItems, 
+    hasGroupedItems, 
+    hasMappingIssue, 
+    itemsByStore,
+    storeCount,
+    cartItems: cart?.items
+  });
 
   return (
     <div className="space-y-4">

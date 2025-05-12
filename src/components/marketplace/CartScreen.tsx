@@ -92,6 +92,13 @@ const CartScreen: React.FC = () => {
     );
   }
 
+  // Add some debug information to help troubleshoot cart issues
+  console.log("CartScreen rendering with:", { 
+    cartIsEmpty, 
+    itemCount: cart?.items?.length || 0,
+    storeCount: Object.keys(itemsByStore).length
+  });
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 pb-48">
       <CartHeader />

@@ -9,7 +9,7 @@ type ProdutoData = {
   nome: string;
   preco_normal: number;
   preco_promocional?: number;
-  imagem_url?: string;
+  imagens?: string[]; // Changed from imagem_url to imagens array
   categoria?: string;
   estoque: number;
   pontos?: number;
@@ -36,7 +36,7 @@ export async function processCartItems(cartId: string, userId: string): Promise<
           nome, 
           preco_normal, 
           preco_promocional, 
-          imagem_url, 
+          imagens, 
           categoria, 
           estoque, 
           pontos,
@@ -74,6 +74,12 @@ export async function processCartItems(cartId: string, userId: string): Promise<
       const produto: ProdutoData = isValidProduct && item.produtos ? 
         (item.produtos as unknown as ProdutoData) : defaultProduct;
       
+      // Extract the first image URL from the imagens array if available
+      let imagemUrl = '';
+      if (produto.imagens && Array.isArray(produto.imagens) && produto.imagens.length > 0) {
+        imagemUrl = produto.imagens[0];
+      }
+      
       const preco = item.price_at_add || produto.preco_promocional || produto.preco_normal || 0;
       const subtotal = item.quantity * preco;
       
@@ -88,7 +94,7 @@ export async function processCartItems(cartId: string, userId: string): Promise<
           nome: produto.nome,
           preco: produto.preco_normal,
           preco_promocional: produto.preco_promocional,
-          imagem_url: produto.imagem_url || '',
+          imagem_url: imagemUrl, // Use the first image from the array
           categoria: produto.categoria || '',
           estoque: produto.estoque,
           pontos: produto.pontos || 0,

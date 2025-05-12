@@ -43,6 +43,13 @@ const StoreCartGroup: React.FC<StoreCartGroupProps> = ({
     );
   }
 
+  // Add some debug information to help troubleshoot store issues
+  console.log("[StoreCartGroup] Rendering store:", { 
+    storeId: store.id, 
+    storeName: store.nome, 
+    itemCount: items.length 
+  });
+
   // Calculate store subtotal - with safety check
   const storeSubtotal = items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
   
