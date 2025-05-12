@@ -70,8 +70,9 @@ export async function processCartItems(cartId: string, userId: string): Promise<
         !('error' in (item.produtos as object || {}));
       
       // Use the valid product data or the default
-      const produto = isValidProduct && item.produtos ? 
-        item.produtos as ProdutoData : defaultProduct;
+      // Cast to unknown first then to ProdutoData to avoid TypeScript error
+      const produto: ProdutoData = isValidProduct && item.produtos ? 
+        (item.produtos as unknown as ProdutoData) : defaultProduct;
       
       const preco = item.price_at_add || produto.preco_promocional || produto.preco_normal || 0;
       const subtotal = item.quantity * preco;
