@@ -52,13 +52,22 @@ export async function processCartItems(cartId: string, userId: string): Promise<
     
     // Transform the cart items into the expected format
     const transformedItems: CartItem[] = (cartItems || []).map(item => {
-      // Ensure produto is properly typed or default to an empty object with the correct shape
-      const produto: ProdutoData = item.produtos as ProdutoData || {
-        id: '',
+      // Create a default product object as fallback
+      const defaultProduct: ProdutoData = {
+        id: item.product_id || '',
         nome: '',
         preco_normal: 0,
         estoque: 0
       };
+      
+      // Check if produtos exists and is not an error before using it
+      // TypeScript needs the explicit check to ensure it's a valid product object
+      const isValidProduct = item.produtos && 
+        typeof item.produtos === 'object' && 
+        !('error' in item.produtos);
+      
+      // Use the valid product data or the default
+      const produto: ProdutoData = isValidProduct ? item.produtos as ProdutoData : defaultProduct;
       
       const preco = item.price_at_add || produto.preco_promocional || produto.preco_normal || 0;
       const subtotal = item.quantity * preco;
