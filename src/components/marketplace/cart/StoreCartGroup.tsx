@@ -32,8 +32,11 @@ const StoreCartGroup: React.FC<StoreCartGroupProps> = ({
     return null;
   }
   
-  if (!store?.id) {
-    console.log('[StoreCartGroup] Invalid store, not rendering');
+  // Check for valid store data - show placeholder if missing
+  const isValidStore = store && store.id;
+  
+  if (!isValidStore) {
+    console.log('[StoreCartGroup] Invalid store, showing placeholder');
     return (
       <div className="mb-6">
         <div className="p-4 bg-gray-100 rounded-lg">

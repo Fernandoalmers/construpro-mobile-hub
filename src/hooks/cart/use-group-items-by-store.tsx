@@ -17,7 +17,7 @@ export const useGroupItemsByStore = (
     
     // Skip items without store ID
     if (!storeId) {
-      console.warn("CartScreen: Item missing loja_id:", item);
+      console.warn("CartScreen: Item missing loja_id:", item?.produto?.id);
       return groups;
     }
     
@@ -40,6 +40,12 @@ export const useGroupItemsByStore = (
     groups[storeId].items.push(item);
     return groups;
   }, {});
+  
+  // Add debug information
+  console.log("CartScreen: Grouped items by store:", {
+    storeCount: Object.keys(itemsByStore).length,
+    stores: Object.keys(itemsByStore)
+  });
   
   return itemsByStore;
 };

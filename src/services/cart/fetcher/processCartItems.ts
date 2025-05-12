@@ -12,8 +12,8 @@ type ProdutoData = {
   imagens?: string[]; // Array of image URLs
   categoria?: string;
   estoque: number;
-  pontos_consumidor?: number; // Changed from pontos to pontos_consumidor to match DB
-  loja_id?: string;
+  pontos_consumidor?: number;
+  vendedor_id?: string; // This is the store ID in the produtos table
 };
 
 /**
@@ -24,6 +24,7 @@ export async function processCartItems(cartId: string, userId: string): Promise<
     console.log(`[processCartItems] Processing items for cart: ${cartId}`);
     
     // Get all cart items with related product information
+    // Note: Changed the query to use vendedor_id instead of loja_id which doesn't exist
     const { data: cartItems, error: itemsError } = await supabase
       .from('cart_items')
       .select(`
@@ -40,7 +41,7 @@ export async function processCartItems(cartId: string, userId: string): Promise<
           categoria, 
           estoque, 
           pontos_consumidor,
-          loja_id
+          vendedor_id
         )
       `)
       .eq('cart_id', cartId);
@@ -94,8 +95,11 @@ export async function processCartItems(cartId: string, userId: string): Promise<
       const preco = item.price_at_add || produto.preco_promocional || produto.preco_normal || 0;
       const subtotal = item.quantity * preco;
       
-      // Get points from pontos_consumidor, not pontos
+      // Get points from pontos_consumidor
       const pontos = produto.pontos_consumidor || 0;
+      
+      // Important: Use vendedor_id as loja_id since that's what the database schema uses
+      const lojaId = produto.vendedor_id || '';
       
       return {
         id: item.id,
@@ -108,11 +112,11 @@ export async function processCartItems(cartId: string, userId: string): Promise<
           nome: produto.nome,
           preco: produto.preco_normal,
           preco_promocional: produto.preco_promocional,
-          imagem_url: imagemUrl, // Use the first image from the array
+          imagem_url: imagemUrl,
           categoria: produto.categoria || '',
           estoque: produto.estoque,
           pontos: pontos,
-          loja_id: produto.loja_id || ''
+          loja_id: lojaId // Map vendedor_id to loja_id here
         }
       };
     });
