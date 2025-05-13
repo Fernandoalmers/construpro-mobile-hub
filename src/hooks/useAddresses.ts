@@ -18,9 +18,13 @@ export function useAddresses() {
   } = useQuery({
     queryKey: ['addresses'],
     queryFn: () => addressService.getAddresses(),
-    onSuccess: (data) => {
-      console.log("Addresses loaded successfully:", data);
+    // Using meta to handle onSuccess and onError in latest React Query version
+    meta: {
+      onSuccess: (data: Address[]) => {
+        console.log("Addresses loaded successfully:", data);
+      }
     },
+    // Error handling moved to the onError option in the query options
     onError: (err: any) => {
       console.error("Error fetching addresses:", err);
       toast({
