@@ -37,7 +37,7 @@ const BottomNavigation: React.FC = () => {
   // Show loading placeholder while auth is loading to prevent UI jumps
   if (isLoading) {
     return (
-      <nav className="fixed bottom-0 left-0 right-0 z-10 bg-white border-t shadow-sm">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t shadow-sm">
         <div className="grid grid-cols-5 gap-1">
           {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="flex flex-col items-center justify-center py-2">
@@ -61,7 +61,7 @@ const BottomNavigation: React.FC = () => {
   const isVendor = profile?.papel === 'lojista' || profile?.tipo_perfil === 'lojista';
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-10 bg-white border-t shadow-sm">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t shadow-sm">
       <div className="grid grid-cols-5 gap-1">
         <NavItem 
           to="/home" 

@@ -107,31 +107,32 @@ const CartScreen: React.FC = () => {
         {cartIsEmpty ? (
           <EmptyCart />
         ) : (
-          <CartContent
-            cart={cart}
-            itemsByStore={itemsByStore}
-            processingItem={processingItem}
-            appliedCoupon={appliedCoupon}
-            onUpdateQuantity={handleUpdateQuantity}
-            onRemoveItem={handleRemoveItem}
-            onApplyCoupon={applyCoupon}
-            onRemoveCoupon={removeCoupon}
-          />
+          <>
+            <CartContent
+              cart={cart}
+              itemsByStore={itemsByStore}
+              processingItem={processingItem}
+              appliedCoupon={appliedCoupon}
+              onUpdateQuantity={handleUpdateQuantity}
+              onRemoveItem={handleRemoveItem}
+              onApplyCoupon={applyCoupon}
+              onRemoveCoupon={removeCoupon}
+            />
+            
+            {/* Detailed cart summary rendered at bottom of page */}
+            <CartSummary
+              subtotal={subtotal}
+              shipping={shipping}
+              discount={discount}
+              total={total}
+              totalPoints={totalPoints}
+            />
+          </>
         )}
       </div>
       
-      {/* Padding ajustado para evitar sobreposição com o menu inferior E com o resumo fixo */}
-      {!cartIsEmpty && <div className="h-40" />}
-      
-      {!cartIsEmpty && (
-        <CartSummary
-          subtotal={subtotal}
-          shipping={shipping}
-          discount={discount}
-          total={total}
-          totalPoints={totalPoints}
-        />
-      )}
+      {/* Extra padding to avoid overlapping with fixed elements */}
+      {!cartIsEmpty && <div className="h-24" />}
     </div>
   );
 };
