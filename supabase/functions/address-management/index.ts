@@ -29,9 +29,12 @@ serve(async (req) => {
   }
 
   try {
+    console.log("Address management function called, method:", req.method);
+    
     // Get authorization token
     const authHeader = req.headers.get('authorization')
     if (!authHeader) {
+      console.error("No authorization header provided");
       return new Response(
         JSON.stringify({ error: 'No authorization header' }),
         { status: 401, headers: corsHeaders }
@@ -39,6 +42,7 @@ serve(async (req) => {
     }
 
     const token = authHeader.replace('Bearer ', '')
+    console.log("Auth token received (first 10 chars):", token.substring(0, 10) + "...");
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
@@ -58,12 +62,23 @@ serve(async (req) => {
     
     // Verify user token and get user ID
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
-    if (authError || !user) {
+    if (authError) {
+      console.error("Authentication error:", authError.message);
       return new Response(
-        JSON.stringify({ error: authError?.message || 'Unauthorized' }),
+        JSON.stringify({ error: authError.message || 'Authentication failed' }),
         { status: 401, headers: corsHeaders }
       )
     }
+    
+    if (!user) {
+      console.error("No user found with the provided token");
+      return new Response(
+        JSON.stringify({ error: 'User not found' }),
+        { status: 401, headers: corsHeaders }
+      )
+    }
+    
+    console.log("Authenticated user ID:", user.id);
     
     // Process request based on method
     const method = req.method
@@ -73,10 +88,20 @@ serve(async (req) => {
     if (method !== 'GET') {
       try {
         const bodyText = await req.text()
+        console.log("Request body text:", bodyText);
+        
         if (bodyText) {
           reqBody = JSON.parse(bodyText)
+          console.log("Parsed request body:", reqBody);
+        } else {
+          console.error("Empty request body");
+          return new Response(
+            JSON.stringify({ error: 'Empty request body' }),
+            { status: 400, headers: corsHeaders }
+          )
         }
       } catch (e) {
+        console.error("Error parsing request body:", e);
         return new Response(
           JSON.stringify({ error: 'Invalid JSON body' }),
           { status: 400, headers: corsHeaders }
@@ -102,6 +127,7 @@ serve(async (req) => {
           .single()
         
         if (error) {
+          console.error("Error fetching specific address:", error);
           return new Response(
             JSON.stringify({ error: error.message }),
             { status: error.code === 'PGRST116' ? 404 : 500, headers: corsHeaders }
@@ -122,12 +148,14 @@ serve(async (req) => {
           .order('created_at', { ascending: false })
         
         if (error) {
+          console.error("Error fetching all addresses:", error);
           return new Response(
             JSON.stringify({ error: error.message }),
             { status: 500, headers: corsHeaders }
           )
         }
         
+        console.log(`Found ${addresses?.length || 0} addresses for user ${user.id}`);
         return new Response(
           JSON.stringify({ addresses }),
           { status: 200, headers: corsHeaders }
@@ -144,14 +172,18 @@ serve(async (req) => {
       const missingFields = requiredFields.filter(field => !addressData[field as keyof AddressData])
       
       if (missingFields.length > 0) {
+        console.error("Missing required fields:", missingFields);
         return new Response(
           JSON.stringify({ error: `Missing required fields: ${missingFields.join(', ')}` }),
           { status: 400, headers: corsHeaders }
         )
       }
       
+      console.log("Creating new address for user:", user.id, "Address data:", addressData);
+      
       // If this address is set as principal, update all other addresses
       if (addressData.principal) {
+        console.log("Setting as principal address - updating other addresses");
         const { error: updateError } = await supabaseClient
           .from('user_addresses')
           .update({ principal: false })
@@ -173,12 +205,14 @@ serve(async (req) => {
         .single()
       
       if (error) {
+        console.error("Error inserting new address:", error);
         return new Response(
           JSON.stringify({ error: error.message }),
           { status: 500, headers: corsHeaders }
         )
       }
       
+      console.log("Address created successfully:", address?.id);
       return new Response(
         JSON.stringify({ success: true, address }),
         { status: 201, headers: corsHeaders }
@@ -190,14 +224,18 @@ serve(async (req) => {
       const { id, ...addressData } = reqBody as AddressData & { id: string };
       
       if (!id) {
+        console.error("No address ID provided for update");
         return new Response(
           JSON.stringify({ error: 'Address ID is required' }),
           { status: 400, headers: corsHeaders }
         )
       }
       
+      console.log("Updating address:", id, "for user:", user.id);
+      
       // If this address is set as principal, update all other addresses
       if (addressData.principal) {
+        console.log("Setting as principal address - updating other addresses");
         const { error: updateError } = await supabaseClient
           .from('user_addresses')
           .update({ principal: false })
@@ -219,12 +257,14 @@ serve(async (req) => {
         .single()
       
       if (error) {
+        console.error("Error updating address:", error);
         return new Response(
           JSON.stringify({ error: error.message }),
           { status: 500, headers: corsHeaders }
         )
       }
       
+      console.log("Address updated successfully");
       return new Response(
         JSON.stringify({ success: true, address }),
         { status: 200, headers: corsHeaders }
@@ -236,11 +276,14 @@ serve(async (req) => {
       const { id } = reqBody as { id: string };
       
       if (!id) {
+        console.error("No address ID provided for deletion");
         return new Response(
           JSON.stringify({ error: 'Address ID is required' }),
           { status: 400, headers: corsHeaders }
         )
       }
+      
+      console.log("Attempting to delete address:", id, "for user:", user.id);
       
       // Check if it's the principal address
       const { data: address } = await supabaseClient
@@ -251,6 +294,7 @@ serve(async (req) => {
         .single()
       
       if (address?.principal) {
+        console.error("Attempted to delete principal address");
         return new Response(
           JSON.stringify({ error: 'Cannot delete principal address. Set another address as principal first.' }),
           { status: 400, headers: corsHeaders }
@@ -265,12 +309,14 @@ serve(async (req) => {
         .eq('user_id', user.id)
       
       if (error) {
+        console.error("Error deleting address:", error);
         return new Response(
           JSON.stringify({ error: error.message }),
           { status: 500, headers: corsHeaders }
         )
       }
       
+      console.log("Address deleted successfully");
       return new Response(
         JSON.stringify({ success: true }),
         { status: 200, headers: corsHeaders }
@@ -278,6 +324,7 @@ serve(async (req) => {
     }
     
     // If the request doesn't match any of the above conditions
+    console.error("Method not allowed:", method);
     return new Response(
       JSON.stringify({ error: 'Method not allowed' }),
       { status: 405, headers: corsHeaders }

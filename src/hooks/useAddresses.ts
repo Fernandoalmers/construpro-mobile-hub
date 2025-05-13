@@ -44,6 +44,7 @@ export function useAddresses() {
       });
     },
     onError: (error: any) => {
+      console.error("Delete address error:", error);
       toast({
         variant: "destructive",
         title: "Erro ao remover endereço",
@@ -63,6 +64,7 @@ export function useAddresses() {
       });
     },
     onError: (error: any) => {
+      console.error("Set primary address error:", error);
       toast({
         variant: "destructive",
         title: "Erro ao atualizar endereço principal", 
@@ -74,6 +76,7 @@ export function useAddresses() {
   // Save address mutation
   const saveAddressMutation = useMutation({
     mutationFn: (data: { address: Address, isEdit: boolean }) => {
+      console.log("Saving address:", data.isEdit ? "Edit" : "Add", data.address);
       if (data.isEdit && data.address.id) {
         return addressService.updateAddress(data.address.id, data.address);
       } else {
@@ -81,6 +84,7 @@ export function useAddresses() {
       }
     },
     onSuccess: (_, variables) => {
+      console.log("Address saved successfully");
       queryClient.invalidateQueries({ queryKey: ['addresses'] });
       toast({
         title: variables.isEdit ? "Endereço atualizado" : "Endereço adicionado",
@@ -91,10 +95,25 @@ export function useAddresses() {
       setIsAddModalOpen(false);
     },
     onError: (error: any) => {
+      console.error("Save address error:", error);
+      let errorMessage = error.message || "Não foi possível salvar o endereço.";
+      
+      // Try to extract more specific error message if available
+      try {
+        if (error.message.includes('JSON')) {
+          const errorJson = JSON.parse(error.message);
+          if (errorJson.error) {
+            errorMessage = errorJson.error;
+          }
+        }
+      } catch (e) {
+        // If parsing fails, use the original error message
+      }
+      
       toast({
         variant: "destructive",
         title: "Erro ao salvar endereço",
-        description: error.message || "Não foi possível salvar o endereço."
+        description: errorMessage
       });
     }
   });
@@ -120,6 +139,7 @@ export function useAddresses() {
   };
 
   const handleSaveAddress = (address: Address) => {
+    console.log("handleSaveAddress called with:", address);
     saveAddressMutation.mutate({ 
       address, 
       isEdit: Boolean(editingAddress) 
@@ -143,6 +163,8 @@ export function useAddresses() {
     handleEditAddress,
     handleDeleteAddress,
     handleAddAddress,
-    handleSaveAddress
+    handleSaveAddress,
+    isSaving: saveAddressMutation.isPending,
+    saveError: saveAddressMutation.error
   };
 }

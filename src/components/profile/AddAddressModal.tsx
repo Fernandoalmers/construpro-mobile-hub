@@ -14,6 +14,7 @@ import CustomButton from '../common/CustomButton';
 import { toast } from '@/components/ui/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Address } from '@/services/addressService';
+import { useAuth } from '@/context/AuthContext';
 
 interface AddAddressModalProps {
   open: boolean;
@@ -28,6 +29,7 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
   onSave,
   initialData
 }) => {
+  const { isAuthenticated } = useAuth();
   const [formData, setFormData] = useState<Address>({
     nome: '',
     cep: '',
@@ -41,6 +43,7 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
   });
   
   const [isLoading, setIsLoading] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   
   useEffect(() => {
     if (initialData) {
@@ -58,7 +61,21 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
         principal: false
       });
     }
+    setValidationErrors({});
   }, [initialData, open]);
+
+  useEffect(() => {
+    // Check authentication status when modal opens
+    if (open && !isAuthenticated) {
+      console.error("User is not authenticated");
+      toast({
+        variant: "destructive",
+        title: "Erro de autenticação",
+        description: "Você precisa estar logado para gerenciar endereços."
+      });
+      onOpenChange(false);
+    }
+  }, [open, isAuthenticated, onOpenChange]);
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -66,6 +83,38 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
       ...prev,
       [name]: value
     }));
+    
+    // Clear validation error when field is changed
+    if (validationErrors[name]) {
+      setValidationErrors(prev => {
+        const updated = { ...prev };
+        delete updated[name];
+        return updated;
+      });
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const requiredFields: (keyof Address)[] = ['nome', 'cep', 'logradouro', 'numero', 'bairro', 'cidade', 'estado'];
+    const errors: Record<string, string> = {};
+    
+    // Check required fields
+    requiredFields.forEach(field => {
+      if (!formData[field]) {
+        errors[field] = 'Campo obrigatório';
+      }
+    });
+    
+    // Validate CEP format (optionally)
+    if (formData.cep && !/^\d{5}-?\d{3}$/.test(formData.cep)) {
+      errors.cep = 'CEP inválido. Use o formato 00000-000';
+    }
+    
+    // Set validation errors
+    setValidationErrors(errors);
+    
+    // Return true if no errors
+    return Object.keys(errors).length === 0;
   };
   
   const handleSubmit = async (e?: React.FormEvent) => {
@@ -73,15 +122,26 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
       e.preventDefault();
     }
     
-    // Simple validation
-    const requiredFields: (keyof Address)[] = ['nome', 'cep', 'logradouro', 'numero', 'bairro', 'cidade', 'estado'];
-    const missingFields = requiredFields.filter(field => !formData[field]);
+    console.log("Form submission initiated with data:", formData);
     
-    if (missingFields.length > 0) {
+    // Validate form
+    if (!validateForm()) {
+      console.error("Validation failed:", validationErrors);
       toast({
         variant: "destructive",
         title: "Campos obrigatórios",
-        description: `Por favor, preencha os campos obrigatórios: ${missingFields.join(', ')}`
+        description: "Por favor, preencha todos os campos obrigatórios corretamente."
+      });
+      return;
+    }
+    
+    // Check authentication again before submitting
+    if (!isAuthenticated) {
+      console.error("User is not authenticated during form submission");
+      toast({
+        variant: "destructive",
+        title: "Erro de autenticação",
+        description: "Você precisa estar logado para salvar endereços."
       });
       return;
     }
@@ -89,13 +149,14 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
     setIsLoading(true);
     
     try {
+      console.log("Submitting address data:", formData);
       await onSave(formData);
     } catch (error) {
       console.error('Error saving address:', error);
       toast({
         variant: "destructive",
         title: "Erro",
-        description: "Erro ao salvar endereço. Tente novamente."
+        description: error instanceof Error ? error.message : "Erro ao salvar endereço. Tente novamente."
       });
     } finally {
       setIsLoading(false);
@@ -122,8 +183,12 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
                   placeholder="Ex: Casa, Trabalho"
                   value={formData.nome}
                   onChange={handleChange}
+                  className={validationErrors.nome ? "border-red-500" : ""}
                   required
                 />
+                {validationErrors.nome && (
+                  <p className="text-red-500 text-xs mt-1">{validationErrors.nome}</p>
+                )}
               </div>
               
               <div className="space-y-2">
@@ -134,8 +199,12 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
                   placeholder="00000-000"
                   value={formData.cep}
                   onChange={handleChange}
+                  className={validationErrors.cep ? "border-red-500" : ""}
                   required
                 />
+                {validationErrors.cep && (
+                  <p className="text-red-500 text-xs mt-1">{validationErrors.cep}</p>
+                )}
               </div>
               
               <div className="space-y-2">
@@ -146,8 +215,12 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
                   placeholder="Rua, Avenida, etc"
                   value={formData.logradouro}
                   onChange={handleChange}
+                  className={validationErrors.logradouro ? "border-red-500" : ""}
                   required
                 />
+                {validationErrors.logradouro && (
+                  <p className="text-red-500 text-xs mt-1">{validationErrors.logradouro}</p>
+                )}
               </div>
               
               <div className="grid grid-cols-2 gap-3">
@@ -159,8 +232,12 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
                     placeholder="123"
                     value={formData.numero}
                     onChange={handleChange}
+                    className={validationErrors.numero ? "border-red-500" : ""}
                     required
                   />
+                  {validationErrors.numero && (
+                    <p className="text-red-500 text-xs mt-1">{validationErrors.numero}</p>
+                  )}
                 </div>
                 
                 <div className="space-y-2">
@@ -183,8 +260,12 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
                   placeholder="Bairro"
                   value={formData.bairro}
                   onChange={handleChange}
+                  className={validationErrors.bairro ? "border-red-500" : ""}
                   required
                 />
+                {validationErrors.bairro && (
+                  <p className="text-red-500 text-xs mt-1">{validationErrors.bairro}</p>
+                )}
               </div>
               
               <div className="grid grid-cols-2 gap-3">
@@ -196,8 +277,12 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
                     placeholder="Cidade"
                     value={formData.cidade}
                     onChange={handleChange}
+                    className={validationErrors.cidade ? "border-red-500" : ""}
                     required
                   />
+                  {validationErrors.cidade && (
+                    <p className="text-red-500 text-xs mt-1">{validationErrors.cidade}</p>
+                  )}
                 </div>
                 
                 <div className="space-y-2">
@@ -208,8 +293,12 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
                     placeholder="UF"
                     value={formData.estado}
                     onChange={handleChange}
+                    className={validationErrors.estado ? "border-red-500" : ""}
                     required
                   />
+                  {validationErrors.estado && (
+                    <p className="text-red-500 text-xs mt-1">{validationErrors.estado}</p>
+                  )}
                 </div>
               </div>
               
