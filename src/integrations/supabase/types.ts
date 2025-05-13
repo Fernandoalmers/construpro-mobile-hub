@@ -1580,6 +1580,14 @@ export type Database = {
         Args: { product_id: string }
         Returns: undefined
       }
+      begin_transaction: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      commit_transaction: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       get_user_admin_status: {
         Args: { user_id: string }
         Returns: boolean
@@ -1612,6 +1620,10 @@ export type Database = {
           details?: Json
         }
         Returns: string
+      }
+      rollback_transaction: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       update_user_points: {
         Args: { user_id: string; points_to_add: number }

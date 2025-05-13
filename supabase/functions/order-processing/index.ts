@@ -124,17 +124,28 @@ serve(async (req) => {
       // Calculate points earned (10% of order total)
       const pontos_ganhos = Math.floor(orderData.valor_total * 0.1)
       
-      // Create transaction to ensure atomicity
-      const { error: txBeginError } = await supabaseClient.rpc('begin_transaction')
-      
-      if (txBeginError) {
-        return new Response(
-          JSON.stringify({ error: txBeginError.message }),
-          { status: 500, headers: corsHeaders }
-        )
+      // Try to use a transaction, but fallback to individual operations if transaction functions aren't working
+      let useTransactions = true;
+      try {
+        // Check if transaction functions exist by calling one
+        const { error: testTxError } = await supabaseClient.rpc('begin_transaction');
+        if (testTxError) {
+          console.error("Transaction functions not working, fallback to direct operations:", testTxError);
+          useTransactions = false;
+        }
+      } catch (error) {
+        console.error("Error testing transaction functions:", error);
+        useTransactions = false;
       }
       
+      // Start creating the order
       try {
+        // Begin transaction if available
+        if (useTransactions) {
+          const { error: txBeginError } = await supabaseClient.rpc('begin_transaction');
+          if (txBeginError) throw new Error(`Transaction begin error: ${txBeginError.message}`);
+        }
+        
         // Create order
         const { data: order, error: orderError } = await supabaseClient
           .from('orders')
@@ -148,21 +159,24 @@ serve(async (req) => {
             endereco_entrega: orderData.endereco_entrega,
           })
           .select()
-          .single()
+          .single();
         
-        if (orderError) throw new Error(orderError.message)
+        if (orderError) throw new Error(`Order creation error: ${orderError.message}`);
         
         // Create order items
         const orderItems = orderData.items.map(item => ({
           order_id: order.id,
-          ...item
-        }))
+          produto_id: item.produto_id,
+          quantidade: item.quantidade,
+          preco_unitario: item.preco_unitario,
+          subtotal: item.subtotal
+        }));
         
         const { error: itemsError } = await supabaseClient
           .from('order_items')
-          .insert(orderItems)
+          .insert(orderItems);
         
-        if (itemsError) throw new Error(itemsError.message)
+        if (itemsError) throw new Error(`Order items error: ${itemsError.message}`);
         
         // Add points transaction
         const { error: pointsError } = await supabaseClient
@@ -173,21 +187,24 @@ serve(async (req) => {
             tipo: 'compra',
             referencia_id: order.id,
             descricao: `Pontos ganhos na compra #${order.id.substring(0,8)}`
-          })
+          });
         
-        if (pointsError) throw new Error(pointsError.message)
+        if (pointsError) throw new Error(`Points transaction error: ${pointsError.message}`);
         
         // Update user points balance
         const { error: profileError } = await supabaseClient
           .rpc('update_user_points', { 
             user_id: user.id, 
             points_to_add: pontos_ganhos 
-          })
+          });
         
-        if (profileError) throw new Error(profileError.message)
+        if (profileError) throw new Error(`Update points error: ${profileError.message}`);
         
-        // Commit transaction
-        await supabaseClient.rpc('commit_transaction')
+        // Commit transaction if we're using them
+        if (useTransactions) {
+          const { error: commitError } = await supabaseClient.rpc('commit_transaction');
+          if (commitError) throw new Error(`Transaction commit error: ${commitError.message}`);
+        }
         
         return new Response(
           JSON.stringify({
@@ -198,15 +215,26 @@ serve(async (req) => {
             }
           }),
           { status: 201, headers: corsHeaders }
-        )
-      } catch (error) {
-        // Rollback transaction
-        await supabaseClient.rpc('rollback_transaction')
+        );
+      } catch (error: any) {
+        console.error("Order creation error:", error);
+        
+        // Rollback transaction if we're using them
+        if (useTransactions) {
+          try {
+            await supabaseClient.rpc('rollback_transaction');
+          } catch (rollbackError) {
+            console.error("Rollback error:", rollbackError);
+          }
+        }
         
         return new Response(
-          JSON.stringify({ error: error.message }),
+          JSON.stringify({ 
+            success: false,
+            error: error.message || 'Erro ao processar pedido' 
+          }),
           { status: 500, headers: corsHeaders }
-        )
+        );
       }
     }
     
@@ -214,11 +242,15 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ error: 'Method not allowed' }),
       { status: 405, headers: corsHeaders }
-    )
-  } catch (error) {
+    );
+  } catch (error: any) {
+    console.error("Unexpected error:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        success: false,
+        error: error.message || 'Internal server error' 
+      }),
       { status: 500, headers: corsHeaders }
-    )
+    );
   }
-})
+});

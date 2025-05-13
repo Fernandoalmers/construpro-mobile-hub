@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { CartItem } from '@/types/cart';
 import { Address } from './addressService';
+import { supabaseService } from './supabaseService';
 
 export interface CreateOrderPayload {
   items: CartItem[];
@@ -36,17 +37,27 @@ export const orderService = {
       
       if (error) {
         console.error("Error creating order:", error);
-        throw error;
+        const errorMsg = error.message || 'Falha ao criar pedido';
+        toast.error("Erro no processamento do pedido", { 
+          description: errorMsg
+        });
+        throw new Error(errorMsg);
       }
       
       if (!data?.success || !data?.order?.id) {
-        throw new Error('Falha ao criar pedido');
+        const errorMsg = data?.error || 'Resposta inválida do servidor';
+        console.error("Invalid response from server:", data);
+        toast.error("Erro de resposta", { 
+          description: errorMsg
+        });
+        throw new Error(errorMsg);
       }
       
       console.log("Order created successfully:", data.order);
       return data.order.id;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error in createOrder:", error);
+      // Don't show toast here because it's already shown in the checkout component
       throw error;
     }
   },

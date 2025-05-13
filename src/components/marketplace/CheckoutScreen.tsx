@@ -16,6 +16,7 @@ import { useCartTotals } from '@/hooks/cart/use-cart-totals';
 import { Address, addressService } from '@/services/addressService';
 import { orderService } from '@/services/orderService';
 import LoadingState from '../common/LoadingState';
+import ErrorState from '../common/ErrorState';
 
 type PaymentMethod = 'credit' | 'debit' | 'pix' | 'money';
 
@@ -25,10 +26,12 @@ const CheckoutScreen: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('credit');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [processError, setProcessError] = useState<string | null>(null);
   const [changeAmount, setChangeAmount] = useState('');
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
+  const [orderAttempts, setOrderAttempts] = useState(0);
 
   // Calculate totals based on cart items
   const { subtotal, shipping, total, totalPoints } = useCartTotals(
@@ -108,6 +111,7 @@ const CheckoutScreen: React.FC = () => {
     }
     
     setIsSubmitting(true);
+    setProcessError(null);
     
     try {
       const orderData = {
@@ -133,13 +137,18 @@ const CheckoutScreen: React.FC = () => {
 
       // Navigate to order confirmation page
       navigate(`/order-confirmation/${orderId}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating order:", error);
+      
+      setProcessError(error.message || "Erro ao processar o pedido. Tente novamente.");
+      
       toast("Erro ao finalizar pedido", {
         description: "Ocorreu um erro ao processar seu pedido. Tente novamente.",
-        style: { backgroundColor: "red", color: "white" }
+        style: { backgroundColor: "#f44336", color: "white" }
       });
+      
       setIsSubmitting(false);
+      setOrderAttempts(prev => prev + 1);
     }
   };
   
@@ -152,6 +161,12 @@ const CheckoutScreen: React.FC = () => {
     // Close this modal and navigate to address screen
     setShowAddressModal(false);
     navigate('/profile/addresses');
+  };
+
+  // Reset error state on retry
+  const handleRetry = () => {
+    setProcessError(null);
+    setIsSubmitting(false);
   };
 
   if (isLoading) {
@@ -167,6 +182,19 @@ const CheckoutScreen: React.FC = () => {
         </button>
         <h1 className="text-xl font-bold">Finalizar Compra</h1>
       </div>
+      
+      {/* Show error state if there's a processing error */}
+      {processError && (
+        <div className="p-4">
+          <ErrorState 
+            title="Erro ao processar pedido" 
+            message={processError}
+            errorDetails={`Tentativas: ${orderAttempts}. Último erro: ${processError}`}
+            onRetry={handleRetry}
+            retryText="Tentar novamente"
+          />
+        </div>
+      )}
       
       <div className="flex-1 p-6">
         <div className="space-y-6">
