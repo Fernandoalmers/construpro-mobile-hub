@@ -120,7 +120,7 @@ export function useCheckout() {
       // Clear the cart after successful order
       await clearCart();
       
-      toast("Pedido realizado com sucesso!", {
+      toast.success("Pedido realizado com sucesso!", {
         description: "Você receberá detalhes por email."
       });
 
@@ -131,9 +131,9 @@ export function useCheckout() {
       
       setProcessError(error.message || "Erro ao processar o pedido. Tente novamente.");
       
-      toast("Erro ao finalizar pedido", {
+      toast.error("Erro ao finalizar pedido", {
         description: "Ocorreu um erro ao processar seu pedido. Tente novamente.",
-        style: { backgroundColor: "#f44336", color: "white" }
+        duration: 5000
       });
       
       setIsSubmitting(false);
