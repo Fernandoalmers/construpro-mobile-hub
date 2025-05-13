@@ -13,6 +13,11 @@ export function initSupabaseClient(token: string) {
   const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
   const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || ''
   
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error("Missing Supabase environment variables");
+    throw new Error("Server configuration error");
+  }
+  
   return createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       autoRefreshToken: false,
@@ -28,11 +33,22 @@ export function initSupabaseClient(token: string) {
 
 // Verify user token and get user ID
 export async function verifyUserToken(supabaseClient: any) {
-  const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
-  
-  if (authError || !user) {
-    throw new Error(authError?.message || 'Unauthorized')
+  try {
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
+    
+    if (authError) {
+      console.error("Auth error:", authError);
+      throw new Error(authError?.message || 'Authentication failed')
+    }
+    
+    if (!user) {
+      console.error("No user found in token");
+      throw new Error('User not found or not authenticated')
+    }
+    
+    return user
+  } catch (error) {
+    console.error("Token verification error:", error);
+    throw new Error('Invalid authentication token')
   }
-  
-  return user
 }

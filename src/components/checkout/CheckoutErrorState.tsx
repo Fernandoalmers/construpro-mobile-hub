@@ -1,7 +1,7 @@
 
 import React from 'react';
 import ErrorState from '@/components/common/ErrorState';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, RefreshCw } from 'lucide-react';
 
 interface CheckoutErrorStateProps {
   error: string;
@@ -14,30 +14,74 @@ const CheckoutErrorState: React.FC<CheckoutErrorStateProps> = ({
   attemptCount,
   onRetry
 }) => {
+  // Determine if it's likely an auth/permission issue
+  const isPermissionError = 
+    error.toLowerCase().includes('permissão') || 
+    error.toLowerCase().includes('security policy') || 
+    error.toLowerCase().includes('authorized') ||
+    error.toLowerCase().includes('token');
+  
+  // Determine if it's likely a network issue
+  const isNetworkError = 
+    error.toLowerCase().includes('network') || 
+    error.toLowerCase().includes('connection') ||
+    error.toLowerCase().includes('timeout') ||
+    error.toLowerCase().includes('non-2xx status code');
+    
+  // Create user-friendly error message
+  const getFriendlyErrorMessage = () => {
+    if (isPermissionError) {
+      return "Problema de autorização. Você pode precisar fazer login novamente.";
+    } else if (isNetworkError) {
+      return "Problema de conexão. Verifique sua internet e tente novamente.";
+    } else {
+      return "Ocorreu um erro ao processar seu pedido.";
+    }
+  };
+
   return (
-    <div className="p-4 border rounded-md bg-red-50 border-red-200 mb-4">
+    <div className="p-4 border rounded-md bg-red-50 border-red-200 mb-4 animate-in fade-in slide-in-from-top-4 duration-300">
       <div className="mb-3 flex items-center gap-2 text-red-700">
         <AlertCircle className="h-5 w-5" />
         <h3 className="font-semibold">Erro ao processar pedido</h3>
       </div>
       
       <div className="text-sm text-red-600 mb-3">
-        <p className="mb-1">Detalhes do erro:</p>
-        <p className="font-mono bg-red-100 p-2 rounded text-xs overflow-auto max-h-28">
-          {error}
-        </p>
+        <p className="mb-2 font-medium">{getFriendlyErrorMessage()}</p>
+        
+        <details className="mt-2">
+          <summary className="cursor-pointer text-xs font-medium">
+            Ver detalhes técnicos
+          </summary>
+          <p className="font-mono bg-red-100 p-2 mt-1 rounded text-xs overflow-auto max-h-28">
+            {error}
+          </p>
+        </details>
+        
         {attemptCount > 1 && (
-          <p className="mt-2 text-xs">Tentativas anteriores: {attemptCount}</p>
+          <p className="mt-2 text-xs">
+            <span className="font-semibold">Tentativas anteriores:</span> {attemptCount}
+          </p>
         )}
       </div>
       
-      <div className="mt-2 flex flex-col gap-2">
+      <div className="mt-3 flex flex-col sm:flex-row gap-2">
         <button
           onClick={onRetry}
-          className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded text-sm transition-colors"
+          className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded text-sm transition-colors flex items-center justify-center gap-1"
         >
+          <RefreshCw size={16} />
           Tentar novamente
         </button>
+        
+        {isPermissionError && (
+          <button
+            onClick={() => window.location.href = '/login?redirect=/checkout'}
+            className="border border-red-300 hover:bg-red-100 text-red-700 py-2 px-4 rounded text-sm transition-colors"
+          >
+            Fazer login novamente
+          </button>
+        )}
         
         <button
           onClick={() => window.location.reload()}

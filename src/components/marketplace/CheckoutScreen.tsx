@@ -30,11 +30,13 @@ const CheckoutScreen: React.FC = () => {
       
       {/* Show error state if there's a processing error */}
       {checkout.processError && (
-        <CheckoutErrorState
-          error={checkout.processError}
-          attemptCount={checkout.orderAttempts}
-          onRetry={checkout.handleRetry}
-        />
+        <div className="px-6 pt-4">
+          <CheckoutErrorState
+            error={checkout.processError}
+            attemptCount={checkout.orderAttempts}
+            onRetry={checkout.handleRetry}
+          />
+        </div>
       )}
       
       <div className="flex-1 p-6">
