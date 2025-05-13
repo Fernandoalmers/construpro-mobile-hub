@@ -24,9 +24,8 @@ export const calculateCartSummary = (items: CartItem[]) => {
     }
   });
 
-  // Calculate shipping based on store count: R$15.90 per store
-  // Only charge if there are items, otherwise it's free
-  const shipping = subtotal > 0 ? (storeIds.size * 15.90) : 0;
+  // Set shipping to FREE regardless of store count
+  const shipping = 0;
 
   return {
     subtotal,

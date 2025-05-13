@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import LoadingState from '../common/LoadingState';
 import ErrorState from '../common/ErrorState';
 import Card from '../common/Card';
-import { supabase } from '@/integrations/supabase/client';
+import { orderService } from '@/services/orderService';
 
 const OrderConfirmationScreen: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>();
@@ -23,26 +23,16 @@ const OrderConfirmationScreen: React.FC = () => {
         setLoading(true);
         
         // Fetch order details
-        const { data: order, error: orderError } = await supabase
-          .from('orders')
-          .select(`
-            *,
-            order_items (
-              *,
-              produtos:produto_id (nome, imagem_url)
-            )
-          `)
-          .eq('id', orderId)
-          .single();
-          
-        if (orderError) {
-          throw orderError;
+        const order = await orderService.getOrderById(orderId);
+        
+        if (!order) {
+          throw new Error('Pedido não encontrado');
         }
         
         setOrderDetails(order);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error fetching order details:', err);
-        setError('Não foi possível carregar os detalhes do pedido');
+        setError(err.message || 'Não foi possível carregar os detalhes do pedido');
       } finally {
         setLoading(false);
       }
@@ -116,7 +106,11 @@ const OrderConfirmationScreen: React.FC = () => {
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Forma de pagamento:</span>
-              <span>{orderDetails.forma_pagamento || 'Não informado'}</span>
+              <span>{orderDetails.forma_pagamento === 'credit' ? 'Cartão de Crédito' : 
+                     orderDetails.forma_pagamento === 'debit' ? 'Cartão de Débito' :
+                     orderDetails.forma_pagamento === 'pix' ? 'Pix' :
+                     orderDetails.forma_pagamento === 'money' ? 'Dinheiro' : 
+                     orderDetails.forma_pagamento || 'Não informado'}</span>
             </div>
           </div>
 
@@ -134,9 +128,9 @@ const OrderConfirmationScreen: React.FC = () => {
 
           <div>
             <h3 className="font-medium mb-2">Itens do Pedido</h3>
-            {orderDetails.order_items && orderDetails.order_items.length > 0 ? (
+            {orderDetails.items && orderDetails.items.length > 0 ? (
               <div className="space-y-3">
-                {orderDetails.order_items.map((item: any) => (
+                {orderDetails.items.map((item: any) => (
                   <div key={item.id} className="flex items-center gap-3">
                     <div className="w-12 h-12 bg-gray-200 rounded overflow-hidden">
                       <img 

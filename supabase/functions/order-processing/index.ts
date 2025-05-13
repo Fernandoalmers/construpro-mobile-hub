@@ -78,7 +78,7 @@ serve(async (req) => {
     if (req.method === 'GET' && !orderId) {
       const { data: orders, error } = await supabaseClient
         .from('orders')
-        .select('*, order_items(*)')
+        .select('*, order_items(*, produtos:product_id(*))')
         .eq('cliente_id', user.id)
         .order('created_at', { ascending: false })
       
@@ -99,7 +99,7 @@ serve(async (req) => {
     if (req.method === 'GET' && orderId) {
       const { data: order, error } = await supabaseClient
         .from('orders')
-        .select('*, order_items(*)')
+        .select('*, order_items(*, produtos:product_id(*))')
         .eq('id', orderId)
         .eq('cliente_id', user.id)
         .single()
@@ -172,18 +172,17 @@ serve(async (req) => {
             pontos: pontos_ganhos,
             tipo: 'compra',
             referencia_id: order.id,
-            descricao: `Pontos ganhos na compra #${order.id}`
+            descricao: `Pontos ganhos na compra #${order.id.substring(0,8)}`
           })
         
         if (pointsError) throw new Error(pointsError.message)
         
         // Update user points balance
         const { error: profileError } = await supabaseClient
-          .from('profiles')
-          .update({
-            saldo_pontos: supabaseClient.rpc('increment_points', { user_id: user.id, amount: pontos_ganhos })
+          .rpc('update_user_points', { 
+            user_id: user.id, 
+            points_to_add: pontos_ganhos 
           })
-          .eq('id', user.id)
         
         if (profileError) throw new Error(profileError.message)
         
