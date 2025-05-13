@@ -38,20 +38,13 @@ const StoreCartGroup: React.FC<StoreCartGroupProps> = ({
   if (!isValidStore) {
     console.log('[StoreCartGroup] Invalid store, showing placeholder');
     return (
-      <div className="mb-6">
-        <div className="p-4 bg-gray-100 rounded-lg">
+      <div className="mb-4">
+        <div className="p-3 bg-gray-100 rounded-lg">
           <p className="text-gray-500 text-center">Carregando informações da loja...</p>
         </div>
       </div>
     );
   }
-
-  // Add some debug information to help troubleshoot store issues
-  console.log("[StoreCartGroup] Rendering store:", { 
-    storeId: store.id, 
-    storeName: store.nome, 
-    itemCount: items.length 
-  });
 
   // Calculate store subtotal - with safety check
   const storeSubtotal = items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
@@ -61,29 +54,29 @@ const StoreCartGroup: React.FC<StoreCartGroupProps> = ({
   const displayName = store.nome || `Loja ${store.id.substring(0, 6)}`;
   
   return (
-    <div className="mb-6">
-      <div className="flex items-center mb-3 px-4 py-3 bg-white rounded-lg border-l-4 border-green-600 shadow-sm">
+    <div className="mb-4">
+      <div className="flex items-center mb-2 px-3 py-2 bg-white rounded-lg border-l-2 border-green-600 shadow-sm">
         {store.logo_url ? (
           <img 
             src={store.logo_url} 
             alt={displayName}
-            className="w-10 h-10 rounded-full object-cover mr-3 border border-gray-200"
+            className="w-8 h-8 rounded-full object-cover mr-2 border border-gray-200"
             onError={(e) => {
               (e.target as HTMLImageElement).src = 'https://via.placeholder.com/40';
             }}
           />
         ) : (
-          <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-3">
-            <Building size={18} className="text-green-600" />
+          <div className="w-8 h-8 bg-green-50 rounded-full flex items-center justify-center mr-2">
+            <Building size={16} className="text-green-600" />
           </div>
         )}
         <div>
-          <h2 className="font-bold text-md text-gray-800">{displayName}</h2>
+          <h2 className="font-medium text-sm text-gray-800">{displayName}</h2>
           <p className="text-xs text-gray-500">{items.length} {items.length === 1 ? 'produto' : 'produtos'}</p>
         </div>
       </div>
       
-      <Card className="divide-y divide-gray-100 shadow-md rounded-xl overflow-hidden">
+      <div className="space-y-2">
         {items.map(item => (
           <CartItem 
             key={item.id} 
@@ -93,11 +86,11 @@ const StoreCartGroup: React.FC<StoreCartGroupProps> = ({
             processingItem={processingItem}
           />
         ))}
-        <div className="p-4 bg-gray-50 text-right rounded-b-xl">
-          <span className="text-sm font-medium">Subtotal da loja: </span>
-          <span className="font-bold text-green-600">R$ {storeSubtotal.toFixed(2)}</span>
+        <div className="p-2 bg-gray-50 text-right rounded-lg border border-gray-100">
+          <span className="text-xs font-medium">Subtotal: </span>
+          <span className="text-sm font-medium text-green-600">R$ {storeSubtotal.toFixed(2)}</span>
         </div>
-      </Card>
+      </div>
     </div>
   );
 };

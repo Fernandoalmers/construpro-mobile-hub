@@ -100,7 +100,7 @@ const CartScreen: React.FC = () => {
   });
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50 pb-48">
+    <div className="flex flex-col min-h-screen bg-gray-50">
       <CartHeader />
 
       <div className="flex-1 p-4 max-w-2xl mx-auto w-full">
@@ -119,6 +119,9 @@ const CartScreen: React.FC = () => {
           />
         )}
       </div>
+      
+      {/* Add padding at the bottom to prevent content from being hidden under the summary */}
+      {!cartIsEmpty && <div className="h-24" />}
       
       {!cartIsEmpty && (
         <CartSummary
