@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import CustomButton from '../common/CustomButton';
-import { toast } from '@/components/ui/sonner';
+import { toast } from '@/components/ui/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Address } from '@/services/addressService';
 
@@ -68,15 +68,21 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
     }));
   };
   
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
     
     // Simple validation
     const requiredFields: (keyof Address)[] = ['nome', 'cep', 'logradouro', 'numero', 'bairro', 'cidade', 'estado'];
     const missingFields = requiredFields.filter(field => !formData[field]);
     
     if (missingFields.length > 0) {
-      toast.error(`Por favor, preencha os campos obrigatórios: ${missingFields.join(', ')}`);
+      toast({
+        variant: "destructive",
+        title: "Campos obrigatórios",
+        description: `Por favor, preencha os campos obrigatórios: ${missingFields.join(', ')}`
+      });
       return;
     }
     
@@ -86,7 +92,11 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
       await onSave(formData);
     } catch (error) {
       console.error('Error saving address:', error);
-      toast.error('Erro ao salvar endereço. Tente novamente.');
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Erro ao salvar endereço. Tente novamente."
+      });
     } finally {
       setIsLoading(false);
     }
