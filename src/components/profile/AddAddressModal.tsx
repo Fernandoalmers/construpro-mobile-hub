@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import CustomButton from '../common/CustomButton';
 import { toast } from '@/components/ui/sonner';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Address } from '@/services/addressService';
 
 interface AddAddressModalProps {
@@ -93,125 +94,131 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
+      <DialogContent className="max-h-[90vh] p-0 overflow-hidden w-full sm:max-w-[425px]">
+        <DialogHeader className="px-6 pt-6 pb-2">
           <DialogTitle>
             {initialData ? 'Editar Endereço' : 'Adicionar Endereço'}
           </DialogTitle>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-4 pt-4">
-          <div className="space-y-2">
-            <Label htmlFor="nome">Nome do endereço</Label>
-            <Input
-              id="nome"
-              name="nome"
-              placeholder="Ex: Casa, Trabalho"
-              value={formData.nome}
-              onChange={handleChange}
-              required
-            />
+        <ScrollArea className="max-h-[calc(90vh-180px)]">
+          <div className="px-6">
+            <form onSubmit={handleSubmit} className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="nome">Nome do endereço</Label>
+                <Input
+                  id="nome"
+                  name="nome"
+                  placeholder="Ex: Casa, Trabalho"
+                  value={formData.nome}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="cep">CEP</Label>
+                <Input
+                  id="cep"
+                  name="cep"
+                  placeholder="00000-000"
+                  value={formData.cep}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="logradouro">Logradouro</Label>
+                <Input
+                  id="logradouro"
+                  name="logradouro"
+                  placeholder="Rua, Avenida, etc"
+                  value={formData.logradouro}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="numero">Número</Label>
+                  <Input
+                    id="numero"
+                    name="numero"
+                    placeholder="123"
+                    value={formData.numero}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="complemento">Complemento</Label>
+                  <Input
+                    id="complemento"
+                    name="complemento"
+                    placeholder="Apto, Bloco, etc"
+                    value={formData.complemento}
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="bairro">Bairro</Label>
+                <Input
+                  id="bairro"
+                  name="bairro"
+                  placeholder="Bairro"
+                  value={formData.bairro}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="cidade">Cidade</Label>
+                  <Input
+                    id="cidade"
+                    name="cidade"
+                    placeholder="Cidade"
+                    value={formData.cidade}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="estado">Estado</Label>
+                  <Input
+                    id="estado"
+                    name="estado"
+                    placeholder="UF"
+                    value={formData.estado}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="principal"
+                  checked={formData.principal}
+                  onCheckedChange={(checked) => 
+                    setFormData(prev => ({ ...prev, principal: checked }))
+                  }
+                />
+                <Label htmlFor="principal">Definir como endereço principal</Label>
+              </div>
+            </form>
           </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="cep">CEP</Label>
-            <Input
-              id="cep"
-              name="cep"
-              placeholder="00000-000"
-              value={formData.cep}
-              onChange={handleChange}
-              required
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="logradouro">Logradouro</Label>
-            <Input
-              id="logradouro"
-              name="logradouro"
-              placeholder="Rua, Avenida, etc"
-              value={formData.logradouro}
-              onChange={handleChange}
-              required
-            />
-          </div>
-          
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="numero">Número</Label>
-              <Input
-                id="numero"
-                name="numero"
-                placeholder="123"
-                value={formData.numero}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="complemento">Complemento</Label>
-              <Input
-                id="complemento"
-                name="complemento"
-                placeholder="Apto, Bloco, etc"
-                value={formData.complemento}
-                onChange={handleChange}
-              />
-            </div>
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="bairro">Bairro</Label>
-            <Input
-              id="bairro"
-              name="bairro"
-              placeholder="Bairro"
-              value={formData.bairro}
-              onChange={handleChange}
-              required
-            />
-          </div>
-          
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="cidade">Cidade</Label>
-              <Input
-                id="cidade"
-                name="cidade"
-                placeholder="Cidade"
-                value={formData.cidade}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="estado">Estado</Label>
-              <Input
-                id="estado"
-                name="estado"
-                placeholder="UF"
-                value={formData.estado}
-                onChange={handleChange}
-                required
-              />
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="principal"
-              checked={formData.principal}
-              onCheckedChange={(checked) => 
-                setFormData(prev => ({ ...prev, principal: checked }))
-              }
-            />
-            <Label htmlFor="principal">Definir como endereço principal</Label>
-          </div>
-          
-          <DialogFooter className="pt-4">
+        </ScrollArea>
+        
+        <DialogFooter className="px-6 py-4 border-t">
+          <div className="flex w-full justify-end gap-2">
             <CustomButton
               type="button"
               variant="outline"
@@ -222,14 +229,15 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
             </CustomButton>
             
             <CustomButton
-              type="submit"
+              type="button"
               variant="primary"
               loading={isLoading}
+              onClick={handleSubmit}
             >
               {initialData ? 'Salvar' : 'Adicionar'}
             </CustomButton>
-          </DialogFooter>
-        </form>
+          </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
