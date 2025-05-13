@@ -120,8 +120,8 @@ const CartScreen: React.FC = () => {
         )}
       </div>
       
-      {/* Add padding at the bottom to prevent content from being hidden under the summary */}
-      {!cartIsEmpty && <div className="h-24" />}
+      {/* Padding ajustado para evitar sobreposição com o menu inferior E com o resumo fixo */}
+      {!cartIsEmpty && <div className="h-40" />}
       
       {!cartIsEmpty && (
         <CartSummary

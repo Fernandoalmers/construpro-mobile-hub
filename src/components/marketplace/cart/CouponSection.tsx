@@ -1,8 +1,7 @@
-
 import React, { useState } from 'react';
-import { Check, Ticket, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CheckCircle, Loader2, Ticket } from 'lucide-react';
 
 interface CouponSectionProps {
   appliedCoupon: {code: string, discount: number} | null;
@@ -10,68 +9,83 @@ interface CouponSectionProps {
   onRemoveCoupon: () => void;
 }
 
-const CouponSection: React.FC<CouponSectionProps> = ({
-  appliedCoupon,
-  onApplyCoupon,
-  onRemoveCoupon
+// Apenas ajustando espaçamentos e tamanhos para melhor usabilidade
+const CouponSection: React.FC<CouponSectionProps> = ({ 
+  appliedCoupon, 
+  onApplyCoupon, 
+  onRemoveCoupon 
 }) => {
   const [couponCode, setCouponCode] = useState('');
   const [isApplying, setIsApplying] = useState(false);
 
-  const handleApply = () => {
+  const handleApplyCoupon = (e: React.FormEvent) => {
+    e.preventDefault();
+    
     if (!couponCode.trim()) return;
     
     setIsApplying(true);
-    // Simulate API delay
+    onApplyCoupon(couponCode);
+    
+    // Simulate network delay for better UX
     setTimeout(() => {
-      onApplyCoupon(couponCode);
       setIsApplying(false);
       setCouponCode('');
-    }, 500);
+    }, 600);
   };
 
   return (
-    <div className="bg-white p-4 rounded-lg shadow-sm mb-4">
-      <h3 className="font-medium text-gray-700 mb-3 flex items-center">
-        <Ticket size={18} className="mr-2 text-construPro-blue" />
+    <div className="bg-white rounded-md shadow-sm p-4 mb-3">
+      <h3 className="flex items-center gap-1 text-sm font-medium mb-3">
+        <Ticket className="w-4 h-4 text-gray-600" />
         Cupom de desconto
       </h3>
-      
+
       {appliedCoupon ? (
-        <div className="flex items-center justify-between bg-green-50 p-3 rounded-md border border-green-200">
+        <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-md px-3 py-2">
           <div className="flex items-center">
-            <div className="bg-green-100 w-8 h-8 rounded-full flex items-center justify-center mr-2">
-              <Check size={16} className="text-green-600" />
-            </div>
+            <CheckCircle className="w-4 h-4 text-green-600 mr-2" />
             <div>
-              <p className="font-medium text-green-700">{appliedCoupon.code}</p>
-              <p className="text-xs text-green-600">Desconto de {appliedCoupon.discount}% aplicado</p>
+              <p className="text-sm font-medium">{appliedCoupon.code}</p>
+              <p className="text-xs text-green-700">
+                Desconto de R$ {appliedCoupon.discount.toFixed(2)} aplicado
+              </p>
             </div>
           </div>
-          <button 
-            onClick={onRemoveCoupon}
-            className="text-gray-500 hover:text-red-500 p-2 rounded-full hover:bg-gray-100"
-            aria-label="Remover cupom"
-          >
-            <X size={18} />
-          </button>
-        </div>
-      ) : (
-        <div className="flex items-stretch gap-2">
-          <Input
-            placeholder="Digite seu cupom"
-            value={couponCode}
-            onChange={(e) => setCouponCode(e.target.value)}
-            className="flex-1"
-          />
+          
           <Button 
-            onClick={handleApply} 
-            disabled={!couponCode.trim() || isApplying}
-            className="whitespace-nowrap bg-construPro-blue hover:bg-blue-700"
+            variant="ghost" 
+            size="sm"
+            className="h-8 text-xs text-gray-600 hover:text-red-600"
+            onClick={onRemoveCoupon}
           >
-            {isApplying ? "Aplicando..." : "Aplicar"}
+            Remover
           </Button>
         </div>
+      ) : (
+        <form onSubmit={handleApplyCoupon} className="flex gap-2">
+          <Input
+            value={couponCode}
+            onChange={(e) => setCouponCode(e.target.value)}
+            placeholder="Digite seu cupom"
+            className="h-9 text-sm"
+          />
+          <Button 
+            type="submit" 
+            variant="secondary"
+            size="sm"
+            className="h-9 bg-blue-100 hover:bg-blue-200 text-blue-800 whitespace-nowrap"
+            disabled={!couponCode.trim() || isApplying}
+          >
+            {isApplying ? (
+              <span className="flex items-center">
+                <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                Aplicando...
+              </span>
+            ) : (
+              'Aplicar'
+            )}
+          </Button>
+        </form>
       )}
     </div>
   );

@@ -27,7 +27,7 @@ const CartSummary: React.FC<CartSummaryProps> = ({
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-md px-4 py-3 z-30">
+    <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 shadow-md px-4 py-3 z-30">
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center justify-between">
           {/* Summary info - compact version */}
@@ -46,7 +46,7 @@ const CartSummary: React.FC<CartSummaryProps> = ({
             <Button 
               variant="outline"
               size="sm"
-              className="border-gray-300 text-sm"
+              className="border-gray-300 text-sm h-8"
               onClick={() => navigate('/marketplace')}
             >
               <ShoppingBag size={14} className="mr-1" />
@@ -56,9 +56,10 @@ const CartSummary: React.FC<CartSummaryProps> = ({
             <Button 
               onClick={handleCheckout}
               className={cn(
-                "text-sm py-2 h-9 flex items-center justify-center",
+                "text-sm py-1 h-8 flex items-center justify-center",
                 "bg-green-600 hover:bg-green-700"
               )}
+              size="sm"
             >
               Finalizar
               <ArrowRight size={14} className="ml-1" />
