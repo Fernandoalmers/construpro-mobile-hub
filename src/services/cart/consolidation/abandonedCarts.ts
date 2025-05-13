@@ -41,7 +41,7 @@ export async function archiveAbandonedCarts(olderThanDays: number = 7): Promise<
       
       const { error: updateError } = await supabase
         .from('carts')
-        .update({ status: 'archived' })
+        .update({ status: 'abandoned' }) // Changed from 'archived' to 'abandoned' to match DB constraint
         .in('id', batch);
         
       if (updateError) {

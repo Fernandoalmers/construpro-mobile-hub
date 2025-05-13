@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 /**
@@ -59,7 +60,7 @@ export async function cleanupAbandonedCarts(): Promise<void> {
       
       const { error: archiveError } = await supabase
         .from('carts')
-        .update({ status: 'archived' })
+        .update({ status: 'abandoned' }) // Changed from 'archived' to 'abandoned' to match DB constraint
         .in('id', batch);
         
       if (archiveError) {
@@ -120,7 +121,7 @@ export async function removeEmptyCarts(): Promise<void> {
         
         const { error: archiveError } = await supabase
           .from('carts')
-          .update({ status: 'archived' })
+          .update({ status: 'abandoned' }) // Changed from 'archived' to 'abandoned' to match DB constraint
           .eq('id', cart.id);
           
         if (archiveError) {

@@ -76,7 +76,7 @@ export async function ensureSingleActiveCart(userId: string): Promise<string | n
           
           const { error: archiveError } = await supabase
             .from('carts')
-            .update({ status: 'archived' })
+            .update({ status: 'abandoned' }) // Changed from 'archived' to 'abandoned' to match DB constraint
             .in('id', batchIds);
             
           if (archiveError) {
