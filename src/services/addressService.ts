@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
 
 export interface Address {
   id?: string;
@@ -55,9 +56,10 @@ export const addressService = {
     try {
       await ensureAuthSession();
       
+      // FIX: Don't send a body with GET request
       const { data, error } = await supabase.functions.invoke('address-management', {
-        method: 'GET',
-        body: {} // Sending empty body to avoid malformed request
+        method: 'GET'
+        // Remove the body parameter for GET requests
       });
       
       if (error) {
@@ -76,9 +78,9 @@ export const addressService = {
     try {
       await ensureAuthSession();
       
-      const { data, error } = await supabase.functions.invoke('address-management', {
-        method: 'GET',
-        body: { id: addressId }
+      // Use path parameters instead of body for GET requests
+      const { data, error } = await supabase.functions.invoke(`address-management?id=${addressId}`, {
+        method: 'GET'
       });
       
       if (error) {

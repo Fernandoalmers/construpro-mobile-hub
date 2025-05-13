@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { addressService, Address } from '@/services/addressService';
 import { toast } from '@/components/ui/use-toast';
@@ -49,7 +49,12 @@ export function useAddresses() {
         console.error("Error fetching addresses:", errorMsg);
         throw err; // Rethrow to let React Query handle it
       }
-    }
+    },
+    // Added retry configuration
+    retry: 2,
+    retryDelay: 1000,
+    // Added staleTime to reduce unnecessary refetches
+    staleTime: 30000
   });
 
   // Delete address mutation
@@ -148,6 +153,15 @@ export function useAddresses() {
     }
   });
 
+  // Add retry functionality
+  const retryOperation = useCallback(async () => {
+    toast({
+      title: "Tentando novamente",
+      description: "Tentando carregar seus endereços..."
+    });
+    await refetch();
+  }, [refetch]);
+
   const handleSetDefaultAddress = (addressId: string) => {
     setPrimaryAddressMutation.mutate(addressId);
   };
@@ -185,7 +199,7 @@ export function useAddresses() {
     isLoading,
     error,
     errorDetails,
-    refetch,
+    refetch: retryOperation, // Use our enhanced retry function
     isAddModalOpen,
     setIsAddModalOpen,
     editingAddress,

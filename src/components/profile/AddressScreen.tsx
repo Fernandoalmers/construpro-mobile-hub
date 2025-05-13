@@ -1,13 +1,14 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, MapPin, Plus } from 'lucide-react';
+import { ChevronLeft, MapPin, Plus, RefreshCw } from 'lucide-react';
 import CustomButton from '../common/CustomButton';
 import ListEmptyState from '../common/ListEmptyState';
 import ErrorState from '../common/ErrorState';
 import AddAddressModal from './AddAddressModal';
 import { useAddresses } from '@/hooks/useAddresses';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { toast } from '@/components/ui/use-toast';
 
 const AddressScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -26,6 +27,15 @@ const AddressScreen: React.FC = () => {
     handleAddAddress,
     handleSaveAddress
   } = useAddresses();
+
+  // Handle retry with a user-friendly message
+  const handleRetry = () => {
+    toast({
+      title: "Tentando novamente",
+      description: "Atualizando seus endereços..."
+    });
+    refetch();
+  };
 
   return (
     <div className="flex flex-col h-screen bg-gray-100">
@@ -59,9 +69,9 @@ const AddressScreen: React.FC = () => {
           ) : error ? (
             <ErrorState
               title="Erro ao carregar endereços"
-              message="Não foi possível carregar seus endereços. Tente novamente mais tarde."
+              message="Não foi possível carregar seus endereços. Por favor, verifique sua conexão e tente novamente."
               errorDetails={errorDetails || undefined}
-              onRetry={refetch}
+              onRetry={handleRetry}
               retryText="Tentar novamente"
             />
           ) : addresses.length === 0 ? (
@@ -76,6 +86,16 @@ const AddressScreen: React.FC = () => {
             />
           ) : (
             <div className="space-y-4">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="text-sm text-gray-500">Total: {addresses.length} endereços</div>
+                <button 
+                  onClick={handleRetry}
+                  className="flex items-center text-sm text-construPro-blue hover:text-construPro-blue-dark"
+                >
+                  <RefreshCw size={16} className="mr-1" />
+                  Atualizar
+                </button>
+              </div>
               {addresses.map((address) => (
                 <div key={address.id} className="bg-white rounded-lg shadow-md p-4">
                   <div className="flex justify-between items-start mb-2">

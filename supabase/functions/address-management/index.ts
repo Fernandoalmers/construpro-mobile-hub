@@ -109,13 +109,11 @@ serve(async (req) => {
       }
     }
     
-    // GET - List all addresses
+    // GET - List all addresses or get specific one
     if (method === 'GET') {
-      // Check if we have an ID in the request body (for getting a specific address)
+      // Check if we have an ID in URL query parameters
       const url = new URL(req.url)
-      const pathSegments = url.pathname.split('/')
-      const addressId = pathSegments[pathSegments.length - 1] !== 'address-management' ? 
-                         pathSegments[pathSegments.length - 1] : null
+      const addressId = url.searchParams.get('id')
       
       if (addressId) {
         // GET specific address
