@@ -1,11 +1,12 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, MapPin, Plus, Edit2, Trash2 } from 'lucide-react';
 import Card from '../common/Card';
 import CustomButton from '../common/CustomButton';
 import ListEmptyState from '../common/ListEmptyState';
-import { toast } from '@/components/ui/sonner';
+import ErrorState from '../common/ErrorState';
+import { toast } from '../ui/use-toast';
 import { useAuth } from '../../context/AuthContext';
 import AddAddressModal from './AddAddressModal';
 import { addressService, Address } from '@/services/addressService';
@@ -22,10 +23,20 @@ const AddressScreen: React.FC = () => {
   const { 
     data: addresses = [], 
     isLoading, 
-    error 
+    error, 
+    refetch
   } = useQuery({
     queryKey: ['addresses'],
     queryFn: () => addressService.getAddresses(),
+    retry: 1,
+    onError: (err: any) => {
+      console.error("Error fetching addresses:", err);
+      toast({
+        variant: "destructive",
+        title: "Erro ao carregar endereços",
+        description: err.message || "Não foi possível carregar seus endereços."
+      });
+    }
   });
 
   // Delete address mutation
@@ -33,10 +44,17 @@ const AddressScreen: React.FC = () => {
     mutationFn: (addressId: string) => addressService.deleteAddress(addressId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['addresses'] });
-      toast.success("Endereço removido com sucesso");
+      toast({
+        title: "Endereço removido",
+        description: "Endereço removido com sucesso."
+      });
     },
-    onError: (error) => {
-      toast.error(`Erro ao remover endereço: ${error.message}`);
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Erro ao remover endereço",
+        description: error.message || "Não foi possível remover o endereço."
+      });
     }
   });
 
@@ -45,10 +63,17 @@ const AddressScreen: React.FC = () => {
     mutationFn: (addressId: string) => addressService.setPrimaryAddress(addressId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['addresses'] });
-      toast.success("Endereço principal atualizado com sucesso");
+      toast({
+        title: "Endereço principal atualizado",
+        description: "Endereço principal atualizado com sucesso."
+      });
     },
-    onError: (error) => {
-      toast.error(`Erro ao atualizar endereço principal: ${error.message}`);
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Erro ao atualizar endereço principal", 
+        description: error.message || "Não foi possível atualizar o endereço principal."
+      });
     }
   });
 
@@ -63,15 +88,20 @@ const AddressScreen: React.FC = () => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['addresses'] });
-      toast.success(
-        variables.isEdit 
-          ? "Endereço atualizado com sucesso" 
-          : "Endereço adicionado com sucesso"
-      );
+      toast({
+        title: variables.isEdit ? "Endereço atualizado" : "Endereço adicionado",
+        description: variables.isEdit 
+          ? "Endereço atualizado com sucesso." 
+          : "Endereço adicionado com sucesso."
+      });
       setIsAddModalOpen(false);
     },
-    onError: (error) => {
-      toast.error(`Erro ao salvar endereço: ${error.message}`);
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Erro ao salvar endereço",
+        description: error.message || "Não foi possível salvar o endereço."
+      });
     }
   });
 
@@ -102,10 +132,6 @@ const AddressScreen: React.FC = () => {
     });
   };
 
-  if (error) {
-    toast.error(`Erro ao carregar endereços: ${(error as Error).message}`);
-  }
-
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
       {/* Header */}
@@ -134,6 +160,13 @@ const AddressScreen: React.FC = () => {
           <div className="flex justify-center my-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-construPro-blue"></div>
           </div>
+        ) : error ? (
+          <ErrorState
+            title="Erro ao carregar endereços"
+            message="Não foi possível carregar seus endereços. Tente novamente mais tarde."
+            onRetry={refetch}
+            retryText="Tentar novamente"
+          />
         ) : addresses.length === 0 ? (
           <ListEmptyState
             title="Nenhum endereço cadastrado"
@@ -161,6 +194,7 @@ const AddressScreen: React.FC = () => {
                     <button
                       onClick={() => handleEditAddress(address)}
                       className="text-gray-500 hover:text-gray-700"
+                      aria-label="Editar endereço"
                     >
                       <Edit2 size={16} />
                     </button>
@@ -168,6 +202,7 @@ const AddressScreen: React.FC = () => {
                       onClick={() => handleDeleteAddress(address.id!)}
                       className="text-gray-500 hover:text-red-500"
                       disabled={address.principal}
+                      aria-label="Remover endereço"
                     >
                       <Trash2 size={16} className={address.principal ? 'opacity-40' : ''} />
                     </button>
