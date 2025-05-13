@@ -32,16 +32,21 @@ export const orderService = {
           forma_pagamento: orderData.forma_pagamento,
           valor_total: orderData.valor_total,
           status: 'confirmado'
-        }
+        },
+        maxRetries: 3 // Increase retries for critical operations like order creation
       });
       
       // Check for error in the response
       if (error) {
         console.error('Error creating order:', error);
         
-        // Handle specific errors
+        // Enhanced error handling with specific error types
         if (error.message?.includes('row-level security policy')) {
-          throw new Error('Erro de permissão: o sistema não conseguiu criar o pedido devido a restrições de segurança. Por favor, faça login novamente ou contate o suporte.');
+          throw new Error('Erro de permissão: o sistema não conseguiu criar o pedido devido a restrições de segurança. Por favor, tente novamente em alguns instantes ou contate o suporte.');
+        }
+        
+        if (error.message?.includes('network') || error.message?.includes('timeout') || error.message?.includes('connection')) {
+          throw new Error('Erro de conexão: não conseguimos comunicar com o servidor. Verifique sua internet e tente novamente.');
         }
         
         throw new Error(error.message || 'Falha ao criar pedido');

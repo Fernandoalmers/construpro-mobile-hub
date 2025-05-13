@@ -51,6 +51,8 @@ export function useCheckout() {
       try {
         setIsLoading(true);
         const addressList = await addressService.getAddresses();
+        console.log("Fetched addresses:", addressList);
+        
         setAddresses(addressList);
         
         // Set default address if available
@@ -103,6 +105,8 @@ export function useCheckout() {
     setProcessError(null);
     
     try {
+      console.log("Creating order with address:", selectedAddress);
+      
       const orderData = {
         items: cartItems,
         endereco_entrega: selectedAddress,

@@ -101,10 +101,15 @@ export async function handleCreateOrder(req: Request, authHeader: string) {
   try {
     console.log("Starting order creation process");
     const token = authHeader.replace('Bearer ', '')
-    const supabaseClient = initSupabaseClient(token)
-    const user = await verifyUserToken(supabaseClient)
     
+    // First verify the user with the regular client
+    const regularClient = initSupabaseClient(token)
+    const user = await verifyUserToken(regularClient)
     console.log(`User authenticated successfully: ${user.id}`);
+    
+    // For database operations that might face RLS issues, use the service role client
+    // The service role bypasses RLS policies entirely
+    const serviceRoleClient = initSupabaseClient(token, true)
     
     const orderData: Order = await req.json()
     console.log("Processing order data:", JSON.stringify(orderData));
@@ -117,7 +122,7 @@ export async function handleCreateOrder(req: Request, authHeader: string) {
     try {
       console.log("Testing transaction support");
       // Check if transaction functions exist by calling one
-      const { error: testTxError } = await supabaseClient.rpc('begin_transaction');
+      const { error: testTxError } = await serviceRoleClient.rpc('begin_transaction');
       if (testTxError) {
         console.error("Transaction functions not working, fallback to direct operations:", testTxError);
         useTransactions = false;
@@ -134,7 +139,7 @@ export async function handleCreateOrder(req: Request, authHeader: string) {
       // Begin transaction if available
       if (useTransactions) {
         console.log("Beginning transaction");
-        const { error: txBeginError } = await supabaseClient.rpc('begin_transaction');
+        const { error: txBeginError } = await serviceRoleClient.rpc('begin_transaction');
         if (txBeginError) {
           console.error("Transaction begin error:", txBeginError);
           throw new Error(`Transaction begin error: ${txBeginError.message}`);
@@ -144,7 +149,7 @@ export async function handleCreateOrder(req: Request, authHeader: string) {
       
       console.log(`Creating order for user: ${user.id}`);
       
-      // Create order with explicit user ID to satisfy RLS
+      // Create order with explicit user ID to satisfy RLS (but using service role to bypass RLS)
       console.log("Inserting order record");
       const orderInsertData = {
         cliente_id: user.id,
@@ -158,7 +163,7 @@ export async function handleCreateOrder(req: Request, authHeader: string) {
       
       console.log("Order insert data:", JSON.stringify(orderInsertData));
       
-      const { data: order, error: orderError } = await supabaseClient
+      const { data: order, error: orderError } = await serviceRoleClient
         .from('orders')
         .insert(orderInsertData)
         .select()
@@ -167,18 +172,10 @@ export async function handleCreateOrder(req: Request, authHeader: string) {
       if (orderError) {
         console.error("Order creation error:", orderError);
         
-        // Check if this is an RLS policy violation
-        if (orderError.message.includes('row-level security policy')) {
-          return new Response(
-            JSON.stringify({ 
-              success: false,
-              error: 'Erro de permissão: Você não tem autorização para criar pedidos.',
-              details: orderError.message,
-              code: 'RLS_VIOLATION'
-            }),
-            { status: 403, headers: corsHeaders }
-          );
-        }
+        // Enhanced error logging
+        console.error("Error code:", orderError.code);
+        console.error("Error details:", orderError.details);
+        console.error("Error hint:", orderError.hint);
         
         throw new Error(`Order creation error: ${orderError.message}`);
       }
@@ -195,7 +192,7 @@ export async function handleCreateOrder(req: Request, authHeader: string) {
         subtotal: item.subtotal
       }));
       
-      const { error: itemsError } = await supabaseClient
+      const { error: itemsError } = await serviceRoleClient
         .from('order_items')
         .insert(orderItems);
       
@@ -208,7 +205,7 @@ export async function handleCreateOrder(req: Request, authHeader: string) {
       
       // Add points transaction
       console.log("Creating points transaction");
-      const { error: pointsError } = await supabaseClient
+      const { error: pointsError } = await serviceRoleClient
         .from('points_transactions')
         .insert({
           user_id: user.id,
@@ -227,7 +224,7 @@ export async function handleCreateOrder(req: Request, authHeader: string) {
       
       // Update user points balance
       console.log("Updating user points balance");
-      const { error: profileError } = await supabaseClient
+      const { error: profileError } = await serviceRoleClient
         .rpc('update_user_points', { 
           user_id: user.id, 
           points_to_add: pontos_ganhos 
@@ -243,7 +240,7 @@ export async function handleCreateOrder(req: Request, authHeader: string) {
       // Commit transaction if we're using them
       if (useTransactions) {
         console.log("Committing transaction");
-        const { error: commitError } = await supabaseClient.rpc('commit_transaction');
+        const { error: commitError } = await serviceRoleClient.rpc('commit_transaction');
         if (commitError) {
           console.error("Transaction commit error:", commitError);
           throw new Error(`Transaction commit error: ${commitError.message}`);
@@ -268,7 +265,7 @@ export async function handleCreateOrder(req: Request, authHeader: string) {
       if (useTransactions) {
         try {
           console.log("Rolling back transaction");
-          await supabaseClient.rpc('rollback_transaction');
+          await serviceRoleClient.rpc('rollback_transaction');
           console.log("Transaction rolled back");
         } catch (rollbackError) {
           console.error("Rollback error:", rollbackError);

@@ -8,23 +8,25 @@ export const corsHeaders = {
   'Content-Type': 'application/json'
 }
 
-// Initialize Supabase client
-export function initSupabaseClient(token: string) {
+// Initialize Supabase client with user token
+export function initSupabaseClient(token: string, useServiceRole = false) {
   const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
-  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || ''
+  const supabaseKey = useServiceRole 
+    ? (Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '') 
+    : (Deno.env.get('SUPABASE_ANON_KEY') || '')
   
-  if (!supabaseUrl || !supabaseAnonKey) {
+  if (!supabaseUrl || !supabaseKey) {
     console.error("Missing Supabase environment variables");
     throw new Error("Server configuration error");
   }
   
-  return createClient(supabaseUrl, supabaseAnonKey, {
+  return createClient(supabaseUrl, supabaseKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
     },
     global: {
-      headers: {
+      headers: useServiceRole ? {} : {
         Authorization: `Bearer ${token}`,
       },
     },

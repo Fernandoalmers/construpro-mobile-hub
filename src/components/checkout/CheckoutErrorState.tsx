@@ -1,7 +1,7 @@
 
 import React from 'react';
 import ErrorState from '@/components/common/ErrorState';
-import { AlertCircle, RefreshCw } from 'lucide-react';
+import { AlertCircle, RefreshCw, ShieldAlert } from 'lucide-react';
 
 interface CheckoutErrorStateProps {
   error: string;
@@ -14,35 +14,50 @@ const CheckoutErrorState: React.FC<CheckoutErrorStateProps> = ({
   attemptCount,
   onRetry
 }) => {
-  // Determine if it's likely an auth/permission issue
+  // Determine error type for better user guidance
   const isPermissionError = 
     error.toLowerCase().includes('permissão') || 
     error.toLowerCase().includes('security policy') || 
     error.toLowerCase().includes('authorized') ||
     error.toLowerCase().includes('token');
   
-  // Determine if it's likely a network issue
   const isNetworkError = 
     error.toLowerCase().includes('network') || 
-    error.toLowerCase().includes('connection') ||
-    error.toLowerCase().includes('timeout') ||
-    error.toLowerCase().includes('non-2xx status code');
+    error.toLowerCase().includes('connection') || 
+    error.toLowerCase().includes('comunicar') ||
+    error.toLowerCase().includes('internet') ||
+    error.toLowerCase().includes('timeout');
     
+  const isServerError =
+    error.toLowerCase().includes('servidor') ||
+    error.toLowerCase().includes('500') ||
+    error.toLowerCase().includes('internal');
+  
   // Create user-friendly error message
   const getFriendlyErrorMessage = () => {
     if (isPermissionError) {
       return "Problema de autorização. Você pode precisar fazer login novamente.";
     } else if (isNetworkError) {
       return "Problema de conexão. Verifique sua internet e tente novamente.";
+    } else if (isServerError) {
+      return "Nosso servidor está enfrentando problemas temporários. Por favor, tente novamente em alguns instantes.";
     } else {
       return "Ocorreu um erro ao processar seu pedido.";
+    }
+  };
+
+  const getErrorIcon = () => {
+    if (isPermissionError) {
+      return <ShieldAlert className="h-5 w-5" />;
+    } else {
+      return <AlertCircle className="h-5 w-5" />;
     }
   };
 
   return (
     <div className="p-4 border rounded-md bg-red-50 border-red-200 mb-4 animate-in fade-in slide-in-from-top-4 duration-300">
       <div className="mb-3 flex items-center gap-2 text-red-700">
-        <AlertCircle className="h-5 w-5" />
+        {getErrorIcon()}
         <h3 className="font-semibold">Erro ao processar pedido</h3>
       </div>
       
