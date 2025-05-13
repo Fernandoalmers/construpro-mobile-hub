@@ -18,6 +18,9 @@ export function useAddresses() {
   } = useQuery({
     queryKey: ['addresses'],
     queryFn: () => addressService.getAddresses(),
+    onSuccess: (data) => {
+      console.log("Addresses loaded successfully:", data);
+    },
     onError: (err: any) => {
       console.error("Error fetching addresses:", err);
       toast({
