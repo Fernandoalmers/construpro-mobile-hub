@@ -148,7 +148,7 @@ const BottomTabNavigator: React.FC = () => {
     );
   }
 
-  // Don't show navigation on certain paths
+  // Don't show navigation on certain paths - Removed /profile/addresses from exclusion list
   if (!user || 
       location.pathname === '/login' || 
       location.pathname === '/signup' || 
