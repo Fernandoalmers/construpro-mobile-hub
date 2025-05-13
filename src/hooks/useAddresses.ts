@@ -18,20 +18,18 @@ export function useAddresses() {
   } = useQuery({
     queryKey: ['addresses'],
     queryFn: () => addressService.getAddresses(),
-    // Using meta to handle onSuccess and onError in latest React Query version
     meta: {
       onSuccess: (data: Address[]) => {
         console.log("Addresses loaded successfully:", data);
+      },
+      onError: (err: any) => {
+        console.error("Error fetching addresses:", err);
+        toast({
+          variant: "destructive",
+          title: "Erro ao carregar endereços",
+          description: err.message || "Não foi possível carregar seus endereços."
+        });
       }
-    },
-    // Error handling moved to the onError option in the query options
-    onError: (err: any) => {
-      console.error("Error fetching addresses:", err);
-      toast({
-        variant: "destructive",
-        title: "Erro ao carregar endereços",
-        description: err.message || "Não foi possível carregar seus endereços."
-      });
     }
   });
 
