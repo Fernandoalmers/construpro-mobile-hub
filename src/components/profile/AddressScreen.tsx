@@ -15,6 +15,7 @@ const AddressScreen: React.FC = () => {
     addresses,
     isLoading,
     error,
+    errorDetails,
     refetch,
     isAddModalOpen,
     setIsAddModalOpen,
@@ -59,6 +60,7 @@ const AddressScreen: React.FC = () => {
             <ErrorState
               title="Erro ao carregar endereços"
               message="Não foi possível carregar seus endereços. Tente novamente mais tarde."
+              errorDetails={errorDetails || undefined}
               onRetry={refetch}
               retryText="Tentar novamente"
             />
