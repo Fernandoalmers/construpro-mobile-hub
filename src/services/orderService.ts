@@ -31,7 +31,7 @@ export const orderService = {
           endereco_entrega: orderData.endereco_entrega,
           forma_pagamento: orderData.forma_pagamento,
           valor_total: orderData.valor_total,
-          status: 'confirmado'
+          status: 'confirmado'  // Lowercase to match edge function expectations
         },
         maxRetries: 3 // Increase retries for critical operations like order creation
       });

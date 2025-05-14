@@ -9,10 +9,32 @@ import PaymentMethodSection from '@/components/checkout/PaymentMethodSection';
 import OrderSummarySection from '@/components/checkout/OrderSummarySection';
 import AddressSelectionModal from '@/components/checkout/AddressSelectionModal';
 import CheckoutErrorState from '@/components/checkout/CheckoutErrorState';
+import { toast } from '@/components/ui/sonner';
 
 const CheckoutScreen: React.FC = () => {
   const navigate = useNavigate();
   const checkout = useCheckout();
+
+  // Handler to debug and provide feedback during checkout
+  const handleCheckout = () => {
+    if (!checkout.selectedAddress) {
+      toast.error("Selecione um endereço de entrega");
+      return;
+    }
+    
+    if (checkout.cartItems?.length === 0) {
+      toast.error("Seu carrinho está vazio");
+      return;
+    }
+    
+    console.log("Attempting to place order with:", {
+      address: checkout.selectedAddress,
+      paymentMethod: checkout.paymentMethod,
+      total: checkout.total
+    });
+    
+    checkout.handlePlaceOrder();
+  };
 
   if (checkout.isLoading) {
     return <LoadingState text="Carregando informações..." />;
@@ -63,7 +85,7 @@ const CheckoutScreen: React.FC = () => {
             total={checkout.total}
             totalPoints={checkout.totalPoints}
             isSubmitting={checkout.isSubmitting}
-            onPlaceOrder={checkout.handlePlaceOrder}
+            onPlaceOrder={handleCheckout}
             onGoBack={() => navigate(-1)}
           />
         </div>

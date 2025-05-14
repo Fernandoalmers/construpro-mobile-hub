@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '@/hooks/use-cart';
@@ -31,7 +32,7 @@ export function useCheckout() {
   
   // Calculate totals
   const subtotal = cart?.summary?.subtotal || 0;
-  const shipping = cart?.summary?.shipping || 15.90;
+  const shipping = 0; // Free shipping
   const total = subtotal + shipping;
   const totalPoints = cart?.summary?.totalPoints || Math.floor(total * 0.1);
   
@@ -97,6 +98,8 @@ export function useCheckout() {
         pontos_ganhos: totalPoints,
         status: "Confirmado" // Use capital C to match constraint
       };
+      
+      console.log('Sending order with data:', orderData);
       
       // Create order
       const orderId = await orderService.createOrder(orderData);
