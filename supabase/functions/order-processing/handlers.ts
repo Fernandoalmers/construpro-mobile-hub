@@ -2,6 +2,12 @@
 import { corsHeaders, initSupabaseClient, verifyUserToken } from './utils.ts'
 import { Order } from './types.ts'
 
+// Helper function to capitalize the first letter of order status
+function capitalizeOrderStatus(status: string): string {
+  if (!status) return status;
+  return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+}
+
 export async function handleGetOrders(req: Request, authHeader: string) {
   try {
     console.log("Getting orders for authenticated user");
@@ -114,6 +120,14 @@ export async function handleCreateOrder(req: Request, authHeader: string) {
     const orderData: Order = await req.json()
     console.log("Processing order data:", JSON.stringify(orderData));
     
+    // Properly capitalize the status field to match database constraint
+    if (orderData.status) {
+      orderData.status = capitalizeOrderStatus(orderData.status);
+    } else {
+      // Default status if none provided
+      orderData.status = "Confirmado";
+    }
+    
     // Calculate points earned (10% of order total)
     const pontos_ganhos = Math.floor(orderData.valor_total * 0.1)
     
@@ -155,7 +169,7 @@ export async function handleCreateOrder(req: Request, authHeader: string) {
         cliente_id: user.id,
         valor_total: orderData.valor_total,
         pontos_ganhos: pontos_ganhos,
-        status: orderData.status || 'Em Separação',
+        status: orderData.status,
         forma_pagamento: orderData.forma_pagamento,
         rastreio: orderData.rastreio,
         endereco_entrega: orderData.endereco_entrega,
