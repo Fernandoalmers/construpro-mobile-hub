@@ -7,7 +7,7 @@ import { toast } from '@/components/ui/sonner';
 import { orderService } from '@/services/orderService';
 import { CartItem } from '@/types/cart';
 import { Address } from '@/services/addressService';
-import { useGroupItemsByStore } from '@/hooks/cart/use-group-items-by-store';
+import { useGroupItemsByStore, storeGroupsToArray, StoreGroup } from '@/hooks/cart/use-group-items-by-store';
 
 // Define the PaymentMethod type
 export type PaymentMethod = 'credit' | 'debit' | 'money' | 'pix';
@@ -15,7 +15,11 @@ export type PaymentMethod = 'credit' | 'debit' | 'money' | 'pix';
 export function useCheckout() {
   const navigate = useNavigate();
   const { cart, cartItems, clearCart, refreshCart } = useCart();
-  const { addresses, isLoading: addressesLoading, handleAddAddress } = useAddresses();
+  const { 
+    addresses, 
+    isLoading: addressesLoading, 
+    handleAddAddress 
+  } = useAddresses();
   
   // State management
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
@@ -33,7 +37,9 @@ export function useCheckout() {
   const totalPoints = cart?.summary?.totalPoints || Math.floor(total * 0.1);
   
   // Group items by store
-  const storeGroups = useGroupItemsByStore(cartItems, cart?.stores || []);
+  const storeGroupsRecord = useGroupItemsByStore(cartItems, cart?.stores || []);
+  // Convert record to array for components that expect an array
+  const storeGroupsArray = storeGroupsToArray(storeGroupsRecord);
   
   // Set default address on load
   useEffect(() => {
@@ -52,16 +58,16 @@ export function useCheckout() {
   // Add new address handler
   const addNewAddress = useCallback(async (formData: Partial<Address>) => {
     try {
-      const newAddress = await handleAddAddress(formData);
-      if (newAddress) {
-        selectAddress(newAddress);
-        toast.success('Endereço adicionado com sucesso');
-      }
+      // Call handleAddAddress with the form data
+      await handleAddAddress(formData);
+      // Refresh addresses to get the new address
+      // Note: We don't need to check the return value here
+      toast.success('Endereço adicionado com sucesso');
     } catch (error) {
       console.error('Error adding address:', error);
       toast.error('Erro ao adicionar endereço');
     }
-  }, [handleAddAddress, selectAddress]);
+  }, [handleAddAddress]);
   
   // Handle order placement
   const handlePlaceOrder = useCallback(async () => {
@@ -134,7 +140,7 @@ export function useCheckout() {
     selectedAddress,
     paymentMethod,
     changeAmount,
-    storeGroups,
+    storeGroups: storeGroupsArray,
     subtotal,
     shipping,
     total,

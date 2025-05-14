@@ -3,14 +3,10 @@ import React from 'react';
 import { CheckCircle } from 'lucide-react';
 import Card from '@/components/common/Card';
 import CustomButton from '@/components/common/CustomButton';
-
-interface Store {
-  id: string;
-  items: any[];
-}
+import { StoreGroup } from '@/hooks/cart/use-group-items-by-store';
 
 interface OrderSummarySectionProps {
-  storeGroups: Store[];
+  storeGroups: StoreGroup[];
   subtotal: number;
   shipping: number;
   total: number;
@@ -37,7 +33,7 @@ const OrderSummarySection: React.FC<OrderSummarySectionProps> = ({
         <div className="space-y-3 mb-4">
           {/* Per store summary */}
           {storeGroups.map((store, index) => (
-            <div key={store.id} className="border-b border-gray-100 pb-3 mb-3">
+            <div key={index} className="border-b border-gray-100 pb-3 mb-3">
               <div className="flex items-center mb-2">
                 <span className="font-medium text-sm">Loja {index + 1}</span>
               </div>

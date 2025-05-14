@@ -1,13 +1,19 @@
 
 import { CartItem } from '@/types/cart';
 
+// We're defining a proper type for the returned store groups
+export interface StoreGroup {
+  loja: any;
+  items: CartItem[];
+}
+
 // Export this function to fix the import issue in useCheckout
 export const groupItemsByStore = (
   cartItems: CartItem[],
   storeInfo: any[]
-) => {
+): Record<string, StoreGroup> => {
   // Group items by store with improved data handling
-  const itemsByStore = cartItems.reduce((groups: Record<string, { loja: any, items: CartItem[] }>, item) => {
+  const itemsByStore = cartItems.reduce((groups: Record<string, StoreGroup>, item) => {
     // Safety check for item and product
     if (!item || !item.produto) {
       console.warn("CartScreen: Skipping invalid item:", item);
@@ -51,9 +57,16 @@ export const groupItemsByStore = (
   return itemsByStore;
 };
 
+// Helper function to convert the record to an array for components that expect arrays
+export const storeGroupsToArray = (
+  storeGroups: Record<string, StoreGroup>
+): StoreGroup[] => {
+  return Object.values(storeGroups);
+};
+
 export const useGroupItemsByStore = (
   cartItems: CartItem[],
   storeInfo: any[]
-) => {
+): Record<string, StoreGroup> => {
   return groupItemsByStore(cartItems, storeInfo);
 };

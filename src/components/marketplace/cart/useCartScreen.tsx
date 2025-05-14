@@ -8,7 +8,7 @@ import { toast } from '@/components/ui/sonner';
 import { useStoreInfo } from '@/hooks/cart/use-store-info';
 import { useCoupon } from '@/hooks/cart/use-coupon';
 import { useCartTotals } from '@/hooks/cart/use-cart-totals';
-import { useGroupItemsByStore } from '@/hooks/cart/use-group-items-by-store';
+import { useGroupItemsByStore, storeGroupsToArray } from '@/hooks/cart/use-group-items-by-store';
 
 export const useCartScreen = () => {
   const navigate = useNavigate();
@@ -33,10 +33,10 @@ export const useCartScreen = () => {
   // Use our custom hooks
   const { storeInfo } = useStoreInfo(storeIds);
   const { couponCode, setCouponCode, appliedCoupon, applyCoupon, removeCoupon } = useCoupon();
-  const itemsByStore = useGroupItemsByStore(cartItems, storeInfo);
+  const storeGroupsRecord = useGroupItemsByStore(cartItems, storeInfo);
   
   // Calculate totals
-  const storeCount = Object.keys(itemsByStore).length;
+  const storeCount = Object.keys(storeGroupsRecord).length;
   const { subtotal, discount, shipping, total, totalPoints } = useCartTotals(
     cartItems, 
     storeCount, 
@@ -177,7 +177,7 @@ export const useCartScreen = () => {
     cartIsEmpty,
     cart,
     cartItems,
-    itemsByStore,
+    itemsByStore: storeGroupsRecord,
     processingItem,
     couponCode,
     setCouponCode,
