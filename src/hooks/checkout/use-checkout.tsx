@@ -145,6 +145,7 @@ export function useCheckout() {
     selectedAddress,
     paymentMethod,
     changeAmount,
+    cartItems, // Expose cartItems here to fix the error
     storeGroups: storeGroupsArray,
     subtotal,
     shipping,
