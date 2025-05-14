@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -10,7 +9,7 @@ import { useCoupon } from '@/hooks/cart/use-coupon';
 import { useCartTotals } from '@/hooks/cart/use-cart-totals';
 import { useGroupItemsByStore, storeGroupsToArray } from '@/hooks/cart/use-group-items-by-store';
 
-export const useCartScreen = () => {
+export function useCartScreen() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const { cart, updateQuantity, removeItem, refreshCart } = useCart();
@@ -22,7 +21,7 @@ export const useCartScreen = () => {
   const cartItems = cart?.items || [];
   const cartIsEmpty = cartItems.length === 0;
 
-  // Extract unique store IDs from cart items using useMemo
+  // Get store IDs from cart items
   const storeIds = useMemo(() => {
     return cartItems
       .map(item => item.produto?.loja_id)
@@ -196,4 +195,4 @@ export const useCartScreen = () => {
     applyCoupon,
     removeCoupon
   };
-};
+}

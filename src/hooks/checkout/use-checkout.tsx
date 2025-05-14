@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '@/hooks/use-cart';
@@ -18,7 +17,7 @@ export function useCheckout() {
   const { 
     addresses, 
     isLoading: addressesLoading, 
-    handleAddAddress 
+    addAddress 
   } = useAddresses();
   
   // State management
@@ -58,20 +57,19 @@ export function useCheckout() {
   // Add new address handler
   const addNewAddress = useCallback(async (formData: Partial<Address>) => {
     try {
-      // Call handleAddAddress with the form data
-      if (handleAddAddress) {
-        await handleAddAddress(formData);
-        // Refresh addresses to get the new address
+      // Use the addAddress function from useAddresses hook
+      if (addAddress) {
+        await addAddress(formData);
         toast.success('Endereço adicionado com sucesso');
       } else {
-        console.error('handleAddAddress is not available');
+        console.error('addAddress function is not available');
         toast.error('Não foi possível adicionar o endereço');
       }
     } catch (error) {
       console.error('Error adding address:', error);
       toast.error('Erro ao adicionar endereço');
     }
-  }, [handleAddAddress]);
+  }, [addAddress]);
   
   // Handle order placement
   const handlePlaceOrder = useCallback(async () => {
