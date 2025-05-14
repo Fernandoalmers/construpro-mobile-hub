@@ -59,10 +59,14 @@ export function useCheckout() {
   const addNewAddress = useCallback(async (formData: Partial<Address>) => {
     try {
       // Call handleAddAddress with the form data
-      await handleAddAddress(formData);
-      // Refresh addresses to get the new address
-      // Note: We don't need to check the return value here
-      toast.success('Endereço adicionado com sucesso');
+      if (handleAddAddress) {
+        await handleAddAddress(formData);
+        // Refresh addresses to get the new address
+        toast.success('Endereço adicionado com sucesso');
+      } else {
+        console.error('handleAddAddress is not available');
+        toast.error('Não foi possível adicionar o endereço');
+      }
     } catch (error) {
       console.error('Error adding address:', error);
       toast.error('Erro ao adicionar endereço');

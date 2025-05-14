@@ -33,7 +33,10 @@ export const useCartScreen = () => {
   // Use our custom hooks
   const { storeInfo } = useStoreInfo(storeIds);
   const { couponCode, setCouponCode, appliedCoupon, applyCoupon, removeCoupon } = useCoupon();
-  const storeGroupsRecord = useGroupItemsByStore(cartItems, storeInfo);
+  
+  // Fix: Convert storeInfo to array if it's an object
+  const storeInfoArray = Array.isArray(storeInfo) ? storeInfo : Object.values(storeInfo || {});
+  const storeGroupsRecord = useGroupItemsByStore(cartItems, storeInfoArray);
   
   // Calculate totals
   const storeCount = Object.keys(storeGroupsRecord).length;
