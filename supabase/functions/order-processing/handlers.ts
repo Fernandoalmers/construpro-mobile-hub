@@ -1,4 +1,3 @@
-
 import { corsHeaders, initSupabaseClient, verifyUserToken } from './utils.ts'
 import { Order } from './types.ts'
 
@@ -131,36 +130,10 @@ export async function handleCreateOrder(req: Request, authHeader: string) {
     // Calculate points earned (10% of order total)
     const pontos_ganhos = Math.floor(orderData.valor_total * 0.1)
     
-    // Try to use a transaction, but fallback to individual operations if transaction functions aren't working
-    let useTransactions = true;
-    try {
-      console.log("Testing transaction support");
-      // Check if transaction functions exist by calling one
-      const { error: testTxError } = await serviceRoleClient.rpc('begin_transaction');
-      if (testTxError) {
-        console.error("Transaction functions not working, fallback to direct operations:", testTxError);
-        useTransactions = false;
-      } else {
-        console.log("Transaction support confirmed");
-      }
-    } catch (error) {
-      console.error("Error testing transaction functions:", error);
-      useTransactions = false;
-    }
+    // IMPORTANT: Removing custom transaction functions as they are causing errors
+    // We'll use individual operations instead
     
-    // Start creating the order
     try {
-      // Begin transaction if available
-      if (useTransactions) {
-        console.log("Beginning transaction");
-        const { error: txBeginError } = await serviceRoleClient.rpc('begin_transaction');
-        if (txBeginError) {
-          console.error("Transaction begin error:", txBeginError);
-          throw new Error(`Transaction begin error: ${txBeginError.message}`);
-        }
-        console.log("Transaction started successfully");
-      }
-      
       console.log(`Creating order for user: ${user.id}`);
       
       // Create order with explicit user ID to satisfy RLS (but using service role to bypass RLS)
@@ -251,17 +224,6 @@ export async function handleCreateOrder(req: Request, authHeader: string) {
       
       console.log("User points updated successfully");
       
-      // Commit transaction if we're using them
-      if (useTransactions) {
-        console.log("Committing transaction");
-        const { error: commitError } = await serviceRoleClient.rpc('commit_transaction');
-        if (commitError) {
-          console.error("Transaction commit error:", commitError);
-          throw new Error(`Transaction commit error: ${commitError.message}`);
-        }
-        console.log("Transaction committed successfully");
-      }
-      
       return new Response(
         JSON.stringify({
           success: true,
@@ -274,17 +236,6 @@ export async function handleCreateOrder(req: Request, authHeader: string) {
       );
     } catch (error: any) {
       console.error("Order creation error:", error);
-      
-      // Rollback transaction if we're using them
-      if (useTransactions) {
-        try {
-          console.log("Rolling back transaction");
-          await serviceRoleClient.rpc('rollback_transaction');
-          console.log("Transaction rolled back");
-        } catch (rollbackError) {
-          console.error("Rollback error:", rollbackError);
-        }
-      }
       
       return new Response(
         JSON.stringify({ 

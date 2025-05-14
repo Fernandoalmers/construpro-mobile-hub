@@ -96,7 +96,6 @@ export function useCheckout() {
         forma_pagamento: paymentMethod,
         valor_total: total,
         pontos_ganhos: totalPoints,
-        status: "Confirmado" // Use capital C to match constraint
       };
       
       console.log('Sending order with data:', orderData);
