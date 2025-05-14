@@ -1,9 +1,10 @@
 
 import { CartItem } from '@/types/cart';
 
-export const useGroupItemsByStore = (
+// Export this function to fix the import issue in useCheckout
+export const groupItemsByStore = (
   cartItems: CartItem[],
-  storeInfo: Record<string, any>
+  storeInfo: any[]
 ) => {
   // Group items by store with improved data handling
   const itemsByStore = cartItems.reduce((groups: Record<string, { loja: any, items: CartItem[] }>, item) => {
@@ -23,8 +24,8 @@ export const useGroupItemsByStore = (
     
     // Create or update store group
     if (!groups[storeId]) {
-      // Get store info from our fetched storeInfo object
-      const store = storeInfo[storeId] || { 
+      // Get store info from our fetched storeInfo array
+      const store = storeInfo.find(s => s.id === storeId) || { 
         id: storeId, 
         nome: `Loja ${storeId.substring(0, 4)}`,
         logo_url: null 
@@ -48,4 +49,11 @@ export const useGroupItemsByStore = (
   });
   
   return itemsByStore;
+};
+
+export const useGroupItemsByStore = (
+  cartItems: CartItem[],
+  storeInfo: any[]
+) => {
+  return groupItemsByStore(cartItems, storeInfo);
 };

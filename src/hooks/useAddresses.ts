@@ -190,6 +190,37 @@ export function useAddresses() {
     });
   };
 
+  // Add the addAddress function needed by useCheckout
+  const addAddress = async (formData: Partial<Address>): Promise<Address | null> => {
+    try {
+      // Create a complete Address object from partial data
+      const fullAddress: Address = {
+        id: '',
+        nome: formData.nome || '',
+        cep: formData.cep || '',
+        logradouro: formData.logradouro || '',
+        numero: formData.numero || '',
+        complemento: formData.complemento || '',
+        bairro: formData.bairro || '',
+        cidade: formData.cidade || '',
+        estado: formData.estado || '',
+        principal: formData.principal || false,
+        ...formData // Override with any provided fields
+      };
+
+      // Save the address
+      const result = await addressService.addAddress(fullAddress);
+      
+      // Refresh the address list
+      queryClient.invalidateQueries({ queryKey: ['addresses'] });
+      
+      return result;
+    } catch (error) {
+      console.error("Error adding address:", error);
+      throw error;
+    }
+  };
+
   const getPrimaryAddress = () => {
     return addresses.find(address => address.principal);
   };
@@ -210,6 +241,7 @@ export function useAddresses() {
     handleAddAddress,
     handleSaveAddress,
     isSaving: saveAddressMutation.isPending,
-    saveError: saveAddressMutation.error
+    saveError: saveAddressMutation.error,
+    addAddress, // Export the new addAddress function
   };
 }
