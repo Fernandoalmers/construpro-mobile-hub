@@ -75,7 +75,7 @@ const CheckoutScreen: React.FC = () => {
         onOpenChange={checkout.setShowAddressModal}
         addresses={checkout.addresses}
         onSelectAddress={checkout.selectAddress}
-        onAddNewAddress={() => navigate('/profile/address/add')}
+        onAddNewAddress={navigate.bind(null, '/profile/address/add')}
       />
     </div>
   );
