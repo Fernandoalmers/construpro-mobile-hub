@@ -46,16 +46,58 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
     const { data: pedidosData, error: pedidosError } = await supabase
       .from('pedidos')
       .select(`
-        *,
-        cliente:usuario_id (
-          id,
-          nome,
-          email,
-          telefone
-        )
+        *
       `)
       .eq('vendedor_id', vendorProfile.id)
       .order('created_at', { ascending: false });
+    
+    if (pedidosError) {
+      console.error('Error fetching vendor orders from pedidos:', pedidosError);
+    }
+    
+    // Process pedidos to include cliente info
+    const pedidosWithClienteInfo = [];
+    if (pedidosData && pedidosData.length > 0) {
+      for (const pedido of pedidosData) {
+        // For each pedido, get cliente info separately
+        const { data: clienteData } = await supabase
+          .from('profiles')
+          .select('id, nome, email, telefone')
+          .eq('id', pedido.usuario_id)
+          .single();
+        
+        const clienteInfo: VendorCustomer = {
+          id: pedido.usuario_id || '',
+          vendedor_id: vendorProfile.id,
+          usuario_id: pedido.usuario_id,
+          nome: clienteData?.nome || 'Cliente',
+          telefone: clienteData?.telefone || '',
+          email: clienteData?.email || '',
+          total_gasto: 0
+        };
+        
+        // Get items for this pedido
+        const { data: itemsData } = await supabase
+          .from('itens_pedido')
+          .select(`
+            *,
+            produto:produto_id (*)
+          `)
+          .eq('pedido_id', pedido.id);
+        
+        // Convert items to match OrderItem structure
+        const convertedItems: OrderItem[] = (itemsData || []).map(item => ({
+          ...item,
+          total: item.total || 0
+        }));
+        
+        pedidosWithClienteInfo.push({
+          ...pedido,
+          itens: convertedItems,
+          cliente: clienteInfo
+        });
+      }
+    }
     
     // Check for orders associated with vendor's products (new structure)
     // For this, we need to find orders that contain products from this vendor
@@ -69,58 +111,7 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
     }
     
     // Array to store all orders
-    let combinedOrders: VendorOrder[] = [];
-    
-    // Process pedidos if any
-    if (pedidosData && pedidosData.length > 0) {
-      const pedidosWithItems = await Promise.all(
-        pedidosData.map(async (order) => {
-          const { data: itemsData, error: itemsError } = await supabase
-            .from('itens_pedido')
-            .select(`
-              *,
-              produto:produto_id (*)
-            `)
-            .eq('pedido_id', order.id);
-          
-          if (itemsError) {
-            console.error('Error fetching order items:', itemsError);
-            return { 
-              ...order, 
-              itens: [],
-              cliente: {
-                id: order.usuario_id || '',
-                vendedor_id: vendorProfile.id,
-                usuario_id: order.usuario_id,
-                nome: order.cliente?.nome || 'Cliente',
-                telefone: order.cliente?.telefone || '',
-                email: order.cliente?.email || '',
-                total_gasto: 0
-              }
-            };
-          }
-          
-          const clienteData = order.cliente as any;
-          const clienteInfo: VendorCustomer = {
-            id: order.usuario_id || '',
-            vendedor_id: vendorProfile.id,
-            usuario_id: order.usuario_id,
-            nome: clienteData && clienteData.nome ? clienteData.nome : 'Cliente',
-            telefone: clienteData && clienteData.telefone ? clienteData.telefone : '',
-            email: clienteData && clienteData.email ? clienteData.email : '',
-            total_gasto: 0
-          };
-          
-          return { 
-            ...order, 
-            itens: itemsData || [],
-            cliente: clienteInfo
-          };
-        })
-      );
-      
-      combinedOrders = [...pedidosWithItems];
-    }
+    let combinedOrders: VendorOrder[] = [...pedidosWithClienteInfo];
     
     // If we have vendor products, fetch orders that contain these products
     if (produtosVendedor && produtosVendedor.length > 0) {
@@ -180,17 +171,26 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
                     vendorProductIds.includes(item.produto_id)
                   );
                   
-                  // Associate products with their items
-                  filteredItems.forEach(item => {
-                    item.produtos = produtos.find(p => p.id === item.produto_id) || null;
-                    // Map subtotal to total for consistency
-                    if (item.subtotal) {
-                      item.total = item.subtotal;
-                    }
+                  // Associate products with their items and format to match OrderItem structure
+                  const formattedItems: OrderItem[] = filteredItems.map(item => {
+                    const product = produtos.find(p => p.id === item.produto_id);
+                    return {
+                      id: item.id,
+                      order_id: item.order_id,
+                      produto_id: item.produto_id,
+                      quantidade: item.quantidade,
+                      preco_unitario: item.preco_unitario,
+                      subtotal: item.subtotal,
+                      // Add total field for consistency with OrderItem interface
+                      total: item.subtotal || (item.preco_unitario * item.quantidade),
+                      created_at: item.created_at,
+                      produtos: product, // Associate the product info
+                      produto: product  // Provide both formats for compatibility
+                    };
                   });
                   
                   // Only process this order if it has items from this vendor
-                  if (filteredItems.length > 0) {
+                  if (formattedItems.length > 0) {
                     const clienteInfo: VendorCustomer = {
                       id: order.cliente_id || '',
                       vendedor_id: vendorProfile.id,
@@ -202,17 +202,24 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
                     };
                     
                     // Calculate vendor's portion of the order
-                    const vendorTotal = filteredItems.reduce((sum, item) => {
-                      return sum + (item.subtotal || (item.preco_unitario * item.quantidade));
+                    const vendorTotal = formattedItems.reduce((sum, item) => {
+                      return sum + item.total;
                     }, 0);
                     
-                    return {
-                      ...order,
-                      itens: filteredItems,
+                    // Create a properly structured order object
+                    const vendorOrder: VendorOrder = {
+                      id: order.id,
+                      cliente_id: order.cliente_id,
+                      valor_total: vendorTotal,
+                      status: order.status,
+                      forma_pagamento: order.forma_pagamento,
+                      endereco_entrega: order.endereco_entrega,
+                      created_at: order.created_at,
                       cliente: clienteInfo,
-                      // Override valor_total to only show vendor's portion
-                      valor_total: vendorTotal
+                      itens: formattedItems
                     };
+                    
+                    return vendorOrder;
                   }
                 }
               }
