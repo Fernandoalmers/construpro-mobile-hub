@@ -17,10 +17,10 @@ export async function handleGetOrders(req: Request, authHeader: string) {
     
     console.log(`User authenticated successfully: ${user.id}`);
     
-    // Modified this query to use the correct column name produto_id instead of product_id
+    // Modified query to fetch orders and order_items without the problematic join
     const { data: orders, error } = await supabaseClient
       .from('orders')
-      .select('*, order_items(*, produtos:produto_id(*))')
+      .select('*, order_items(*)')
       .eq('cliente_id', user.id)
       .order('created_at', { ascending: false })
     
@@ -33,6 +33,42 @@ export async function handleGetOrders(req: Request, authHeader: string) {
         }),
         { status: 500, headers: corsHeaders }
       )
+    }
+    
+    // If we have orders with items, fetch the product details separately
+    if (orders && orders.length > 0) {
+      // Get all product IDs from order items
+      const productIds = new Set();
+      orders.forEach(order => {
+        if (order.order_items) {
+          order.order_items.forEach(item => {
+            if (item.produto_id) {
+              productIds.add(item.produto_id);
+            }
+          });
+        }
+      });
+      
+      if (productIds.size > 0) {
+        // Fetch product details for these IDs
+        const { data: produtos, error: productError } = await supabaseClient
+          .from('produtos')
+          .select('*')
+          .in('id', Array.from(productIds));
+        
+        if (productError) {
+          console.error("Error fetching product details:", productError);
+        } else if (produtos) {
+          // Map products to order items
+          orders.forEach(order => {
+            if (order.order_items) {
+              order.order_items.forEach(item => {
+                item.produtos = produtos.find(p => p.id === item.produto_id) || null;
+              });
+            }
+          });
+        }
+      }
     }
     
     console.log(`Retrieved ${orders?.length || 0} orders for user ${user.id}`);
@@ -65,10 +101,10 @@ export async function handleGetOrderById(req: Request, authHeader: string, order
     
     console.log(`User authenticated successfully: ${user.id}`);
     
-    // Modified this query to use the correct column name produto_id instead of product_id
+    // Modified query to fetch order and order_items without the problematic join
     const { data: order, error } = await supabaseClient
       .from('orders')
-      .select('*, order_items(*, produtos:produto_id(*))')
+      .select('*, order_items(*)')
       .eq('id', orderId)
       .eq('cliente_id', user.id)
       .single()
@@ -82,6 +118,28 @@ export async function handleGetOrderById(req: Request, authHeader: string, order
         }),
         { status: error.code === 'PGRST116' ? 404 : 500, headers: corsHeaders }
       )
+    }
+    
+    // If we have order items, fetch the product details
+    if (order && order.order_items && order.order_items.length > 0) {
+      const productIds = order.order_items.map(item => item.produto_id).filter(Boolean);
+      
+      if (productIds.length > 0) {
+        // Fetch product details for these IDs
+        const { data: produtos, error: productError } = await supabaseClient
+          .from('produtos')
+          .select('*')
+          .in('id', productIds);
+        
+        if (productError) {
+          console.error("Error fetching product details:", productError);
+        } else if (produtos) {
+          // Map products to order items
+          order.order_items.forEach(item => {
+            item.produtos = produtos.find(p => p.id === item.produto_id) || null;
+          });
+        }
+      }
     }
     
     console.log(`Retrieved order ${order.id} successfully`);
