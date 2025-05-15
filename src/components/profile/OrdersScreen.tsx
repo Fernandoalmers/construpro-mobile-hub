@@ -1,47 +1,39 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Package, TruckIcon, ShoppingBag, ArrowRight, Search } from 'lucide-react';
+import { ChevronLeft, Package, TruckIcon, ShoppingBag, ArrowRight } from 'lucide-react';
 import Card from '../common/Card';
 import CustomButton from '../common/CustomButton';
 import { toast } from "@/components/ui/sonner";
+import pedidos from '../../data/pedidos.json';
+import produtos from '../../data/produtos.json';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '../../context/AuthContext';
-import { useQuery } from '@tanstack/react-query';
-import { orderService } from '@/services/orderService';
-import LoadingState from '../common/LoadingState';
-import ListEmptyState from '../common/ListEmptyState';
 
 const OrdersScreen: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [statusFilter, setStatusFilter] = useState<string>("todos");
+  const clientId = user?.id || "1"; // Default to first client if no user
   
-  // Fetch orders from Supabase using orderService
-  const { 
-    data: orders = [], 
-    isLoading, 
-    error 
-  } = useQuery({
-    queryKey: ['userOrders'],
-    queryFn: orderService.getOrders,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
+  // Filter orders by client
+  const clientOrders = pedidos.filter(pedido => pedido.clienteId === clientId);
   
-  if (error) {
-    console.error('Error fetching orders:', error);
-  }
-  
-  // Filter orders by status if not "todos"
+  // Filter by status if not "todos"
   const filteredOrders = statusFilter === "todos" 
-    ? orders 
-    : orders.filter(order => {
+    ? clientOrders 
+    : clientOrders.filter(pedido => {
         if (statusFilter === "emProcesso") {
-          return ["Em Separação", "Confirmado", "Em Trânsito"].includes(order.status);
+          return ["Em Separação", "Confirmado", "Em Trânsito"].includes(pedido.status);
         }
-        return order.status === statusFilter;
+        return pedido.status === statusFilter;
       });
       
+  // Get product details from ID
+  const getProductDetails = (productId: string) => {
+    return produtos.find(produto => produto.id === productId);
+  };
+  
   // Status badge styling
   const getStatusBadge = (status: string) => {
     switch(status) {
@@ -68,10 +60,6 @@ const OrdersScreen: React.FC = () => {
     toast.success("Itens adicionados ao carrinho");
     navigate('/marketplace');
   };
-
-  if (isLoading) {
-    return <LoadingState text="Carregando seus pedidos..." />;
-  }
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
@@ -114,33 +102,30 @@ const OrdersScreen: React.FC = () => {
             </CustomButton>
           </div>
         ) : (
-          filteredOrders.map((order) => {
-            // Get summary data about the order
-            const firstItemName = order.order_items && order.order_items.length > 0 
-              ? (order.order_items[0]?.produtos?.nome || 'Produto')
-              : 'Pedido';
-            
-            const additionalItemsCount = (order.order_items?.length || 1) - 1;
+          filteredOrders.map((pedido) => {
+            // Get product details for first item to show in summary
+            const firstProduct = getProductDetails(pedido.itens[0]?.produtoId);
+            const additionalItemsCount = pedido.itens.length - 1;
             
             return (
-              <Card key={order.id} className="overflow-hidden">
+              <Card key={pedido.id} className="overflow-hidden">
                 <div className="p-4">
                   <div className="flex justify-between items-start mb-3">
                     <div>
-                      <span className="text-sm text-gray-500">Pedido #{order.id.substring(0, 8)}</span>
+                      <span className="text-sm text-gray-500">Pedido #{pedido.id}</span>
                       <h3 className="font-medium">
-                        {firstItemName}
+                        {firstProduct?.nome}
                         {additionalItemsCount > 0 && ` + ${additionalItemsCount} ${additionalItemsCount === 1 ? 'item' : 'itens'}`}
                       </h3>
                     </div>
-                    <span className={`text-xs px-2 py-1 rounded-full ${getStatusBadge(order.status)}`}>
-                      {order.status}
+                    <span className={`text-xs px-2 py-1 rounded-full ${getStatusBadge(pedido.status)}`}>
+                      {pedido.status}
                     </span>
                   </div>
                   
                   <div className="flex justify-between text-sm text-gray-500">
-                    <div>Data: {new Date(order.created_at).toLocaleDateString('pt-BR')}</div>
-                    <div>R$ {Number(order.valor_total).toFixed(2)}</div>
+                    <div>Data: {new Date(pedido.data).toLocaleDateString('pt-BR')}</div>
+                    <div>R$ {pedido.valorTotal.toFixed(2)}</div>
                   </div>
                 </div>
                 
@@ -149,7 +134,7 @@ const OrdersScreen: React.FC = () => {
                     <CustomButton 
                       variant="outline" 
                       size="sm" 
-                      onClick={() => handleTrackOrder(order.id)}
+                      onClick={() => handleTrackOrder(pedido.id)}
                       icon={<TruckIcon size={16} />}
                     >
                       Acompanhar
@@ -157,7 +142,7 @@ const OrdersScreen: React.FC = () => {
                     <CustomButton 
                       variant="outline" 
                       size="sm" 
-                      onClick={() => handleReorder(order.id)}
+                      onClick={() => handleReorder(pedido.id)}
                       icon={<ShoppingBag size={16} />}
                     >
                       Comprar novamente
@@ -166,7 +151,7 @@ const OrdersScreen: React.FC = () => {
                   <CustomButton
                     variant="link" 
                     size="sm"
-                    onClick={() => navigate(`/profile/orders/${order.id}`)}
+                    onClick={() => navigate(`/profile/orders/${pedido.id}`)}
                     icon={<ArrowRight size={16} />}
                     iconPosition="right"
                   >
