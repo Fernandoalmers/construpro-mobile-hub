@@ -17,6 +17,7 @@ export async function handleGetOrders(req: Request, authHeader: string) {
     
     console.log(`User authenticated successfully: ${user.id}`);
     
+    // Modified this query to use the correct column name produto_id instead of product_id
     const { data: orders, error } = await supabaseClient
       .from('orders')
       .select('*, order_items(*, produtos:produto_id(*))')
@@ -64,6 +65,7 @@ export async function handleGetOrderById(req: Request, authHeader: string, order
     
     console.log(`User authenticated successfully: ${user.id}`);
     
+    // Modified this query to use the correct column name produto_id instead of product_id
     const { data: order, error } = await supabaseClient
       .from('orders')
       .select('*, order_items(*, produtos:produto_id(*))')
