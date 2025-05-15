@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Avatar from '../common/Avatar';
@@ -205,7 +204,7 @@ const ProfileScreen: React.FC = () => {
     {
       title: "Pontos e Extrato",
       icon: <CircleDollarSign className="text-construPro-blue mr-3" size={20} />,
-      path: "/profile/points"
+      path: "/profile/points-history"
     },
     {
       title: "Compras Físicas",

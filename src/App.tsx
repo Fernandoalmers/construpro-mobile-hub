@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
@@ -31,6 +32,7 @@ import ProdutosVendorScreen from './components/vendor/ProdutosVendorScreen';
 import ProdutoScreen from './components/marketplace/ProdutoScreen';
 import OrderConfirmationScreen from './components/marketplace/OrderConfirmationScreen';
 import ProfileSelectionScreen from './components/auth/ProfileSelectionScreen';
+import ReferralsScreen from './components/profile/ReferralsScreen';
 
 function App() {
   const location = useLocation();
@@ -89,6 +91,7 @@ function App() {
         <Route path="/profile/addresses" element={<ProtectedRoute><AddressScreen /></ProtectedRoute>} />
         <Route path="/profile/physical-purchases" element={<ProtectedRoute><PhysicalPurchasesScreen /></ProtectedRoute>} />
         <Route path="/profile/points-history" element={<ProtectedRoute><PointsHistoryScreen /></ProtectedRoute>} />
+        <Route path="/profile/referrals" element={<ProtectedRoute><ReferralsScreen /></ProtectedRoute>} />
         <Route path="/profile/favorites" element={<ProtectedRoute><FavoritesScreen /></ProtectedRoute>} />
         <Route path="/profile/settings" element={<ProtectedRoute><SettingsScreen /></ProtectedRoute>} />
         

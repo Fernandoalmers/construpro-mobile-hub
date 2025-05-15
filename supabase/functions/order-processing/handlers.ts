@@ -1,3 +1,4 @@
+
 import { corsHeaders, initSupabaseClient, verifyUserToken } from './utils.ts'
 import { Order } from './types.ts'
 
@@ -18,7 +19,7 @@ export async function handleGetOrders(req: Request, authHeader: string) {
     
     const { data: orders, error } = await supabaseClient
       .from('orders')
-      .select('*, order_items(*, produtos:product_id(*))')
+      .select('*, order_items(*, produtos:produto_id(*))')
       .eq('cliente_id', user.id)
       .order('created_at', { ascending: false })
     
@@ -65,7 +66,7 @@ export async function handleGetOrderById(req: Request, authHeader: string, order
     
     const { data: order, error } = await supabaseClient
       .from('orders')
-      .select('*, order_items(*, produtos:product_id(*))')
+      .select('*, order_items(*, produtos:produto_id(*))')
       .eq('id', orderId)
       .eq('cliente_id', user.id)
       .single()
