@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
-import { VendorOrder } from "@/services/vendorService";
+import { VendorOrder } from "@/services/vendorOrdersService";
 
 interface OrderItemProps {
   order: VendorOrder;
@@ -31,11 +31,13 @@ const OrderItem: React.FC<OrderItemProps> = ({ order, onViewDetails }) => {
   };
 
   const getStatusBadge = () => {
-    switch (order.status) {
+    const status = order.status.toLowerCase();
+    switch (status) {
       case 'pendente':
         return <Badge className="bg-yellow-100 text-yellow-800">Pendente</Badge>;
       case 'aprovado':
-        return <Badge className="bg-blue-100 text-blue-800">Aprovado</Badge>;
+      case 'confirmado':
+        return <Badge className="bg-blue-100 text-blue-800">Confirmado</Badge>;
       case 'processando':
         return <Badge className="bg-purple-100 text-purple-800">Processando</Badge>;
       case 'enviado':
@@ -61,7 +63,7 @@ const OrderItem: React.FC<OrderItemProps> = ({ order, onViewDetails }) => {
             <p className="text-sm text-gray-500 mt-1">{formatDate(order.created_at)}</p>
           </div>
           <div className="text-right">
-            <p className="font-medium text-lg">{formatCurrency(order.valor_total)}</p>
+            <p className="font-medium text-lg">{formatCurrency(Number(order.valor_total))}</p>
             <p className="text-sm">{order.cliente?.nome || 'Cliente'}</p>
           </div>
         </div>

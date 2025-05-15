@@ -1,9 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Search } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { getVendorProducts, getVendorOrders, VendorProduct, VendorOrder } from '@/services/vendorService';
+import { getVendorOrders, VendorOrder } from '@/services/vendorOrdersService';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import LoadingState from '../common/LoadingState';
 import ListEmptyState from '../common/ListEmptyState';
@@ -33,7 +33,7 @@ const ProdutosVendorScreen: React.FC = () => {
       (order.cliente?.nome?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
       order.id.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesStatus = filterStatus === null || order.status === filterStatus;
+    const matchesStatus = filterStatus === null || order.status.toLowerCase() === filterStatus;
     
     return matchesSearch && matchesStatus;
   });
@@ -41,7 +41,7 @@ const ProdutosVendorScreen: React.FC = () => {
   // Order Status types
   const orderStatuses = [
     { value: 'pendente', label: 'Pendente' },
-    { value: 'aprovado', label: 'Aprovado' },
+    { value: 'confirmado', label: 'Confirmado' },
     { value: 'processando', label: 'Em processamento' },
     { value: 'enviado', label: 'Enviado' },
     { value: 'entregue', label: 'Entregue' },
@@ -110,7 +110,7 @@ const ProdutosVendorScreen: React.FC = () => {
           <Card className="p-4 text-center">
             <p className="text-gray-500 text-sm">Pedidos Pendentes</p>
             <p className="text-xl font-bold">
-              {orders.filter(order => order.status === 'pendente').length}
+              {orders.filter(order => order.status.toLowerCase() === 'pendente').length}
             </p>
           </Card>
           
@@ -133,7 +133,7 @@ const ProdutosVendorScreen: React.FC = () => {
                 style: 'currency',
                 currency: 'BRL'
               }).format(
-                orders.reduce((sum, order) => sum + order.valor_total, 0)
+                orders.reduce((sum, order) => sum + Number(order.valor_total), 0)
               )}
             </p>
           </Card>
@@ -149,7 +149,7 @@ const ProdutosVendorScreen: React.FC = () => {
                 <OrderItem 
                   key={order.id}
                   order={order}
-                  onViewDetails={() => {}} // TODO: Implement view details functionality
+                  onViewDetails={() => navigate(`/vendor/orders/${order.id}`)}
                 />
               ))}
             </div>
