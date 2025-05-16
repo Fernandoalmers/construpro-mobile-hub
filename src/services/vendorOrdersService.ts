@@ -58,7 +58,7 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
     }
     
     // Process pedidos to include cliente info
-    const pedidosWithClienteInfo = [];
+    const pedidosWithClienteInfo: VendorOrder[] = [];
     if (pedidosData && pedidosData.length > 0) {
       console.log('Found', pedidosData.length, 'orders in pedidos table');
       for (const pedido of pedidosData) {
@@ -162,7 +162,7 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
           console.log('Successfully fetched', ordersData.length, 'orders from orders table');
           
           // Process orders to get cliente information and produtos
-          const processedOrders = await Promise.all(ordersData.map(async (order) => {
+          const processedOrdersPromises = ordersData.map(async (order) => {
             try {
               // Get customer information
               const { data: customerData, error: customerError } = await supabase
@@ -203,9 +203,9 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
                         produto_id: item.produto_id,
                         quantidade: item.quantidade,
                         preco_unitario: item.preco_unitario,
-                        subtotal: item.subtotal,
-                        // Add total field for consistency with OrderItem interface
+                        // Calculate total from price and quantity
                         total: item.subtotal || (item.preco_unitario * item.quantidade),
+                        subtotal: item.subtotal,
                         created_at: item.created_at,
                         produtos: product, // Associate the product info
                         produto: product  // Provide both formats for compatibility
@@ -254,7 +254,10 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
               console.error('Error processing order:', order.id, err);
               return null;
             }
-          }));
+          });
+          
+          // Wait for all order processing to finish
+          const processedOrders = await Promise.all(processedOrdersPromises);
           
           // Filter out any null orders and add to combined orders
           const validOrders = processedOrders.filter(Boolean) as VendorOrder[];
