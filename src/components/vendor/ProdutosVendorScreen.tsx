@@ -16,7 +16,7 @@ const ProdutosVendorScreen: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
   
-  // Fetch orders
+  // Fetch orders with a shorter staleTime to ensure fresher data
   const { 
     data: orders = [], 
     isLoading: isOrdersLoading,
@@ -25,7 +25,7 @@ const ProdutosVendorScreen: React.FC = () => {
   } = useQuery({
     queryKey: ['vendorOrders'],
     queryFn: getVendorOrders,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 1 * 60 * 1000, // 1 minute
   });
   
   console.log('Orders loaded:', orders?.length || 0);

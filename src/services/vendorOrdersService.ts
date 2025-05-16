@@ -12,17 +12,17 @@ export interface OrderItem {
   quantidade: number;
   preco_unitario: number;
   total: number;
-  subtotal?: number; // Added to support both orders and pedidos tables
+  subtotal?: number;
   created_at?: string;
-  produto?: any; // Using any here for simplicity
-  produtos?: any; // For compatibility with the order_items structure
+  produto?: any;
+  produtos?: any;
 }
 
 export interface VendorOrder {
   id: string;
   vendedor_id?: string;
-  usuario_id?: string; // From pedidos table
-  cliente_id?: string; // From orders table
+  usuario_id?: string;
+  cliente_id?: string;
   valor_total: number;
   status: string;
   forma_pagamento: string;
@@ -45,29 +45,10 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
     
     console.log('Fetching orders for vendor:', vendorProfile.id);
     
-    // First, fetch the vendor's products to know which orders to look for
-    const { data: vendorProducts, error: productsError } = await supabase
-      .from('produtos')
-      .select('id')
-      .eq('vendedor_id', vendorProfile.id);
-    
-    if (productsError) {
-      console.error('Error fetching vendor products:', productsError);
-      return [];
-    }
-    
-    if (!vendorProducts || vendorProducts.length === 0) {
-      console.log('No products found for vendor');
-      return [];
-    }
-    
-    console.log(`Found ${vendorProducts.length} products for this vendor`);
-    const productIds = vendorProducts.map(p => p.id);
-    
     // Combined array for all vendor orders
-    let combinedOrders: VendorOrder[] = [];
+    const combinedOrders: VendorOrder[] = [];
     
-    // 1. Try to fetch from pedidos table (old structure) if it exists
+    // 1. First, fetch orders from the pedidos table (old structure)
     const { data: pedidosData, error: pedidosError } = await supabase
       .from('pedidos')
       .select('*')
@@ -76,24 +57,18 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
     
     if (pedidosError) {
       console.error('Error fetching vendor orders from pedidos:', pedidosError);
-    }
-    
-    // Process pedidos to include cliente info
-    const pedidosWithClienteInfo: VendorOrder[] = [];
-    if (pedidosData && pedidosData.length > 0) {
+    } else if (pedidosData && pedidosData.length > 0) {
       console.log('Found', pedidosData.length, 'orders in pedidos table');
+      
+      // Process pedidos
       for (const pedido of pedidosData) {
         try {
           // For each pedido, get cliente info separately
-          const { data: clienteData, error: clienteError } = await supabase
+          const { data: clienteData } = await supabase
             .from('profiles')
             .select('id, nome, email, telefone')
             .eq('id', pedido.usuario_id)
             .maybeSingle();
-          
-          if (clienteError) {
-            console.error('Error fetching client info:', clienteError);
-          }
           
           const clienteInfo: VendorCustomer = {
             id: pedido.usuario_id || '',
@@ -124,7 +99,7 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
             total: item.total || (item.preco_unitario * item.quantidade)
           }));
           
-          pedidosWithClienteInfo.push({
+          combinedOrders.push({
             ...pedido,
             itens: convertedItems,
             cliente: clienteInfo
@@ -137,113 +112,97 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
       console.log('No orders found in pedidos table');
     }
     
-    // 2. Check for orders associated with vendor's products (new structure)
-    console.log('Checking for orders with vendor products in order_items table...');
+    // 2. Fetch vendor's products to determine which orders from orders table belong to this vendor
+    const { data: vendorProducts, error: productsError } = await supabase
+      .from('produtos')
+      .select('id')
+      .eq('vendedor_id', vendorProfile.id);
     
-    // Get order_items that contain vendor products
-    const { data: orderItemsData, error: orderItemsError } = await supabase
-      .from('order_items')
-      .select('order_id, produto_id')
-      .in('produto_id', productIds);
-    
-    if (orderItemsError) {
-      console.error('Error fetching order items for vendor products:', orderItemsError);
-    } else if (orderItemsData && orderItemsData.length > 0) {
-      console.log('Found', orderItemsData.length, 'order items with vendor products');
+    if (productsError) {
+      console.error('Error fetching vendor products:', productsError);
+    } else if (!vendorProducts || vendorProducts.length === 0) {
+      console.log('No products found for vendor');
+    } else {
+      console.log(`Found ${vendorProducts.length} products for this vendor`);
+      const productIds = vendorProducts.map(p => p.id);
       
-      // Get unique order IDs
-      const orderIds = [...new Set(orderItemsData.map(item => item.order_id))];
-      console.log('Found', orderIds.length, 'unique orders with vendor products');
+      // Get order_items that contain vendor products
+      const { data: orderItemsData, error: orderItemsError } = await supabase
+        .from('order_items')
+        .select('*')
+        .in('produto_id', productIds);
       
-      // Fetch these orders
-      const { data: ordersData, error: ordersError } = await supabase
-        .from('orders')
-        .select('*, order_items(*)')
-        .in('id', orderIds)
-        .order('created_at', { ascending: false });
-      
-      if (ordersError) {
-        console.error('Error fetching orders for vendor products:', ordersError);
-      } else if (ordersData && ordersData.length > 0) {
-        console.log('Successfully fetched', ordersData.length, 'orders from orders table');
+      if (orderItemsError) {
+        console.error('Error fetching order items for vendor products:', orderItemsError);
+      } else if (orderItemsData && orderItemsData.length > 0) {
+        console.log('Found', orderItemsData.length, 'order items with vendor products');
         
-        // Process orders to get cliente information and produtos
-        const processedOrdersPromises = ordersData.map(async (order) => {
-          try {
-            // Get customer information
-            const { data: customerData, error: customerError } = await supabase
-              .from('profiles')
-              .select('id, nome, email, telefone')
-              .eq('id', order.cliente_id)
-              .maybeSingle();
+        // Get unique order IDs
+        const orderIds = [...new Set(orderItemsData.map(item => item.order_id))];
+        console.log('Found', orderIds.length, 'unique orders with vendor products');
+        
+        // Get product details for order items
+        const { data: produtos } = await supabase
+          .from('produtos')
+          .select('*')
+          .in('id', productIds);
+          
+        const productMap = {};
+        if (produtos) {
+          produtos.forEach(product => {
+            productMap[product.id] = product;
+          });
+        }
+        
+        // Group order items by order_id
+        const orderItemsMap = {};
+        orderItemsData.forEach(item => {
+          if (!orderItemsMap[item.order_id]) {
+            orderItemsMap[item.order_id] = [];
+          }
+          // Add product data to item
+          const itemWithProduct = {
+            ...item,
+            produto: productMap[item.produto_id],
+            produtos: productMap[item.produto_id],
+            total: item.subtotal || (item.preco_unitario * item.quantidade)
+          };
+          orderItemsMap[item.order_id].push(itemWithProduct);
+        });
+        
+        // Fetch these orders
+        const { data: ordersData, error: ordersError } = await supabase
+          .from('orders')
+          .select('*, cliente:cliente_id (id, nome, email, telefone)')
+          .in('id', orderIds)
+          .order('created_at', { ascending: false });
+        
+        if (ordersError) {
+          console.error('Error fetching orders for vendor products:', ordersError);
+        } else if (ordersData && ordersData.length > 0) {
+          console.log('Successfully fetched', ordersData.length, 'orders from orders table');
+          
+          // Process each order to create vendor-specific view
+          for (const order of ordersData) {
+            // Get vendor items for this order
+            const vendorItems = orderItemsMap[order.id] || [];
             
-            if (customerError) {
-              console.error('Error fetching customer for order:', customerError);
-            }
-            
-            // Filter and format order items
-            const vendorItems: OrderItem[] = [];
-            
-            // Get product details for all order items
-            if (order.order_items && order.order_items.length > 0) {
-              // Get all product IDs from this order
-              const orderProductIds = order.order_items
-                .map(item => item.produto_id)
-                .filter(Boolean);
-              
-              if (orderProductIds.length > 0) {
-                // Fetch product details for these IDs
-                const { data: produtos, error: productError } = await supabase
-                  .from('produtos')
-                  .select('*')
-                  .in('id', orderProductIds);
-                
-                if (productError) {
-                  console.error('Error fetching products for order items:', productError);
-                } else if (produtos) {
-                  // Filter order items to only include this vendor's products
-                  const filteredItems = order.order_items.filter(item => 
-                    productIds.includes(item.produto_id)
-                  );
-                  
-                  // Create formatted items with product details
-                  filteredItems.forEach(item => {
-                    const product = produtos.find(p => p.id === item.produto_id);
-                    if (product) {
-                      vendorItems.push({
-                        id: item.id,
-                        order_id: item.order_id,
-                        produto_id: item.produto_id,
-                        quantidade: item.quantidade,
-                        preco_unitario: item.preco_unitario,
-                        total: item.subtotal || (item.preco_unitario * item.quantidade),
-                        subtotal: item.subtotal,
-                        created_at: item.created_at,
-                        produtos: product,
-                        produto: product
-                      });
-                    }
-                  });
-                }
-              }
-            }
-            
-            // Only include orders that have items from this vendor
             if (vendorItems.length > 0) {
+              // Calculate vendor's portion of the order
+              const vendorTotal = vendorItems.reduce((sum, item) => {
+                return sum + (item.total || 0);
+              }, 0);
+              
+              // Create cliente info
               const clienteInfo: VendorCustomer = {
                 id: order.cliente_id || '',
                 vendedor_id: vendorProfile.id,
                 usuario_id: order.cliente_id,
-                nome: customerData?.nome || 'Cliente',
-                telefone: customerData?.telefone || '',
-                email: customerData?.email || '',
+                nome: order.cliente?.nome || 'Cliente',
+                telefone: order.cliente?.telefone || '',
+                email: order.cliente?.email || '',
                 total_gasto: 0
               };
-              
-              // Calculate vendor's portion of the order
-              const vendorTotal = vendorItems.reduce((sum, item) => {
-                return sum + item.total;
-              }, 0);
               
               // Create a vendor-specific view of the order
               const vendorOrder: VendorOrder = {
@@ -258,23 +217,10 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
                 itens: vendorItems
               };
               
-              return vendorOrder;
+              combinedOrders.push(vendorOrder);
             }
-            
-            // Return null for orders that don't have this vendor's products
-            return null;
-          } catch (err) {
-            console.error('Error processing order:', order.id, err);
-            return null;
           }
-        });
-        
-        // Wait for all orders to be processed and filter out nulls
-        const processedOrders = await Promise.all(processedOrdersPromises);
-        const validOrders = processedOrders.filter(Boolean) as VendorOrder[];
-        
-        console.log('Processed', validOrders.length, 'valid orders for vendor');
-        combinedOrders = [...pedidosWithClienteInfo, ...validOrders];
+        }
       }
     }
     
@@ -284,6 +230,11 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
     });
     
     console.log('Total combined orders:', combinedOrders.length);
+    
+    if (combinedOrders.length === 0) {
+      console.log('Warning: No orders found for vendor. Check if vendor profile is correct and has products/orders.');
+    }
+    
     return combinedOrders;
   } catch (error) {
     console.error('Error in getVendorOrders:', error);
