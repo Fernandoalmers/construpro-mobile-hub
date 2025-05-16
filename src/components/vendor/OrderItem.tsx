@@ -13,14 +13,19 @@ interface OrderItemProps {
 
 const OrderItem: React.FC<OrderItemProps> = ({ order, onViewDetails }) => {
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(date);
+    try {
+      const date = new Date(dateString);
+      return new Intl.DateTimeFormat('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(date);
+    } catch (error) {
+      console.error("Date formatting error:", error);
+      return "Data inválida";
+    }
   };
 
   const formatCurrency = (value: number) => {
@@ -31,6 +36,8 @@ const OrderItem: React.FC<OrderItemProps> = ({ order, onViewDetails }) => {
   };
 
   const getStatusBadge = () => {
+    if (!order.status) return <Badge>Status desconhecido</Badge>;
+    
     const status = order.status.toLowerCase();
     switch (status) {
       case 'pendente':
@@ -60,17 +67,21 @@ const OrderItem: React.FC<OrderItemProps> = ({ order, onViewDetails }) => {
               <h3 className="font-medium">Pedido #{order.id.substring(0, 8)}</h3>
               {getStatusBadge()}
             </div>
-            <p className="text-sm text-gray-500 mt-1">{formatDate(order.created_at)}</p>
+            <p className="text-sm text-gray-500 mt-1">
+              {order.created_at ? formatDate(order.created_at) : "Data não disponível"}
+            </p>
           </div>
           <div className="text-right">
-            <p className="font-medium text-lg">{formatCurrency(Number(order.valor_total))}</p>
+            <p className="font-medium text-lg">
+              {formatCurrency(Number(order.valor_total) || 0)}
+            </p>
             <p className="text-sm">{order.cliente?.nome || 'Cliente'}</p>
           </div>
         </div>
         
         <div className="mt-3 text-sm text-gray-600">
           <p>Itens: {order.itens?.length || 0}</p>
-          <p>Pagamento: {order.forma_pagamento}</p>
+          <p>Pagamento: {order.forma_pagamento || "Não especificado"}</p>
         </div>
         
         <div className="mt-4 flex justify-end">

@@ -20,12 +20,15 @@ const ProdutosVendorScreen: React.FC = () => {
   const { 
     data: orders = [], 
     isLoading: isOrdersLoading,
-    error: ordersError
+    error: ordersError,
+    refetch
   } = useQuery({
     queryKey: ['vendorOrders'],
     queryFn: getVendorOrders,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
+  
+  console.log('Orders loaded:', orders?.length || 0);
   
   // Filter orders based on search and status
   const filteredOrders = orders.filter(order => {
@@ -33,7 +36,8 @@ const ProdutosVendorScreen: React.FC = () => {
       (order.cliente?.nome?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
       order.id.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesStatus = filterStatus === null || order.status.toLowerCase() === filterStatus;
+    const matchesStatus = filterStatus === null || 
+      (order.status && order.status.toLowerCase() === filterStatus);
     
     return matchesSearch && matchesStatus;
   });
@@ -54,6 +58,25 @@ const ProdutosVendorScreen: React.FC = () => {
   
   if (ordersError) {
     console.error('Error fetching orders:', ordersError);
+    return (
+      <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
+        <div className="bg-white p-4 flex items-center shadow-sm">
+          <button onClick={() => navigate('/vendor')} className="mr-4">
+            <ArrowLeft size={24} />
+          </button>
+          <h1 className="text-xl font-bold">Pedidos</h1>
+        </div>
+        <div className="p-6 flex flex-col items-center justify-center">
+          <p className="text-red-500 mb-4">Erro ao carregar pedidos</p>
+          <button 
+            className="px-4 py-2 bg-construPro-blue text-white rounded"
+            onClick={() => refetch()}
+          >
+            Tentar novamente
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -110,7 +133,7 @@ const ProdutosVendorScreen: React.FC = () => {
           <Card className="p-4 text-center">
             <p className="text-gray-500 text-sm">Pedidos Pendentes</p>
             <p className="text-xl font-bold">
-              {orders.filter(order => order.status.toLowerCase() === 'pendente').length}
+              {orders.filter(order => order.status && order.status.toLowerCase() === 'pendente').length}
             </p>
           </Card>
           
@@ -133,7 +156,7 @@ const ProdutosVendorScreen: React.FC = () => {
                 style: 'currency',
                 currency: 'BRL'
               }).format(
-                orders.reduce((sum, order) => sum + Number(order.valor_total), 0)
+                orders.reduce((sum, order) => sum + Number(order.valor_total || 0), 0)
               )}
             </p>
           </Card>
