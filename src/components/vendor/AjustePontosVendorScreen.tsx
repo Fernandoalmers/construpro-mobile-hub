@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Search, Plus, Minus, History } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -28,6 +28,7 @@ interface CustomerData {
 
 const AjustePontosVendorScreen: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
@@ -38,6 +39,23 @@ const AjustePontosVendorScreen: React.FC = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<CustomerData[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
+
+  // Verificar se há um clientId na URL
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const clienteId = params.get('clienteId');
+    if (clienteId) {
+      setSelectedCustomerId(clienteId);
+      // Buscar dados do cliente para exibir
+      searchCustomers(clienteId).then(results => {
+        if (results.length > 0) {
+          setSearchResults(results);
+        }
+      }).catch(error => {
+        console.error('Error fetching customer details:', error);
+      });
+    }
+  }, [location]);
 
   // Get customer's points
   const { data: customerPoints = 0 } = useQuery({
@@ -83,7 +101,9 @@ const AjustePontosVendorScreen: React.FC = () => {
       
       setIsSearching(true);
       try {
+        console.log('Searching for customers with term:', searchTerm);
         const results = await searchCustomers(searchTerm);
+        console.log('Search results:', results);
         setSearchResults(results);
         setShowSearchResults(true);
       } catch (error) {

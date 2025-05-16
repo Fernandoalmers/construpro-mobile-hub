@@ -25,6 +25,8 @@ export const getVendorCustomers = async (): Promise<VendorCustomer[]> => {
       return [];
     }
     
+    console.log('Fetching customers for vendor:', vendorProfile.id);
+    
     const { data, error } = await supabase
       .from('clientes_vendedor')
       .select('*')
@@ -36,6 +38,7 @@ export const getVendorCustomers = async (): Promise<VendorCustomer[]> => {
       return [];
     }
     
+    console.log(`Found ${data.length} customers for vendor ${vendorProfile.id}`);
     return data as VendorCustomer[];
   } catch (error) {
     console.error('Error in getVendorCustomers:', error);
@@ -74,6 +77,23 @@ export const getVendorCustomer = async (userId: string): Promise<VendorCustomer 
 // Search for customers by name, email, or phone
 export const searchCustomers = async (searchTerm: string): Promise<any[]> => {
   try {
+    console.log('Searching profiles with term:', searchTerm);
+    
+    // Primeiro, verificar se é um ID específico
+    if (searchTerm.length >= 32 && !searchTerm.includes(' ')) {
+      const { data: specificUser, error: specificError } = await supabase
+        .from('profiles')
+        .select('id, nome, email, telefone, cpf')
+        .eq('id', searchTerm)
+        .limit(1);
+        
+      if (!specificError && specificUser && specificUser.length > 0) {
+        console.log('Found specific user by ID:', specificUser);
+        return specificUser;
+      }
+    }
+    
+    // Caso contrário, buscar por termos
     const { data, error } = await supabase
       .from('profiles')
       .select('id, nome, email, telefone, cpf')
@@ -85,7 +105,8 @@ export const searchCustomers = async (searchTerm: string): Promise<any[]> => {
       return [];
     }
     
-    return data;
+    console.log(`Search found ${data?.length || 0} results`);
+    return data || [];
   } catch (error) {
     console.error('Error in searchCustomers:', error);
     return [];
@@ -106,6 +127,7 @@ export const getCustomerPoints = async (userId: string): Promise<number> => {
       return 0;
     }
     
+    console.log('Customer points:', data.saldo_pontos || 0);
     return data.saldo_pontos || 0;
   } catch (error) {
     console.error('Error in getCustomerPoints:', error);

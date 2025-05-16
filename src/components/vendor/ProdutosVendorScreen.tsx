@@ -3,13 +3,14 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Search } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { getVendorOrders, VendorOrder } from '@/services/vendorOrdersService';
+import { getVendorOrders, VendorOrder } from '@/services/vendorService';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import LoadingState from '../common/LoadingState';
 import ListEmptyState from '../common/ListEmptyState';
 import OrderItem from './OrderItem';
 import { Card } from '@/components/ui/card';
 import CustomInput from '../common/CustomInput';
+import { Button } from '@/components/ui/button';
 
 const ProdutosVendorScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -68,12 +69,12 @@ const ProdutosVendorScreen: React.FC = () => {
         </div>
         <div className="p-6 flex flex-col items-center justify-center">
           <p className="text-red-500 mb-4">Erro ao carregar pedidos</p>
-          <button 
+          <Button 
             className="px-4 py-2 bg-construPro-blue text-white rounded"
             onClick={() => refetch()}
           >
             Tentar novamente
-          </button>
+          </Button>
         </div>
       </div>
     );

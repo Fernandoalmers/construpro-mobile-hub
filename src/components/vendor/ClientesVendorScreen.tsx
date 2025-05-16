@@ -17,9 +17,10 @@ const ClientesVendorScreen: React.FC = () => {
   const [sortBy, setSortBy] = useState<'nome' | 'total_gasto'>('total_gasto');
   
   // Fetch customers
-  const { data: customers = [], isLoading, error } = useQuery({
+  const { data: customers = [], isLoading, error, refetch } = useQuery({
     queryKey: ['vendorCustomers'],
     queryFn: getVendorCustomers,
+    staleTime: 1 * 60 * 1000, // 1 minute para atualizar regularmente
   });
   
   // Filter and sort customers
@@ -40,7 +41,7 @@ const ClientesVendorScreen: React.FC = () => {
     });
 
   const handleAjustarPontos = (clienteId: string) => {
-    navigate(`/vendor/adjust-points?clienteId=${clienteId}`);
+    navigate(`/vendor/ajuste-pontos?clienteId=${clienteId}`);
   };
   
   const handleViewExtrato = (clienteId: string) => {
@@ -53,6 +54,22 @@ const ClientesVendorScreen: React.FC = () => {
   
   if (error) {
     console.error('Error fetching customers:', error);
+    return (
+      <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
+        <div className="bg-white p-4 flex items-center shadow-sm">
+          <button onClick={() => navigate('/vendor')} className="mr-4">
+            <ArrowLeft size={24} />
+          </button>
+          <h1 className="text-xl font-bold">Clientes</h1>
+        </div>
+        <div className="p-6 flex flex-col items-center justify-center">
+          <p className="text-red-500 mb-4">Erro ao carregar clientes</p>
+          <CustomButton onClick={() => refetch()}>
+            Tentar novamente
+          </CustomButton>
+        </div>
+      </div>
+    );
   }
 
   // Calculate stats
