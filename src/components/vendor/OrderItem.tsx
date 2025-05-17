@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
-import { VendorOrder } from "@/services/vendorOrdersService";
+import { VendorOrder } from "@/services/vendor/orders";
 
 interface OrderItemProps {
   order: VendorOrder;

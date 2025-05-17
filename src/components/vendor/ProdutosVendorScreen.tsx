@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Search, RefreshCw } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { getVendorOrders, VendorOrder } from '@/services/vendorOrdersService';
+import { getVendorOrders, VendorOrder } from '@/services/vendor/orders';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import LoadingState from '../common/LoadingState';
 import ListEmptyState from '../common/ListEmptyState';

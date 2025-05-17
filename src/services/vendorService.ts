@@ -6,7 +6,7 @@ import {
   updateOrderStatus,
   VendorOrder,
   OrderItem 
-} from './vendorOrdersService';
+} from './vendor/orders';
 import { 
   getVendorCustomers,
   getVendorCustomer,
