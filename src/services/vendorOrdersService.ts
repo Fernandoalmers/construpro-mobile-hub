@@ -112,7 +112,7 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
       console.log('No orders found in pedidos table');
     }
     
-    // 2. Fetch vendor's products to determine which orders from orders table belong to this vendor
+    // 2. First, fetch all of vendor's products to determine which orders belong to this vendor
     const { data: vendorProducts, error: productsError } = await supabase
       .from('produtos')
       .select('id')
@@ -141,83 +141,85 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
         const orderIds = [...new Set(orderItemsData.map(item => item.order_id))];
         console.log('Found', orderIds.length, 'unique orders with vendor products');
         
-        // Get product details for order items
-        const { data: produtos } = await supabase
-          .from('produtos')
-          .select('*')
-          .in('id', productIds);
-          
-        const productMap = {};
-        if (produtos) {
-          produtos.forEach(product => {
-            productMap[product.id] = product;
-          });
-        }
-        
-        // Group order items by order_id
-        const orderItemsMap = {};
-        orderItemsData.forEach(item => {
-          if (!orderItemsMap[item.order_id]) {
-            orderItemsMap[item.order_id] = [];
-          }
-          // Add product data to item
-          const itemWithProduct = {
-            ...item,
-            produto: productMap[item.produto_id],
-            produtos: productMap[item.produto_id],
-            total: item.subtotal || (item.preco_unitario * item.quantidade)
-          };
-          orderItemsMap[item.order_id].push(itemWithProduct);
-        });
-        
-        // Fetch these orders
-        const { data: ordersData, error: ordersError } = await supabase
-          .from('orders')
-          .select('*, cliente:cliente_id (id, nome, email, telefone)')
-          .in('id', orderIds)
-          .order('created_at', { ascending: false });
-        
-        if (ordersError) {
-          console.error('Error fetching orders for vendor products:', ordersError);
-        } else if (ordersData && ordersData.length > 0) {
-          console.log('Successfully fetched', ordersData.length, 'orders from orders table');
-          
-          // Process each order to create vendor-specific view
-          for (const order of ordersData) {
-            // Get vendor items for this order
-            const vendorItems = orderItemsMap[order.id] || [];
+        if (orderIds.length > 0) {
+          // Get product details for order items
+          const { data: produtos } = await supabase
+            .from('produtos')
+            .select('*')
+            .in('id', productIds);
             
-            if (vendorItems.length > 0) {
-              // Calculate vendor's portion of the order
-              const vendorTotal = vendorItems.reduce((sum, item) => {
-                return sum + (item.total || 0);
-              }, 0);
+          const productMap = {};
+          if (produtos) {
+            produtos.forEach(product => {
+              productMap[product.id] = product;
+            });
+          }
+          
+          // Group order items by order_id
+          const orderItemsMap = {};
+          orderItemsData.forEach(item => {
+            if (!orderItemsMap[item.order_id]) {
+              orderItemsMap[item.order_id] = [];
+            }
+            // Add product data to item
+            const itemWithProduct = {
+              ...item,
+              produto: productMap[item.produto_id],
+              produtos: productMap[item.produto_id],
+              total: item.subtotal || (item.preco_unitario * item.quantidade)
+            };
+            orderItemsMap[item.order_id].push(itemWithProduct);
+          });
+          
+          // Fetch these orders
+          const { data: ordersData, error: ordersError } = await supabase
+            .from('orders')
+            .select('*, cliente:cliente_id (id, nome, email, telefone)')
+            .in('id', orderIds)
+            .order('created_at', { ascending: false });
+          
+          if (ordersError) {
+            console.error('Error fetching orders for vendor products:', ordersError);
+          } else if (ordersData && ordersData.length > 0) {
+            console.log('Successfully fetched', ordersData.length, 'orders from orders table');
+            
+            // Process each order to create vendor-specific view
+            for (const order of ordersData) {
+              // Get vendor items for this order
+              const vendorItems = orderItemsMap[order.id] || [];
               
-              // Create cliente info
-              const clienteInfo: VendorCustomer = {
-                id: order.cliente_id || '',
-                vendedor_id: vendorProfile.id,
-                usuario_id: order.cliente_id,
-                nome: order.cliente?.nome || 'Cliente',
-                telefone: order.cliente?.telefone || '',
-                email: order.cliente?.email || '',
-                total_gasto: 0
-              };
-              
-              // Create a vendor-specific view of the order
-              const vendorOrder: VendorOrder = {
-                id: order.id,
-                cliente_id: order.cliente_id,
-                valor_total: vendorTotal,
-                status: order.status,
-                forma_pagamento: order.forma_pagamento,
-                endereco_entrega: order.endereco_entrega,
-                created_at: order.created_at,
-                cliente: clienteInfo,
-                itens: vendorItems
-              };
-              
-              combinedOrders.push(vendorOrder);
+              if (vendorItems.length > 0) {
+                // Calculate vendor's portion of the order
+                const vendorTotal = vendorItems.reduce((sum, item) => {
+                  return sum + (item.total || item.subtotal || (item.quantidade * item.preco_unitario) || 0);
+                }, 0);
+                
+                // Create cliente info
+                const clienteInfo: VendorCustomer = {
+                  id: order.cliente_id || '',
+                  vendedor_id: vendorProfile.id,
+                  usuario_id: order.cliente_id,
+                  nome: order.cliente?.nome || 'Cliente',
+                  telefone: order.cliente?.telefone || '',
+                  email: order.cliente?.email || '',
+                  total_gasto: 0
+                };
+                
+                // Create a vendor-specific view of the order
+                const vendorOrder: VendorOrder = {
+                  id: order.id,
+                  cliente_id: order.cliente_id,
+                  valor_total: vendorTotal,
+                  status: order.status || 'pendente',
+                  forma_pagamento: order.forma_pagamento || 'Não especificado',
+                  endereco_entrega: order.endereco_entrega,
+                  created_at: order.created_at || order.data_criacao || new Date().toISOString(),
+                  cliente: clienteInfo,
+                  itens: vendorItems
+                };
+                
+                combinedOrders.push(vendorOrder);
+              }
             }
           }
         }
@@ -233,6 +235,22 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
     
     if (combinedOrders.length === 0) {
       console.log('Warning: No orders found for vendor. Check if vendor profile is correct and has products/orders.');
+      
+      // Additional diagnostic information
+      console.log('Vendor profile ID:', vendorProfile.id);
+      console.log('Vendor user ID:', vendorProfile.usuario_id);
+      
+      // Check if the vendor has any products in the produtos table
+      const { count: productCount, error: countError } = await supabase
+        .from('produtos')
+        .select('id', { count: 'exact', head: true })
+        .eq('vendedor_id', vendorProfile.id);
+        
+      if (countError) {
+        console.error('Error counting vendor products:', countError);
+      } else {
+        console.log(`Vendor has ${productCount} products in database`);
+      }
     }
     
     return combinedOrders;

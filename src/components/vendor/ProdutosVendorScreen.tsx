@@ -1,9 +1,9 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search } from 'lucide-react';
+import { ArrowLeft, Search, RefreshCw } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { getVendorOrders, VendorOrder } from '@/services/vendorService';
+import { getVendorOrders, VendorOrder } from '@/services/vendorOrdersService';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import LoadingState from '../common/LoadingState';
 import ListEmptyState from '../common/ListEmptyState';
@@ -11,6 +11,7 @@ import OrderItem from './OrderItem';
 import { Card } from '@/components/ui/card';
 import CustomInput from '../common/CustomInput';
 import { Button } from '@/components/ui/button';
+import { toast } from '@/components/ui/sonner';
 
 const ProdutosVendorScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -22,7 +23,8 @@ const ProdutosVendorScreen: React.FC = () => {
     data: orders = [], 
     isLoading: isOrdersLoading,
     error: ordersError,
-    refetch
+    refetch,
+    isRefetching
   } = useQuery({
     queryKey: ['vendorOrders'],
     queryFn: getVendorOrders,
@@ -30,6 +32,16 @@ const ProdutosVendorScreen: React.FC = () => {
   });
   
   console.log('Orders loaded:', orders?.length || 0);
+
+  // Force refresh whenever the component mounts
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
+  
+  const handleRefresh = () => {
+    toast.info('Atualizando lista de pedidos...');
+    refetch();
+  };
   
   // Filter orders based on search and status
   const filteredOrders = orders.filter(order => {
@@ -88,6 +100,18 @@ const ProdutosVendorScreen: React.FC = () => {
           <ArrowLeft size={24} />
         </button>
         <h1 className="text-xl font-bold">Pedidos</h1>
+        <div className="ml-auto">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleRefresh}
+            disabled={isRefetching}
+            className="flex items-center gap-1"
+          >
+            <RefreshCw size={16} className={isRefetching ? "animate-spin" : ""} />
+            Atualizar
+          </Button>
+        </div>
       </div>
       
       <div className="p-6 space-y-6">
@@ -193,7 +217,10 @@ const ProdutosVendorScreen: React.FC = () => {
                     setSearchTerm('');
                     setFilterStatus(null);
                   }
-                } : undefined
+                } : {
+                  label: "Atualizar dados",
+                  onClick: handleRefresh
+                }
               }
             />
           )}
