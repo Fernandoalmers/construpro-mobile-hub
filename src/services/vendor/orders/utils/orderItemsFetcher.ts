@@ -44,13 +44,13 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
   }
 };
 
-// Define an interface for product data to avoid deep nesting issues
+// Define a simplified product type to avoid circular references
 interface ProductData {
   id: string;
   nome: string;
   descricao: string;
   preco_normal: number;
-  imagens: any;
+  imagens: string[] | { url: string }[] | null;
 }
 
 // Fetch product data for a list of product IDs
@@ -62,15 +62,15 @@ export const fetchProductsForItems = async (productIds: string[]): Promise<Recor
       .in('id', productIds);
     
     const productMap: Record<string, ProductData> = {};
+    
     if (produtos) {
       produtos.forEach(product => {
-        // Create a simple product object with only necessary fields
         productMap[product.id] = {
           id: product.id,
-          nome: product.nome,
-          descricao: product.descricao,
-          preco_normal: product.preco_normal,
-          imagens: product.imagens
+          nome: product.nome || '',
+          descricao: product.descricao || '',
+          preco_normal: product.preco_normal || 0,
+          imagens: product.imagens || null
         };
       });
     }
@@ -82,7 +82,7 @@ export const fetchProductsForItems = async (productIds: string[]): Promise<Recor
   }
 };
 
-// Process order items with explicit type definition to avoid deep nesting
+// Process order items to create a map keyed by order_id
 export const createOrderItemsMap = (
   orderItemsData: any[], 
   productMap: Record<string, ProductData>
@@ -107,7 +107,6 @@ export const createOrderItemsMap = (
       subtotal: item.subtotal,
       total: item.subtotal || (item.quantidade * item.preco_unitario) || 0,
       produto: produto,
-      // Explicitly set optional fields to undefined or null
       pedido_id: undefined,
       produtos: null,
       created_at: item.created_at
