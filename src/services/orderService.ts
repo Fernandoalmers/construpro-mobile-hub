@@ -74,10 +74,21 @@ export const orderService = {
     try {
       console.log("🔍 [orderService.getOrders] Fetching orders for current user");
       
-      const { data, error } = await supabaseService.invokeFunction('order-processing', {
-        method: 'GET',
-        maxRetries: 2
-      });
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          id, 
+          cliente_id, 
+          valor_total, 
+          pontos_ganhos,
+          status, 
+          forma_pagamento, 
+          endereco_entrega,
+          created_at,
+          updated_at,
+          rastreio
+        `)
+        .order('created_at', { ascending: false });
       
       if (error) {
         console.error("❌ [orderService.getOrders] Error fetching orders:", error);
@@ -87,16 +98,12 @@ export const orderService = {
         throw error;
       }
       
-      if (!data?.success) {
-        const errorMsg = data?.error || 'Erro ao buscar pedidos';
-        console.error("❌ [orderService.getOrders] Error in response:", errorMsg);
-        toast.error("Erro ao carregar pedidos", {
-          description: errorMsg
-        });
-        throw new Error(errorMsg);
+      if (!data) {
+        console.error("❌ [orderService.getOrders] No data returned");
+        return [];
       }
       
-      const orders = data?.orders || [];
+      const orders = data || [];
       console.log(`✅ [orderService.getOrders] Retrieved ${orders.length} orders`);
       
       // If we have orders, log a sample to help with debugging
@@ -104,7 +111,6 @@ export const orderService = {
         console.log("📊 [orderService.getOrders] Sample order:", {
           id: orders[0].id,
           status: orders[0].status,
-          items: orders[0].order_items?.length || 0,
           created_at: orders[0].created_at
         });
       } else {
@@ -125,42 +131,64 @@ export const orderService = {
     try {
       console.log(`🔍 [orderService.getOrderById] Fetching order details for ID: ${orderId}`);
       
-      const { data, error } = await supabaseService.invokeFunction('order-processing', {
-        method: 'GET',
-        body: { orderId },
-        headers: {
-          'content-type': 'application/json'
-        },
-        maxRetries: 2
-      });
+      // Obter o pedido diretamente do banco de dados
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .select(`
+          id,
+          cliente_id,
+          valor_total,
+          pontos_ganhos,
+          status,
+          forma_pagamento,
+          endereco_entrega,
+          created_at,
+          updated_at,
+          rastreio
+        `)
+        .eq('id', orderId)
+        .single();
       
-      if (error) {
-        console.error("❌ [orderService.getOrderById] Error fetching order:", error);
-        toast.error("Erro ao carregar detalhes do pedido", {
-          description: error.message
-        });
-        throw error;
+      if (orderError) {
+        console.error("❌ [orderService.getOrderById] Error fetching order:", orderError);
+        throw orderError;
       }
       
-      if (!data?.success) {
-        const errorMsg = data?.error || 'Erro ao buscar detalhes do pedido';
-        console.error("❌ [orderService.getOrderById] Error in response:", errorMsg);
-        toast.error("Erro ao carregar detalhes", {
-          description: errorMsg
-        });
-        throw new Error(errorMsg);
+      if (!orderData) {
+        console.error(`⚠️ [orderService.getOrderById] No order found with ID ${orderId}`);
+        throw new Error('Pedido não encontrado');
       }
       
-      const order = data?.order || null;
+      console.log(`✅ [orderService.getOrderById] Successfully retrieved order ${orderId}`, orderData);
       
-      if (order) {
-        console.log(`✅ [orderService.getOrderById] Successfully retrieved order ${orderId}`);
-        console.log(`📊 [orderService.getOrderById] Order has ${order.order_items?.length || 0} items`);
-      } else {
-        console.log(`⚠️ [orderService.getOrderById] No order found with ID ${orderId}`);
+      // Obter os itens do pedido
+      const { data: itemsData, error: itemsError } = await supabase
+        .from('order_items')
+        .select(`
+          id,
+          produto_id,
+          quantidade,
+          preco_unitario,
+          subtotal,
+          order_id,
+          produtos: produto_id (id, nome, imagem_url, preco_normal, preco_promocional)
+        `)
+        .eq('order_id', orderId);
+      
+      if (itemsError) {
+        console.error("❌ [orderService.getOrderById] Error fetching order items:", itemsError);
+        // Continue mesmo com erro nos itens
       }
       
+      // Combinar pedido com os itens
+      const order = {
+        ...orderData,
+        items: itemsData || []
+      };
+      
+      console.log(`📊 [orderService.getOrderById] Order has ${order.items?.length || 0} items`);
       return order;
+      
     } catch (error: any) {
       console.error("❌ [orderService.getOrderById] Error:", error);
       toast.error("Erro ao carregar detalhes do pedido", {

@@ -25,6 +25,7 @@ const OrderConfirmationScreen: React.FC = () => {
     const fetchOrderDetails = async () => {
       try {
         setLoading(true);
+        console.log(`Buscando detalhes do pedido ${orderId}`);
         
         // Fetch order details
         const order = await orderService.getOrderById(orderId);
@@ -33,6 +34,7 @@ const OrderConfirmationScreen: React.FC = () => {
           throw new Error('Pedido não encontrado');
         }
         
+        console.log('Detalhes do pedido recuperados:', order);
         setOrderDetails(order);
       } catch (err: any) {
         console.error('Error fetching order details:', err);
@@ -54,7 +56,8 @@ const OrderConfirmationScreen: React.FC = () => {
       <ErrorState 
         title="Erro ao carregar confirmação" 
         message={error || "Pedido não encontrado"}
-        onRetry={() => navigate('/orders')}
+        onRetry={() => window.location.reload()}
+        retryText="Tentar novamente"
       />
     );
   }
