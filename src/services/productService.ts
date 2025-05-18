@@ -2,6 +2,40 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 
+// Define the Product interface
+export interface Product {
+  id: string;
+  nome: string;
+  descricao: string;
+  preco?: number;
+  preco_normal: number;
+  preco_promocional?: number;
+  preco_anterior?: number;
+  categoria: string;
+  segmento?: string;
+  segmento_id?: string;
+  imagem_url?: string;
+  imagens: string[];
+  estoque: number;
+  pontos?: number;
+  pontos_consumidor?: number;
+  pontos_profissional?: number;
+  loja_id?: string;
+  vendedor_id?: string;
+  status: "pendente" | "aprovado" | "rejeitado";
+  unidade_medida?: string;
+  codigo_barras?: string;
+  sku?: string;
+  avaliacao?: number;
+  num_avaliacoes?: number;
+  stores?: {
+    id: string;
+    nome: string;
+    nome_loja: string;
+    logo_url?: string;
+  };
+}
+
 // Get all approved products
 export const getProducts = async (filters = {}) => {
   try {
@@ -34,7 +68,7 @@ export const getProducts = async (filters = {}) => {
 };
 
 // Get product by ID
-export const getProductById = async (id) => {
+export const getProductById = async (id): Promise<Product | null> => {
   try {
     const { data, error } = await supabase
       .from('produtos')
@@ -50,7 +84,7 @@ export const getProductById = async (id) => {
       return null;
     }
     
-    return data;
+    return data as unknown as Product;
   } catch (error) {
     console.error('Error in getProductById:', error);
     return null;
