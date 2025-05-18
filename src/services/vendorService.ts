@@ -26,15 +26,15 @@ import {
   VendorProduct, ProductImage,
   
   // Product functions
-  getProductsByVendor as getVendorProducts,
-  getProductById as getVendorProduct,
-  createProduct as saveVendorProduct,
-  deleteProduct as deleteVendorProduct,
+  getVendorProducts,
+  getVendorProduct,
+  saveVendorProduct,
+  deleteVendorProduct,
   updateProductStatus,
   uploadProductImage,
   updateProductImages,
   subscribeToVendorProducts
-} from './products';
+} from './vendor/products';
 
 // Type exports
 export type { VendorProfile };
