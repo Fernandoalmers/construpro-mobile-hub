@@ -141,7 +141,9 @@ export const getProducts = async (filters = {}): Promise<Product[]> => {
     }
     
     // Transform each record to ensure type compatibility
-    return (data || []).map(item => transformToProduct(item as unknown as ProductDatabaseRecord));
+    return (data || []).map(item => 
+      transformToProduct(item as ProductDatabaseRecord)
+    );
   } catch (error) {
     console.error('Error in getProducts:', error);
     toast.error('Erro ao carregar produtos');
@@ -173,14 +175,14 @@ export const getProductById = async (id: string): Promise<Product | null> => {
     
     // Add store information if available
     if (data.vendedores && typeof data.vendedores === 'object' && data.vendedores !== null) {
+      // Safely get values from vendedorData with type assertion
       const vendedorData = data.vendedores;
       
-      // Use null coalescing to safely handle potentially null values
       product.stores = {
         id: data.vendedor_id || '',
-        nome: vendedorData?.nome_loja || '',
-        nome_loja: vendedorData?.nome_loja || '',
-        logo_url: vendedorData?.logo_url || undefined
+        nome: vendedorData && 'nome_loja' in vendedorData ? String(vendedorData.nome_loja || '') : '',
+        nome_loja: vendedorData && 'nome_loja' in vendedorData ? String(vendedorData.nome_loja || '') : '',
+        logo_url: vendedorData && 'logo_url' in vendedorData ? String(vendedorData.logo_url || '') : undefined
       };
     }
     
