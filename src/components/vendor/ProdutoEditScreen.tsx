@@ -37,6 +37,8 @@ const ProdutoEditScreen: React.FC = () => {
           segmento: productData.segmento || ''  // Ensure segmento exists even if null/undefined
         };
         
+        console.log("Enhanced product data:", enhancedProductData);
+        
         setProduct(enhancedProductData);
         setLoading(false);
       } catch (error) {

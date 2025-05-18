@@ -1,17 +1,17 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { ArrowLeft, Save, Info, Package, Tag, Image, Layers, FileSymlink, LayoutList } from 'lucide-react';
-import { toast } from '@/components/ui/use-toast';
+import { ArrowLeft, Save, Info, Package, Tag, Image, Layers, FileSymlink } from 'lucide-react';
+import { toast } from '@/components/ui/sonner';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import CustomButton from '../common/CustomButton';
-import CustomInput from '../common/CustomInput';
+import ProductSegmentSelect from './ProductSegmentSelect';
+import { saveVendorProduct } from '@/services/vendorProductsService';
 import {
   Form,
   FormControl,
@@ -33,12 +33,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
-import produtos from '../../data/produtos.json';
 
 // Define product form schema
 const productFormSchema = z.object({
@@ -46,6 +40,7 @@ const productFormSchema = z.object({
   nome: z.string().min(3, { message: 'O nome deve ter pelo menos 3 caracteres' }),
   descricao: z.string().min(10, { message: 'A descrição deve ter pelo menos 10 caracteres' }),
   categoria: z.string().min(1, { message: 'Selecione uma categoria' }),
+  segmento: z.string().optional(),
   marca: z.string().optional(),
   tags: z.array(z.string()).optional(),
   
@@ -80,11 +75,13 @@ const categorias = [
 interface ProdutoFormScreenProps {
   isEditing?: boolean;
   productId?: string;
+  initialData?: any;
 }
 
 const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({ 
   isEditing = false,
-  productId 
+  productId,
+  initialData
 }) => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -99,6 +96,7 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
       nome: '',
       descricao: '',
       categoria: '',
+      segmento: '',
       marca: '',
       tags: [],
       unidadeVenda: 'unidade',
@@ -117,43 +115,40 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
   
   // Load product data if in edit mode
   useEffect(() => {
-    if (isEditing && productId) {
+    if (isEditing && initialData) {
+      console.log("Setting form data from initialData:", initialData);
+      
       setIsLoading(true);
       
-      // In a real app, this would be an API call
-      // For demo purposes, we'll just use the local data
-      const produto = produtos.find(p => p.id === productId);
+      // Initialize form with product data
+      form.reset({
+        nome: initialData.nome || '',
+        descricao: initialData.descricao || '',
+        categoria: initialData.categoria || '',
+        segmento: initialData.segmento || '',
+        marca: '',
+        tags: [],
+        unidadeVenda: 'unidade',
+        valorConversao: null,
+        controleQuantidade: 'livre',
+        preco: initialData.preco_normal || 0,
+        estoque: initialData.estoque || 0,
+        precoPromocional: initialData.preco_promocional || null,
+        pontosConsumidor: initialData.pontos_consumidor || 0,
+        pontosProfissional: initialData.pontos_profissional || 0,
+        temVariantes: false,
+        tipoVariante: '',
+        variantes: [],
+      });
       
-      if (produto) {
-        // Initialize form with product data
-        form.reset({
-          nome: produto.nome,
-          descricao: produto.descricao || '',
-          categoria: produto.categoria,
-          marca: '',
-          tags: [],
-          unidadeVenda: 'unidade', // Default to be overwritten
-          valorConversao: null,
-          controleQuantidade: 'livre',
-          preco: produto.preco,
-          estoque: produto.estoque || 0,
-          precoPromocional: null,
-          pontosConsumidor: produto.pontos || 0,
-          pontosProfissional: produto.pontos || 0,
-          temVariantes: false,
-          tipoVariante: '',
-          variantes: [],
-        });
-        
-        // Load image
-        if (produto.imagemUrl) {
-          setImages([produto.imagemUrl]);
-        }
+      // Load images
+      if (initialData.imagens && Array.isArray(initialData.imagens)) {
+        setImages(initialData.imagens);
       }
       
       setIsLoading(false);
     }
-  }, [isEditing, productId, form]);
+  }, [isEditing, initialData, form]);
   
   const watchUnidadeVenda = form.watch('unidadeVenda');
   const watchTemVariantes = form.watch('temVariantes');
@@ -176,8 +171,6 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      // In a real app, you would upload the image to a server
-      // For demo purposes, we'll just use the file name
       const newImages = [...images];
       for (let i = 0; i < files.length && newImages.length < 5; i++) {
         newImages.push(URL.createObjectURL(files[i]));
@@ -194,7 +187,7 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
   };
 
   // Form submission
-  const onSubmit = (values: ProductFormValues) => {
+  const onSubmit = async (values: ProductFormValues) => {
     if (images.length === 0) {
       toast({
         title: "Erro de validação",
@@ -206,25 +199,48 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
 
     setIsSubmitting(true);
     
-    // Add image URLs to the form data
-    const productData = {
-      ...values,
-      images: images,
-    };
-    
-    console.log('Product data:', productData);
-    
-    // Here you would send the data to your API
-    setTimeout(() => {
-      setIsSubmitting(false);
-      toast({
-        title: isEditing ? "Produto atualizado com sucesso" : "Produto cadastrado com sucesso",
+    try {
+      // Prepare data for API
+      const productData = {
+        id: productId,
+        nome: values.nome,
+        descricao: values.descricao,
+        categoria: values.categoria,
+        segmento: values.segmento,
+        preco_normal: values.preco,
+        preco_promocional: values.precoPromocional || null,
+        estoque: values.estoque,
+        pontos_consumidor: values.pontosConsumidor,
+        pontos_profissional: values.pontosProfissional,
+        imagens: images,
+        status: isEditing ? 'pendente' : 'pendente',
+      };
+      
+      console.log("Saving product data:", productData);
+      
+      // Call the API to save the product
+      const savedProduct = await saveVendorProduct(productData);
+      
+      if (!savedProduct) {
+        toast.error("Erro ao salvar produto", { 
+          description: "Ocorreu um erro ao salvar os dados do produto."
+        });
+        return;
+      }
+      
+      toast.success(isEditing ? "Produto atualizado" : "Produto cadastrado", {
         description: isEditing 
-          ? "As alterações foram salvas no sistema." 
-          : "O produto foi cadastrado no sistema."
+          ? "As alterações foram salvas com sucesso." 
+          : "O produto foi cadastrado com sucesso."
       });
-      navigate('/vendor/produtos');
-    }, 1000);
+      
+      navigate('/vendor/products');
+    } catch (error) {
+      console.error("Error saving product:", error);
+      toast.error("Erro ao salvar produto");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
   // Determine if conversion value is required
@@ -347,6 +363,24 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
+                        name="segmento"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Segmento</FormLabel>
+                            <FormControl>
+                              <ProductSegmentSelect
+                                value={field.value || ''}
+                                onChange={field.onChange}
+                                error={form.formState.errors.segmento?.message}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
                         name="categoria"
                         render={({ field }) => (
                           <FormItem>
@@ -373,21 +407,21 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
                           </FormItem>
                         )}
                       />
-                      
-                      <FormField
-                        control={form.control}
-                        name="marca"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Marca</FormLabel>
-                            <FormControl>
-                              <Input {...field} placeholder="Ex: Portobello" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
                     </div>
+                    
+                    <FormField
+                      control={form.control}
+                      name="marca"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Marca</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="Ex: Portobello" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                     
                     <div>
                       <FormLabel>Tags</FormLabel>
