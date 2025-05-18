@@ -26,6 +26,7 @@ export const fetchOrdersFromOrderItems = async (vendorId: string, productIds: st
     // Step 1: Fetch order items
     const orderItemsData = await fetchOrderItemsForProducts(productIds);
     if (orderItemsData.length === 0) {
+      console.log('No order items found for vendor products');
       return [];
     }
     
@@ -47,8 +48,11 @@ export const fetchOrdersFromOrderItems = async (vendorId: string, productIds: st
     const ordersData = await fetchOrdersById(orderIds);
     
     if (ordersData.length === 0) {
+      console.log('Failed to fetch order data for the order IDs');
       return [];
     }
+    
+    console.log(`Successfully fetched ${ordersData.length} orders from database`);
     
     // Step 5: Process vendor orders
     return await processVendorOrdersFromOrderItems(ordersData, orderItemsMap, vendorId);

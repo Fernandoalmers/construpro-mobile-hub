@@ -44,8 +44,8 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
   }
 };
 
-// Define fixed primitive types for image structures - this avoids recursive types
-export type ProductImageType = null | readonly string[] | readonly {readonly url: string}[];
+// Simple non-recursive type definition to avoid infinite instantiation
+export type ProductImageType = null | string[] | Array<{url: string}>;
 
 // Define a standalone product type with no circular references
 export interface ProductData {
@@ -93,29 +93,42 @@ function processImagens(rawImagens: unknown): ProductImageType {
   return null;
 }
 
-// Fetch product data with explicit typing
+// Fetch product data with explicit typing - improved to filter by productIds
 export const fetchProductsForItems = async (productIds: string[]): Promise<Record<string, ProductData>> => {
   if (!productIds.length) return {};
   
   try {
-    // Use explicit selects with simplified query
-    const { data: produtos } = await supabase
+    console.log(`Fetching product data for ${productIds.length} products`);
+    
+    // Use IN filter to get only the requested products
+    const { data: produtos, error } = await supabase
       .from('produtos')
-      .select('id, nome, descricao, preco_normal, imagens');
+      .select('id, nome, descricao, preco_normal, imagens')
+      .in('id', productIds);
+    
+    if (error) {
+      console.error('Error fetching products:', error);
+      return {};
+    }
+    
+    if (!produtos || produtos.length === 0) {
+      console.log('No products found matching the requested IDs');
+      return {};
+    }
+    
+    console.log(`Found ${produtos.length} products out of ${productIds.length} requested`);
     
     const productMap: Record<string, ProductData> = {};
     
-    if (produtos) {
-      produtos.forEach(product => {
-        productMap[product.id] = {
-          id: product.id,
-          nome: product.nome || '',
-          descricao: product.descricao,
-          preco_normal: product.preco_normal || 0,
-          imagens: processImagens(product.imagens)
-        };
-      });
-    }
+    produtos.forEach(product => {
+      productMap[product.id] = {
+        id: product.id,
+        nome: product.nome || '',
+        descricao: product.descricao,
+        preco_normal: product.preco_normal || 0,
+        imagens: processImagens(product.imagens)
+      };
+    });
     
     return productMap;
   } catch (error) {
@@ -137,27 +150,42 @@ export interface SimpleOrderItem {
   produto?: ProductData | null;
 }
 
-// Create a map of order items with explicit typing
+// Create a map of order items with explicit typing - improved to include better error handling
 export const createOrderItemsMap = (
   orderItemsData: Array<Record<string, unknown>>, 
   productMap: Record<string, ProductData>
 ): Record<string, SimpleOrderItem[]> => {
   const orderItemsMap: Record<string, SimpleOrderItem[]> = {};
   
+  console.log(`Creating order items map from ${orderItemsData.length} items`);
+  
   orderItemsData.forEach(item => {
+    // Validate required fields
     const orderId = item.order_id as string;
+    const produtoId = item.produto_id as string;
+    
+    if (!orderId) {
+      console.warn('Order item missing order_id:', item);
+      return;
+    }
+    
     if (!orderItemsMap[orderId]) {
       orderItemsMap[orderId] = [];
     }
     
     // Get product data
-    const produto = productMap[(item.produto_id as string)] || null;
+    const produto = productMap[produtoId] || null;
+    
+    // Handle missing product gracefully
+    if (!produto) {
+      console.warn(`Product not found for order item, product ID: ${produtoId}`);
+    }
     
     // Create order item with explicit properties
     const orderItem: SimpleOrderItem = {
       id: item.id as string,
-      order_id: item.order_id as string,
-      produto_id: item.produto_id as string,
+      order_id: orderId,
+      produto_id: produtoId,
       quantidade: item.quantidade as number,
       preco_unitario: item.preco_unitario as number,
       subtotal: (item.subtotal as number) || 0,
@@ -169,23 +197,38 @@ export const createOrderItemsMap = (
     orderItemsMap[orderId].push(orderItem);
   });
   
+  console.log(`Created order items map with ${Object.keys(orderItemsMap).length} unique orders`);
+  
   return orderItemsMap;
 };
 
-// Fetch order items with explicit typing
+// Fetch order items with explicit typing - improved error handling and logging
 export const fetchOrderItemsForProducts = async (productIds: string[]): Promise<Array<Record<string, unknown>>> => {
   if (!productIds.length) return [];
   
   try {
+    console.log(`Fetching order items for ${productIds.length} product IDs`);
+    
     const { data: orderItemsData, error: orderItemsError } = await supabase
       .from('order_items')
       .select('id, order_id, produto_id, quantidade, preco_unitario, subtotal, created_at')
       .in('produto_id', productIds);
     
-    if (orderItemsError || !orderItemsData) {
-      console.log('Error or no order items found for vendor products');
+    if (orderItemsError) {
+      console.error('Error fetching order items:', orderItemsError);
       return [];
     }
+    
+    if (!orderItemsData || orderItemsData.length === 0) {
+      console.log('No order items found for vendor products');
+      return [];
+    }
+    
+    console.log(`Found ${orderItemsData.length} order items for vendor products`);
+    
+    // Extract unique order IDs for diagnostics
+    const orderIds = [...new Set(orderItemsData.map(item => item.order_id))];
+    console.log(`Found ${orderIds.length} unique orders containing vendor products`);
     
     return orderItemsData;
   } catch (error) {

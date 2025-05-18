@@ -88,6 +88,40 @@ export const logDiagnosticInfo = async (vendorId: string): Promise<void> => {
         }
       }
     }
+    
+    // Additional checks for the order_items table
+    const { count: orderItemsCount, error: orderItemsCountError } = await supabase
+      .from('order_items')
+      .select('id', { count: 'exact', head: true });
+      
+    if (orderItemsCountError) {
+      console.error('Error checking order_items table:', orderItemsCountError);
+    } else {
+      console.log(`Total order_items in database: ${orderItemsCount}`);
+      
+      // Check some sample order items
+      const { data: sampleOrderItems, error: sampleError } = await supabase
+        .from('order_items')
+        .select('id, order_id, produto_id')
+        .limit(5);
+        
+      if (sampleError) {
+        console.error('Error fetching sample order items:', sampleError);
+      } else if (sampleOrderItems && sampleOrderItems.length > 0) {
+        console.log('Sample order item:', sampleOrderItems[0]);
+      }
+    }
+    
+    // Check orders table
+    const { count: ordersCount, error: ordersCountError } = await supabase
+      .from('orders')
+      .select('id', { count: 'exact', head: true });
+      
+    if (ordersCountError) {
+      console.error('Error checking orders table:', ordersCountError);
+    } else {
+      console.log(`Total orders in database: ${ordersCount}`);
+    }
   } catch (err) {
     console.error('Error during diagnostic logging:', err);
   }

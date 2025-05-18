@@ -90,6 +90,8 @@ export const fetchOrdersById = async (orderIds: string[]): Promise<any[]> => {
   if (!orderIds.length) return [];
   
   try {
+    console.log(`Fetching ${orderIds.length} orders by IDs`);
+    
     const { data: ordersData, error: ordersError } = await supabase
       .from('orders')
       .select(`
@@ -105,10 +107,17 @@ export const fetchOrdersById = async (orderIds: string[]): Promise<any[]> => {
       .in('id', orderIds)
       .order('created_at', { ascending: false });
     
-    if (ordersError || !ordersData) {
-      console.log('Error or no orders found');
+    if (ordersError) {
+      console.error('Error fetching orders by ID:', ordersError);
       return [];
     }
+    
+    if (!ordersData || ordersData.length === 0) {
+      console.log('No orders found matching the provided IDs');
+      return [];
+    }
+    
+    console.log(`Successfully fetched ${ordersData.length} orders out of ${orderIds.length} requested`);
     
     return ordersData;
   } catch (error) {
@@ -132,6 +141,9 @@ export const processVendorOrdersFromOrderItems = async (
   vendorId: string
 ): Promise<VendorOrder[]> => {
   const vendorOrders: VendorOrder[] = [];
+  
+  console.log(`Processing ${ordersData.length} orders for vendor ${vendorId}`);
+  console.log(`Order items map has keys for ${Object.keys(orderItemsMap).length} orders`);
   
   for (const order of ordersData) {
     // Get vendor items for this order
@@ -162,8 +174,12 @@ export const processVendorOrdersFromOrderItems = async (
       } catch (err) {
         console.error('Error processing order:', order.id, err);
       }
+    } else {
+      console.warn(`Order ${order.id} has no items for vendor ${vendorId}`);
     }
   }
+  
+  console.log(`Processed ${vendorOrders.length} vendor orders successfully`);
   
   return vendorOrders;
 };

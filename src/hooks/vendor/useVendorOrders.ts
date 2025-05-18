@@ -66,7 +66,12 @@ export const useVendorOrders = () => {
     isRefetching
   } = useQuery({
     queryKey: ['vendorOrders'],
-    queryFn: getVendorOrders,
+    queryFn: async () => {
+      console.log("Fetching vendor orders from service...");
+      const results = await getVendorOrders();
+      console.log(`Fetched ${results.length} vendor orders`);
+      return results;
+    },
     staleTime: 1 * 60 * 1000, // 1 minute
     retry: 3, // Increase retries for more resilience
     enabled: vendorProfileStatus === 'found',
@@ -75,6 +80,7 @@ export const useVendorOrders = () => {
   // Force refresh whenever the component mounts or profile role is fixed
   useEffect(() => {
     if (vendorProfileStatus === 'found') {
+      console.log("Automatically refreshing vendor orders");
       refetch();
     }
   }, [refetch, profileRoleFixed, vendorProfileStatus]);
@@ -82,6 +88,7 @@ export const useVendorOrders = () => {
   const handleRefresh = () => {
     if (vendorProfileStatus === 'found') {
       toast.info('Atualizando lista de pedidos...');
+      console.log("Manually refreshing vendor orders");
       refetch();
     } else {
       toast.error('Configure seu perfil de vendedor primeiro');
