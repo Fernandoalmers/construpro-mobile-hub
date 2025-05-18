@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Avatar from '../common/Avatar';
 import Card from '../common/Card';
@@ -29,7 +29,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { useAuth, UserRole } from '../../context/AuthContext';
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import ChangePasswordModal from './ChangePasswordModal';
 
@@ -41,12 +41,22 @@ const ProfileScreen: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
   
-  // Use profile data if available
+  // Use profile data if available, with improved fallbacks
   const userPapel = profile?.papel || profile?.tipo_perfil || 'consumidor';
   
   const [vendorMode, setVendorMode] = useState(userPapel === 'lojista');
   const [professionalMode, setProfessionalMode] = useState(userPapel === 'profissional');
   const [showModeSwitch, setShowModeSwitch] = useState(false);
+  
+  // Synchronize mode states with profile changes
+  useEffect(() => {
+    if (profile) {
+      const isVendor = profile.papel === 'lojista' || profile.tipo_perfil === 'lojista';
+      const isProfessional = profile.papel === 'profissional' || profile.tipo_perfil === 'profissional';
+      setVendorMode(isVendor);
+      setProfessionalMode(isProfessional);
+    }
+  }, [profile]);
 
   // Calculate level info
   const levelPoints = {
@@ -84,37 +94,64 @@ const ProfileScreen: React.FC = () => {
     gold: { color: '#FFD700', name: 'Ouro' },
   };
 
-  const toggleVendorMode = () => {
-    if (!vendorMode) {
-      // Switching to vendor mode
-      updateUser({ papel: 'lojista' });
-      setProfessionalMode(false);
-      setVendorMode(true);
-      toast.success("Modo Vendedor ativado!");
-      navigate('/vendor');
-    } else {
-      // Switching back to consumer mode
-      updateUser({ papel: 'consumidor' });
-      setVendorMode(false);
-      toast.success("Modo Consumidor ativado!");
-      navigate('/home');
+  const toggleVendorMode = async () => {
+    try {
+      if (!vendorMode) {
+        // Switching to vendor mode
+        console.log("Attempting to switch to vendor mode");
+        
+        // Update both user metadata and profile
+        const updateResult = await updateUser({ papel: 'lojista', tipo_perfil: 'lojista' });
+        console.log("Update result:", updateResult);
+        
+        // Update local state
+        setProfessionalMode(false);
+        setVendorMode(true);
+        
+        toast.success("Modo Vendedor ativado!");
+        
+        // Navigate after a short delay to ensure state updates complete
+        setTimeout(() => navigate('/vendor'), 300);
+      } else {
+        // Switching back to consumer mode
+        console.log("Switching back to consumer mode");
+        
+        await updateUser({ papel: 'consumidor', tipo_perfil: 'consumidor' });
+        setVendorMode(false);
+        
+        toast.success("Modo Consumidor ativado!");
+        
+        setTimeout(() => navigate('/home'), 300);
+      }
+    } catch (error) {
+      console.error("Error toggling vendor mode:", error);
+      toast.error("Erro ao alterar modo. Tente novamente.");
     }
   };
 
-  const toggleProfessionalMode = () => {
-    if (!professionalMode) {
-      // Switching to professional mode
-      updateUser({ papel: 'profissional' });
-      setVendorMode(false);
-      setProfessionalMode(true);
-      toast.success("Modo Profissional ativado!");
-      navigate('/services');
-    } else {
-      // Switching back to consumer mode
-      updateUser({ papel: 'consumidor' });
-      setProfessionalMode(false);
-      toast.success("Modo Consumidor ativado!");
-      navigate('/home');
+  const toggleProfessionalMode = async () => {
+    try {
+      if (!professionalMode) {
+        // Switching to professional mode
+        await updateUser({ papel: 'profissional', tipo_perfil: 'profissional' });
+        setVendorMode(false);
+        setProfessionalMode(true);
+        
+        toast.success("Modo Profissional ativado!");
+        
+        setTimeout(() => navigate('/services'), 300);
+      } else {
+        // Switching back to consumer mode
+        await updateUser({ papel: 'consumidor', tipo_perfil: 'consumidor' });
+        setProfessionalMode(false);
+        
+        toast.success("Modo Consumidor ativado!");
+        
+        setTimeout(() => navigate('/home'), 300);
+      }
+    } catch (error) {
+      console.error("Error toggling professional mode:", error);
+      toast.error("Erro ao alterar modo. Tente novamente.");
     }
   };
 
@@ -298,11 +335,17 @@ const ProfileScreen: React.FC = () => {
                   checked={!vendorMode && !professionalMode}
                   onCheckedChange={() => {
                     if (vendorMode || professionalMode) {
-                      updateUser({ papel: 'consumidor' });
-                      setVendorMode(false);
-                      setProfessionalMode(false);
-                      toast.success("Modo Consumidor ativado!");
-                      navigate('/home');
+                      updateUser({ papel: 'consumidor', tipo_perfil: 'consumidor' })
+                        .then(() => {
+                          setVendorMode(false);
+                          setProfessionalMode(false);
+                          toast.success("Modo Consumidor ativado!");
+                          navigate('/home');
+                        })
+                        .catch(error => {
+                          console.error("Error switching to consumer mode:", error);
+                          toast.error("Erro ao alternar para modo consumidor");
+                        });
                     }
                   }}
                 />

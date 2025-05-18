@@ -273,7 +273,14 @@ export const ensureVendorProfileRole = async (): Promise<boolean> => {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {
       console.error('No authenticated user found');
-      return false;
+      throw new Error('Usuário não autenticado');
+    }
+    
+    // Get current vendor profile first to verify it exists
+    const vendorProfile = await getVendorProfile();
+    if (!vendorProfile) {
+      console.error('No vendor profile found for user');
+      throw new Error('Perfil de vendedor não encontrado');
     }
     
     const { data: profileData } = await supabase
@@ -287,6 +294,7 @@ export const ensureVendorProfileRole = async (): Promise<boolean> => {
       if (profileData.tipo_perfil !== 'lojista' || profileData.papel !== 'lojista') {
         console.log('Updating user profile to lojista role...');
         
+        // First update the profile table
         const { error: updateError } = await supabase
           .from('profiles')
           .update({
@@ -297,26 +305,56 @@ export const ensureVendorProfileRole = async (): Promise<boolean> => {
           
         if (updateError) {
           console.error('Failed to update user profile:', updateError);
-          return false;
+          throw new Error('Falha ao atualizar perfil: ' + updateError.message);
         }
         
-        // Also update user metadata
-        await supabase.auth.updateUser({
+        // Then update user metadata
+        const { error: metadataError } = await supabase.auth.updateUser({
           data: {
             papel: 'lojista',
             tipo_perfil: 'lojista'
           }
         });
         
-        return true;
+        if (metadataError) {
+          console.error('Failed to update user metadata:', metadataError);
+          throw new Error('Falha ao atualizar metadados: ' + metadataError.message);
+        }
+        
+        return true; // Profile was updated
       } else {
-        return true; // Already has correct role
+        console.log('User profile already has correct role settings');
+        return false; // No update needed
       }
+    } else {
+      // No profile found, create one
+      const { error: insertError } = await supabase
+        .from('profiles')
+        .insert({
+          id: userData.user.id,
+          papel: 'lojista',
+          tipo_perfil: 'lojista',
+          nome: userData.user.user_metadata?.nome || userData.user.email?.split('@')[0] || 'Vendedor',
+          email: userData.user.email
+        });
+        
+      if (insertError) {
+        console.error('Failed to create user profile:', insertError);
+        throw new Error('Falha ao criar perfil: ' + insertError.message);
+      }
+      
+      // Update user metadata
+      await supabase.auth.updateUser({
+        data: {
+          papel: 'lojista',
+          tipo_perfil: 'lojista'
+        }
+      });
+      
+      return true;
     }
-    
-    return false;
   } catch (error) {
     console.error('Error in ensureVendorProfileRole:', error);
-    return false;
+    throw error;
   }
 };
