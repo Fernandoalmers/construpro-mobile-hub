@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
@@ -190,10 +189,7 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
   // Form submission
   const onSubmit = async (values: ProductFormValues) => {
     if (images.length === 0) {
-      toast({
-        description: "É necessário adicionar pelo menos uma imagem do produto.",
-        variant: "destructive"
-      });
+      toast.error("É necessário adicionar pelo menos uma imagem do produto.");
       return;
     }
 
