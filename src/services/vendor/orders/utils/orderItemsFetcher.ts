@@ -29,8 +29,8 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
       return [];
     }
     
-    // Use explicit type assertion to prevent deep instantiation
-    const products: ProductId[] = (result.data as ProductId[] || []);
+    // Important: Use type assertion with a simple array type to avoid excessive type instantiation
+    const products = result.data as { id: string }[] || [];
     
     if (products.length === 0) {
       console.log('No products found in produtos table, checking alternative table');
@@ -47,8 +47,8 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
         return [];
       }
       
-      // Use explicit type assertion for alternate data as well
-      const alternateProducts: ProductId[] = (alternateResult.data as ProductId[] || []);
+      // Use simple type assertion here as well
+      const alternateProducts = alternateResult.data as { id: string }[] || [];
       
       if (alternateProducts.length === 0) {
         console.log('No products found in alternate table either');
@@ -139,8 +139,14 @@ export const fetchProductsForItems = async (productIds: string[]): Promise<Recor
       return {};
     }
     
-    // Use explicit type assertion to prevent deep instantiation
-    const produtos: RawProductData[] = (result.data as RawProductData[] || []);
+    // Use simple type assertion that doesn't create complex nested types
+    const produtos = result.data as { 
+      id: string;
+      nome: string;
+      descricao: string | null;
+      preco_normal: number;
+      imagens: unknown;
+    }[] || [];
     
     if (produtos.length === 0) {
       console.log('No products found matching the requested IDs');
@@ -233,7 +239,7 @@ export const createOrderItemsMap = (
   return orderItemsMap;
 };
 
-// Explicit interface for order item records
+// Explicit interface for order item records to avoid deep type instantiation
 interface OrderItemRecord {
   id: string;
   order_id: string;
@@ -242,7 +248,6 @@ interface OrderItemRecord {
   preco_unitario: number;
   subtotal: number;
   created_at?: string;
-  [key: string]: unknown;
 }
 
 // Fetch order items
@@ -262,8 +267,16 @@ export const fetchOrderItemsForProducts = async (productIds: string[]): Promise<
       return [];
     }
     
-    // Use explicit type assertion to prevent deep instantiation
-    const orderItemsData: OrderItemRecord[] = (result.data as OrderItemRecord[] || []);
+    // Use simple inline type assertion without complex nesting
+    const orderItemsData = result.data as { 
+      id: string;
+      order_id: string;
+      produto_id: string;
+      quantidade: number;
+      preco_unitario: number;
+      subtotal: number;
+      created_at?: string;
+    }[] || [];
     
     if (orderItemsData.length === 0) {
       console.log('No order items found for vendor products');
@@ -276,6 +289,7 @@ export const fetchOrderItemsForProducts = async (productIds: string[]): Promise<
     const orderIds = [...new Set(orderItemsData.map(item => item.order_id))];
     console.log(`Found ${orderIds.length} unique orders containing vendor products`);
     
+    // Return as the expected type
     return orderItemsData as Array<Record<string, unknown>>;
   } catch (error) {
     console.error('Error fetching order items:', error);
