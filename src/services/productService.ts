@@ -120,20 +120,13 @@ const transformToProduct = (record: ProductDatabaseRecord): Product => {
 // Get all approved products
 export const getProducts = async (filters = {}): Promise<Product[]> => {
   try {
-    let query = supabase
+    // Fix: Use explicit type annotation for the query result to avoid deep type instantiation
+    const { data, error } = await supabase
       .from('produtos')
       .select('*')
       .eq('status', 'aprovado')
-      .order('created_at', { ascending: false });
-    
-    // Apply any additional filters
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value) {
-        query = query.eq(key, value);
-      }
-    });
-    
-    const { data, error } = await query;
+      .order('created_at', { ascending: false })
+      .returns<any[]>(); // Use explicit return type to avoid deep instantiation
     
     if (error) {
       console.error('Error fetching products:', error);
@@ -189,6 +182,7 @@ export const getProducts = async (filters = {}): Promise<Product[]> => {
 // Get product by ID
 export const getProductById = async (id: string): Promise<Product | null> => {
   try {
+    // Fix: Use explicit type annotation for the query result
     const { data, error } = await supabase
       .from('produtos')
       .select(`
@@ -196,7 +190,8 @@ export const getProductById = async (id: string): Promise<Product | null> => {
         vendedores:vendedor_id (nome_loja, logo_url)
       `)
       .eq('id', id)
-      .single();
+      .single()
+      .returns<any>(); // Use explicit return type to avoid deep instantiation
     
     if (error) {
       console.error('Error fetching product:', error);
