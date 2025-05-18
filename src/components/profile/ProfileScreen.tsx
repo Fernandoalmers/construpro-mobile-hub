@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Avatar from '../common/Avatar';
@@ -110,8 +111,8 @@ const ProfileScreen: React.FC = () => {
         
         toast.success("Modo Vendedor ativado!");
         
-        // Navigate after a short delay to ensure state updates complete
-        setTimeout(() => navigate('/vendor'), 300);
+        // Navigate to vendor page immediately
+        navigate('/vendor');
       } else {
         // Switching back to consumer mode
         console.log("Switching back to consumer mode");
@@ -120,8 +121,7 @@ const ProfileScreen: React.FC = () => {
         setVendorMode(false);
         
         toast.success("Modo Consumidor ativado!");
-        
-        setTimeout(() => navigate('/home'), 300);
+        navigate('/home');
       }
     } catch (error) {
       console.error("Error toggling vendor mode:", error);
@@ -139,15 +139,15 @@ const ProfileScreen: React.FC = () => {
         
         toast.success("Modo Profissional ativado!");
         
-        setTimeout(() => navigate('/services'), 300);
+        // Navigate immediately instead of using setTimeout
+        navigate('/services');
       } else {
         // Switching back to consumer mode
         await updateUser({ papel: 'consumidor', tipo_perfil: 'consumidor' });
         setProfessionalMode(false);
         
         toast.success("Modo Consumidor ativado!");
-        
-        setTimeout(() => navigate('/home'), 300);
+        navigate('/home');
       }
     } catch (error) {
       console.error("Error toggling professional mode:", error);
