@@ -51,7 +51,7 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
       
       // Safely handle alternate data with explicit typing
       const alternateData = alternateResult.data;
-      const alternateProducts: ProductId[] = Array.isArray(alternateData) ? alternateData : [];
+      const alternateProducts: { id: string }[] = Array.isArray(alternateData) ? alternateData : [];
       
       if (alternateProducts.length === 0) {
         console.log('No products found in alternate table either');
