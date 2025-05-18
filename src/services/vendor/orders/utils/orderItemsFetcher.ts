@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 // Define ProductId interface to simplify typing
@@ -28,10 +29,9 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
       return [];
     }
     
-    // Safely handle the data with explicit typing to solve the "Type instantiation is excessively deep" error
-    type SimpleProductResult = { id: string }[];
-    const data = result.data as SimpleProductResult | null;
-    const vendorProducts: ProductId[] = Array.isArray(data) ? data : [];
+    // Explicitly define and cast the data type to prevent deep instantiation issues
+    const data = result.data as Array<{ id: string }> | null;
+    const vendorProducts = data || [];
     
     if (vendorProducts.length === 0) {
       console.log('No products found in produtos table, checking alternative table');
@@ -48,10 +48,9 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
         return [];
       }
       
-      // Safely handle alternate data with explicit typing
-      type SimpleProductResult = { id: string }[];
-      const alternateData = alternateResult.data as SimpleProductResult | null;
-      const alternateProducts: { id: string }[] = Array.isArray(alternateData) ? alternateData : [];
+      // Explicitly define and cast the data type to prevent deep instantiation issues
+      const alternateData = alternateResult.data as Array<{ id: string }> | null;
+      const alternateProducts = alternateData || [];
       
       if (alternateProducts.length === 0) {
         console.log('No products found in alternate table either');
@@ -143,8 +142,8 @@ export const fetchProductsForItems = async (productIds: string[]): Promise<Recor
     }
     
     // Safely handle the data with explicit typing
-    const data = result.data;
-    const produtos: RawProductData[] = Array.isArray(data) ? data : [];
+    const data = result.data as RawProductData[] | null;
+    const produtos = data || [];
     
     if (produtos.length === 0) {
       console.log('No products found matching the requested IDs');
@@ -255,8 +254,8 @@ export const fetchOrderItemsForProducts = async (productIds: string[]): Promise<
     }
     
     // Safely handle data with explicit casting
-    const data = result.data;
-    const orderItemsData: Array<Record<string, unknown>> = Array.isArray(data) ? data : [];
+    const data = result.data as Array<Record<string, unknown>> | null;
+    const orderItemsData = data || [];
     
     if (orderItemsData.length === 0) {
       console.log('No order items found for vendor products');
