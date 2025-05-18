@@ -1,191 +1,55 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { SimpleOrderItem } from './orderItemTypes';
+import { ProductData } from './productTypes';
+import { fetchProductsForItems, getVendorProductIds } from './productFetcher';
 
-// Define explicit interfaces to prevent excessive type instantiation
-interface ProductId {
-  id: string;
-}
-
-// Helper to get vendor product IDs with improved error handling
-export const getVendorProductIds = async (vendorId: string): Promise<string[]> => {
+// Fetch order items
+export const fetchOrderItemsForProducts = async (productIds: string[]): Promise<Array<Record<string, unknown>>> => {
+  if (!productIds.length) return [];
+  
   try {
-    console.log('Getting product IDs for vendor:', vendorId);
+    console.log(`Fetching order items for ${productIds.length} product IDs`);
     
-    // Check if vendorId is valid
-    if (!vendorId) {
-      console.error('Invalid vendor ID provided');
-      return [];
-    }
-    
-    // Get all produtos owned by this vendor
     const result = await supabase
-      .from('produtos')
-      .select('id')
-      .eq('vendedor_id', vendorId);
-      
-    // Handle error explicitly  
+      .from('order_items')
+      .select('id, order_id, produto_id, quantidade, preco_unitario, subtotal, created_at')
+      .in('produto_id', productIds);
+    
     if (result.error) {
-      console.error('Error fetching vendor products:', result.error);
+      console.error('Error fetching order items:', result.error);
       return [];
     }
     
-    // Important: Use type assertion with a simple array type to avoid excessive type instantiation
-    const products = result.data as { id: string }[] || [];
+    // Use simple inline type assertion without complex nesting
+    const orderItemsData = result.data as { 
+      id: string;
+      order_id: string;
+      produto_id: string;
+      quantidade: number;
+      preco_unitario: number;
+      subtotal: number;
+      created_at?: string;
+    }[] || [];
     
-    if (products.length === 0) {
-      console.log('No products found in produtos table, checking alternative table');
-      
-      // Try alternate product table as backup
-      const alternateResult = await supabase
-        .from('products')
-        .select('id')
-        .eq('vendedor_id', vendorId);
-      
-      // Handle error explicitly
-      if (alternateResult.error) {
-        console.error('Error fetching products:', alternateResult.error);
-        return [];
-      }
-      
-      // Use simple type assertion here as well
-      const alternateProducts = alternateResult.data as { id: string }[] || [];
-      
-      if (alternateProducts.length === 0) {
-        console.log('No products found in alternate table either');
-        return [];
-      }
-      
-      // Extract product IDs with clear typing
-      const productIds = alternateProducts.map(item => item.id);
-      console.log(`Found ${productIds.length} products in alternate table`);
-      return productIds;
+    if (orderItemsData.length === 0) {
+      console.log('No order items found for vendor products');
+      return [];
     }
     
-    console.log(`Found ${products.length} products for this vendor`);
-    return products.map(p => p.id);
+    console.log(`Found ${orderItemsData.length} order items for vendor products`);
+    
+    // Extract unique order IDs for diagnostics
+    const orderIds = [...new Set(orderItemsData.map(item => item.order_id))];
+    console.log(`Found ${orderIds.length} unique orders containing vendor products`);
+    
+    // Return as the expected type
+    return orderItemsData as Array<Record<string, unknown>>;
   } catch (error) {
-    console.error('Unexpected error in getVendorProductIds:', error);
+    console.error('Error fetching order items:', error);
     return [];
   }
 };
-
-// Define a simple type for product images without circular references
-export type ProductImageType = string[] | null;
-
-// Define a standalone product type with no circular references
-export interface ProductData {
-  id: string;
-  nome: string;
-  descricao: string | null;
-  preco_normal: number;
-  imagens: ProductImageType;
-}
-
-// Simplified image processing function
-function processImagens(rawImagens: unknown): ProductImageType {
-  if (!rawImagens) return null;
-  
-  // For string input
-  if (typeof rawImagens === 'string') {
-    return [rawImagens];
-  }
-  
-  // For array input
-  if (Array.isArray(rawImagens)) {
-    const result: string[] = [];
-    
-    for (const img of rawImagens) {
-      if (typeof img === 'string') {
-        result.push(img);
-      } else if (typeof img === 'object' && img !== null && 'url' in img) {
-        // Extract the URL string from an object with url property
-        const urlValue = (img as { url: string }).url;
-        if (typeof urlValue === 'string') {
-          result.push(urlValue);
-        }
-      }
-    }
-    
-    return result.length > 0 ? result : null;
-  }
-  
-  return null;
-}
-
-// Define explicit interface for raw product data to prevent type recursion
-interface RawProductData {
-  id: string;
-  nome: string;
-  descricao: string | null;
-  preco_normal: number;
-  imagens: unknown;
-}
-
-// Fetch product data with explicit typing
-export const fetchProductsForItems = async (productIds: string[]): Promise<Record<string, ProductData>> => {
-  if (!productIds.length) return {};
-  
-  try {
-    console.log(`Fetching product data for ${productIds.length} products`);
-    
-    // Use IN filter to get only the requested products
-    const result = await supabase
-      .from('produtos')
-      .select('id, nome, descricao, preco_normal, imagens')
-      .in('id', productIds);
-    
-    if (result.error) {
-      console.error('Error fetching products:', result.error);
-      return {};
-    }
-    
-    // Use simple type assertion that doesn't create complex nested types
-    const produtos = result.data as { 
-      id: string;
-      nome: string;
-      descricao: string | null;
-      preco_normal: number;
-      imagens: unknown;
-    }[] || [];
-    
-    if (produtos.length === 0) {
-      console.log('No products found matching the requested IDs');
-      return {};
-    }
-    
-    console.log(`Found ${produtos.length} products out of ${productIds.length} requested`);
-    
-    const productMap: Record<string, ProductData> = {};
-    
-    produtos.forEach(product => {
-      productMap[product.id] = {
-        id: product.id,
-        nome: product.nome || '',
-        descricao: product.descricao,
-        preco_normal: product.preco_normal || 0,
-        imagens: processImagens(product.imagens)
-      };
-    });
-    
-    return productMap;
-  } catch (error) {
-    console.error('Error fetching products for items:', error);
-    return {};
-  }
-};
-
-// Simple standalone type for order items
-export interface SimpleOrderItem {
-  id: string;
-  order_id: string;
-  produto_id: string;
-  quantidade: number;
-  preco_unitario: number;
-  subtotal: number;
-  total: number;
-  created_at?: string;
-  produto?: ProductData | null;
-}
 
 // Create a map of order items
 export const createOrderItemsMap = (
@@ -239,60 +103,7 @@ export const createOrderItemsMap = (
   return orderItemsMap;
 };
 
-// Explicit interface for order item records to avoid deep type instantiation
-interface OrderItemRecord {
-  id: string;
-  order_id: string;
-  produto_id: string;
-  quantidade: number;
-  preco_unitario: number;
-  subtotal: number;
-  created_at?: string;
-}
-
-// Fetch order items
-export const fetchOrderItemsForProducts = async (productIds: string[]): Promise<Array<Record<string, unknown>>> => {
-  if (!productIds.length) return [];
-  
-  try {
-    console.log(`Fetching order items for ${productIds.length} product IDs`);
-    
-    const result = await supabase
-      .from('order_items')
-      .select('id, order_id, produto_id, quantidade, preco_unitario, subtotal, created_at')
-      .in('produto_id', productIds);
-    
-    if (result.error) {
-      console.error('Error fetching order items:', result.error);
-      return [];
-    }
-    
-    // Use simple inline type assertion without complex nesting
-    const orderItemsData = result.data as { 
-      id: string;
-      order_id: string;
-      produto_id: string;
-      quantidade: number;
-      preco_unitario: number;
-      subtotal: number;
-      created_at?: string;
-    }[] || [];
-    
-    if (orderItemsData.length === 0) {
-      console.log('No order items found for vendor products');
-      return [];
-    }
-    
-    console.log(`Found ${orderItemsData.length} order items for vendor products`);
-    
-    // Extract unique order IDs for diagnostics
-    const orderIds = [...new Set(orderItemsData.map(item => item.order_id))];
-    console.log(`Found ${orderIds.length} unique orders containing vendor products`);
-    
-    // Return as the expected type
-    return orderItemsData as Array<Record<string, unknown>>;
-  } catch (error) {
-    console.error('Error fetching order items:', error);
-    return [];
-  }
-};
+// Re-export from productFetcher for backward compatibility
+export { getVendorProductIds, fetchProductsForItems } from './productFetcher';
+export type { ProductData, ProductImageType } from './productTypes';
+export type { SimpleOrderItem } from './orderItemTypes';
