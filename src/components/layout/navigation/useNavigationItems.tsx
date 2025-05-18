@@ -1,8 +1,18 @@
+
 import React from 'react';
 import { Home, ShoppingBag, LayoutDashboard, Package, User, Gift, ShoppingCart, Settings } from 'lucide-react';
 import { useCart } from '@/hooks/use-cart';
 
-export function useNavigationItems(userRole: string) {
+// Define the type for navigation items
+export interface NavigationItem {
+  name: string;
+  path: string;
+  icon: React.ReactNode;
+  tooltip: string;
+  badge?: string;  // Make badge optional
+}
+
+export function useNavigationItems(userRole: string): NavigationItem[] {
   const { cartCount } = useCart();
 
   // Debug logging
@@ -11,7 +21,7 @@ export function useNavigationItems(userRole: string) {
   }, [userRole]);
 
   // Common navigation items for all users
-  const commonItems = [
+  const commonItems: NavigationItem[] = [
     {
       name: 'Home',
       path: '/home',
@@ -27,7 +37,7 @@ export function useNavigationItems(userRole: string) {
   ];
 
   // Navigation items specific to vendors
-  const vendorItems = [
+  const vendorItems: NavigationItem[] = [
     ...commonItems,
     {
       name: 'Vendas',
@@ -50,7 +60,7 @@ export function useNavigationItems(userRole: string) {
   ];
 
   // Navigation items specific to consumers
-  const consumerItems = [
+  const consumerItems: NavigationItem[] = [
     ...commonItems,
     {
       name: 'Recompensas',
@@ -75,7 +85,7 @@ export function useNavigationItems(userRole: string) {
   ];
 
   // Admin specific items
-  const adminItems = [
+  const adminItems: NavigationItem[] = [
     ...commonItems,
     {
       name: 'Admin',
