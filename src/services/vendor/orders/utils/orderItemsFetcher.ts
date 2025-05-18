@@ -27,23 +27,22 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
     if (!vendorProducts || vendorProducts.length === 0) {
       console.log('No products found in produtos table, checking alternative table');
       
-      // Try alternate product table as backup - using explicit type annotation
+      // Try alternate product table as backup with explicit type annotation
       const { data, error } = await supabase
-        .from('products') // Alternative product table that might be used
+        .from('products')
         .select('id')
         .eq('vendedor_id', vendorId);
-        
-      // Assign to properly typed variables to avoid inference issues
-      const altProducts = data as Array<{id: string}> | null;
-      const altError = error;
       
-      if (altError || !altProducts || altProducts.length === 0) {
+      // Explicitly cast data to simplify type inference
+      if (error || !data) {
         console.log('No products found in alternate table either');
         return [];
       }
       
-      console.log(`Found ${altProducts.length} products in alternate table`);
-      return altProducts.map(p => p.id);
+      // Convert the result to a simple string array to avoid complex typing
+      const productIds = data.map(item => String(item.id));
+      console.log(`Found ${productIds.length} products in alternate table`);
+      return productIds;
     }
     
     console.log(`Found ${vendorProducts.length} products for this vendor`);
@@ -54,8 +53,8 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
   }
 };
 
-// Use primitive types to avoid circular references - simplified to avoid deep instantiation
-export type ProductImageType = null | string[] | {url: string}[];
+// Define a simple, non-recursive type for product images
+export type ProductImageType = string[] | null;
 
 // Define a standalone product type with no circular references
 export interface ProductData {
@@ -77,32 +76,21 @@ function processImagens(rawImagens: unknown): ProductImageType {
   
   // For array input
   if (Array.isArray(rawImagens)) {
-    // Convert to simple arrays without excessive nesting
-    const result = [];
+    const result: string[] = [];
     
     for (const img of rawImagens) {
       if (typeof img === 'string') {
         result.push(img);
-      } else if (typeof img === 'object' && img !== null && 'url' in img && typeof img.url === 'string') {
-        result.push({url: img.url});
+      } else if (typeof img === 'object' && img !== null && 'url' in img) {
+        // Extract the URL string from an object with url property
+        const urlValue = (img as { url: string }).url;
+        if (typeof urlValue === 'string') {
+          result.push(urlValue);
+        }
       }
     }
     
-    // If we have any results, return them as appropriate type
-    if (result.length > 0) {
-      // Check if all items are strings or all items are objects
-      const hasStrings = result.some(item => typeof item === 'string');
-      const hasObjects = result.some(item => typeof item === 'object');
-      
-      if (hasStrings && !hasObjects) {
-        return result as string[];
-      } else if (hasObjects && !hasStrings) {
-        return result as {url: string}[];
-      } else {
-        // Mixed types - convert objects to strings for consistency
-        return result.map(item => typeof item === 'string' ? item : item.url) as string[];
-      }
-    }
+    return result.length > 0 ? result : null;
   }
   
   return null;
