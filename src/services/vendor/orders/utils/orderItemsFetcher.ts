@@ -55,7 +55,14 @@ export const fetchProductsForItems = async (productIds: string[]): Promise<Recor
     const productMap: Record<string, any> = {};
     if (produtos) {
       produtos.forEach(product => {
-        productMap[product.id] = product;
+        // Create a simple product object without circular references
+        productMap[product.id] = {
+          id: product.id,
+          nome: product.nome,
+          descricao: product.descricao,
+          preco_normal: product.preco_normal,
+          imagens: product.imagens
+        };
       });
     }
     
