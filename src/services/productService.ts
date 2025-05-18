@@ -144,7 +144,7 @@ export const getProducts = async (filters = {}): Promise<Product[]> => {
     }
     
     // Transform each record to ensure type compatibility
-    return (data || []).map(item => transformToProduct(item as ProductDatabaseRecord));
+    return (data || []).map(item => transformToProduct(item as unknown as ProductDatabaseRecord));
   } catch (error) {
     console.error('Error in getProducts:', error);
     toast.error('Erro ao carregar produtos');
@@ -177,7 +177,7 @@ export const getProductById = async (id: string): Promise<Product | null> => {
     // Add store information if available
     if (data.vendedores && typeof data.vendedores === 'object' && data.vendedores !== null) {
       // Explicitly type vendedorData to avoid 'never' type issues
-      const vendedorData = data.vendedores as { nome_loja?: string; logo_url?: string };
+      const vendedorData = data.vendedores as VendorData;
       
       product.stores = {
         id: data.vendedor_id || '',
