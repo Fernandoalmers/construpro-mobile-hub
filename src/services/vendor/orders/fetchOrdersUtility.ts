@@ -3,9 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { VendorOrder } from './types';
 import { 
   fetchOrdersFromPedidos, 
-  fetchOrdersFromOrderItems, 
-  getVendorProductIds 
+  fetchOrdersFromOrderItems 
 } from './utils/ordersFetcher';
+import { getVendorProductIds } from './utils/orderItemsFetcher';
 import { logDiagnosticInfo } from './utils/diagnosticUtils';
 import { getVendorProfile } from '../../vendorProfileService';
 

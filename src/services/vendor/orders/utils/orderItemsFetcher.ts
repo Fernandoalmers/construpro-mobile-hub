@@ -29,10 +29,10 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
       return [];
     }
     
-    // Safely cast the data after checking for errors
-    const vendorProducts = result.data as ProductId[] | null;
+    // Fixed: Use explicit type annotation for produtos and avoid complex type inference
+    const vendorProducts: ProductId[] = result.data || [];
     
-    if (!vendorProducts || vendorProducts.length === 0) {
+    if (vendorProducts.length === 0) {
       console.log('No products found in produtos table, checking alternative table');
       
       // Try alternate product table as backup
@@ -47,16 +47,16 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
         return [];
       }
       
-      // Handle data safely with explicit casting after the query
-      const alternateProducts = alternateResult.data as ProductId[] | null;
+      // Fixed: Use explicit type annotation for alternate products
+      const alternateProducts: ProductId[] = alternateResult.data || [];
       
-      if (!alternateProducts || alternateProducts.length === 0) {
+      if (alternateProducts.length === 0) {
         console.log('No products found in alternate table either');
         return [];
       }
       
-      // Fixed: Use explicit type for productIds and avoid string conversion if not needed
-      const productIds: string[] = alternateProducts.map(item => item.id);
+      // Fixed: Extract product IDs with clear typing
+      const productIds = alternateProducts.map(item => item.id);
       console.log(`Found ${productIds.length} products in alternate table`);
       return productIds;
     }

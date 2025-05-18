@@ -5,9 +5,11 @@ import { fetchCustomerInfo } from './clientInfoFetcher';
 import { VendorCustomer } from '../../../vendorCustomersService';
 import {
   fetchOrderItemsForProducts,
-  getVendorProductIds,
   createOrderItemsMap
 } from './orderItemsFetcher';
+
+// Re-export getVendorProductIds from orderItemsFetcher
+export { getVendorProductIds } from './orderItemsFetcher';
 
 // Helper to get orders from the pedidos table (old structure)
 export const fetchOrdersFromPedidos = async (vendorId: string): Promise<VendorOrder[]> => {
