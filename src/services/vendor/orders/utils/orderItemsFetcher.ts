@@ -45,7 +45,7 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
 };
 
 // Define a simplified product type without circular references
-interface ProductData {
+export interface ProductData {
   id: string;
   nome: string;
   descricao: string;
@@ -55,6 +55,8 @@ interface ProductData {
 
 // Fetch product data for a list of product IDs
 export const fetchProductsForItems = async (productIds: string[]): Promise<Record<string, ProductData>> => {
+  if (!productIds.length) return {};
+  
   try {
     const { data: produtos } = await supabase
       .from('produtos')
@@ -75,7 +77,7 @@ export const fetchProductsForItems = async (productIds: string[]): Promise<Recor
               if (typeof img === 'string') return img;
               if (typeof img === 'object' && img.url) return img;
               return '';
-            }).filter(Boolean);
+            }).filter((img): img is string | { url: string } => !!img);
           }
         }
         
@@ -96,12 +98,25 @@ export const fetchProductsForItems = async (productIds: string[]): Promise<Recor
   }
 };
 
+// Create a simplified order item type to avoid circular references
+export type SimpleOrderItem = {
+  id: string;
+  order_id: string;
+  produto_id: string;
+  quantidade: number;
+  preco_unitario: number;
+  subtotal: number;
+  total: number;
+  created_at?: string;
+  produto?: ProductData | null;
+};
+
 // Process order items to create a map keyed by order_id
 export const createOrderItemsMap = (
   orderItemsData: any[], 
   productMap: Record<string, ProductData>
-): Record<string, OrderItem[]> => {
-  const orderItemsMap: Record<string, OrderItem[]> = {};
+): Record<string, SimpleOrderItem[]> => {
+  const orderItemsMap: Record<string, SimpleOrderItem[]> = {};
   
   orderItemsData.forEach(item => {
     if (!orderItemsMap[item.order_id]) {
@@ -112,17 +127,15 @@ export const createOrderItemsMap = (
     const produto = productMap[item.produto_id] || null;
     
     // Create order item with explicit properties to avoid circular references
-    const orderItem: OrderItem = {
+    const orderItem: SimpleOrderItem = {
       id: item.id,
       order_id: item.order_id,
       produto_id: item.produto_id,
       quantidade: item.quantidade,
       preco_unitario: item.preco_unitario,
-      subtotal: item.subtotal,
+      subtotal: item.subtotal || 0,
       total: item.subtotal || (item.quantidade * item.preco_unitario) || 0,
       produto: produto,
-      pedido_id: undefined,
-      produtos: null,
       created_at: item.created_at
     };
     
