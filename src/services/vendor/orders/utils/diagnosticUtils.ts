@@ -1,159 +1,139 @@
-import { supabase } from '@/integrations/supabase/client';
 
-// Log diagnostic information for debugging
-export const logDiagnosticInfo = async (vendorId: string): Promise<any> => {
+import { supabase } from '@/integrations/supabase/client';
+import { getVendorProfile } from '@/services/vendorProfileService';
+
+export const logDiagnosticInfo = async (vendorId: string) => {
   try {
-    console.log('Running diagnostics for vendor:', vendorId);
+    console.log(`🔍 [diagnosticUtils] Running diagnostic checks for vendor: ${vendorId}`);
     
-    // Create a diagnostics object to store results
-    const diagnosticInfo: Record<string, any> = {};
-    
-    // 1. Verify vendor exists
-    const { data: vendorData, error: vendorError } = await supabase
+    // Check vendor profile
+    const { data: vendorProfile, error: vendorError } = await supabase
       .from('vendedores')
-      .select('id, nome_loja, usuario_id, status')
+      .select('*')
       .eq('id', vendorId)
       .single();
       
-    if (vendorError || !vendorData) {
-      console.error('Vendor not found in database:', vendorError);
-      diagnosticInfo.vendorExists = false;
-      return diagnosticInfo;
+    if (vendorError) {
+      console.error('🚫 [diagnosticUtils] Error fetching vendor profile:', vendorError);
+    } else {
+      console.log('ℹ️ [diagnosticUtils] Vendor profile:', vendorProfile);
     }
     
-    diagnosticInfo.vendorExists = true;
-    diagnosticInfo.vendorProfile = vendorData;
-    diagnosticInfo.vendorStatus = vendorData.status || 'unknown';
-    
-    console.log('Vendor exists:', vendorData.nome_loja);
-    console.log('Vendor status:', vendorData.status || 'unknown');
-    
-    // 2. Check for vendor's products
-    const { data: productsData, error: productsError } = await supabase
+    // Check vendor products
+    const { data: products, error: productsError } = await supabase
       .from('produtos')
       .select('id, nome, status')
       .eq('vendedor_id', vendorId);
       
     if (productsError) {
-      console.error('Error fetching products:', productsError);
-      diagnosticInfo.productsError = productsError.message;
+      console.error('🚫 [diagnosticUtils] Error fetching vendor products:', productsError);
     } else {
-      diagnosticInfo.productCount = productsData?.length || 0;
-      diagnosticInfo.productsWithStatus = {};
-      
-      // Count products by status
-      if (productsData && productsData.length > 0) {
-        productsData.forEach(product => {
-          const status = product.status || 'unknown';
-          diagnosticInfo.productsWithStatus[status] = 
-            (diagnosticInfo.productsWithStatus[status] || 0) + 1;
-        });
+      console.log(`ℹ️ [diagnosticUtils] Vendor has ${products.length} products`);
+      console.log('ℹ️ [diagnosticUtils] Product status breakdown:', 
+        products.reduce((acc: Record<string, number>, product) => {
+          acc[product.status] = (acc[product.status] || 0) + 1;
+          return acc;
+        }, {})
+      );
+    }
+    
+    // Check order_items for this vendor's products
+    if (products && products.length > 0) {
+      const productIds = products.map(p => p.id);
+      const { data: orderItems, error: orderItemsError } = await supabase
+        .from('order_items')
+        .select('id, order_id')
+        .in('produto_id', productIds)
+        .limit(100);
         
-        console.log(`Found ${productsData.length} products`);
-        console.log('Products by status:', diagnosticInfo.productsWithStatus);
-        
-        // 3. Check for order items related to these products
-        if (productsData.length > 0) {
-          const productIds = productsData.map(p => p.id);
-          
-          const { data: orderItemsCountResult, error: orderItemsError } = await supabase
-            .from('order_items')
-            .select('count', { count: 'exact', head: true });
-            
-          if (orderItemsError) {
-            console.error('Error checking order items:', orderItemsError);
-            diagnosticInfo.orderItemsError = orderItemsError.message;
-          } else {
-            // Fix: Extract the count value correctly
-            diagnosticInfo.orderItemsCount = orderItemsCountResult || 0;
-            console.log(`Found ${diagnosticInfo.orderItemsCount} order items for vendor products`);
-            
-            // If we have order items, check for corresponding orders
-            if (diagnosticInfo.orderItemsCount > 0) {
-              const { data: orderItemsSample, error: sampleError } = await supabase
-                .from('order_items')
-                .select('order_id')
-                .in('produto_id', productIds)
-                .limit(10);
-                
-              if (!sampleError && orderItemsSample) {
-                const orderIds = [...new Set(orderItemsSample.map(item => item.order_id))];
-                diagnosticInfo.sampleOrderIds = orderIds;
-                
-                const { data: ordersData, error: ordersError } = await supabase
-                  .from('orders')
-                  .select('id, status, created_at')
-                  .in('id', orderIds);
-                  
-                if (ordersError) {
-                  console.error('Error checking orders:', ordersError);
-                  diagnosticInfo.ordersError = ordersError.message;
-                } else {
-                  diagnosticInfo.sampleOrdersFound = ordersData?.length || 0;
-                  console.log(`Found ${diagnosticInfo.sampleOrdersFound} orders out of ${orderIds.length} sampled`);
-                }
-              }
-            }
-          }
-        }
+      if (orderItemsError) {
+        console.error('🚫 [diagnosticUtils] Error fetching order items:', orderItemsError);
       } else {
-        console.log('No products found for vendor');
+        console.log(`ℹ️ [diagnosticUtils] Found ${orderItems.length} order items for vendor products`);
       }
     }
     
-    return diagnosticInfo;
+    // Check for the existence of the order_items table
+    const { data: tableInfo, error: tableError } = await supabase
+      .rpc('check_table_exists', { table_name: 'order_items' });
+      
+    if (tableError) {
+      console.error('🚫 [diagnosticUtils] Error checking order_items table:', tableError);
+    } else {
+      console.log('ℹ️ [diagnosticUtils] order_items table exists:', tableInfo);
+    }
+    
+    // Count total order_items
+    const { data: itemsCount, error: countError } = await supabase
+      .from('order_items')
+      .select('count');
+      
+    if (countError) {
+      console.error('🚫 [diagnosticUtils] Error counting order items:', countError);
+    } else if (itemsCount && itemsCount.length > 0) {
+      console.log(`ℹ️ [diagnosticUtils] Total order_items in database: ${itemsCount[0].count}`);
+    }
+    
+    // Return diagnostic info
+    return {
+      vendorProfile,
+      productCount: products?.length || 0,
+      productStatuses: products ? products.reduce((acc: Record<string, number>, product) => {
+        acc[product.status] = (acc[product.status] || 0) + 1;
+        return acc;
+      }, {}) : {},
+      orderItemsCount: orderItems?.length || 0,
+      diagnosticTime: new Date().toISOString()
+    };
   } catch (error) {
-    console.error('Error in logDiagnosticInfo:', error);
+    console.error('🚫 [diagnosticUtils] Error running diagnostics:', error);
     return { error: String(error) };
   }
 };
 
-// Update vendor status if needed
-export const updateVendorStatus = async (vendorId: string, newStatus: string): Promise<{ success: boolean, error?: string }> => {
+export const runVendorDiagnostics = async () => {
   try {
-    console.log(`Updating vendor ${vendorId} status to ${newStatus}`);
+    console.log('🔍 [runVendorDiagnostics] Starting vendor diagnostics');
     
-    const { error } = await supabase
+    // Get current vendor
+    const vendorProfile = await getVendorProfile();
+    if (!vendorProfile) {
+      console.error('🚫 [runVendorDiagnostics] No vendor profile found');
+      return { error: 'No vendor profile found' };
+    }
+    
+    // Run diagnostics
+    const diagnosticInfo = await logDiagnosticInfo(vendorProfile.id);
+    
+    return {
+      vendorProfile,
+      diagnosticInfo,
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('🚫 [runVendorDiagnostics] Error:', error);
+    return { error: String(error) };
+  }
+};
+
+export const updateVendorStatus = async (vendorId: string, status: 'ativo' | 'pendente' | 'inativo') => {
+  try {
+    console.log(`🔧 [updateVendorStatus] Updating vendor ${vendorId} status to ${status}`);
+    
+    const { data, error } = await supabase
       .from('vendedores')
-      .update({ status: newStatus })
+      .update({ status })
       .eq('id', vendorId);
       
     if (error) {
-      console.error('Error updating vendor status:', error);
-      return { success: false, error: error.message };
+      console.error('🚫 [updateVendorStatus] Error updating vendor status:', error);
+      return { success: false, error };
     }
     
-    console.log(`Successfully updated vendor status to ${newStatus}`);
-    return { success: true };
+    console.log(`✅ [updateVendorStatus] Successfully updated vendor status to ${status}`);
+    return { success: true, data };
   } catch (error) {
-    console.error('Error in updateVendorStatus:', error);
+    console.error('🚫 [updateVendorStatus] Error:', error);
     return { success: false, error: String(error) };
-  }
-};
-
-// Run comprehensive vendor diagnostics
-export const runVendorDiagnostics = async (): Promise<any> => {
-  try {
-    // Get current vendor
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) {
-      return { error: 'No authenticated user' };
-    }
-    
-    const { data: vendorData, error: vendorError } = await supabase
-      .from('vendedores')
-      .select('*')
-      .eq('usuario_id', userData.user.id)
-      .single();
-      
-    if (vendorError || !vendorData) {
-      return { error: 'Vendor profile not found' };
-    }
-    
-    // Run diagnostics on this vendor
-    return await logDiagnosticInfo(vendorData.id);
-  } catch (error) {
-    console.error('Error in runVendorDiagnostics:', error);
-    return { error: String(error) };
   }
 };

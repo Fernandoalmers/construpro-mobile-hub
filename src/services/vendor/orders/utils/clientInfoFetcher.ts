@@ -9,11 +9,11 @@ export const fetchCustomerInfo = async (
 ): Promise<VendorCustomer | undefined> => {
   try {
     if (!clienteId) {
-      console.log('No cliente_id provided to fetchCustomerInfo');
+      console.log('⚠️ [fetchCustomerInfo] No cliente_id provided');
       return undefined;
     }
     
-    console.log(`Fetching customer info for cliente_id: ${clienteId}`);
+    console.log(`🔍 [fetchCustomerInfo] Fetching customer info for cliente_id: ${clienteId}`);
     
     // Try to get from clientes_vendedor first as it might have cached information
     const { data: clienteVendedor, error: clienteError } = await supabase
@@ -24,16 +24,16 @@ export const fetchCustomerInfo = async (
       .maybeSingle();
       
     if (clienteVendedor && !clienteError) {
-      console.log('Customer info found in clientes_vendedor');
+      console.log('✅ [fetchCustomerInfo] Customer info found in clientes_vendedor');
       return {
         id: clienteVendedor.id,
         vendedor_id: vendorId,
         usuario_id: clienteVendedor.usuario_id,
         nome: clienteVendedor.nome || 'Cliente',
-        email: clienteVendedor.email,
-        telefone: clienteVendedor.telefone,
-        total_gasto: clienteVendedor.total_gasto,
-        ultimo_pedido: clienteVendedor.ultimo_pedido
+        email: clienteVendedor.email || '',
+        telefone: clienteVendedor.telefone || '',
+        total_gasto: clienteVendedor.total_gasto || 0,
+        ultimo_pedido: clienteVendedor.ultimo_pedido || null
       };
     }
     
@@ -45,7 +45,7 @@ export const fetchCustomerInfo = async (
       .single();
       
     if (profileError) {
-      console.error('Error fetching customer profile:', profileError);
+      console.error('🚫 [fetchCustomerInfo] Error fetching customer profile:', profileError);
       return {
         id: clienteId,
         vendedor_id: vendorId,
@@ -68,7 +68,7 @@ export const fetchCustomerInfo = async (
       ultimo_pedido: null
     };
   } catch (error) {
-    console.error('Error in fetchCustomerInfo:', error);
+    console.error('🚫 [fetchCustomerInfo] Error:', error);
     return {
       id: clienteId,
       vendedor_id: vendorId,

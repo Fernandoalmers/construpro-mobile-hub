@@ -94,8 +94,8 @@ export const fetchOrdersById = async (orderIds: string[]): Promise<any[]> => {
   if (!orderIds.length) return [];
   
   try {
-    console.log(`Fetching ${orderIds.length} orders by IDs`);
-    console.log('Order IDs sample:', orderIds.slice(0, 3));
+    console.log(`📝 [fetchOrdersById] Fetching ${orderIds.length} orders by IDs`);
+    console.log('📝 [fetchOrdersById] Order IDs sample:', orderIds.slice(0, 3));
     
     const { data: ordersData, error: ordersError } = await supabase
       .from('orders')
@@ -113,21 +113,21 @@ export const fetchOrdersById = async (orderIds: string[]): Promise<any[]> => {
       .order('created_at', { ascending: false });
     
     if (ordersError) {
-      console.error('Error fetching orders by ID:', ordersError);
+      console.error('🚫 [fetchOrdersById] Error fetching orders by ID:', ordersError);
       return [];
     }
     
     if (!ordersData || ordersData.length === 0) {
-      console.log('No orders found matching the provided IDs');
+      console.log('⚠️ [fetchOrdersById] No orders found matching the provided IDs');
       return [];
     }
     
-    console.log(`Successfully fetched ${ordersData.length} orders out of ${orderIds.length} requested`);
-    console.log('Sample order:', ordersData[0]);
+    console.log(`✅ [fetchOrdersById] Successfully fetched ${ordersData.length} orders out of ${orderIds.length} requested`);
+    console.log('📦 [fetchOrdersById] Sample order:', ordersData[0]);
     
     return ordersData;
   } catch (error) {
-    console.error('Error fetching orders by ID:', error);
+    console.error('🚫 [fetchOrdersById] Error:', error);
     return [];
   }
 };
@@ -207,12 +207,12 @@ export const fetchOrdersFromOrderItems = async (
   productIds: string[]
 ): Promise<VendorOrder[]> => {
   if (!productIds.length) {
-    console.log('No product IDs provided for fetchOrdersFromOrderItems');
+    console.log('⚠️ [fetchOrdersFromOrderItems] No product IDs provided');
     return [];
   }
   
   try {
-    console.log(`Fetching orders from order_items for ${productIds.length} products`);
+    console.log(`🔍 [fetchOrdersFromOrderItems] Fetching orders for ${productIds.length} products`);
     
     // Get all order items containing vendor products
     const { data: orderItemsData, error: orderItemsError } = await supabase
@@ -221,44 +221,61 @@ export const fetchOrdersFromOrderItems = async (
       .in('produto_id', productIds);
       
     if (orderItemsError) {
-      console.error('Error fetching order items:', orderItemsError);
+      console.error('🚫 [fetchOrdersFromOrderItems] Error fetching order items:', orderItemsError);
       return [];
     }
     
     if (!orderItemsData || orderItemsData.length === 0) {
-      console.log('No order items found for vendor products');
+      console.log('⚠️ [fetchOrdersFromOrderItems] No order items found for vendor products');
       
-      // Emergency debug query
+      // Emergency debug query to check if order_items table exists and has data
       const { data: debugItems, error: debugError } = await supabase
         .from('order_items')
         .select('count')
         .limit(1);
         
       if (debugError) {
-        console.error('Debug query error:', debugError);
+        console.error('🚫 [Debug] Error querying order_items:', debugError);
       } else {
-        console.log('Debug query result:', debugItems);
+        console.log('ℹ️ [Debug] order_items table exists with data:', debugItems);
+      }
+      
+      // Check if products exist in the database
+      const { data: checkProducts, error: checkProductsError } = await supabase
+        .from('produtos')
+        .select('id, nome')
+        .in('id', productIds.slice(0, 5))
+        .limit(5);
+        
+      if (checkProductsError) {
+        console.error('🚫 [Debug] Error checking products:', checkProductsError);
+      } else {
+        console.log(`ℹ️ [Debug] Checked ${checkProducts?.length || 0} products:`, checkProducts);
       }
       
       return [];
     }
     
-    console.log(`Found ${orderItemsData.length} order items for vendor products`);
+    console.log(`✅ [fetchOrdersFromOrderItems] Found ${orderItemsData.length} order items for vendor products`);
+    console.log('📊 [fetchOrdersFromOrderItems] Sample order item:', orderItemsData[0]);
     
     // Get unique order IDs from order items
-    const orderIds: string[] = [...new Set(orderItemsData.map(item => item.order_id).filter(Boolean) as string[])];
-    console.log(`Found ${orderIds.length} unique orders containing vendor products`);
+    const orderIds = Array.from(new Set(orderItemsData.map(item => item.order_id).filter(Boolean)));
+    console.log(`🔢 [fetchOrdersFromOrderItems] Found ${orderIds.length} unique orders containing vendor products`);
+    
+    // Convert to string array safely
+    const validOrderIds: string[] = orderIds.filter(id => typeof id === 'string') as string[];
     
     // Fetch full orders data
-    const ordersData = await fetchOrdersById(orderIds);
+    const ordersData = await fetchOrdersById(validOrderIds);
     if (!ordersData.length) {
-      console.log('Failed to fetch order data');
+      console.log('⚠️ [fetchOrdersFromOrderItems] Failed to fetch order data');
       return [];
     }
     
     // Fetch products data for order items
-    const productIdsInItems = [...new Set(orderItemsData.map(item => item.produto_id).filter(Boolean) as string[])];
-    const productMap = await fetchProductsForItems(productIdsInItems);
+    const productIdsInItems = Array.from(new Set(orderItemsData.map(item => item.produto_id).filter(Boolean)));
+    const productMap = await fetchProductsForItems(productIdsInItems as string[]);
     
     // Group order items by order ID with product data
     const orderItemsMap: Record<string, OrderItem[]> = {};
@@ -286,6 +303,8 @@ export const fetchOrdersFromOrderItems = async (
       }
     }
     
+    console.log(`📊 [fetchOrdersFromOrderItems] Created order items map with ${Object.keys(orderItemsMap).length} orders`);
+    
     // Process vendor-specific orders
     const vendorOrders = await processVendorOrdersFromOrderItems(
       ordersData,
@@ -293,10 +312,10 @@ export const fetchOrdersFromOrderItems = async (
       vendorId
     );
     
-    console.log(`Returning ${vendorOrders.length} vendor orders`);
+    console.log(`📦 [fetchOrdersFromOrderItems] Returning ${vendorOrders.length} vendor orders`);
     return vendorOrders;
   } catch (error) {
-    console.error('Error in fetchOrdersFromOrderItems:', error);
+    console.error('🚫 [fetchOrdersFromOrderItems] Error:', error);
     return [];
   }
 };

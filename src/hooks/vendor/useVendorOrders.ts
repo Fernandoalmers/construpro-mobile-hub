@@ -18,22 +18,27 @@ export const useVendorOrders = () => {
   useEffect(() => {
     const checkVendorProfile = async () => {
       try {
+        console.log("🔍 [useVendorOrders] Checking vendor profile...");
         const profile = await getVendorProfile();
+        
         if (profile) {
           setVendorProfileStatus('found');
-          console.log("Vendor profile found:", profile.nome_loja);
-          console.log("Vendor ID:", profile.id);
-          console.log("Vendor usuario_id:", profile.usuario_id);
-          console.log("Vendor status:", profile.status || 'unknown');
+          console.log("✅ [useVendorOrders] Vendor profile found:", {
+            id: profile.id,
+            nome_loja: profile.nome_loja,
+            usuario_id: profile.usuario_id,
+            status: profile.status || 'unknown'
+          });
           
           // Run diagnostics when profile is found
+          console.log("🔍 [useVendorOrders] Running vendor diagnostics...");
           const diagnostics = await runVendorDiagnostics();
           setDiagnosticResults(diagnostics);
-          console.log("Diagnostics completed:", diagnostics);
+          console.log("📊 [useVendorOrders] Diagnostics completed:", diagnostics);
           
           // Check if vendor status is pending, which might be preventing orders from showing
           if (profile.status === 'pendente') {
-            console.warn("⚠️ Vendor status is 'pendente', which may be preventing orders from displaying");
+            console.warn("⚠️ [useVendorOrders] Vendor status is 'pendente', which may be preventing orders from displaying");
             
             // Auto-fix vendor status after a short delay
             setTimeout(async () => {
@@ -42,13 +47,13 @@ export const useVendorOrders = () => {
           }
         } else {
           setVendorProfileStatus('not_found');
-          console.error("No vendor profile found for current user");
+          console.error("🚫 [useVendorOrders] No vendor profile found for current user");
           toast.error("Perfil de vendedor não encontrado", {
             description: "Configure seu perfil de vendedor para acessar esta funcionalidade"
           });
         }
       } catch (error) {
-        console.error("Error checking vendor profile:", error);
+        console.error("🚫 [useVendorOrders] Error checking vendor profile:", error);
         setVendorProfileStatus('not_found');
       }
     };
@@ -61,7 +66,7 @@ export const useVendorOrders = () => {
     try {
       setIsFixingVendorStatus(true);
       
-      console.log("Attempting to fix vendor status to 'ativo'");
+      console.log("🔧 [useVendorOrders] Attempting to fix vendor status to 'ativo'");
       const result = await updateVendorStatus(vendorId, 'ativo');
       
       if (result.success) {
@@ -71,16 +76,17 @@ export const useVendorOrders = () => {
         
         // Wait a moment before refreshing
         setTimeout(() => {
+          console.log("🔄 [useVendorOrders] Refreshing orders after status update");
           queryClient.invalidateQueries({ queryKey: ['vendorOrders'] });
           refetch();
         }, 1000);
       } else {
-        console.error("Failed to update vendor status:", result.error);
+        console.error("🚫 [useVendorOrders] Failed to update vendor status:", result.error);
       }
       
       setIsFixingVendorStatus(false);
     } catch (error) {
-      console.error("Error fixing vendor status:", error);
+      console.error("🚫 [useVendorOrders] Error fixing vendor status:", error);
       setIsFixingVendorStatus(false);
     }
   };
@@ -90,16 +96,21 @@ export const useVendorOrders = () => {
     const fixProfileRole = async () => {
       try {
         if (vendorProfileStatus === 'found') {
+          console.log("🔧 [useVendorOrders] Ensuring vendor profile role...");
           const updated = await ensureVendorProfileRole();
           setProfileRoleFixed(updated);
+          
           if (updated) {
+            console.log("✅ [useVendorOrders] Vendor profile role updated successfully");
             toast.success('Perfil de vendedor configurado com sucesso');
             // Invalidate queries to refresh data
             queryClient.invalidateQueries({ queryKey: ['vendorOrders'] });
+          } else {
+            console.log("ℹ️ [useVendorOrders] Vendor profile role already correct, no update needed");
           }
         }
       } catch (error) {
-        console.error("Error fixing profile role:", error);
+        console.error("🚫 [useVendorOrders] Error fixing profile role:", error);
         toast.error("Erro ao configurar perfil de vendedor");
       }
     };
@@ -117,15 +128,17 @@ export const useVendorOrders = () => {
   } = useQuery({
     queryKey: ['vendorOrders'],
     queryFn: async () => {
-      console.log("Fetching vendor orders from service...");
+      console.log("🔍 [useVendorOrders] Fetching vendor orders from service...");
       const results = await getVendorOrders();
-      console.log(`Fetched ${results.length} vendor orders`);
+      console.log(`📊 [useVendorOrders] Fetched ${results.length} vendor orders`);
       
       // Additional check for debugging if no orders were found
       if (results.length === 0) {
+        console.log("⚠️ [useVendorOrders] No orders returned from getVendorOrders");
+        
         const profile = await getVendorProfile();
         if (profile) {
-          console.log("Vendor profile re-checked:", {
+          console.log("ℹ️ [useVendorOrders] Vendor profile re-checked:", {
             id: profile.id,
             nome_loja: profile.nome_loja,
             usuario_id: profile.usuario_id,
@@ -134,9 +147,15 @@ export const useVendorOrders = () => {
           
           // If status is pending, log a warning
           if (profile.status === 'pendente') {
-            console.warn("⚠️ Vendor has status 'pendente', which may be preventing orders from showing");
+            console.warn("⚠️ [useVendorOrders] Vendor has status 'pendente', which may be preventing orders from showing");
           }
         }
+      } else {
+        console.log("✅ [useVendorOrders] Orders found, sample first order:", {
+          id: results[0]?.id,
+          status: results[0]?.status,
+          items_count: results[0]?.itens?.length || 0
+        });
       }
       
       return results;
@@ -149,7 +168,7 @@ export const useVendorOrders = () => {
   // Force refresh whenever the component mounts or profile role is fixed
   useEffect(() => {
     if (vendorProfileStatus === 'found' && !isFixingVendorStatus) {
-      console.log("Automatically refreshing vendor orders");
+      console.log("🔄 [useVendorOrders] Automatically refreshing vendor orders");
       refetch();
     }
   }, [refetch, profileRoleFixed, vendorProfileStatus, isFixingVendorStatus]);
@@ -157,7 +176,7 @@ export const useVendorOrders = () => {
   const handleRefresh = () => {
     if (vendorProfileStatus === 'found') {
       toast.info('Atualizando lista de pedidos...');
-      console.log("Manually refreshing vendor orders");
+      console.log("🔄 [useVendorOrders] Manually refreshing vendor orders");
       
       // Clear cache first to ensure fresh data
       queryClient.invalidateQueries({ queryKey: ['vendorOrders'] });
