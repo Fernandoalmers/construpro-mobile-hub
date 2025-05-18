@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { getVendorProfile } from '../../vendorProfileService';
 import { VendorCustomer } from '../../vendorCustomersService';
@@ -136,151 +137,7 @@ export const fetchOrdersFromOrderItems = async (vendorId: string, productIds: st
   try {
     console.log(`Fetching order items for ${productIds.length} vendor products`);
     
-    // Fix: Limit the fields selected to avoid deep type instantiation
-    const { data: orderItemsWithOrdersData, error: joinQueryError } = await supabase
-      .from('order_items')
-      .select(`
-        id,
-        order_id,
-        produto_id,
-        quantidade,
-        preco_unitario,
-        subtotal,
-        orders!inner(
-          id, 
-          cliente_id, 
-          valor_total,
-          status,
-          forma_pagamento,
-          endereco_entrega,
-          created_at,
-          updated_at
-        ),
-        produtos!inner(id, nome, descricao, preco_normal, imagens)
-      `)
-      .in('produto_id', productIds)
-      .order('created_at', { ascending: false });
-      
-    if (joinQueryError) {
-      console.error('Error in join query for orders:', joinQueryError);
-      
-      // Try fallback approach with separate queries
-      return await fallbackOrdersFetch(vendorId, productIds);
-    }
-    
-    if (!orderItemsWithOrdersData || orderItemsWithOrdersData.length === 0) {
-      console.log('No order items found with vendor products using join query');
-      return await fallbackOrdersFetch(vendorId, productIds);
-    }
-    
-    console.log(`Found ${orderItemsWithOrdersData.length} order items with join query`);
-    
-    // Group by order_id to consolidate items per order
-    const orderMap: Record<string, {
-      order: any,
-      items: OrderItem[]
-    }> = {};
-    
-    // Process the joined data
-    orderItemsWithOrdersData.forEach(item => {
-      const orderId = item.order_id;
-      
-      // Safely access nested properties to avoid type errors
-      const orderInfo = item.orders;
-      
-      if (!orderInfo) {
-        console.log(`Missing order info for item ${item.id}`);
-        return;
-      }
-      
-      // Initialize order if not already in map
-      if (!orderMap[orderId]) {
-        orderMap[orderId] = {
-          order: orderInfo,
-          items: []
-        };
-      }
-      
-      // Fix: Create a clean object with only explicitly defined properties
-      // This avoids spreading which can cause recursive type issues
-      const processedItem: OrderItem = {
-        id: item.id,
-        pedido_id: undefined,
-        order_id: item.order_id,
-        produto_id: item.produto_id,
-        quantidade: item.quantidade,
-        preco_unitario: item.preco_unitario,
-        total: item.subtotal || (item.quantidade * item.preco_unitario) || 0,
-        subtotal: item.subtotal,
-        produto: item.produtos,
-        produtos: item.produtos
-      };
-      
-      orderMap[orderId].items.push(processedItem);
-    });
-    
-    // Create VendorOrder objects from the grouped data
-    const vendorOrders: VendorOrder[] = [];
-    
-    // Process each order
-    for (const orderId in orderMap) {
-      const orderData = orderMap[orderId];
-      const clienteId = orderData.order.cliente_id;
-      
-      // Get cliente info
-      const { data: clienteData } = await supabase
-        .from('profiles')
-        .select('id, nome, email, telefone')
-        .eq('id', clienteId)
-        .maybeSingle();
-        
-      const clienteInfo: VendorCustomer = {
-        id: clienteId || '',
-        vendedor_id: vendorId,
-        usuario_id: clienteId,
-        nome: clienteData?.nome || 'Cliente',
-        telefone: clienteData?.telefone || '',
-        email: clienteData?.email || '',
-        total_gasto: 0
-      };
-      
-      // Calculate vendor's portion of the total
-      const vendorTotal = orderData.items.reduce((sum, item) => {
-        const itemTotal = Number(item.total || item.subtotal || (item.quantidade * item.preco_unitario) || 0);
-        return sum + itemTotal;
-      }, 0);
-      
-      // Create vendor order
-      const vendorOrder: VendorOrder = {
-        id: orderId,
-        cliente_id: clienteId,
-        valor_total: vendorTotal,
-        status: orderData.order.status || 'pendente',
-        forma_pagamento: orderData.order.forma_pagamento || 'Não especificado',
-        endereco_entrega: orderData.order.endereco_entrega,
-        created_at: orderData.order.created_at || new Date().toISOString(),
-        cliente: clienteInfo,
-        itens: orderData.items
-      };
-      
-      vendorOrders.push(vendorOrder);
-    }
-    
-    console.log(`Successfully processed ${vendorOrders.length} vendor orders from order_items`);
-    return vendorOrders;
-    
-  } catch (error) {
-    console.error('Unexpected error in fetchOrdersFromOrderItems:', error);
-    return [];
-  }
-};
-
-// Fallback approach using multiple simpler queries
-const fallbackOrdersFetch = async (vendorId: string, productIds: string[]): Promise<VendorOrder[]> => {
-  console.log('Using fallback order fetching approach');
-  
-  try {
-    // Get order_items that contain vendor products
+    // Further limit fields to avoid deep type instantiation
     const { data: orderItemsData, error: orderItemsError } = await supabase
       .from('order_items')
       .select(`
@@ -292,18 +149,11 @@ const fallbackOrdersFetch = async (vendorId: string, productIds: string[]): Prom
         subtotal
       `)
       .in('produto_id', productIds);
-    
-    if (orderItemsError) {
-      console.error('Error fetching order items for vendor products:', orderItemsError);
+      
+    if (orderItemsError || !orderItemsData || orderItemsData.length === 0) {
+      console.log('No order items found with vendor products or error occurred');
       return [];
     }
-    
-    if (!orderItemsData || orderItemsData.length === 0) {
-      console.log('No order items found with vendor products');
-      return [];
-    }
-    
-    console.log('Found', orderItemsData.length, 'order items with vendor products');
     
     // Get unique order IDs
     const orderIds = [...new Set(orderItemsData.map(item => item.order_id))];
@@ -313,10 +163,10 @@ const fallbackOrdersFetch = async (vendorId: string, productIds: string[]): Prom
       return [];
     }
     
-    // Get product details for order items
+    // Fetch product details separately to avoid deep nesting
     const { data: produtos } = await supabase
       .from('produtos')
-      .select('*')
+      .select('id, nome, descricao, preco_normal, imagens')
       .in('id', productIds);
       
     const productMap: Record<string, any> = {};
@@ -324,34 +174,34 @@ const fallbackOrdersFetch = async (vendorId: string, productIds: string[]): Prom
       produtos.forEach(product => {
         productMap[product.id] = product;
       });
-    } else {
-      console.log('Failed to fetch product details');
     }
     
     // Group order items by order_id
     const orderItemsMap: Record<string, OrderItem[]> = {};
+    
     orderItemsData.forEach(item => {
       if (!orderItemsMap[item.order_id]) {
         orderItemsMap[item.order_id] = [];
       }
-
-      // Fix: Create a clean object with explicitly defined properties instead of spreading
-      const itemWithProduct: OrderItem = {
+      
+      // Create a clean item object with explicit properties
+      const orderItem: OrderItem = {
         id: item.id,
-        pedido_id: undefined,
         order_id: item.order_id,
         produto_id: item.produto_id,
         quantidade: item.quantidade,
         preco_unitario: item.preco_unitario,
-        total: item.subtotal || (item.preco_unitario * item.quantidade) || 0,
         subtotal: item.subtotal,
+        total: item.subtotal || (item.quantidade * item.preco_unitario) || 0,
+        pedido_id: undefined,
         produto: productMap[item.produto_id],
         produtos: productMap[item.produto_id]
       };
-      orderItemsMap[item.order_id].push(itemWithProduct);
+      
+      orderItemsMap[item.order_id].push(orderItem);
     });
     
-    // Fetch orders with customer information
+    // Fetch orders separately to avoid nested joins
     const { data: ordersData, error: ordersError } = await supabase
       .from('orders')
       .select(`
@@ -367,20 +217,14 @@ const fallbackOrdersFetch = async (vendorId: string, productIds: string[]): Prom
       .in('id', orderIds)
       .order('created_at', { ascending: false });
     
-    if (ordersError) {
-      console.error('Error fetching orders for vendor products:', ordersError);
+    if (ordersError || !ordersData || ordersData.length === 0) {
+      console.log('No orders found or error fetching orders');
       return [];
     }
-    
-    if (!ordersData || ordersData.length === 0) {
-      console.log('No orders found for the vendor products');
-      return [];
-    }
-    
-    console.log('Successfully fetched', ordersData.length, 'orders from orders table');
     
     // Process orders
-    const orders: VendorOrder[] = [];
+    const vendorOrders: VendorOrder[] = [];
+    
     for (const order of ordersData) {
       // Get vendor items for this order
       const vendorItems = orderItemsMap[order.id] || [];
@@ -394,12 +238,6 @@ const fallbackOrdersFetch = async (vendorId: string, productIds: string[]): Prom
             .eq('id', order.cliente_id)
             .maybeSingle();
             
-          // Calculate vendor's portion of the order
-          const vendorTotal = vendorItems.reduce((sum, item) => {
-            const itemTotal = Number(item.total || item.subtotal || (item.quantidade * item.preco_unitario) || 0);
-            return sum + itemTotal;
-          }, 0);
-          
           // Create cliente info with correct fields
           const clienteInfo: VendorCustomer = {
             id: order.cliente_id || '',
@@ -411,7 +249,13 @@ const fallbackOrdersFetch = async (vendorId: string, productIds: string[]): Prom
             total_gasto: 0
           };
           
-          // Create a vendor-specific view of the order with all required fields
+          // Calculate vendor's portion of the order
+          const vendorTotal = vendorItems.reduce((sum, item) => {
+            const itemTotal = Number(item.total || item.subtotal || (item.quantidade * item.preco_unitario) || 0);
+            return sum + itemTotal;
+          }, 0);
+          
+          // Create a vendor order with explicit properties
           const vendorOrder: VendorOrder = {
             id: order.id,
             cliente_id: order.cliente_id,
@@ -424,16 +268,16 @@ const fallbackOrdersFetch = async (vendorId: string, productIds: string[]): Prom
             itens: vendorItems
           };
           
-          orders.push(vendorOrder);
+          vendorOrders.push(vendorOrder);
         } catch (err) {
           console.error('Error processing order:', order.id, err);
         }
       }
     }
     
-    return orders;
+    return vendorOrders;
   } catch (error) {
-    console.error('Unexpected error in fallbackOrdersFetch:', error);
+    console.error('Unexpected error in fetchOrdersFromOrderItems:', error);
     return [];
   }
 };
