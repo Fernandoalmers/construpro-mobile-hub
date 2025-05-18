@@ -100,7 +100,6 @@ export const fetchDirectVendorOrders = async (
         created_at,
         vendedor_id,
         data_entrega_estimada,
-        pontos_ganhos,
         rastreio
       `)
       .eq('vendedor_id', vendorId);
@@ -159,7 +158,7 @@ export const fetchDirectVendorOrders = async (
           endereco_entrega: order.endereco_entrega,
           created_at: order.created_at || new Date().toISOString(),
           data_entrega_estimada: order.data_entrega_estimada,
-          pontos_ganhos: order.pontos_ganhos,
+          pontos_ganhos: 0, // Default since the field doesn't exist in the table
           rastreio: order.rastreio,
           cliente: clienteInfo,
           itens: orderItems
@@ -194,7 +193,7 @@ export const fetchOrdersById = async (orderIds: string[]): Promise<any[]> => {
     console.log(`📝 [fetchOrdersById] Fetching ${orderIds.length} orders by IDs.`);
     
     const { data: ordersData, error: ordersError } = await supabase
-      .from('pedidos')  // Using pedidos instead of orders
+      .from('pedidos')
       .select(`
         id, 
         usuario_id, 
@@ -204,7 +203,6 @@ export const fetchOrdersById = async (orderIds: string[]): Promise<any[]> => {
         endereco_entrega,
         created_at,
         vendedor_id,
-        pontos_ganhos,
         rastreio
       `)
       .in('id', orderIds)
