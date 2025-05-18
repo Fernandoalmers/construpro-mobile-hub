@@ -44,18 +44,27 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
   }
 };
 
+// Define an interface for product data to avoid deep nesting issues
+interface ProductData {
+  id: string;
+  nome: string;
+  descricao: string;
+  preco_normal: number;
+  imagens: any;
+}
+
 // Fetch product data for a list of product IDs
-export const fetchProductsForItems = async (productIds: string[]): Promise<Record<string, any>> => {
+export const fetchProductsForItems = async (productIds: string[]): Promise<Record<string, ProductData>> => {
   try {
     const { data: produtos } = await supabase
       .from('produtos')
       .select('id, nome, descricao, preco_normal, imagens')
       .in('id', productIds);
     
-    const productMap: Record<string, any> = {};
+    const productMap: Record<string, ProductData> = {};
     if (produtos) {
       produtos.forEach(product => {
-        // Create a simple product object without circular references
+        // Create a simple product object with only necessary fields
         productMap[product.id] = {
           id: product.id,
           nome: product.nome,
@@ -76,7 +85,7 @@ export const fetchProductsForItems = async (productIds: string[]): Promise<Recor
 // Process order items with explicit type definition to avoid deep nesting
 export const createOrderItemsMap = (
   orderItemsData: any[], 
-  productMap: Record<string, any>
+  productMap: Record<string, ProductData>
 ): Record<string, OrderItem[]> => {
   const orderItemsMap: Record<string, OrderItem[]> = {};
   
@@ -85,7 +94,7 @@ export const createOrderItemsMap = (
       orderItemsMap[item.order_id] = [];
     }
     
-    // Create a new object for the order item without reference to the product
+    // Get product data
     const produto = productMap[item.produto_id] || null;
     
     // Create order item with explicit properties to avoid circular references
@@ -97,7 +106,6 @@ export const createOrderItemsMap = (
       preco_unitario: item.preco_unitario,
       subtotal: item.subtotal,
       total: item.subtotal || (item.quantidade * item.preco_unitario) || 0,
-      // Set produto separately to avoid deep nesting
       produto: produto,
       // Explicitly set optional fields to undefined or null
       pedido_id: undefined,
