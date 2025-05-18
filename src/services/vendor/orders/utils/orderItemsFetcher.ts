@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { OrderItem } from '../types';
 
@@ -44,10 +43,11 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
   }
 };
 
-// Basic primitive type definitions to avoid circular references
+// Use primitive types to avoid circular references
 export type SimpleImageUrl = string;
 export type ImageObject = { url: string };
-export type ProductImageType = null | SimpleImageUrl[] | ImageObject[];
+// Define a non-recursive type for product images
+export type ProductImageType = null | string[] | Array<{url: string}>;
 
 // Define a standalone product type with no circular references
 export interface ProductData {
@@ -70,8 +70,8 @@ function processImagens(rawImagens: unknown): ProductImageType {
   // For array input
   if (Array.isArray(rawImagens)) {
     // Process strings and objects separately
-    const stringImages: SimpleImageUrl[] = [];
-    const objectImages: ImageObject[] = [];
+    const stringImages: string[] = [];
+    const objectImages: {url: string}[] = [];
     
     rawImagens.forEach((img: unknown) => {
       if (typeof img === 'string') {
