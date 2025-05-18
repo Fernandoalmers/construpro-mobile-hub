@@ -62,14 +62,22 @@ export const fetchProductsForItems = async (productIds: string[]): Promise<Recor
     
     const productMap: Record<string, any> = {};
     products.forEach(product => {
+      // Safely extract image URL
+      let imageUrl = null;
+      if (product.imagens && Array.isArray(product.imagens) && product.imagens.length > 0) {
+        const firstImage = product.imagens[0];
+        // Check if the image has a url property
+        if (typeof firstImage === 'object' && firstImage !== null && 'url' in firstImage) {
+          imageUrl = firstImage.url;
+        }
+      }
+      
       productMap[product.id] = {
         id: product.id,
         nome: product.nome,
         preco: product.preco_normal,
         imagens: product.imagens,
-        imagem_url: Array.isArray(product.imagens) && product.imagens.length > 0 
-          ? product.imagens[0].url 
-          : null,
+        imagem_url: imageUrl,
         descricao: product.descricao,
         categoria: product.categoria
       };

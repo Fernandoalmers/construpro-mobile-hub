@@ -40,7 +40,7 @@ export const logDiagnosticInfo = async (vendorId: string) => {
     // Check order_items for this vendor's products
     if (products && products.length > 0) {
       const productIds = products.map(p => p.id);
-      const { data: orderItems, error: orderItemsError } = await supabase
+      const { data: orderItemsData, error: orderItemsError } = await supabase
         .from('order_items')
         .select('id, order_id')
         .in('produto_id', productIds)
@@ -49,18 +49,21 @@ export const logDiagnosticInfo = async (vendorId: string) => {
       if (orderItemsError) {
         console.error('🚫 [diagnosticUtils] Error fetching order items:', orderItemsError);
       } else {
-        console.log(`ℹ️ [diagnosticUtils] Found ${orderItems.length} order items for vendor products`);
+        console.log(`ℹ️ [diagnosticUtils] Found ${orderItemsData?.length || 0} order items for vendor products`);
       }
     }
     
-    // Check for the existence of the order_items table
-    const { data: tableInfo, error: tableError } = await supabase
-      .rpc('check_table_exists', { table_name: 'order_items' });
+    // Check for the existence of the order_items table - using a safer approach
+    // instead of trying to call an RPC function that might not exist
+    const { data: tableInfoData, error: tableError } = await supabase
+      .from('order_items')
+      .select('count')
+      .limit(1);
       
     if (tableError) {
       console.error('🚫 [diagnosticUtils] Error checking order_items table:', tableError);
     } else {
-      console.log('ℹ️ [diagnosticUtils] order_items table exists:', tableInfo);
+      console.log('ℹ️ [diagnosticUtils] order_items table exists:', tableInfoData !== null);
     }
     
     // Count total order_items
@@ -71,7 +74,7 @@ export const logDiagnosticInfo = async (vendorId: string) => {
     if (countError) {
       console.error('🚫 [diagnosticUtils] Error counting order items:', countError);
     } else if (itemsCount && itemsCount.length > 0) {
-      console.log(`ℹ️ [diagnosticUtils] Total order_items in database: ${itemsCount[0].count}`);
+      console.log(`ℹ️ [diagnosticUtils] Total order_items in database: ${itemsCount[0]?.count || 0}`);
     }
     
     // Return diagnostic info
@@ -82,7 +85,7 @@ export const logDiagnosticInfo = async (vendorId: string) => {
         acc[product.status] = (acc[product.status] || 0) + 1;
         return acc;
       }, {}) : {},
-      orderItemsCount: orderItems?.length || 0,
+      orderItemsCount: orderItemsData?.length || 0,
       diagnosticTime: new Date().toISOString()
     };
   } catch (error) {

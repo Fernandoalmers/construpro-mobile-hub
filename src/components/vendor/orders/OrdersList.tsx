@@ -24,7 +24,7 @@ const OrdersList: React.FC<OrdersListProps> = ({
     console.log("📋 [OrdersList] Component rendered with", orders?.length || 0, "orders");
     console.log("📋 [OrdersList] hasFilters:", hasFilters);
     
-    if (orders?.length === 0) {
+    if (!orders || orders.length === 0) {
       console.log("⚠️ [OrdersList] No orders received in props");
     } else if (orders?.length > 0) {
       console.log("✅ [OrdersList] Sample first order:", {
@@ -36,7 +36,7 @@ const OrdersList: React.FC<OrdersListProps> = ({
     }
   }, [orders, hasFilters]);
 
-  if (orders.length === 0) {
+  if (!orders || orders.length === 0) {
     console.log("⚠️ [OrdersList] Rendering empty state - no orders found");
     return (
       <ListEmptyState
