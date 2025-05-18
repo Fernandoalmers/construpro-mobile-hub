@@ -69,7 +69,7 @@ export const fetchOrderItemsForOrder = async (orderId: string): Promise<OrderIte
 };
 
 /**
- * Fetches orders directly for a vendor by filtering the orders table
+ * Fetches orders directly for a vendor by filtering the pedidos table
  * using the vendedor_id field.
  * 
  * @param vendorId The ID of the vendor
@@ -88,13 +88,11 @@ export const fetchDirectVendorOrders = async (
       return [];
     }
     
-    // Since 'vendedor_id' doesn't exist in 'orders' table, let's use 'pedidos' table instead
-    // which has the vendedor_id field according to the error message
     let query = supabase
       .from('pedidos')
       .select(`
         id, 
-        cliente_id,
+        usuario_id,
         valor_total,
         status,
         forma_pagamento,
@@ -103,8 +101,7 @@ export const fetchDirectVendorOrders = async (
         vendedor_id,
         data_entrega_estimada,
         pontos_ganhos,
-        rastreio,
-        usuario_id
+        rastreio
       `)
       .eq('vendedor_id', vendorId);
       
@@ -145,8 +142,8 @@ export const fetchDirectVendorOrders = async (
     
     for (const order of ordersData) {
       try {
-        // Fetch customer information using cliente_id or usuario_id (if cliente_id is not available)
-        const clienteInfo = await fetchCustomerInfo(order.cliente_id || order.usuario_id, vendorId);
+        // Fetch customer information using usuario_id
+        const clienteInfo = await fetchCustomerInfo(order.usuario_id, vendorId);
         
         // Fetch order items
         const orderItems = await fetchOrderItemsForOrder(order.id);
@@ -155,7 +152,7 @@ export const fetchDirectVendorOrders = async (
         vendorOrders.push({
           id: order.id,
           vendedor_id: order.vendedor_id,
-          cliente_id: order.cliente_id || order.usuario_id,
+          cliente_id: order.usuario_id,
           valor_total: order.valor_total,
           status: order.status || 'pendente',
           forma_pagamento: order.forma_pagamento || 'Não especificado',
@@ -200,14 +197,12 @@ export const fetchOrdersById = async (orderIds: string[]): Promise<any[]> => {
       .from('pedidos')  // Using pedidos instead of orders
       .select(`
         id, 
-        cliente_id,
         usuario_id, 
         valor_total,
         status,
         forma_pagamento,
         endereco_entrega,
         created_at,
-        updated_at,
         vendedor_id,
         pontos_ganhos,
         rastreio
