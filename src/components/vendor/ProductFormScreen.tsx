@@ -3,14 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { ArrowLeft, Save, Info, Package, Tag, Image, Layers, FileSymlink, LayoutList } from 'lucide-react';
+import { ArrowLeft, Save, Info, Package, Tag, Image, Layers, FileSymlink } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import CustomButton from '../common/CustomButton';
-import CustomInput from '../common/CustomInput';
+import ProductSegmentSelect from './ProductSegmentSelect';
 import {
   Form,
   FormControl,
@@ -32,11 +32,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
 import produtos from '../../data/produtos.json';
 
 // Define product form schema
@@ -45,6 +40,7 @@ const productFormSchema = z.object({
   nome: z.string().min(3, { message: 'O nome deve ter pelo menos 3 caracteres' }),
   descricao: z.string().min(10, { message: 'A descrição deve ter pelo menos 10 caracteres' }),
   categoria: z.string().min(1, { message: 'Selecione uma categoria' }),
+  segmento: z.string().min(1, { message: 'Selecione um segmento' }), // Added segmento field
   marca: z.string().optional(),
   tags: z.array(z.string()).optional(),
   
@@ -100,6 +96,7 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
       nome: '',
       descricao: '',
       categoria: '',
+      segmento: '', // Added segmento default value
       marca: '',
       tags: [],
       unidadeVenda: 'unidade',
@@ -129,6 +126,7 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
           nome: initialData.nome || '',
           descricao: initialData.descricao || '',
           categoria: initialData.categoria || '',
+          segmento: initialData.segmento || '', // Added segmento field
           marca: initialData.marca || '',
           tags: initialData.tags || [],
           unidadeVenda: initialData.unidadeVenda || 'unidade',
@@ -163,6 +161,7 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
           nome: produto.nome,
           descricao: produto.descricao || '',
           categoria: produto.categoria,
+          segmento: produto.segmento || '', // Added segmento field
           marca: '',
           tags: [],
           unidadeVenda: 'unidade', // Default to be overwritten
@@ -209,8 +208,6 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      // In a real app, you would upload the image to a server
-      // For demo purposes, we'll just use the file name
       const newImages = [...images];
       for (let i = 0; i < files.length && newImages.length < 5; i++) {
         newImages.push(URL.createObjectURL(files[i]));
@@ -260,10 +257,8 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
     }, 1000);
   };
   
-  // Determine if conversion value is required
   const isConversionRequired = ['m2', 'litro', 'kg'].includes(watchUnidadeVenda);
   
-  // Get conversion field label based on unit type
   const getConversionFieldLabel = () => {
     switch(watchUnidadeVenda) {
       case 'm2': return 'Área por caixa (m²)';
@@ -273,7 +268,6 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
     }
   };
   
-  // Get variant options based on variant type
   const getVariantOptions = () => {
     switch(watchTipoVariante) {
       case 'cor': 
@@ -380,6 +374,25 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
+                        name="segmento"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Segmento*</FormLabel>
+                            <FormControl>
+                              <ProductSegmentSelect
+                                value={field.value}
+                                onChange={field.onChange}
+                                error={form.formState.errors.segmento?.message}
+                                required
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
                         name="categoria"
                         render={({ field }) => (
                           <FormItem>
@@ -406,7 +419,9 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
                           </FormItem>
                         )}
                       />
-                      
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="marca"
@@ -420,26 +435,27 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
                           </FormItem>
                         )}
                       />
-                    </div>
-                    
-                    <div>
-                      <FormLabel>Tags</FormLabel>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {tagOptions.map(tag => (
-                          <div
-                            key={tag.value}
-                            className={`px-3 py-1 rounded-full text-sm border cursor-pointer transition-colors ${
-                              selectedTags.includes(tag.value)
-                                ? 'bg-construPro-blue text-white border-construPro-blue'
-                                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
-                            }`}
-                            onClick={() => handleTagToggle(tag.value)}
-                          >
-                            {tag.label}
-                          </div>
-                        ))}
+                      
+                      <div>
+                        <FormLabel>Tags</FormLabel>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {tagOptions.map(tag => (
+                            <div
+                              key={tag.value}
+                              className={`px-3 py-1 rounded-full text-sm border cursor-pointer transition-colors ${
+                                selectedTags.includes(tag.value)
+                                  ? 'bg-construPro-blue text-white border-construPro-blue'
+                                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                              }`}
+                              onClick={() => handleTagToggle(tag.value)}
+                            >
+                              {tag.label}
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
+                    
                   </div>
                 </AccordionContent>
               </AccordionItem>
