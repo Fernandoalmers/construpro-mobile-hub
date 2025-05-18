@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { getProducts } from '@/services/productService';
 import { getStores, Store } from '@/services/marketplace/marketplaceService';
 import { toast } from '@/components/ui/sonner';
@@ -77,7 +77,7 @@ export function useMarketplaceData(selectedSegmentId: string | null): Marketplac
   }, []);
   
   // Improved product filtering to handle both segmento_id and categoria
-  const filteredProducts = React.useMemo(() => {
+  const filteredProducts = useMemo(() => {
     if (!selectedSegmentId || selectedSegmentId === 'all') {
       return products;
     }
