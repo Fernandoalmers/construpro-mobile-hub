@@ -44,10 +44,10 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
   }
 };
 
-// Use primitive types with no nesting to avoid recursion issues
-export type StringImageArray = readonly string[];
-export type ObjectImageArray = readonly {url: string}[];
-export type ProductImageType = null | StringImageArray | ObjectImageArray;
+// Use non-recursive, non-nested primitive types to avoid type instantiation issues
+export type StringImageArray = string[];
+export type ObjectImageArray = { url: string }[];
+export type ProductImageType = null | string[] | { url: string }[];
 
 // Define a standalone product type with no circular references
 export interface ProductData {
@@ -64,12 +64,12 @@ function processImagens(rawImagens: unknown): ProductImageType {
   
   // For string input
   if (typeof rawImagens === 'string') {
-    return [rawImagens] as StringImageArray;
+    return [rawImagens];
   }
   
   // For array input
   if (Array.isArray(rawImagens)) {
-    // Process strings and objects separately to maintain type safety
+    // Process strings and objects separately
     const stringImages: string[] = [];
     const objectImages: {url: string}[] = [];
     
@@ -83,12 +83,12 @@ function processImagens(rawImagens: unknown): ProductImageType {
     
     // Return the appropriate type based on content
     if (stringImages.length > 0 && objectImages.length === 0) {
-      return stringImages as StringImageArray;
+      return stringImages;
     } else if (objectImages.length > 0 && stringImages.length === 0) {
-      return objectImages as ObjectImageArray;
+      return objectImages;
     } else if (stringImages.length > 0) {
-      // If mixed, prefer string format for consistency
-      return [...stringImages, ...objectImages.map(obj => obj.url)] as StringImageArray;
+      // If mixed, prefer string format
+      return [...stringImages, ...objectImages.map(obj => obj.url)];
     }
   }
   
@@ -126,7 +126,7 @@ export const fetchProductsForItems = async (productIds: string[]): Promise<Recor
   }
 };
 
-// Completely standalone order item type with no references that could cause circular dependencies
+// Simple standalone type for order items with no nested references
 export interface SimpleOrderItem {
   id: string;
   order_id: string;
@@ -155,7 +155,7 @@ export const createOrderItemsMap = (
     // Get product data
     const produto = productMap[(item.produto_id as string)] || null;
     
-    // Create order item with explicit properties to avoid circular references
+    // Create order item with explicit properties
     const orderItem: SimpleOrderItem = {
       id: item.id as string,
       order_id: item.order_id as string,
