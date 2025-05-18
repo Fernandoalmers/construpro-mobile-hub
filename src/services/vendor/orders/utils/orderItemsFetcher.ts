@@ -78,6 +78,9 @@ export const createOrderItemsMap = (
       orderItemsMap[item.order_id] = [];
     }
     
+    // Create a new object for the order item without reference to the product
+    const produto = productMap[item.produto_id] || null;
+    
     // Create order item with explicit properties to avoid circular references
     const orderItem: OrderItem = {
       id: item.id,
@@ -87,10 +90,12 @@ export const createOrderItemsMap = (
       preco_unitario: item.preco_unitario,
       subtotal: item.subtotal,
       total: item.subtotal || (item.quantidade * item.preco_unitario) || 0,
-      // Set optional fields explicitly to avoid deep nesting
+      // Set produto separately to avoid deep nesting
+      produto: produto,
+      // Explicitly set optional fields to undefined or null
       pedido_id: undefined,
-      produto: productMap[item.produto_id] || null,
-      produtos: null // Set to null instead of duplicating product reference
+      produtos: null,
+      created_at: item.created_at
     };
     
     orderItemsMap[item.order_id].push(orderItem);
@@ -106,7 +111,7 @@ export const fetchOrderItemsForProducts = async (productIds: string[]): Promise<
   try {
     const { data: orderItemsData, error: orderItemsError } = await supabase
       .from('order_items')
-      .select('id, order_id, produto_id, quantidade, preco_unitario, subtotal')
+      .select('id, order_id, produto_id, quantidade, preco_unitario, subtotal, created_at')
       .in('produto_id', productIds);
     
     if (orderItemsError || !orderItemsData) {
