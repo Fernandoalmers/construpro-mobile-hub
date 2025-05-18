@@ -39,26 +39,26 @@ export interface Product {
   stores?: StoreInfo;
 }
 
-// Simple database record type without complex nested types
+// Simple database record interface to ensure type safety
 interface ProductDatabaseRecord {
   id: string;
   nome: string;
   descricao: string;
   preco_normal: number;
-  preco_promocional?: number;
-  preco_anterior?: number;
+  preco_promocional?: number | null;
+  preco_anterior?: number | null;
   categoria: string;
-  segmento?: string;
-  segmento_id?: string;
-  imagem_url?: string;
-  imagens: any; // Using any here to avoid complex type inference
+  segmento?: string | null;
+  segmento_id?: string | null;
+  imagem_url?: string | null;
+  imagens: any;  // Using any here since the data structure varies
   estoque: number;
-  pontos_consumidor?: number;
-  pontos_profissional?: number;
-  vendedor_id?: string;
+  pontos_consumidor?: number | null;
+  pontos_profissional?: number | null;
+  vendedor_id?: string | null;
   status: string;
-  codigo_barras?: string;
-  sku?: string;
+  codigo_barras?: string | null;
+  sku?: string | null;
   created_at?: string;
   updated_at?: string;
   vendedores?: {
@@ -98,20 +98,20 @@ const transformToProduct = (record: ProductDatabaseRecord): Product => {
     nome: record.nome,
     descricao: record.descricao,
     preco_normal: record.preco_normal,
-    preco_promocional: record.preco_promocional,
-    preco_anterior: record.preco_anterior,
+    preco_promocional: record.preco_promocional || undefined,
+    preco_anterior: record.preco_anterior || undefined,
     categoria: record.categoria,
-    segmento: record.segmento,
-    segmento_id: record.segmento_id,
-    imagem_url: record.imagem_url,
+    segmento: record.segmento || undefined,
+    segmento_id: record.segmento_id || undefined,
+    imagem_url: record.imagem_url || undefined,
     imagens: imagens,
     estoque: record.estoque,
     pontos_consumidor: record.pontos_consumidor || 0,
     pontos_profissional: record.pontos_profissional || 0,
-    vendedor_id: record.vendedor_id,
+    vendedor_id: record.vendedor_id || undefined,
     status: record.status,
-    codigo_barras: record.codigo_barras,
-    sku: record.sku
+    codigo_barras: record.codigo_barras || undefined,
+    sku: record.sku || undefined
   };
 
   return product;
@@ -144,35 +144,33 @@ export const getProducts = async (filters = {}): Promise<Product[]> => {
       return [];
     }
     
-    // Create a new array to avoid deep type inference
     const products: Product[] = [];
     
-    // Use a traditional for loop to avoid TypeScript type inference issues
+    // Avoid TypeScript type inference issues by using a for loop and explicit casting
     for (let i = 0; i < data.length; i++) {
-      // Two-step casting to break the deep type inference chain
-      const rawItem = data[i];
+      // Use type assertion to enforce our expected structure
+      const recordData = data[i] as any;
+      
+      // Map to our defined structure
       const record: ProductDatabaseRecord = {
-        id: rawItem.id,
-        nome: rawItem.nome,
-        descricao: rawItem.descricao,
-        preco_normal: rawItem.preco_normal,
-        preco_promocional: rawItem.preco_promocional,
-        preco_anterior: rawItem.preco_anterior,
-        categoria: rawItem.categoria,
-        segmento: rawItem.segmento,
-        segmento_id: rawItem.segmento_id,
-        imagem_url: rawItem.imagem_url,
-        imagens: rawItem.imagens,
-        estoque: rawItem.estoque,
-        pontos_consumidor: rawItem.pontos_consumidor,
-        pontos_profissional: rawItem.pontos_profissional,
-        vendedor_id: rawItem.vendedor_id,
-        status: rawItem.status,
-        codigo_barras: rawItem.codigo_barras,
-        sku: rawItem.sku,
-        created_at: rawItem.created_at,
-        updated_at: rawItem.updated_at,
-        vendedores: rawItem.vendedores
+        id: recordData.id,
+        nome: recordData.nome,
+        descricao: recordData.descricao,
+        preco_normal: recordData.preco_normal,
+        preco_promocional: recordData.preco_promocional,
+        preco_anterior: recordData.preco_anterior,
+        categoria: recordData.categoria,
+        segmento: recordData.segmento,
+        segmento_id: recordData.segmento_id,
+        imagem_url: recordData.imagem_url,
+        imagens: recordData.imagens,
+        estoque: recordData.estoque,
+        pontos_consumidor: recordData.pontos_consumidor,
+        pontos_profissional: recordData.pontos_profissional,
+        vendedor_id: recordData.vendedor_id,
+        status: recordData.status,
+        codigo_barras: recordData.codigo_barras,
+        sku: recordData.sku
       };
       
       products.push(transformToProduct(record));
@@ -205,38 +203,40 @@ export const getProductById = async (id: string): Promise<Product | null> => {
     
     if (!data) return null;
     
-    // Two-step casting to break the deep type inference chain
-    const rawData = data;
+    // Use type assertion to enforce our expected structure
+    const recordData = data as any;
+    
+    // Map to our defined structure
     const record: ProductDatabaseRecord = {
-      id: rawData.id,
-      nome: rawData.nome,
-      descricao: rawData.descricao,
-      preco_normal: rawData.preco_normal,
-      preco_promocional: rawData.preco_promocional,
-      preco_anterior: rawData.preco_anterior,
-      categoria: rawData.categoria,
-      segmento: rawData.segmento,
-      segmento_id: rawData.segmento_id,
-      imagem_url: rawData.imagem_url,
-      imagens: rawData.imagens,
-      estoque: rawData.estoque,
-      pontos_consumidor: rawData.pontos_consumidor,
-      pontos_profissional: rawData.pontos_profissional,
-      vendedor_id: rawData.vendedor_id,
-      status: rawData.status,
-      codigo_barras: rawData.codigo_barras,
-      sku: rawData.sku,
-      vendedores: rawData.vendedores
+      id: recordData.id,
+      nome: recordData.nome,
+      descricao: recordData.descricao,
+      preco_normal: recordData.preco_normal,
+      preco_promocional: recordData.preco_promocional,
+      preco_anterior: recordData.preco_anterior,
+      categoria: recordData.categoria,
+      segmento: recordData.segmento,
+      segmento_id: recordData.segmento_id,
+      imagem_url: recordData.imagem_url,
+      imagens: recordData.imagens,
+      estoque: recordData.estoque,
+      pontos_consumidor: recordData.pontos_consumidor,
+      pontos_profissional: recordData.pontos_profissional,
+      vendedor_id: recordData.vendedor_id,
+      status: recordData.status,
+      codigo_barras: recordData.codigo_barras,
+      sku: recordData.sku,
+      vendedores: recordData.vendedores
     };
     
     const product = transformToProduct(record);
     
     // Add store information if available
-    if (data.vendedores && typeof data.vendedores === 'object' && data.vendedores !== null) {
-      const vendedorData = data.vendedores as { nome_loja?: string; logo_url?: string };
+    if (recordData.vendedores && typeof recordData.vendedores === 'object' && recordData.vendedores !== null) {
+      const vendedorData = recordData.vendedores;
       
       product.stores = {
-        id: data.vendedor_id || '',
+        id: recordData.vendedor_id || '',
         nome: vendedorData.nome_loja || '',
         nome_loja: vendedorData.nome_loja || '',
         logo_url: vendedorData.logo_url
