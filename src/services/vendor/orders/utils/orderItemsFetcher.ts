@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 // Define ProductId interface to simplify typing
@@ -17,44 +18,45 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
     }
     
     // Get all produtos owned by this vendor
-    const { data: vendorProducts, error: productsError } = await supabase
+    const result = await supabase
       .from('produtos')
       .select('id')
-      .eq('vendedor_id', vendorId) as unknown as { 
-        data: ProductId[] | null, 
-        error: any 
-      };
-    
-    if (productsError) {
-      console.error('Error fetching vendor products:', productsError);
+      .eq('vendedor_id', vendorId);
+      
+    // Handle error explicitly  
+    if (result.error) {
+      console.error('Error fetching vendor products:', result.error);
       return [];
     }
+    
+    // Safely cast the data after checking for errors
+    const vendorProducts = result.data as ProductId[] | null;
     
     if (!vendorProducts || vendorProducts.length === 0) {
       console.log('No products found in produtos table, checking alternative table');
       
-      // Try alternate product table as backup - without any type casting initially
-      const result = await supabase
+      // Try alternate product table as backup
+      const alternateResult = await supabase
         .from('products')
         .select('id')
         .eq('vendedor_id', vendorId);
       
       // Handle error explicitly
-      if (result.error) {
-        console.error('Error fetching products:', result.error);
+      if (alternateResult.error) {
+        console.error('Error fetching products:', alternateResult.error);
         return [];
       }
       
       // Handle data safely with explicit casting after the query
-      const data = result.data as ProductId[] | null;
+      const alternateProducts = alternateResult.data as ProductId[] | null;
       
-      if (!data || data.length === 0) {
+      if (!alternateProducts || alternateProducts.length === 0) {
         console.log('No products found in alternate table either');
         return [];
       }
       
       // Convert to string array with explicit typing
-      const productIds: string[] = data.map(item => String(item.id || ''));
+      const productIds: string[] = alternateProducts.map(item => String(item.id || ''));
       console.log(`Found ${productIds.length} products in alternate table`);
       return productIds;
     }
@@ -117,25 +119,28 @@ export const fetchProductsForItems = async (productIds: string[]): Promise<Recor
   try {
     console.log(`Fetching product data for ${productIds.length} products`);
     
+    // Explicitly define the type we expect from the query
+    type RawProductData = {
+      id: string;
+      nome: string;
+      descricao: string | null;
+      preco_normal: number;
+      imagens: unknown;
+    };
+    
     // Use IN filter to get only the requested products
-    const { data: produtos, error } = await supabase
+    const result = await supabase
       .from('produtos')
       .select('id, nome, descricao, preco_normal, imagens')
-      .in('id', productIds) as unknown as {
-        data: Array<{
-          id: string;
-          nome: string;
-          descricao: string | null;
-          preco_normal: number;
-          imagens: unknown;
-        }> | null;
-        error: any;
-      };
+      .in('id', productIds);
     
-    if (error) {
-      console.error('Error fetching products:', error);
+    if (result.error) {
+      console.error('Error fetching products:', result.error);
       return {};
     }
+    
+    // Cast data after the query
+    const produtos = result.data as RawProductData[] | null;
     
     if (!produtos || produtos.length === 0) {
       console.log('No products found matching the requested IDs');
@@ -235,18 +240,19 @@ export const fetchOrderItemsForProducts = async (productIds: string[]): Promise<
   try {
     console.log(`Fetching order items for ${productIds.length} product IDs`);
     
-    const { data: orderItemsData, error } = await supabase
+    // Explicitly define what we expect from the query
+    const result = await supabase
       .from('order_items')
       .select('id, order_id, produto_id, quantidade, preco_unitario, subtotal, created_at')
-      .in('produto_id', productIds) as unknown as {
-        data: Array<Record<string, unknown>> | null;
-        error: any;
-      };
+      .in('produto_id', productIds);
     
-    if (error) {
-      console.error('Error fetching order items:', error);
+    if (result.error) {
+      console.error('Error fetching order items:', result.error);
       return [];
     }
+    
+    // Cast data after the query
+    const orderItemsData = result.data as Array<Record<string, unknown>> | null;
     
     if (!orderItemsData || orderItemsData.length === 0) {
       console.log('No order items found for vendor products');
@@ -256,7 +262,7 @@ export const fetchOrderItemsForProducts = async (productIds: string[]): Promise<
     console.log(`Found ${orderItemsData.length} order items for vendor products`);
     
     // Extract unique order IDs for diagnostics
-    const orderIds = [...new Set(orderItemsData.map(item => item.order_id))];
+    const orderIds = [...new Set(orderItemsData.map(item => item.order_id as string))];
     console.log(`Found ${orderIds.length} unique orders containing vendor products`);
     
     return orderItemsData;

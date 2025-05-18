@@ -183,3 +183,54 @@ export const processVendorOrdersFromOrderItems = async (
   
   return vendorOrders;
 };
+
+// Import these functions from orderItemsFetcher
+export { getVendorProductIds, fetchOrderItemsForProducts, createOrderItemsMap } from './orderItemsFetcher';
+
+// Function to fetch orders from order_items through associated products
+export const fetchOrdersFromOrderItems = async (
+  vendorId: string,
+  productIds: string[]
+): Promise<VendorOrder[]> => {
+  if (!productIds.length) {
+    console.log('No product IDs provided for fetchOrdersFromOrderItems');
+    return [];
+  }
+  
+  try {
+    console.log(`Fetching orders from order_items for ${productIds.length} products`);
+    
+    // Get all order items containing vendor products
+    const orderItemsData = await fetchOrderItemsForProducts(productIds);
+    if (!orderItemsData.length) {
+      console.log('No order items found for vendor products');
+      return [];
+    }
+    
+    // Get unique order IDs from order items
+    const orderIds = [...new Set(orderItemsData.map(item => item.order_id as string))];
+    console.log(`Found ${orderIds.length} unique orders containing vendor products`);
+    
+    // Fetch full orders data
+    const ordersData = await fetchOrdersById(orderIds);
+    if (!ordersData.length) {
+      console.log('Failed to fetch order data');
+      return [];
+    }
+    
+    // Group order items by order ID
+    const orderItemsMap = createOrderItemsMap(orderItemsData, {});
+    
+    // Process vendor-specific orders
+    const vendorOrders = await processVendorOrdersFromOrderItems(
+      ordersData,
+      orderItemsMap,
+      vendorId
+    );
+    
+    return vendorOrders;
+  } catch (error) {
+    console.error('Error in fetchOrdersFromOrderItems:', error);
+    return [];
+  }
+};

@@ -1,227 +1,109 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { getVendorProfile } from '@/services/vendorProfileService';
+import { getVendorProfile } from '../../../vendorProfileService';
 
-// Define simple primitive types to avoid circular references
-type SimpleDiagnosticResults = {
-  currentUser: string | null;
-  userProfile: Record<string, any> | null;
-  vendorProfile: Record<string, any> | null;
-  productCounts: {
-    produtos: number;
-    products: number;
-  };
-  orderCounts: {
-    pedidos: number;
-    orders: number;
-  };
+// Log diagnostic information to help troubleshoot order issues
+export const logDiagnosticInfo = async (vendorId: string): Promise<void> => {
+  try {
+    console.group('===== DIAGNOSTIC INFO =====');
+    
+    // Check current user
+    const { data: authData } = await supabase.auth.getUser();
+    console.log('Current user ID:', authData?.user?.id || 'Not authenticated');
+    
+    // Check vendor profile details
+    if (vendorId !== 'unknown-vendor-id') {
+      const { data: vendorData } = await supabase
+        .from('vendedores')
+        .select('*')
+        .eq('id', vendorId)
+        .single();
+      
+      console.log('Vendor profile from database:', vendorData);
+    } else {
+      // Try to get vendor profile from service
+      const vendorProfile = await getVendorProfile();
+      console.log('Vendor profile from service:', vendorProfile);
+    }
+    
+    // Check pedidos table
+    const { data: pedidosSample } = await supabase
+      .from('pedidos')
+      .select('id, vendedor_id, status')
+      .limit(5);
+      
+    console.log('Recent entries in pedidos table:', pedidosSample);
+    
+    // Check order_items table
+    const { data: orderItemsSample } = await supabase
+      .from('order_items')
+      .select('order_id, produto_id')
+      .limit(5);
+      
+    console.log('Recent entries in order_items table:', orderItemsSample);
+    
+    console.log('===== END DIAGNOSTIC INFO =====');
+    console.groupEnd();
+  } catch (error) {
+    console.error('Error in logDiagnosticInfo:', error);
+  }
 };
 
-/**
- * Run comprehensive diagnostics on vendor data
- * This utility function performs checks on the vendor's profile, products, and orders
- */
-export const runVendorDiagnostics = async (): Promise<SimpleDiagnosticResults> => {
-  console.log('Running vendor diagnostics...');
-  
-  const results: SimpleDiagnosticResults = {
-    currentUser: null,
-    userProfile: null,
-    vendorProfile: null,
-    productCounts: {
-      produtos: 0,
-      products: 0
-    },
-    orderCounts: {
-      pedidos: 0,
-      orders: 0
-    }
-  };
-  
+// Run comprehensive diagnostics for vendor orders
+export const runVendorDiagnostics = async () => {
   try {
-    // Step 1: Get current user
-    const authData = await supabase.auth.getUser();
-    const userData = authData.data;
-    results.currentUser = userData?.user?.id || null;
-    console.log('Current authenticated user:', userData?.user?.id);
+    const profile = await getVendorProfile();
     
-    if (!userData?.user?.id) {
-      console.error('No authenticated user found');
-      return results;
+    const diagnostics = {
+      timestamp: new Date().toISOString(),
+      userProfile: null,
+      vendorProfile: profile,
+      databaseChecks: {
+        pedidosTable: null,
+        orderItemsTable: null,
+        produtosTable: null
+      },
+      vendorProducts: []
+    };
+    
+    // Get current user info
+    const { data: authData } = await supabase.auth.getUser();
+    if (authData?.user) {
+      const { data: userProfile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authData.user.id)
+        .single();
+        
+      diagnostics.userProfile = userProfile;
     }
     
-    // Step 2: Check user profile
-    const profileResult = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userData.user.id)
-      .single();
-    
-    const profileData = profileResult.data;
-    results.userProfile = profileData;
-    console.log('User profile:', profileData ? 'Found' : 'Not found', 
-      profileData ? `(type: ${profileData.tipo_perfil}, role: ${profileData.papel})` : '');
-    
-    // Step 3: Check vendor profile
-    const vendorProfile = await getVendorProfile();
-    results.vendorProfile = vendorProfile;
-    console.log('Vendor profile:', vendorProfile ? 'Found' : 'Not found', 
-      vendorProfile ? `(id: ${vendorProfile.id}, nome_loja: ${vendorProfile.nome_loja})` : '');
-    
-    if (!vendorProfile?.id) {
-      console.warn('No vendor profile found for current user');
-      return results;
+    // Check vendor's products
+    if (profile?.id) {
+      const { data: products } = await supabase
+        .from('produtos')
+        .select('id, nome, status')
+        .eq('vendedor_id', profile.id)
+        .limit(20);
+        
+      diagnostics.vendorProducts = products || [];
+      
+      // Check if there are any orders for this vendor
+      const { data: pedidos } = await supabase
+        .from('pedidos')
+        .select('id, status, created_at')
+        .eq('vendedor_id', profile.id)
+        .limit(5);
+        
+      diagnostics.databaseChecks.pedidosTable = {
+        hasRecords: pedidos && pedidos.length > 0,
+        sample: pedidos
+      };
     }
     
-    // Step 4: Check products in 'produtos' table
-    const produtosResult = await supabase
-      .from('produtos')
-      .select('*', { count: 'exact', head: true }) as unknown as { 
-        count: number | null;
-        error: any | null;
-      };
-      
-    results.productCounts.produtos = produtosResult.count || 0;
-    console.log(`Vendor has ${produtosResult.count || 0} products in 'produtos' table`);
-    
-    // Step 5: Check products in alternative 'products' table
-    const productsResult = await supabase
-      .from('products')
-      .select('*', { count: 'exact', head: true }) as unknown as { 
-        count: number | null;
-        error: any | null;
-      };
-      
-    results.productCounts.products = productsResult.count || 0;
-    console.log(`Vendor has ${productsResult.count || 0} products in 'products' table`);
-    
-    // Step 6: Check orders in 'pedidos' table
-    const pedidosResult = await supabase
-      .from('pedidos')
-      .select('*', { count: 'exact', head: true }) as unknown as { 
-        count: number | null;
-        error: any | null;
-      };
-      
-    results.orderCounts.pedidos = pedidosResult.count || 0;
-    console.log(`Vendor has ${pedidosResult.count || 0} orders in 'pedidos' table`);
-    
-    // Step 7: Check orders in 'orders' table
-    const ordersResult = await supabase
-      .from('orders')
-      .select('*', { count: 'exact', head: true }) as unknown as { 
-        count: number | null;
-        error: any | null;
-      };
-      
-    results.orderCounts.orders = ordersResult.count || 0;
-    console.log(`Vendor has ${ordersResult.count || 0} orders in 'orders' table`);
-    
-    return results;
+    return diagnostics;
   } catch (error) {
     console.error('Error running vendor diagnostics:', error);
-    return results;
-  }
-};
-
-/**
- * Log extended diagnostic information about database tables
- */
-export const logDiagnosticInfo = async (vendorId: string): Promise<void> => {
-  if (!vendorId) {
-    console.error('Cannot run diagnostics without vendor ID');
-    return;
-  }
-  
-  console.log('Running extended diagnostics for vendor:', vendorId);
-  
-  try {
-    // Count products without complex type casting
-    const productResult = await supabase
-      .from('produtos')
-      .select('*', { count: 'exact', head: true }) as unknown as {
-        count: number | null;
-        error: any | null;
-      };
-      
-    console.log(`Total produtos in database: ${productResult.count || 0}`);
-    if (productResult.error) console.error('Error counting produtos:', productResult.error);
-    
-    // Count orders in pedidos table
-    const orderResult = await supabase
-      .from('pedidos')
-      .select('*', { count: 'exact', head: true }) as unknown as {
-        count: number | null;
-        error: any | null;
-      };
-      
-    console.log(`Total orders in database: ${orderResult.count || 0}`);
-    if (orderResult.error) console.error('Error counting pedidos:', orderResult.error);
-    
-    // Count order items
-    const itemResult = await supabase
-      .from('order_items')
-      .select('*', { count: 'exact', head: true }) as unknown as {
-        count: number | null;
-        error: any | null;
-      };
-      
-    console.log(`Total order_items in database: ${itemResult.count || 0}`);
-    if (itemResult.error) console.error('Error counting order_items:', itemResult.error);
-    
-    // Check for orders specifically linked to this vendor
-    const vendorOrderResult = await supabase
-      .from('pedidos')
-      .select('id', { count: 'exact' })
-      .eq('vendedor_id', vendorId) as unknown as {
-        count: number | null;
-        error: any | null;
-      };
-      
-    console.log(`Orders in 'pedidos' with vendedor_id=${vendorId}: ${vendorOrderResult.count || 0}`);
-    if (vendorOrderResult.error) console.error('Error checking vendor orders:', vendorOrderResult.error);
-    
-    // Check products linked to this vendor
-    const vendorProductResult = await supabase
-      .from('produtos')
-      .select('id', { count: 'exact' })
-      .eq('vendedor_id', vendorId) as unknown as {
-        count: number | null;
-        error: any | null;
-      };
-      
-    console.log(`Products in 'produtos' with vendedor_id=${vendorId}: ${vendorProductResult.count || 0}`);
-    if (vendorProductResult.error) console.error('Error checking vendor products:', vendorProductResult.error);
-    
-    // Check order items linked to this vendor's products
-    if (vendorProductResult.count && vendorProductResult.count > 0) {
-      // First get product IDs
-      const { data: productIds } = await supabase
-        .from('produtos')
-        .select('id')
-        .eq('vendedor_id', vendorId) as unknown as {
-          data: Array<{id: string}> | null;
-          error: any | null;
-        };
-      
-      if (productIds && productIds.length > 0) {
-        const productIdArray = productIds.map(p => p.id);
-        
-        // Then check order items with these product IDs
-        const orderItemsResult = await supabase
-          .from('order_items')
-          .select('*', { count: 'exact' })
-          .in('produto_id', productIdArray) as unknown as {
-            count: number | null;
-            error: any | null;
-          };
-          
-        console.log(`Order items linked to vendor products: ${orderItemsResult.count || 0}`);
-        if (orderItemsResult.error) console.error('Error checking order items:', orderItemsResult.error);
-      }
-    }
-    
-  } catch (error) {
-    console.error('Error in diagnostic logging:', error);
+    return { error: String(error), timestamp: new Date().toISOString() };
   }
 };

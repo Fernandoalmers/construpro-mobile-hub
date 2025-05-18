@@ -2,11 +2,11 @@
 import { getVendorProfile } from '../../vendorProfileService';
 import { VendorOrder } from './types';
 import { 
-  fetchOrdersFromPedidos, 
+  fetchOrdersFromPedidos,
   fetchOrdersFromOrderItems, 
-  getVendorProductIds,
-  logDiagnosticInfo 
-} from './fetchOrdersUtility';
+  getVendorProductIds 
+} from './utils/ordersFetcher';
+import { logDiagnosticInfo } from './utils/diagnosticUtils';
 
 // Main function to get all vendor orders
 export const getVendorOrders = async (): Promise<VendorOrder[]> => {

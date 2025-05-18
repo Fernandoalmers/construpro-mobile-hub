@@ -4,9 +4,9 @@ import { VendorOrder } from './types';
 import { 
   fetchOrdersFromPedidos, 
   fetchOrdersFromOrderItems, 
-  getVendorProductIds,
-  logDiagnosticInfo 
-} from './utils/fetchOrdersUtility';
+  getVendorProductIds 
+} from './utils/ordersFetcher';
+import { logDiagnosticInfo } from './utils/diagnosticUtils';
 import { getVendorProfile } from '../../vendorProfileService';
 
 // Main function to get all vendor orders
