@@ -29,8 +29,8 @@ export const fetchOrdersFromOrderItems = async (vendorId: string, productIds: st
       return [];
     }
     
-    // Get unique order IDs
-    const orderIds = [...new Set(orderItemsData.map(item => item.order_id))];
+    // Get unique order IDs with proper type casting
+    const orderIds = [...new Set(orderItemsData.map(item => item.order_id as string))];
     console.log('Found', orderIds.length, 'unique orders with vendor products');
     
     if (orderIds.length === 0) {

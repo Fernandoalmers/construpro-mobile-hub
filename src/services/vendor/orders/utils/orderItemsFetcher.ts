@@ -44,12 +44,12 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
   }
 };
 
-// Create specialized readonly array types to prevent type recursion
-type StringImageArray = ReadonlyArray<string>;
-type ObjectImageArray = ReadonlyArray<{url: string}>;
+// Define immutable array types to prevent recursion
+type StringArrayReadOnly = ReadonlyArray<string>;
+type ObjectArrayReadOnly = ReadonlyArray<{url: string}>;
 
-// Use a discriminated union type to handle different image formats
-export type ProductImageTypes = StringImageArray | ObjectImageArray;
+// Use explicit union type with no recursive references
+export type ProductImageType = StringArrayReadOnly | ObjectArrayReadOnly | null;
 
 // Define a standalone product type with no circular references
 export interface ProductData {
@@ -57,16 +57,16 @@ export interface ProductData {
   nome: string;
   descricao: string | null;
   preco_normal: number;
-  imagens: ProductImageTypes | null;
+  imagens: ProductImageType;
 }
 
 // Image processing function with strict typing
-function processImagens(rawImagens: unknown): ProductImageTypes | null {
+function processImagens(rawImagens: unknown): ProductImageType {
   if (!rawImagens) return null;
   
   // For string input
   if (typeof rawImagens === 'string') {
-    return [rawImagens] as StringImageArray;
+    return [rawImagens] as StringArrayReadOnly;
   }
   
   // For array input
@@ -85,12 +85,12 @@ function processImagens(rawImagens: unknown): ProductImageTypes | null {
     
     // Return the appropriate type based on content
     if (stringImages.length > 0 && objectImages.length === 0) {
-      return stringImages as StringImageArray;
+      return stringImages as StringArrayReadOnly;
     } else if (objectImages.length > 0 && stringImages.length === 0) {
-      return objectImages as ObjectImageArray;
+      return objectImages as ObjectArrayReadOnly;
     } else if (stringImages.length > 0) {
       // If mixed, prefer string format for consistency
-      return [...stringImages, ...objectImages.map(obj => obj.url)] as StringImageArray;
+      return [...stringImages, ...objectImages.map(obj => obj.url)] as StringArrayReadOnly;
     }
   }
   
