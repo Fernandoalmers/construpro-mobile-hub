@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 
@@ -38,13 +39,7 @@ export interface Product {
   stores?: StoreInfo;
 }
 
-// Define a separate interface for the vendor data
-interface VendorData {
-  nome_loja?: string;
-  logo_url?: string;
-}
-
-// Define a separate interface for the raw database response
+// Simple database record type without complex nested types
 interface ProductDatabaseRecord {
   id: string;
   nome: string;
@@ -56,7 +51,7 @@ interface ProductDatabaseRecord {
   segmento?: string;
   segmento_id?: string;
   imagem_url?: string;
-  imagens: any; // Could be Json, string[], etc.
+  imagens: any; // Using any here to avoid complex type inference
   estoque: number;
   pontos_consumidor?: number;
   pontos_profissional?: number;
@@ -66,7 +61,10 @@ interface ProductDatabaseRecord {
   sku?: string;
   created_at?: string;
   updated_at?: string;
-  vendedores?: VendorData | null;
+  vendedores?: {
+    nome_loja?: string;
+    logo_url?: string;
+  } | null;
 }
 
 // Transform database record to Product type
@@ -149,9 +147,11 @@ export const getProducts = async (filters = {}): Promise<Product[]> => {
     // Break the complex type inference chain by creating a new array
     const products: Product[] = [];
     
-    for (const item of data) {
-      // Use a simple intermediate type to avoid deep type instantiation
-      const record = item as unknown as ProductDatabaseRecord;
+    // Use a for loop instead of map to avoid TypeScript inference issues
+    for (let i = 0; i < data.length; i++) {
+      // Use unknown as intermediate type to break deep type inference
+      const rawRecord = data[i] as unknown;
+      const record = rawRecord as ProductDatabaseRecord;
       products.push(transformToProduct(record));
     }
     
@@ -182,13 +182,14 @@ export const getProductById = async (id: string): Promise<Product | null> => {
     
     if (!data) return null;
     
-    // Break the complex type inference chain by using an intermediate type
-    const record = data as unknown as ProductDatabaseRecord;
+    // Break the complex type inference chain by using intermediate unknown type
+    const rawRecord = data as unknown;
+    const record = rawRecord as ProductDatabaseRecord;
     const product = transformToProduct(record);
     
     // Add store information if available
     if (data.vendedores && typeof data.vendedores === 'object' && data.vendedores !== null) {
-      const vendedorData = data.vendedores as VendorData;
+      const vendedorData = data.vendedores as { nome_loja?: string; logo_url?: string };
       
       product.stores = {
         id: data.vendedor_id || '',
