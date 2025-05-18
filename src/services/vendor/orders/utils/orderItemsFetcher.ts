@@ -1,7 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
-// Define ProductId interface to simplify typing
+// Define explicit interfaces to prevent excessive type instantiation
 interface ProductId {
   id: string;
 }
@@ -29,11 +29,10 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
       return [];
     }
     
-    // Explicitly define and cast the data type to prevent deep instantiation issues
-    const data = result.data as Array<{ id: string }> | null;
-    const vendorProducts = data || [];
+    // Use explicit type assertion to prevent deep instantiation
+    const products: ProductId[] = (result.data as ProductId[] || []);
     
-    if (vendorProducts.length === 0) {
+    if (products.length === 0) {
       console.log('No products found in produtos table, checking alternative table');
       
       // Try alternate product table as backup
@@ -48,9 +47,8 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
         return [];
       }
       
-      // Explicitly define and cast the data type to prevent deep instantiation issues
-      const alternateData = alternateResult.data as Array<{ id: string }> | null;
-      const alternateProducts = alternateData || [];
+      // Use explicit type assertion for alternate data as well
+      const alternateProducts: ProductId[] = (alternateResult.data as ProductId[] || []);
       
       if (alternateProducts.length === 0) {
         console.log('No products found in alternate table either');
@@ -63,8 +61,8 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
       return productIds;
     }
     
-    console.log(`Found ${vendorProducts.length} products for this vendor`);
-    return vendorProducts.map(p => p.id);
+    console.log(`Found ${products.length} products for this vendor`);
+    return products.map(p => p.id);
   } catch (error) {
     console.error('Unexpected error in getVendorProductIds:', error);
     return [];
@@ -114,21 +112,21 @@ function processImagens(rawImagens: unknown): ProductImageType {
   return null;
 }
 
+// Define explicit interface for raw product data to prevent type recursion
+interface RawProductData {
+  id: string;
+  nome: string;
+  descricao: string | null;
+  preco_normal: number;
+  imagens: unknown;
+}
+
 // Fetch product data with explicit typing
 export const fetchProductsForItems = async (productIds: string[]): Promise<Record<string, ProductData>> => {
   if (!productIds.length) return {};
   
   try {
     console.log(`Fetching product data for ${productIds.length} products`);
-    
-    // Explicitly define the type we expect from the query
-    type RawProductData = {
-      id: string;
-      nome: string;
-      descricao: string | null;
-      preco_normal: number;
-      imagens: unknown;
-    };
     
     // Use IN filter to get only the requested products
     const result = await supabase
@@ -141,9 +139,8 @@ export const fetchProductsForItems = async (productIds: string[]): Promise<Recor
       return {};
     }
     
-    // Safely handle the data with explicit typing
-    const data = result.data as RawProductData[] | null;
-    const produtos = data || [];
+    // Use explicit type assertion to prevent deep instantiation
+    const produtos: RawProductData[] = (result.data as RawProductData[] || []);
     
     if (produtos.length === 0) {
       console.log('No products found matching the requested IDs');
@@ -236,6 +233,18 @@ export const createOrderItemsMap = (
   return orderItemsMap;
 };
 
+// Explicit interface for order item records
+interface OrderItemRecord {
+  id: string;
+  order_id: string;
+  produto_id: string;
+  quantidade: number;
+  preco_unitario: number;
+  subtotal: number;
+  created_at?: string;
+  [key: string]: unknown;
+}
+
 // Fetch order items
 export const fetchOrderItemsForProducts = async (productIds: string[]): Promise<Array<Record<string, unknown>>> => {
   if (!productIds.length) return [];
@@ -253,9 +262,8 @@ export const fetchOrderItemsForProducts = async (productIds: string[]): Promise<
       return [];
     }
     
-    // Safely handle data with explicit casting
-    const data = result.data as Array<Record<string, unknown>> | null;
-    const orderItemsData = data || [];
+    // Use explicit type assertion to prevent deep instantiation
+    const orderItemsData: OrderItemRecord[] = (result.data as OrderItemRecord[] || []);
     
     if (orderItemsData.length === 0) {
       console.log('No order items found for vendor products');
@@ -265,10 +273,10 @@ export const fetchOrderItemsForProducts = async (productIds: string[]): Promise<
     console.log(`Found ${orderItemsData.length} order items for vendor products`);
     
     // Extract unique order IDs for diagnostics
-    const orderIds = [...new Set(orderItemsData.map(item => item.order_id as string))];
+    const orderIds = [...new Set(orderItemsData.map(item => item.order_id))];
     console.log(`Found ${orderIds.length} unique orders containing vendor products`);
     
-    return orderItemsData;
+    return orderItemsData as Array<Record<string, unknown>>;
   } catch (error) {
     console.error('Error fetching order items:', error);
     return [];
