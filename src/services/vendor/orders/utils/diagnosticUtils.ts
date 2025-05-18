@@ -77,7 +77,6 @@ export const runVendorDiagnostics = async () => {
     const { data: vendorProfile, error: profileError } = await supabase
       .from('vendedores')
       .select('id, nome_loja, usuario_id')
-      .eq('usuario_id', supabase.auth.getUser().then(res => res.data.user?.id))
       .single();
       
     if (profileError) {
@@ -109,4 +108,3 @@ export const runVendorDiagnostics = async () => {
     };
   }
 };
-

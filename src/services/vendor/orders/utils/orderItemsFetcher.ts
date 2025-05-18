@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { SimpleOrderItem } from './orderItemTypes';
 import { ProductData } from './productTypes';
@@ -46,8 +45,7 @@ export const fetchOrderItemsForProducts = async (productIds: string[]): Promise<
       const productCheckResult = await supabase
         .from('order_items')
         .select('produto_id, count')
-        .in('produto_id', productIds.slice(0, 10))
-        .group('produto_id');
+        .in('produto_id', productIds.slice(0, 10));
         
       if (productCheckResult.error) {
         console.error('Error checking product presence in order_items:', productCheckResult.error);
@@ -208,4 +206,3 @@ export const diagnoseBrokenConnections = async (vendorId: string): Promise<{
 export { getVendorProductIds, fetchProductsForItems } from './productFetcher';
 export type { ProductData, ProductImageType } from './productTypes';
 export type { SimpleOrderItem } from './orderItemTypes';
-
