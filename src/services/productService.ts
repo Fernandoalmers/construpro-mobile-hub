@@ -28,12 +28,15 @@ export interface Product {
   sku?: string;
   avaliacao?: number;
   num_avaliacoes?: number;
-  stores?: {
-    id: string;
-    nome: string;
-    nome_loja: string;
-    logo_url?: string;
-  };
+  stores?: StoreInfo;
+}
+
+// Define a separate interface for store information
+interface StoreInfo {
+  id: string;
+  nome: string;
+  nome_loja: string;
+  logo_url?: string;
 }
 
 // Type for the raw database response
@@ -61,19 +64,17 @@ interface ProductDatabaseRecord {
   vendedores?: { 
     nome_loja?: string;
     logo_url?: string;
-  };
-  [key: string]: any; // Allow other properties
+  } | null;
 }
 
 // Transform database record to Product type
 const transformToProduct = (record: ProductDatabaseRecord): Product => {
-  // Ensure imagens is properly cast to string[]
+  // Process images array
   let imagens: string[] = [];
   
   if (Array.isArray(record.imagens)) {
     imagens = record.imagens.map(img => String(img));
   } else if (record.imagens && typeof record.imagens === 'object') {
-    // Handle case when imagens is a JSON object
     try {
       const parsed = record.imagens;
       imagens = Array.isArray(parsed) ? parsed.map(String) : [];
@@ -82,7 +83,6 @@ const transformToProduct = (record: ProductDatabaseRecord): Product => {
       imagens = [];
     }
   } else if (typeof record.imagens === 'string') {
-    // If it's a string, try to parse it as JSON
     try {
       const parsed = JSON.parse(record.imagens);
       imagens = Array.isArray(parsed) ? parsed.map(String) : [];
@@ -142,7 +142,7 @@ export const getProducts = async (filters = {}): Promise<Product[]> => {
     
     // Transform each record to ensure type compatibility
     // Use explicit type assertion to avoid deep type issues
-    return (data || []).map(item => transformToProduct(item as ProductDatabaseRecord));
+    return (data || []).map(item => transformToProduct(item as unknown as ProductDatabaseRecord));
   } catch (error) {
     console.error('Error in getProducts:', error);
     toast.error('Erro ao carregar produtos');
@@ -170,15 +170,16 @@ export const getProductById = async (id: string): Promise<Product | null> => {
     if (!data) return null;
     
     // Transform the record to ensure type compatibility
-    const product = transformToProduct(data as ProductDatabaseRecord);
+    const product = transformToProduct(data as unknown as ProductDatabaseRecord);
     
     // Add store information if available
-    if (data.vendedores && typeof data.vendedores === 'object') {
+    if (data.vendedores && typeof data.vendedores === 'object' && data.vendedores !== null) {
+      const vendedorData = data.vendedores;
       product.stores = {
         id: data.vendedor_id || '',
-        nome: String(data.vendedores.nome_loja || ''),
-        nome_loja: String(data.vendedores.nome_loja || ''),
-        logo_url: data.vendedores.logo_url
+        nome: String(vendedorData?.nome_loja || ''),
+        nome_loja: String(vendedorData?.nome_loja || ''),
+        logo_url: vendedorData?.logo_url || undefined
       };
     }
     
