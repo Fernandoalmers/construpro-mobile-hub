@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { ProductData } from './productTypes';
 
 // Function to get all product IDs for a vendor
 export const getVendorProductIds = async (vendorId: string): Promise<string[]> => {
@@ -66,12 +67,14 @@ export const fetchProductsForItems = async (productIds: string[]): Promise<Recor
       let imageUrl = null;
       if (product.imagens && Array.isArray(product.imagens) && product.imagens.length > 0) {
         const firstImage = product.imagens[0];
-        // Better handling of different image object formats
+        // Better handling of different image object formats with proper type checking
         if (typeof firstImage === 'string') {
           imageUrl = firstImage;
         } else if (firstImage && typeof firstImage === 'object') {
           // Check for common URL fields in image objects
-          imageUrl = firstImage.url || firstImage.path || firstImage.src || null;
+          // Use type assertion with a type guard to ensure TypeScript knows it's an object
+          const imgObj = firstImage as Record<string, any>;
+          imageUrl = imgObj.url || imgObj.path || imgObj.src || null;
         }
       }
       
