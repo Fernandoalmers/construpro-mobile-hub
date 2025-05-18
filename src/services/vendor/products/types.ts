@@ -19,6 +19,8 @@ export interface VendorProduct {
   created_at?: string;
   updated_at?: string;
   segmento_id?: string | null;
+  // Add imagemPrincipal for consistency with marketplace product display
+  imagemPrincipal?: string;
 }
 
 // Partial product type for updates and creation

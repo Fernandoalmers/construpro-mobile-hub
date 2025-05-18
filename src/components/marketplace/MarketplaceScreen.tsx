@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import LoadingState from '../common/LoadingState';
 import { getProductSegments } from '@/services/admin/productSegmentsService';
 import StoresSection from './components/StoresSection';
+import SegmentCardsHeader from './components/SegmentCardsHeader';
 
 const MarketplaceScreen: React.FC = () => {
   const location = useLocation();
@@ -90,6 +91,14 @@ const MarketplaceScreen: React.FC = () => {
   
   const handleSegmentClick = (segmentId: string) => {
     console.log('[MarketplaceScreen] Segment clicked:', segmentId);
+    
+    // Special handling for "all" segment
+    if (segmentId === "all") {
+      setSelectedSegmentId(null);
+      setSelectedSegments([]);
+      updateSegmentURL(null);
+      return;
+    }
     
     setSelectedSegments(prev => {
       // Toggle the segment selection
@@ -200,7 +209,7 @@ const MarketplaceScreen: React.FC = () => {
   const currentCategoryName = selectedCategories.length === 1 ? 
     categories.find(cat => cat.id === selectedCategories[0])?.label : 
     selectedSegmentId ? 
-      "Produtos no segmento selecionado" : 
+      segmentOptions.find(s => s.id === selectedSegmentId)?.label || "Produtos no segmento selecionado" : 
       "Todos os Produtos";
 
   return (
@@ -225,6 +234,12 @@ const MarketplaceScreen: React.FC = () => {
         clearFilters={clearFilters}
         stores={stores}
         handleSearchChange={(term) => setTerm(term)}
+      />
+      
+      {/* Segment Cards Header */}
+      <SegmentCardsHeader 
+        selectedSegment={selectedSegmentId}
+        onSegmentClick={handleSegmentClick}
       />
       
       {/* Stores Section */}

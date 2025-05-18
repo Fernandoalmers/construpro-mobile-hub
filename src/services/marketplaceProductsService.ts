@@ -28,6 +28,7 @@ export const getMarketplaceProducts = async (categoria?: string): Promise<Market
   try {
     // Get product segments for reference
     const segments = await getProductSegments();
+    console.log('[getMarketplaceProducts] Available segments:', segments.map(s => ({ id: s.id, nome: s.nome })));
     
     // Build base query
     let query = supabase
@@ -42,6 +43,7 @@ export const getMarketplaceProducts = async (categoria?: string): Promise<Market
       
     // Filter by category if provided
     if (categoria) {
+      console.log('[getMarketplaceProducts] Filtering by categoria:', categoria);
       query = query.eq('categoria', categoria);
     }
     
@@ -52,18 +54,31 @@ export const getMarketplaceProducts = async (categoria?: string): Promise<Market
       throw error;
     }
     
+    console.log(`[getMarketplaceProducts] Retrieved ${data?.length || 0} products from database`);
+    
     // Transform to marketplace product format
-    return (data || []).map(item => {
-      // Find the primary image or first available
-      let imagemPrincipal = null;
-      // Ensure imagens is an array and cast from JSON to string[]
-      const imagensArray: string[] = Array.isArray(item.imagens) 
-        ? item.imagens.map(img => String(img))
-        : [];
+    const products = (data || []).map(item => {
+      // Parse and ensure imagens is an array of strings
+      let imagens: string[] = [];
       
-      if (imagensArray.length > 0) {
-        imagemPrincipal = imagensArray[0];
+      if (item.imagens) {
+        if (typeof item.imagens === 'string') {
+          try {
+            const parsedImages = JSON.parse(item.imagens);
+            imagens = Array.isArray(parsedImages) 
+              ? parsedImages.map(img => String(img))
+              : [];
+          } catch (e) {
+            console.error(`[getMarketplaceProducts] Error parsing imagens for product ${item.id}:`, e);
+            imagens = [];
+          }
+        } else if (Array.isArray(item.imagens)) {
+          imagens = item.imagens.map(img => String(img));
+        }
       }
+      
+      // Find the primary image or first available
+      const imagemPrincipal = imagens.length > 0 ? imagens[0] : null;
       
       // If segmento_id is null but segmento name exists, try to find matching segment ID
       let segmento_id = item.segmento_id;
@@ -73,6 +88,23 @@ export const getMarketplaceProducts = async (categoria?: string): Promise<Market
         );
         if (matchingSegment) {
           segmento_id = matchingSegment.id;
+          console.log(`[getMarketplaceProducts] Matched segment for product ${item.id}: ${item.segmento} -> ${segmento_id}`);
+        }
+      }
+      
+      // Special handling for "Materiais de Construção" segment
+      if (!segmento_id && item.categoria) {
+        const lowerCategoria = item.categoria.toLowerCase();
+        if (lowerCategoria.includes("material") || lowerCategoria.includes("construção")) {
+          // Find the "Materiais de Construção" segment
+          const materiaisSegment = segments.find(
+            s => s.nome.toLowerCase() === "materiais de construção"
+          );
+          
+          if (materiaisSegment) {
+            segmento_id = materiaisSegment.id;
+            console.log(`[getMarketplaceProducts] Assigned Materiais de Construção segment to product ${item.id} based on categoria: ${item.categoria}`);
+          }
         }
       }
       
@@ -86,7 +118,7 @@ export const getMarketplaceProducts = async (categoria?: string): Promise<Market
         categoria: item.categoria,
         segmento: item.segmento,
         segmento_id: segmento_id,
-        imagens: imagensArray,
+        imagens,
         imagemPrincipal,
         estoque: item.estoque,
         vendedor_id: item.vendedor_id,
@@ -94,6 +126,10 @@ export const getMarketplaceProducts = async (categoria?: string): Promise<Market
         created_at: item.created_at
       };
     });
+    
+    console.log(`[getMarketplaceProducts] Processed ${products.length} products for marketplace`);
+    return products;
+    
   } catch (error) {
     console.error('Error in getMarketplaceProducts:', error);
     toast.error('Erro ao carregar produtos');
@@ -126,16 +162,27 @@ export const getMarketplaceProductById = async (id: string): Promise<Marketplace
     
     if (!data) return null;
     
-    // Cast imagens from JSON to string[]
-    const imagensArray: string[] = Array.isArray(data.imagens) 
-      ? data.imagens.map(img => String(img))
-      : [];
+    // Parse and ensure imagens is an array of strings
+    let imagens: string[] = [];
+    
+    if (data.imagens) {
+      if (typeof data.imagens === 'string') {
+        try {
+          const parsedImages = JSON.parse(data.imagens);
+          imagens = Array.isArray(parsedImages) 
+            ? parsedImages.map(img => String(img))
+            : [];
+        } catch (e) {
+          console.error(`[getMarketplaceProductById] Error parsing imagens:`, e);
+          imagens = [];
+        }
+      } else if (Array.isArray(data.imagens)) {
+        imagens = data.imagens.map(img => String(img));
+      }
+    }
     
     // Find the primary image or first available
-    let imagemPrincipal = null;
-    if (imagensArray.length > 0) {
-      imagemPrincipal = imagensArray[0];
-    }
+    const imagemPrincipal = imagens.length > 0 ? imagens[0] : null;
     
     // If segmento_id is null but segmento name exists, try to find matching segment ID
     let segmento_id = data.segmento_id;
@@ -145,6 +192,21 @@ export const getMarketplaceProductById = async (id: string): Promise<Marketplace
       );
       if (matchingSegment) {
         segmento_id = matchingSegment.id;
+      }
+    }
+    
+    // Special handling for "Materiais de Construção" segment
+    if (!segmento_id && data.categoria) {
+      const lowerCategoria = data.categoria.toLowerCase();
+      if (lowerCategoria.includes("material") || lowerCategoria.includes("construção")) {
+        // Find the "Materiais de Construção" segment
+        const materiaisSegment = segments.find(
+          s => s.nome.toLowerCase() === "materiais de construção"
+        );
+        
+        if (materiaisSegment) {
+          segmento_id = materiaisSegment.id;
+        }
       }
     }
     
@@ -158,7 +220,7 @@ export const getMarketplaceProductById = async (id: string): Promise<Marketplace
       categoria: data.categoria,
       segmento: data.segmento,
       segmento_id: segmento_id,
-      imagens: imagensArray,
+      imagens,
       imagemPrincipal,
       estoque: data.estoque,
       vendedor_id: data.vendedor_id,

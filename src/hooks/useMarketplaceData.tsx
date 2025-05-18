@@ -24,7 +24,7 @@ export function useMarketplaceData(selectedSegmentId: string | null): Marketplac
   const [storesError, setStoresError] = useState<string | null>(null);
   const [segments, setSegments] = useState<{id: string, nome: string}[]>([]);
   
-  // Logging for debugging
+  // Improved logging for debugging
   useEffect(() => {
     console.log('[useMarketplaceData] selectedSegmentId:', selectedSegmentId);
   }, [selectedSegmentId]);
@@ -76,50 +76,66 @@ export function useMarketplaceData(selectedSegmentId: string | null): Marketplac
     fetchData();
   }, []);
   
-  // Enhanced product filtering based on selected segment ID
-  const filteredProducts = selectedSegmentId && selectedSegmentId !== 'all'
-    ? products.filter(p => {
-        // Find the segment name corresponding to the selected ID
-        const selectedSegment = segments.find(s => s.id === selectedSegmentId);
-        const selectedSegmentName = selectedSegment?.nome;
-        
-        console.log(
-          `[useMarketplaceData] Filtering product "${p.nome}": ` +
-          `segmento_id=${p.segmento_id}, segmento=${p.segmento}, ` +
-          `selectedSegmentId=${selectedSegmentId}, selectedSegmentName=${selectedSegmentName}`
-        );
-        
-        // Match by either segmento_id (primary) or segmento name (fallback)
-        const matchesById = p.segmento_id === selectedSegmentId;
-        const matchesByName = p.segmento && selectedSegmentName && 
-          p.segmento.toLowerCase() === selectedSegmentName.toLowerCase();
-          
-        // Special case for "Materiais de Construção" segment - match also by category
-        const isMaterialDeContrucao = selectedSegmentName === "Materiais de Construção";
-        const matchesByMaterialCategory = isMaterialDeContrucao && 
-          p.categoria && typeof p.categoria === 'string' && 
-          (p.categoria.toLowerCase().includes("material") || p.categoria.toLowerCase().includes("construção"));
-        
-        const result = matchesById || matchesByName || matchesByMaterialCategory;
-        
-        // Debug logging
-        if (result) {
-          console.log(`[useMarketplaceData] Product "${p.nome}" MATCHED segment filter`);
+  // Improved product filtering to handle both segmento_id and categoria
+  const filteredProducts = React.useMemo(() => {
+    if (!selectedSegmentId || selectedSegmentId === 'all') {
+      return products;
+    }
+    
+    const selectedSegment = segments.find(s => s.id === selectedSegmentId);
+    const selectedSegmentName = selectedSegment?.nome;
+    
+    console.log(`[useMarketplaceData] Filtering by segment: ID=${selectedSegmentId}, Name=${selectedSegmentName}`);
+    
+    return products.filter(product => {
+      // Match by segment ID (primary way)
+      if (product.segmento_id === selectedSegmentId) {
+        console.log(`[useMarketplaceData] Product ${product.nome} matched by segmento_id`);
+        return true;
+      }
+      
+      // Match by segment name if available (fallback)
+      if (product.segmento && selectedSegmentName && 
+          product.segmento.toLowerCase() === selectedSegmentName.toLowerCase()) {
+        console.log(`[useMarketplaceData] Product ${product.nome} matched by segmento name`);
+        return true;
+      }
+      
+      // Special handling for "Materiais de Construção" segment
+      if (selectedSegmentName === "Materiais de Construção") {
+        // Match by exact category
+        if (product.categoria && 
+            (product.categoria.toLowerCase().includes("material") || 
+             product.categoria.toLowerCase().includes("construção"))) {
+          console.log(`[useMarketplaceData] Product ${product.nome} matched as Material de Construção by categoria`);
+          return true;
         }
-        
-        return result;
-      })
-    : products;
+      }
+      
+      return false;
+    });
+  }, [products, selectedSegmentId, segments]);
   
-  // Additional logging to help debug segment filtering
+  // Add detailed logging to help debug filtering
   useEffect(() => {
     if (selectedSegmentId && selectedSegmentId !== 'all') {
       const selectedSegment = segments.find(s => s.id === selectedSegmentId);
       console.log(
-        `[useMarketplaceData] Segment filtering results: ` +
+        `[useMarketplaceData] Filtering results: ` +
         `Total products: ${products.length}, ` +
         `Filtered products: ${filteredProducts.length}, ` +
         `Selected segment: ${selectedSegment?.nome || 'Unknown'} (${selectedSegmentId})`
+      );
+      
+      // Log some of the filtered products to see what's happening
+      console.log('[useMarketplaceData] First 5 filtered products:', 
+        filteredProducts.slice(0, 5).map(p => ({
+          id: p.id,
+          nome: p.nome, 
+          segmento_id: p.segmento_id,
+          segmento: p.segmento,
+          categoria: p.categoria
+        }))
       );
     }
   }, [selectedSegmentId, filteredProducts.length, products.length, segments]);
