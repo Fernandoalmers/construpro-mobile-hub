@@ -38,13 +38,16 @@ export const logDiagnosticInfo = async (vendorId: string) => {
     }
     
     // Check order_items for this vendor's products
+    let orderItemsData = null;
     if (products && products.length > 0) {
       const productIds = products.map(p => p.id);
-      const { data: orderItemsData, error: orderItemsError } = await supabase
+      const { data, error: orderItemsError } = await supabase
         .from('order_items')
         .select('id, order_id')
         .in('produto_id', productIds)
         .limit(100);
+        
+      orderItemsData = data;
         
       if (orderItemsError) {
         console.error('🚫 [diagnosticUtils] Error fetching order items:', orderItemsError);
