@@ -22,7 +22,7 @@ export interface Product {
   pontos_profissional?: number;
   loja_id?: string;
   vendedor_id?: string;
-  status: "pendente" | "aprovado" | "rejeitado";
+  status: string;
   unidade_medida?: string;
   codigo_barras?: string;
   sku?: string;
@@ -53,11 +53,12 @@ type ProductDatabaseRecord = {
   pontos_consumidor?: number;
   pontos_profissional?: number;
   vendedor_id?: string;
-  status: "pendente" | "aprovado" | "rejeitado";
+  status: string; // Changed from the restrictive union type to string
   codigo_barras?: string;
   sku?: string;
   created_at?: string;
   updated_at?: string;
+  vendedores?: any;
   [key: string]: any; // Allow other properties
 };
 
@@ -134,7 +135,7 @@ export const getProducts = async (filters = {}): Promise<Product[]> => {
     }
     
     // Transform each record to ensure type compatibility
-    return (data || []).map(transformToProduct);
+    return (data || []).map((item) => transformToProduct(item as ProductDatabaseRecord));
   } catch (error) {
     console.error('Error in getProducts:', error);
     toast.error('Erro ao carregar produtos');
@@ -162,7 +163,7 @@ export const getProductById = async (id: string): Promise<Product | null> => {
     if (!data) return null;
     
     // Transform the record to ensure type compatibility
-    return transformToProduct(data);
+    return transformToProduct(data as ProductDatabaseRecord);
   } catch (error) {
     console.error('Error in getProductById:', error);
     return null;
