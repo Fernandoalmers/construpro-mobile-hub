@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
@@ -190,7 +191,6 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
   const onSubmit = async (values: ProductFormValues) => {
     if (images.length === 0) {
       toast({
-        title: "Erro de validação",
         description: "É necessário adicionar pelo menos uma imagem do produto.",
         variant: "destructive"
       });
@@ -213,7 +213,7 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
         pontos_consumidor: values.pontosConsumidor,
         pontos_profissional: values.pontosProfissional,
         imagens: images,
-        status: isEditing ? 'pendente' : 'pendente',
+        status: isEditing ? 'pendente' as const : 'pendente' as const,
       };
       
       console.log("Saving product data:", productData);

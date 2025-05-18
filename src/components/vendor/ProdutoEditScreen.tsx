@@ -10,7 +10,7 @@ const ProdutoEditScreen: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [loading, setLoading] = useState(true);
-  const [product, setProduct] = useState(null);
+  const [product, setProduct] = useState<any>(null);
   
   useEffect(() => {
     const loadProduct = async () => {
