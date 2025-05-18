@@ -10,9 +10,9 @@ export const fetchOrderItemsForProducts = async (productIds: string[]): Promise<
   
   try {
     console.log(`Fetching order items for ${productIds.length} product IDs`);
-    console.log(`Product IDs sample: ${JSON.stringify(productIds.slice(0, 5))}${productIds.length > 5 ? '... (and more)' : ''}`);
+    console.log(`Product IDs sample: ${productIds.slice(0, 3).join(', ')}${productIds.length > 3 ? '... (and more)' : ''}`);
     
-    // Use explicit query with better logging
+    // Improved query with better logging
     const result = await supabase
       .from('order_items')
       .select('id, order_id, produto_id, quantidade, preco_unitario, subtotal, created_at')
@@ -26,32 +26,33 @@ export const fetchOrderItemsForProducts = async (productIds: string[]): Promise<
     // Log raw response for debugging
     console.log(`Raw order items response: ${result.data ? result.data.length : 0} items found`);
     if (result.data && result.data.length > 0) {
-      console.log('Sample order item:', JSON.stringify(result.data[0]));
+      console.log('Sample order item:', result.data[0]);
     } else {
       console.log('No order items found for the specified products');
       
-      // Diagnostic: Check if we can find any order items at all 
-      const allItemsResult = await supabase
+      // For debugging: Let's check if any order_items exist in the system
+      const { count, error: countError } = await supabase
         .from('order_items')
-        .select('count')
-        .limit(1);
+        .select('*', { count: 'exact', head: true });
         
-      if (allItemsResult.error) {
-        console.error('Error checking order_items table:', allItemsResult.error);
+      if (countError) {
+        console.error('Error checking order_items existence:', countError);
       } else {
-        console.log(`Total order_items in database: ${allItemsResult.count || 'unknown'}`);
-      }
-      
-      // Diagnostic: Check if the product IDs exist in the database
-      const productCheckResult = await supabase
-        .from('order_items')
-        .select('produto_id, count')
-        .in('produto_id', productIds.slice(0, 10));
+        console.log(`Total order_items in system: ${count || 0}`);
         
-      if (productCheckResult.error) {
-        console.error('Error checking product presence in order_items:', productCheckResult.error);
-      } else if (productCheckResult.data) {
-        console.log('Product presence in order_items:', productCheckResult.data);
+        // Let's try a more direct approach if there are items in the system
+        if (count && count > 0) {
+          // Test query for a specific product id
+          console.log("Testing direct query with a specific product ID...");
+          const testId = productIds[0];
+          const { data: testData } = await supabase
+            .from('order_items')
+            .select('id, produto_id')
+            .eq('produto_id', testId)
+            .limit(1);
+            
+          console.log(`Direct test query for product ${testId} returned:`, testData);
+        }
       }
     }
     
@@ -76,6 +77,7 @@ export const fetchOrderItemsForProducts = async (productIds: string[]): Promise<
     // Extract unique order IDs for diagnostics
     const orderIds = [...new Set(orderItemsData.map(item => item.order_id))];
     console.log(`Found ${orderIds.length} unique orders containing vendor products`);
+    console.log('Order IDs sample:', orderIds.slice(0, 3));
     
     // Return as the expected type
     return orderItemsData as Array<Record<string, unknown>>;
@@ -148,6 +150,7 @@ export const createOrderItemsMap = (
 // Add a new diagnostic function to check all connections
 export const diagnoseBrokenConnections = async (vendorId: string): Promise<{
   vendorExists: boolean;
+  vendorStatus: string;
   productCount: number;
   orderItemsCount: number;
   orderIds: string[];
@@ -155,32 +158,54 @@ export const diagnoseBrokenConnections = async (vendorId: string): Promise<{
   console.log(`Running connection diagnostics for vendor: ${vendorId}`);
   
   try {
-    // 1. Check if vendor exists
+    // 1. Check if vendor exists and get status
     const vendorResult = await supabase
       .from('vendedores')
-      .select('nome_loja')
+      .select('nome_loja, status')
       .eq('id', vendorId)
       .single();
       
     const vendorExists = !vendorResult.error;
+    const vendorStatus = vendorResult.data?.status || 'unknown';
     console.log(`Vendor exists: ${vendorExists}${vendorExists ? ' - ' + vendorResult.data?.nome_loja : ''}`);
+    console.log(`Vendor status: ${vendorStatus}`);
     
-    // 2. Get vendor products
+    // 2. Get vendor products without filtering by status
     const { data: productData, error: productError } = await supabase
       .from('produtos')
-      .select('id')
+      .select('id, status')
       .eq('vendedor_id', vendorId);
     
     if (productError) {
       console.error('Error fetching vendor products:', productError);
-      return { vendorExists, productCount: 0, orderItemsCount: 0, orderIds: [] };
+      return { 
+        vendorExists, 
+        vendorStatus, 
+        productCount: 0, 
+        orderItemsCount: 0, 
+        orderIds: [] 
+      };
     }
+    
+    // Count products by status
+    const productStatusCount: Record<string, number> = {};
+    productData.forEach(p => {
+      const status = p.status || 'unknown';
+      productStatusCount[status] = (productStatusCount[status] || 0) + 1;
+    });
     
     const productIds = productData.map(p => p.id);
     console.log(`Found ${productIds.length} products for vendor`);
+    console.log('Products by status:', productStatusCount);
     
     if (productIds.length === 0) {
-      return { vendorExists, productCount: 0, orderItemsCount: 0, orderIds: [] };
+      return { 
+        vendorExists, 
+        vendorStatus, 
+        productCount: 0, 
+        orderItemsCount: 0, 
+        orderIds: [] 
+      };
     }
     
     // 3. Find order items for these products
@@ -191,7 +216,13 @@ export const diagnoseBrokenConnections = async (vendorId: string): Promise<{
       
     if (orderItemsError) {
       console.error('Error finding order items:', orderItemsError);
-      return { vendorExists, productCount: productIds.length, orderItemsCount: 0, orderIds: [] };
+      return { 
+        vendorExists, 
+        vendorStatus, 
+        productCount: productIds.length, 
+        orderItemsCount: 0, 
+        orderIds: [] 
+      };
     }
     
     const orderItemsCount = orderItemsData?.length || 0;
@@ -206,18 +237,26 @@ export const diagnoseBrokenConnections = async (vendorId: string): Promise<{
     if (orderIds.length > 0) {
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
-        .select('id, status')
+        .select('id, status, created_at')
         .in('id', orderIds);
         
       if (ordersError) {
         console.error('Error verifying orders:', ordersError);
       } else {
         console.log(`Verified ${ordersData.length} of ${orderIds.length} orders exist in orders table`);
+        if (ordersData.length > 0) {
+          // Sort by date
+          ordersData.sort((a, b) => 
+            new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime()
+          );
+          console.log('Most recent order:', ordersData[0]);
+        }
       }
     }
     
     return {
       vendorExists,
+      vendorStatus,
       productCount: productIds.length,
       orderItemsCount,
       orderIds
@@ -226,6 +265,7 @@ export const diagnoseBrokenConnections = async (vendorId: string): Promise<{
     console.error('Error in connection diagnostics:', error);
     return {
       vendorExists: false,
+      vendorStatus: 'error',
       productCount: 0,
       orderItemsCount: 0,
       orderIds: []

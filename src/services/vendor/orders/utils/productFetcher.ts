@@ -62,11 +62,12 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
     console.log(`Found ${products.length} products for this vendor`);
     console.log('Products sample:', products.slice(0, 2));
     
-    // Filter to only include approved products for orders
-    const approvedProducts = products.filter(p => p.status === 'aprovado');
-    console.log(`Of which ${approvedProducts.length} are approved`);
+    // Get all product IDs, even without filtering by status
+    const allProductIds = products.map(p => p.id);
+    console.log(`Returning all ${allProductIds.length} product IDs without filtering by status`);
     
-    return approvedProducts.map(p => p.id);
+    // Return all product IDs instead of filtering by approved status
+    return allProductIds;
   } catch (error) {
     console.error('Unexpected error in getVendorProductIds:', error);
     return [];

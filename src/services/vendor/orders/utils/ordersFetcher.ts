@@ -2,15 +2,14 @@
 import { supabase } from '@/integrations/supabase/client';
 import { OrderItem, VendorOrder } from '../types';
 import { fetchCustomerInfo } from './clientInfoFetcher';
-import { VendorCustomer } from '../../../vendorCustomersService';
 import {
   fetchOrderItemsForProducts,
   createOrderItemsMap,
   fetchProductsForItems
 } from './orderItemsFetcher';
 
-// Re-export getVendorProductIds from orderItemsFetcher
-export { getVendorProductIds } from './orderItemsFetcher';
+// Re-export getVendorProductIds from productFetcher
+export { getVendorProductIds } from './productFetcher';
 
 // Helper to get orders from the pedidos table (old structure)
 export const fetchOrdersFromPedidos = async (vendorId: string): Promise<VendorOrder[]> => {
@@ -99,6 +98,7 @@ export const fetchOrdersById = async (orderIds: string[]): Promise<any[]> => {
   
   try {
     console.log(`Fetching ${orderIds.length} orders by IDs`);
+    console.log('Order IDs sample:', orderIds.slice(0, 3));
     
     const { data: ordersData, error: ordersError } = await supabase
       .from('orders')
@@ -126,6 +126,7 @@ export const fetchOrdersById = async (orderIds: string[]): Promise<any[]> => {
     }
     
     console.log(`Successfully fetched ${ordersData.length} orders out of ${orderIds.length} requested`);
+    console.log('Sample order:', ordersData[0]);
     
     return ordersData;
   } catch (error) {
@@ -153,6 +154,16 @@ export const processVendorOrdersFromOrderItems = async (
   console.log(`Processing ${ordersData.length} orders for vendor ${vendorId}`);
   console.log(`Order items map has keys for ${Object.keys(orderItemsMap).length} orders`);
   
+  // Generate debug data
+  const orderItemMapDebug = Object.keys(orderItemsMap).map(orderId => ({
+    orderId,
+    itemCount: orderItemsMap[orderId]?.length || 0
+  }));
+  console.log('Order items map debug sample:', orderItemMapDebug.slice(0, 3));
+  
+  const matchingOrderIds = ordersData.map(o => o.id).filter(id => orderItemsMap[id]);
+  console.log(`Found ${matchingOrderIds.length} matching order IDs between ordersData and orderItemsMap`);
+  
   for (const order of ordersData) {
     // Get vendor items for this order
     const vendorItems = orderItemsMap[order.id] || [];
@@ -179,11 +190,12 @@ export const processVendorOrdersFromOrderItems = async (
         };
         
         vendorOrders.push(vendorOrder);
+        console.log(`Added order ${order.id} to vendor orders`);
       } catch (err) {
         console.error('Error processing order:', order.id, err);
       }
     } else {
-      console.warn(`Order ${order.id} has no items for vendor ${vendorId}`);
+      console.log(`Order ${order.id} has no items for vendor ${vendorId}, skipping`);
     }
   }
   
@@ -209,6 +221,19 @@ export const fetchOrdersFromOrderItems = async (
     const orderItemsData = await fetchOrderItemsForProducts(productIds);
     if (!orderItemsData.length) {
       console.log('No order items found for vendor products');
+      
+      // Emergency debug query
+      const { data: debugItems, error: debugError } = await supabase
+        .from('order_items')
+        .select('count')
+        .limit(1);
+        
+      if (debugError) {
+        console.error('Debug query error:', debugError);
+      } else {
+        console.log('Debug query result:', debugItems);
+      }
+      
       return [];
     }
     
@@ -237,6 +262,7 @@ export const fetchOrdersFromOrderItems = async (
       vendorId
     );
     
+    console.log(`Returning ${vendorOrders.length} vendor orders`);
     return vendorOrders;
   } catch (error) {
     console.error('Error in fetchOrdersFromOrderItems:', error);

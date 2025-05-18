@@ -5,7 +5,7 @@ import {
   fetchOrdersFromPedidos,
   fetchOrdersFromOrderItems
 } from './utils/ordersFetcher';
-import { getVendorProductIds } from './utils/orderItemsFetcher';
+import { getVendorProductIds } from './utils/productFetcher';
 import { logDiagnosticInfo } from './utils/diagnosticUtils';
 
 // Main function to get all vendor orders
@@ -21,7 +21,8 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
     console.log('Fetching orders for vendor:', vendorProfile.id);
     console.log('Vendor profile details:', {
       nome_loja: vendorProfile.nome_loja,
-      usuario_id: vendorProfile.usuario_id
+      usuario_id: vendorProfile.usuario_id,
+      status: vendorProfile.status || 'unknown'
     });
     
     // Combined array for all vendor orders
@@ -31,6 +32,8 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
     const productIds = await getVendorProductIds(vendorProfile.id);
     if (productIds.length > 0) {
       console.log(`Found ${productIds.length} products, checking for orders in 'order_items'`);
+      console.log('Product IDs sample:', productIds.slice(0, 3));
+      
       const orderItemsOrders = await fetchOrdersFromOrderItems(vendorProfile.id, productIds);
       
       if (orderItemsOrders.length > 0) {
@@ -38,6 +41,19 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
         combinedOrders.push(...orderItemsOrders);
       } else {
         console.log('No orders found via products in order_items table');
+        // Emergency fallback: direct query of order_items
+        console.log('Attempting emergency fallback query for order items...');
+        const { supabase } = await import('@/integrations/supabase/client');
+        const { data, error } = await supabase
+          .from('order_items')
+          .select('produto_id, order_id')
+          .in('produto_id', productIds.slice(0, 5)); // Check first 5 products to avoid query limits
+        
+        console.log('Emergency fallback query results:', {
+          data: data?.length || 0,
+          error: error?.message || 'none',
+          sample: data ? data.slice(0, 2) : []
+        });
       }
     } else {
       console.log('No products found for vendor, skipping order_items check');
@@ -65,6 +81,12 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
       // Log additional diagnostic information
       const diagnostics = await logDiagnosticInfo(vendorProfile.id);
       console.log('Diagnostics completed:', diagnostics);
+      
+      // Check vendor status
+      if (vendorProfile.status === 'pendente') {
+        console.log('Warning: Vendor status is "pendente" which may prevent orders from being retrieved');
+        console.log('Consider updating vendor status to "ativo"');
+      }
     }
     
     return combinedOrders;
