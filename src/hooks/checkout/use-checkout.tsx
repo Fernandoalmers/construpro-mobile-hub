@@ -108,7 +108,7 @@ export function useCheckout() {
         clearCart();
         refreshCart();
         toast.success('Pedido realizado com sucesso!');
-        navigate(`/marketplace/order-confirmation/${orderId}`);
+        navigate(`/order/confirmacao/${orderId}`); // Updated path to Portuguese version
       } else {
         throw new Error('Falha ao processar pedido');
       }
@@ -144,7 +144,7 @@ export function useCheckout() {
     selectedAddress,
     paymentMethod,
     changeAmount,
-    cartItems, // Expose cartItems here to fix the error
+    cartItems,
     storeGroups: storeGroupsArray,
     subtotal,
     shipping,

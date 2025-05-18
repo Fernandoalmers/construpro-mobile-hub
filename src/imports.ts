@@ -48,6 +48,7 @@ export { CartProvider } from './hooks/use-cart';
 // Orders
 export { default as OrdersScreen } from './components/profile/OrdersScreen';
 export { default as OrderDetailScreen } from './components/profile/OrderDetailScreen';
+export { default as OrderConfirmationScreen } from './components/marketplace/OrderConfirmationScreen';
 
 // Favorites
 export { default as FavoritesScreen } from './components/profile/FavoritesScreen';

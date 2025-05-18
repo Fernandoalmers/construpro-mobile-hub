@@ -16,7 +16,11 @@ const OrderConfirmationScreen: React.FC = () => {
   const [orderDetails, setOrderDetails] = useState<any>(null);
 
   useEffect(() => {
-    if (!orderId) return;
+    if (!orderId) {
+      setError('ID do pedido não encontrado');
+      setLoading(false);
+      return;
+    }
 
     const fetchOrderDetails = async () => {
       try {

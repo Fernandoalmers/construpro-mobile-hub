@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
@@ -111,8 +110,10 @@ function App() {
         <Route path="/orders" element={<ProtectedRoute><OrdersScreen /></ProtectedRoute>} />
         <Route path="/order/:orderId" element={<ProtectedRoute><OrderDetailScreen /></ProtectedRoute>} />
         
-        {/* Order confirmation route */}
+        {/* Order confirmation routes - both English and Portuguese paths */}
         <Route path="/order-confirmation/:orderId" element={<ProtectedRoute><OrderConfirmationScreen /></ProtectedRoute>} />
+        <Route path="/order/confirmacao/:orderId" element={<ProtectedRoute><OrderConfirmationScreen /></ProtectedRoute>} />
+        <Route path="/marketplace/order-confirmation/:orderId" element={<ProtectedRoute><OrderConfirmationScreen /></ProtectedRoute>} />
         
         {/* Other user routes */}
         <Route path="/favorites" element={<ProtectedRoute><FavoritesScreen /></ProtectedRoute>} />
