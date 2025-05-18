@@ -29,8 +29,10 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
       return [];
     }
     
-    // Fixed: Use explicit type annotation for produtos and avoid complex type inference
-    const vendorProducts: ProductId[] = result.data || [];
+    // Safely handle the data with explicit typing
+    // This solves the "Type instantiation is excessively deep" error
+    const data = result.data;
+    const vendorProducts: ProductId[] = Array.isArray(data) ? data : [];
     
     if (vendorProducts.length === 0) {
       console.log('No products found in produtos table, checking alternative table');
@@ -47,15 +49,16 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
         return [];
       }
       
-      // Fixed: Use explicit type annotation for alternate products
-      const alternateProducts: ProductId[] = alternateResult.data || [];
+      // Safely handle alternate data with explicit typing
+      const alternateData = alternateResult.data;
+      const alternateProducts: ProductId[] = Array.isArray(alternateData) ? alternateData : [];
       
       if (alternateProducts.length === 0) {
         console.log('No products found in alternate table either');
         return [];
       }
       
-      // Fixed: Extract product IDs with clear typing
+      // Extract product IDs with clear typing
       const productIds = alternateProducts.map(item => item.id);
       console.log(`Found ${productIds.length} products in alternate table`);
       return productIds;
@@ -139,10 +142,11 @@ export const fetchProductsForItems = async (productIds: string[]): Promise<Recor
       return {};
     }
     
-    // Cast data after the query
-    const produtos = result.data as RawProductData[] | null;
+    // Safely handle the data with explicit typing
+    const data = result.data;
+    const produtos: RawProductData[] = Array.isArray(data) ? data : [];
     
-    if (!produtos || produtos.length === 0) {
+    if (produtos.length === 0) {
       console.log('No products found matching the requested IDs');
       return {};
     }
@@ -240,7 +244,6 @@ export const fetchOrderItemsForProducts = async (productIds: string[]): Promise<
   try {
     console.log(`Fetching order items for ${productIds.length} product IDs`);
     
-    // Explicitly define what we expect from the query
     const result = await supabase
       .from('order_items')
       .select('id, order_id, produto_id, quantidade, preco_unitario, subtotal, created_at')
@@ -251,10 +254,11 @@ export const fetchOrderItemsForProducts = async (productIds: string[]): Promise<
       return [];
     }
     
-    // Cast data after the query
-    const orderItemsData = result.data as Array<Record<string, unknown>> | null;
+    // Safely handle data with explicit casting
+    const data = result.data;
+    const orderItemsData: Array<Record<string, unknown>> = Array.isArray(data) ? data : [];
     
-    if (!orderItemsData || orderItemsData.length === 0) {
+    if (orderItemsData.length === 0) {
       console.log('No order items found for vendor products');
       return [];
     }
