@@ -21,6 +21,8 @@ export interface VendorProduct {
   status: 'pendente' | 'aprovado' | 'inativo';
   created_at?: string;
   updated_at?: string;
+  // Add the segmento_id field that we're using
+  segmento_id?: string | null;
 }
 
 // Vendor Products Management
@@ -94,24 +96,31 @@ export const saveVendorProduct = async (product: Partial<VendorProduct>): Promis
     
     if (product.id) {
       // Verify ownership before update
-      const { data: existingProduct } = await supabase
+      const { data: existingProduct, error: fetchError } = await supabase
         .from('produtos')
-        .select('vendedor_id, segmento, categoria, segmento_id')
+        .select('vendedor_id, segmento, categoria')
         .eq('id', product.id)
         .single();
+      
+      if (fetchError) {
+        console.error('Error fetching existing product:', fetchError);
+        toast.error('Erro ao verificar produto existente');
+        return null;
+      }
       
       if (!existingProduct || existingProduct.vendedor_id !== vendorProfile.id) {
         toast.error('Você não tem permissão para editar este produto');
         return null;
       }
       
-      // Preserve existing values if not provided in update
+      // Prepare data for update
       const dataToUpdate = {
         ...vendorProduct,
         // Keep the existing values if not provided in the update
         segmento: vendorProduct.segmento !== undefined ? vendorProduct.segmento : existingProduct.segmento,
         categoria: vendorProduct.categoria !== undefined ? vendorProduct.categoria : existingProduct.categoria,
-        segmento_id: vendorProduct.segmento_id !== undefined ? vendorProduct.segmento_id : existingProduct.segmento_id,
+        // Handle segmento_id with default fallback to null if not provided
+        segmento_id: vendorProduct.segmento_id !== undefined ? vendorProduct.segmento_id : null,
         status: 'pendente' // Always set to pending when edited
       };
       
@@ -140,8 +149,8 @@ export const saveVendorProduct = async (product: Partial<VendorProduct>): Promis
         nome: product.nome,
         descricao: product.descricao,
         categoria: product.categoria,
-        segmento: product.segmento, // Add segment when creating new product
-        segmento_id: product.segmento_id, // Store the segment ID
+        segmento: product.segmento || null,
+        segmento_id: product.segmento_id || null, // Add segmento_id with null fallback
         preco_normal: product.preco_normal || 0,
         status: 'pendente' as const
       };
@@ -159,6 +168,8 @@ export const saveVendorProduct = async (product: Partial<VendorProduct>): Promis
       if (error) throw error;
       result = data;
     }
+    
+    toast.success(product.id ? 'Produto atualizado e enviado para aprovação' : 'Produto cadastrado com sucesso');
     
     return result as VendorProduct;
   } catch (error) {

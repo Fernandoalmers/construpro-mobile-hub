@@ -19,8 +19,8 @@ interface ProductSegmentSelectProps {
   onChange: (value: string) => void;
   error?: string;
   required?: boolean;
-  onSegmentIdChange?: (id: string) => void; // Optional callback to get the segment ID
-  initialSegmentId?: string; // Optional prop to initialize with a segment ID
+  onSegmentIdChange?: (id: string | null) => void; // Accept null for cases where segment is cleared
+  initialSegmentId?: string | null; // Accept null for cases where there's no initial segment
 }
 
 const ProductSegmentSelect: React.FC<ProductSegmentSelectProps> = ({ 
@@ -65,6 +65,10 @@ const ProductSegmentSelect: React.FC<ProductSegmentSelectProps> = ({
           if (segment) {
             console.log(`Found segment ID for name: ${value} -> ${segment.id}`);
             onSegmentIdChange(segment.id);
+          } else {
+            // If we have a value but can't find matching segment, pass null ID
+            console.log(`No segment found for name: ${value}, setting ID to null`);
+            onSegmentIdChange(null);
           }
         }
       } catch (err) {
@@ -82,11 +86,21 @@ const ProductSegmentSelect: React.FC<ProductSegmentSelectProps> = ({
     onChange(segmentName);
     
     // If the callback is provided, find the ID for this segment name
-    if (onSegmentIdChange && segmentName) {
-      const selectedSegment = segments.find(s => s.nome === segmentName);
-      if (selectedSegment) {
-        console.log(`Segment selected: ${segmentName} -> ID: ${selectedSegment.id}`);
-        onSegmentIdChange(selectedSegment.id);
+    if (onSegmentIdChange) {
+      if (segmentName) {
+        const selectedSegment = segments.find(s => s.nome === segmentName);
+        if (selectedSegment) {
+          console.log(`Segment selected: ${segmentName} -> ID: ${selectedSegment.id}`);
+          onSegmentIdChange(selectedSegment.id);
+        } else {
+          // If selected name doesn't match any segment, pass null ID
+          console.log(`No segment found for selected name: ${segmentName}, setting ID to null`);
+          onSegmentIdChange(null);
+        }
+      } else {
+        // If segment is cleared/empty, pass null ID
+        console.log('Segment cleared, setting ID to null');
+        onSegmentIdChange(null);
       }
     }
   };
