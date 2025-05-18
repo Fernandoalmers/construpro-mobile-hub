@@ -2,6 +2,14 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 
+// Define a separate interface for store information
+interface StoreInfo {
+  id: string;
+  nome: string;
+  nome_loja: string;
+  logo_url?: string;
+}
+
 // Define the Product interface
 export interface Product {
   id: string;
@@ -31,15 +39,7 @@ export interface Product {
   stores?: StoreInfo;
 }
 
-// Define a separate interface for store information
-interface StoreInfo {
-  id: string;
-  nome: string;
-  nome_loja: string;
-  logo_url?: string;
-}
-
-// Type for the raw database response
+// Define a separate interface for the raw database response
 interface ProductDatabaseRecord {
   id: string;
   nome: string;
@@ -141,7 +141,6 @@ export const getProducts = async (filters = {}): Promise<Product[]> => {
     }
     
     // Transform each record to ensure type compatibility
-    // Use explicit type assertion to avoid deep type issues
     return (data || []).map(item => transformToProduct(item as unknown as ProductDatabaseRecord));
   } catch (error) {
     console.error('Error in getProducts:', error);
@@ -175,10 +174,12 @@ export const getProductById = async (id: string): Promise<Product | null> => {
     // Add store information if available
     if (data.vendedores && typeof data.vendedores === 'object' && data.vendedores !== null) {
       const vendedorData = data.vendedores;
+      
+      // Use null coalescing to safely handle potentially null values
       product.stores = {
         id: data.vendedor_id || '',
-        nome: String(vendedorData?.nome_loja || ''),
-        nome_loja: String(vendedorData?.nome_loja || ''),
+        nome: vendedorData?.nome_loja || '',
+        nome_loja: vendedorData?.nome_loja || '',
         logo_url: vendedorData?.logo_url || undefined
       };
     }
