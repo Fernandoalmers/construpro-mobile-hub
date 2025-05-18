@@ -25,8 +25,8 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
       return [];
     }
     
-    // Use simple array type to avoid excessive type instantiation
-    const products = result.data as { id: string }[] || [];
+    // Use simple type assertion without complex nesting
+    const products = (result.data || []) as { id: string }[];
     
     if (products.length === 0) {
       console.log('No products found in produtos table, checking alternative table');
@@ -44,7 +44,7 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
       }
       
       // Use simple type assertion here as well
-      const alternateProducts = alternateResult.data as { id: string }[] || [];
+      const alternateProducts = (alternateResult.data || []) as { id: string }[];
       
       if (alternateProducts.length === 0) {
         console.log('No products found in alternate table either');
@@ -83,14 +83,8 @@ export const fetchProductsForItems = async (productIds: string[]): Promise<Recor
       return {};
     }
     
-    // Use simple type assertion that doesn't create complex nested types
-    const produtos = result.data as { 
-      id: string;
-      nome: string;
-      descricao: string | null;
-      preco_normal: number;
-      imagens: unknown;
-    }[] || [];
+    // Use explicit type assertion without complex nesting
+    const produtos = (result.data || []) as RawProductData[];
     
     if (produtos.length === 0) {
       console.log('No products found matching the requested IDs');
