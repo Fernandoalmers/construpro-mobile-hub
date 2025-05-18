@@ -31,22 +31,29 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
     if (!vendorProducts || vendorProducts.length === 0) {
       console.log('No products found in produtos table, checking alternative table');
       
-      // Try alternate product table as backup with explicit type casting
+      // Try alternate product table as backup with simplified explicit typing
       const { data, error } = await supabase
         .from('products')
         .select('id')
-        .eq('vendedor_id', vendorId) as { 
-          data: ProductId[] | null; 
-          error: any;
-        };
+        .eq('vendedor_id', vendorId);
       
-      if (error || !data) {
+      // Convert to a properly typed variable after the query
+      let productData: ProductId[] = [];
+      
+      if (error) {
+        console.error('Error fetching products:', error);
+        return [];
+      }
+      
+      if (data) {
+        productData = data as unknown as ProductId[];
+      } else {
         console.log('No products found in alternate table either');
         return [];
       }
       
       // Convert the result to a simple string array
-      const productIds: string[] = data.map(item => String(item.id));
+      const productIds: string[] = productData.map(item => String(item.id));
       console.log(`Found ${productIds.length} products in alternate table`);
       return productIds;
     }
