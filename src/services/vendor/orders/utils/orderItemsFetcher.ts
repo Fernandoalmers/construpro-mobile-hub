@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { OrderItem } from '../types';
 
@@ -44,7 +43,7 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
   }
 };
 
-// Simple non-recursive type definition to avoid infinite instantiation
+// Simple non-recursive type definition for product images
 export type ProductImageType = null | string[] | Array<{url: string}>;
 
 // Define a standalone product type with no circular references
