@@ -25,26 +25,26 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
       return [];
     }
     
-    // Use simple type assertion without complex nesting
-    const products = (result.data || []) as { id: string }[];
+    // Use explicit array type to prevent deep instantiation
+    const products = result.data as Array<{ id: string }> || [];
     
     if (products.length === 0) {
       console.log('No products found in produtos table, checking alternative table');
       
-      // Try alternate product table as backup
-      const alternateResult = await supabase
+      // Try alternate product table as backup - using explicit query
+      const { data: alternateData, error: alternateError } = await supabase
         .from('products')
         .select('id')
-        .eq('vendedor_id', vendorId);
+        .eq('loja_id', vendorId); // Use loja_id instead of vendedor_id
       
       // Handle error explicitly
-      if (alternateResult.error) {
-        console.error('Error fetching products:', alternateResult.error);
+      if (alternateError) {
+        console.error('Error fetching products:', alternateError);
         return [];
       }
       
-      // Use simple type assertion here as well
-      const alternateProducts = (alternateResult.data || []) as { id: string }[];
+      // Use simple array type to prevent deep instantiation
+      const alternateProducts = alternateData as Array<{ id: string }> || [];
       
       if (alternateProducts.length === 0) {
         console.log('No products found in alternate table either');
@@ -73,18 +73,18 @@ export const fetchProductsForItems = async (productIds: string[]): Promise<Recor
     console.log(`Fetching product data for ${productIds.length} products`);
     
     // Use IN filter to get only the requested products
-    const result = await supabase
+    const { data, error } = await supabase
       .from('produtos')
       .select('id, nome, descricao, preco_normal, imagens')
       .in('id', productIds);
     
-    if (result.error) {
-      console.error('Error fetching products:', result.error);
+    if (error) {
+      console.error('Error fetching products:', error);
       return {};
     }
     
-    // Use explicit type assertion without complex nesting
-    const produtos = (result.data || []) as RawProductData[];
+    // Use explicit type assertion to prevent deep instantiation
+    const produtos = data as RawProductData[] || [];
     
     if (produtos.length === 0) {
       console.log('No products found matching the requested IDs');
