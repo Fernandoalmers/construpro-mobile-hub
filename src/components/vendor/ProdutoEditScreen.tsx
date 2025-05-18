@@ -29,7 +29,13 @@ const ProdutoEditScreen: React.FC = () => {
           return;
         }
         
-        setProduct(productData);
+        // Add any missing fields with defaults before passing to the form
+        const enhancedProductData = {
+          ...productData,
+          segmento: productData.segmento || ''  // Ensure segmento exists even if null/undefined
+        };
+        
+        setProduct(enhancedProductData);
         setLoading(false);
       } catch (error) {
         console.error('Error loading product:', error);

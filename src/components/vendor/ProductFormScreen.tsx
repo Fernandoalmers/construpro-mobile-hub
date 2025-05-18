@@ -126,7 +126,7 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
           nome: initialData.nome || '',
           descricao: initialData.descricao || '',
           categoria: initialData.categoria || '',
-          segmento: initialData.segmento || '', // Added segmento field
+          segmento: initialData.segmento || '', // Safely access segmento with a fallback
           marca: initialData.marca || '',
           tags: initialData.tags || [],
           unidadeVenda: initialData.unidadeVenda || 'unidade',
@@ -161,7 +161,7 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
           nome: produto.nome,
           descricao: produto.descricao || '',
           categoria: produto.categoria,
-          segmento: produto.segmento || '', // Added segmento field
+          segmento: produto.segmento || '', // Safely access segmento with a fallback
           marca: '',
           tags: [],
           unidadeVenda: 'unidade', // Default to be overwritten
