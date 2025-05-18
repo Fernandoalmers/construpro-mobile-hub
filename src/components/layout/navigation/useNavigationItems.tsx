@@ -1,92 +1,102 @@
-
-import { useMemo } from 'react';
-import { 
-  Home, 
-  ShoppingBag, 
-  Gift, 
-  User, 
-  MessageSquare,
-  Store,
-  Wrench,
-  ShoppingCart
-} from 'lucide-react';
+import React from 'react';
+import { Home, ShoppingBag, LayoutDashboard, Package, User, Gift, ShoppingCart, Settings } from 'lucide-react';
 import { useCart } from '@/hooks/use-cart';
 
-export interface MenuItem {
-  name: string;
-  icon: JSX.Element;
-  path: string;
-  tooltip: string;
-  show: (role?: string) => boolean;
-  badge?: number;
-}
+export function useNavigationItems(userRole: string) {
+  const { cartCount } = useCart();
 
-export const useNavigationItems = (userRole?: string) => {
-  const { cartCount = 0 } = useCart();
+  // Debug logging
+  React.useEffect(() => {
+    console.log('useNavigationItems userRole:', userRole);
+  }, [userRole]);
 
-  const menuItems: MenuItem[] = useMemo(() => [
-    { 
-      name: 'Início', 
-      icon: <Home size={24} />, 
-      path: '/home', 
-      tooltip: 'Voltar para a página inicial',
-      show: () => true
+  // Common navigation items for all users
+  const commonItems = [
+    {
+      name: 'Home',
+      path: '/home',
+      icon: <Home size={24} />,
+      tooltip: 'Home'
     },
-    { 
-      name: 'Loja', 
-      icon: <ShoppingBag size={24} />, 
+    {
+      name: 'Marketplace',
       path: '/marketplace',
-      tooltip: 'Navegar pela loja online',
-      show: (role) => role === 'consumidor' || !role
+      icon: <ShoppingBag size={24} />,
+      tooltip: 'Marketplace'
+    }
+  ];
+
+  // Navigation items specific to vendors
+  const vendorItems = [
+    ...commonItems,
+    {
+      name: 'Vendas',
+      path: '/vendor',
+      icon: <LayoutDashboard size={24} />,
+      tooltip: 'Portal do Vendedor'
     },
-    { 
-      name: 'Carrinho', 
-      icon: <ShoppingCart size={24} />, 
-      path: '/cart',
-      tooltip: 'Ver carrinho de compras',
-      badge: cartCount > 0 ? cartCount : undefined,
-      show: (role) => role === 'consumidor' || !role 
+    {
+      name: 'Produtos',
+      path: '/vendor/products',
+      icon: <Package size={24} />,
+      tooltip: 'Gerenciar Produtos'
     },
-    { 
-      name: 'Resgates', 
-      icon: <Gift size={24} />, 
-      path: '/rewards',
-      tooltip: 'Ver resgates disponíveis',
-      show: (role) => role === 'consumidor' || !role
-    },
-    { 
-      name: 'Chat', 
-      icon: <MessageSquare size={24} />, 
-      path: '/chat',
-      tooltip: 'Mensagens e suporte',
-      show: () => true
-    },
-    // Role-specific items
-    { 
-      name: 'Gerenciar', 
-      icon: <Store size={24} />, 
-      path: '/vendor-dashboard',
-      tooltip: 'Gerenciar sua loja',
-      show: (role) => role === 'lojista' || role === 'vendedor'
-    },
-    { 
-      name: 'Serviços', 
-      icon: <Wrench size={24} />, 
-      path: '/services',
-      tooltip: 'Gerenciar serviços',
-      show: (role) => role === 'profissional'
-    },
-    { 
-      name: 'Perfil', 
-      icon: <User size={24} />, 
+    {
+      name: 'Perfil',
       path: '/profile',
-      tooltip: 'Ver seu perfil',
-      show: () => true
+      icon: <User size={24} />,
+      tooltip: 'Perfil'
+    }
+  ];
+
+  // Navigation items specific to consumers
+  const consumerItems = [
+    ...commonItems,
+    {
+      name: 'Recompensas',
+      path: '/rewards',
+      icon: <Gift size={24} />,
+      tooltip: 'Recompensas',
+      badge: undefined
     },
-  ], [cartCount]);
-  
-  // Filter menu items based on user role
-  const filteredMenuItems = menuItems.filter(item => item.show(userRole));
-  
-  return filteredMenuItems;
-};
+    {
+      name: 'Pedidos',
+      path: '/orders',
+      icon: <ShoppingCart size={24} />,
+      tooltip: 'Meus Pedidos',
+      badge: cartCount > 0 ? cartCount.toString() : undefined
+    },
+    {
+      name: 'Perfil',
+      path: '/profile',
+      icon: <User size={24} />,
+      tooltip: 'Perfil'
+    }
+  ];
+
+  // Admin specific items
+  const adminItems = [
+    ...commonItems,
+    {
+      name: 'Admin',
+      path: '/admin',
+      icon: <Settings size={24} />,
+      tooltip: 'Admin'
+    },
+    {
+      name: 'Perfil',
+      path: '/profile',
+      icon: <User size={24} />,
+      tooltip: 'Perfil'
+    }
+  ];
+
+  // Return the appropriate items based on user role
+  if (userRole === 'admin') {
+    return adminItems;
+  } else if (userRole === 'lojista') {
+    return vendorItems;
+  } else {
+    return consumerItems;
+  }
+}

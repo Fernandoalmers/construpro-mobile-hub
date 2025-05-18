@@ -3,16 +3,19 @@ import { toast } from '@/components/ui/sonner';
 import { getVendorProfile } from '@/services/vendorProfileService';
 import { VendorProduct, VendorProductInput } from './types';
 
-// Vendor Products Fetching
+// Vendor Products Fetching with improved logging
 export const getVendorProducts = async (): Promise<VendorProduct[]> => {
   try {
+    console.log('[VendorProducts] Getting vendor profile');
     // Get vendor id
     const vendorProfile = await getVendorProfile();
     if (!vendorProfile) {
-      console.error('Vendor profile not found');
+      console.error('[VendorProducts] Vendor profile not found');
+      toast.error('Perfil de vendedor não encontrado');
       return [];
     }
     
+    console.log('[VendorProducts] Fetching products for vendor:', vendorProfile.id);
     const { data, error } = await supabase
       .from('produtos')
       .select('*')
@@ -20,14 +23,35 @@ export const getVendorProducts = async (): Promise<VendorProduct[]> => {
       .order('created_at', { ascending: false });
     
     if (error) {
-      console.error('Error fetching vendor products:', error);
+      console.error('[VendorProducts] Error fetching vendor products:', error);
+      toast.error('Erro ao buscar produtos');
       return [];
     }
     
-    console.log('[VendorProducts] fetched:', data);
-    return data as VendorProduct[];
+    console.log('[VendorProducts] fetched:', data?.length || 0, 'products');
+    
+    // Ensure we parse imagens correctly if it's a JSON string
+    const processedData = data?.map(product => {
+      let images = product.imagens;
+      
+      if (typeof images === 'string') {
+        try {
+          images = JSON.parse(images);
+        } catch (e) {
+          console.error('[VendorProducts] Error parsing imagens:', e);
+          images = [];
+        }
+      }
+      
+      return {
+        ...product,
+        imagens: images
+      };
+    }) || [];
+    
+    return processedData as VendorProduct[];
   } catch (error) {
-    console.error('Error in getVendorProducts:', error);
+    console.error('[VendorProducts] Error in getVendorProducts:', error);
     return [];
   }
 };

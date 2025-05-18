@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, Search, ShoppingBag, User, LayoutDashboard, Gift } from 'lucide-react';
+import { Home, Search, ShoppingBag, User, LayoutDashboard, Gift, Package } from 'lucide-react';
 import NavItem from './NavItem';
 import { useAuth } from '@/context/AuthContext';
 
@@ -75,18 +75,36 @@ const BottomNavigation: React.FC = () => {
           label="Buscar" 
           isActive={isActive('/search')} 
         />
-        <NavItem 
-          to={isVendor ? "/vendor-dashboard" : "/rewards"} 
-          icon={isVendor ? <LayoutDashboard size={20} /> : <Gift size={20} />} 
-          label={isVendor ? "Vendas" : "Recompensas"} 
-          isActive={isVendor ? isActive('/vendor') : isActive('/rewards')} 
-        />
-        <NavItem 
-          to="/orders" 
-          icon={<ShoppingBag size={20} />} 
-          label="Pedidos" 
-          isActive={isActive('/orders')} 
-        />
+        {isVendor ? (
+          <NavItem 
+            to="/vendor" 
+            icon={<LayoutDashboard size={20} />} 
+            label="Painel" 
+            isActive={location.pathname === "/vendor"} 
+          />
+        ) : (
+          <NavItem 
+            to="/rewards" 
+            icon={<Gift size={20} />} 
+            label="Recompensas" 
+            isActive={isActive('/rewards')} 
+          />
+        )}
+        {isVendor ? (
+          <NavItem 
+            to="/vendor/products" 
+            icon={<Package size={20} />} 
+            label="Produtos" 
+            isActive={isActive(['/vendor/products', '/vendor/produtos'])} 
+          />
+        ) : (
+          <NavItem 
+            to="/orders" 
+            icon={<ShoppingBag size={20} />} 
+            label="Pedidos" 
+            isActive={isActive('/orders')} 
+          />
+        )}
         <NavItem 
           to="/profile" 
           icon={<User size={20} />} 
