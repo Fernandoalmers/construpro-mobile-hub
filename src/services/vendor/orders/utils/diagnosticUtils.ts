@@ -1,109 +1,112 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { getVendorProfile } from '../../../vendorProfileService';
+import { getVendorProductIds, diagnoseBrokenConnections } from './orderItemsFetcher';
 
-// Log diagnostic information to help troubleshoot order issues
-export const logDiagnosticInfo = async (vendorId: string): Promise<void> => {
+// Log additional diagnostic information
+export const logDiagnosticInfo = async (vendorId: string) => {
+  console.log('Running vendor order diagnostics...');
+  
   try {
-    console.group('===== DIAGNOSTIC INFO =====');
+    // Try to get vendor profile directly
+    const { data: vendorData, error: vendorError } = await supabase
+      .from('vendedores')
+      .select('id, nome_loja, usuario_id, status')
+      .eq('id', vendorId)
+      .single();
     
-    // Check current user
-    const { data: authData } = await supabase.auth.getUser();
-    console.log('Current user ID:', authData?.user?.id || 'Not authenticated');
-    
-    // Check vendor profile details
-    if (vendorId !== 'unknown-vendor-id') {
-      const { data: vendorData } = await supabase
-        .from('vendedores')
-        .select('*')
-        .eq('id', vendorId)
-        .single();
-      
-      console.log('Vendor profile from database:', vendorData);
+    if (vendorError) {
+      console.error('Error fetching vendor profile:', vendorError);
     } else {
-      // Try to get vendor profile from service
-      const vendorProfile = await getVendorProfile();
-      console.log('Vendor profile from service:', vendorProfile);
+      console.log('Vendor profile found:', vendorData);
     }
     
-    // Check pedidos table
-    const { data: pedidosSample } = await supabase
+    // Check for any pedidos for this vendor
+    const { data: pedidosData, error: pedidosError } = await supabase
       .from('pedidos')
-      .select('id, vendedor_id, status')
+      .select('id')
+      .eq('vendedor_id', vendorId)
       .limit(5);
-      
-    console.log('Recent entries in pedidos table:', pedidosSample);
     
-    // Check order_items table
-    const { data: orderItemsSample } = await supabase
+    if (pedidosError) {
+      console.error('Error checking pedidos:', pedidosError);
+    } else {
+      console.log(`Found ${pedidosData.length} pedidos directly linked to vendor`);
+    }
+    
+    // Get vendor products
+    const productIds = await getVendorProductIds(vendorId);
+    console.log(`Found ${productIds.length} product IDs for vendor`);
+    
+    // Check total number of order_items in the system
+    const { count: orderItemsCount, error: countError } = await supabase
       .from('order_items')
-      .select('order_id, produto_id')
-      .limit(5);
-      
-    console.log('Recent entries in order_items table:', orderItemsSample);
+      .select('id', { count: 'exact', head: true });
     
-    console.log('===== END DIAGNOSTIC INFO =====');
-    console.groupEnd();
-  } catch (error) {
-    console.error('Error in logDiagnosticInfo:', error);
-  }
-};
-
-// Run comprehensive diagnostics for vendor orders
-export const runVendorDiagnostics = async () => {
-  try {
-    const profile = await getVendorProfile();
+    if (countError) {
+      console.error('Error counting order_items:', countError);
+    } else {
+      console.log(`Total order_items in system: ${orderItemsCount}`);
+    }
     
-    const diagnostics = {
-      timestamp: new Date().toISOString(),
-      userProfile: null,
-      vendorProfile: profile,
-      databaseChecks: {
-        pedidosTable: null,
-        orderItemsTable: null,
-        produtosTable: null
-      },
-      vendorProducts: []
+    // Run the comprehensive diagnostics
+    const diagnostics = await diagnoseBrokenConnections(vendorId);
+    console.log('Comprehensive diagnostics:', diagnostics);
+    
+    // Return comprehensive diagnostic information
+    return {
+      vendorProfile: vendorData || null,
+      directPedidosCount: pedidosData?.length || 0,
+      productCount: productIds.length,
+      totalOrderItemsInSystem: orderItemsCount || 0,
+      connections: diagnostics
     };
     
-    // Get current user info
-    const { data: authData } = await supabase.auth.getUser();
-    if (authData?.user) {
-      const { data: userProfile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', authData.user.id)
-        .single();
-        
-      diagnostics.userProfile = userProfile;
-    }
-    
-    // Check vendor's products
-    if (profile?.id) {
-      const { data: products } = await supabase
-        .from('produtos')
-        .select('id, nome, status')
-        .eq('vendedor_id', profile.id)
-        .limit(20);
-        
-      diagnostics.vendorProducts = products || [];
-      
-      // Check if there are any orders for this vendor
-      const { data: pedidos } = await supabase
-        .from('pedidos')
-        .select('id, status, created_at')
-        .eq('vendedor_id', profile.id)
-        .limit(5);
-        
-      diagnostics.databaseChecks.pedidosTable = {
-        hasRecords: pedidos && pedidos.length > 0,
-        sample: pedidos
-      };
-    }
-    
-    return diagnostics;
   } catch (error) {
-    console.error('Error running vendor diagnostics:', error);
-    return { error: String(error), timestamp: new Date().toISOString() };
+    console.error('Error in diagnostic function:', error);
+    return {
+      error: 'Failed to run diagnostics',
+      details: error
+    };
   }
 };
+
+// Run vendor diagnostics and return results
+export const runVendorDiagnostics = async () => {
+  try {
+    // Get current vendor profile from vendedores table
+    const { data: vendorProfile, error: profileError } = await supabase
+      .from('vendedores')
+      .select('id, nome_loja, usuario_id')
+      .eq('usuario_id', supabase.auth.getUser().then(res => res.data.user?.id))
+      .single();
+      
+    if (profileError) {
+      console.error('Error fetching current vendor profile:', profileError);
+      return { success: false, error: profileError };
+    }
+    
+    if (!vendorProfile) {
+      console.log('No vendor profile found for current user');
+      return { success: false, error: 'No vendor profile found' };
+    }
+    
+    console.log('Running diagnostics for vendor:', vendorProfile.nome_loja);
+    
+    // Run diagnostics with the vendor ID
+    const diagnosticInfo = await logDiagnosticInfo(vendorProfile.id);
+    
+    return {
+      success: true,
+      vendorProfile,
+      diagnosticInfo
+    };
+    
+  } catch (error) {
+    console.error('Error running vendor diagnostics:', error);
+    return {
+      success: false,
+      error
+    };
+  }
+};
+
