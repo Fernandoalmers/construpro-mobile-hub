@@ -144,15 +144,15 @@ export const getProducts = async (filters = {}): Promise<Product[]> => {
       return [];
     }
     
-    // Fix: Simplify type handling by using direct array transformation instead of complex typing
+    // Create a new array to hold our products
     const products: Product[] = [];
     
-    // Use a simple for loop and explicit type assertions to avoid TypeScript type inference complexity
+    // Use a traditional for loop to avoid complex type inference
     for (let i = 0; i < data.length; i++) {
-      // Use a simple type assertion to any to bypass complex type inference
-      const rawRecord: any = data[i];
+      // Use a type assertion to bypass complex type inference
+      const rawRecord = data[i] as any;
       
-      // Create a properly typed record by explicitly mapping fields
+      // Map the data to our ProductDatabaseRecord type
       const record: ProductDatabaseRecord = {
         id: rawRecord.id,
         nome: rawRecord.nome,
@@ -174,6 +174,7 @@ export const getProducts = async (filters = {}): Promise<Product[]> => {
         sku: rawRecord.sku
       };
       
+      // Transform the record and add it to our products array
       products.push(transformToProduct(record));
     }
     
@@ -204,10 +205,10 @@ export const getProductById = async (id: string): Promise<Product | null> => {
     
     if (!data) return null;
     
-    // Fix: Use a simple type assertion to avoid complex type inference
-    const rawRecord: any = data;
+    // Use a simple type assertion to avoid complex type inference
+    const rawRecord = data as any;
     
-    // Create a properly typed record by explicitly mapping fields
+    // Map the data to our ProductDatabaseRecord type
     const record: ProductDatabaseRecord = {
       id: rawRecord.id,
       nome: rawRecord.nome,
