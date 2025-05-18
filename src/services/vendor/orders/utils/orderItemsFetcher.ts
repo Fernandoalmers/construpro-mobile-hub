@@ -1,6 +1,11 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
+// Define ProductId interface to simplify typing
+interface ProductId {
+  id: string;
+}
+
 // Helper to get vendor product IDs with improved error handling
 export const getVendorProductIds = async (vendorId: string): Promise<string[]> => {
   try {
@@ -26,11 +31,14 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
     if (!vendorProducts || vendorProducts.length === 0) {
       console.log('No products found in produtos table, checking alternative table');
       
-      // Try alternate product table as backup
+      // Try alternate product table as backup with explicit type casting
       const { data, error } = await supabase
         .from('products')
         .select('id')
-        .eq('vendedor_id', vendorId);
+        .eq('vendedor_id', vendorId) as { 
+          data: ProductId[] | null; 
+          error: any;
+        };
       
       if (error || !data) {
         console.log('No products found in alternate table either');
@@ -38,7 +46,7 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
       }
       
       // Convert the result to a simple string array
-      const productIds = data.map(item => String(item.id));
+      const productIds: string[] = data.map(item => String(item.id));
       console.log(`Found ${productIds.length} products in alternate table`);
       return productIds;
     }

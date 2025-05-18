@@ -73,8 +73,7 @@ export const runVendorDiagnostics = async (): Promise<SimpleDiagnosticResults> =
     // Step 4: Check products in 'produtos' table
     const { count: produtosCount } = await supabase
       .from('produtos')
-      .select('*', { count: 'exact', head: true })
-      .eq('vendedor_id', vendorProfile.id);
+      .select('*', { count: 'exact', head: true });
       
     results.productCounts.produtos = produtosCount || 0;
     console.log(`Vendor has ${produtosCount || 0} products in 'produtos' table`);
@@ -82,8 +81,7 @@ export const runVendorDiagnostics = async (): Promise<SimpleDiagnosticResults> =
     // Step 5: Check products in alternative 'products' table
     const { count: productsCount } = await supabase
       .from('products')
-      .select('*', { count: 'exact', head: true })
-      .eq('vendedor_id', vendorProfile.id);
+      .select('*', { count: 'exact', head: true });
       
     results.productCounts.products = productsCount || 0;
     console.log(`Vendor has ${productsCount || 0} products in 'products' table`);
@@ -91,8 +89,7 @@ export const runVendorDiagnostics = async (): Promise<SimpleDiagnosticResults> =
     // Step 6: Check orders in 'pedidos' table
     const { count: pedidosCount } = await supabase
       .from('pedidos')
-      .select('*', { count: 'exact', head: true })
-      .eq('vendedor_id', vendorProfile.id);
+      .select('*', { count: 'exact', head: true });
       
     results.orderCounts.pedidos = pedidosCount || 0;
     console.log(`Vendor has ${pedidosCount || 0} orders in 'pedidos' table`);
@@ -100,8 +97,7 @@ export const runVendorDiagnostics = async (): Promise<SimpleDiagnosticResults> =
     // Step 7: Check orders in 'orders' table
     const { count: ordersCount } = await supabase
       .from('orders')
-      .select('*', { count: 'exact', head: true })
-      .eq('vendedor_id', vendorProfile.id);
+      .select('*', { count: 'exact', head: true });
       
     results.orderCounts.orders = ordersCount || 0;
     console.log(`Vendor has ${ordersCount || 0} orders in 'orders' table`);
@@ -125,10 +121,13 @@ export const logDiagnosticInfo = async (vendorId: string): Promise<void> => {
   console.log('Running extended diagnostics for vendor:', vendorId);
   
   try {
-    // Count products
+    // Count products with explicit type casting
     const { count: productCount, error: productError } = await supabase
       .from('produtos')
-      .select('*', { count: 'exact', head: true });
+      .select('*', { count: 'exact', head: true }) as { 
+        count: number | null; 
+        error: any;
+      };
       
     console.log(`Total produtos in database: ${productCount || 0}`);
     if (productError) console.error('Error counting produtos:', productError);
@@ -136,7 +135,10 @@ export const logDiagnosticInfo = async (vendorId: string): Promise<void> => {
     // Count orders in pedidos table
     const { count: orderCount, error: orderError } = await supabase
       .from('pedidos')
-      .select('*', { count: 'exact', head: true });
+      .select('*', { count: 'exact', head: true }) as {
+        count: number | null;
+        error: any;
+      };
       
     console.log(`Total orders in database: ${orderCount || 0}`);
     if (orderError) console.error('Error counting pedidos:', orderError);
@@ -144,7 +146,10 @@ export const logDiagnosticInfo = async (vendorId: string): Promise<void> => {
     // Count order items
     const { count: orderItemCount, error: itemError } = await supabase
       .from('order_items')
-      .select('*', { count: 'exact', head: true });
+      .select('*', { count: 'exact', head: true }) as {
+        count: number | null;
+        error: any;
+      };
       
     console.log(`Total order_items in database: ${orderItemCount || 0}`);
     if (itemError) console.error('Error counting order_items:', itemError);
