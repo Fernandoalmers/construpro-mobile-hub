@@ -1,4 +1,5 @@
 
+
 // Common
 export { default as LoadingState } from './components/common/LoadingState';
 
@@ -66,6 +67,8 @@ export { default as NotFoundScreen } from './pages/NotFound';
 export { default as VendorDashboardScreen } from './components/vendor/VendorModeScreen';
 export { default as VendorProductsScreen } from './components/vendor/ProdutosVendorScreen';
 export { default as VendorCustomersScreen } from './components/vendor/ClientesVendorScreen';
+export { getProductSegments } from './services/admin/productSegmentsService';
 
 // Marketplace
 export { default as MarketplaceScreenWrapper } from './components/marketplace/MarketplaceScreenWrapper';
+

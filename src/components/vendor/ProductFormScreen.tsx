@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Image as ImageIcon, Save, Trash } from 'lucide-react';
@@ -17,6 +18,7 @@ import {
   updateProductImages,
   VendorProduct 
 } from '@/services/vendorService';
+import { getProductSegments, ProductSegment } from '@/services/admin/productSegmentsService';
 import LoadingState from '../common/LoadingState';
 import ProductNotification from './ProductNotification';
 
@@ -46,6 +48,7 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({ isEditing, produc
     codigo_barras: '',
     sku: '',
     categoria: '',
+    segmento: '',
     pontos_consumidor: 0,
     pontos_profissional: 0,
     imagens: []
@@ -71,6 +74,13 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({ isEditing, produc
     'Outro'
   ];
   
+  // Fetch product segments from the database
+  const { data: segments = [] } = useQuery({
+    queryKey: ['productSegments'],
+    queryFn: getProductSegments,
+    staleTime: 60 * 60 * 1000, // 1 hour
+  });
+
   // Format currency function
   const formatCurrency = (value: number | undefined): string => {
     if (value === undefined) return '';
@@ -429,6 +439,34 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({ isEditing, produc
                   </Select>
                   {formErrors.categoria && (
                     <p className="text-sm text-red-500 mt-1">{formErrors.categoria}</p>
+                  )}
+                </div>
+                
+                {/* Add segment selection field */}
+                <div>
+                  <Label htmlFor="segmento" className="block mb-2">Segmento</Label>
+                  <Select
+                    value={formData.segmento || ''}
+                    onValueChange={(value) => {
+                      setFormData(prev => ({ ...prev, segmento: value }));
+                      if (formErrors.segmento) {
+                        setFormErrors(prev => ({ ...prev, segmento: '' }));
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um segmento" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {segments.map(segment => (
+                        <SelectItem key={segment.id} value={segment.nome}>
+                          {segment.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {formErrors.segmento && (
+                    <p className="text-sm text-red-500 mt-1">{formErrors.segmento}</p>
                   )}
                 </div>
                 

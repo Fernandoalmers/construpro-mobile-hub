@@ -1588,6 +1588,13 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      get_product_segments: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          nome: string
+        }[]
+      }
       get_user_admin_status: {
         Args: { user_id: string }
         Returns: boolean

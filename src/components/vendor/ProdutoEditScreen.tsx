@@ -1,9 +1,9 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import ProductFormScreen from './ProductFormScreen';
-import { getVendorProduct } from '@/services/vendorService';
+import { getVendorProduct } from '@/services/vendorProductsService';
 import LoadingState from '../common/LoadingState';
 
 const ProdutoEditScreen: React.FC = () => {

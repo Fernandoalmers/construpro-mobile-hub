@@ -136,6 +136,7 @@ export const saveVendorProduct = async (product: Partial<VendorProduct>): Promis
         nome: product.nome,
         descricao: product.descricao,
         categoria: product.categoria,
+        segmento: product.segmento, // Add segment when creating new product
         preco_normal: product.preco_normal || 0,
         status: 'pendente' as const
       };
