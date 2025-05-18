@@ -2,14 +2,29 @@
 import { supabase } from '@/integrations/supabase/client';
 import { getVendorProfile } from '@/services/vendorProfileService';
 
+// Define simple primitive types to avoid circular references
+type SimpleDiagnosticResults = {
+  currentUser: string | null;
+  userProfile: Record<string, any> | null;
+  vendorProfile: Record<string, any> | null;
+  productCounts: {
+    produtos: number;
+    products: number;
+  };
+  orderCounts: {
+    pedidos: number;
+    orders: number;
+  };
+};
+
 /**
  * Run comprehensive diagnostics on vendor data
  * This utility function performs checks on the vendor's profile, products, and orders
  */
-export const runVendorDiagnostics = async (): Promise<Record<string, any>> => {
+export const runVendorDiagnostics = async (): Promise<SimpleDiagnosticResults> => {
   console.log('Running vendor diagnostics...');
   
-  const results: Record<string, any> = {
+  const results: SimpleDiagnosticResults = {
     currentUser: null,
     userProfile: null,
     vendorProfile: null,
@@ -26,7 +41,7 @@ export const runVendorDiagnostics = async (): Promise<Record<string, any>> => {
   try {
     // Step 1: Get current user
     const { data: userData } = await supabase.auth.getUser();
-    results.currentUser = userData?.user?.id;
+    results.currentUser = userData?.user?.id || null;
     console.log('Current authenticated user:', userData?.user?.id);
     
     if (!userData?.user?.id) {

@@ -1,6 +1,5 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { OrderItem } from '../types';
 
 // Helper to get vendor product IDs with improved error handling
 export const getVendorProductIds = async (vendorId: string): Promise<string[]> => {
@@ -53,7 +52,7 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
   }
 };
 
-// Define a simple, non-recursive type for product images
+// Define a simple type for product images without circular references
 export type ProductImageType = string[] | null;
 
 // Define a standalone product type with no circular references
@@ -65,7 +64,7 @@ export interface ProductData {
   imagens: ProductImageType;
 }
 
-// Image processing function with strict typing - simplified to avoid type complexity
+// Simplified image processing function
 function processImagens(rawImagens: unknown): ProductImageType {
   if (!rawImagens) return null;
   
@@ -96,7 +95,7 @@ function processImagens(rawImagens: unknown): ProductImageType {
   return null;
 }
 
-// Fetch product data with explicit typing - improved to filter by productIds
+// Fetch product data with explicit typing
 export const fetchProductsForItems = async (productIds: string[]): Promise<Record<string, ProductData>> => {
   if (!productIds.length) return {};
   
@@ -140,7 +139,7 @@ export const fetchProductsForItems = async (productIds: string[]): Promise<Recor
   }
 };
 
-// Simple standalone type for order items with no nested references
+// Simple standalone type for order items
 export interface SimpleOrderItem {
   id: string;
   order_id: string;
@@ -153,7 +152,7 @@ export interface SimpleOrderItem {
   produto?: ProductData | null;
 }
 
-// Create a map of order items with explicit typing - improved to include better error handling
+// Create a map of order items
 export const createOrderItemsMap = (
   orderItemsData: Array<Record<string, unknown>>, 
   productMap: Record<string, ProductData>
@@ -205,7 +204,7 @@ export const createOrderItemsMap = (
   return orderItemsMap;
 };
 
-// Fetch order items with explicit typing - improved error handling and logging
+// Fetch order items
 export const fetchOrderItemsForProducts = async (productIds: string[]): Promise<Array<Record<string, unknown>>> => {
   if (!productIds.length) return [];
   
