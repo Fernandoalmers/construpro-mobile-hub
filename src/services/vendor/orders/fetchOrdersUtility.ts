@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { getVendorProfile } from '../../vendorProfileService';
 import { VendorCustomer } from '../../vendorCustomersService';
@@ -127,7 +126,6 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
   }
 };
 
-// FIX: Resolving the deep type instantiation issue by using explicit typing and avoiding recursive references
 // Helper to get orders based on product items (new structure) with improved implementation
 export const fetchOrdersFromOrderItems = async (vendorId: string, productIds: string[]): Promise<VendorOrder[]> => {
   if (productIds.length === 0) {
@@ -138,8 +136,7 @@ export const fetchOrdersFromOrderItems = async (vendorId: string, productIds: st
   try {
     console.log(`Fetching order items for ${productIds.length} vendor products`);
     
-    // IMPROVED APPROACH: Direct join query to get all related data in one go
-    // FIX: Using a more explicit typing approach to avoid excessive type instantiation
+    // Fix: Limit the fields selected to avoid deep type instantiation
     const { data: orderItemsWithOrdersData, error: joinQueryError } = await supabase
       .from('order_items')
       .select(`
@@ -188,7 +185,7 @@ export const fetchOrdersFromOrderItems = async (vendorId: string, productIds: st
     orderItemsWithOrdersData.forEach(item => {
       const orderId = item.order_id;
       
-      // FIX: Safely access nested properties to avoid type errors
+      // Safely access nested properties to avoid type errors
       const orderInfo = item.orders;
       
       if (!orderInfo) {
@@ -204,8 +201,8 @@ export const fetchOrdersFromOrderItems = async (vendorId: string, productIds: st
         };
       }
       
-      // Add this item to the order
-      // FIX: Create a clean object with only needed properties instead of spreading the whole object
+      // Fix: Create a clean object with only explicitly defined properties
+      // This avoids spreading which can cause recursive type issues
       const processedItem: OrderItem = {
         id: item.id,
         pedido_id: undefined,
@@ -337,8 +334,8 @@ const fallbackOrdersFetch = async (vendorId: string, productIds: string[]): Prom
       if (!orderItemsMap[item.order_id]) {
         orderItemsMap[item.order_id] = [];
       }
-      // Add product data to item
-      // FIX: Create a clean object with only needed properties instead of spreading the whole object
+
+      // Fix: Create a clean object with explicitly defined properties instead of spreading
       const itemWithProduct: OrderItem = {
         id: item.id,
         pedido_id: undefined,
@@ -532,4 +529,3 @@ export const logDiagnosticInfo = async (vendorId: string): Promise<void> => {
     console.error('Error during diagnostic logging:', err);
   }
 };
-
