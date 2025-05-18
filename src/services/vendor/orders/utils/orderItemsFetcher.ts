@@ -44,13 +44,13 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
   }
 };
 
-// Define a simplified product type to avoid circular references
+// Define a simplified product type without circular references
 interface ProductData {
   id: string;
   nome: string;
   descricao: string;
   preco_normal: number;
-  imagens: string[] | { url: string }[] | null;
+  imagens: Array<string | { url: string }> | null;
 }
 
 // Fetch product data for a list of product IDs
@@ -65,12 +65,26 @@ export const fetchProductsForItems = async (productIds: string[]): Promise<Recor
     
     if (produtos) {
       produtos.forEach(product => {
+        // Ensure proper typing for the imagens field
+        let processedImages: Array<string | { url: string }> | null = null;
+        
+        if (product.imagens) {
+          // Handle different possible formats of imagens
+          if (Array.isArray(product.imagens)) {
+            processedImages = product.imagens.map((img: any) => {
+              if (typeof img === 'string') return img;
+              if (typeof img === 'object' && img.url) return img;
+              return '';
+            }).filter(Boolean);
+          }
+        }
+        
         productMap[product.id] = {
           id: product.id,
           nome: product.nome || '',
           descricao: product.descricao || '',
           preco_normal: product.preco_normal || 0,
-          imagens: product.imagens || null
+          imagens: processedImages
         };
       });
     }
