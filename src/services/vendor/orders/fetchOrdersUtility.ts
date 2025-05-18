@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { getVendorProfile } from '../../vendorProfileService';
 import { VendorCustomer } from '../../vendorCustomersService';
@@ -137,17 +136,10 @@ export const fetchOrdersFromOrderItems = async (vendorId: string, productIds: st
   try {
     console.log(`Fetching order items for ${productIds.length} vendor products`);
     
-    // Further limit fields to avoid deep type instantiation
+    // Step 1: Fetch basic order item data without deep nesting
     const { data: orderItemsData, error: orderItemsError } = await supabase
       .from('order_items')
-      .select(`
-        id,
-        order_id,
-        produto_id,
-        quantidade,
-        preco_unitario,
-        subtotal
-      `)
+      .select('id, order_id, produto_id, quantidade, preco_unitario, subtotal')
       .in('produto_id', productIds);
       
     if (orderItemsError || !orderItemsData || orderItemsData.length === 0) {
@@ -163,12 +155,13 @@ export const fetchOrdersFromOrderItems = async (vendorId: string, productIds: st
       return [];
     }
     
-    // Fetch product details separately to avoid deep nesting
+    // Step 2: Fetch products separately to avoid nesting issues
     const { data: produtos } = await supabase
       .from('produtos')
       .select('id, nome, descricao, preco_normal, imagens')
       .in('id', productIds);
       
+    // Create a map for easier product lookup
     const productMap: Record<string, any> = {};
     if (produtos) {
       produtos.forEach(product => {
@@ -176,7 +169,7 @@ export const fetchOrdersFromOrderItems = async (vendorId: string, productIds: st
       });
     }
     
-    // Group order items by order_id
+    // Step 3: Create order items with explicit type definition
     const orderItemsMap: Record<string, OrderItem[]> = {};
     
     orderItemsData.forEach(item => {
@@ -184,7 +177,7 @@ export const fetchOrdersFromOrderItems = async (vendorId: string, productIds: st
         orderItemsMap[item.order_id] = [];
       }
       
-      // Create a clean item object with explicit properties
+      // Create order item with explicit properties (not using spread)
       const orderItem: OrderItem = {
         id: item.id,
         order_id: item.order_id,
@@ -193,15 +186,16 @@ export const fetchOrdersFromOrderItems = async (vendorId: string, productIds: st
         preco_unitario: item.preco_unitario,
         subtotal: item.subtotal,
         total: item.subtotal || (item.quantidade * item.preco_unitario) || 0,
+        // Set optional fields explicitly to avoid deep nesting
         pedido_id: undefined,
-        produto: productMap[item.produto_id],
-        produtos: productMap[item.produto_id]
+        produto: productMap[item.produto_id] || null,
+        produtos: null // Set to null instead of duplicating product reference
       };
       
       orderItemsMap[item.order_id].push(orderItem);
     });
     
-    // Fetch orders separately to avoid nested joins
+    // Step 4: Fetch orders data separately
     const { data: ordersData, error: ordersError } = await supabase
       .from('orders')
       .select(`
@@ -222,7 +216,7 @@ export const fetchOrdersFromOrderItems = async (vendorId: string, productIds: st
       return [];
     }
     
-    // Process orders
+    // Process orders with explicit properties
     const vendorOrders: VendorOrder[] = [];
     
     for (const order of ordersData) {
@@ -238,7 +232,7 @@ export const fetchOrdersFromOrderItems = async (vendorId: string, productIds: st
             .eq('id', order.cliente_id)
             .maybeSingle();
             
-          // Create cliente info with correct fields
+          // Create cliente info with explicit properties
           const clienteInfo: VendorCustomer = {
             id: order.cliente_id || '',
             vendedor_id: vendorId,
@@ -255,7 +249,7 @@ export const fetchOrdersFromOrderItems = async (vendorId: string, productIds: st
             return sum + itemTotal;
           }, 0);
           
-          // Create a vendor order with explicit properties
+          // Create vendor order with explicit properties
           const vendorOrder: VendorOrder = {
             id: order.id,
             cliente_id: order.cliente_id,
