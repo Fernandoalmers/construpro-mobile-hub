@@ -4,13 +4,14 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { ArrowLeft, Save, Info, Package, Tag, Image, Layers, FileSymlink } from 'lucide-react';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/components/ui/sonner';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import CustomButton from '../common/CustomButton';
 import ProductSegmentSelect from './ProductSegmentSelect';
+import { saveVendorProduct } from '@/services/vendorProductsService';
 import {
   Form,
   FormControl,
@@ -32,7 +33,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import produtos from '../../data/produtos.json';
 
 // Define product form schema
 const productFormSchema = z.object({
@@ -69,7 +69,7 @@ type ProductFormValues = z.infer<typeof productFormSchema>;
 const categorias = [
   'Porcelanatos', 'Pisos', 'Revestimentos', 'Tintas', 'Ferramentas',
   'Materiais Elétricos', 'Materiais Hidráulicos', 'EPIs', 'Iluminação',
-  'Madeiras', 'Acabamentos', 'Decoração'
+  'Madeiras', 'Acabamentos', 'Decoração', 'Material de Construção'
 ];
 
 interface ProdutoFormScreenProps {
@@ -88,6 +88,7 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [images, setImages] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(isEditing);
+  const [segmentId, setSegmentId] = useState<string | null>(null);
   
   // Form definition
   const form = useForm<ProductFormValues>({
@@ -115,84 +116,51 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
   
   // Load product data if in edit mode
   useEffect(() => {
-    if (isEditing && productId) {
+    if (isEditing && initialData) {
+      console.log("Setting form data from initialData:", initialData);
+      
       setIsLoading(true);
       
-      // If initialData is provided, use it directly
-      if (initialData) {
-        console.log("Using provided initialData:", initialData);
-        // Initialize form with provided product data
-        form.reset({
-          nome: initialData.nome || '',
-          descricao: initialData.descricao || '',
-          categoria: initialData.categoria || '',
-          segmento: initialData.segmento || '', // Safely access segmento with a fallback
-          marca: initialData.marca || '',
-          tags: initialData.tags || [],
-          unidadeVenda: initialData.unidadeVenda || 'unidade',
-          valorConversao: initialData.valorConversao || null,
-          controleQuantidade: initialData.controleQuantidade || 'livre',
-          preco: initialData.preco_normal || 0,
-          estoque: initialData.estoque || 0,
-          precoPromocional: initialData.preco_promocional || null,
-          pontosConsumidor: initialData.pontos_consumidor || 0,
-          pontosProfissional: initialData.pontos_profissional || 0,
-          temVariantes: false,
-          tipoVariante: '',
-          variantes: [],
-        });
-        
-        // Load images
-        if (initialData.imagens && Array.isArray(initialData.imagens)) {
-          setImages(initialData.imagens);
-        }
-        
-        setIsLoading(false);
-        return;
+      // Save segment ID if available
+      if (initialData.segmento_id) {
+        setSegmentId(initialData.segmento_id);
+        console.log("Setting initial segment ID:", initialData.segmento_id);
+      }
+
+      // Initialize form with product data
+      form.reset({
+        nome: initialData.nome || '',
+        descricao: initialData.descricao || '',
+        categoria: initialData.categoria || '',
+        segmento: initialData.segmento || '',
+        marca: initialData.marca || '',
+        tags: initialData.tags || [],
+        unidadeVenda: initialData.unidadeVenda || 'unidade',
+        valorConversao: initialData.valorConversao || null,
+        controleQuantidade: initialData.controleQuantidade || 'livre',
+        preco: initialData.preco_normal || 0,
+        estoque: initialData.estoque || 0,
+        precoPromocional: initialData.preco_promocional || null,
+        pontosConsumidor: initialData.pontos_consumidor || 0,
+        pontosProfissional: initialData.pontos_profissional || 0,
+        temVariantes: false,
+        tipoVariante: '',
+        variantes: [],
+      });
+      
+      // Set selected tags
+      if (initialData.tags && Array.isArray(initialData.tags)) {
+        setSelectedTags(initialData.tags);
       }
       
-      // In a real app, this would be an API call
-      // For demo purposes, we'll just use the local data
-      const produto = produtos.find(p => p.id === productId);
-      
-      if (produto) {
-        // Type assertion to handle potential missing segmento property
-        const produtoData = produto as any;
-        
-        // Initialize form with product data
-        form.reset({
-          nome: produtoData.nome,
-          descricao: produtoData.descricao || '',
-          categoria: produtoData.categoria,
-          segmento: produtoData.segmento || '', // Safely access segmento with a fallback
-          marca: '',
-          tags: [],
-          unidadeVenda: 'unidade', // Default to be overwritten
-          valorConversao: null,
-          controleQuantidade: 'livre',
-          preco: produtoData.preco,
-          estoque: produtoData.estoque || 0,
-          precoPromocional: null,
-          pontosConsumidor: produtoData.pontos || 0,
-          pontosProfissional: produtoData.pontos || 0,
-          temVariantes: false,
-          tipoVariante: '',
-          variantes: [],
-        });
-        
-        // Load image
-        if (produtoData.imagemUrl) {
-          setImages([produtoData.imagemUrl]);
-        }
+      // Load images
+      if (initialData.imagens && Array.isArray(initialData.imagens)) {
+        setImages(initialData.imagens);
       }
       
       setIsLoading(false);
     }
-  }, [isEditing, productId, form, initialData]);
-  
-  const watchUnidadeVenda = form.watch('unidadeVenda');
-  const watchTemVariantes = form.watch('temVariantes');
-  const watchTipoVariante = form.watch('tipoVariante');
+  }, [isEditing, initialData, form]);
 
   // Handle tags selection
   const handleTagToggle = (tag: string) => {
@@ -226,40 +194,81 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
     setImages(newImages);
   };
 
+  // Handle segment ID change
+  const handleSegmentIdChange = (id: string) => {
+    console.log("Segment ID changed:", id);
+    setSegmentId(id);
+  };
+
   // Form submission
-  const onSubmit = (values: ProductFormValues) => {
+  const onSubmit = async (values: ProductFormValues) => {
     if (images.length === 0) {
-      toast({
-        title: "Erro de validação",
-        description: "É necessário adicionar pelo menos uma imagem do produto.",
-        variant: "destructive"
-      });
+      toast.error("É necessário adicionar pelo menos uma imagem do produto.");
       return;
     }
 
     setIsSubmitting(true);
     
-    // Add image URLs to the form data
-    const productData = {
-      ...values,
-      images: images,
-    };
-    
-    console.log('Product data:', productData);
-    
-    // Here you would send the data to your API
-    setTimeout(() => {
-      setIsSubmitting(false);
-      toast({
-        title: isEditing ? "Produto atualizado com sucesso" : "Produto cadastrado com sucesso",
+    try {
+      // Get current form values for category and segment
+      const currentCategory = values.categoria;
+      const currentSegment = values.segmento;
+      
+      // Log the values being submitted
+      console.log("Submitting form with category:", currentCategory);
+      console.log("Submitting form with segment:", currentSegment);
+      console.log("Submitting form with segment ID:", segmentId);
+      
+      // Prepare data for API
+      const productData = {
+        id: productId,
+        nome: values.nome,
+        descricao: values.descricao,
+        categoria: currentCategory, // Use current value
+        segmento: currentSegment,   // Use current value
+        segmento_id: segmentId,     // Include segment ID if available
+        preco_normal: values.preco,
+        preco_promocional: values.precoPromocional || null,
+        estoque: values.estoque,
+        pontos_consumidor: values.pontosConsumidor,
+        pontos_profissional: values.pontosProfissional,
+        imagens: images,
+        status: isEditing ? 'pendente' as const : 'pendente' as const,
+      };
+      
+      console.log("Saving product data:", productData);
+      
+      // Call the API to save the product
+      const savedProduct = await saveVendorProduct(productData);
+      
+      if (!savedProduct) {
+        toast.error("Erro ao salvar produto", { 
+          description: "Ocorreu um erro ao salvar os dados do produto."
+        });
+        return;
+      }
+      
+      toast.success(isEditing ? "Produto atualizado" : "Produto cadastrado", {
         description: isEditing 
-          ? "As alterações foram salvas no sistema." 
-          : "O produto foi cadastrado no sistema."
+          ? "O produto foi atualizado e enviado para aprovação." 
+          : "O produto foi cadastrado com sucesso."
       });
-      navigate('/vendor/produtos');
-    }, 1000);
+      
+      navigate('/vendor/products');
+    } catch (error) {
+      console.error("Error saving product:", error);
+      toast.error("Erro ao salvar produto", {
+        description: "Ocorreu um erro ao salvar os dados do produto."
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
+  const watchUnidadeVenda = form.watch('unidadeVenda');
+  const watchTemVariantes = form.watch('temVariantes');
+  const watchTipoVariante = form.watch('tipoVariante');
+
   const isConversionRequired = ['m2', 'litro', 'kg'].includes(watchUnidadeVenda);
   
   const getConversionFieldLabel = () => {
@@ -383,17 +392,19 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
                             <FormLabel>Segmento*</FormLabel>
                             <FormControl>
                               <ProductSegmentSelect
-                                value={field.value}
+                                value={field.value || ''}
                                 onChange={field.onChange}
                                 error={form.formState.errors.segmento?.message}
-                                required
+                                required={true}
+                                onSegmentIdChange={handleSegmentIdChange}
+                                initialSegmentId={segmentId || undefined}
                               />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
-
+                      
                       <FormField
                         control={form.control}
                         name="categoria"
@@ -423,7 +434,7 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
                         )}
                       />
                     </div>
-
+                    
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}

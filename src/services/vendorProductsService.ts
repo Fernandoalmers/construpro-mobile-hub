@@ -96,7 +96,7 @@ export const saveVendorProduct = async (product: Partial<VendorProduct>): Promis
       // Verify ownership before update
       const { data: existingProduct } = await supabase
         .from('produtos')
-        .select('vendedor_id')
+        .select('vendedor_id, segmento, categoria, segmento_id')
         .eq('id', product.id)
         .single();
       
@@ -105,18 +105,22 @@ export const saveVendorProduct = async (product: Partial<VendorProduct>): Promis
         return null;
       }
       
-      // Marcar produto como pendente quando for editado
-      const productToUpdate = {
+      // Preserve existing values if not provided in update
+      const dataToUpdate = {
         ...vendorProduct,
-        status: 'pendente' // Sempre volta para pendente ao editar
+        // Keep the existing values if not provided in the update
+        segmento: vendorProduct.segmento !== undefined ? vendorProduct.segmento : existingProduct.segmento,
+        categoria: vendorProduct.categoria !== undefined ? vendorProduct.categoria : existingProduct.categoria,
+        segmento_id: vendorProduct.segmento_id !== undefined ? vendorProduct.segmento_id : existingProduct.segmento_id,
+        status: 'pendente' // Always set to pending when edited
       };
       
-      console.log('[VendorProducts] updating product:', product.id, productToUpdate);
+      console.log('[VendorProducts] updating product:', product.id, dataToUpdate);
       
       // Update existing product
       const { data, error } = await supabase
         .from('produtos')
-        .update(productToUpdate)
+        .update(dataToUpdate)
         .eq('id', product.id)
         .select()
         .single();
@@ -137,6 +141,7 @@ export const saveVendorProduct = async (product: Partial<VendorProduct>): Promis
         descricao: product.descricao,
         categoria: product.categoria,
         segmento: product.segmento, // Add segment when creating new product
+        segmento_id: product.segmento_id, // Store the segment ID
         preco_normal: product.preco_normal || 0,
         status: 'pendente' as const
       };

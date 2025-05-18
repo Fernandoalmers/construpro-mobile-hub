@@ -20,6 +20,7 @@ interface ProductSegmentSelectProps {
   error?: string;
   required?: boolean;
   onSegmentIdChange?: (id: string) => void; // Optional callback to get the segment ID
+  initialSegmentId?: string; // Optional prop to initialize with a segment ID
 }
 
 const ProductSegmentSelect: React.FC<ProductSegmentSelectProps> = ({ 
@@ -27,7 +28,8 @@ const ProductSegmentSelect: React.FC<ProductSegmentSelectProps> = ({
   onChange,
   error,
   required = false,
-  onSegmentIdChange
+  onSegmentIdChange,
+  initialSegmentId
 }) => {
   const [segments, setSegments] = useState<Segment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,7 +37,7 @@ const ProductSegmentSelect: React.FC<ProductSegmentSelectProps> = ({
   useEffect(() => {
     const loadSegments = async () => {
       try {
-        // Busca segmentos da tabela product_segments
+        // Fetch segments from the product_segments table
         const { data, error } = await supabase
           .from('product_segments')
           .select('id, nome')
@@ -47,6 +49,24 @@ const ProductSegmentSelect: React.FC<ProductSegmentSelectProps> = ({
         }
         
         setSegments(data || []);
+
+        // If we have an initialSegmentId, find the corresponding segment name
+        if (initialSegmentId && !value) {
+          const segment = data?.find(s => s.id === initialSegmentId);
+          if (segment) {
+            console.log(`Found segment by ID: ${initialSegmentId} -> ${segment.nome}`);
+            onChange(segment.nome);
+          }
+        }
+        
+        // If we have a value but no initialSegmentId, find the corresponding segment ID
+        if (value && !initialSegmentId && onSegmentIdChange) {
+          const segment = data?.find(s => s.nome === value);
+          if (segment) {
+            console.log(`Found segment ID for name: ${value} -> ${segment.id}`);
+            onSegmentIdChange(segment.id);
+          }
+        }
       } catch (err) {
         console.error('Error in loadSegments:', err);
       } finally {
@@ -55,7 +75,7 @@ const ProductSegmentSelect: React.FC<ProductSegmentSelectProps> = ({
     };
 
     loadSegments();
-  }, []);
+  }, [value, initialSegmentId, onChange, onSegmentIdChange]);
   
   // Handler to update both segment name and optionally send the ID
   const handleSegmentChange = (segmentName: string) => {
@@ -65,6 +85,7 @@ const ProductSegmentSelect: React.FC<ProductSegmentSelectProps> = ({
     if (onSegmentIdChange && segmentName) {
       const selectedSegment = segments.find(s => s.nome === segmentName);
       if (selectedSegment) {
+        console.log(`Segment selected: ${segmentName} -> ID: ${selectedSegment.id}`);
         onSegmentIdChange(selectedSegment.id);
       }
     }

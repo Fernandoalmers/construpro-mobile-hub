@@ -34,7 +34,9 @@ const ProdutoEditScreen: React.FC = () => {
         // Add any missing fields with defaults before passing to the form
         const enhancedProductData = {
           ...productData,
-          segmento: productData.segmento || ''  // Ensure segmento exists even if null/undefined
+          segmento: productData.segmento || '',  // Ensure segmento exists even if null/undefined
+          categoria: productData.categoria || '', // Ensure categoria exists even if null/undefined
+          segmento_id: productData.segmento_id || null, // Preserve segment ID if available
         };
         
         console.log("Enhanced product data:", enhancedProductData);
