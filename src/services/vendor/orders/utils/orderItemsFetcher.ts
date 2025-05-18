@@ -44,17 +44,20 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
   }
 };
 
+// Define proper image types to avoid mixing
+type ProductImageTypes = string[] | { url: string }[];
+
 // Define a simplified product type without circular references
 export interface ProductData {
   id: string;
   nome: string;
   descricao: string | null;
   preco_normal: number;
-  imagens: string[] | Array<{ url: string }> | null;
+  imagens: ProductImageTypes | null;
 }
 
-// Process images from various possible formats - fixed type issue
-function processImagens(rawImagens: any): string[] | Array<{ url: string }> | null {
+// Process images from various possible formats with correct typing
+function processImagens(rawImagens: any): ProductImageTypes | null {
   if (!rawImagens) return null;
   
   // For string input
@@ -64,17 +67,27 @@ function processImagens(rawImagens: any): string[] | Array<{ url: string }> | nu
   
   // For array input
   if (Array.isArray(rawImagens)) {
-    const processed = rawImagens
-      .map((img: unknown): string | { url: string } | null => {
-        if (typeof img === 'string') return img;
-        if (typeof img === 'object' && img !== null && 'url' in img) {
-          return img as { url: string };
-        }
-        return null;
-      })
-      .filter((img): img is string | { url: string } => img !== null);
+    // Create separate arrays for strings and objects
+    const stringImages: string[] = [];
+    const objectImages: { url: string }[] = [];
     
-    return processed.length > 0 ? processed : null;
+    rawImagens.forEach((img: unknown) => {
+      if (typeof img === 'string') {
+        stringImages.push(img);
+      } else if (typeof img === 'object' && img !== null && 'url' in img) {
+        objectImages.push(img as { url: string });
+      }
+    });
+    
+    // Return the appropriate type based on content
+    if (stringImages.length > 0 && objectImages.length === 0) {
+      return stringImages;
+    } else if (objectImages.length > 0 && stringImages.length === 0) {
+      return objectImages;
+    } else if (stringImages.length > 0 || objectImages.length > 0) {
+      // If mixed, prefer string format for consistency
+      return [...stringImages, ...objectImages.map(obj => obj.url)];
+    }
   }
   
   return null;
