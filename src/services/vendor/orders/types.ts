@@ -34,7 +34,7 @@ export interface VendorOrder {
   created_at: string;
   data_entrega_estimada?: string;
   pontos_ganhos?: number;
-  rastreio?: string;
+  rastreio?: string; // Made optional as it doesn't exist in the database
   cliente?: VendorCustomer;
   itens?: OrderItem[];
 }

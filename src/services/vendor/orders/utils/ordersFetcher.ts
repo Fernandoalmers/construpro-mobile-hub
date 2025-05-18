@@ -99,8 +99,7 @@ export const fetchDirectVendorOrders = async (
         endereco_entrega,
         created_at,
         vendedor_id,
-        data_entrega_estimada,
-        rastreio
+        data_entrega_estimada
       `)
       .eq('vendedor_id', vendorId);
       
@@ -159,7 +158,7 @@ export const fetchDirectVendorOrders = async (
           created_at: order.created_at || new Date().toISOString(),
           data_entrega_estimada: order.data_entrega_estimada,
           pontos_ganhos: 0, // Default since the field doesn't exist in the table
-          rastreio: order.rastreio,
+          rastreio: null, // Set to null since the column doesn't exist
           cliente: clienteInfo,
           itens: orderItems
         });
@@ -202,8 +201,7 @@ export const fetchOrdersById = async (orderIds: string[]): Promise<any[]> => {
         forma_pagamento,
         endereco_entrega,
         created_at,
-        vendedor_id,
-        rastreio
+        vendedor_id
       `)
       .in('id', orderIds)
       .order('created_at', { ascending: false });
