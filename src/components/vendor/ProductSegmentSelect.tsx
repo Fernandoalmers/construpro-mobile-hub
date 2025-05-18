@@ -1,15 +1,18 @@
 
-import React from 'react';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import React, { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
-import { useQuery } from '@tanstack/react-query';
-import { getProductSegments, ProductSegment } from '@/services/admin/productSegmentsService';
+
+interface Segment {
+  id: string;
+  nome: string;
+}
 
 interface ProductSegmentSelectProps {
   value: string;
@@ -18,35 +21,52 @@ interface ProductSegmentSelectProps {
   required?: boolean;
 }
 
-const ProductSegmentSelect: React.FC<ProductSegmentSelectProps> = ({
-  value,
+const ProductSegmentSelect: React.FC<ProductSegmentSelectProps> = ({ 
+  value, 
   onChange,
   error,
-  required = false,
+  required = false
 }) => {
-  const { data: segments = [], isLoading } = useQuery({
-    queryKey: ['productSegments'],
-    queryFn: getProductSegments,
-    staleTime: 60 * 60 * 1000, // 1 hour
-  });
+  const [segments, setSegments] = useState<Segment[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadSegments = async () => {
+      try {
+        // Busca segmentos da tabela product_segments
+        const { data, error } = await supabase
+          .from('product_segments')
+          .select('id, nome')
+          .order('nome');
+        
+        if (error) {
+          console.error('Error loading segments:', error);
+          return;
+        }
+        
+        setSegments(data || []);
+      } catch (err) {
+        console.error('Error in loadSegments:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSegments();
+  }, []);
 
   return (
-    <div className="w-full">
-      <Label htmlFor="segmento" className="block mb-2">
-        Segmento {required && <span className="text-red-500">*</span>}
-      </Label>
+    <div>
       <Select
-        value={value}
-        onValueChange={(value) => {
-          onChange(value);
-        }}
-        disabled={isLoading}
+        onValueChange={onChange}
+        value={value || ''}
+        disabled={loading}
       >
-        <SelectTrigger className={error ? "border-red-500" : ""}>
-          <SelectValue placeholder="Selecione um segmento" />
+        <SelectTrigger className={error ? 'border-red-500' : ''}>
+          <SelectValue placeholder={loading ? "Carregando segmentos..." : "Selecione um segmento"} />
         </SelectTrigger>
         <SelectContent>
-          {segments.map(segment => (
+          {segments.map((segment) => (
             <SelectItem key={segment.id} value={segment.nome}>
               {segment.nome}
             </SelectItem>
