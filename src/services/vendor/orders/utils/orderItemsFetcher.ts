@@ -44,8 +44,8 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
   }
 };
 
-// Define simpler, non-recursive types to avoid infinite type instantiation
-export type ProductImageType = null | string[] | Array<{url: string}>;
+// Define fixed primitive types for image structures - this avoids recursive types
+export type ProductImageType = null | readonly string[] | readonly {readonly url: string}[];
 
 // Define a standalone product type with no circular references
 export interface ProductData {
