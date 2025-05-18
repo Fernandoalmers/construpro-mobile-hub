@@ -8,6 +8,54 @@ function capitalizeOrderStatus(status: string): string {
   return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
 }
 
+// Helper function to update product inventory
+async function updateProductInventory(supabaseClient: any, items: any[]): Promise<void> {
+  console.log("Updating product inventory for order items:", items);
+  
+  for (const item of items) {
+    if (!item.produto_id || !item.quantidade) {
+      console.warn("Missing product_id or quantity for item:", item);
+      continue;
+    }
+    
+    try {
+      // Get current product stock
+      const { data: product, error: productError } = await supabaseClient
+        .from('produtos')
+        .select('estoque, nome')
+        .eq('id', item.produto_id)
+        .single();
+      
+      if (productError) {
+        console.error(`Error fetching product ${item.produto_id}:`, productError);
+        continue;
+      }
+      
+      if (!product) {
+        console.error(`Product ${item.produto_id} not found`);
+        continue;
+      }
+      
+      const currentStock = product.estoque || 0;
+      const newStock = Math.max(0, currentStock - item.quantidade);
+      
+      console.log(`Updating product ${product.nome} (${item.produto_id}) stock: ${currentStock} -> ${newStock}`);
+      
+      // Update product stock
+      const { error: updateError } = await supabaseClient
+        .from('produtos')
+        .update({ estoque: newStock })
+        .eq('id', item.produto_id);
+      
+      if (updateError) {
+        console.error(`Error updating product ${item.produto_id} stock:`, updateError);
+      }
+    } catch (error) {
+      console.error(`Error processing inventory update for product ${item.produto_id}:`, error);
+    }
+  }
+}
+
 export async function handleGetOrders(req: Request, authHeader: string) {
   try {
     console.log("Getting orders for authenticated user");
@@ -289,9 +337,6 @@ export async function handleCreateOrder(req: Request, authHeader: string) {
     // Calculate points earned (10% of order total)
     const pontos_ganhos = Math.floor(orderData.valor_total * 0.1)
     
-    // IMPORTANT: Removing custom transaction functions as they are causing errors
-    // We'll use individual operations instead
-    
     try {
       console.log(`Creating order for user: ${user.id}`);
       
@@ -348,6 +393,10 @@ export async function handleCreateOrder(req: Request, authHeader: string) {
       }
       
       console.log("Order items created successfully");
+      
+      // Update product inventory - new functionality
+      await updateProductInventory(serviceRoleClient, orderData.items);
+      console.log("Product inventory updated successfully");
       
       // Add points transaction
       console.log("Creating points transaction");

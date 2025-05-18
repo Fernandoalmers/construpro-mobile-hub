@@ -10,6 +10,7 @@ const ProdutoEditScreen: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [loading, setLoading] = useState(true);
+  const [product, setProduct] = useState(null);
   
   useEffect(() => {
     const loadProduct = async () => {
@@ -19,8 +20,8 @@ const ProdutoEditScreen: React.FC = () => {
       }
       
       try {
-        const product = await getVendorProduct(id);
-        if (!product) {
+        const productData = await getVendorProduct(id);
+        if (!productData) {
           toast.error("Produto não encontrado", {
             description: "Não foi possível encontrar o produto solicitado"
           });
@@ -28,6 +29,7 @@ const ProdutoEditScreen: React.FC = () => {
           return;
         }
         
+        setProduct(productData);
         setLoading(false);
       } catch (error) {
         console.error('Error loading product:', error);
@@ -45,7 +47,7 @@ const ProdutoEditScreen: React.FC = () => {
     return <LoadingState text="Carregando produto..." />;
   }
   
-  return <ProductFormScreen isEditing productId={id} />;
+  return <ProductFormScreen isEditing productId={id} initialData={product} />;
 };
 
 export default ProdutoEditScreen;
