@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 
 export interface MenuItemProps {
   name: string;
-  icon: JSX.Element;
+  icon: React.ReactNode;  // Changed from JSX.Element to React.ReactNode
   path: string;
   tooltip: string;
   isActive: boolean;

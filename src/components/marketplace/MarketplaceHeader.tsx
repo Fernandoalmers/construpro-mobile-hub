@@ -16,14 +16,17 @@ interface MarketplaceHeaderProps {
   selectedCategories: string[];
   selectedLojas: string[];
   selectedRatings: string[];
+  selectedSegments?: string[];
   allCategories: FilterOption[];
   ratingOptions: FilterOption[];
+  segmentOptions?: FilterOption[];
   stores?: any[];
   onSearchChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSearch?: (term: string) => void;
   onLojaClick: (lojaId: string) => void;
   onCategoryClick: (categoryId: string) => void;
   onRatingClick: (ratingId: string) => void;
+  onSegmentClick?: (segmentId: string) => void;
   clearFilters: () => void;
 }
 
@@ -33,21 +36,24 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
   selectedCategories,
   selectedLojas,
   selectedRatings,
+  selectedSegments = [],
   allCategories,
   ratingOptions,
+  segmentOptions = [],
   stores = [],
   onSearchChange,
   onSearch,
   onLojaClick,
   onCategoryClick,
   onRatingClick,
+  onSegmentClick = () => {},
   clearFilters
 }) => {
   const { cartCount } = useCart();
 
   const lojasOptions = stores.map(store => ({
     id: store.id,
-    label: store.nome
+    label: store.nome_loja
   }));
 
   return (
@@ -75,10 +81,13 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
         <FilterDialogs
           lojasOptions={lojasOptions}
           allCategories={allCategories}
+          segmentOptions={segmentOptions}
           selectedLojas={selectedLojas}
           selectedCategories={selectedCategories}
+          selectedSegments={selectedSegments}
           onLojaClick={onLojaClick}
           onCategoryClick={onCategoryClick}
+          onSegmentClick={onSegmentClick}
         />
         
         {/* Selected Filter Chips */}
@@ -86,12 +95,15 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
           selectedCategories={selectedCategories}
           selectedLojas={selectedLojas}
           selectedRatings={selectedRatings}
+          selectedSegments={selectedSegments}
           allCategories={allCategories}
           lojasOptions={lojasOptions}
           ratingOptions={ratingOptions}
+          segmentOptions={segmentOptions}
           onCategoryClick={onCategoryClick}
           onLojaClick={onLojaClick}
           onRatingClick={onRatingClick}
+          onSegmentClick={onSegmentClick}
           clearFilters={clearFilters}
         />
       </motion.div>

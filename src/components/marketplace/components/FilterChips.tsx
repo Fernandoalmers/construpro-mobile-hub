@@ -7,12 +7,15 @@ interface FilterChipsProps {
   selectedCategories: string[];
   selectedLojas: string[];
   selectedRatings: string[];
+  selectedSegments?: string[];
   allCategories: FilterOption[];
   lojasOptions: FilterOption[];
   ratingOptions: FilterOption[];
+  segmentOptions?: FilterOption[];
   onCategoryClick: (categoryId: string) => void;
   onLojaClick: (lojaId: string) => void;
   onRatingClick: (ratingId: string) => void;
+  onSegmentClick?: (segmentId: string) => void;
   clearFilters: () => void;
 }
 
@@ -20,15 +23,21 @@ const FilterChips: React.FC<FilterChipsProps> = ({
   selectedCategories,
   selectedLojas,
   selectedRatings,
+  selectedSegments = [],
   allCategories,
   lojasOptions,
   ratingOptions,
+  segmentOptions = [],
   onCategoryClick,
   onLojaClick,
   onRatingClick,
+  onSegmentClick = () => {},
   clearFilters
 }) => {
-  if (selectedCategories.length === 0 && selectedLojas.length === 0 && selectedRatings.length === 0) {
+  if (selectedCategories.length === 0 && 
+      selectedLojas.length === 0 && 
+      selectedRatings.length === 0 && 
+      selectedSegments.length === 0) {
     return null;
   }
   
@@ -71,6 +80,21 @@ const FilterChips: React.FC<FilterChipsProps> = ({
             {rating?.label}
             <button 
               onClick={() => onRatingClick(ratingId)}
+              className="ml-1 text-gray-500 hover:text-gray-800"
+            >
+              ×
+            </button>
+          </Badge>
+        );
+      })}
+      
+      {selectedSegments.map(segmentId => {
+        const segment = segmentOptions.find(s => s.id === segmentId);
+        return (
+          <Badge key={segmentId} variant="secondary" className="bg-white text-gray-800 flex items-center gap-1">
+            {segment?.label}
+            <button 
+              onClick={() => onSegmentClick(segmentId)}
               className="ml-1 text-gray-500 hover:text-gray-800"
             >
               ×

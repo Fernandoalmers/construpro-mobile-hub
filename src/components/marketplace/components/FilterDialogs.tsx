@@ -7,22 +7,28 @@ import { FilterOption } from '@/hooks/use-product-filter';
 interface FilterDialogsProps {
   lojasOptions: FilterOption[];
   allCategories: FilterOption[];
+  segmentOptions?: FilterOption[];
   ratingOptions?: FilterOption[];
   selectedLojas: string[];
   selectedCategories: string[];
+  selectedSegments?: string[];
   selectedRatings?: string[];
   onLojaClick: (lojaId: string) => void;
   onCategoryClick: (categoryId: string) => void;
+  onSegmentClick?: (segmentId: string) => void;
   onRatingClick?: (ratingId: string) => void;
 }
 
 const FilterDialogs: React.FC<FilterDialogsProps> = ({
   lojasOptions,
   allCategories,
+  segmentOptions = [],
   selectedLojas,
   selectedCategories,
+  selectedSegments = [],
   onLojaClick,
-  onCategoryClick
+  onCategoryClick,
+  onSegmentClick = () => {}
 }) => {
   return (
     <div className="flex space-x-2 overflow-x-auto pb-4">
@@ -107,6 +113,33 @@ const FilterDialogs: React.FC<FilterDialogsProps> = ({
                 </label>
               ))}
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Segment filter - Added as requested */}
+      <Dialog>
+        <DialogTrigger asChild>
+          <button className="flex items-center gap-1 bg-white text-gray-800 px-3 py-1.5 rounded-full text-sm whitespace-nowrap">
+            Segmento <ChevronDown size={16} />
+          </button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Filtrar por Segmento</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-1 gap-2 mt-4 max-h-[60vh] overflow-y-auto">
+            {segmentOptions.map(segment => (
+              <label key={segment.id} className="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50">
+                <input 
+                  type="checkbox"
+                  className="mr-2" 
+                  checked={selectedSegments.includes(segment.id)} 
+                  onChange={() => onSegmentClick(segment.id)}
+                />
+                {segment.label}
+              </label>
+            ))}
           </div>
         </DialogContent>
       </Dialog>
