@@ -14,6 +14,7 @@ export interface VendorProfile {
   formas_entrega?: any[];
   created_at?: string;
   updated_at?: string;
+  status?: string; // Add the missing status property
 }
 
 export const getVendorProfile = async (): Promise<VendorProfile | null> => {
