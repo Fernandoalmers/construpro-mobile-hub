@@ -19,19 +19,37 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
     }
     
     console.log('Fetching orders for vendor:', vendorProfile.id);
+    console.log('Vendor profile details:', {
+      nome_loja: vendorProfile.nome_loja,
+      usuario_id: vendorProfile.usuario_id
+    });
     
     // Combined array for all vendor orders
     const combinedOrders: VendorOrder[] = [];
     
     // 1. Fetch orders from the pedidos table (old structure)
     const pedidosOrders = await fetchOrdersFromPedidos(vendorProfile.id);
-    combinedOrders.push(...pedidosOrders);
+    if (pedidosOrders.length > 0) {
+      console.log(`Found ${pedidosOrders.length} orders in 'pedidos' table`);
+      combinedOrders.push(...pedidosOrders);
+    } else {
+      console.log('No orders found in pedidos table for this vendor');
+    }
     
     // 2. Fetch orders from order_items table based on vendor products
     const productIds = await getVendorProductIds(vendorProfile.id);
     if (productIds.length > 0) {
+      console.log(`Found ${productIds.length} products, checking for orders in 'order_items'`);
       const orderItemsOrders = await fetchOrdersFromOrderItems(vendorProfile.id, productIds);
-      combinedOrders.push(...orderItemsOrders);
+      
+      if (orderItemsOrders.length > 0) {
+        console.log(`Found ${orderItemsOrders.length} orders via products in 'order_items'`);
+        combinedOrders.push(...orderItemsOrders);
+      } else {
+        console.log('No orders found via products in order_items table');
+      }
+    } else {
+      console.log('No products found for vendor, skipping order_items check');
     }
     
     // Sort all orders by date, newest first

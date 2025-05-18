@@ -9,18 +9,20 @@ import { logDiagnosticInfo } from './utils/diagnosticUtils';
 export const fetchOrdersFromPedidos = async (vendorId: string): Promise<VendorOrder[]> => {
   console.log('Fetching orders from pedidos table for vendor:', vendorId);
   
-  const { data, error } = await supabase
+  const result = await supabase
     .from('pedidos')
     .select('*')
     .eq('vendedor_id', vendorId)
     .order('created_at', { ascending: false });
   
-  if (error) {
-    console.error('Error fetching orders from pedidos:', error);
+  if (result.error) {
+    console.error('Error fetching orders from pedidos:', result.error);
     return [];
   }
   
-  if (!data || data.length === 0) {
+  const data = result.data || [];
+  
+  if (data.length === 0) {
     console.log('No orders found in pedidos table');
     return [];
   }
@@ -53,6 +55,9 @@ export const fetchOrdersFromPedidos = async (vendorId: string): Promise<VendorOr
     };
     
     processedOrders.push(vendorOrder);
+    
+    // Log for each order for detailed debugging
+    console.log(`Processed order ID: ${order.id}, status: ${order.status}, value: ${order.valor_total}`);
   }
   
   return processedOrders;
@@ -87,18 +92,20 @@ export const fetchOrdersFromOrderItems = async (vendorId: string, productIds: st
     const orderItemsMap = createOrderItemsMap(orderItemsData, productMap);
     
     // 5. Fetch the actual orders
-    const { data: ordersData, error: ordersError } = await supabase
+    const result = await supabase
       .from('orders')
       .select('*')
       .in('id', orderIds)
       .order('created_at', { ascending: false });
       
-    if (ordersError) {
-      console.error('Error fetching orders:', ordersError);
+    if (result.error) {
+      console.error('Error fetching orders:', result.error);
       return [];
     }
     
-    if (!ordersData || ordersData.length === 0) {
+    const ordersData = result.data || [];
+    
+    if (ordersData.length === 0) {
       console.log('No orders found matching the order items');
       return [];
     }
@@ -131,6 +138,9 @@ export const fetchOrdersFromOrderItems = async (vendorId: string, productIds: st
       };
       
       processedOrders.push(vendorOrder);
+      
+      // Log for each order for detailed debugging
+      console.log(`Processed order from order_items - ID: ${order.id}, status: ${order.status}, value: ${order.valor_total}`);
     }
     
     return processedOrders;

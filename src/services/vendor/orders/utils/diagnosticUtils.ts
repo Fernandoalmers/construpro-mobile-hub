@@ -40,7 +40,8 @@ export const runVendorDiagnostics = async (): Promise<SimpleDiagnosticResults> =
   
   try {
     // Step 1: Get current user
-    const { data: userData } = await supabase.auth.getUser();
+    const authData = await supabase.auth.getUser();
+    const userData = authData.data;
     results.currentUser = userData?.user?.id || null;
     console.log('Current authenticated user:', userData?.user?.id);
     
@@ -50,12 +51,13 @@ export const runVendorDiagnostics = async (): Promise<SimpleDiagnosticResults> =
     }
     
     // Step 2: Check user profile
-    const { data: profileData } = await supabase
+    const profileResult = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userData.user.id)
       .single();
-      
+    
+    const profileData = profileResult.data;
     results.userProfile = profileData;
     console.log('User profile:', profileData ? 'Found' : 'Not found', 
       profileData ? `(type: ${profileData.tipo_perfil}, role: ${profileData.papel})` : '');
@@ -71,36 +73,36 @@ export const runVendorDiagnostics = async (): Promise<SimpleDiagnosticResults> =
     }
     
     // Step 4: Check products in 'produtos' table
-    const { count: produtosCount } = await supabase
+    const produtosResult = await supabase
       .from('produtos')
       .select('*', { count: 'exact', head: true });
       
-    results.productCounts.produtos = produtosCount || 0;
-    console.log(`Vendor has ${produtosCount || 0} products in 'produtos' table`);
+    results.productCounts.produtos = produtosResult.count || 0;
+    console.log(`Vendor has ${produtosResult.count || 0} products in 'produtos' table`);
     
     // Step 5: Check products in alternative 'products' table
-    const { count: productsCount } = await supabase
+    const productsResult = await supabase
       .from('products')
       .select('*', { count: 'exact', head: true });
       
-    results.productCounts.products = productsCount || 0;
-    console.log(`Vendor has ${productsCount || 0} products in 'products' table`);
+    results.productCounts.products = productsResult.count || 0;
+    console.log(`Vendor has ${productsResult.count || 0} products in 'products' table`);
     
     // Step 6: Check orders in 'pedidos' table
-    const { count: pedidosCount } = await supabase
+    const pedidosResult = await supabase
       .from('pedidos')
       .select('*', { count: 'exact', head: true });
       
-    results.orderCounts.pedidos = pedidosCount || 0;
-    console.log(`Vendor has ${pedidosCount || 0} orders in 'pedidos' table`);
+    results.orderCounts.pedidos = pedidosResult.count || 0;
+    console.log(`Vendor has ${pedidosResult.count || 0} orders in 'pedidos' table`);
     
     // Step 7: Check orders in 'orders' table
-    const { count: ordersCount } = await supabase
+    const ordersResult = await supabase
       .from('orders')
       .select('*', { count: 'exact', head: true });
       
-    results.orderCounts.orders = ordersCount || 0;
-    console.log(`Vendor has ${ordersCount || 0} orders in 'orders' table`);
+    results.orderCounts.orders = ordersResult.count || 0;
+    console.log(`Vendor has ${ordersResult.count || 0} orders in 'orders' table`);
     
     return results;
   } catch (error) {
@@ -121,38 +123,47 @@ export const logDiagnosticInfo = async (vendorId: string): Promise<void> => {
   console.log('Running extended diagnostics for vendor:', vendorId);
   
   try {
-    // Count products with explicit type casting
-    const { count: productCount, error: productError } = await supabase
+    // Count products without complex type casting
+    const productResult = await supabase
       .from('produtos')
-      .select('*', { count: 'exact', head: true }) as { 
-        count: number | null; 
-        error: any;
-      };
+      .select('*', { count: 'exact', head: true });
       
-    console.log(`Total produtos in database: ${productCount || 0}`);
-    if (productError) console.error('Error counting produtos:', productError);
+    console.log(`Total produtos in database: ${productResult.count || 0}`);
+    if (productResult.error) console.error('Error counting produtos:', productResult.error);
     
     // Count orders in pedidos table
-    const { count: orderCount, error: orderError } = await supabase
+    const orderResult = await supabase
       .from('pedidos')
-      .select('*', { count: 'exact', head: true }) as {
-        count: number | null;
-        error: any;
-      };
+      .select('*', { count: 'exact', head: true });
       
-    console.log(`Total orders in database: ${orderCount || 0}`);
-    if (orderError) console.error('Error counting pedidos:', orderError);
+    console.log(`Total orders in database: ${orderResult.count || 0}`);
+    if (orderResult.error) console.error('Error counting pedidos:', orderResult.error);
     
     // Count order items
-    const { count: orderItemCount, error: itemError } = await supabase
+    const itemResult = await supabase
       .from('order_items')
-      .select('*', { count: 'exact', head: true }) as {
-        count: number | null;
-        error: any;
-      };
+      .select('*', { count: 'exact', head: true });
       
-    console.log(`Total order_items in database: ${orderItemCount || 0}`);
-    if (itemError) console.error('Error counting order_items:', itemError);
+    console.log(`Total order_items in database: ${itemResult.count || 0}`);
+    if (itemResult.error) console.error('Error counting order_items:', itemResult.error);
+    
+    // Check for orders specifically linked to this vendor
+    const vendorOrderResult = await supabase
+      .from('pedidos')
+      .select('id', { count: 'exact' })
+      .eq('vendedor_id', vendorId);
+      
+    console.log(`Orders in 'pedidos' with vendedor_id=${vendorId}: ${vendorOrderResult.count || 0}`);
+    if (vendorOrderResult.error) console.error('Error checking vendor orders:', vendorOrderResult.error);
+    
+    // Check products linked to this vendor
+    const vendorProductResult = await supabase
+      .from('produtos')
+      .select('id', { count: 'exact' })
+      .eq('vendedor_id', vendorId);
+      
+    console.log(`Products in 'produtos' with vendedor_id=${vendorId}: ${vendorProductResult.count || 0}`);
+    if (vendorProductResult.error) console.error('Error checking vendor products:', vendorProductResult.error);
     
   } catch (error) {
     console.error('Error in diagnostic logging:', error);
