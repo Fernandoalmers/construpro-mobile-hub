@@ -144,33 +144,34 @@ export const getProducts = async (filters = {}): Promise<Product[]> => {
       return [];
     }
     
+    // Fix: Simplify type handling by using direct array transformation instead of complex typing
     const products: Product[] = [];
     
-    // Avoid TypeScript type inference issues by using a for loop and explicit casting
+    // Use a simple for loop and explicit type assertions to avoid TypeScript type inference complexity
     for (let i = 0; i < data.length; i++) {
-      // Use type assertion to enforce our expected structure
-      const recordData = data[i] as any;
+      // Use a simple type assertion to any to bypass complex type inference
+      const rawRecord: any = data[i];
       
-      // Map to our defined structure
+      // Create a properly typed record by explicitly mapping fields
       const record: ProductDatabaseRecord = {
-        id: recordData.id,
-        nome: recordData.nome,
-        descricao: recordData.descricao,
-        preco_normal: recordData.preco_normal,
-        preco_promocional: recordData.preco_promocional,
-        preco_anterior: recordData.preco_anterior,
-        categoria: recordData.categoria,
-        segmento: recordData.segmento,
-        segmento_id: recordData.segmento_id,
-        imagem_url: recordData.imagem_url,
-        imagens: recordData.imagens,
-        estoque: recordData.estoque,
-        pontos_consumidor: recordData.pontos_consumidor,
-        pontos_profissional: recordData.pontos_profissional,
-        vendedor_id: recordData.vendedor_id,
-        status: recordData.status,
-        codigo_barras: recordData.codigo_barras,
-        sku: recordData.sku
+        id: rawRecord.id,
+        nome: rawRecord.nome,
+        descricao: rawRecord.descricao,
+        preco_normal: rawRecord.preco_normal,
+        preco_promocional: rawRecord.preco_promocional,
+        preco_anterior: rawRecord.preco_anterior,
+        categoria: rawRecord.categoria,
+        segmento: rawRecord.segmento,
+        segmento_id: rawRecord.segmento_id,
+        imagem_url: rawRecord.imagem_url,
+        imagens: rawRecord.imagens,
+        estoque: rawRecord.estoque,
+        pontos_consumidor: rawRecord.pontos_consumidor,
+        pontos_profissional: rawRecord.pontos_profissional,
+        vendedor_id: rawRecord.vendedor_id,
+        status: rawRecord.status,
+        codigo_barras: rawRecord.codigo_barras,
+        sku: rawRecord.sku
       };
       
       products.push(transformToProduct(record));
@@ -203,40 +204,40 @@ export const getProductById = async (id: string): Promise<Product | null> => {
     
     if (!data) return null;
     
-    // Use type assertion to enforce our expected structure
-    const recordData = data as any;
+    // Fix: Use a simple type assertion to avoid complex type inference
+    const rawRecord: any = data;
     
-    // Map to our defined structure
+    // Create a properly typed record by explicitly mapping fields
     const record: ProductDatabaseRecord = {
-      id: recordData.id,
-      nome: recordData.nome,
-      descricao: recordData.descricao,
-      preco_normal: recordData.preco_normal,
-      preco_promocional: recordData.preco_promocional,
-      preco_anterior: recordData.preco_anterior,
-      categoria: recordData.categoria,
-      segmento: recordData.segmento,
-      segmento_id: recordData.segmento_id,
-      imagem_url: recordData.imagem_url,
-      imagens: recordData.imagens,
-      estoque: recordData.estoque,
-      pontos_consumidor: recordData.pontos_consumidor,
-      pontos_profissional: recordData.pontos_profissional,
-      vendedor_id: recordData.vendedor_id,
-      status: recordData.status,
-      codigo_barras: recordData.codigo_barras,
-      sku: recordData.sku,
-      vendedores: recordData.vendedores
+      id: rawRecord.id,
+      nome: rawRecord.nome,
+      descricao: rawRecord.descricao,
+      preco_normal: rawRecord.preco_normal,
+      preco_promocional: rawRecord.preco_promocional,
+      preco_anterior: rawRecord.preco_anterior,
+      categoria: rawRecord.categoria,
+      segmento: rawRecord.segmento,
+      segmento_id: rawRecord.segmento_id,
+      imagem_url: rawRecord.imagem_url,
+      imagens: rawRecord.imagens,
+      estoque: rawRecord.estoque,
+      pontos_consumidor: rawRecord.pontos_consumidor,
+      pontos_profissional: rawRecord.pontos_profissional,
+      vendedor_id: rawRecord.vendedor_id,
+      status: rawRecord.status,
+      codigo_barras: rawRecord.codigo_barras,
+      sku: rawRecord.sku,
+      vendedores: rawRecord.vendedores
     };
     
     const product = transformToProduct(record);
     
     // Add store information if available
-    if (recordData.vendedores && typeof recordData.vendedores === 'object' && recordData.vendedores !== null) {
-      const vendedorData = recordData.vendedores;
+    if (rawRecord.vendedores && typeof rawRecord.vendedores === 'object' && rawRecord.vendedores !== null) {
+      const vendedorData = rawRecord.vendedores;
       
       product.stores = {
-        id: recordData.vendedor_id || '',
+        id: rawRecord.vendedor_id || '',
         nome: vendedorData.nome_loja || '',
         nome_loja: vendedorData.nome_loja || '',
         logo_url: vendedorData.logo_url
