@@ -1,10 +1,17 @@
 
 import { VendorCustomer } from '../../vendorCustomersService';
 
+export interface OrderFilters {
+  status?: string[];
+  startDate?: string;
+  endDate?: string;
+  searchTerm?: string;
+}
+
 export interface OrderItem {
   id: string;
-  pedido_id?: string;
-  order_id?: string;
+  pedido_id?: string; // Legacy field
+  order_id: string;
   produto_id: string;
   quantidade: number;
   preco_unitario: number;
@@ -12,13 +19,13 @@ export interface OrderItem {
   subtotal?: number;
   created_at?: string;
   produto?: any;
-  produtos?: any;
+  produtos?: any; // Keep this for backward compatibility
 }
 
 export interface VendorOrder {
   id: string;
   vendedor_id?: string;
-  usuario_id?: string;
+  usuario_id?: string; // Legacy field
   cliente_id?: string;
   valor_total: number;
   status: string;
@@ -26,6 +33,8 @@ export interface VendorOrder {
   endereco_entrega: any;
   created_at: string;
   data_entrega_estimada?: string;
+  pontos_ganhos?: number;
+  rastreio?: string;
   cliente?: VendorCustomer;
   itens?: OrderItem[];
 }

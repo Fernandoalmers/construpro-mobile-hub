@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { OrderItem, VendorOrder } from './types';
 import { fetchCustomerInfo } from './utils/clientInfoFetcher';
 import { fetchProductsForItems } from './utils/productFetcher';
-import { getVendorProductIds } from './utils/productFetcher';
+import { fetchDirectVendorOrders } from './utils/ordersFetcher';
 import { logDiagnosticInfo } from './utils/diagnosticUtils';
 
 // Main function to get all vendor orders
@@ -40,21 +40,14 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
       status: vendorData.status || 'unknown'
     });
     
-    // Get all products for this vendor
-    console.log(`🛍️ [getVendorOrders] Fetching products for vendor: ${vendorId}`);
-    const productIds = await getVendorProductIds(vendorId);
-    console.log(`📊 [getVendorOrders] Found ${productIds.length} products`, productIds.slice(0, 5));
-    
-    if (!productIds.length) {
-      console.log('⚠️ [getVendorOrders] No products found for vendor, cannot fetch orders');
-      await logDiagnosticInfo(vendorId);
-      return [];
+    // Check vendor status
+    if (vendorData.status === 'pendente') {
+      console.warn('⚠️ [getVendorOrders] Vendor status is "pendente", which may affect order visibility');
     }
     
-    console.log(`🔍 [getVendorOrders] Found ${productIds.length} products, fetching related orders`);
-    
-    // Get orders through order_items
-    const vendorOrders = await fetchOrdersFromOrderItems(vendorId, productIds);
+    // Use direct approach to fetch vendor orders
+    console.log(`🔍 [getVendorOrders] Fetching orders directly for vendor: ${vendorId}`);
+    const vendorOrders = await fetchDirectVendorOrders(vendorId);
     
     console.log(`📦 [getVendorOrders] Processed ${vendorOrders.length} vendor orders`);
     
@@ -67,11 +60,6 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
           { name: vendorOrders[0].cliente.nome, id: vendorOrders[0].cliente.id } : 'No customer info'
       });
     }
-    
-    // Sort orders by date, newest first
-    vendorOrders.sort((a, b) => {
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-    });
     
     // If no orders were found, log diagnostic information
     if (vendorOrders.length === 0) {
@@ -92,8 +80,5 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
   }
 };
 
-// Import the function for fetching orders through order_items
-import { fetchOrdersFromOrderItems } from './utils/ordersFetcher';
-
-// Re-export getVendorProductIds for backward compatibility
-export { getVendorProductIds } from './utils/productFetcher';
+// Re-export the direct fetching function for other components that might need it
+export { fetchDirectVendorOrders } from './utils/ordersFetcher';

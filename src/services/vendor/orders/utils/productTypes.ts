@@ -1,28 +1,12 @@
 
-// Define product-related types in a dedicated file
-
-// Simple interface for product ID
-export interface ProductId {
-  id: string;
-}
-
-// Define a simple type for product images without circular references
-export type ProductImageType = string[] | null;
-
-// Define a standalone product type with no circular references
+// Define types for product data
 export interface ProductData {
   id: string;
   nome: string;
-  descricao: string | null;
-  preco_normal: number;
-  imagens: ProductImageType;
-}
-
-// Raw product data from database
-export interface RawProductData {
-  id: string;
-  nome: string;
-  descricao: string | null;
-  preco_normal: number;
-  imagens: unknown;
+  preco_normal?: number;
+  preco?: number;
+  imagens?: any[];
+  imagem_url?: string;
+  descricao?: string;
+  categoria?: string;
 }
