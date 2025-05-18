@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 // Define ProductId interface to simplify typing
@@ -29,9 +28,9 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
       return [];
     }
     
-    // Safely handle the data with explicit typing
-    // This solves the "Type instantiation is excessively deep" error
-    const data = result.data;
+    // Safely handle the data with explicit typing to solve the "Type instantiation is excessively deep" error
+    type SimpleProductResult = { id: string }[];
+    const data = result.data as SimpleProductResult | null;
     const vendorProducts: ProductId[] = Array.isArray(data) ? data : [];
     
     if (vendorProducts.length === 0) {
@@ -50,7 +49,8 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
       }
       
       // Safely handle alternate data with explicit typing
-      const alternateData = alternateResult.data;
+      type SimpleProductResult = { id: string }[];
+      const alternateData = alternateResult.data as SimpleProductResult | null;
       const alternateProducts: { id: string }[] = Array.isArray(alternateData) ? alternateData : [];
       
       if (alternateProducts.length === 0) {
