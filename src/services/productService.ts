@@ -37,7 +37,7 @@ export interface Product {
 }
 
 // Type for the raw database response
-type ProductDatabaseRecord = {
+interface ProductDatabaseRecord {
   id: string;
   nome: string;
   descricao: string;
@@ -53,14 +53,14 @@ type ProductDatabaseRecord = {
   pontos_consumidor?: number;
   pontos_profissional?: number;
   vendedor_id?: string;
-  status: string; // Changed from the restrictive union type to string
+  status: string;
   codigo_barras?: string;
   sku?: string;
   created_at?: string;
   updated_at?: string;
   vendedores?: any;
   [key: string]: any; // Allow other properties
-};
+}
 
 // Transform database record to Product type
 const transformToProduct = (record: ProductDatabaseRecord): Product => {
@@ -89,7 +89,8 @@ const transformToProduct = (record: ProductDatabaseRecord): Product => {
     }
   }
 
-  return {
+  // Create a product object with only the necessary fields to avoid deep type recursion
+  const product: Product = {
     id: record.id,
     nome: record.nome,
     descricao: record.descricao,
@@ -109,6 +110,8 @@ const transformToProduct = (record: ProductDatabaseRecord): Product => {
     codigo_barras: record.codigo_barras,
     sku: record.sku
   };
+
+  return product;
 };
 
 // Get all approved products
@@ -163,7 +166,19 @@ export const getProductById = async (id: string): Promise<Product | null> => {
     if (!data) return null;
     
     // Transform the record to ensure type compatibility
-    return transformToProduct(data as ProductDatabaseRecord);
+    const product = transformToProduct(data as ProductDatabaseRecord);
+    
+    // Add store information if available
+    if (data.vendedores && typeof data.vendedores === 'object') {
+      product.stores = {
+        id: data.vendedor_id,
+        nome: String(data.vendedores.nome_loja || ''),
+        nome_loja: String(data.vendedores.nome_loja || ''),
+        logo_url: data.vendedores.logo_url
+      };
+    }
+    
+    return product;
   } catch (error) {
     console.error('Error in getProductById:', error);
     return null;
