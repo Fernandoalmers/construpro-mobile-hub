@@ -144,11 +144,18 @@ export const getProducts = async (filters = {}): Promise<Product[]> => {
     }
     
     // Transform each record to ensure type compatibility
-    // Use type assertion with intermediate 'unknown' type to avoid deep instantiation
-    return (data || []).map(item => {
-      const record = item as unknown;
-      return transformToProduct(record as ProductDatabaseRecord);
-    });
+    // Create a properly typed array without complex type inference
+    const products: Product[] = [];
+    
+    if (data && data.length > 0) {
+      for (const item of data) {
+        // Simple two-step type assertion to avoid deep instantiation issues
+        const record = item as any;
+        products.push(transformToProduct(record));
+      }
+    }
+    
+    return products;
   } catch (error) {
     console.error('Error in getProducts:', error);
     toast.error('Erro ao carregar produtos');
@@ -176,9 +183,9 @@ export const getProductById = async (id: string): Promise<Product | null> => {
     if (!data) return null;
     
     // Transform the record to ensure type compatibility
-    // Use type assertion with intermediate 'unknown' type to avoid deep instantiation
-    const record = data as unknown;
-    const product = transformToProduct(record as ProductDatabaseRecord);
+    // Simple two-step type assertion to avoid deep instantiation issues
+    const record = data as any;
+    const product = transformToProduct(record);
     
     // Add store information if available
     if (data.vendedores && typeof data.vendedores === 'object' && data.vendedores !== null) {
