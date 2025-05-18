@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { SimpleOrderItem } from './orderItemTypes';
 import { ProductData } from './productTypes';
@@ -9,7 +10,7 @@ export const fetchOrderItemsForProducts = async (productIds: string[]): Promise<
   
   try {
     console.log(`Fetching order items for ${productIds.length} product IDs`);
-    console.log(`Product IDs: ${JSON.stringify(productIds.slice(0, 5))}${productIds.length > 5 ? '... (and more)' : ''}`);
+    console.log(`Product IDs sample: ${JSON.stringify(productIds.slice(0, 5))}${productIds.length > 5 ? '... (and more)' : ''}`);
     
     // Use explicit query with better logging
     const result = await supabase
@@ -139,9 +140,6 @@ export const createOrderItemsMap = (
   if (missingProducts.size > 0) {
     console.warn(`Found ${missingProducts.size} product IDs with no product data`);
     console.warn('First few missing product IDs:', Array.from(missingProducts).slice(0, 5));
-    
-    // We should fetch these missing products separately for a complete order view
-    // This could indicate a synchronization issue between order_items and produtos tables
   }
   
   return orderItemsMap;
@@ -168,28 +166,61 @@ export const diagnoseBrokenConnections = async (vendorId: string): Promise<{
     console.log(`Vendor exists: ${vendorExists}${vendorExists ? ' - ' + vendorResult.data?.nome_loja : ''}`);
     
     // 2. Get vendor products
-    const productIds = await getVendorProductIds(vendorId);
+    const { data: productData, error: productError } = await supabase
+      .from('produtos')
+      .select('id')
+      .eq('vendedor_id', vendorId);
+    
+    if (productError) {
+      console.error('Error fetching vendor products:', productError);
+      return { vendorExists, productCount: 0, orderItemsCount: 0, orderIds: [] };
+    }
+    
+    const productIds = productData.map(p => p.id);
     console.log(`Found ${productIds.length} products for vendor`);
     
+    if (productIds.length === 0) {
+      return { vendorExists, productCount: 0, orderItemsCount: 0, orderIds: [] };
+    }
+    
     // 3. Find order items for these products
-    const orderItemsResult = await supabase
+    const { data: orderItemsData, error: orderItemsError } = await supabase
       .from('order_items')
       .select('id, order_id, produto_id')
-      .in('produto_id', productIds.length > 0 ? productIds.slice(0, 50) : ['no-products']);
+      .in('produto_id', productIds);
       
-    const orderItemsCount = orderItemsResult.data?.length || 0;
+    if (orderItemsError) {
+      console.error('Error finding order items:', orderItemsError);
+      return { vendorExists, productCount: productIds.length, orderItemsCount: 0, orderIds: [] };
+    }
+    
+    const orderItemsCount = orderItemsData?.length || 0;
     console.log(`Found ${orderItemsCount} order items with vendor products`);
     
     // 4. Get unique order IDs
-    const orderIds = orderItemsResult.data ? 
-      [...new Set(orderItemsResult.data.map(item => item.order_id))] : [];
+    const orderIds = orderItemsData ? 
+      [...new Set(orderItemsData.map(item => item.order_id))] : [];
     console.log(`Found ${orderIds.length} unique orders with vendor products`);
+    
+    // Additional diagnostic: check if these orders exist in the orders table
+    if (orderIds.length > 0) {
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('orders')
+        .select('id, status')
+        .in('id', orderIds);
+        
+      if (ordersError) {
+        console.error('Error verifying orders:', ordersError);
+      } else {
+        console.log(`Verified ${ordersData.length} of ${orderIds.length} orders exist in orders table`);
+      }
+    }
     
     return {
       vendorExists,
       productCount: productIds.length,
       orderItemsCount,
-      orderIds: orderIds
+      orderIds
     };
   } catch (error) {
     console.error('Error in connection diagnostics:', error);

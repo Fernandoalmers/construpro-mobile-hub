@@ -5,7 +5,8 @@ import { fetchCustomerInfo } from './clientInfoFetcher';
 import { VendorCustomer } from '../../../vendorCustomersService';
 import {
   fetchOrderItemsForProducts,
-  createOrderItemsMap
+  createOrderItemsMap,
+  fetchProductsForItems
 } from './orderItemsFetcher';
 
 // Re-export getVendorProductIds from orderItemsFetcher
@@ -222,8 +223,12 @@ export const fetchOrdersFromOrderItems = async (
       return [];
     }
     
-    // Group order items by order ID
-    const orderItemsMap = createOrderItemsMap(orderItemsData, {});
+    // Fetch products data for order items
+    const productIdsInItems = [...new Set(orderItemsData.map(item => item.produto_id as string))];
+    const productMap = await fetchProductsForItems(productIdsInItems);
+    
+    // Group order items by order ID with product data
+    const orderItemsMap = createOrderItemsMap(orderItemsData, productMap);
     
     // Process vendor-specific orders
     const vendorOrders = await processVendorOrdersFromOrderItems(

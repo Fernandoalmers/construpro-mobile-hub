@@ -20,7 +20,7 @@ export const logDiagnosticInfo = async (vendorId: string) => {
       console.log('Vendor profile found:', vendorData);
     }
     
-    // Check for any pedidos for this vendor
+    // Check for any pedidos for this vendor (old table)
     const { data: pedidosData, error: pedidosError } = await supabase
       .from('pedidos')
       .select('id')
@@ -33,9 +33,55 @@ export const logDiagnosticInfo = async (vendorId: string) => {
       console.log(`Found ${pedidosData.length} pedidos directly linked to vendor`);
     }
     
+    // Now check orders table (new table structure)
+    const { data: productIds, error: productError } = await supabase
+      .from('produtos')
+      .select('id')
+      .eq('vendedor_id', vendorId);
+      
+    if (productError) {
+      console.error('Error fetching vendor products:', productError);
+    } else {
+      console.log(`Found ${productIds.length} products for vendor ${vendorId}`);
+      
+      if (productIds.length > 0) {
+        // Check for order_items containing these products
+        const prodIds = productIds.map(p => p.id);
+        const { data: orderItemsData, error: orderItemsError } = await supabase
+          .from('order_items')
+          .select('order_id')
+          .in('produto_id', prodIds);
+          
+        if (orderItemsError) {
+          console.error('Error checking order_items:', orderItemsError);
+        } else {
+          console.log(`Found ${orderItemsData.length} order items with vendor products`);
+          
+          if (orderItemsData.length > 0) {
+            // Get unique order IDs
+            const orderIds = [...new Set(orderItemsData.map(item => item.order_id))];
+            console.log(`Found ${orderIds.length} unique orders with vendor products`);
+            
+            // Check these orders in orders table
+            const { data: ordersData, error: ordersError } = await supabase
+              .from('orders')
+              .select('id, status, valor_total')
+              .in('id', orderIds);
+              
+            if (ordersError) {
+              console.error('Error checking orders table:', ordersError);
+            } else {
+              console.log(`Found ${ordersData.length} matching orders in orders table`);
+              console.log('Sample order:', ordersData[0]);
+            }
+          }
+        }
+      }
+    }
+    
     // Get vendor products
-    const productIds = await getVendorProductIds(vendorId);
-    console.log(`Found ${productIds.length} product IDs for vendor`);
+    const productIds2 = await getVendorProductIds(vendorId);
+    console.log(`Found ${productIds2.length} product IDs using getVendorProductIds`);
     
     // Check total number of order_items in the system
     const { count: orderItemsCount, error: countError } = await supabase
@@ -56,7 +102,7 @@ export const logDiagnosticInfo = async (vendorId: string) => {
     return {
       vendorProfile: vendorData || null,
       directPedidosCount: pedidosData?.length || 0,
-      productCount: productIds.length,
+      productCount: productIds2.length,
       totalOrderItemsInSystem: orderItemsCount || 0,
       connections: diagnostics
     };

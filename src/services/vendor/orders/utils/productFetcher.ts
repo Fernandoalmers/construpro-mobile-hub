@@ -16,7 +16,7 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
     // Get all produtos owned by this vendor
     const result = await supabase
       .from('produtos')
-      .select('id')
+      .select('id, nome, status')
       .eq('vendedor_id', vendorId);
       
     // Handle error explicitly  
@@ -26,7 +26,7 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
     }
     
     // Use explicit array type to prevent deep instantiation
-    const products = result.data as Array<{ id: string }> || [];
+    const products = result.data as Array<{ id: string; nome: string; status: string }> || [];
     
     if (products.length === 0) {
       console.log('No products found in produtos table, checking alternative table');
@@ -34,7 +34,7 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
       // Try alternate product table as backup - using explicit query
       const { data: alternateData, error: alternateError } = await supabase
         .from('products')
-        .select('id')
+        .select('id, nome, status')
         .eq('loja_id', vendorId); // Use loja_id instead of vendedor_id
       
       // Handle error explicitly
@@ -44,7 +44,7 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
       }
       
       // Use simple array type to prevent deep instantiation
-      const alternateProducts = alternateData as Array<{ id: string }> || [];
+      const alternateProducts = alternateData as Array<{ id: string; nome: string; status: string }> || [];
       
       if (alternateProducts.length === 0) {
         console.log('No products found in alternate table either');
@@ -54,11 +54,19 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
       // Extract product IDs with clear typing
       const productIds = alternateProducts.map(item => item.id);
       console.log(`Found ${productIds.length} products in alternate table`);
+      console.log('Product sample:', alternateProducts[0]);
       return productIds;
     }
     
+    // Log product information for debugging
     console.log(`Found ${products.length} products for this vendor`);
-    return products.map(p => p.id);
+    console.log('Products sample:', products.slice(0, 2));
+    
+    // Filter to only include approved products for orders
+    const approvedProducts = products.filter(p => p.status === 'aprovado');
+    console.log(`Of which ${approvedProducts.length} are approved`);
+    
+    return approvedProducts.map(p => p.id);
   } catch (error) {
     console.error('Unexpected error in getVendorProductIds:', error);
     return [];
