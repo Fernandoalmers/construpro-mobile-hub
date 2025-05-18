@@ -53,7 +53,7 @@ export interface ProductData {
   imagens: Array<string | { url: string }> | null;
 }
 
-// Process images from various possible formats
+// Process images from various possible formats - standalone function to simplify types
 function processImagens(rawImagens: any): Array<string | { url: string }> | null {
   if (!rawImagens) return null;
   
@@ -66,7 +66,7 @@ function processImagens(rawImagens: any): Array<string | { url: string }> | null
       if (typeof img === 'string') return img;
       if (typeof img === 'object' && img && img.url) return img;
       return '';
-    }).filter((img): img is string | { url: string } => !!img);
+    }).filter(Boolean);
     
     return processedImages.length > 0 ? processedImages : null;
   }
@@ -79,10 +79,10 @@ export const fetchProductsForItems = async (productIds: string[]): Promise<Recor
   if (!productIds.length) return {};
   
   try {
+    // Use minimal explicit selects to avoid complex type inference
     const { data: produtos } = await supabase
       .from('produtos')
-      .select('id, nome, descricao, preco_normal, imagens')
-      .in('id', productIds);
+      .select('id, nome, descricao, preco_normal, imagens');
     
     const productMap: Record<string, ProductData> = {};
     
