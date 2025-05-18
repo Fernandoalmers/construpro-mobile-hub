@@ -2,11 +2,8 @@
 import { supabase } from '@/integrations/supabase/client';
 import { OrderItem, VendorOrder } from '../types';
 import { fetchCustomerInfo } from './clientInfoFetcher';
-import {
-  fetchOrderItemsForProducts,
-  createOrderItemsMap,
-  fetchProductsForItems
-} from './orderItemsFetcher';
+import { fetchProductsForItems } from './productFetcher';
+import { getVendorProductIds } from './productFetcher';
 
 // Re-export getVendorProductIds from productFetcher
 export { getVendorProductIds } from './productFetcher';
@@ -218,8 +215,17 @@ export const fetchOrdersFromOrderItems = async (
     console.log(`Fetching orders from order_items for ${productIds.length} products`);
     
     // Get all order items containing vendor products
-    const orderItemsData = await fetchOrderItemsForProducts(productIds);
-    if (!orderItemsData.length) {
+    const { data: orderItemsData, error: orderItemsError } = await supabase
+      .from('order_items')
+      .select('id, order_id, produto_id, quantidade, preco_unitario, subtotal, created_at')
+      .in('produto_id', productIds);
+      
+    if (orderItemsError) {
+      console.error('Error fetching order items:', orderItemsError);
+      return [];
+    }
+    
+    if (!orderItemsData || orderItemsData.length === 0) {
       console.log('No order items found for vendor products');
       
       // Emergency debug query
@@ -237,8 +243,10 @@ export const fetchOrdersFromOrderItems = async (
       return [];
     }
     
+    console.log(`Found ${orderItemsData.length} order items for vendor products`);
+    
     // Get unique order IDs from order items
-    const orderIds = [...new Set(orderItemsData.map(item => item.order_id as string))];
+    const orderIds: string[] = [...new Set(orderItemsData.map(item => item.order_id).filter(Boolean) as string[])];
     console.log(`Found ${orderIds.length} unique orders containing vendor products`);
     
     // Fetch full orders data
@@ -249,11 +257,34 @@ export const fetchOrdersFromOrderItems = async (
     }
     
     // Fetch products data for order items
-    const productIdsInItems = [...new Set(orderItemsData.map(item => item.produto_id as string))];
+    const productIdsInItems = [...new Set(orderItemsData.map(item => item.produto_id).filter(Boolean) as string[])];
     const productMap = await fetchProductsForItems(productIdsInItems);
     
     // Group order items by order ID with product data
-    const orderItemsMap = createOrderItemsMap(orderItemsData, productMap);
+    const orderItemsMap: Record<string, OrderItem[]> = {};
+    
+    for (const item of orderItemsData) {
+      if (item.order_id) {
+        if (!orderItemsMap[item.order_id]) {
+          orderItemsMap[item.order_id] = [];
+        }
+        
+        // Get product data if available
+        const produto = productMap[item.produto_id] || null;
+        
+        orderItemsMap[item.order_id].push({
+          id: item.id,
+          order_id: item.order_id,
+          produto_id: item.produto_id,
+          quantidade: item.quantidade,
+          preco_unitario: item.preco_unitario,
+          subtotal: item.subtotal || 0,
+          total: item.subtotal || (item.quantidade * item.preco_unitario) || 0,
+          produto: produto,
+          created_at: item.created_at
+        });
+      }
+    }
     
     // Process vendor-specific orders
     const vendorOrders = await processVendorOrdersFromOrderItems(

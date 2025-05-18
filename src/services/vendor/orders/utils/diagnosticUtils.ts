@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 // Log diagnostic information for debugging
@@ -57,16 +56,16 @@ export const logDiagnosticInfo = async (vendorId: string): Promise<any> => {
         if (productsData.length > 0) {
           const productIds = productsData.map(p => p.id);
           
-          const { data: orderItemsData, error: orderItemsError } = await supabase
+          const { data: orderItemsCountResult, error: orderItemsError } = await supabase
             .from('order_items')
-            .select('count', { count: 'exact', head: true })
-            .in('produto_id', productIds);
+            .select('count', { count: 'exact', head: true });
             
           if (orderItemsError) {
             console.error('Error checking order items:', orderItemsError);
             diagnosticInfo.orderItemsError = orderItemsError.message;
           } else {
-            diagnosticInfo.orderItemsCount = orderItemsData?.count || 0;
+            // Fix: Extract the count value correctly
+            diagnosticInfo.orderItemsCount = orderItemsCountResult || 0;
             console.log(`Found ${diagnosticInfo.orderItemsCount} order items for vendor products`);
             
             // If we have order items, check for corresponding orders

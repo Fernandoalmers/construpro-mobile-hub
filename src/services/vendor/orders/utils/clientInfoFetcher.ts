@@ -27,6 +27,7 @@ export const fetchCustomerInfo = async (
       console.log('Customer info found in clientes_vendedor');
       return {
         id: clienteVendedor.id,
+        vendedor_id: vendorId,
         usuario_id: clienteVendedor.usuario_id,
         nome: clienteVendedor.nome || 'Cliente',
         email: clienteVendedor.email,
@@ -46,15 +47,19 @@ export const fetchCustomerInfo = async (
     if (profileError) {
       console.error('Error fetching customer profile:', profileError);
       return {
+        id: clienteId,
+        vendedor_id: vendorId,
         usuario_id: clienteId,
         nome: 'Cliente',
         email: '',
-        telefone: ''
+        telefone: '',
+        total_gasto: 0
       };
     }
     
     return {
       id: profileData.id,
+      vendedor_id: vendorId,
       usuario_id: profileData.id,
       nome: profileData.nome || 'Cliente',
       email: profileData.email || '',
@@ -65,10 +70,13 @@ export const fetchCustomerInfo = async (
   } catch (error) {
     console.error('Error in fetchCustomerInfo:', error);
     return {
+      id: clienteId,
+      vendedor_id: vendorId,
       usuario_id: clienteId,
       nome: 'Cliente',
       email: '',
-      telefone: ''
+      telefone: '',
+      total_gasto: 0
     };
   }
 };
