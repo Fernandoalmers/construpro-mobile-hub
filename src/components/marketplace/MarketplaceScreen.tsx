@@ -6,12 +6,12 @@ import { useScrollBehavior } from '@/hooks/use-scroll-behavior';
 import { useMarketplaceData } from '@/hooks/useMarketplaceData';
 import { useProductSearch } from '@/hooks/useProductSearch';
 import ProductListSection from './ProductListSection';
-import SegmentCardsHeader from './components/SegmentCardsHeader';
-import StoresSection from './components/StoresSection';
 import CategoryHeader from './components/CategoryHeader';
 import SearchAndFilterSection from './components/SearchAndFilterSection';
 import { supabase } from '@/integrations/supabase/client';
 import LoadingState from '../common/LoadingState';
+import { getProductSegments } from '@/services/admin/productSegmentsService';
+import StoresSection from './components/StoresSection';
 
 const MarketplaceScreen: React.FC = () => {
   const location = useLocation();
@@ -24,9 +24,11 @@ const MarketplaceScreen: React.FC = () => {
   const segmentIdParam = searchParams.get('segmento_id');
   
   const initialCategories = categoryParam ? [categoryParam] : [];
+  const initialSegments = segmentIdParam ? [segmentIdParam] : [];
   
   // State for segment selection - using segmento_id now
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(segmentIdParam);
+  const [segmentOptions, setSegmentOptions] = useState<any[]>([]);
   
   // Use our custom hooks
   const { hideHeader } = useScrollBehavior();
@@ -40,6 +42,25 @@ const MarketplaceScreen: React.FC = () => {
       label: cat
     }));
   }, [products]);
+  
+  // Fetch segments for filter options
+  useEffect(() => {
+    const fetchSegments = async () => {
+      try {
+        const segmentsData = await getProductSegments();
+        console.log('[MarketplaceScreen] Fetched segments:', segmentsData);
+        const options = segmentsData.map(segment => ({
+          id: segment.id,
+          label: segment.nome
+        }));
+        setSegmentOptions(options);
+      } catch (error) {
+        console.error('[MarketplaceScreen] Error fetching segments:', error);
+      }
+    };
+    
+    fetchSegments();
+  }, []);
   
   // Filter products based on segment as well
   const {
@@ -64,6 +85,46 @@ const MarketplaceScreen: React.FC = () => {
     initialSearch: searchQuery || '' 
   });
 
+  // Segment filter handling
+  const [selectedSegments, setSelectedSegments] = useState<string[]>(initialSegments);
+  
+  const handleSegmentClick = (segmentId: string) => {
+    console.log('[MarketplaceScreen] Segment clicked:', segmentId);
+    
+    setSelectedSegments(prev => {
+      // Toggle the segment selection
+      if (prev.includes(segmentId)) {
+        const newSegments = prev.filter(id => id !== segmentId);
+        updateSegmentURL(newSegments[0] || null);
+        return newSegments;
+      } else {
+        const newSegments = [...prev, segmentId];
+        updateSegmentURL(segmentId);
+        return newSegments;
+      }
+    });
+    
+    // Update the selectedSegmentId for the data fetching
+    setSelectedSegmentId(prev => {
+      if (prev === segmentId) return null;
+      return segmentId;
+    });
+    
+    // Reset page
+    setPage(1);
+  };
+  
+  // Update URL with segment ID
+  const updateSegmentURL = (segmentId: string | null) => {
+    const newSearchParams = new URLSearchParams(searchParams);
+    if (segmentId) {
+      newSearchParams.set('segmento_id', segmentId);
+    } else {
+      newSearchParams.delete('segmento_id');
+    }
+    navigate(`${location.pathname}?${newSearchParams.toString()}`, { replace: true });
+  };
+
   // Enhanced search functionality with our custom hook
   const fetchProducts = (term: string) => {
     console.log('[MarketplaceScreen] Searching for:', term);
@@ -80,28 +141,6 @@ const MarketplaceScreen: React.FC = () => {
   };
   
   const { term, setTerm, handleSubmit } = useProductSearch(fetchProducts);
-
-  // Handle segment selection with ID
-  const handleSegmentClick = (segmentId: string) => {
-    console.log('Segment clicked:', segmentId);
-    
-    // Toggle segment selection
-    const newSegmentId = segmentId === 'all' ? null : 
-                        (selectedSegmentId === segmentId ? null : segmentId);
-    setSelectedSegmentId(newSegmentId);
-    
-    // Update URL
-    const newSearchParams = new URLSearchParams(searchParams);
-    if (newSegmentId) {
-      newSearchParams.set('segmento_id', newSegmentId);
-    } else {
-      newSearchParams.delete('segmento_id');
-    }
-    navigate(`${location.pathname}?${newSearchParams.toString()}`, { replace: true });
-    
-    // Reset page
-    setPage(1);
-  };
 
   // Handle loja click from product card
   const handleLojaCardClick = (lojaId: string) => {
@@ -148,6 +187,15 @@ const MarketplaceScreen: React.FC = () => {
     }
   }, [searchQuery]);
 
+  // Add debug logging when products array changes
+  useEffect(() => {
+    if (selectedSegmentId) {
+      console.log(`[MarketplaceScreen] Products with segmento_id=${selectedSegmentId}:`, 
+                 products.filter(p => p.segmento_id === selectedSegmentId).length);
+      console.log('[MarketplaceScreen] Filtered products count:', filteredProdutos.length);
+    }
+  }, [products, selectedSegmentId, filteredProdutos]);
+
   // Current category name for display
   const currentCategoryName = selectedCategories.length === 1 ? 
     categories.find(cat => cat.id === selectedCategories[0])?.label : 
@@ -165,21 +213,18 @@ const MarketplaceScreen: React.FC = () => {
         selectedCategories={selectedCategories}
         selectedLojas={selectedLojas}
         selectedRatings={selectedRatings}
+        selectedSegments={selectedSegments}
         allCategories={categories}
         ratingOptions={ratingOptions}
+        segmentOptions={segmentOptions}
         onLojaClick={handleLojaClick}
         onCategoryClick={handleCategoryClick}
         onRatingClick={handleRatingClick}
+        onSegmentClick={handleSegmentClick}
         onSearch={handleSubmit}
         clearFilters={clearFilters}
         stores={stores}
         handleSearchChange={(term) => setTerm(term)}
-      />
-      
-      {/* Segment Cards */}
-      <SegmentCardsHeader 
-        selectedSegment={selectedSegmentId} 
-        onSegmentClick={handleSegmentClick}
       />
       
       {/* Stores Section */}

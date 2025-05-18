@@ -5,11 +5,11 @@ import { cn } from '@/lib/utils';
 
 export interface MenuItemProps {
   name: string;
-  icon: JSX.Element;
+  icon: React.ReactNode;  // Changed from JSX.Element to React.ReactNode
   path: string;
   tooltip: string;
   isActive: boolean;
-  badge?: number;
+  badge?: string;  // Make sure badge is optional and a string
   onClick: (path: string) => void;
 }
 
@@ -34,7 +34,7 @@ const TabMenuItem: React.FC<MenuItemProps> = ({
         >
           <div className="relative">
             {icon}
-            {badge !== undefined && badge > 0 && (
+            {badge !== undefined && (
               <div className="absolute -top-2 -right-2 bg-construPro-orange text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
                 {badge}
               </div>
