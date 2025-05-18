@@ -72,12 +72,15 @@ export const orderService = {
   
   async getOrders(): Promise<any[]> {
     try {
+      console.log("🔍 [orderService.getOrders] Fetching orders for current user");
+      
       const { data, error } = await supabaseService.invokeFunction('order-processing', {
-        method: 'GET'
+        method: 'GET',
+        maxRetries: 2
       });
       
       if (error) {
-        console.error("Error fetching orders:", error);
+        console.error("❌ [orderService.getOrders] Error fetching orders:", error);
         toast.error("Não foi possível carregar seus pedidos", {
           description: error.message
         });
@@ -86,16 +89,31 @@ export const orderService = {
       
       if (!data?.success) {
         const errorMsg = data?.error || 'Erro ao buscar pedidos';
-        console.error("Error in response:", errorMsg);
+        console.error("❌ [orderService.getOrders] Error in response:", errorMsg);
         toast.error("Erro ao carregar pedidos", {
           description: errorMsg
         });
         throw new Error(errorMsg);
       }
       
-      return data?.orders || [];
+      const orders = data?.orders || [];
+      console.log(`✅ [orderService.getOrders] Retrieved ${orders.length} orders`);
+      
+      // If we have orders, log a sample to help with debugging
+      if (orders.length > 0) {
+        console.log("📊 [orderService.getOrders] Sample order:", {
+          id: orders[0].id,
+          status: orders[0].status,
+          items: orders[0].order_items?.length || 0,
+          created_at: orders[0].created_at
+        });
+      } else {
+        console.log("⚠️ [orderService.getOrders] No orders found");
+      }
+      
+      return orders;
     } catch (error: any) {
-      console.error("Error in getOrders:", error);
+      console.error("❌ [orderService.getOrders] Error:", error);
       toast.error("Erro ao carregar pedidos", {
         description: error.message || "Tente novamente mais tarde"
       });
@@ -105,16 +123,19 @@ export const orderService = {
   
   async getOrderById(orderId: string): Promise<any> {
     try {
+      console.log(`🔍 [orderService.getOrderById] Fetching order details for ID: ${orderId}`);
+      
       const { data, error } = await supabaseService.invokeFunction('order-processing', {
         method: 'GET',
         body: { orderId },
         headers: {
           'content-type': 'application/json'
-        }
+        },
+        maxRetries: 2
       });
       
       if (error) {
-        console.error("Error fetching order:", error);
+        console.error("❌ [orderService.getOrderById] Error fetching order:", error);
         toast.error("Erro ao carregar detalhes do pedido", {
           description: error.message
         });
@@ -123,16 +144,25 @@ export const orderService = {
       
       if (!data?.success) {
         const errorMsg = data?.error || 'Erro ao buscar detalhes do pedido';
-        console.error("Error in response:", errorMsg);
+        console.error("❌ [orderService.getOrderById] Error in response:", errorMsg);
         toast.error("Erro ao carregar detalhes", {
           description: errorMsg
         });
         throw new Error(errorMsg);
       }
       
-      return data?.order || null;
+      const order = data?.order || null;
+      
+      if (order) {
+        console.log(`✅ [orderService.getOrderById] Successfully retrieved order ${orderId}`);
+        console.log(`📊 [orderService.getOrderById] Order has ${order.order_items?.length || 0} items`);
+      } else {
+        console.log(`⚠️ [orderService.getOrderById] No order found with ID ${orderId}`);
+      }
+      
+      return order;
     } catch (error: any) {
-      console.error("Error in getOrderById:", error);
+      console.error("❌ [orderService.getOrderById] Error:", error);
       toast.error("Erro ao carregar detalhes do pedido", {
         description: error.message || "Tente novamente mais tarde"
       });

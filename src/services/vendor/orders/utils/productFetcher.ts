@@ -62,13 +62,16 @@ export const fetchProductsForItems = async (productIds: string[]): Promise<Recor
     
     const productMap: Record<string, any> = {};
     products.forEach(product => {
-      // Safely extract image URL
+      // Safely extract image URL with better type checking
       let imageUrl = null;
       if (product.imagens && Array.isArray(product.imagens) && product.imagens.length > 0) {
         const firstImage = product.imagens[0];
-        // Check if the image has a url property
-        if (typeof firstImage === 'object' && firstImage !== null && 'url' in firstImage) {
-          imageUrl = firstImage.url;
+        // Better handling of different image object formats
+        if (typeof firstImage === 'string') {
+          imageUrl = firstImage;
+        } else if (firstImage && typeof firstImage === 'object') {
+          // Check for common URL fields in image objects
+          imageUrl = firstImage.url || firstImage.path || firstImage.src || null;
         }
       }
       
@@ -84,6 +87,22 @@ export const fetchProductsForItems = async (productIds: string[]): Promise<Recor
     });
     
     console.log(`✅ [fetchProductsForItems] Created product map with ${products.length} products`);
+    
+    // Log a sample product for debugging
+    if (products.length > 0) {
+      const sampleProductId = products[0].id;
+      console.log('📊 [fetchProductsForItems] Sample product:', {
+        id: sampleProductId,
+        name: productMap[sampleProductId].nome,
+        hasImageUrl: !!productMap[sampleProductId].imagem_url,
+        imageFormat: products[0].imagens ? 
+          (Array.isArray(products[0].imagens) ? 
+            (typeof products[0].imagens[0] === 'string' ? 'string' : 'object') 
+            : typeof products[0].imagens) 
+          : 'none'
+      });
+    }
+    
     return productMap;
   } catch (error) {
     console.error('🚫 [fetchProductsForItems] Unexpected error:', error);

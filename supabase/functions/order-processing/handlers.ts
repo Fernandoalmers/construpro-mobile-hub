@@ -17,30 +17,84 @@ export async function handleGetOrders(req: Request, authHeader: string) {
     
     console.log(`User authenticated successfully: ${user.id}`);
     
-    // Modified query to fetch orders and order_items without the problematic join
+    // Improved query with better error handling and diagnostic info
     const { data: orders, error } = await supabaseClient
       .from('orders')
       .select('*, order_items(*)')
       .eq('cliente_id', user.id)
       .order('created_at', { ascending: false })
     
+    console.log(`Retrieved ${orders?.length || 0} orders for user ${user.id}`);
+    
     if (error) {
       console.error("Error fetching orders:", error);
+      console.error("Error code:", error.code);
+      console.error("Error details:", error.details);
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: error.message 
+          error: error.message,
+          details: error.details,
+          code: error.code
         }),
         { status: 500, headers: corsHeaders }
       )
     }
     
+    // If we have no orders, log additional diagnostic info and return early
+    if (!orders || orders.length === 0) {
+      console.log("No orders found, retrieving user profile info for diagnostic purposes");
+      
+      const { data: profile, error: profileError } = await supabaseClient
+        .from('profiles')
+        .select('id, nome, email, papel')
+        .eq('id', user.id)
+        .single();
+        
+      if (profileError) {
+        console.error("Error fetching profile info:", profileError);
+      } else {
+        console.log("User profile:", profile);
+      }
+      
+      // Check if the user has any order items at all (debugging)
+      const { data: anyOrderItems, error: itemsError } = await supabaseClient
+        .from('order_items')
+        .select('count')
+        .limit(1);
+        
+      if (itemsError) {
+        console.error("Error checking for order items:", itemsError);
+      } else {
+        console.log("Order items exist in database:", anyOrderItems && anyOrderItems.length > 0);
+      }
+      
+      // Return empty orders array with diagnostic info
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          orders: [],
+          diagnostic: {
+            message: "No orders found for user",
+            userId: user.id,
+            timestamp: new Date().toISOString()
+          }
+        }),
+        { status: 200, headers: corsHeaders }
+      )
+    }
+    
     // If we have orders with items, fetch the product details separately
     if (orders && orders.length > 0) {
+      console.log(`Found ${orders.length} orders, processing order items and products`);
+      
       // Get all product IDs from order items
       const productIds = new Set();
+      let itemsCount = 0;
+      
       orders.forEach(order => {
         if (order.order_items) {
+          itemsCount += order.order_items.length;
           order.order_items.forEach(item => {
             if (item.produto_id) {
               productIds.add(item.produto_id);
@@ -48,6 +102,9 @@ export async function handleGetOrders(req: Request, authHeader: string) {
           });
         }
       });
+      
+      console.log(`Found ${itemsCount} order items across all orders`);
+      console.log(`Found ${productIds.size} unique products to fetch`);
       
       if (productIds.size > 0) {
         // Fetch product details for these IDs
@@ -59,11 +116,18 @@ export async function handleGetOrders(req: Request, authHeader: string) {
         if (productError) {
           console.error("Error fetching product details:", productError);
         } else if (produtos) {
+          console.log(`Retrieved ${produtos.length} products from produtos table`);
+          
           // Map products to order items
           orders.forEach(order => {
             if (order.order_items) {
               order.order_items.forEach(item => {
-                item.produtos = produtos.find(p => p.id === item.produto_id) || null;
+                const matchedProduct = produtos.find(p => p.id === item.produto_id);
+                if (matchedProduct) {
+                  item.produtos = matchedProduct;
+                } else {
+                  console.log(`No product found for item ${item.id} with produto_id ${item.produto_id}`);
+                }
               });
             }
           });
@@ -71,12 +135,18 @@ export async function handleGetOrders(req: Request, authHeader: string) {
       }
     }
     
-    console.log(`Retrieved ${orders?.length || 0} orders for user ${user.id}`);
+    // Final validation and logging
+    console.log(`Returning ${orders?.length || 0} orders with their details`);
     
     return new Response(
       JSON.stringify({ 
         success: true,
-        orders 
+        orders,
+        metadata: {
+          count: orders?.length || 0,
+          userId: user.id,
+          timestamp: new Date().toISOString()
+        }
       }),
       { status: 200, headers: corsHeaders }
     )
@@ -85,7 +155,8 @@ export async function handleGetOrders(req: Request, authHeader: string) {
     return new Response(
       JSON.stringify({ 
         success: false,
-        error: error.message || 'Error fetching orders' 
+        error: error.message || 'Error fetching orders',
+        stack: error.stack || 'No stack trace available'
       }),
       { status: 401, headers: corsHeaders }
     )
@@ -101,7 +172,7 @@ export async function handleGetOrderById(req: Request, authHeader: string, order
     
     console.log(`User authenticated successfully: ${user.id}`);
     
-    // Modified query to fetch order and order_items without the problematic join
+    // Improved query with better error handling
     const { data: order, error } = await supabaseClient
       .from('orders')
       .select('*, order_items(*)')
@@ -111,18 +182,32 @@ export async function handleGetOrderById(req: Request, authHeader: string, order
     
     if (error) {
       console.error("Error fetching order by ID:", error);
+      console.error("Error code:", error.code);
+      console.error("Error details:", error.details);
+      
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: error.message 
+          error: error.message,
+          details: error.details,
+          code: error.code
         }),
         { status: error.code === 'PGRST116' ? 404 : 500, headers: corsHeaders }
       )
     }
     
+    // If we found the order but it has no items, log a warning
+    if (order && (!order.order_items || order.order_items.length === 0)) {
+      console.log(`Order ${orderId} found but has no items`);
+    }
+    
     // If we have order items, fetch the product details
     if (order && order.order_items && order.order_items.length > 0) {
-      const productIds = order.order_items.map(item => item.produto_id).filter(Boolean);
+      const productIds = order.order_items
+        .map(item => item.produto_id)
+        .filter(Boolean);
+      
+      console.log(`Order ${orderId} has ${order.order_items.length} items with ${productIds.length} product IDs`);
       
       if (productIds.length > 0) {
         // Fetch product details for these IDs
@@ -134,9 +219,16 @@ export async function handleGetOrderById(req: Request, authHeader: string, order
         if (productError) {
           console.error("Error fetching product details:", productError);
         } else if (produtos) {
+          console.log(`Retrieved ${produtos.length} products for order ${orderId}`);
+          
           // Map products to order items
           order.order_items.forEach(item => {
-            item.produtos = produtos.find(p => p.id === item.produto_id) || null;
+            const matchedProduct = produtos.find(p => p.id === item.produto_id);
+            if (matchedProduct) {
+              item.produtos = matchedProduct;
+            } else {
+              console.log(`No product found for item with produto_id ${item.produto_id}`);
+            }
           });
         }
       }
@@ -147,7 +239,12 @@ export async function handleGetOrderById(req: Request, authHeader: string, order
     return new Response(
       JSON.stringify({ 
         success: true,
-        order 
+        order,
+        metadata: {
+          itemsCount: order?.order_items?.length || 0,
+          userId: user.id,
+          timestamp: new Date().toISOString()
+        }
       }),
       { status: 200, headers: corsHeaders }
     )
@@ -156,7 +253,8 @@ export async function handleGetOrderById(req: Request, authHeader: string, order
     return new Response(
       JSON.stringify({ 
         success: false,
-        error: error.message || 'Error fetching order' 
+        error: error.message || 'Error fetching order',
+        stack: error.stack || 'No stack trace available'
       }),
       { status: 401, headers: corsHeaders }
     )

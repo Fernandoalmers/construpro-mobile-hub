@@ -26,6 +26,10 @@ const OrdersList: React.FC<OrdersListProps> = ({
     
     if (!orders || orders.length === 0) {
       console.log("⚠️ [OrdersList] No orders received in props");
+      // Log more diagnostic info if we have no orders but should have some
+      if (!hasFilters) {
+        console.log("⚠️ [OrdersList] No filters active, but still no orders - might be a data issue");
+      }
     } else if (orders?.length > 0) {
       console.log("✅ [OrdersList] Sample first order:", {
         id: orders[0]?.id,
@@ -33,6 +37,9 @@ const OrdersList: React.FC<OrdersListProps> = ({
         cliente: orders[0]?.cliente?.nome,
         items_count: orders[0]?.itens?.length || 0
       });
+      
+      // Log more detailed info about order structure to help with debugging
+      console.log("✅ [OrdersList] First order full structure:", JSON.stringify(orders[0], null, 2));
     }
   }, [orders, hasFilters]);
 
