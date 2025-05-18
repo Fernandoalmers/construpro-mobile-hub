@@ -34,8 +34,8 @@ export const debugVendorOrders = async () => {
       return { 
         success: false, 
         reason: 'no_vendor_profile',
-        userProfile: diagnostics.userProfile,
-        diagnostics
+        // Fixed: Use type guard to ensure diagnostics has userProfile property
+        diagnosticData: diagnostics
       };
     }
     
@@ -122,7 +122,7 @@ export const debugVendorOrders = async () => {
   } catch (error) {
     console.error('Error in debugVendorOrders:', error);
     console.groupEnd();
-    return { success: false, error };
+    return { success: false, error: String(error), timestamp: new Date().toISOString() };
   }
 };
 

@@ -55,8 +55,8 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
         return [];
       }
       
-      // Convert to string array with explicit typing
-      const productIds: string[] = alternateProducts.map(item => String(item.id || ''));
+      // Fixed: Use explicit type for productIds and avoid string conversion if not needed
+      const productIds: string[] = alternateProducts.map(item => item.id);
       console.log(`Found ${productIds.length} products in alternate table`);
       return productIds;
     }

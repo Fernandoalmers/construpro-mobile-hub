@@ -3,6 +3,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { OrderItem, VendorOrder } from '../types';
 import { fetchCustomerInfo } from './clientInfoFetcher';
 import { VendorCustomer } from '../../../vendorCustomersService';
+import {
+  fetchOrderItemsForProducts,
+  getVendorProductIds,
+  createOrderItemsMap
+} from './orderItemsFetcher';
 
 // Helper to get orders from the pedidos table (old structure)
 export const fetchOrdersFromPedidos = async (vendorId: string): Promise<VendorOrder[]> => {
@@ -183,9 +188,6 @@ export const processVendorOrdersFromOrderItems = async (
   
   return vendorOrders;
 };
-
-// Import these functions from orderItemsFetcher
-export { getVendorProductIds, fetchOrderItemsForProducts, createOrderItemsMap } from './orderItemsFetcher';
 
 // Function to fetch orders from order_items through associated products
 export const fetchOrdersFromOrderItems = async (
