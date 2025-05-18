@@ -2,66 +2,73 @@
 import { supabase } from '@/integrations/supabase/client';
 import { VendorCustomer } from '../../../vendorCustomersService';
 
-// Fetch customer information with fallback handling
-export const fetchCustomerInfo = async (userId: string, vendorId: string): Promise<VendorCustomer | null> => {
+// Fetch customer information based on customer ID
+export const fetchCustomerInfo = async (
+  clienteId: string,
+  vendorId: string
+): Promise<VendorCustomer | undefined> => {
   try {
-    console.log(`Fetching customer info for user ${userId} and vendor ${vendorId}`);
+    if (!clienteId) {
+      console.log('No cliente_id provided to fetchCustomerInfo');
+      return undefined;
+    }
     
-    // First try looking in clientes_vendedor table
+    console.log(`Fetching customer info for cliente_id: ${clienteId}`);
+    
+    // Try to get from clientes_vendedor first as it might have cached information
     const { data: clienteVendedor, error: clienteError } = await supabase
       .from('clientes_vendedor')
       .select('*')
-      .eq('usuario_id', userId)
       .eq('vendedor_id', vendorId)
+      .eq('usuario_id', clienteId)
       .maybeSingle();
-    
-    if (clienteError) {
-      console.error('Error fetching cliente_vendedor:', clienteError);
-    } else if (clienteVendedor) {
-      console.log('Found customer in clientes_vendedor');
-      return clienteVendedor as VendorCustomer;
-    }
-    
-    // Fallback to profiles table
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('id, nome, email, telefone, avatar')
-      .eq('id', userId)
-      .maybeSingle();
-    
-    if (profileError) {
-      console.error('Error fetching profile:', profileError);
-      return null;
-    }
-    
-    if (!profile) {
-      console.log(`No profile found for user ID ${userId}`);
+      
+    if (clienteVendedor && !clienteError) {
+      console.log('Customer info found in clientes_vendedor');
       return {
-        id: '',
-        nome: 'Cliente não identificado',
-        email: '',
-        telefone: '',
-        usuario_id: userId,
-        vendedor_id: vendorId,
-        total_gasto: 0
+        id: clienteVendedor.id,
+        usuario_id: clienteVendedor.usuario_id,
+        nome: clienteVendedor.nome || 'Cliente',
+        email: clienteVendedor.email,
+        telefone: clienteVendedor.telefone,
+        total_gasto: clienteVendedor.total_gasto,
+        ultimo_pedido: clienteVendedor.ultimo_pedido
       };
     }
     
-    console.log('Found customer info in profiles table');
+    // If not found in clientes_vendedor, get from profiles
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, nome, email, telefone')
+      .eq('id', clienteId)
+      .single();
+      
+    if (profileError) {
+      console.error('Error fetching customer profile:', profileError);
+      return {
+        usuario_id: clienteId,
+        nome: 'Cliente',
+        email: '',
+        telefone: ''
+      };
+    }
     
-    // Create customer from profile
     return {
-      id: userId,
-      usuario_id: userId,
-      vendedor_id: vendorId,
-      nome: profile.nome || 'Cliente',
-      email: profile.email || '',
-      telefone: profile.telefone || '',
-      avatar: profile.avatar || null,
-      total_gasto: 0
+      id: profileData.id,
+      usuario_id: profileData.id,
+      nome: profileData.nome || 'Cliente',
+      email: profileData.email || '',
+      telefone: profileData.telefone || '',
+      total_gasto: 0,
+      ultimo_pedido: null
     };
   } catch (error) {
     console.error('Error in fetchCustomerInfo:', error);
-    return null;
+    return {
+      usuario_id: clienteId,
+      nome: 'Cliente',
+      email: '',
+      telefone: ''
+    };
   }
 };

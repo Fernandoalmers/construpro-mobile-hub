@@ -28,39 +28,11 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
     // Use explicit array type to prevent deep instantiation
     const products = result.data as Array<{ id: string; nome: string; status: string }> || [];
     
-    if (products.length === 0) {
-      console.log('No products found in produtos table, checking alternative table');
-      
-      // Try alternate product table as backup - using explicit query
-      const { data: alternateData, error: alternateError } = await supabase
-        .from('products')
-        .select('id, nome, status')
-        .eq('loja_id', vendorId); // Use loja_id instead of vendedor_id
-      
-      // Handle error explicitly
-      if (alternateError) {
-        console.error('Error fetching products:', alternateError);
-        return [];
-      }
-      
-      // Use simple array type to prevent deep instantiation
-      const alternateProducts = alternateData as Array<{ id: string; nome: string; status: string }> || [];
-      
-      if (alternateProducts.length === 0) {
-        console.log('No products found in alternate table either');
-        return [];
-      }
-      
-      // Extract product IDs with clear typing
-      const productIds = alternateProducts.map(item => item.id);
-      console.log(`Found ${productIds.length} products in alternate table`);
-      console.log('Product sample:', alternateProducts[0]);
-      return productIds;
-    }
-    
     // Log product information for debugging
     console.log(`Found ${products.length} products for this vendor`);
-    console.log('Products sample:', products.slice(0, 2));
+    if (products.length > 0) {
+      console.log('Products sample:', products.slice(0, 2));
+    }
     
     // Get all product IDs, even without filtering by status
     const allProductIds = products.map(p => p.id);
