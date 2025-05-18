@@ -50,25 +50,31 @@ export interface ProductData {
   nome: string;
   descricao: string | null;
   preco_normal: number;
-  imagens: Array<string | { url: string }> | null;
+  imagens: string[] | Array<{ url: string }> | null;
 }
 
-// Process images from various possible formats - standalone function to simplify types
-function processImagens(rawImagens: any): Array<string | { url: string }> | null {
+// Process images from various possible formats - fixed type issue
+function processImagens(rawImagens: any): string[] | Array<{ url: string }> | null {
   if (!rawImagens) return null;
   
-  let processedImages: Array<string | { url: string }> = [];
-  
+  // For string input
   if (typeof rawImagens === 'string') {
     return [rawImagens];
-  } else if (Array.isArray(rawImagens)) {
-    processedImages = rawImagens.map((img: any) => {
-      if (typeof img === 'string') return img;
-      if (typeof img === 'object' && img && img.url) return img;
-      return '';
-    }).filter(Boolean);
+  }
+  
+  // For array input
+  if (Array.isArray(rawImagens)) {
+    const processed = rawImagens
+      .map((img: unknown): string | { url: string } | null => {
+        if (typeof img === 'string') return img;
+        if (typeof img === 'object' && img !== null && 'url' in img) {
+          return img as { url: string };
+        }
+        return null;
+      })
+      .filter((img): img is string | { url: string } => img !== null);
     
-    return processedImages.length > 0 ? processedImages : null;
+    return processed.length > 0 ? processed : null;
   }
   
   return null;
@@ -79,7 +85,7 @@ export const fetchProductsForItems = async (productIds: string[]): Promise<Recor
   if (!productIds.length) return {};
   
   try {
-    // Use minimal explicit selects to avoid complex type inference
+    // Use explicit selects with simplified query
     const { data: produtos } = await supabase
       .from('produtos')
       .select('id, nome, descricao, preco_normal, imagens');
