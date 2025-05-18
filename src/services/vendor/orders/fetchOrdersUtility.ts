@@ -127,6 +127,7 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
   }
 };
 
+// FIX: Resolving the deep type instantiation issue by using explicit typing and avoiding recursive references
 // Helper to get orders based on product items (new structure) with improved implementation
 export const fetchOrdersFromOrderItems = async (vendorId: string, productIds: string[]): Promise<VendorOrder[]> => {
   if (productIds.length === 0) {
@@ -138,6 +139,7 @@ export const fetchOrdersFromOrderItems = async (vendorId: string, productIds: st
     console.log(`Fetching order items for ${productIds.length} vendor products`);
     
     // IMPROVED APPROACH: Direct join query to get all related data in one go
+    // FIX: Using a more explicit typing approach to avoid excessive type instantiation
     const { data: orderItemsWithOrdersData, error: joinQueryError } = await supabase
       .from('order_items')
       .select(`
@@ -157,7 +159,7 @@ export const fetchOrdersFromOrderItems = async (vendorId: string, productIds: st
           created_at,
           updated_at
         ),
-        produtos!inner(*)
+        produtos!inner(id, nome, descricao, preco_normal, imagens)
       `)
       .in('produto_id', productIds)
       .order('created_at', { ascending: false });
@@ -185,6 +187,8 @@ export const fetchOrdersFromOrderItems = async (vendorId: string, productIds: st
     // Process the joined data
     orderItemsWithOrdersData.forEach(item => {
       const orderId = item.order_id;
+      
+      // FIX: Safely access nested properties to avoid type errors
       const orderInfo = item.orders;
       
       if (!orderInfo) {
@@ -201,11 +205,18 @@ export const fetchOrdersFromOrderItems = async (vendorId: string, productIds: st
       }
       
       // Add this item to the order
+      // FIX: Create a clean object with only needed properties instead of spreading the whole object
       const processedItem: OrderItem = {
-        ...item,
+        id: item.id,
+        pedido_id: undefined,
+        order_id: item.order_id,
+        produto_id: item.produto_id,
+        quantidade: item.quantidade,
+        preco_unitario: item.preco_unitario,
+        total: item.subtotal || (item.quantidade * item.preco_unitario) || 0,
+        subtotal: item.subtotal,
         produto: item.produtos,
-        produtos: item.produtos,
-        total: item.subtotal || (item.quantidade * item.preco_unitario) || 0
+        produtos: item.produtos
       };
       
       orderMap[orderId].items.push(processedItem);
@@ -327,11 +338,18 @@ const fallbackOrdersFetch = async (vendorId: string, productIds: string[]): Prom
         orderItemsMap[item.order_id] = [];
       }
       // Add product data to item
-      const itemWithProduct = {
-        ...item,
+      // FIX: Create a clean object with only needed properties instead of spreading the whole object
+      const itemWithProduct: OrderItem = {
+        id: item.id,
+        pedido_id: undefined,
+        order_id: item.order_id,
+        produto_id: item.produto_id,
+        quantidade: item.quantidade,
+        preco_unitario: item.preco_unitario,
+        total: item.subtotal || (item.preco_unitario * item.quantidade) || 0,
+        subtotal: item.subtotal,
         produto: productMap[item.produto_id],
-        produtos: productMap[item.produto_id],
-        total: item.subtotal || (item.preco_unitario * item.quantidade) || 0
+        produtos: productMap[item.produto_id]
       };
       orderItemsMap[item.order_id].push(itemWithProduct);
     });
@@ -514,3 +532,4 @@ export const logDiagnosticInfo = async (vendorId: string): Promise<void> => {
     console.error('Error during diagnostic logging:', err);
   }
 };
+
