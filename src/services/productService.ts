@@ -58,7 +58,10 @@ interface ProductDatabaseRecord {
   sku?: string;
   created_at?: string;
   updated_at?: string;
-  vendedores?: any;
+  vendedores?: { 
+    nome_loja?: string;
+    logo_url?: string;
+  };
   [key: string]: any; // Allow other properties
 }
 
@@ -89,7 +92,7 @@ const transformToProduct = (record: ProductDatabaseRecord): Product => {
     }
   }
 
-  // Create a product object with only the necessary fields to avoid deep type recursion
+  // Create a product object with only the necessary fields
   const product: Product = {
     id: record.id,
     nome: record.nome,
@@ -138,7 +141,8 @@ export const getProducts = async (filters = {}): Promise<Product[]> => {
     }
     
     // Transform each record to ensure type compatibility
-    return (data || []).map((item) => transformToProduct(item as ProductDatabaseRecord));
+    // Use explicit type assertion to avoid deep type issues
+    return (data || []).map(item => transformToProduct(item as ProductDatabaseRecord));
   } catch (error) {
     console.error('Error in getProducts:', error);
     toast.error('Erro ao carregar produtos');
@@ -153,7 +157,7 @@ export const getProductById = async (id: string): Promise<Product | null> => {
       .from('produtos')
       .select(`
         *,
-        vendedores:vendedor_id (nome_loja)
+        vendedores:vendedor_id (nome_loja, logo_url)
       `)
       .eq('id', id)
       .single();
@@ -171,7 +175,7 @@ export const getProductById = async (id: string): Promise<Product | null> => {
     // Add store information if available
     if (data.vendedores && typeof data.vendedores === 'object') {
       product.stores = {
-        id: data.vendedor_id,
+        id: data.vendedor_id || '',
         nome: String(data.vendedores.nome_loja || ''),
         nome_loja: String(data.vendedores.nome_loja || ''),
         logo_url: data.vendedores.logo_url
