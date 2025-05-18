@@ -5,11 +5,13 @@ import { toast } from '@/components/ui/sonner';
 import { getVendorOrders, VendorOrder } from '@/services/vendor/orders';
 import { ensureVendorProfileRole } from '@/services/vendorProfileService';
 import { getVendorProfile } from '@/services/vendorProfileService';
+import { runVendorDiagnostics } from '@/services/vendor/orders/utils/diagnosticUtils';
 
 export const useVendorOrders = () => {
   const queryClient = useQueryClient();
   const [profileRoleFixed, setProfileRoleFixed] = useState<boolean | null>(null);
   const [vendorProfileStatus, setVendorProfileStatus] = useState<'checking' | 'found' | 'not_found'>('checking');
+  const [diagnosticResults, setDiagnosticResults] = useState<any>(null);
   
   // First check if the vendor profile exists
   useEffect(() => {
@@ -19,6 +21,13 @@ export const useVendorOrders = () => {
         if (profile) {
           setVendorProfileStatus('found');
           console.log("Vendor profile found:", profile.nome_loja);
+          console.log("Vendor ID:", profile.id);
+          console.log("Vendor usuario_id:", profile.usuario_id);
+          
+          // Run diagnostics when profile is found
+          const diagnostics = await runVendorDiagnostics();
+          setDiagnosticResults(diagnostics);
+          console.log("Diagnostics completed:", diagnostics);
         } else {
           setVendorProfileStatus('not_found');
           console.error("No vendor profile found for current user");
@@ -70,6 +79,19 @@ export const useVendorOrders = () => {
       console.log("Fetching vendor orders from service...");
       const results = await getVendorOrders();
       console.log(`Fetched ${results.length} vendor orders`);
+      
+      // Additional check for debugging if no orders were found
+      if (results.length === 0) {
+        const profile = await getVendorProfile();
+        if (profile) {
+          console.log("Vendor profile re-checked:", {
+            id: profile.id,
+            nome_loja: profile.nome_loja,
+            usuario_id: profile.usuario_id
+          });
+        }
+      }
+      
       return results;
     },
     staleTime: 1 * 60 * 1000, // 1 minute
@@ -103,6 +125,7 @@ export const useVendorOrders = () => {
     isRefetching,
     handleRefresh,
     profileRoleFixed,
-    vendorProfileStatus
+    vendorProfileStatus,
+    diagnosticResults
   };
 };

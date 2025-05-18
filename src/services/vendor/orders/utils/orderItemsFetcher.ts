@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 // Define ProductId interface to simplify typing
@@ -21,7 +20,10 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
     const { data: vendorProducts, error: productsError } = await supabase
       .from('produtos')
       .select('id')
-      .eq('vendedor_id', vendorId);
+      .eq('vendedor_id', vendorId) as unknown as { 
+        data: ProductId[] | null, 
+        error: any 
+      };
     
     if (productsError) {
       console.error('Error fetching vendor products:', productsError);
@@ -43,14 +45,16 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
         return [];
       }
       
-      // Handle data safely
-      if (!result.data || result.data.length === 0) {
+      // Handle data safely with explicit casting after the query
+      const data = result.data as ProductId[] | null;
+      
+      if (!data || data.length === 0) {
         console.log('No products found in alternate table either');
         return [];
       }
       
-      // Convert to string array without complex typing
-      const productIds = result.data.map(item => String(item?.id || ''));
+      // Convert to string array with explicit typing
+      const productIds: string[] = data.map(item => String(item.id || ''));
       console.log(`Found ${productIds.length} products in alternate table`);
       return productIds;
     }
@@ -114,17 +118,24 @@ export const fetchProductsForItems = async (productIds: string[]): Promise<Recor
     console.log(`Fetching product data for ${productIds.length} products`);
     
     // Use IN filter to get only the requested products
-    const result = await supabase
+    const { data: produtos, error } = await supabase
       .from('produtos')
       .select('id, nome, descricao, preco_normal, imagens')
-      .in('id', productIds);
+      .in('id', productIds) as unknown as {
+        data: Array<{
+          id: string;
+          nome: string;
+          descricao: string | null;
+          preco_normal: number;
+          imagens: unknown;
+        }> | null;
+        error: any;
+      };
     
-    if (result.error) {
-      console.error('Error fetching products:', result.error);
+    if (error) {
+      console.error('Error fetching products:', error);
       return {};
     }
-    
-    const produtos = result.data;
     
     if (!produtos || produtos.length === 0) {
       console.log('No products found matching the requested IDs');
@@ -224,19 +235,20 @@ export const fetchOrderItemsForProducts = async (productIds: string[]): Promise<
   try {
     console.log(`Fetching order items for ${productIds.length} product IDs`);
     
-    const result = await supabase
+    const { data: orderItemsData, error } = await supabase
       .from('order_items')
       .select('id, order_id, produto_id, quantidade, preco_unitario, subtotal, created_at')
-      .in('produto_id', productIds);
+      .in('produto_id', productIds) as unknown as {
+        data: Array<Record<string, unknown>> | null;
+        error: any;
+      };
     
-    if (result.error) {
-      console.error('Error fetching order items:', result.error);
+    if (error) {
+      console.error('Error fetching order items:', error);
       return [];
     }
     
-    const orderItemsData = result.data || [];
-    
-    if (orderItemsData.length === 0) {
+    if (!orderItemsData || orderItemsData.length === 0) {
       console.log('No order items found for vendor products');
       return [];
     }
