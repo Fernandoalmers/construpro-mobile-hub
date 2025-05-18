@@ -27,12 +27,16 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
     if (!vendorProducts || vendorProducts.length === 0) {
       console.log('No products found in produtos table, checking alternative table');
       
-      // Try alternate product table as backup
-      const { data: altProducts, error: altError } = await supabase
+      // Try alternate product table as backup - using explicit type annotation
+      const { data, error } = await supabase
         .from('products') // Alternative product table that might be used
         .select('id')
         .eq('vendedor_id', vendorId);
         
+      // Assign to properly typed variables to avoid inference issues
+      const altProducts = data as Array<{id: string}> | null;
+      const altError = error;
+      
       if (altError || !altProducts || altProducts.length === 0) {
         console.log('No products found in alternate table either');
         return [];
