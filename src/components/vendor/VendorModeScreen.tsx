@@ -1,99 +1,131 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, Users, CreditCard, Settings, Store } from 'lucide-react';
-import { Card } from '@/components/ui/card';
-import { useVendorProfile } from '@/hooks/useVendorProfile';
+import { ArrowLeft } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { getVendorProfile } from '@/services/vendorService';
 import LoadingState from '../common/LoadingState';
+import { toast } from '@/components/ui/sonner';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/context/AuthContext';
 
 const VendorModeScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { vendorProfile, isLoading } = useVendorProfile();
+  const { profile } = useAuth();
+  
+  // Fetch vendor profile to check if it exists
+  const { data: vendorProfile, isLoading } = useQuery({
+    queryKey: ['vendorProfile'],
+    queryFn: getVendorProfile,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
   
   const menuItems = [
-    { 
-      title: 'Pedidos', 
-      icon: <Package className="h-8 w-8" />,
-      description: 'Gerencie os pedidos da sua loja',
-      color: 'bg-blue-100 text-blue-600',
-      onClick: () => navigate('/vendor/orders')
+    {
+      title: "Produtos",
+      description: "Cadastre e gerencie os produtos da sua loja",
+      path: '/vendor/produtos'
     },
-    { 
-      title: 'Produtos', 
-      icon: <Store className="h-8 w-8" />,
-      description: 'Cadastre e gerencie seus produtos',
-      color: 'bg-green-100 text-green-600',
-      onClick: () => navigate('/vendor/products')
+    {
+      title: "Pedidos",
+      description: "Acompanhe os pedidos feitos na sua loja",
+      path: '/vendor/orders'
     },
-    { 
-      title: 'Clientes', 
-      icon: <Users className="h-8 w-8" />,
-      description: 'Visualize e gerencie seus clientes',
-      color: 'bg-purple-100 text-purple-600',
-      onClick: () => navigate('/vendor/customers')
+    {
+      title: "Clientes",
+      description: "Gerencie os clientes e visualize histórico de compras",
+      path: '/vendor/clientes'
     },
-    { 
-      title: 'Ajuste de Pontos', 
-      icon: <CreditCard className="h-8 w-8" />,
-      description: 'Adicione ou remova pontos de clientes',
-      color: 'bg-amber-100 text-amber-600',
-      onClick: () => navigate('/vendor/points-adjustment')
+    {
+      title: "Ajuste de Pontos",
+      description: "Adicione ou remova pontos dos clientes",
+      path: '/vendor/ajuste-pontos'
     },
-    { 
-      title: 'Configurações', 
-      icon: <Settings className="h-8 w-8" />,
-      description: 'Configure sua loja',
-      color: 'bg-gray-100 text-gray-600',
-      onClick: () => navigate('/vendor/settings')
+    {
+      title: "Configurações da Loja",
+      description: "Edite as informações e configurações da sua loja",
+      path: '/vendor/configuracoes'
     }
   ];
 
+  const handleBackToConsumerMode = () => {
+    navigate('/home');
+  };
+  
   if (isLoading) {
-    return <LoadingState text="Carregando perfil de vendedor..." />;
+    return <LoadingState text="Carregando..." />;
+  }
+  
+  // Se não há perfil de vendedor, redirecionar para registro de vendedor
+  if (!vendorProfile) {
+    return (
+      <div className="min-h-screen bg-gray-100 p-6 flex flex-col items-center justify-center">
+        <div className="bg-white rounded-lg shadow-md p-8 max-w-md w-full text-center">
+          <h1 className="text-2xl font-bold mb-2">Modo Lojista</h1>
+          <p className="text-gray-600 mb-6">
+            Você ainda não configurou seu perfil de lojista. Complete seu cadastro para começar a vender.
+          </p>
+          <Button 
+            onClick={() => navigate('/auth/vendor-profile')}
+            className="w-full bg-construPro-blue hover:bg-blue-700"
+          >
+            Configurar Perfil de Lojista
+          </Button>
+          <Button 
+            variant="outline"
+            className="w-full mt-4"
+            onClick={handleBackToConsumerMode}
+          >
+            Voltar para Modo Cliente
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
-      <div className="bg-white p-4 shadow-sm">
-        <div className="container mx-auto">
-          <div className="flex flex-col md:flex-row items-center justify-between">
-            <h1 className="text-2xl font-bold">Portal do Vendedor</h1>
-            <div className="flex items-center gap-2">
-              {vendorProfile?.logo && (
-                <div className="h-10 w-10 rounded-full overflow-hidden">
-                  <img
-                    src={vendorProfile.logo}
-                    alt={vendorProfile.nome_loja}
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-              )}
-              <div>
-                <h2 className="font-medium">{vendorProfile?.nome_loja || 'Sua Loja'}</h2>
-                <p className="text-sm text-gray-500">{vendorProfile?.status || 'pendente'}</p>
-              </div>
-            </div>
+    <div className="min-h-screen bg-gray-100">
+      {/* Header */}
+      <div className="bg-white border-b p-4 shadow-sm flex items-center justify-between">
+        <div className="flex items-center">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleBackToConsumerMode}
+            className="mr-4"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-xl font-bold">Modo Lojista</h1>
+            <p className="text-sm text-muted-foreground">{vendorProfile.nome_loja}</p>
           </div>
         </div>
+        {vendorProfile.logo && (
+          <img 
+            src={vendorProfile.logo} 
+            alt={vendorProfile.nome_loja} 
+            className="w-10 h-10 rounded-full object-cover"
+          />
+        )}
       </div>
-
+      
+      {/* Menu Items */}
       <div className="container mx-auto p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {menuItems.map((item, index) => (
-            <Card
+            <Card 
               key={index}
-              className="p-6 cursor-pointer hover:shadow-md transition-all"
-              onClick={item.onClick}
+              className="cursor-pointer hover:shadow-md transition-all"
+              onClick={() => navigate(item.path)}
             >
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="text-lg font-bold mb-2">{item.title}</h3>
-                  <p className="text-gray-600">{item.description}</p>
-                </div>
-                <div className={`${item.color} p-3 rounded-lg`}>
-                  {item.icon}
-                </div>
-              </div>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">{item.title}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">{item.description}</p>
+              </CardContent>
             </Card>
           ))}
         </div>
