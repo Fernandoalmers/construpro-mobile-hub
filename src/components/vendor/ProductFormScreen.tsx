@@ -1,700 +1,931 @@
-
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Image as ImageIcon, Save, Trash } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { ArrowLeft, Save, Info, Package, Tag, Image, Layers, FileSymlink, LayoutList } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { toast } from '@/components/ui/sonner';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { 
-  getVendorProduct, 
-  saveVendorProduct,
-  uploadProductImage,
-  updateProductImages,
-  VendorProduct 
-} from '@/services/vendorService';
-import { getProductSegments, ProductSegment } from '@/services/admin/productSegmentsService';
-import LoadingState from '../common/LoadingState';
-import ProductNotification from './ProductNotification';
+import { Checkbox } from '@/components/ui/checkbox';
+import CustomButton from '../common/CustomButton';
+import CustomInput from '../common/CustomInput';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import produtos from '../../data/produtos.json';
 
-interface ProductFormScreenProps {
+// Define product form schema
+const productFormSchema = z.object({
+  // General Information
+  nome: z.string().min(3, { message: 'O nome deve ter pelo menos 3 caracteres' }),
+  descricao: z.string().min(10, { message: 'A descrição deve ter pelo menos 10 caracteres' }),
+  categoria: z.string().min(1, { message: 'Selecione uma categoria' }),
+  marca: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  
+  // Unit and Packaging
+  unidadeVenda: z.enum(['unidade', 'm2', 'litro', 'kg', 'caixa', 'pacote']),
+  valorConversao: z.number().optional().nullable(),
+  controleQuantidade: z.enum(['multiplo', 'livre']),
+  
+  // Stock and Price
+  preco: z.number().min(0.01, { message: 'O preço deve ser maior que zero' }),
+  estoque: z.number().int().min(0, { message: 'O estoque não pode ser negativo' }),
+  precoPromocional: z.number().optional().nullable(),
+  
+  // Points
+  pontosConsumidor: z.number().int().min(0),
+  pontosProfissional: z.number().int().min(0),
+  
+  // Variants
+  temVariantes: z.boolean().default(false),
+  tipoVariante: z.string().optional(),
+  variantes: z.array(z.string()).optional(),
+});
+
+type ProductFormValues = z.infer<typeof productFormSchema>;
+
+const categorias = [
+  'Porcelanatos', 'Pisos', 'Revestimentos', 'Tintas', 'Ferramentas',
+  'Materiais Elétricos', 'Materiais Hidráulicos', 'EPIs', 'Iluminação',
+  'Madeiras', 'Acabamentos', 'Decoração'
+];
+
+interface ProdutoFormScreenProps {
   isEditing?: boolean;
   productId?: string;
+  initialData?: any; // Add this new property to accept initial data
 }
 
-const ProductFormScreen: React.FC<ProductFormScreenProps> = ({ isEditing, productId }) => {
-  const params = useParams();
+const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({ 
+  isEditing = false,
+  productId,
+  initialData = null // Set default value
+}) => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const queryClient = useQueryClient();
-  
-  // Get product ID from props or URL params
-  const id = productId || params.id;
-  
-  // Check if this is a clone operation
-  const isCloning = location.pathname.includes('/vendor/product-clone');
-  
-  const [formData, setFormData] = useState<Partial<VendorProduct>>({
-    nome: '',
-    descricao: '',
-    preco_normal: 0,
-    preco_promocional: undefined,
-    estoque: 0,
-    codigo_barras: '',
-    sku: '',
-    categoria: '',
-    segmento: '',
-    pontos_consumidor: 0,
-    pontos_profissional: 0,
-    imagens: []
-  });
-  const [activeTab, setActiveTab] = useState('basic');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedImages, setSelectedImages] = useState<File[]>([]);
-  const [previewImages, setPreviewImages] = useState<string[]>([]);
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [showNotification, setShowNotification] = useState(false);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [images, setImages] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(isEditing);
   
-  // Categories (could be fetched from an API in the future)
-  const categories = [
-    'Ferramentas',
-    'Material de Construção',
-    'Tintas',
-    'Elétrica',
-    'Hidráulica',
-    'Acabamento',
-    'Decoração',
-    'Jardinagem',
-    'Segurança',
-    'Outro'
-  ];
-  
-  // Fetch product segments from the database
-  const { data: segments = [] } = useQuery({
-    queryKey: ['productSegments'],
-    queryFn: getProductSegments,
-    staleTime: 60 * 60 * 1000, // 1 hour
-  });
-
-  // Format currency function
-  const formatCurrency = (value: number | undefined): string => {
-    if (value === undefined) return '';
-    
-    return new Intl.NumberFormat('pt-BR', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(value);
-  };
-  
-  // Parse formatted currency back to number
-  const parseCurrencyToNumber = (formattedValue: string): number => {
-    // Remove non-numeric characters except decimal separator
-    const numericValue = formattedValue.replace(/[^\d,]/g, '').replace(',', '.');
-    return parseFloat(numericValue) || 0;
-  };
-  
-  // Fetch product data if in edit mode
-  const { data: productData, isLoading } = useQuery({
-    queryKey: ['vendorProduct', id],
-    queryFn: () => getVendorProduct(id!),
-    enabled: !!id,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-  
-  // Save product mutation
-  const saveProductMutation = useMutation({
-    mutationFn: (data: Partial<VendorProduct>) => saveVendorProduct(data),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['vendorProducts'] });
-      if (data?.id) {
-        queryClient.invalidateQueries({ queryKey: ['vendorProduct', data.id] });
-      }
-      toast.success(isEditing ? 'Produto atualizado com sucesso!' : 'Produto criado com sucesso!');
-      
-      // Mostrar notificação de status pendente
-      if (data && data.status === 'pendente') {
-        setShowNotification(true);
-      }
-      
-      // Redirecionamento após um curto delay para permitir que a notificação seja vista
-      setTimeout(() => {
-        navigate('/vendor/products');
-      }, 2000);
-    },
-    onError: (error: any) => {
-      toast.error(`Erro ao salvar produto: ${error.message || 'Verifique os campos e tente novamente'}`);
-      console.error('Error saving product:', error);
+  // Form definition
+  const form = useForm<ProductFormValues>({
+    resolver: zodResolver(productFormSchema),
+    defaultValues: {
+      nome: '',
+      descricao: '',
+      categoria: '',
+      marca: '',
+      tags: [],
+      unidadeVenda: 'unidade',
+      valorConversao: null,
+      controleQuantidade: 'livre',
+      preco: 0,
+      estoque: 0,
+      precoPromocional: null,
+      pontosConsumidor: 0,
+      pontosProfissional: 0,
+      temVariantes: false,
+      tipoVariante: '',
+      variantes: [],
     }
   });
   
-  // Load product data into form when available
+  // Load product data if in edit mode
   useEffect(() => {
-    if (productData && (isEditing || isCloning)) {
-      // For cloning, we keep all data except id
-      if (isCloning) {
-        const { id, ...cloneData } = productData;
-        setFormData(cloneData);
+    if (isEditing && productId) {
+      setIsLoading(true);
+      
+      // If initialData is provided, use it directly
+      if (initialData) {
+        console.log("Using provided initialData:", initialData);
+        // Initialize form with provided product data
+        form.reset({
+          nome: initialData.nome || '',
+          descricao: initialData.descricao || '',
+          categoria: initialData.categoria || '',
+          marca: initialData.marca || '',
+          tags: initialData.tags || [],
+          unidadeVenda: initialData.unidadeVenda || 'unidade',
+          valorConversao: initialData.valorConversao || null,
+          controleQuantidade: initialData.controleQuantidade || 'livre',
+          preco: initialData.preco_normal || 0,
+          estoque: initialData.estoque || 0,
+          precoPromocional: initialData.preco_promocional || null,
+          pontosConsumidor: initialData.pontos_consumidor || 0,
+          pontosProfissional: initialData.pontos_profissional || 0,
+          temVariantes: false,
+          tipoVariante: '',
+          variantes: [],
+        });
         
-        // Set preview images from existing product
-        if (cloneData.imagens && Array.isArray(cloneData.imagens)) {
-          setPreviewImages(cloneData.imagens);
+        // Load images
+        if (initialData.imagens && Array.isArray(initialData.imagens)) {
+          setImages(initialData.imagens);
         }
-      } else {
-        setFormData(productData);
         
-        // Set preview images from existing product
-        if (productData.imagens && Array.isArray(productData.imagens)) {
-          setPreviewImages(productData.imagens);
-        }
+        setIsLoading(false);
+        return;
+      }
+      
+      // In a real app, this would be an API call
+      // For demo purposes, we'll just use the local data
+      const produto = produtos.find(p => p.id === productId);
+      
+      if (produto) {
+        // Initialize form with product data
+        form.reset({
+          nome: produto.nome,
+          descricao: produto.descricao || '',
+          categoria: produto.categoria,
+          marca: '',
+          tags: [],
+          unidadeVenda: 'unidade', // Default to be overwritten
+          valorConversao: null,
+          controleQuantidade: 'livre',
+          preco: produto.preco,
+          estoque: produto.estoque || 0,
+          precoPromocional: null,
+          pontosConsumidor: produto.pontos || 0,
+          pontosProfissional: produto.pontos || 0,
+          temVariantes: false,
+          tipoVariante: '',
+          variantes: [],
+        });
         
-        // Mostrar notificação se for um produto pendente ou recentemente aprovado/rejeitado
-        if (productData.status === 'pendente' || productData.status === 'aprovado' || productData.status === 'inativo') {
-          setShowNotification(true);
+        // Load image
+        if (produto.imagemUrl) {
+          setImages([produto.imagemUrl]);
         }
       }
+      
+      setIsLoading(false);
     }
-  }, [productData, isEditing, isCloning]);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    
-    // Clear error when field is being edited
-    if (formErrors[name]) {
-      setFormErrors(prev => ({ ...prev, [name]: '' }));
-    }
-  };
+  }, [isEditing, productId, form, initialData]);
   
-  const handleNumberInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    
-    // Handle empty input case
-    if (value === '') {
-      setFormData(prev => ({ ...prev, [name]: undefined }));
-      return;
-    }
-    
-    // Remove non-numeric characters except decimal separator
-    // Keep only digits and at most one decimal separator
-    const formattedValue = value.replace(/[^\d,]/g, '')
-      .replace(',', '.')  // Convert comma to dot for internal processing
-      .replace(/\.(?=.*\.)/g, ''); // Keep only the first decimal separator
+  const watchUnidadeVenda = form.watch('unidadeVenda');
+  const watchTemVariantes = form.watch('temVariantes');
+  const watchTipoVariante = form.watch('tipoVariante');
 
-    const numValue = parseFloat(formattedValue);
-    if (!isNaN(numValue)) {
-      setFormData(prev => ({ ...prev, [name]: numValue }));
-    }
-    
-    // Clear error when field is being edited
-    if (formErrors[name]) {
-      setFormErrors(prev => ({ ...prev, [name]: '' }));
-    }
+  // Handle tags selection
+  const handleTagToggle = (tag: string) => {
+    setSelectedTags(current => {
+      const isSelected = current.includes(tag);
+      const newTags = isSelected 
+        ? current.filter(t => t !== tag)
+        : [...current, tag];
+      
+      form.setValue('tags', newTags);
+      return newTags;
+    });
   };
-  
+
+  // Handle image upload
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const filesArray = Array.from(e.target.files);
-      setSelectedImages(prev => [...prev, ...filesArray]);
-      
-      // Create preview URLs
-      const newPreviewUrls = filesArray.map(file => URL.createObjectURL(file));
-      setPreviewImages(prev => [...prev, ...newPreviewUrls]);
-      
-      // Clear any image-related errors
-      if (formErrors.imagens) {
-        setFormErrors(prev => ({ ...prev, imagens: '' }));
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      // In a real app, you would upload the image to a server
+      // For demo purposes, we'll just use the file name
+      const newImages = [...images];
+      for (let i = 0; i < files.length && newImages.length < 5; i++) {
+        newImages.push(URL.createObjectURL(files[i]));
       }
+      setImages(newImages);
     }
   };
-  
+
+  // Remove image
   const handleRemoveImage = (index: number) => {
-    setPreviewImages(prev => prev.filter((_, i) => i !== index));
-    
-    // Also remove from selectedImages if it's a new image
-    if (index < selectedImages.length) {
-      setSelectedImages(prev => prev.filter((_, i) => i !== index));
-    }
-    
-    // Update formData.imagens if it exists
-    if (formData.imagens && Array.isArray(formData.imagens)) {
-      const updatedImages = [...formData.imagens];
-      updatedImages.splice(index, 1);
-      setFormData(prev => ({
-        ...prev,
-        imagens: updatedImages
-      }));
-    }
+    const newImages = [...images];
+    newImages.splice(index, 1);
+    setImages(newImages);
   };
-  
-  const validateForm = (): boolean => {
-    const errors: Record<string, string> = {};
-    
-    // Basic required fields
-    if (!formData.nome?.trim()) {
-      errors.nome = 'Nome do produto é obrigatório';
-    }
-    
-    if (!formData.descricao?.trim()) {
-      errors.descricao = 'Descrição do produto é obrigatória';
-    }
-    
-    if (!formData.categoria) {
-      errors.categoria = 'Categoria do produto é obrigatória';
-    }
-    
-    // Numeric fields validation
-    if (formData.preco_normal === undefined || formData.preco_normal <= 0) {
-      errors.preco_normal = 'Preço deve ser maior que zero';
-    }
-    
-    // Only validate promotional price if it's filled in
-    if (formData.preco_promocional !== undefined && 
-        formData.preco_promocional !== null && 
-        formData.preco_promocional > 0 && 
-        formData.preco_normal !== undefined && 
-        formData.preco_promocional >= formData.preco_normal) {
-      errors.preco_promocional = 'Preço promocional deve ser menor que o preço regular';
-    }
-    
-    // Image validation - only when there are no images
-    if ((!formData.imagens || formData.imagens.length === 0) && previewImages.length === 0) {
-      errors.imagens = 'Pelo menos uma imagem é obrigatória';
-    }
-    
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-  
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate form before submission
-    if (!validateForm()) {
-      // Show toast with first error
-      const firstError = Object.values(formErrors)[0];
-      toast.error(firstError || 'Verifique os campos obrigatórios');
+
+  // Form submission
+  const onSubmit = (values: ProductFormValues) => {
+    if (images.length === 0) {
+      toast({
+        title: "Erro de validação",
+        description: "É necessário adicionar pelo menos uma imagem do produto.",
+        variant: "destructive"
+      });
       return;
     }
-    
+
     setIsSubmitting(true);
     
-    try {
-      // Create or update the product first to get an ID
-      let productToSave: Partial<VendorProduct> = { ...formData };
-      
-      // If cloning, make sure we don't include the original product's ID
-      if (isCloning) {
-        delete productToSave.id;
-      }
-      
-      // If editing, keep the ID
-      if (isEditing && id) {
-        productToSave.id = id;
-      }
-      
-      // Force numeric fields to be numbers, not undefined
-      productToSave.preco_normal = productToSave.preco_normal || 0;
-      productToSave.estoque = productToSave.estoque || 0;
-      productToSave.pontos_consumidor = productToSave.pontos_consumidor || 0;
-      productToSave.pontos_profissional = productToSave.pontos_profissional || 0;
-      
-      // Save the product
-      const savedProduct = await saveProductMutation.mutateAsync(productToSave);
-      
-      if (!savedProduct) {
-        throw new Error('Erro ao salvar produto');
-      }
-      
-      // If there are new images to upload
-      if (selectedImages.length > 0 && savedProduct.id) {
-        const imageUrls: string[] = [];
-        let uploadFailed = false;
-        
-        // Upload each image
-        for (let i = 0; i < selectedImages.length; i++) {
-          const file = selectedImages[i];
-          const imageUrl = await uploadProductImage(savedProduct.id, file, i);
-          if (imageUrl) {
-            imageUrls.push(imageUrl);
-          } else {
-            uploadFailed = true;
-          }
-        }
-        
-        if (uploadFailed) {
-          toast.warning('Algumas imagens não puderam ser enviadas. Verifique e tente novamente.');
-        }
-        
-        // Combine existing images with new ones
-        const existingImages = (savedProduct.imagens || []).filter(url => 
-          typeof url === 'string' && !url.startsWith('blob:')
-        );
-        
-        const allImages = [...existingImages, ...imageUrls];
-        
-        // Update the product with the new image URLs
-        if (imageUrls.length > 0) {
-          await updateProductImages(savedProduct.id, allImages);
-        }
-      }
-      
-      toast.success(isEditing ? 'Produto atualizado com sucesso!' : 'Produto criado com sucesso!');
-      navigate('/vendor/products');
-    } catch (error: any) {
-      console.error('Error in handleSubmit:', error);
-      toast.error(`Erro ao salvar produto: ${error.message || 'Tente novamente'}`);
-    } finally {
+    // Add image URLs to the form data
+    const productData = {
+      ...values,
+      images: images,
+    };
+    
+    console.log('Product data:', productData);
+    
+    // Here you would send the data to your API
+    setTimeout(() => {
       setIsSubmitting(false);
+      toast({
+        title: isEditing ? "Produto atualizado com sucesso" : "Produto cadastrado com sucesso",
+        description: isEditing 
+          ? "As alterações foram salvas no sistema." 
+          : "O produto foi cadastrado no sistema."
+      });
+      navigate('/vendor/produtos');
+    }, 1000);
+  };
+  
+  // Determine if conversion value is required
+  const isConversionRequired = ['m2', 'litro', 'kg'].includes(watchUnidadeVenda);
+  
+  // Get conversion field label based on unit type
+  const getConversionFieldLabel = () => {
+    switch(watchUnidadeVenda) {
+      case 'm2': return 'Área por caixa (m²)';
+      case 'litro': return 'Volume por embalagem (litros)';
+      case 'kg': return 'Peso por embalagem (kg)';
+      default: return 'Valor por embalagem';
     }
   };
   
-  if (isLoading && (isEditing || isCloning)) {
-    return <LoadingState text="Carregando dados do produto..." />;
+  // Get variant options based on variant type
+  const getVariantOptions = () => {
+    switch(watchTipoVariante) {
+      case 'cor': 
+        return ['Branco', 'Preto', 'Cinza', 'Bege', 'Marrom', 'Azul', 'Verde', 'Amarelo', 'Vermelho'];
+      case 'tamanho': 
+        return ['PP', 'P', 'M', 'G', 'GG', 'XG'];
+      case 'volume': 
+        return ['0.9L', '3.6L', '18L', '20L'];
+      default: 
+        return [];
+    }
+  };
+
+  const availableVariantTypes = [
+    { value: 'cor', label: 'Cor' },
+    { value: 'tamanho', label: 'Tamanho' },
+    { value: 'volume', label: 'Volume' },
+  ];
+
+  const tagOptions = [
+    { value: 'promocao', label: 'Promoção' },
+    { value: 'lancamento', label: 'Lançamento' },
+    { value: 'destaque', label: 'Destaque' },
+    { value: 'limitado', label: 'Edição Limitada' },
+  ];
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
+        <div className="bg-white p-4 flex items-center shadow-sm">
+          <button onClick={() => navigate('/vendor/produtos')} className="mr-4">
+            <ArrowLeft size={24} />
+          </button>
+          <h1 className="text-xl font-bold">{isEditing ? 'Editar Produto' : 'Novo Produto'}</h1>
+        </div>
+        <div className="flex-1 flex justify-center items-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-construPro-blue mx-auto"></div>
+            <p className="mt-4">Carregando informações do produto...</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 pb-20">
-      <div className="bg-white p-4 shadow-sm flex items-center">
-        <button onClick={() => navigate('/vendor/products')} className="mr-4">
+    <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
+      {/* Header */}
+      <div className="bg-white p-4 flex items-center shadow-sm">
+        <button onClick={() => navigate('/vendor/produtos')} className="mr-4">
           <ArrowLeft size={24} />
         </button>
         <h1 className="text-xl font-bold">
-          {isEditing ? 'Editar Produto' : isCloning ? 'Clonar Produto' : 'Novo Produto'}
+          {isEditing ? 'Editar Produto' : 'Novo Produto'}
         </h1>
       </div>
-
-      <div className="p-6">
-        {showNotification && productData && (
-          <ProductNotification 
-            status={productData.status} 
-            onDismiss={() => setShowNotification(false)} 
-          />
-        )}
-
-        <form onSubmit={handleSubmit} noValidate>
-          <Tabs defaultValue="basic" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-3 mb-6 sm:grid-cols-3">
-              <TabsTrigger value="basic">Informações Básicas</TabsTrigger>
-              <TabsTrigger value="details">Detalhes</TabsTrigger>
-              <TabsTrigger value="images">Imagens</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="basic">
-              <Card className="p-6 space-y-6">
-                <div>
-                  <Label htmlFor="nome" className="block mb-2">Nome do Produto *</Label>
-                  <Input
-                    id="nome"
-                    name="nome"
-                    value={formData.nome || ''}
-                    onChange={handleInputChange}
-                    placeholder="Ex: Furadeira de Impacto 650W"
-                    className={formErrors.nome ? "border-red-500" : ""}
-                  />
-                  {formErrors.nome && (
-                    <p className="text-sm text-red-500 mt-1">{formErrors.nome}</p>
-                  )}
-                </div>
-                
-                <div>
-                  <Label htmlFor="descricao" className="block mb-2">Descrição *</Label>
-                  <Textarea
-                    id="descricao"
-                    name="descricao"
-                    value={formData.descricao || ''}
-                    onChange={handleInputChange}
-                    placeholder="Descreva detalhes do produto..."
-                    rows={4}
-                    className={formErrors.descricao ? "border-red-500" : ""}
-                  />
-                  {formErrors.descricao && (
-                    <p className="text-sm text-red-500 mt-1">{formErrors.descricao}</p>
-                  )}
-                </div>
-                
-                <div>
-                  <Label htmlFor="categoria" className="block mb-2">Categoria *</Label>
-                  <Select
-                    value={formData.categoria || ''}
-                    onValueChange={(value) => {
-                      setFormData(prev => ({ ...prev, categoria: value }));
-                      if (formErrors.categoria) {
-                        setFormErrors(prev => ({ ...prev, categoria: '' }));
-                      }
-                    }}
-                  >
-                    <SelectTrigger className={formErrors.categoria ? "border-red-500" : ""}>
-                      <SelectValue placeholder="Selecione uma categoria" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map(category => (
-                        <SelectItem key={category} value={category}>{category}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {formErrors.categoria && (
-                    <p className="text-sm text-red-500 mt-1">{formErrors.categoria}</p>
-                  )}
-                </div>
-                
-                {/* Add segment selection field */}
-                <div>
-                  <Label htmlFor="segmento" className="block mb-2">Segmento</Label>
-                  <Select
-                    value={formData.segmento || ''}
-                    onValueChange={(value) => {
-                      setFormData(prev => ({ ...prev, segmento: value }));
-                      if (formErrors.segmento) {
-                        setFormErrors(prev => ({ ...prev, segmento: '' }));
-                      }
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um segmento" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {segments.map(segment => (
-                        <SelectItem key={segment.id} value={segment.nome}>
-                          {segment.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {formErrors.segmento && (
-                    <p className="text-sm text-red-500 mt-1">{formErrors.segmento}</p>
-                  )}
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <Label htmlFor="preco_normal" className="block mb-2">Preço Regular (R$) *</Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
-                      <Input
-                        id="preco_normal"
-                        name="preco_normal"
-                        type="text"
-                        value={formData.preco_normal !== undefined ? formatCurrency(formData.preco_normal) : ''}
-                        onChange={handleNumberInputChange}
-                        placeholder="0,00"
-                        className={`pl-9 ${formErrors.preco_normal ? "border-red-500" : ""}`}
-                        inputMode="decimal"
+      
+      <div className="p-6 space-y-6">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* General Information Section */}
+            <Accordion type="single" collapsible defaultValue="item-1">
+              <AccordionItem value="item-1">
+                <AccordionTrigger className="bg-white px-4 py-3 rounded-t-md shadow-sm border border-gray-200">
+                  <div className="flex items-center space-x-2">
+                    <FileSymlink size={20} className="text-construPro-blue" />
+                    <span className="font-medium">Informações Gerais</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="bg-white p-4 border-x border-b border-gray-200 rounded-b-md shadow-sm">
+                  <div className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="nome"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nome do Produto*</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="Ex: Porcelanato Acetinado Bege 60x60" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="descricao"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Descrição*</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              {...field} 
+                              placeholder="Descreva detalhes do produto como características, dimensões, aplicações, etc." 
+                              className="min-h-[100px]"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="categoria"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Categoria*</FormLabel>
+                            <Select 
+                              onValueChange={field.onChange} 
+                              defaultValue={field.value}
+                              value={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecione uma categoria" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {categorias.map(categoria => (
+                                  <SelectItem key={categoria} value={categoria}>
+                                    {categoria}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="marca"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Marca</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="Ex: Portobello" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
                     </div>
-                    {formErrors.preco_normal && (
-                      <p className="text-sm text-red-500 mt-1">{formErrors.preco_normal}</p>
-                    )}
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="preco_promocional" className="block mb-2">Preço Promocional (R$)</Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
-                      <Input
-                        id="preco_promocional"
-                        name="preco_promocional"
-                        type="text"
-                        value={formData.preco_promocional !== undefined ? formatCurrency(formData.preco_promocional) : ''}
-                        onChange={handleNumberInputChange}
-                        placeholder="0,00"
-                        className={`pl-9 ${formErrors.preco_promocional ? "border-red-500" : ""}`}
-                        inputMode="decimal"
-                      />
-                    </div>
-                    {formErrors.preco_promocional && (
-                      <p className="text-sm text-red-500 mt-1">{formErrors.preco_promocional}</p>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="flex justify-end">
-                  <Button 
-                    type="button" 
-                    variant="outline"
-                    className="mr-2"
-                    onClick={() => navigate('/vendor/products')}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button 
-                    type="button"
-                    onClick={() => setActiveTab('details')}
-                  >
-                    Próximo
-                  </Button>
-                </div>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="details">
-              <Card className="p-6 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <Label htmlFor="estoque" className="block mb-2">Estoque</Label>
-                    <Input
-                      id="estoque"
-                      name="estoque"
-                      type="number"
-                      min="0"
-                      value={formData.estoque === undefined ? '' : formData.estoque}
-                      onChange={handleNumberInputChange}
-                      placeholder="0"
-                      inputMode="numeric"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="sku" className="block mb-2">SKU / Código</Label>
-                    <Input
-                      id="sku"
-                      name="sku"
-                      value={formData.sku || ''}
-                      onChange={handleInputChange}
-                      placeholder="Ex: PROD-12345"
-                    />
-                  </div>
-                </div>
-                
-                <div>
-                  <Label htmlFor="codigo_barras" className="block mb-2">Código de Barras</Label>
-                  <Input
-                    id="codigo_barras"
-                    name="codigo_barras"
-                    value={formData.codigo_barras || ''}
-                    onChange={handleInputChange}
-                    placeholder="Ex: 7891234567890"
-                  />
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <Label htmlFor="pontos_consumidor" className="block mb-2">Pontos para Consumidores</Label>
-                    <Input
-                      id="pontos_consumidor"
-                      name="pontos_consumidor"
-                      type="number"
-                      min="0"
-                      value={formData.pontos_consumidor === undefined ? '' : formData.pontos_consumidor}
-                      onChange={handleNumberInputChange}
-                      placeholder="0"
-                      inputMode="numeric"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="pontos_profissional" className="block mb-2">Pontos para Profissionais</Label>
-                    <Input
-                      id="pontos_profissional"
-                      name="pontos_profissional"
-                      type="number"
-                      min="0"
-                      value={formData.pontos_profissional === undefined ? '' : formData.pontos_profissional}
-                      onChange={handleNumberInputChange}
-                      placeholder="0"
-                      inputMode="numeric"
-                    />
-                  </div>
-                </div>
-                
-                <div className="flex justify-between">
-                  <Button 
-                    type="button"
-                    variant="outline"
-                    onClick={() => setActiveTab('basic')}
-                  >
-                    Voltar
-                  </Button>
-                  <Button 
-                    type="button"
-                    onClick={() => setActiveTab('images')}
-                  >
-                    Próximo
-                  </Button>
-                </div>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="images">
-              <Card className="p-6 space-y-6">
-                <div>
-                  <Label htmlFor="images" className="block mb-2">Imagens do Produto *</Label>
-                  <div className={`border-2 border-dashed rounded-md p-6 text-center ${
-                    formErrors.imagens ? "border-red-500" : "border-gray-300"
-                  }`}>
-                    <ImageIcon className="h-12 w-12 mx-auto text-gray-400" />
-                    <p className="mt-2 text-sm text-gray-500">Arraste e solte suas imagens aqui, ou clique para selecionar</p>
-                    <Input
-                      id="images"
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handleImageUpload}
-                      className="mt-4"
-                    />
-                    {formErrors.imagens && (
-                      <p className="text-sm text-red-500 mt-1">{formErrors.imagens}</p>
-                    )}
-                  </div>
-                </div>
-                
-                {previewImages.length > 0 && (
-                  <div>
-                    <Label className="block mb-2">Imagens selecionadas</Label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                      {previewImages.map((src, index) => (
-                        <div key={index} className="relative">
-                          <img 
-                            src={src} 
-                            alt={`Preview ${index}`}
-                            className="h-32 w-full object-cover rounded-md"
-                          />
-                          <button
-                            type="button"
-                            className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"
-                            onClick={() => handleRemoveImage(index)}
+                    
+                    <div>
+                      <FormLabel>Tags</FormLabel>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {tagOptions.map(tag => (
+                          <div
+                            key={tag.value}
+                            className={`px-3 py-1 rounded-full text-sm border cursor-pointer transition-colors ${
+                              selectedTags.includes(tag.value)
+                                ? 'bg-construPro-blue text-white border-construPro-blue'
+                                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                            }`}
+                            onClick={() => handleTagToggle(tag.value)}
                           >
-                            <Trash size={16} />
-                          </button>
-                          {index === 0 && (
-                            <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs py-1 px-2 text-center">
-                              Imagem Principal
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                            {tag.label}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                )}
-                
-                <div className="flex justify-between">
-                  <Button 
-                    type="button"
-                    variant="outline"
-                    onClick={() => setActiveTab('details')}
-                  >
-                    Voltar
-                  </Button>
-                  <Button 
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="bg-construPro-blue hover:bg-blue-700"
-                  >
-                    <Save size={18} className="mr-2" />
-                    {isSubmitting ? 'Salvando...' : 'Salvar Produto'}
-                  </Button>
-                </div>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </form>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+            
+            {/* Unit and Packaging Section */}
+            <Accordion type="single" collapsible defaultValue="item-2">
+              <AccordionItem value="item-2">
+                <AccordionTrigger className="bg-white px-4 py-3 rounded-t-md shadow-sm border border-gray-200">
+                  <div className="flex items-center space-x-2">
+                    <Package size={20} className="text-construPro-blue" />
+                    <span className="font-medium">Unidade de Venda e Embalagem</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="bg-white p-4 border-x border-b border-gray-200 rounded-b-md shadow-sm">
+                  <div className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="unidadeVenda"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Unidade de Venda*</FormLabel>
+                          <Select 
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              // Reset conversion value when changing unit
+                              form.setValue('valorConversao', null);
+                              
+                              // Set quantity control based on unit
+                              if (value === 'm2') {
+                                form.setValue('controleQuantidade', 'multiplo');
+                              }
+                            }} 
+                            defaultValue={field.value}
+                            value={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione uma unidade" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="unidade">Unidade</SelectItem>
+                              <SelectItem value="m2">Metro quadrado (m²)</SelectItem>
+                              <SelectItem value="litro">Litro</SelectItem>
+                              <SelectItem value="kg">Quilograma (kg)</SelectItem>
+                              <SelectItem value="caixa">Caixa</SelectItem>
+                              <SelectItem value="pacote">Pacote</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    {isConversionRequired && (
+                      <FormField
+                        control={form.control}
+                        name="valorConversao"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{getConversionFieldLabel()}*</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                step={watchUnidadeVenda === 'm2' ? 0.01 : 0.1}
+                                min={0.01}
+                                onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                                value={field.value !== null ? field.value : ''}
+                                placeholder={watchUnidadeVenda === 'm2' ? "Ex: 2.5" : "Ex: 5"}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+                    
+                    <FormField
+                      control={form.control}
+                      name="controleQuantidade"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tipo de controle de quantidade*</FormLabel>
+                          <Select 
+                            onValueChange={field.onChange} 
+                            defaultValue={field.value}
+                            value={field.value}
+                            disabled={watchUnidadeVenda === 'm2'} // Force multiple for m2
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione o tipo de controle" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="multiplo">Por múltiplos da embalagem</SelectItem>
+                              <SelectItem value="livre">Livre (qualquer valor)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {watchUnidadeVenda === 'm2' && (
+                            <p className="text-xs text-amber-600 mt-1">
+                              Produtos vendidos em m² exigem controle por múltiplos da embalagem.
+                            </p>
+                          )}
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+            
+            {/* Stock and Price Section */}
+            <Accordion type="single" collapsible defaultValue="item-3">
+              <AccordionItem value="item-3">
+                <AccordionTrigger className="bg-white px-4 py-3 rounded-t-md shadow-sm border border-gray-200">
+                  <div className="flex items-center space-x-2">
+                    <Tag size={20} className="text-construPro-blue" />
+                    <span className="font-medium">Estoque e Preço</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="bg-white p-4 border-x border-b border-gray-200 rounded-b-md shadow-sm">
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="preco"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Preço por {watchUnidadeVenda === 'm2' ? 'm²' : watchUnidadeVenda}*</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                                <Input 
+                                  {...field}
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  onChange={e => field.onChange(parseFloat(e.target.value))}
+                                  value={field.value || ''}
+                                  className="pl-9"
+                                  placeholder="0,00"
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="precoPromocional"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Preço promocional</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                                <Input 
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
+                                  value={field.value !== null ? field.value : ''}
+                                  className="pl-9"
+                                  placeholder="0,00"
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    
+                    <FormField
+                      control={form.control}
+                      name="estoque"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Estoque disponível*</FormLabel>
+                          <FormControl>
+                            <div className="flex items-center space-x-2">
+                              <Input 
+                                type="number"
+                                step="1"
+                                min="0"
+                                onChange={e => field.onChange(parseInt(e.target.value))}
+                                value={field.value || ''}
+                                className="w-full"
+                              />
+                              <span className="bg-gray-100 px-3 py-2 rounded border text-gray-600 whitespace-nowrap">
+                                {watchUnidadeVenda === 'm2' ? 'm²' : watchUnidadeVenda === 'unidade' ? 'un.' : watchUnidadeVenda}
+                              </span>
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                          {form.getValues('estoque') === 0 && (
+                            <p className="text-xs text-amber-600 mt-1">
+                              Produto ficará indisponível para compra com estoque zero.
+                            </p>
+                          )}
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+            
+            {/* Images Section */}
+            <Accordion type="single" collapsible defaultValue="item-4">
+              <AccordionItem value="item-4">
+                <AccordionTrigger className="bg-white px-4 py-3 rounded-t-md shadow-sm border border-gray-200">
+                  <div className="flex items-center space-x-2">
+                    <Image size={20} className="text-construPro-blue" />
+                    <span className="font-medium">Imagens</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="bg-white p-4 border-x border-b border-gray-200 rounded-b-md shadow-sm">
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm mb-2">Adicione até 5 imagens do produto (primeira será a principal)*</p>
+                      <div className="flex flex-wrap gap-3 mb-3">
+                        {images.map((img, index) => (
+                          <div key={index} className="relative">
+                            <img 
+                              src={img} 
+                              alt={`Produto ${index + 1}`} 
+                              className="w-20 h-20 object-cover rounded border border-gray-200"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveImage(index)}
+                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-sm"
+                              aria-label="Remover imagem"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            </button>
+                            {index === 0 && (
+                              <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-construPro-blue text-white text-xs px-2 py-0.5 rounded">
+                                Principal
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                        
+                        {images.length < 5 && (
+                          <label className="w-20 h-20 border-2 border-dashed border-gray-300 flex items-center justify-center rounded cursor-pointer hover:bg-gray-50">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={handleImageUpload}
+                              multiple={true}
+                            />
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M12 5v14M5 12h14" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </label>
+                        )}
+                      </div>
+                      {images.length === 0 && (
+                        <p className="text-xs text-red-500">É obrigatório adicionar pelo menos uma imagem.</p>
+                      )}
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+            
+            {/* Points Section */}
+            <Accordion type="single" collapsible defaultValue="item-5">
+              <AccordionItem value="item-5">
+                <AccordionTrigger className="bg-white px-4 py-3 rounded-t-md shadow-sm border border-gray-200">
+                  <div className="flex items-center space-x-2">
+                    <Tag size={20} className="text-construPro-blue" />
+                    <span className="font-medium">Pontos</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="bg-white p-4 border-x border-b border-gray-200 rounded-b-md shadow-sm">
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="pontosConsumidor"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="flex items-center">
+                              Pontos para consumidor*
+                              <button
+                                type="button"
+                                onClick={(e) => e.preventDefault()}
+                                className="ml-1 text-gray-500 hover:text-gray-700"
+                                title="Pontos que o consumidor final ganha ao comprar este produto"
+                              >
+                                <Info size={14} />
+                              </button>
+                            </FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number"
+                                step="1"
+                                min="0"
+                                onChange={e => field.onChange(parseInt(e.target.value))}
+                                value={field.value || ''}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="pontosProfissional"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="flex items-center">
+                              Pontos para profissional*
+                              <button
+                                type="button"
+                                onClick={(e) => e.preventDefault()}
+                                className="ml-1 text-gray-500 hover:text-gray-700"
+                                title="Pontos que o profissional ganha ao comprar este produto"
+                              >
+                                <Info size={14} />
+                              </button>
+                            </FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number"
+                                step="1"
+                                min="0"
+                                onChange={e => field.onChange(parseInt(e.target.value))}
+                                value={field.value || ''}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    
+                    <div className="bg-blue-50 p-3 rounded text-sm text-blue-700 flex items-start">
+                      <Info size={16} className="mr-2 flex-shrink-0 mt-0.5" />
+                      <p>A pontuação é concedida com base no perfil do cliente. Consumidores e profissionais ganham pontos diferentes que podem ser resgatados posteriormente.</p>
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+            
+            {/* Variants Section */}
+            <Accordion type="single" collapsible>
+              <AccordionItem value="item-6">
+                <AccordionTrigger className="bg-white px-4 py-3 rounded-t-md shadow-sm border border-gray-200">
+                  <div className="flex items-center space-x-2">
+                    <Layers size={20} className="text-construPro-blue" />
+                    <span className="font-medium">Variantes (Opcional)</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="bg-white p-4 border-x border-b border-gray-200 rounded-b-md shadow-sm">
+                  <div className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="temVariantes"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <FormLabel className="font-normal">
+                            Este produto possui variantes (cor, tamanho, volume, etc)
+                          </FormLabel>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    {watchTemVariantes && (
+                      <div className="space-y-4 pt-2">
+                        <FormField
+                          control={form.control}
+                          name="tipoVariante"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Tipo de variante</FormLabel>
+                              <Select 
+                                onValueChange={field.onChange}
+                                value={field.value || ''}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Selecione o tipo de variante" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {availableVariantTypes.map(type => (
+                                    <SelectItem key={type.value} value={type.value}>
+                                      {type.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        {watchTipoVariante && (
+                          <div>
+                            <FormLabel>Opções de {watchTipoVariante === 'cor' ? 'cores' : 
+                                             watchTipoVariante === 'tamanho' ? 'tamanhos' : 'volumes'}</FormLabel>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {getVariantOptions().map((option) => (
+                                <div
+                                  key={option}
+                                  className={`px-3 py-1 rounded-full text-sm border cursor-pointer transition-colors ${
+                                    form.getValues('variantes')?.includes(option)
+                                      ? 'bg-construPro-blue text-white border-construPro-blue'
+                                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                                  }`}
+                                  onClick={() => {
+                                    const currentVariants = form.getValues('variantes') || [];
+                                    const isSelected = currentVariants.includes(option);
+                                    
+                                    const newVariants = isSelected
+                                      ? currentVariants.filter(v => v !== option)
+                                      : [...currentVariants, option];
+                                    
+                                    form.setValue('variantes', newVariants);
+                                  }}
+                                >
+                                  {option}
+                                </div>
+                              ))}
+                            </div>
+                            
+                            {form.getValues('variantes')?.length === 0 && watchTipoVariante && (
+                              <p className="text-xs text-amber-600 mt-1">
+                                Selecione pelo menos uma opção de variante.
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+            
+            {/* Form actions */}
+            <div className="pt-4 flex flex-col gap-2">
+              <CustomButton 
+                variant="primary" 
+                fullWidth 
+                type="submit"
+                loading={isSubmitting}
+                icon={<Save size={18} />}
+              >
+                {isEditing ? 'Atualizar Produto' : 'Salvar Produto'}
+              </CustomButton>
+              
+              <CustomButton
+                variant="outline"
+                fullWidth
+                type="button"
+                onClick={() => navigate('/vendor/produtos')}
+              >
+                Cancelar
+              </CustomButton>
+            </div>
+          </form>
+        </Form>
       </div>
     </div>
   );
 };
 
-export default ProductFormScreen;
+export default ProdutoFormScreen;
