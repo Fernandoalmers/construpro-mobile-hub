@@ -43,22 +43,11 @@ const ProductItem: React.FC<ProductItemProps> = ({
       <ToggleLeft className="text-gray-500" size={20} />;
   };
 
-  // Extract first image if exists
-  let imagemUrl: string | undefined = undefined;
-  
-  if (typeof produto.imagens === 'string') {
-    try {
-      const parsedImages = JSON.parse(produto.imagens);
-      imagemUrl = Array.isArray(parsedImages) && parsedImages.length > 0 ? parsedImages[0] : undefined;
-    } catch (e) {
-      console.error('Error parsing produto.imagens:', e);
-    }
-  } else if (Array.isArray(produto.imagens) && produto.imagens.length > 0) {
-    imagemUrl = produto.imagens[0];
-  }
+  // Extrair a primeira imagem se existir
+  const imagemUrl = Array.isArray(produto.imagens) && produto.imagens.length > 0 ? produto.imagens[0] : undefined;
 
   return (
-    <Card className="overflow-hidden hover:shadow-md transition-shadow">
+    <Card className="overflow-hidden">
       <CardContent className="p-0">
         <div className="flex items-center p-4">
           {/* Product Image */}
@@ -68,13 +57,9 @@ const ProductItem: React.FC<ProductItemProps> = ({
                 src={imagemUrl} 
                 alt={produto.nome} 
                 className="w-full h-full object-cover"
-                onError={(e) => {
-                  console.error('Error loading image:', imagemUrl);
-                  e.currentTarget.src = 'https://via.placeholder.com/150?text=Sem+Imagem';
-                }}
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400 text-xs">
+              <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400">
                 Sem imagem
               </div>
             )}
@@ -85,10 +70,7 @@ const ProductItem: React.FC<ProductItemProps> = ({
             <div className="flex justify-between items-start">
               <div>
                 <h3 className="font-semibold truncate">{produto.nome}</h3>
-                <p className="text-sm text-gray-500 truncate">{produto.categoria || 'Sem categoria'}</p>
-                {produto.segmento && (
-                  <p className="text-xs text-gray-400">{produto.segmento}</p>
-                )}
+                <p className="text-sm text-gray-500 truncate">{produto.categoria}</p>
               </div>
               <div className="flex flex-col items-end">
                 <p className="font-medium">{formatPrice(produto.preco_normal)}</p>
@@ -98,14 +80,14 @@ const ProductItem: React.FC<ProductItemProps> = ({
             
             <div className="mt-2 flex justify-between items-center">
               <div className="text-sm text-gray-500">
-                Estoque: {produto.estoque || 0}
+                Estoque: {produto.estoque}
               </div>
               
               <div className="flex space-x-1">
                 <Button 
                   variant="ghost" 
                   size="icon"
-                  onClick={() => onToggleStatus(produto.id, produto.status || 'pendente')}
+                  onClick={() => onToggleStatus(produto.id, produto.status)}
                   className="h-8 w-8"
                   title={produto.status === 'aprovado' ? 'Desativar' : 'Ativar'}
                 >

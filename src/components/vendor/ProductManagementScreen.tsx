@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ShoppingBag, Plus } from 'lucide-react';
+import { ArrowLeft, ShoppingBag } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   getVendorProducts, 
@@ -14,7 +14,7 @@ import {
 import { toast } from '@/components/ui/sonner';
 import ProductFilters from './ProductFilters';
 import ProductList from './ProductList';
-import { Button } from '@/components/ui/button';
+import ProductActions from './ProductActions';
 import LoadingState from '../common/LoadingState';
 import { RealtimeChannel } from '@supabase/supabase-js';
 
@@ -24,19 +24,11 @@ const ProductManagementScreen: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
   
-  // Fetch products with improved error handling and logging
-  const { data: products = [], isLoading, error, refetch } = useQuery({
+  // Fetch products
+  const { data: products = [], isLoading, error } = useQuery({
     queryKey: ['vendorProducts'],
     queryFn: async () => {
-      console.log('[ProductManagementScreen] Fetching vendor products');
-      try {
-        const products = await getVendorProducts();
-        console.log(`[ProductManagementScreen] Fetched ${products.length} products:`, products);
-        return products;
-      } catch (err) {
-        console.error('[ProductManagementScreen] Error fetching products:', err);
-        throw err;
-      }
+      return await getVendorProducts();
     },
   });
 
@@ -54,8 +46,6 @@ const ProductManagementScreen: React.FC = () => {
           return;
         }
         
-        console.log('[ProductManagementScreen] Setting up realtime subscription for vendor:', vendorProfile.id);
-        
         // Cancelar assinatura anterior se existir
         if (realtimeChannel) {
           realtimeChannel.unsubscribe();
@@ -63,8 +53,6 @@ const ProductManagementScreen: React.FC = () => {
         
         // Configurar nova assinatura
         const channel = subscribeToVendorProducts(vendorProfile.id, (product, eventType) => {
-          console.log('[ProductManagementScreen] Realtime event:', eventType, product);
-          
           // Revalidar a consulta de produtos para atualizar a UI
           queryClient.invalidateQueries({ queryKey: ['vendorProducts'] });
           
@@ -128,7 +116,7 @@ const ProductManagementScreen: React.FC = () => {
   const filteredProducts = products.filter(produto => {
     const matchesSearch = searchTerm === '' || 
       produto.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      produto.descricao?.toLowerCase().includes(searchTerm.toLowerCase());
+      produto.descricao.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = filterStatus === null || produto.status === filterStatus;
     
@@ -159,10 +147,6 @@ const ProductManagementScreen: React.FC = () => {
     setFilterStatus(null);
   };
   
-  const handleNewProduct = () => {
-    navigate('/vendor/products/new');
-  };
-  
   if (error) {
     toast.error('Erro ao carregar produtos');
     console.error('Error fetching products:', error);
@@ -171,23 +155,12 @@ const ProductManagementScreen: React.FC = () => {
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
       {/* Header */}
-      <div className="bg-construPro-blue p-6 pt-12 flex items-center justify-between">
-        <div className="flex items-center">
-          <button onClick={() => navigate('/vendor')} className="mr-4 text-white">
-            <ArrowLeft size={24} />
-          </button>
-          <ShoppingBag className="text-white mr-2" size={24} />
-          <h1 className="text-xl font-bold text-white">Gerenciar Produtos</h1>
-        </div>
-        <Button 
-          variant="secondary" 
-          size="sm"
-          onClick={handleNewProduct}
-          className="flex items-center gap-1"
-        >
-          <Plus size={16} />
-          Novo Produto
-        </Button>
+      <div className="bg-construPro-blue p-6 pt-12 flex items-center">
+        <button onClick={() => navigate('/vendor')} className="mr-4 text-white">
+          <ArrowLeft size={24} />
+        </button>
+        <ShoppingBag className="text-white mr-2" size={24} />
+        <h1 className="text-xl font-bold text-white">Gerenciar Produtos</h1>
       </div>
       
       {/* Content */}
@@ -199,32 +172,16 @@ const ProductManagementScreen: React.FC = () => {
           setFilterStatus={setFilterStatus}
         />
         
+        <ProductActions />
+        
         {isLoading ? (
           <LoadingState text="Carregando produtos..." />
-        ) : filteredProducts.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-8 text-center">
-            <ShoppingBag className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-lg font-medium">Nenhum produto encontrado</h3>
-            <p className="mt-1 text-gray-500">
-              {products.length === 0 
-                ? "Você ainda não possui produtos cadastrados." 
-                : "Tente ajustar os filtros ou realizar uma busca diferente."}
-            </p>
-            <div className="mt-6 flex justify-center gap-3">
-              {products.length === 0 ? (
-                <Button onClick={handleNewProduct}>Cadastrar Produto</Button>
-              ) : (
-                <Button variant="outline" onClick={handleClearFilters}>Limpar Filtros</Button>
-              )}
-              <Button variant="outline" onClick={() => refetch()}>Atualizar</Button>
-            </div>
-          </div>
         ) : (
           <ProductList
             products={filteredProducts}
             onToggleStatus={handleToggleStatus}
             onDelete={handleDelete}
-            onEdit={(id) => navigate(`/vendor/products/edit/${id}`)}
+            onEdit={(id) => navigate(`/vendor/product-edit/${id}`)}
             onClearFilters={handleClearFilters}
           />
         )}

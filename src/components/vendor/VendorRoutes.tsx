@@ -33,7 +33,6 @@ const VendorRoutes: React.FC = () => {
       <Route path="/points-adjustment" element={<AjustePontosVendorScreen />} />
       <Route path="/settings" element={<ConfiguracoesVendorScreen />} />
       <Route path="/products" element={<ProductManagementScreen />} />
-      <Route path="/produtos" element={<ProductManagementScreen />} /> {/* Add this route for Portuguese URL */}
       <Route path="/products/new" element={<ProdutoFormScreen />} />
       <Route path="/products/edit/:id" element={<ProdutoEditScreen />} />
     </Routes>

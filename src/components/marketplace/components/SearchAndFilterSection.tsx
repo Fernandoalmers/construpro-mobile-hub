@@ -11,14 +11,11 @@ interface SearchAndFilterSectionProps {
   selectedCategories: string[];
   selectedLojas: string[];
   selectedRatings: string[];
-  selectedSegments?: string[];
   allCategories: FilterOption[];
   ratingOptions: FilterOption[];
-  segmentOptions?: FilterOption[];
   onLojaClick: (lojaId: string) => void;
   onCategoryClick: (categoryId: string) => void;
   onRatingClick: (rating: string) => void;
-  onSegmentClick?: (segmentId: string) => void;
   onSearch: (term: string) => void;
   clearFilters: () => void;
   stores: any[];
@@ -56,14 +53,11 @@ const SearchAndFilterSection: React.FC<SearchAndFilterSectionProps> = ({
   selectedCategories,
   selectedLojas,
   selectedRatings,
-  selectedSegments = [],
   allCategories,
   ratingOptions,
-  segmentOptions = [],
   onLojaClick,
   onCategoryClick,
   onRatingClick,
-  onSegmentClick = () => {},
   onSearch,
   clearFilters,
   stores,
@@ -109,16 +103,13 @@ const SearchAndFilterSection: React.FC<SearchAndFilterSectionProps> = ({
       selectedCategories={selectedCategories}
       selectedLojas={selectedLojas}
       selectedRatings={selectedRatings}
-      selectedSegments={selectedSegments}
       allCategories={allCategories}
       ratingOptions={ratingOptions}
-      segmentOptions={segmentOptions}
       onSearchChange={handleSearchInputChange}
       onSearch={handleExplicitSearch}
       onLojaClick={onLojaClick}
       onCategoryClick={onCategoryClick}
       onRatingClick={onRatingClick}
-      onSegmentClick={onSegmentClick}
       clearFilters={clearFilters}
       stores={stores}
     />
