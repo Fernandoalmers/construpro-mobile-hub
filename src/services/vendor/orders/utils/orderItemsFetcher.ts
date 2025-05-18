@@ -44,11 +44,11 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
   }
 };
 
-// Define distinct image types to prevent type recursion
+// Create specialized readonly array types to prevent type recursion
 type StringImageArray = ReadonlyArray<string>;
 type ObjectImageArray = ReadonlyArray<{url: string}>;
 
-// Use a discriminated union for image types
+// Use a discriminated union type to handle different image formats
 export type ProductImageTypes = StringImageArray | ObjectImageArray;
 
 // Define a standalone product type with no circular references
@@ -60,7 +60,7 @@ export interface ProductData {
   imagens: ProductImageTypes | null;
 }
 
-// Process images with explicit return types
+// Image processing function with strict typing
 function processImagens(rawImagens: unknown): ProductImageTypes | null {
   if (!rawImagens) return null;
   
@@ -71,7 +71,7 @@ function processImagens(rawImagens: unknown): ProductImageTypes | null {
   
   // For array input
   if (Array.isArray(rawImagens)) {
-    // Process strings and objects separately
+    // Process strings and objects separately to maintain type safety
     const stringImages: string[] = [];
     const objectImages: {url: string}[] = [];
     
@@ -143,31 +143,31 @@ export interface SimpleOrderItem {
 
 // Create a map of order items with explicit typing
 export const createOrderItemsMap = (
-  orderItemsData: Array<Record<string, any>>, 
+  orderItemsData: Array<Record<string, unknown>>, 
   productMap: Record<string, ProductData>
 ): Record<string, SimpleOrderItem[]> => {
   const orderItemsMap: Record<string, SimpleOrderItem[]> = {};
   
   orderItemsData.forEach(item => {
-    const orderId = item.order_id;
+    const orderId = item.order_id as string;
     if (!orderItemsMap[orderId]) {
       orderItemsMap[orderId] = [];
     }
     
     // Get product data
-    const produto = productMap[item.produto_id] || null;
+    const produto = productMap[(item.produto_id as string)] || null;
     
     // Create order item with explicit properties to avoid circular references
     const orderItem: SimpleOrderItem = {
-      id: item.id,
-      order_id: item.order_id,
-      produto_id: item.produto_id,
-      quantidade: item.quantidade,
-      preco_unitario: item.preco_unitario,
-      subtotal: item.subtotal || 0,
-      total: item.subtotal || (item.quantidade * item.preco_unitario) || 0,
+      id: item.id as string,
+      order_id: item.order_id as string,
+      produto_id: item.produto_id as string,
+      quantidade: item.quantidade as number,
+      preco_unitario: item.preco_unitario as number,
+      subtotal: (item.subtotal as number) || 0,
+      total: (item.subtotal as number) || ((item.quantidade as number) * (item.preco_unitario as number)) || 0,
       produto: produto,
-      created_at: item.created_at
+      created_at: item.created_at as string | undefined
     };
     
     orderItemsMap[orderId].push(orderItem);
@@ -177,7 +177,7 @@ export const createOrderItemsMap = (
 };
 
 // Fetch order items with explicit typing
-export const fetchOrderItemsForProducts = async (productIds: string[]): Promise<Array<Record<string, any>>> => {
+export const fetchOrderItemsForProducts = async (productIds: string[]): Promise<Array<Record<string, unknown>>> => {
   if (!productIds.length) return [];
   
   try {
