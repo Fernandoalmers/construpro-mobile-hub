@@ -156,30 +156,33 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
       const produto = produtos.find(p => p.id === productId);
       
       if (produto) {
+        // Type assertion to handle potential missing segmento property
+        const produtoData = produto as any;
+        
         // Initialize form with product data
         form.reset({
-          nome: produto.nome,
-          descricao: produto.descricao || '',
-          categoria: produto.categoria,
-          segmento: produto.segmento || '', // Safely access segmento with a fallback
+          nome: produtoData.nome,
+          descricao: produtoData.descricao || '',
+          categoria: produtoData.categoria,
+          segmento: produtoData.segmento || '', // Safely access segmento with a fallback
           marca: '',
           tags: [],
           unidadeVenda: 'unidade', // Default to be overwritten
           valorConversao: null,
           controleQuantidade: 'livre',
-          preco: produto.preco,
-          estoque: produto.estoque || 0,
+          preco: produtoData.preco,
+          estoque: produtoData.estoque || 0,
           precoPromocional: null,
-          pontosConsumidor: produto.pontos || 0,
-          pontosProfissional: produto.pontos || 0,
+          pontosConsumidor: produtoData.pontos || 0,
+          pontosProfissional: produtoData.pontos || 0,
           temVariantes: false,
           tipoVariante: '',
           variantes: [],
         });
         
         // Load image
-        if (produto.imagemUrl) {
-          setImages([produto.imagemUrl]);
+        if (produtoData.imagemUrl) {
+          setImages([produtoData.imagemUrl]);
         }
       }
       

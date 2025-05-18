@@ -21,6 +21,8 @@ const ProdutoEditScreen: React.FC = () => {
       
       try {
         const productData = await getVendorProduct(id);
+        console.log("[VendorProducts] getVendorProduct:", productData);
+        
         if (!productData) {
           toast.error("Produto não encontrado", {
             description: "Não foi possível encontrar o produto solicitado"
