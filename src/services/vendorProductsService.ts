@@ -1,9 +1,6 @@
 
 // This file re-exports from the vendor/products module for backward compatibility
 import {
-  VendorProduct,
-  VendorProductInput,
-  ProductImage,
   getVendorProducts,
   getVendorProduct,
   saveVendorProduct,
@@ -18,11 +15,12 @@ import {
   subscribeToAllProducts
 } from './vendor/products';
 
-// Re-export everything
+// Import types separately to use 'export type'
+import type { VendorProduct, VendorProductInput } from './vendor/products/types';
+import type { ProductImage } from './vendor/products/productImages';
+
+// Re-export functions
 export {
-  VendorProduct,
-  VendorProductInput,
-  ProductImage,
   getVendorProducts,
   getVendorProduct,
   saveVendorProduct,
@@ -36,3 +34,6 @@ export {
   subscribeToVendorProducts,
   subscribeToAllProducts
 };
+
+// Re-export types with 'export type'
+export type { VendorProduct, VendorProductInput, ProductImage };

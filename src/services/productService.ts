@@ -144,14 +144,37 @@ export const getProducts = async (filters = {}): Promise<Product[]> => {
       return [];
     }
     
-    // Break the complex type inference chain by creating a new array
+    // Create a new array to avoid deep type inference
     const products: Product[] = [];
     
-    // Use a for loop instead of map to avoid TypeScript inference issues
+    // Use a traditional for loop to avoid TypeScript type inference issues
     for (let i = 0; i < data.length; i++) {
-      // Use unknown as intermediate type to break deep type inference
-      const rawRecord = data[i] as unknown;
-      const record = rawRecord as ProductDatabaseRecord;
+      // Two-step casting to break the deep type inference chain
+      const rawItem = data[i];
+      const record: ProductDatabaseRecord = {
+        id: rawItem.id,
+        nome: rawItem.nome,
+        descricao: rawItem.descricao,
+        preco_normal: rawItem.preco_normal,
+        preco_promocional: rawItem.preco_promocional,
+        preco_anterior: rawItem.preco_anterior,
+        categoria: rawItem.categoria,
+        segmento: rawItem.segmento,
+        segmento_id: rawItem.segmento_id,
+        imagem_url: rawItem.imagem_url,
+        imagens: rawItem.imagens,
+        estoque: rawItem.estoque,
+        pontos_consumidor: rawItem.pontos_consumidor,
+        pontos_profissional: rawItem.pontos_profissional,
+        vendedor_id: rawItem.vendedor_id,
+        status: rawItem.status,
+        codigo_barras: rawItem.codigo_barras,
+        sku: rawItem.sku,
+        created_at: rawItem.created_at,
+        updated_at: rawItem.updated_at,
+        vendedores: rawItem.vendedores
+      };
+      
       products.push(transformToProduct(record));
     }
     
@@ -182,9 +205,30 @@ export const getProductById = async (id: string): Promise<Product | null> => {
     
     if (!data) return null;
     
-    // Break the complex type inference chain by using intermediate unknown type
-    const rawRecord = data as unknown;
-    const record = rawRecord as ProductDatabaseRecord;
+    // Two-step casting to break the deep type inference chain
+    const rawData = data;
+    const record: ProductDatabaseRecord = {
+      id: rawData.id,
+      nome: rawData.nome,
+      descricao: rawData.descricao,
+      preco_normal: rawData.preco_normal,
+      preco_promocional: rawData.preco_promocional,
+      preco_anterior: rawData.preco_anterior,
+      categoria: rawData.categoria,
+      segmento: rawData.segmento,
+      segmento_id: rawData.segmento_id,
+      imagem_url: rawData.imagem_url,
+      imagens: rawData.imagens,
+      estoque: rawData.estoque,
+      pontos_consumidor: rawData.pontos_consumidor,
+      pontos_profissional: rawData.pontos_profissional,
+      vendedor_id: rawData.vendedor_id,
+      status: rawData.status,
+      codigo_barras: rawData.codigo_barras,
+      sku: rawData.sku,
+      vendedores: rawData.vendedores
+    };
+    
     const product = transformToProduct(record);
     
     // Add store information if available
