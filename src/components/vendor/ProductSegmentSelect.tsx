@@ -19,13 +19,15 @@ interface ProductSegmentSelectProps {
   onChange: (value: string) => void;
   error?: string;
   required?: boolean;
+  onSegmentIdChange?: (id: string) => void; // Optional callback to get the segment ID
 }
 
 const ProductSegmentSelect: React.FC<ProductSegmentSelectProps> = ({ 
   value, 
   onChange,
   error,
-  required = false
+  required = false,
+  onSegmentIdChange
 }) => {
   const [segments, setSegments] = useState<Segment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,11 +56,24 @@ const ProductSegmentSelect: React.FC<ProductSegmentSelectProps> = ({
 
     loadSegments();
   }, []);
+  
+  // Handler to update both segment name and optionally send the ID
+  const handleSegmentChange = (segmentName: string) => {
+    onChange(segmentName);
+    
+    // If the callback is provided, find the ID for this segment name
+    if (onSegmentIdChange && segmentName) {
+      const selectedSegment = segments.find(s => s.nome === segmentName);
+      if (selectedSegment) {
+        onSegmentIdChange(selectedSegment.id);
+      }
+    }
+  };
 
   return (
     <div>
       <Select
-        onValueChange={onChange}
+        onValueChange={handleSegmentChange}
         value={value || ''}
         disabled={loading}
       >

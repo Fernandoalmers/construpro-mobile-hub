@@ -40,7 +40,7 @@ const productFormSchema = z.object({
   nome: z.string().min(3, { message: 'O nome deve ter pelo menos 3 caracteres' }),
   descricao: z.string().min(10, { message: 'A descrição deve ter pelo menos 10 caracteres' }),
   categoria: z.string().min(1, { message: 'Selecione uma categoria' }),
-  segmento: z.string().optional(),
+  segmento: z.string().min(1, { message: 'Selecione um segmento' }),
   marca: z.string().optional(),
   tags: z.array(z.string()).optional(),
   
@@ -88,6 +88,7 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [images, setImages] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(isEditing);
+  const [segmentId, setSegmentId] = useState<string | null>(null);
   
   // Form definition
   const form = useForm<ProductFormValues>({
@@ -126,11 +127,11 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
         descricao: initialData.descricao || '',
         categoria: initialData.categoria || '',
         segmento: initialData.segmento || '',
-        marca: '',
-        tags: [],
-        unidadeVenda: 'unidade',
-        valorConversao: null,
-        controleQuantidade: 'livre',
+        marca: initialData.marca || '',
+        tags: initialData.tags || [],
+        unidadeVenda: initialData.unidadeVenda || 'unidade',
+        valorConversao: initialData.valorConversao || null,
+        controleQuantidade: initialData.controleQuantidade || 'livre',
         preco: initialData.preco_normal || 0,
         estoque: initialData.estoque || 0,
         precoPromocional: initialData.preco_promocional || null,
@@ -140,6 +141,11 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
         tipoVariante: '',
         variantes: [],
       });
+      
+      // Set selected tags
+      if (initialData.tags && Array.isArray(initialData.tags)) {
+        setSelectedTags(initialData.tags);
+      }
       
       // Load images
       if (initialData.imagens && Array.isArray(initialData.imagens)) {
@@ -186,6 +192,12 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
     setImages(newImages);
   };
 
+  // Handle segment ID change
+  const handleSegmentIdChange = (id: string) => {
+    console.log("Segment ID changed:", id);
+    setSegmentId(id);
+  };
+
   // Form submission
   const onSubmit = async (values: ProductFormValues) => {
     if (images.length === 0) {
@@ -203,6 +215,7 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
         descricao: values.descricao,
         categoria: values.categoria,
         segmento: values.segmento,
+        segmento_id: segmentId, // Include segment ID if available
         preco_normal: values.preco,
         preco_promocional: values.precoPromocional || null,
         estoque: values.estoque,
@@ -233,7 +246,9 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
       navigate('/vendor/products');
     } catch (error) {
       console.error("Error saving product:", error);
-      toast.error("Erro ao salvar produto");
+      toast.error("Erro ao salvar produto", {
+        description: "Ocorreu um erro ao salvar os dados do produto."
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -362,12 +377,14 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
                         name="segmento"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Segmento</FormLabel>
+                            <FormLabel>Segmento*</FormLabel>
                             <FormControl>
                               <ProductSegmentSelect
                                 value={field.value || ''}
                                 onChange={field.onChange}
                                 error={form.formState.errors.segmento?.message}
+                                required={true}
+                                onSegmentIdChange={handleSegmentIdChange}
                               />
                             </FormControl>
                             <FormMessage />
