@@ -39,32 +39,35 @@ export interface Product {
   stores?: StoreInfo;
 }
 
-// Simple database record interface to ensure type safety
+// Define a separate interface for the vendor data
+interface VendorData {
+  nome_loja?: string;
+  logo_url?: string;
+}
+
+// Define a separate interface for the raw database response
 interface ProductDatabaseRecord {
   id: string;
   nome: string;
   descricao: string;
   preco_normal: number;
-  preco_promocional?: number | null;
-  preco_anterior?: number | null;
+  preco_promocional?: number;
+  preco_anterior?: number;
   categoria: string;
-  segmento?: string | null;
-  segmento_id?: string | null;
-  imagem_url?: string | null;
-  imagens: any;  // Using any here since the data structure varies
+  segmento?: string;
+  segmento_id?: string;
+  imagem_url?: string;
+  imagens: any; // Could be Json, string[], etc.
   estoque: number;
-  pontos_consumidor?: number | null;
-  pontos_profissional?: number | null;
-  vendedor_id?: string | null;
+  pontos_consumidor?: number;
+  pontos_profissional?: number;
+  vendedor_id?: string;
   status: string;
-  codigo_barras?: string | null;
-  sku?: string | null;
+  codigo_barras?: string;
+  sku?: string;
   created_at?: string;
   updated_at?: string;
-  vendedores?: {
-    nome_loja?: string;
-    logo_url?: string;
-  } | null;
+  vendedores?: VendorData | null;
 }
 
 // Transform database record to Product type
@@ -98,20 +101,20 @@ const transformToProduct = (record: ProductDatabaseRecord): Product => {
     nome: record.nome,
     descricao: record.descricao,
     preco_normal: record.preco_normal,
-    preco_promocional: record.preco_promocional || undefined,
-    preco_anterior: record.preco_anterior || undefined,
+    preco_promocional: record.preco_promocional,
+    preco_anterior: record.preco_anterior,
     categoria: record.categoria,
-    segmento: record.segmento || undefined,
-    segmento_id: record.segmento_id || undefined,
-    imagem_url: record.imagem_url || undefined,
+    segmento: record.segmento,
+    segmento_id: record.segmento_id,
+    imagem_url: record.imagem_url,
     imagens: imagens,
     estoque: record.estoque,
     pontos_consumidor: record.pontos_consumidor || 0,
     pontos_profissional: record.pontos_profissional || 0,
-    vendedor_id: record.vendedor_id || undefined,
+    vendedor_id: record.vendedor_id,
     status: record.status,
-    codigo_barras: record.codigo_barras || undefined,
-    sku: record.sku || undefined
+    codigo_barras: record.codigo_barras,
+    sku: record.sku
   };
 
   return product;
@@ -120,13 +123,20 @@ const transformToProduct = (record: ProductDatabaseRecord): Product => {
 // Get all approved products
 export const getProducts = async (filters = {}): Promise<Product[]> => {
   try {
-    // Fix: Use explicit type annotation for the query result to avoid deep type instantiation
-    const { data, error } = await supabase
+    let query = supabase
       .from('produtos')
       .select('*')
       .eq('status', 'aprovado')
-      .order('created_at', { ascending: false })
-      .returns<any[]>(); // Use explicit return type to avoid deep instantiation
+      .order('created_at', { ascending: false });
+    
+    // Apply any additional filters
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) {
+        query = query.eq(key, value);
+      }
+    });
+    
+    const { data, error } = await query;
     
     if (error) {
       console.error('Error fetching products:', error);
@@ -137,37 +147,12 @@ export const getProducts = async (filters = {}): Promise<Product[]> => {
       return [];
     }
     
-    // Create a new array to hold our products
+    // Break the complex type inference chain by creating a new array
     const products: Product[] = [];
     
-    // Use a traditional for loop to avoid complex type inference
-    for (let i = 0; i < data.length; i++) {
-      // Use a type assertion to bypass complex type inference
-      const rawRecord = data[i] as any;
-      
-      // Map the data to our ProductDatabaseRecord type
-      const record: ProductDatabaseRecord = {
-        id: rawRecord.id,
-        nome: rawRecord.nome,
-        descricao: rawRecord.descricao,
-        preco_normal: rawRecord.preco_normal,
-        preco_promocional: rawRecord.preco_promocional,
-        preco_anterior: rawRecord.preco_anterior,
-        categoria: rawRecord.categoria,
-        segmento: rawRecord.segmento,
-        segmento_id: rawRecord.segmento_id,
-        imagem_url: rawRecord.imagem_url,
-        imagens: rawRecord.imagens,
-        estoque: rawRecord.estoque,
-        pontos_consumidor: rawRecord.pontos_consumidor,
-        pontos_profissional: rawRecord.pontos_profissional,
-        vendedor_id: rawRecord.vendedor_id,
-        status: rawRecord.status,
-        codigo_barras: rawRecord.codigo_barras,
-        sku: rawRecord.sku
-      };
-      
-      // Transform the record and add it to our products array
+    for (const item of data) {
+      // Use a simple intermediate type to avoid deep type instantiation
+      const record = item as unknown as ProductDatabaseRecord;
       products.push(transformToProduct(record));
     }
     
@@ -182,7 +167,6 @@ export const getProducts = async (filters = {}): Promise<Product[]> => {
 // Get product by ID
 export const getProductById = async (id: string): Promise<Product | null> => {
   try {
-    // Fix: Use explicit type annotation for the query result
     const { data, error } = await supabase
       .from('produtos')
       .select(`
@@ -190,8 +174,7 @@ export const getProductById = async (id: string): Promise<Product | null> => {
         vendedores:vendedor_id (nome_loja, logo_url)
       `)
       .eq('id', id)
-      .single()
-      .returns<any>(); // Use explicit return type to avoid deep instantiation
+      .single();
     
     if (error) {
       console.error('Error fetching product:', error);
@@ -200,40 +183,16 @@ export const getProductById = async (id: string): Promise<Product | null> => {
     
     if (!data) return null;
     
-    // Use a simple type assertion to avoid complex type inference
-    const rawRecord = data as any;
-    
-    // Map the data to our ProductDatabaseRecord type
-    const record: ProductDatabaseRecord = {
-      id: rawRecord.id,
-      nome: rawRecord.nome,
-      descricao: rawRecord.descricao,
-      preco_normal: rawRecord.preco_normal,
-      preco_promocional: rawRecord.preco_promocional,
-      preco_anterior: rawRecord.preco_anterior,
-      categoria: rawRecord.categoria,
-      segmento: rawRecord.segmento,
-      segmento_id: rawRecord.segmento_id,
-      imagem_url: rawRecord.imagem_url,
-      imagens: rawRecord.imagens,
-      estoque: rawRecord.estoque,
-      pontos_consumidor: rawRecord.pontos_consumidor,
-      pontos_profissional: rawRecord.pontos_profissional,
-      vendedor_id: rawRecord.vendedor_id,
-      status: rawRecord.status,
-      codigo_barras: rawRecord.codigo_barras,
-      sku: rawRecord.sku,
-      vendedores: rawRecord.vendedores
-    };
-    
+    // Break the complex type inference chain by using an intermediate type
+    const record = data as unknown as ProductDatabaseRecord;
     const product = transformToProduct(record);
     
     // Add store information if available
-    if (rawRecord.vendedores && typeof rawRecord.vendedores === 'object' && rawRecord.vendedores !== null) {
-      const vendedorData = rawRecord.vendedores;
+    if (data.vendedores && typeof data.vendedores === 'object' && data.vendedores !== null) {
+      const vendedorData = data.vendedores as VendorData;
       
       product.stores = {
-        id: rawRecord.vendedor_id || '',
+        id: data.vendedor_id || '',
         nome: vendedorData.nome_loja || '',
         nome_loja: vendedorData.nome_loja || '',
         logo_url: vendedorData.logo_url
