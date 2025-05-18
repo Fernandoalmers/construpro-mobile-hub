@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -9,13 +8,12 @@ import { getVendorCustomers, searchCustomers, VendorCustomer } from '@/services/
 import LoadingState from '../common/LoadingState';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { useToast } from '@/components/ui/sonner';
+import { toast } from '@/components/ui/sonner';
 import VendorPagination from './common/VendorPagination';
 import { usePagination } from '@/hooks/vendor/usePagination';
 
 const EnhancedCustomersScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('all');
 
