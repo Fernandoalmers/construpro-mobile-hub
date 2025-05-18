@@ -1,7 +1,5 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
-import { getProductSegments } from '@/services/admin/productSegmentsService';
 
 export interface MarketplaceProduct {
   id: string;
@@ -26,9 +24,6 @@ export interface MarketplaceProduct {
  */
 export const getMarketplaceProducts = async (categoria?: string): Promise<MarketplaceProduct[]> => {
   try {
-    // Get product segments for reference
-    const segments = await getProductSegments();
-    
     // Build base query
     let query = supabase
       .from('produtos')
@@ -65,17 +60,6 @@ export const getMarketplaceProducts = async (categoria?: string): Promise<Market
         imagemPrincipal = imagensArray[0];
       }
       
-      // If segmento_id is null but segmento name exists, try to find matching segment ID
-      let segmento_id = item.segmento_id;
-      if (!segmento_id && item.segmento) {
-        const matchingSegment = segments.find(
-          s => s.nome.toLowerCase() === item.segmento?.toLowerCase()
-        );
-        if (matchingSegment) {
-          segmento_id = matchingSegment.id;
-        }
-      }
-      
       return {
         id: item.id,
         nome: item.nome,
@@ -85,7 +69,7 @@ export const getMarketplaceProducts = async (categoria?: string): Promise<Market
         pontos_consumidor: item.pontos_consumidor || 0,
         categoria: item.categoria,
         segmento: item.segmento,
-        segmento_id: segmento_id,
+        segmento_id: item.segmento_id,
         imagens: imagensArray,
         imagemPrincipal,
         estoque: item.estoque,
@@ -106,9 +90,6 @@ export const getMarketplaceProducts = async (categoria?: string): Promise<Market
  */
 export const getMarketplaceProductById = async (id: string): Promise<MarketplaceProduct | null> => {
   try {
-    // Get product segments for reference
-    const segments = await getProductSegments();
-    
     const { data, error } = await supabase
       .from('produtos')
       .select(`
@@ -137,17 +118,6 @@ export const getMarketplaceProductById = async (id: string): Promise<Marketplace
       imagemPrincipal = imagensArray[0];
     }
     
-    // If segmento_id is null but segmento name exists, try to find matching segment ID
-    let segmento_id = data.segmento_id;
-    if (!segmento_id && data.segmento) {
-      const matchingSegment = segments.find(
-        s => s.nome.toLowerCase() === data.segmento?.toLowerCase()
-      );
-      if (matchingSegment) {
-        segmento_id = matchingSegment.id;
-      }
-    }
-    
     return {
       id: data.id,
       nome: data.nome,
@@ -157,7 +127,7 @@ export const getMarketplaceProductById = async (id: string): Promise<Marketplace
       pontos_consumidor: data.pontos_consumidor || 0,
       categoria: data.categoria,
       segmento: data.segmento,
-      segmento_id: segmento_id,
+      segmento_id: data.segmento_id,
       imagens: imagensArray,
       imagemPrincipal,
       estoque: data.estoque,

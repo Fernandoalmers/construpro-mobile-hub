@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useProductFilter } from '@/hooks/use-product-filter';
@@ -80,10 +81,9 @@ const MarketplaceScreen: React.FC = () => {
   
   const { term, setTerm, handleSubmit } = useProductSearch(fetchProducts);
 
-  // Handle segment selection with enhanced logging
+  // Handle segment selection with ID
   const handleSegmentClick = (segmentId: string) => {
-    console.log('[MarketplaceScreen] Segment clicked:', segmentId);
-    console.log('[MarketplaceScreen] Products before filtering:', products.length);
+    console.log('Segment clicked:', segmentId);
     
     // Toggle segment selection
     const newSegmentId = segmentId === 'all' ? null : 
@@ -94,17 +94,6 @@ const MarketplaceScreen: React.FC = () => {
     const newSearchParams = new URLSearchParams(searchParams);
     if (newSegmentId) {
       newSearchParams.set('segmento_id', newSegmentId);
-      
-      // Debug logging
-      const filteredCount = products.filter(p => 
-        p.segmento_id === newSegmentId || 
-        (p.categoria && p.categoria.toLowerCase().includes('material'))
-      ).length;
-      console.log('[MarketplaceScreen] Expected products after filtering:', filteredCount);
-      console.log('[MarketplaceScreen] Products with matching segmento_id:', 
-                 products.filter(p => p.segmento_id === newSegmentId).length);
-      console.log('[MarketplaceScreen] Products with material in category:', 
-                 products.filter(p => p.categoria && p.categoria.toLowerCase().includes('material')).length);
     } else {
       newSearchParams.delete('segmento_id');
     }
@@ -158,24 +147,6 @@ const MarketplaceScreen: React.FC = () => {
       setTerm(searchQuery);
     }
   }, [searchQuery]);
-
-  // Add debug logging when products array changes
-  useEffect(() => {
-    if (selectedSegmentId) {
-      console.log(`[MarketplaceScreen] Products with segmento_id=${selectedSegmentId}:`, 
-                 products.filter(p => p.segmento_id === selectedSegmentId).length);
-      console.log('[MarketplaceScreen] Filtered products count:', filteredProdutos.length);
-      
-      // Log the segmento data for each product
-      console.log('[MarketplaceScreen] Product segment data:', products.map(p => ({
-        id: p.id,
-        nome: p.nome,
-        segmento_id: p.segmento_id,
-        segmento: p.segmento,
-        categoria: p.categoria
-      })));
-    }
-  }, [products, selectedSegmentId, filteredProdutos]);
 
   // Current category name for display
   const currentCategoryName = selectedCategories.length === 1 ? 

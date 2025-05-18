@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import { getProducts } from '@/services/productService';
 import { getStores, Store } from '@/services/marketplace/marketplaceService';
 import { toast } from '@/components/ui/sonner';
-import { getProductSegments } from '@/services/admin/productSegmentsService';
 
 export interface MarketplaceData {
   products: any[];
@@ -21,21 +20,6 @@ export function useMarketplaceData(selectedSegmentId: string | null): Marketplac
   const [products, setProducts] = useState<any[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
   const [storesError, setStoresError] = useState<string | null>(null);
-  const [segments, setSegments] = useState<{id: string, nome: string}[]>([]);
-  
-  // Fetch segments on initial load
-  useEffect(() => {
-    const loadSegments = async () => {
-      try {
-        const segmentsData = await getProductSegments();
-        setSegments(segmentsData);
-      } catch (error) {
-        console.error('Error loading segments:', error);
-      }
-    };
-    
-    loadSegments();
-  }, []);
   
   useEffect(() => {
     const fetchData = async () => {
@@ -66,23 +50,9 @@ export function useMarketplaceData(selectedSegmentId: string | null): Marketplac
     fetchData();
   }, []);
   
-  // Enhanced product filtering based on selected segment ID
+  // Filtered products based on selected segment ID
   const filteredProducts = selectedSegmentId && selectedSegmentId !== 'all'
-    ? products.filter(p => {
-        // Find the segment name corresponding to the selected ID
-        const selectedSegment = segments.find(s => s.id === selectedSegmentId);
-        const selectedSegmentName = selectedSegment?.nome;
-        
-        // Match by either segmento_id (primary) or segmento name (fallback)
-        return (
-          p.segmento_id === selectedSegmentId || 
-          (p.segmento && selectedSegmentName && 
-           p.segmento.toLowerCase() === selectedSegmentName.toLowerCase()) ||
-          // Additional fallback for materials category when "Materiais de Construção" segment is selected
-          (selectedSegmentName === "Materiais de Construção" && 
-           p.categoria && p.categoria.toLowerCase().includes("material"))
-        );
-      })
+    ? products.filter(p => p.segmento_id === selectedSegmentId) 
     : products;
   
   return {
