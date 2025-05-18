@@ -44,12 +44,10 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
   }
 };
 
-// Define immutable array types to prevent recursion
-type StringArrayReadOnly = ReadonlyArray<string>;
-type ObjectArrayReadOnly = ReadonlyArray<{url: string}>;
-
-// Use explicit union type with no recursive references
-export type ProductImageType = StringArrayReadOnly | ObjectArrayReadOnly | null;
+// Define strict literal types to prevent any potential recursion issues
+export type StringImageArray = readonly string[];
+export type ObjectImageArray = readonly {url: string}[];
+export type ProductImageType = StringImageArray | ObjectImageArray | null;
 
 // Define a standalone product type with no circular references
 export interface ProductData {
@@ -66,7 +64,7 @@ function processImagens(rawImagens: unknown): ProductImageType {
   
   // For string input
   if (typeof rawImagens === 'string') {
-    return [rawImagens] as StringArrayReadOnly;
+    return [rawImagens] as StringImageArray;
   }
   
   // For array input
@@ -85,12 +83,12 @@ function processImagens(rawImagens: unknown): ProductImageType {
     
     // Return the appropriate type based on content
     if (stringImages.length > 0 && objectImages.length === 0) {
-      return stringImages as StringArrayReadOnly;
+      return stringImages as StringImageArray;
     } else if (objectImages.length > 0 && stringImages.length === 0) {
-      return objectImages as ObjectArrayReadOnly;
+      return objectImages as ObjectImageArray;
     } else if (stringImages.length > 0) {
       // If mixed, prefer string format for consistency
-      return [...stringImages, ...objectImages.map(obj => obj.url)] as StringArrayReadOnly;
+      return [...stringImages, ...objectImages.map(obj => obj.url)] as StringImageArray;
     }
   }
   
