@@ -143,16 +143,17 @@ export const getProducts = async (filters = {}): Promise<Product[]> => {
       throw error;
     }
     
-    // Transform each record to ensure type compatibility
-    // Create a properly typed array without complex type inference
+    if (!data || data.length === 0) {
+      return [];
+    }
+    
+    // Break the complex type inference chain by creating a new array
     const products: Product[] = [];
     
-    if (data && data.length > 0) {
-      for (const item of data) {
-        // Simple two-step type assertion to avoid deep instantiation issues
-        const record = item as any;
-        products.push(transformToProduct(record));
-      }
+    for (const item of data) {
+      // Use a simple intermediate type to avoid deep type instantiation
+      const record = item as unknown as ProductDatabaseRecord;
+      products.push(transformToProduct(record));
     }
     
     return products;
@@ -182,9 +183,8 @@ export const getProductById = async (id: string): Promise<Product | null> => {
     
     if (!data) return null;
     
-    // Transform the record to ensure type compatibility
-    // Simple two-step type assertion to avoid deep instantiation issues
-    const record = data as any;
+    // Break the complex type inference chain by using an intermediate type
+    const record = data as unknown as ProductDatabaseRecord;
     const product = transformToProduct(record);
     
     // Add store information if available
