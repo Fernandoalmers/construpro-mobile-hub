@@ -44,10 +44,14 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
   }
 };
 
-// Define proper image types to avoid mixing
-type ProductImageTypes = string[] | { url: string }[];
+// Define distinct image types to prevent type recursion
+type StringImageArray = ReadonlyArray<string>;
+type ObjectImageArray = ReadonlyArray<{url: string}>;
 
-// Define a simplified product type without circular references
+// Use a discriminated union for image types
+export type ProductImageTypes = StringImageArray | ObjectImageArray;
+
+// Define a standalone product type with no circular references
 export interface ProductData {
   id: string;
   nome: string;
@@ -56,44 +60,44 @@ export interface ProductData {
   imagens: ProductImageTypes | null;
 }
 
-// Process images from various possible formats with correct typing
-function processImagens(rawImagens: any): ProductImageTypes | null {
+// Process images with explicit return types
+function processImagens(rawImagens: unknown): ProductImageTypes | null {
   if (!rawImagens) return null;
   
   // For string input
   if (typeof rawImagens === 'string') {
-    return [rawImagens];
+    return [rawImagens] as StringImageArray;
   }
   
   // For array input
   if (Array.isArray(rawImagens)) {
-    // Create separate arrays for strings and objects
+    // Process strings and objects separately
     const stringImages: string[] = [];
-    const objectImages: { url: string }[] = [];
+    const objectImages: {url: string}[] = [];
     
     rawImagens.forEach((img: unknown) => {
       if (typeof img === 'string') {
         stringImages.push(img);
-      } else if (typeof img === 'object' && img !== null && 'url' in img) {
-        objectImages.push(img as { url: string });
+      } else if (typeof img === 'object' && img !== null && 'url' in img && typeof img.url === 'string') {
+        objectImages.push({url: img.url});
       }
     });
     
     // Return the appropriate type based on content
     if (stringImages.length > 0 && objectImages.length === 0) {
-      return stringImages;
+      return stringImages as StringImageArray;
     } else if (objectImages.length > 0 && stringImages.length === 0) {
-      return objectImages;
-    } else if (stringImages.length > 0 || objectImages.length > 0) {
+      return objectImages as ObjectImageArray;
+    } else if (stringImages.length > 0) {
       // If mixed, prefer string format for consistency
-      return [...stringImages, ...objectImages.map(obj => obj.url)];
+      return [...stringImages, ...objectImages.map(obj => obj.url)] as StringImageArray;
     }
   }
   
   return null;
 }
 
-// Fetch product data for a list of product IDs
+// Fetch product data with explicit typing
 export const fetchProductsForItems = async (productIds: string[]): Promise<Record<string, ProductData>> => {
   if (!productIds.length) return {};
   
@@ -124,8 +128,8 @@ export const fetchProductsForItems = async (productIds: string[]): Promise<Recor
   }
 };
 
-// Create a simplified order item type to avoid circular references
-export type SimpleOrderItem = {
+// Completely standalone order item type with no references that could cause circular dependencies
+export interface SimpleOrderItem {
   id: string;
   order_id: string;
   produto_id: string;
@@ -135,18 +139,19 @@ export type SimpleOrderItem = {
   total: number;
   created_at?: string;
   produto?: ProductData | null;
-};
+}
 
-// Process order items to create a map keyed by order_id
+// Create a map of order items with explicit typing
 export const createOrderItemsMap = (
-  orderItemsData: any[], 
+  orderItemsData: Array<Record<string, any>>, 
   productMap: Record<string, ProductData>
 ): Record<string, SimpleOrderItem[]> => {
   const orderItemsMap: Record<string, SimpleOrderItem[]> = {};
   
   orderItemsData.forEach(item => {
-    if (!orderItemsMap[item.order_id]) {
-      orderItemsMap[item.order_id] = [];
+    const orderId = item.order_id;
+    if (!orderItemsMap[orderId]) {
+      orderItemsMap[orderId] = [];
     }
     
     // Get product data
@@ -165,14 +170,14 @@ export const createOrderItemsMap = (
       created_at: item.created_at
     };
     
-    orderItemsMap[item.order_id].push(orderItem);
+    orderItemsMap[orderId].push(orderItem);
   });
   
   return orderItemsMap;
 };
 
-// Fetch order items for a list of product IDs
-export const fetchOrderItemsForProducts = async (productIds: string[]): Promise<any[]> => {
+// Fetch order items with explicit typing
+export const fetchOrderItemsForProducts = async (productIds: string[]): Promise<Array<Record<string, any>>> => {
   if (!productIds.length) return [];
   
   try {
