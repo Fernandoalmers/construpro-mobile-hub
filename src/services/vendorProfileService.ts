@@ -266,3 +266,57 @@ export const uploadVendorBanner = async (file: File): Promise<string | null> => 
     return null;
   }
 };
+
+// Add a new function to update user profile to lojista type if needed
+export const ensureVendorProfileRole = async (): Promise<boolean> => {
+  try {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
+      console.error('No authenticated user found');
+      return false;
+    }
+    
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('papel, tipo_perfil')
+      .eq('id', userData.user.id)
+      .maybeSingle();
+      
+    if (profileData) {
+      // Check if profile needs to be updated
+      if (profileData.tipo_perfil !== 'lojista' || profileData.papel !== 'lojista') {
+        console.log('Updating user profile to lojista role...');
+        
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({
+            papel: 'lojista',
+            tipo_perfil: 'lojista'
+          })
+          .eq('id', userData.user.id);
+          
+        if (updateError) {
+          console.error('Failed to update user profile:', updateError);
+          return false;
+        }
+        
+        // Also update user metadata
+        await supabase.auth.updateUser({
+          data: {
+            papel: 'lojista',
+            tipo_perfil: 'lojista'
+          }
+        });
+        
+        return true;
+      } else {
+        return true; // Already has correct role
+      }
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('Error in ensureVendorProfileRole:', error);
+    return false;
+  }
+};

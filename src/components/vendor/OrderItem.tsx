@@ -28,7 +28,8 @@ const OrderItem: React.FC<OrderItemProps> = ({ order, onViewDetails }) => {
     }
   };
 
-  const formatCurrency = (value: number) => {
+  const formatCurrency = (value: number | undefined | null) => {
+    if (value === undefined || value === null) return "R$ 0,00";
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
@@ -58,13 +59,18 @@ const OrderItem: React.FC<OrderItemProps> = ({ order, onViewDetails }) => {
     }
   };
 
+  const getOrderId = () => {
+    if (!order.id) return 'Sem ID';
+    return order.id.substring(0, 8);
+  };
+
   return (
     <Card className="overflow-hidden">
       <CardContent className="p-4">
         <div className="flex justify-between items-start">
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-medium">Pedido #{order.id.substring(0, 8)}</h3>
+              <h3 className="font-medium">Pedido #{getOrderId()}</h3>
               {getStatusBadge()}
             </div>
             <p className="text-sm text-gray-500 mt-1">
@@ -73,7 +79,7 @@ const OrderItem: React.FC<OrderItemProps> = ({ order, onViewDetails }) => {
           </div>
           <div className="text-right">
             <p className="font-medium text-lg">
-              {formatCurrency(Number(order.valor_total) || 0)}
+              {formatCurrency(Number(order.valor_total))}
             </p>
             <p className="text-sm">{order.cliente?.nome || 'Cliente'}</p>
           </div>

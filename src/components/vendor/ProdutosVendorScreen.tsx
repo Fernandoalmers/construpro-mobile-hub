@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search, RefreshCw } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { ArrowLeft, Search, RefreshCw, AlertCircle } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getVendorOrders, VendorOrder } from '@/services/vendor/orders';
+import { ensureVendorProfileRole } from '@/services/vendorProfileService';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import LoadingState from '../common/LoadingState';
 import ListEmptyState from '../common/ListEmptyState';
@@ -15,8 +16,25 @@ import { toast } from '@/components/ui/sonner';
 
 const ProdutosVendorScreen: React.FC = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
+  const [profileRoleFixed, setProfileRoleFixed] = useState<boolean | null>(null);
+  
+  // Check and fix profile role if needed
+  useEffect(() => {
+    const fixProfileRole = async () => {
+      const updated = await ensureVendorProfileRole();
+      setProfileRoleFixed(updated);
+      if (updated) {
+        toast.success('Perfil de vendedor configurado com sucesso');
+        // Invalidate queries to refresh data
+        queryClient.invalidateQueries({ queryKey: ['vendorOrders'] });
+      }
+    };
+    
+    fixProfileRole();
+  }, [queryClient]);
   
   // Fetch orders with a shorter staleTime to ensure fresher data
   const { 
@@ -29,14 +47,15 @@ const ProdutosVendorScreen: React.FC = () => {
     queryKey: ['vendorOrders'],
     queryFn: getVendorOrders,
     staleTime: 1 * 60 * 1000, // 1 minute
+    retry: 2
   });
   
   console.log('Orders loaded:', orders?.length || 0);
 
-  // Force refresh whenever the component mounts
+  // Force refresh whenever the component mounts or profile role is fixed
   useEffect(() => {
     refetch();
-  }, [refetch]);
+  }, [refetch, profileRoleFixed]);
   
   const handleRefresh = () => {
     toast.info('Atualizando lista de pedidos...');
@@ -80,7 +99,13 @@ const ProdutosVendorScreen: React.FC = () => {
           <h1 className="text-xl font-bold">Pedidos</h1>
         </div>
         <div className="p-6 flex flex-col items-center justify-center">
-          <p className="text-red-500 mb-4">Erro ao carregar pedidos</p>
+          <div className="bg-red-50 border border-red-200 p-4 rounded-md mb-4 flex items-start">
+            <AlertCircle className="text-red-500 mr-2 flex-shrink-0 mt-1" size={20} />
+            <div>
+              <p className="text-red-700 font-medium">Erro ao carregar pedidos</p>
+              <p className="text-red-600 text-sm mt-1">Verifique suas permissões e tente novamente</p>
+            </div>
+          </div>
           <Button 
             className="px-4 py-2 bg-construPro-blue text-white rounded"
             onClick={() => refetch()}
