@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 
@@ -16,6 +15,8 @@ export interface MarketplaceProduct {
   vendedor_id: string;
   vendedor_nome: string;
   created_at?: string;
+  segmento?: string;
+  segmento_id?: string;
 }
 
 /**
@@ -67,6 +68,8 @@ export const getMarketplaceProducts = async (categoria?: string): Promise<Market
         preco_promocional: item.preco_promocional,
         pontos_consumidor: item.pontos_consumidor || 0,
         categoria: item.categoria,
+        segmento: item.segmento,
+        segmento_id: item.segmento_id,
         imagens: imagensArray,
         imagemPrincipal,
         estoque: item.estoque,
@@ -123,6 +126,8 @@ export const getMarketplaceProductById = async (id: string): Promise<Marketplace
       preco_promocional: data.preco_promocional,
       pontos_consumidor: data.pontos_consumidor || 0,
       categoria: data.categoria,
+      segmento: data.segmento,
+      segmento_id: data.segmento_id,
       imagens: imagensArray,
       imagemPrincipal,
       estoque: data.estoque,

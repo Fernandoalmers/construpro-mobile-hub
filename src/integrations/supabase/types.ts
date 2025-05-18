@@ -734,6 +734,7 @@ export type Database = {
           preco_normal: number
           preco_promocional: number | null
           segmento: string | null
+          segmento_id: string | null
           sku: string | null
           status: string
           updated_at: string | null
@@ -753,6 +754,7 @@ export type Database = {
           preco_normal: number
           preco_promocional?: number | null
           segmento?: string | null
+          segmento_id?: string | null
           sku?: string | null
           status?: string
           updated_at?: string | null
@@ -772,6 +774,7 @@ export type Database = {
           preco_normal?: number
           preco_promocional?: number | null
           segmento?: string | null
+          segmento_id?: string | null
           sku?: string | null
           status?: string
           updated_at?: string | null

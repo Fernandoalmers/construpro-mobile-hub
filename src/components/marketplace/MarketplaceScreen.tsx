@@ -21,16 +21,16 @@ const MarketplaceScreen: React.FC = () => {
   const searchParams = new URLSearchParams(location.search);
   const categoryParam = searchParams.get('categoria');
   const searchQuery = searchParams.get('search');
-  const segmentParam = searchParams.get('segmento');
+  const segmentIdParam = searchParams.get('segmento_id');
   
   const initialCategories = categoryParam ? [categoryParam] : [];
   
-  // State for segment selection - moved above useMarketplaceData
-  const [selectedSegment, setSelectedSegment] = useState<string | null>(segmentParam);
+  // State for segment selection - using segmento_id now
+  const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(segmentIdParam);
   
   // Use our custom hooks
   const { hideHeader } = useScrollBehavior();
-  const { products, stores, isLoading, storesError } = useMarketplaceData(selectedSegment);
+  const { products, stores, isLoading, storesError } = useMarketplaceData(selectedSegmentId);
   
   // Extract all categories from products
   const categories = React.useMemo(() => {
@@ -81,18 +81,21 @@ const MarketplaceScreen: React.FC = () => {
   
   const { term, setTerm, handleSubmit } = useProductSearch(fetchProducts);
 
-  // Handle segment selection
+  // Handle segment selection with ID
   const handleSegmentClick = (segmentId: string) => {
+    console.log('Segment clicked:', segmentId);
+    
     // Toggle segment selection
-    const newSegment = selectedSegment === segmentId ? null : segmentId;
-    setSelectedSegment(newSegment);
+    const newSegmentId = segmentId === 'all' ? null : 
+                        (selectedSegmentId === segmentId ? null : segmentId);
+    setSelectedSegmentId(newSegmentId);
     
     // Update URL
     const newSearchParams = new URLSearchParams(searchParams);
-    if (newSegment) {
-      newSearchParams.set('segmento', newSegment);
+    if (newSegmentId) {
+      newSearchParams.set('segmento_id', newSegmentId);
     } else {
-      newSearchParams.delete('segmento');
+      newSearchParams.delete('segmento_id');
     }
     navigate(`${location.pathname}?${newSearchParams.toString()}`, { replace: true });
     
@@ -148,7 +151,7 @@ const MarketplaceScreen: React.FC = () => {
   // Current category name for display
   const currentCategoryName = selectedCategories.length === 1 ? 
     categories.find(cat => cat.id === selectedCategories[0])?.label : 
-    selectedSegment ? 
+    selectedSegmentId ? 
       "Produtos no segmento selecionado" : 
       "Todos os Produtos";
 
@@ -175,7 +178,7 @@ const MarketplaceScreen: React.FC = () => {
       
       {/* Segment Cards */}
       <SegmentCardsHeader 
-        selectedSegment={selectedSegment} 
+        selectedSegment={selectedSegmentId} 
         onSegmentClick={handleSegmentClick}
       />
       

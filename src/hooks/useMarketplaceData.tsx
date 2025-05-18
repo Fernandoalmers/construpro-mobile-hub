@@ -15,7 +15,7 @@ export interface MarketplaceData {
  * Custom hook for fetching marketplace data
  * @returns Products and stores data, loading states and error states
  */
-export function useMarketplaceData(selectedSegment: string | null): MarketplaceData {
+export function useMarketplaceData(selectedSegmentId: string | null): MarketplaceData {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [products, setProducts] = useState<any[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
@@ -50,9 +50,9 @@ export function useMarketplaceData(selectedSegment: string | null): MarketplaceD
     fetchData();
   }, []);
   
-  // Filtered products based on selected segment
-  const filteredProducts = selectedSegment 
-    ? products.filter(p => p.segmento === selectedSegment) 
+  // Filtered products based on selected segment ID
+  const filteredProducts = selectedSegmentId && selectedSegmentId !== 'all'
+    ? products.filter(p => p.segmento_id === selectedSegmentId) 
     : products;
   
   return {
