@@ -89,6 +89,7 @@ export interface AdminReward {
   categoria: string;
   status: string;
   estoque: number | null;
+  prazo_entrega?: string;
   created_at: string;
   updated_at: string;
 }

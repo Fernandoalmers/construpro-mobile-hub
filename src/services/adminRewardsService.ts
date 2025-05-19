@@ -50,6 +50,7 @@ export const fetchRewards = async (): Promise<AdminReward[]> => {
       categoria: item.categoria || 'Resgate',
       status: item.status || 'pendente',
       estoque: item.estoque || null,
+      prazo_entrega: item.prazo_entrega || '7-10 dias úteis',
       created_at: item.created_at,
       updated_at: item.updated_at || item.created_at
     }));
@@ -95,6 +96,7 @@ export const createReward = async (rewardData: Omit<AdminReward, 'id' | 'created
         imagem_url: rewardData.imagem_url || 'https://images.unsplash.com/photo-1618160702438-9b02ab6515c9?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&h=500&q=80',
         status: 'ativo', // Default to active so it shows immediately
         estoque: rewardData.estoque,
+        prazo_entrega: rewardData.prazo_entrega,
         categoria: rewardData.categoria,
         cliente_id: user.id  // Very important: this ensures RLS policies are satisfied
       })
@@ -121,6 +123,7 @@ export const createReward = async (rewardData: Omit<AdminReward, 'id' | 'created
       categoria: data.categoria || 'Resgate',
       status: data.status,
       estoque: data.estoque,
+      prazo_entrega: data.prazo_entrega || '7-10 dias úteis',
       created_at: data.created_at,
       updated_at: data.updated_at || data.created_at
     };
@@ -164,6 +167,7 @@ export const updateReward = async (rewardId: string, rewardData: Partial<AdminRe
         imagem_url: rewardData.imagem_url,
         status: rewardData.status,
         estoque: rewardData.estoque,
+        prazo_entrega: rewardData.prazo_entrega,
         categoria: rewardData.categoria,
         cliente_id: user.id // Ensure cliente_id is set for RLS policy
       })
@@ -189,6 +193,7 @@ export const updateReward = async (rewardId: string, rewardData: Partial<AdminRe
       categoria: data.categoria || 'Resgate',
       status: data.status,
       estoque: data.estoque,
+      prazo_entrega: data.prazo_entrega || '7-10 dias úteis',
       created_at: data.created_at,
       updated_at: data.updated_at || data.created_at
     };

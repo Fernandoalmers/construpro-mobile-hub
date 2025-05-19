@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { 
@@ -45,6 +46,7 @@ const RewardForm: React.FC<RewardFormProps> = ({
       categoria: initialData?.categoria || 'Resgate',
       imagem_url: initialData?.imagem_url || '',
       estoque: initialData?.estoque || null,
+      prazo_entrega: initialData?.prazo_entrega || '7-10 dias úteis',
       status: initialData?.status || 'ativo' // Default to active
     }
   });
@@ -124,6 +126,7 @@ const RewardForm: React.FC<RewardFormProps> = ({
           categoria: data.categoria,
           imagem_url: data.imagem_url,
           estoque: data.estoque,
+          prazo_entrega: data.prazo_entrega,
           status: data.status || 'ativo' // Default to active if not specified
         });
         
@@ -141,6 +144,7 @@ const RewardForm: React.FC<RewardFormProps> = ({
           categoria: data.categoria,
           imagem_url: data.imagem_url,
           estoque: data.estoque,
+          prazo_entrega: data.prazo_entrega,
           status: data.status
         });
         
@@ -288,6 +292,23 @@ const RewardForm: React.FC<RewardFormProps> = ({
             )}
           />
         </div>
+
+        <FormField
+          control={form.control}
+          name="prazo_entrega"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Prazo de Entrega</FormLabel>
+              <FormControl>
+                <CustomInput 
+                  placeholder="Ex: 7-10 dias úteis" 
+                  {...field} 
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <FormField
           control={form.control}

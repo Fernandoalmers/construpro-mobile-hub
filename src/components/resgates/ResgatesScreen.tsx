@@ -1,122 +1,178 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import FilterChips from '../common/FilterChips';
-import CustomInput from '../common/CustomInput';
-import ListEmptyState from '../common/ListEmptyState';
-import { Search, Gift } from 'lucide-react';
+import { ArrowLeft, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { supabase } from '@/integrations/supabase/client';
+import LoadingState from '@/components/common/LoadingState';
 import ResgateCard from './ResgateCard';
 import { useAuth } from '@/context/AuthContext';
-import { useRewardsData } from '@/hooks/useRewardsData';
-import LoadingState from '../common/LoadingState';
-import ErrorState from '../common/ErrorState';
+
+interface Resgate {
+  id: string;
+  item: string;
+  pontos: number;
+  imagem_url: string;
+  categoria: string;
+  status: string;
+  estoque: number | null;
+}
 
 const ResgatesScreen: React.FC = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
+  const [resgates, setResgates] = useState<Resgate[]>([]);
+  const [filteredResgates, setFilteredResgates] = useState<Resgate[]>([]);
+  const [categorias, setCategorias] = useState<string[]>([]);
+  const [selectedCategoria, setSelectedCategoria] = useState<string>('Todos');
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   
-  // Use our hook to fetch rewards data
-  const { rewards, categories, isLoading, error, refetch } = useRewardsData({
-    search: searchTerm,
-    categories: selectedCategories,
-    userPointsAvailable: profile?.saldo_pontos
-  });
-  
-  // Get user's points balance
-  const saldoPontos = profile?.saldo_pontos || 0;
-  
-  // Format categories for the filter chips
-  const categoriaItems = categories.map(cat => ({ id: cat, label: cat }));
-
-  if (isLoading) {
-    return <LoadingState text="Carregando recompensas..." />;
-  }
-
-  if (error) {
-    return (
-      <ErrorState
-        title="Erro ao carregar recompensas"
-        message={error}
-        onRetry={refetch}
-      />
-    );
-  }
-
-  return (
-    <div className="flex flex-col min-h-screen bg-gray-50 pb-20">
-      {/* Header */}
-      <div className="bg-construPro-blue p-6 pt-12 rounded-b-3xl shadow-md">
-        <h1 className="text-2xl font-bold text-white mb-5">Resgate de Pontos</h1>
+  useEffect(() => {
+    const fetchResgates = async () => {
+      try {
+        setIsLoading(true);
         
-        <div className="bg-white p-5 rounded-xl shadow-sm mb-5">
-          <div className="flex justify-between items-center mb-2">
-            <p className="text-gray-600 font-medium">Seu saldo</p>
-          </div>
+        const { data, error } = await supabase
+          .from('resgates')
+          .select('*')
+          .eq('status', 'ativo');
           
-          <h2 className="text-3xl font-bold text-construPro-blue">
-            {saldoPontos.toLocaleString()} pontos
-          </h2>
+        if (error) {
+          console.error('Error fetching resgates:', error);
+          return;
+        }
+        
+        // Filter out rewards with zero stock
+        const availableResgates = data
+          ? data.filter(resgate => resgate.estoque === null || resgate.estoque > 0)
+          : [];
+        
+        setResgates(availableResgates);
+        setFilteredResgates(availableResgates);
+        
+        // Extract unique categories
+        const uniqueCategorias = Array.from(
+          new Set(availableResgates.map(resgate => resgate.categoria).filter(Boolean))
+        );
+        
+        setCategorias(['Todos', ...uniqueCategorias]);
+      } catch (err) {
+        console.error('Failed to fetch resgates:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchResgates();
+  }, []);
+  
+  useEffect(() => {
+    let filtered = resgates;
+    
+    // Filter by category
+    if (selectedCategoria !== 'Todos') {
+      filtered = filtered.filter(resgate => resgate.categoria === selectedCategoria);
+    }
+    
+    // Filter by search term
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(resgate => 
+        resgate.item.toLowerCase().includes(term) || 
+        (resgate.categoria && resgate.categoria.toLowerCase().includes(term))
+      );
+    }
+    
+    setFilteredResgates(filtered);
+  }, [selectedCategoria, searchTerm, resgates]);
+  
+  const handleSelectCategoria = (categoria: string) => {
+    setSelectedCategoria(categoria);
+  };
+  
+  const getPointsBalance = () => {
+    return profile?.saldo_pontos || 0;
+  };
+  
+  return (
+    <div className="flex flex-col min-h-screen bg-gray-100">
+      {/* Header */}
+      <div className="bg-construPro-blue p-6">
+        <div className="flex items-center mb-4">
+          <button onClick={() => navigate(-1)} className="text-white mr-2">
+            <ArrowLeft size={24} />
+          </button>
+          <h1 className="text-xl font-bold text-white">Resgates</h1>
         </div>
         
-        <div className="space-y-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-            <CustomInput
-              placeholder="Buscar recompensas"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 bg-white border-0 shadow-sm focus:ring-2 focus:ring-construPro-blue/20"
-            />
-          </div>
-          
-          <div>
-            <p className="text-white text-sm mb-2 font-medium">Filtrar por categoria</p>
-            <div className="overflow-x-auto">
-              <div className="inline-flex pb-2">
-                <FilterChips
-                  items={categoriaItems}
-                  selectedIds={selectedCategories}
-                  onChange={setSelectedCategories}
-                  allowMultiple
-                />
-              </div>
+        <div className="bg-white rounded-lg p-4 mb-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Saldo disponível</p>
+              <p className="text-2xl font-bold text-construPro-orange">{getPointsBalance()} pontos</p>
             </div>
+          </div>
+        </div>
+        
+        <div className="relative mb-2">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+          <Input 
+            className="w-full bg-white pl-9"
+            placeholder="Buscar recompensas..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        
+        <div className="overflow-x-auto">
+          <div className="flex space-x-2 pb-2">
+            {categorias.map((categoria) => (
+              <button
+                key={categoria}
+                className={`px-4 py-2 rounded-full whitespace-nowrap text-sm ${
+                  selectedCategoria === categoria
+                    ? 'bg-white text-construPro-blue font-medium'
+                    : 'bg-construPro-blue/50 text-white'
+                }`}
+                onClick={() => handleSelectCategoria(categoria)}
+              >
+                {categoria}
+              </button>
+            ))}
           </div>
         </div>
       </div>
       
-      {/* Rewards List */}
-      <div className="p-4 md:p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="font-bold text-lg text-gray-800">Recompensas disponíveis</h2>
-        </div>
-
-        {rewards.length > 0 ? (
-          <div className="flex flex-col gap-3">
-            {rewards.map(resgate => (
+      {/* Content */}
+      <div className="flex-1 p-4">
+        {isLoading ? (
+          <LoadingState text="Carregando recompensas..." />
+        ) : filteredResgates.length > 0 ? (
+          <div className="grid grid-cols-2 gap-4">
+            {filteredResgates.map((resgate) => (
               <ResgateCard
                 key={resgate.id}
-                resgate={resgate}
-                userPoints={saldoPontos}
-                onClick={() => navigate(`/resgate/${resgate.id}`)}
+                id={resgate.id}
+                title={resgate.item}
+                points={resgate.pontos}
+                imageUrl={resgate.imagem_url}
+                category={resgate.categoria || 'Geral'}
               />
             ))}
           </div>
         ) : (
-          <ListEmptyState
-            title="Nenhuma recompensa encontrada"
-            description="Tente mudar os filtros ou buscar por outro termo."
-            icon={<Gift size={40} />}
-            action={{
-              label: "Limpar filtros",
-              onClick: () => {
-                setSearchTerm('');
-                setSelectedCategories([]);
-              }
-            }}
-          />
+          <div className="flex flex-col items-center justify-center h-64 text-center">
+            <p className="text-gray-500 mb-2">Nenhuma recompensa encontrada</p>
+            {searchTerm && (
+              <button 
+                className="text-construPro-blue font-medium"
+                onClick={() => setSearchTerm('')}
+              >
+                Limpar busca
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>

@@ -1,4 +1,3 @@
-
 // If this file doesn't exist, create it with these types
 
 export interface UserData {
@@ -91,6 +90,7 @@ export interface AdminReward {
   categoria: string;
   status: string;
   estoque: number | null;
+  prazo_entrega?: string;
   created_at: string;
   updated_at: string;
 }

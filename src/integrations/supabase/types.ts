@@ -1290,6 +1290,7 @@ export type Database = {
           imagem_url: string | null
           item: string
           pontos: number
+          prazo_entrega: string | null
           status: string
           updated_at: string | null
         }
@@ -1305,6 +1306,7 @@ export type Database = {
           imagem_url?: string | null
           item: string
           pontos: number
+          prazo_entrega?: string | null
           status?: string
           updated_at?: string | null
         }
@@ -1320,6 +1322,7 @@ export type Database = {
           imagem_url?: string | null
           item?: string
           pontos?: number
+          prazo_entrega?: string | null
           status?: string
           updated_at?: string | null
         }

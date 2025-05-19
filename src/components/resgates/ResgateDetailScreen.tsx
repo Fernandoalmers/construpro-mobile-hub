@@ -73,6 +73,11 @@ const ResgateDetailScreen: React.FC = () => {
           throw new Error('Recompensa não encontrada');
         }
         
+        // Only display rewards with stock > 0 or null (unlimited)
+        if (data.estoque !== null && data.estoque <= 0) {
+          throw new Error('Esta recompensa está fora de estoque');
+        }
+        
         console.log('Fetched reward data:', data); // Debug log
         
         // Transform database data to our app format
@@ -84,7 +89,7 @@ const ResgateDetailScreen: React.FC = () => {
           imagemUrl: data.imagem_url || 'https://images.unsplash.com/photo-1577132922436-e9c50c3f10c1?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&h=500&q=80',
           descricao: data.descricao || 'Nenhuma descrição disponível',
           estoque: data.estoque,
-          prazoEntrega: '7-10 dias úteis', // Default value as it doesn't exist in DB
+          prazoEntrega: data.prazo_entrega || '7-10 dias úteis',
           status: data.status
         });
         
@@ -105,10 +110,18 @@ const ResgateDetailScreen: React.FC = () => {
   let deliveryEnd = new Date(today);
   
   if (reward?.prazoEntrega) {
-    const deliveryDays = reward.prazoEntrega.split('-').map(Number);
-    
-    deliveryStart.setDate(today.getDate() + deliveryDays[0]);
-    deliveryEnd.setDate(today.getDate() + (deliveryDays[1] || deliveryDays[0] + 3));
+    const matches = reward.prazoEntrega.match(/(\d+)(?:-(\d+))?\s*dias/i);
+    if (matches) {
+      const minDays = parseInt(matches[1], 10);
+      const maxDays = matches[2] ? parseInt(matches[2], 10) : minDays + 3;
+      
+      deliveryStart.setDate(today.getDate() + minDays);
+      deliveryEnd.setDate(today.getDate() + maxDays);
+    } else {
+      // Default if prazoEntrega format is not recognized
+      deliveryStart.setDate(today.getDate() + 7);
+      deliveryEnd.setDate(today.getDate() + 10);
+    }
   } else {
     deliveryStart.setDate(today.getDate() + 7);
     deliveryEnd.setDate(today.getDate() + 10);
@@ -190,25 +203,22 @@ const ResgateDetailScreen: React.FC = () => {
     );
   }
 
-  // Check if reward is in stock
-  const isOutOfStock = reward.estoque !== null && reward.estoque <= 0;
-
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
-      {/* Header */}
-      <div className="bg-construPro-blue p-6 pt-12">
-        <button onClick={() => navigate(-1)} className="text-white mb-2">
+      {/* Header - Reduced height */}
+      <div className="bg-construPro-blue p-4 flex items-center">
+        <button onClick={() => navigate(-1)} className="text-white mr-2">
           <ArrowLeft size={24} />
         </button>
-        <h1 className="text-xl font-bold text-white">Detalhe da Recompensa</h1>
+        <h1 className="text-xl font-bold text-white">Detalhes da Recompensa</h1>
       </div>
       
-      {/* Product Image */}
-      <div className="w-full h-64 overflow-hidden">
+      {/* Product Image - Fixed height with proper object fit */}
+      <div className="w-full h-auto">
         <img 
           src={reward.imagemUrl} 
           alt={reward.titulo}
-          className="w-full h-full object-cover"
+          className="w-full object-contain max-h-[300px]"
           onError={(e) => {
             e.currentTarget.src = 'https://images.unsplash.com/photo-1618160702438-9b02ab6515c9?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&h=500&q=80';
           }}
@@ -216,7 +226,7 @@ const ResgateDetailScreen: React.FC = () => {
       </div>
       
       {/* Reward Details */}
-      <div className="p-6 space-y-4">
+      <div className="p-4 space-y-4">
         <div>
           <h2 className="text-xl font-bold">{reward.titulo}</h2>
           <div className="flex items-center bg-construPro-orange/10 text-construPro-orange text-sm rounded-full px-3 py-1 mt-2 inline-block">
@@ -231,21 +241,9 @@ const ResgateDetailScreen: React.FC = () => {
               <span className="text-gray-500">Categoria</span>
               <span>{reward.categoria}</span>
             </div>
-            {reward.estoque !== null && (
-              <div className="flex justify-between">
-                <span className="text-gray-500">Estoque</span>
-                <span>{reward.estoque} unidades</span>
-              </div>
-            )}
             <div className="flex justify-between">
               <span className="text-gray-500">Prazo de entrega</span>
               <span>{reward.prazoEntrega}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Status</span>
-              <span className={`${reward.status === 'ativo' ? 'text-green-600' : 'text-amber-600'}`}>
-                {reward.status === 'ativo' ? 'Disponível' : 'Indisponível'}
-              </span>
             </div>
           </div>
         </Card>
@@ -269,7 +267,7 @@ const ResgateDetailScreen: React.FC = () => {
           variant="primary"
           fullWidth
           onClick={handleRedeem}
-          disabled={(profile?.saldo_pontos || 0) < reward.pontos || reward.status !== 'ativo' || isOutOfStock}
+          disabled={(profile?.saldo_pontos || 0) < reward.pontos || reward.status !== 'ativo'}
         >
           Resgatar por {reward.pontos} pontos
         </CustomButton>
@@ -277,12 +275,6 @@ const ResgateDetailScreen: React.FC = () => {
         {(profile?.saldo_pontos || 0) < reward.pontos && (
           <p className="text-sm text-center text-red-500">
             Você não possui saldo suficiente para este resgate.
-          </p>
-        )}
-        
-        {isOutOfStock && (
-          <p className="text-sm text-center text-red-500">
-            Este produto está fora de estoque.
           </p>
         )}
         
