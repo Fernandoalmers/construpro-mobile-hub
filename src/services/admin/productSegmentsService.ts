@@ -58,7 +58,15 @@ export const getProductSegments = async (): Promise<ProductSegment[]> => {
       }
     }
     
-    return data || [];
+    // Ensure any data returned has the required status property
+    if (data) {
+      return data.map(item => ({
+        ...item,
+        status: item.status || 'ativo' // Set default status if missing
+      }));
+    }
+    
+    return [];
   } catch (error) {
     console.error('Error in getProductSegments:', error);
     return [];
