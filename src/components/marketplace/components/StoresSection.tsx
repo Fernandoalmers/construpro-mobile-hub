@@ -1,38 +1,9 @@
 
 import React from 'react';
 import { Store } from '@/services/marketplace/marketplaceService';
-import Card from '../../common/Card';
-
-interface StoreCardProps {
-  store: Store;
-  onLojaClick: (lojaId: string) => void;
-}
-
-const StoreCard: React.FC<StoreCardProps> = ({ store, onLojaClick }) => {
-  return (
-    <Card 
-      className="p-3 flex flex-col items-center justify-center gap-2"
-      onClick={() => onLojaClick(store.id)}
-    >
-      <div className="w-12 h-12 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center">
-        {store.logo_url ? (
-          <img 
-            src={store.logo_url} 
-            alt={store.nome_loja} 
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="text-2xl font-semibold text-gray-400">
-            {store.nome_loja.charAt(0)}
-          </div>
-        )}
-      </div>
-      <span className="text-sm font-medium text-center line-clamp-2">
-        {store.nome_loja}
-      </span>
-    </Card>
-  );
-};
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { ShoppingBag } from 'lucide-react';
 
 interface StoresSectionProps {
   stores: Store[];
@@ -42,29 +13,45 @@ interface StoresSectionProps {
 
 const StoresSection: React.FC<StoresSectionProps> = ({ 
   stores,
-  onLojaClick,
   storesError
 }) => {
   if (storesError) {
-    return (
-      <div className="px-3 py-4 bg-white border-b">
-        <div className="text-red-500 text-center">{storesError}</div>
-      </div>
-    );
+    return null;
   }
   
   if (stores.length === 0) {
     return null;
   }
-
+  
   return (
-    <div className="px-3 py-4 bg-white border-b">
-      <h2 className="text-lg font-semibold mb-3">Lojas Disponíveis</h2>
-      <div className="grid grid-cols-4 gap-3">
-        {stores.map(store => (
-          <StoreCard key={store.id} store={store} onLojaClick={onLojaClick} />
-        ))}
-      </div>
+    <div className="px-2 mb-2 mt-1">
+      <div className="mb-1 text-sm font-medium text-gray-700">Lojas</div>
+      <ScrollArea className="w-full whitespace-nowrap pb-2" type="always">
+        <div className="flex gap-2 pb-1">
+          {stores.map(store => (
+            <Badge
+              key={store.id}
+              variant="outline"
+              className="bg-white flex items-center gap-1 px-3 py-1 cursor-default hover:bg-gray-50"
+            >
+              {store.imageUrl && (
+                <div className="h-4 w-4 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                  <img 
+                    src={store.imageUrl} 
+                    alt={store.name} 
+                    className="h-full w-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = 'https://via.placeholder.com/40';
+                    }}
+                  />
+                </div>
+              )}
+              {!store.imageUrl && <ShoppingBag size={14} />}
+              <span className="text-xs">{store.name}</span>
+            </Badge>
+          ))}
+        </div>
+      </ScrollArea>
     </div>
   );
 };

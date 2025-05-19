@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useProductFilter } from '@/hooks/use-product-filter';
@@ -181,11 +182,14 @@ const MarketplaceScreen: React.FC = () => {
   
   const { term, setTerm, handleSubmit } = useProductSearch(fetchProducts);
 
-  // Handle loja click from product card
+  // Modified: Handle loja click from product card - this function is now disabled
+  // to prevent accidental filtering when clicking on store names
   const handleLojaCardClick = (lojaId: string) => {
-    console.log('[MarketplaceScreen] Loja card clicked:', lojaId);
-    setSelectedLojas([lojaId]);
-    setPage(1);
+    // Removed functionality to prevent filtering by store when clicking on store cards
+    console.log('[MarketplaceScreen] Store card click detected but filtering disabled');
+    // No longer setting the selected store filter:
+    // setSelectedLojas([lojaId]);
+    // setPage(1);
   };
 
   // Quick search for products with improved logging
