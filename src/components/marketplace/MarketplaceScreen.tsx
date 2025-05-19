@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useProductFilter } from '@/hooks/use-product-filter';
@@ -42,6 +43,19 @@ const MarketplaceScreen: React.FC = () => {
       label: cat
     }));
   }, [products]);
+  
+  // Log the incoming navigation parameters
+  useEffect(() => {
+    console.log('[MarketplaceScreen] URL parameters:', {
+      categoria: categoryParam,
+      segmento_id: segmentIdParam,
+      search: searchQuery
+    });
+    
+    if (segmentIdParam) {
+      console.log(`[MarketplaceScreen] Initializing with segment_id: ${segmentIdParam}`);
+    }
+  }, [categoryParam, segmentIdParam, searchQuery]);
   
   // Fetch segments for filter options
   useEffect(() => {

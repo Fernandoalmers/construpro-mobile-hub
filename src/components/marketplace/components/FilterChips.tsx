@@ -46,6 +46,7 @@ const FilterChips: React.FC<FilterChipsProps> = ({
   
   // Add log to debug segment filter chips
   console.log('[FilterChips] Rendering with selected segments:', selectedSegments);
+  console.log('[FilterChips] Segment options:', segmentOptions);
   
   return (
     <div className="flex flex-wrap gap-2 mb-2">
@@ -96,6 +97,7 @@ const FilterChips: React.FC<FilterChipsProps> = ({
       
       {selectedSegments.map(segmentId => {
         const segment = segmentOptions.find(s => s.id === segmentId);
+        console.log('[FilterChips] Rendering segment chip:', segmentId, segment);
         return segment ? (
           <Badge key={segmentId} variant="secondary" className="bg-white text-gray-800 flex items-center gap-1">
             {segment.label}

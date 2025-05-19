@@ -20,37 +20,61 @@ import ErrorState from '../common/ErrorState';
 // Import store data
 import stores from '@/data/lojas.json';
 
-// Updated category blocks list
+// Map categories to segment IDs for navigation
+const segmentIdMap = {
+  'Materiais de Construção': '2d77d6f2-11fe-4d2f-a98d-aed3c5a0766f',
+  'Materiais Elétricos': '4d5a7b8c-12ab-3e4f-b98d-cfe4d6a7b5c3', 
+  'Vidraçaria': '9b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e',
+  'Marmoraria': 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d',
+  'Aluguel': 'd4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f9a'
+};
+
+// Updated segment blocks list with segmento_id included
 const segmentBlocks = [
   {
     id: 'materiais-construcao',
     name: 'Materiais de Construção',
     icon: <Construction size={24} />,
-    filter: { categoria: 'Materiais de Construção' }
+    filter: { 
+      categoria: 'Materiais de Construção',
+      segmento_id: '2d77d6f2-11fe-4d2f-a98d-aed3c5a0766f' // Using the mapped ID
+    }
   },
   {
     id: 'materiais-eletricos',
     name: 'Material Elétrico',
     icon: <Plug size={24} />,
-    filter: { categoria: 'Materiais Elétricos' }
+    filter: { 
+      categoria: 'Materiais Elétricos',
+      segmento_id: '4d5a7b8c-12ab-3e4f-b98d-cfe4d6a7b5c3' 
+    }
   },
   {
     id: 'vidracaria',
     name: 'Vidraçaria',
     icon: <GlassWater size={24} />,
-    filter: { categoria: 'Vidraçaria' }
+    filter: { 
+      categoria: 'Vidraçaria',
+      segmento_id: '9b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e' 
+    }
   },
   {
     id: 'marmoraria',
     name: 'Marmoraria',
     icon: <Box size={24} />,
-    filter: { categoria: 'Marmoraria' }
+    filter: { 
+      categoria: 'Marmoraria',
+      segmento_id: 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d' 
+    }
   },
   {
     id: 'aluguel',
     name: 'Aluguel de Equipamentos',
     icon: <Hammer size={24} />,
-    filter: { categoria: 'Aluguel' }
+    filter: { 
+      categoria: 'Aluguel',
+      segmento_id: 'd4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f9a' 
+    }
   },
   {
     id: 'profissionais',
@@ -120,6 +144,12 @@ const MarketplaceHomeScreen: React.FC = () => {
     
     if (filter.categoria) {
       queryParams.append('categoria', filter.categoria);
+    }
+    
+    // Add segment_id to URL parameters if available
+    if (filter.segmento_id) {
+      queryParams.append('segmento_id', filter.segmento_id);
+      console.log(`[MarketplaceHomeScreen] Navigating to marketplace with segment_id: ${filter.segmento_id}`);
     }
     
     navigate(`/marketplace/products?${queryParams.toString()}`);

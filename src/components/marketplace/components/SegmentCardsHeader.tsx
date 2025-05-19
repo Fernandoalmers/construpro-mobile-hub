@@ -22,7 +22,7 @@ const SegmentCard: React.FC<SegmentCardProps> = ({
   onClick,
   isSelected = false
 }) => {
-  console.log(`[SegmentCard] Rendering ${title} with isSelected=${isSelected}`);
+  console.log(`[SegmentCard] Rendering ${title} with isSelected=${isSelected}, id=${id}`);
   
   return <div 
     className={cn(
