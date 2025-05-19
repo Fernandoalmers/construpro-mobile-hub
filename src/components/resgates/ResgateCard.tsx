@@ -1,10 +1,10 @@
-
 import React from 'react';
 import Card from '../common/Card';
 import { Badge } from '@/components/ui/badge';
 import { Gift, ChevronRight, Lock } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
 
 interface ResgateProps {
   id: string;
@@ -24,11 +24,32 @@ interface ResgateCardProps {
 const ResgateCard: React.FC<ResgateCardProps> = ({ resgate, userPoints, onClick }) => {
   const isAvailable = userPoints >= resgate.pontos;
   const percentComplete = Math.min(100, Math.max(0, (userPoints / resgate.pontos) * 100));
+  const navigate = useNavigate();
+  
+  const handleClick = () => {
+    // If a custom onClick handler is provided, use it
+    if (onClick) {
+      onClick();
+      return;
+    }
+    
+    // Otherwise, navigate to the reward detail page
+    navigate(`/resgate/${resgate.id}`);
+  };
+
+  const handleResgateClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent triggering the card's onClick
+    
+    if (isAvailable) {
+      // Navigate to the reward detail page for redemption
+      navigate(`/resgate/${resgate.id}`);
+    }
+  };
   
   return (
     <Card 
       className="overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all"
-      onClick={onClick}
+      onClick={handleClick}
     >
       <div className="flex flex-row h-full">
         {/* Imagem à esquerda */}
@@ -72,7 +93,7 @@ const ResgateCard: React.FC<ResgateCardProps> = ({ resgate, userPoints, onClick 
               {isAvailable ? (
                 <Button 
                   className="w-full bg-construPro-blue hover:bg-construPro-blue/90 text-white flex items-center justify-center gap-1 py-1 h-8 animate-fade-in"
-                  onClick={onClick}
+                  onClick={handleResgateClick}
                 >
                   <Gift className="h-3.5 w-3.5" /> 
                   <span>Resgatar</span>

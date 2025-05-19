@@ -1,5 +1,6 @@
 
 
+
 // Common
 export { default as LoadingState } from './components/common/LoadingState';
 
@@ -35,6 +36,7 @@ export { default as ProfileScreen } from './components/profile/ProfileScreen';
 // Rewards
 export { default as RewardsScreen } from './components/resgates/ResgatesScreen';
 export { default as RewardDetailScreen } from './components/resgates/ResgateDetailScreen';
+export { default as HistoricoResgatesScreen } from './components/resgates/HistoricoResgatesScreen';
 
 // Store
 // Updating the StoreDetailScreen import path to match existing file structure

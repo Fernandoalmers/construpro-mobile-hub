@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
@@ -33,6 +34,8 @@ import OrderConfirmationScreen from './components/marketplace/OrderConfirmationS
 import ProfileSelectionScreen from './components/auth/ProfileSelectionScreen';
 import ReferralsScreen from './components/profile/ReferralsScreen';
 import VendorOrderDetailScreen from './components/vendor/VendorOrderDetailScreen';
+import ResgateDetailScreen from './components/resgates/ResgateDetailScreen';
+import HistoricoResgatesScreen from './components/resgates/HistoricoResgatesScreen';
 
 function App() {
   const location = useLocation();
@@ -98,6 +101,10 @@ function App() {
         {/* Rewards related routes */}
         <Route path="/rewards" element={<ProtectedRoute><RewardsScreen /></ProtectedRoute>} />
         <Route path="/rewards/detail/:id" element={<ProtectedRoute><RewardDetailScreen /></ProtectedRoute>} />
+        
+        {/* New Rewards Redemption Routes */}
+        <Route path="/resgate/:id" element={<ProtectedRoute><ResgateDetailScreen /></ProtectedRoute>} />
+        <Route path="/historico-resgates" element={<ProtectedRoute><HistoricoResgatesScreen /></ProtectedRoute>} />
         
         {/* Store and Product routes */}
         <Route path="/store/:storeId" element={<ProtectedRoute><StoreDetailScreen /></ProtectedRoute>} />
