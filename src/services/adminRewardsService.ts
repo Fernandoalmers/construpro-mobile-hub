@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { AdminReward } from '@/types/admin';
 import { toast } from '@/components/ui/sonner';
@@ -260,5 +261,3 @@ const enableRealtimeForRewards = async (): Promise<void> => {
 
 // Call this function immediately to ensure realtime is enabled
 enableRealtimeForRewards();
-
-export { fetchRewards, createReward, updateReward, toggleRewardStatus, fetchRewardCategories };
