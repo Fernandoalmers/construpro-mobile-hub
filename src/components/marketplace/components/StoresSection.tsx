@@ -34,11 +34,11 @@ const StoresSection: React.FC<StoresSectionProps> = ({
               variant="outline"
               className="bg-white flex items-center gap-1 px-3 py-1 cursor-default hover:bg-gray-50"
             >
-              {store.imageUrl && (
+              {store.logo_url && (
                 <div className="h-4 w-4 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
                   <img 
-                    src={store.imageUrl} 
-                    alt={store.name} 
+                    src={store.logo_url} 
+                    alt={store.nome_loja} 
                     className="h-full w-full object-cover"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = 'https://via.placeholder.com/40';
@@ -46,8 +46,8 @@ const StoresSection: React.FC<StoresSectionProps> = ({
                   />
                 </div>
               )}
-              {!store.imageUrl && <ShoppingBag size={14} />}
-              <span className="text-xs">{store.name}</span>
+              {!store.logo_url && <ShoppingBag size={14} />}
+              <span className="text-xs">{store.nome_loja}</span>
             </Badge>
           ))}
         </div>
