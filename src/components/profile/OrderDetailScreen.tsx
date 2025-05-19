@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ChevronLeft, Package, MapPin, Calendar, CreditCard, Award, Loader2 } from 'lucide-react';
@@ -8,6 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import { orderService } from '@/services/orderService';
 import LoadingState from '../common/LoadingState';
 import { toast } from '@/components/ui/sonner';
+import ProductImage from '../admin/products/components/ProductImage';
 
 const OrderDetailScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -187,13 +189,13 @@ const OrderDetailScreen: React.FC = () => {
             <div className="divide-y">
               {orderItems.map((item: any, index: number) => (
                 <div key={index} className="py-3 flex">
-                  <div 
-                    className="w-16 h-16 bg-gray-200 rounded mr-3 bg-center bg-cover flex-shrink-0"
-                    style={{ 
-                      backgroundImage: getProductImageUrl(item) ? 
-                        `url(${getProductImageUrl(item)})` : 'none'
-                    }}
-                  />
+                  <div className="w-16 h-16 bg-gray-200 rounded mr-3 flex-shrink-0 overflow-hidden">
+                    <ProductImage 
+                      imagemUrl={getProductImageUrl(item)}
+                      productName={item.produto?.nome || 'Produto'}
+                      size="lg"
+                    />
+                  </div>
                   <div className="flex-1">
                     <h4 className="font-medium">{item.produto?.nome || 'Produto indisponível'}</h4>
                     <p className="text-sm text-gray-500">Qtd: {item.quantidade}</p>

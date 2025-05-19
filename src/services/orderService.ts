@@ -187,7 +187,7 @@ export const orderService = {
           // Get all product IDs
           const productIds = itemsData.map(item => item.produto_id);
           
-          // Fetch products in a single query
+          // Fetch products in a single query - Note: We're not using imagem_url as it doesn't exist
           const { data: productsData, error: productsError } = await supabase
             .from('produtos')
             .select('id, nome, imagens, preco_normal, preco_promocional, descricao, categoria')
@@ -201,7 +201,6 @@ export const orderService = {
           const productsMap: {[key: string]: any} = {};
           if (productsData) {
             productsData.forEach(product => {
-              // Safe access to product properties
               productsMap[product.id] = product;
             });
           }
@@ -226,7 +225,11 @@ export const orderService = {
               produto: productData ? {
                 ...productData,
                 imagem_url: imageUrl // Add imagem_url for backwards compatibility
-              } : null
+              } : {
+                nome: 'Produto não disponível',
+                preco_normal: item.preco_unitario,
+                imagem_url: null
+              } // Provide fallback product info if not found
             };
           });
         }
