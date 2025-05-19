@@ -9,7 +9,7 @@ export const getAdminStores = async (): Promise<AdminStore[]> => {
   try {
     console.log('[getAdminStores] executando fetch');
     
-    // Query vendedores table with user info
+    // Modified query to avoid join issues - fetch vendedores first
     const { data, error } = await supabase
       .from('vendedores')
       .select(`
@@ -23,7 +23,6 @@ export const getAdminStores = async (): Promise<AdminStore[]> => {
         logo,
         created_at,
         updated_at,
-        profiles:usuario_id(nome, email),
         produtos(id)
       `)
       .order('created_at', { ascending: false });
@@ -36,12 +35,24 @@ export const getAdminStores = async (): Promise<AdminStore[]> => {
 
     console.log(`[getAdminStores] Found ${data?.length || 0} stores in 'vendedores' table`);
     
-    // Transform data to AdminStore format
-    const stores = (data || []).map(item => {
-      // Handle profiles data safely
-      const profileData = item.profiles || {};
-      const profileName = typeof profileData === 'object' ? (profileData as any).nome : 'Desconhecido';
-      const profileEmail = typeof profileData === 'object' ? (profileData as any).email : 'sem-email';
+    // Get user profiles separately to avoid join issues
+    const stores = await Promise.all((data || []).map(async (item) => {
+      let profileName = 'Desconhecido';
+      let profileEmail = 'sem-email';
+      
+      // Only fetch profile if usuario_id exists
+      if (item.usuario_id) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('nome, email')
+          .eq('id', item.usuario_id)
+          .single();
+          
+        if (profileData) {
+          profileName = profileData.nome || 'Desconhecido';
+          profileEmail = profileData.email || 'sem-email';
+        }
+      }
       
       return {
         id: item.id,
@@ -51,8 +62,8 @@ export const getAdminStores = async (): Promise<AdminStore[]> => {
         status: item.status || 'pendente',
         usuarioId: item.usuario_id,
         proprietario_id: item.usuario_id,
-        proprietario_nome: profileName || 'Desconhecido',
-        proprietario_email: profileEmail || 'sem-email',
+        proprietario_nome: profileName,
+        proprietario_email: profileEmail,
         telefone: item.telefone || '',
         whatsapp: item.whatsapp || '',
         logo_url: item.logo || '',
@@ -61,7 +72,7 @@ export const getAdminStores = async (): Promise<AdminStore[]> => {
         created_at: item.created_at,
         updated_at: item.updated_at
       };
-    });
+    }));
 
     // Log um exemplo de loja processada para depuração
     if (stores.length > 0) {
