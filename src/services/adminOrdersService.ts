@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { logAdminAction } from './adminService';
@@ -22,6 +21,7 @@ export interface AdminOrder {
   status: string;
   forma_pagamento: string;
   data_criacao: string;
+  created_at?: string;
   endereco_entrega: any;
   rastreio?: string;
   pontos_ganhos: number;
@@ -41,6 +41,7 @@ export const fetchAdminOrders = async (): Promise<AdminOrder[]> => {
           status,
           forma_pagamento,
           data_criacao,
+          created_at,
           endereco_entrega,
           rastreio,
           pontos_ganhos
@@ -150,6 +151,7 @@ export const getOrderDetails = async (orderId: string): Promise<AdminOrder | nul
           status,
           forma_pagamento,
           data_criacao,
+          created_at,
           endereco_entrega,
           rastreio,
           pontos_ganhos

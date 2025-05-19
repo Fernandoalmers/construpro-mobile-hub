@@ -6,12 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Search, Truck, FileText, CheckCircle, XCircle } from 'lucide-react';
-import { AdminOrder, fetchAdminOrders, updateOrderStatus, updateTrackingCode, getOrderStatusBadgeColor } from '@/services/adminOrdersService';
+import { Search, Truck, FileText, CheckCircle, XCircle, Eye } from 'lucide-react';
+import { AdminOrder, fetchAdminOrders, getOrderDetails, updateOrderStatus, updateTrackingCode, getOrderStatusBadgeColor } from '@/services/adminOrdersService';
 import { toast } from '@/components/ui/sonner';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
 import LoadingState from '@/components/common/LoadingState';
 import ErrorState from '@/components/common/ErrorState';
+import OrderDetailsModal from './OrderDetailsModal';
 
 const OrdersManagementScreen: React.FC = () => {
   const { isAdmin, isLoading: isAdminLoading } = useIsAdmin();
@@ -20,6 +21,9 @@ const OrdersManagementScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
+  const [isViewingDetails, setIsViewingDetails] = useState(false);
+  const [loadingOrderDetails, setLoadingOrderDetails] = useState(false);
   
   useEffect(() => {
     if (isAdminLoading) {
@@ -89,6 +93,31 @@ const OrdersManagementScreen: React.FC = () => {
       } catch (err) {
         toast.error('Erro ao adicionar código de rastreio');
       }
+    }
+  };
+  
+  const handleViewDetails = async (order: AdminOrder) => {
+    try {
+      setLoadingOrderDetails(true);
+      setSelectedOrder(order);
+      setIsViewingDetails(true);
+      
+      // Fetch complete order details if items are not loaded
+      if (!order.items) {
+        const detailedOrder = await getOrderDetails(order.id);
+        if (detailedOrder) {
+          setSelectedOrder(detailedOrder);
+          
+          // Also update the order in the list
+          setOrders(prevOrders =>
+            prevOrders.map(o => o.id === detailedOrder.id ? detailedOrder : o)
+          );
+        }
+      }
+    } catch (err) {
+      toast.error('Erro ao carregar detalhes do pedido');
+    } finally {
+      setLoadingOrderDetails(false);
     }
   };
   
@@ -217,7 +246,11 @@ const OrdersManagementScreen: React.FC = () => {
                 </TableHeader>
                 <TableBody>
                   {filteredOrders.map(order => (
-                    <TableRow key={order.id}>
+                    <TableRow 
+                      key={order.id} 
+                      className="cursor-pointer hover:bg-gray-50"
+                      onClick={() => handleViewDetails(order)}
+                    >
                       <TableCell className="font-medium">{order.id.substring(0, 8)}...</TableCell>
                       <TableCell>{order.cliente_nome}</TableCell>
                       <TableCell>{formatCurrency(order.valor_total)}</TableCell>
@@ -227,13 +260,26 @@ const OrdersManagementScreen: React.FC = () => {
                           {order.status}
                         </Badge>
                       </TableCell>
-                      <TableCell>{new Date(order.data_criacao).toLocaleDateString('pt-BR')}</TableCell>
-                      <TableCell>
+                      <TableCell>{new Date(order.data_criacao || order.created_at).toLocaleDateString('pt-BR')}</TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         <div className="flex space-x-2">
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => handleUpdateStatus(order.id, 'processando')}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewDetails(order);
+                            }}
+                          >
+                            <Eye className="h-4 w-4 mr-1" /> Detalhes
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUpdateStatus(order.id, 'processando');
+                            }}
                             disabled={['entregue', 'cancelado'].includes(order.status)}
                           >
                             <FileText className="h-4 w-4 mr-1" /> Processar
@@ -241,7 +287,10 @@ const OrdersManagementScreen: React.FC = () => {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => handleAddTracking(order.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAddTracking(order.id);
+                            }}
                             disabled={['entregue', 'cancelado'].includes(order.status)}
                           >
                             <Truck className="h-4 w-4 mr-1" /> Rastrear
@@ -250,7 +299,10 @@ const OrdersManagementScreen: React.FC = () => {
                             size="sm"
                             variant="outline"
                             className="text-green-600"
-                            onClick={() => handleUpdateStatus(order.id, 'entregue')}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUpdateStatus(order.id, 'entregue');
+                            }}
                             disabled={['entregue', 'cancelado'].includes(order.status)}
                           >
                             <CheckCircle className="h-4 w-4 mr-1" /> Entregue
@@ -259,7 +311,10 @@ const OrdersManagementScreen: React.FC = () => {
                             size="sm"
                             variant="outline"
                             className="text-red-600"
-                            onClick={() => handleUpdateStatus(order.id, 'cancelado')}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUpdateStatus(order.id, 'cancelado');
+                            }}
                             disabled={['entregue', 'cancelado'].includes(order.status)}
                           >
                             <XCircle className="h-4 w-4 mr-1" /> Cancelar
@@ -274,6 +329,15 @@ const OrdersManagementScreen: React.FC = () => {
           )}
         </CardContent>
       </Card>
+      
+      {/* Order Details Modal */}
+      {selectedOrder && (
+        <OrderDetailsModal
+          order={selectedOrder}
+          open={isViewingDetails}
+          onClose={() => setIsViewingDetails(false)}
+        />
+      )}
     </AdminLayout>
   );
 };
