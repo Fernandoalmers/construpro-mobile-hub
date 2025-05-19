@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { 
   Form, 
@@ -18,6 +17,7 @@ import { toast } from '@/components/ui/sonner';
 import { Upload, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { supabase } from '@/integrations/supabase/client';
 
 interface RewardFormProps {
   initialData?: Partial<AdminReward>;
@@ -35,6 +35,7 @@ const RewardForm: React.FC<RewardFormProps> = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [imagePreview, setImagePreview] = useState<string | null>(initialData?.imagem_url || null);
   const [categories, setCategories] = useState<string[]>(['Resgate', 'Vale Presente', 'Produto', 'Serviço', 'Outro']);
+  const [adminStatus, setAdminStatus] = useState<boolean>(false);
   
   const form = useForm({
     defaultValues: {
@@ -48,8 +49,27 @@ const RewardForm: React.FC<RewardFormProps> = ({
     }
   });
 
+  // Check admin status on component mount
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      try {
+        const { data, error } = await supabase.rpc('is_admin');
+        if (error) {
+          console.error("Error checking admin status:", error);
+          return;
+        }
+        setAdminStatus(!!data);
+        console.log("Admin status:", data);
+      } catch (err) {
+        console.error("Error checking admin status:", err);
+      }
+    };
+    
+    checkAdminStatus();
+  }, []);
+  
   // Carregar categorias disponíveis
-  React.useEffect(() => {
+  useEffect(() => {
     const loadCategories = async () => {
       try {
         const categoriesData = await fetchRewardCategories();
@@ -87,6 +107,13 @@ const RewardForm: React.FC<RewardFormProps> = ({
       }
       
       console.log("Form submission data:", data); // Debug log
+      
+      // Check admin status before proceeding
+      if (!adminStatus) {
+        toast.error('Permissão negada: apenas administradores podem gerenciar recompensas');
+        setIsLoading(false);
+        return;
+      }
       
       // Se estamos criando uma nova recompensa
       if (!initialData?.id) {
