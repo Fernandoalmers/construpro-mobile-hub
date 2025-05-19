@@ -153,11 +153,14 @@ const ResgatesScreen: React.FC = () => {
             {filteredResgates.map((resgate) => (
               <ResgateCard
                 key={resgate.id}
-                id={resgate.id}
-                title={resgate.item}
-                points={resgate.pontos}
-                imageUrl={resgate.imagem_url}
-                category={resgate.categoria || 'Geral'}
+                resgate={{
+                  id: resgate.id,
+                  titulo: resgate.item,
+                  pontos: resgate.pontos,
+                  imagemUrl: resgate.imagem_url,
+                  categoria: resgate.categoria || 'Geral'
+                }}
+                userPoints={getPointsBalance()}
               />
             ))}
           </div>
