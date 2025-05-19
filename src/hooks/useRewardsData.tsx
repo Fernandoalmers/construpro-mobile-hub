@@ -46,21 +46,19 @@ export const useRewardsData = (filters?: {
         id: item.id,
         titulo: item.item,
         pontos: item.pontos,
-        categoria: item.categoria || 'Geral',
+        // Use default values for fields that don't exist in the database
+        categoria: 'Geral', // Default category
         imagemUrl: item.imagem_url || 'https://images.unsplash.com/photo-1577132922436-e9c50c3f10c1?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&h=500&q=80',
-        descricao: item.descricao || 'Vale-compra para utilizar em qualquer loja parceira do ConstruPro+.',
-        estoque: item.estoque || 50,
-        prazoEntrega: item.prazo_entrega || '7-10 dias úteis',
+        descricao: 'Vale-compra para utilizar em qualquer loja parceira do ConstruPro+.',
+        estoque: 50,
+        prazoEntrega: '7-10 dias úteis',
         status: item.status
       }));
 
       setRewards(transformedRewards);
       
-      // Extract unique categories
-      const uniqueCategories = Array.from(
-        new Set(transformedRewards.map(reward => reward.categoria))
-      );
-      setCategories(uniqueCategories);
+      // Set predefined categories since they don't exist in the database
+      setCategories(['Geral', 'Vale-compra', 'Eletrônicos', 'Casa']);
       
     } catch (err: any) {
       console.error('Error fetching rewards:', err);

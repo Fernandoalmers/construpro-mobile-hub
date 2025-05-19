@@ -71,15 +71,16 @@ const ResgateDetailScreen: React.FC = () => {
           throw new Error('Recompensa não encontrada');
         }
         
+        // Transform database data to our app format with default values for missing fields
         setReward({
           id: data.id,
           titulo: data.item,
           pontos: data.pontos,
-          categoria: data.categoria || 'Geral',
+          categoria: 'Geral', // Default category since it doesn't exist in DB
           imagemUrl: data.imagem_url || 'https://images.unsplash.com/photo-1577132922436-e9c50c3f10c1?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&h=500&q=80',
-          descricao: data.descricao || 'Vale-compra para utilizar em qualquer loja parceira do ConstruPro+.',
-          estoque: data.estoque || 50,
-          prazoEntrega: data.prazo_entrega || '7-10 dias úteis'
+          descricao: 'Vale-compra para utilizar em qualquer loja parceira do ConstruPro+.',
+          estoque: 50, // Default value since it doesn't exist in DB
+          prazoEntrega: '7-10 dias úteis' // Default value since it doesn't exist in DB
         });
         
       } catch (err: any) {
