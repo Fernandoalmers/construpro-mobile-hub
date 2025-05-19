@@ -32,12 +32,12 @@ const ResgateCard: React.FC<ResgateCardProps> = ({ resgate, userPoints, onClick 
     >
       <div className="flex flex-row h-full">
         {/* Imagem à esquerda */}
-        <div className="w-1/3 max-w-[120px]">
+        <div className="w-1/4 max-w-[100px]">
           <div className="h-full relative">
             <img 
               src={resgate.imagemUrl} 
               alt={resgate.titulo} 
-              className="w-full h-full object-cover min-h-[100px]"
+              className="w-full h-full object-contain p-2 min-h-[100px]"
               onError={(e) => {
                 e.currentTarget.src = 'https://images.unsplash.com/photo-1618160702438-9b02ab6515c9?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&h=500&q=80';
               }}
@@ -49,9 +49,9 @@ const ResgateCard: React.FC<ResgateCardProps> = ({ resgate, userPoints, onClick 
         </div>
         
         {/* Informações à direita */}
-        <div className="w-2/3 p-3 flex flex-col justify-between">
+        <div className="w-3/4 p-3 flex flex-col justify-between">
           <div>
-            <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1">{resgate.titulo}</h3>
+            <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2">{resgate.titulo}</h3>
             
             {resgate.descricao && (
               <p className="text-xs text-gray-500 line-clamp-2 mb-2">{resgate.descricao}</p>
