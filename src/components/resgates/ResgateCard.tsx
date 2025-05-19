@@ -31,8 +31,8 @@ const ResgateCard: React.FC<ResgateCardProps> = ({ resgate, userPoints, onClick 
       onClick={onClick}
     >
       <div className="flex flex-row h-full">
-        {/* Imagem à esquerda - reduzido a largura para evitar sobreposição */}
-        <div className="w-1/4 max-w-[100px]">
+        {/* Imagem à esquerda */}
+        <div className="w-1/3 max-w-[120px]">
           <div className="h-full relative">
             <img 
               src={resgate.imagemUrl} 
@@ -48,10 +48,10 @@ const ResgateCard: React.FC<ResgateCardProps> = ({ resgate, userPoints, onClick 
           </div>
         </div>
         
-        {/* Informações à direita - aumentado o espaço para o texto */}
-        <div className="w-3/4 p-3 flex flex-col justify-between">
+        {/* Informações à direita */}
+        <div className="w-2/3 p-3 flex flex-col justify-between">
           <div>
-            <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2">{resgate.titulo}</h3>
+            <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1">{resgate.titulo}</h3>
             
             {resgate.descricao && (
               <p className="text-xs text-gray-500 line-clamp-2 mb-2">{resgate.descricao}</p>
