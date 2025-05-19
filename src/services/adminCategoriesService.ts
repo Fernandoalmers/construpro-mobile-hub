@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { logAdminAction } from './adminService';
 import { AdminCategory, AdminSegment } from '@/types/admin';
+import { supabaseService } from './supabaseService';
 
 export const fetchAdminCategories = async (): Promise<AdminCategory[]> => {
   try {
@@ -70,6 +71,7 @@ export const fetchAdminCategories = async (): Promise<AdminCategory[]> => {
         id,
         nome,
         segmento_id,
+        status,
         created_at,
         updated_at
       `)
@@ -103,7 +105,7 @@ export const fetchAdminCategories = async (): Promise<AdminCategory[]> => {
         return {
           ...cat,
           segment_name: segmentMap.get(cat.segmento_id) || 'Geral',
-          status: 'ativo', // Default status if not present
+          segment_id: cat.segmento_id,
           produtos_count: 0
         };
       }
@@ -111,7 +113,7 @@ export const fetchAdminCategories = async (): Promise<AdminCategory[]> => {
       return {
         ...cat,
         segment_name: segmentMap.get(cat.segmento_id) || 'Geral',
-        status: 'ativo', // Default status if not present
+        segment_id: cat.segmento_id,
         produtos_count: count || 0
       };
     }));
@@ -156,6 +158,7 @@ export const fetchAdminSegments = async (): Promise<AdminSegment[]> => {
           id: segName as string, // Using name as ID for segments extracted from products table
           nome: segName as string,
           status: 'ativo',
+          image_url: null,
           categorias_count: 0, // No easy way to count categories in this case
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -172,6 +175,8 @@ export const fetchAdminSegments = async (): Promise<AdminSegment[]> => {
       .select(`
         id,
         nome,
+        status,
+        image_url,
         created_at,
         updated_at
       `)
@@ -190,14 +195,12 @@ export const fetchAdminSegments = async (): Promise<AdminSegment[]> => {
         console.error('Error counting categories for segment:', countError);
         return {
           ...segment,
-          status: 'ativo', // Default status if not present
           categorias_count: 0
         };
       }
       
       return {
         ...segment,
-        status: 'ativo', // Default status if not present
         categorias_count: count || 0
       };
     }));
@@ -229,6 +232,7 @@ export const createCategory = async (categoryData: Omit<AdminCategory, 'id' | 'c
       .insert({
         nome: categoryData.nome,
         segmento_id: categoryData.segment_id,
+        status: categoryData.status || 'ativo'
       });
       
     if (error) throw error;
@@ -250,7 +254,36 @@ export const createCategory = async (categoryData: Omit<AdminCategory, 'id' | 'c
   }
 };
 
-export const createSegment = async (segmentData: Omit<AdminSegment, 'id' | 'created_at' | 'updated_at' | 'categorias_count'>): Promise<boolean> => {
+export const uploadSegmentImage = async (file: File): Promise<string | null> => {
+  try {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('segment-images')
+      .upload(filePath, file);
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    const { data } = supabase.storage
+      .from('segment-images')
+      .getPublicUrl(filePath);
+    
+    return data.publicUrl;
+  } catch (error) {
+    console.error('Error uploading segment image:', error);
+    toast.error('Erro ao fazer upload da imagem do segmento');
+    return null;
+  }
+};
+
+export const createSegment = async (
+  segmentData: Omit<AdminSegment, 'id' | 'created_at' | 'updated_at' | 'categorias_count'>, 
+  imageFile?: File
+): Promise<boolean> => {
   try {
     // Check if table exists
     const { error: tableCheckError } = await supabase
@@ -264,10 +297,22 @@ export const createSegment = async (segmentData: Omit<AdminSegment, 'id' | 'crea
       return false;
     }
     
+    let imageUrl = null;
+    
+    if (imageFile) {
+      imageUrl = await uploadSegmentImage(imageFile);
+      if (!imageUrl) {
+        toast.error('Erro ao fazer upload da imagem. Segmento não foi criado.');
+        return false;
+      }
+    }
+    
     const { error } = await supabase
       .from('product_segments')
       .insert({
         nome: segmentData.nome,
+        status: segmentData.status || 'ativo',
+        image_url: imageUrl || segmentData.image_url
       });
       
     if (error) throw error;
@@ -277,7 +322,7 @@ export const createSegment = async (segmentData: Omit<AdminSegment, 'id' | 'crea
       action: 'create_segment',
       entityType: 'segmento',
       entityId: 'new',
-      details: { nome: segmentData.nome }
+      details: { nome: segmentData.nome, image_url: imageUrl }
     });
     
     toast.success('Segmento criado com sucesso');
@@ -291,13 +336,17 @@ export const createSegment = async (segmentData: Omit<AdminSegment, 'id' | 'crea
 
 export const updateCategory = async (id: string, categoryData: Partial<AdminCategory>): Promise<boolean> => {
   try {
+    const updateData: any = {};
+    
+    if (categoryData.nome !== undefined) updateData.nome = categoryData.nome;
+    if (categoryData.segment_id !== undefined) updateData.segmento_id = categoryData.segment_id;
+    if (categoryData.status !== undefined) updateData.status = categoryData.status;
+    
+    updateData.updated_at = new Date().toISOString();
+    
     const { error } = await supabase
       .from('product_categories')
-      .update({
-        nome: categoryData.nome,
-        segmento_id: categoryData.segment_id,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', id);
       
     if (error) throw error;
@@ -319,14 +368,34 @@ export const updateCategory = async (id: string, categoryData: Partial<AdminCate
   }
 };
 
-export const updateSegment = async (id: string, segmentData: Partial<AdminSegment>): Promise<boolean> => {
+export const updateSegment = async (
+  id: string, 
+  segmentData: Partial<AdminSegment>,
+  imageFile?: File
+): Promise<boolean> => {
   try {
+    const updateData: any = {};
+    
+    if (segmentData.nome !== undefined) updateData.nome = segmentData.nome;
+    if (segmentData.status !== undefined) updateData.status = segmentData.status;
+    
+    // Handle image update
+    if (imageFile) {
+      const imageUrl = await uploadSegmentImage(imageFile);
+      if (imageUrl) {
+        updateData.image_url = imageUrl;
+      } else {
+        toast.error('Erro ao fazer upload da imagem. Outros dados foram atualizados.');
+      }
+    } else if (segmentData.image_url !== undefined) {
+      updateData.image_url = segmentData.image_url;
+    }
+    
+    updateData.updated_at = new Date().toISOString();
+    
     const { error } = await supabase
       .from('product_segments')
-      .update({
-        nome: segmentData.nome,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', id);
       
     if (error) throw error;
@@ -336,7 +405,7 @@ export const updateSegment = async (id: string, segmentData: Partial<AdminSegmen
       action: 'update_segment',
       entityType: 'segmento',
       entityId: id,
-      details: segmentData
+      details: {...segmentData, image_url: updateData.image_url}
     });
     
     toast.success('Segmento atualizado com sucesso');
@@ -344,6 +413,122 @@ export const updateSegment = async (id: string, segmentData: Partial<AdminSegmen
   } catch (error) {
     console.error('Error updating segment:', error);
     toast.error('Erro ao atualizar segmento');
+    return false;
+  }
+};
+
+export const deleteCategory = async (id: string): Promise<boolean> => {
+  try {
+    // Check if category is in use by any products
+    const { count, error: countError } = await supabase
+      .from('produtos')
+      .select('id', { count: 'exact', head: true })
+      .eq('categoria', id);
+      
+    if (countError) throw countError;
+    
+    if (count && count > 0) {
+      toast.error(`Esta categoria não pode ser excluída porque está sendo usada por ${count} produtos.`);
+      return false;
+    }
+    
+    const { error } = await supabase
+      .from('product_categories')
+      .delete()
+      .eq('id', id);
+      
+    if (error) throw error;
+    
+    // Log the admin action
+    await logAdminAction({
+      action: 'delete_category',
+      entityType: 'categoria',
+      entityId: id,
+      details: { id }
+    });
+    
+    toast.success('Categoria excluída com sucesso');
+    return true;
+  } catch (error) {
+    console.error('Error deleting category:', error);
+    toast.error('Erro ao excluir categoria');
+    return false;
+  }
+};
+
+export const deleteSegment = async (id: string): Promise<boolean> => {
+  try {
+    // Check if segment is in use by any categories
+    const { count, error: countError } = await supabase
+      .from('product_categories')
+      .select('id', { count: 'exact', head: true })
+      .eq('segmento_id', id);
+      
+    if (countError) throw countError;
+    
+    if (count && count > 0) {
+      toast.error(`Este segmento não pode ser excluído porque está sendo usado por ${count} categorias.`);
+      return false;
+    }
+    
+    // Check if segment is in use by any products
+    const { count: productCount, error: productCountError } = await supabase
+      .from('produtos')
+      .select('id', { count: 'exact', head: true })
+      .eq('segmento_id', id);
+      
+    if (productCountError) throw productCountError;
+    
+    if (productCount && productCount > 0) {
+      toast.error(`Este segmento não pode ser excluído porque está sendo usado por ${productCount} produtos.`);
+      return false;
+    }
+    
+    // Get the image URL to delete from storage
+    const { data: segmentData, error: getError } = await supabase
+      .from('product_segments')
+      .select('image_url')
+      .eq('id', id)
+      .single();
+      
+    if (getError && getError.code !== 'PGRST116') throw getError;
+    
+    // Delete the segment from the database
+    const { error } = await supabase
+      .from('product_segments')
+      .delete()
+      .eq('id', id);
+      
+    if (error) throw error;
+    
+    // Delete the image from storage if it exists
+    if (segmentData?.image_url) {
+      try {
+        const fileName = segmentData.image_url.split('/').pop();
+        if (fileName) {
+          await supabase.storage
+            .from('segment-images')
+            .remove([fileName]);
+        }
+      } catch (storageError) {
+        console.error('Error deleting segment image:', storageError);
+        // Continue with the success message even if image deletion fails
+      }
+    }
+    
+    // Log the admin action
+    await logAdminAction({
+      action: 'delete_segment',
+      entityType: 'segmento',
+      entityId: id,
+      details: { id }
+    });
+    
+    toast.success('Segmento excluído com sucesso');
+    return true;
+  } catch (error) {
+    console.error('Error deleting segment:', error);
+    toast.error('Erro ao excluir segmento');
     return false;
   }
 };

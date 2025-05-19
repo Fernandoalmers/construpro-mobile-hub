@@ -530,6 +530,7 @@ export type Database = {
           id: string
           nome: string
           segmento_id: string
+          status: string
           updated_at: string
         }
         Insert: {
@@ -537,6 +538,7 @@ export type Database = {
           id?: string
           nome: string
           segmento_id: string
+          status?: string
           updated_at?: string
         }
         Update: {
@@ -544,6 +546,7 @@ export type Database = {
           id?: string
           nome?: string
           segmento_id?: string
+          status?: string
           updated_at?: string
         }
         Relationships: [
@@ -633,19 +636,25 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          image_url: string | null
           nome: string
+          status: string
           updated_at: string
         }
         Insert: {
           created_at?: string
           id?: string
+          image_url?: string | null
           nome: string
+          status?: string
           updated_at?: string
         }
         Update: {
           created_at?: string
           id?: string
+          image_url?: string | null
           nome?: string
+          status?: string
           updated_at?: string
         }
         Relationships: []
