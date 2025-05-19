@@ -11,7 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AdminOrder, getOrderStatusBadgeColor } from '@/services/adminOrdersService';
-import { Package, MapPin, CreditCard, Calendar } from 'lucide-react';
+import { Package, MapPin, CreditCard, Calendar, Store, Award } from 'lucide-react';
 
 interface OrderDetailsModalProps {
   order: AdminOrder | null;
@@ -87,6 +87,12 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, open, onCl
                   <CreditCard size={16} />
                   <span>{order.forma_pagamento}</span>
                 </div>
+                
+                {/* Points earned - NEW */}
+                <div className="flex items-center gap-2 text-muted-foreground text-sm mt-1">
+                  <Award size={16} />
+                  <span>{order.pontos_ganhos || 0} pontos ganhos</span>
+                </div>
               </div>
               
               <Badge className={getOrderStatusBadgeColor(order.status)}>
@@ -96,7 +102,7 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, open, onCl
             
             <Separator />
             
-            {/* Customer & Shipping Info */}
+            {/* Customer & Vendor Info */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <h3 className="font-medium text-sm mb-2">Cliente</h3>
@@ -106,13 +112,26 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, open, onCl
                 )}
               </div>
               
+              {/* Vendor Information - NEW */}
               <div>
                 <h3 className="font-medium text-sm mb-2 flex items-center gap-2">
-                  <MapPin size={16} />
-                  Endereço de Entrega
+                  <Store size={16} />
+                  Vendedor
                 </h3>
-                <p className="text-sm break-all">{renderAddress()}</p>
+                <p className="text-sm">{order.loja_nome || 'Venda direta'}</p>
+                {order.loja_id && (
+                  <p className="text-xs text-muted-foreground mt-1">ID: {order.loja_id}</p>
+                )}
               </div>
+            </div>
+            
+            {/* Shipping Address */}
+            <div>
+              <h3 className="font-medium text-sm mb-2 flex items-center gap-2">
+                <MapPin size={16} />
+                Endereço de Entrega
+              </h3>
+              <p className="text-sm break-all">{renderAddress()}</p>
             </div>
             
             <Separator />
