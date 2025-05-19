@@ -26,8 +26,10 @@ export function verifyCartPointsCalculation(
     if (!item.produto) return;
     
     // Determine which points value to use based on user type
-    const pointsPerUnit = userType === 'profissional'
-      ? (item.produto.pontos_profissional || item.produto.pontos || 0)
+    // For professional users, we use pontos_profissional (if available) or fall back to pontos
+    // For consumers, we just use pontos
+    const pointsPerUnit = userType === 'profissional' 
+      ? ((item.produto as any).pontos_profissional || item.produto.pontos || 0)
       : (item.produto.pontos || 0);
     
     const expectedItemPoints = pointsPerUnit * item.quantidade;
