@@ -103,51 +103,6 @@ const ResgateDetailScreen: React.FC = () => {
     
     fetchRewardDetails();
   }, [id]);
-  
-  // Calculate date range for delivery based on the prazo_entrega field
-  const today = new Date();
-  let deliveryStart = new Date(today);
-  let deliveryEnd = new Date(today);
-  
-  if (reward?.prazoEntrega) {
-    // Parse the prazoEntrega field to extract the delivery window
-    // Format could be like "Até XX dias úteis" or "XX-YY dias úteis"
-    const matches = reward.prazoEntrega.match(/(\d+)(?:-(\d+))?\s*dias/i);
-    if (matches) {
-      const minDays = parseInt(matches[1], 10);
-      const maxDays = matches[2] ? parseInt(matches[2], 10) : minDays;
-      
-      deliveryStart.setDate(today.getDate() + minDays);
-      deliveryEnd.setDate(today.getDate() + maxDays);
-    } else {
-      // Handle case where prazoEntrega contains "Até X dias"
-      const ateDiasMatch = reward.prazoEntrega.match(/até\s+(\d+)\s*dias/i);
-      if (ateDiasMatch) {
-        const maxDays = parseInt(ateDiasMatch[1], 10);
-        // For "Até X dias", set min as half of max (or 3 days less)
-        const minDays = Math.max(1, maxDays - 3);
-        
-        deliveryStart.setDate(today.getDate() + minDays);
-        deliveryEnd.setDate(today.getDate() + maxDays);
-      } else {
-        // Default if format is not recognized
-        deliveryStart.setDate(today.getDate() + 3);
-        deliveryEnd.setDate(today.getDate() + 7);
-      }
-    }
-  } else {
-    // Default fallback
-    deliveryStart.setDate(today.getDate() + 3);
-    deliveryEnd.setDate(today.getDate() + 7);
-  }
-  
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-  };
 
   const handleRedeem = () => {
     // Verify if user has enough points
@@ -167,10 +122,22 @@ const ResgateDetailScreen: React.FC = () => {
   };
 
   const confirmRedemption = async () => {
-    if (!reward || !profile) return;
+    if (!reward || !profile || !selectedAddressId) {
+      toast.error('Dados incompletos. Por favor, tente novamente.');
+      return;
+    }
     
     try {
       setIsProcessing(true);
+      
+      // Get the selected address object
+      const selectedAddress = addresses.find(addr => addr.id === selectedAddressId);
+      
+      if (!selectedAddress) {
+        toast.error('Endereço selecionado não encontrado');
+        setIsProcessing(false);
+        return;
+      }
       
       const success = await redeemReward({
         rewardId: reward.id,
@@ -186,10 +153,12 @@ const ResgateDetailScreen: React.FC = () => {
         setIsConfirmDialogOpen(false);
         toast.success('Resgate realizado com sucesso!');
         navigate('/historico-resgates');
+      } else {
+        toast.error('Falha ao processar o resgate. Por favor, tente novamente.');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error processing redemption:', err);
-      toast.error('Erro ao processar resgate');
+      toast.error(err.message || 'Erro ao processar resgate');
     } finally {
       setIsProcessing(false);
     }
@@ -227,12 +196,13 @@ const ResgateDetailScreen: React.FC = () => {
         <h1 className="text-xl font-bold text-white">Detalhes da Recompensa</h1>
       </div>
       
-      {/* Product Image - Fixed height with flex centering for better display */}
-      <div className="w-full bg-white flex justify-center items-center" style={{ height: "280px" }}>
+      {/* Product Image - Improved container with better padding */}
+      <div className="w-full bg-white flex justify-center items-center p-4" style={{ height: "280px" }}>
         <img 
           src={reward.imagemUrl} 
           alt={reward.titulo}
-          className="max-h-[280px] w-auto object-contain p-4"
+          className="max-h-100 max-w-full object-contain"
+          style={{ maxHeight: "250px" }}
           onError={(e) => {
             e.currentTarget.src = 'https://images.unsplash.com/photo-1618160702438-9b02ab6515c9?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&h=500&q=80';
           }}
@@ -248,18 +218,13 @@ const ResgateDetailScreen: React.FC = () => {
           </div>
         </div>
         
-        {/* Delivery Estimate - More prominent positioning */}
+        {/* Delivery Estimate - MODIFIED: removed date range, only showing delivery time from admin panel */}
         <Card className="p-4 border-l-4 border-construPro-blue">
           <div className="flex items-center mb-2">
             <Calendar className="text-construPro-blue mr-2" size={18} />
-            <h3 className="font-medium">Previsão de entrega</h3>
+            <h3 className="font-medium">Prazo de entrega</h3>
           </div>
-          <p className="text-sm">
-            Chegará entre <span className="font-medium">{formatDate(deliveryStart)}</span> e <span className="font-medium">{formatDate(deliveryEnd)}</span>
-          </p>
-          <p className="text-xs text-gray-500 mt-1">
-            Prazo de entrega: {reward.prazoEntrega}
-          </p>
+          <p className="text-sm text-gray-700">{reward.prazoEntrega}</p>
         </Card>
         
         <Card className="p-4">
@@ -305,7 +270,7 @@ const ResgateDetailScreen: React.FC = () => {
         )}
       </div>
       
-      {/* Confirmation Dialog */}
+      {/* Confirmation Dialog - Updated to simplify delivery info */}
       <Dialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -340,10 +305,10 @@ const ResgateDetailScreen: React.FC = () => {
             <Alert>
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-construPro-blue" />
-                <AlertTitle className="text-construPro-blue">Previsão de entrega</AlertTitle>
+                <AlertTitle className="text-construPro-blue">Prazo de entrega</AlertTitle>
               </div>
               <AlertDescription>
-                Entre {formatDate(deliveryStart)} e {formatDate(deliveryEnd)}
+                {reward.prazoEntrega}
               </AlertDescription>
             </Alert>
           </div>
