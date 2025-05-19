@@ -66,12 +66,12 @@ const ResgateCard: React.FC<ResgateCardProps> = ({ resgate, userPoints, onClick 
             <div className="space-y-2">
               <Progress 
                 value={percentComplete} 
-                className={`h-1.5 ${isAvailable ? 'bg-gray-100' : 'bg-gray-100'}`}
+                className={`h-1.5 rounded-full overflow-hidden transition-all duration-700 ease-in-out ${isAvailable ? 'bg-gray-100' : 'bg-gray-100'}`}
               />
               
               {isAvailable ? (
                 <Button 
-                  className="w-full bg-construPro-blue hover:bg-construPro-blue/90 text-white flex items-center justify-center gap-1 py-1 h-8"
+                  className="w-full bg-construPro-blue hover:bg-construPro-blue/90 text-white flex items-center justify-center gap-1 py-1 h-8 animate-fade-in"
                   onClick={onClick}
                 >
                   <Gift className="h-3.5 w-3.5" /> 
