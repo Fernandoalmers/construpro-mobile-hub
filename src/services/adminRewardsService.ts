@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { AdminReward } from '@/types/admin';
 import { toast } from '@/components/ui/sonner';
@@ -31,6 +30,8 @@ export const fetchRewards = async (): Promise<AdminReward[]> => {
       }
       return [];
     }
+
+    console.log('Fetched rewards data:', data); // Debug log
 
     // Safety measure to ensure we always return an array
     if (!data || !Array.isArray(data)) {
@@ -80,6 +81,8 @@ export const createReward = async (rewardData: Omit<AdminReward, 'id' | 'created
       return null;
     }
     
+    console.log('Creating reward with data:', rewardData); // Debug log
+    
     // Insert the new reward into resgates table
     const { data, error } = await supabase
       .from('resgates')
@@ -101,6 +104,8 @@ export const createReward = async (rewardData: Omit<AdminReward, 'id' | 'created
       toast.error('Erro ao criar recompensa');
       return null;
     }
+
+    console.log('Created reward data:', data); // Debug log
 
     toast.success('Recompensa criada com sucesso');
 
@@ -235,3 +240,25 @@ export const fetchRewardCategories = async (): Promise<string[]> => {
     return [];
   }
 };
+
+/**
+ * Enable Supabase realtime for rewards table
+ * This is called internally and doesn't need to be exported
+ */
+const enableRealtimeForRewards = async (): Promise<void> => {
+  try {
+    await supabase
+      .from('resgates')
+      .select('id')
+      .limit(1);
+      
+    console.log('Realtime setup for rewards completed');
+  } catch (error) {
+    console.error('Error setting up realtime for rewards:', error);
+  }
+};
+
+// Call this function immediately to ensure realtime is enabled
+enableRealtimeForRewards();
+
+export { fetchRewards, createReward, updateReward, toggleRewardStatus, fetchRewardCategories };

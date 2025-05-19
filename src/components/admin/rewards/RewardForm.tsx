@@ -79,9 +79,11 @@ const RewardForm: React.FC<RewardFormProps> = ({
   const onSubmit = async (data: any) => {
     setIsLoading(true);
     try {
+      console.log("Form submission data:", data); // Debug log
+      
       // Se estamos criando uma nova recompensa
       if (!initialData?.id) {
-        await createReward({
+        const result = await createReward({
           nome: data.nome,
           descricao: data.descricao,
           pontos: data.pontos,
@@ -90,10 +92,15 @@ const RewardForm: React.FC<RewardFormProps> = ({
           estoque: data.estoque,
           status: data.status
         });
-        toast.success('Recompensa criada com sucesso!');
+        
+        if (result) {
+          console.log("Created reward:", result); // Debug log
+          toast.success('Recompensa criada com sucesso!');
+          onSuccess();
+        }
       } else {
         // Lógica para atualizar uma recompensa existente
-        await updateReward(initialData.id, {
+        const result = await updateReward(initialData.id, {
           nome: data.nome,
           descricao: data.descricao,
           pontos: data.pontos,
@@ -102,9 +109,13 @@ const RewardForm: React.FC<RewardFormProps> = ({
           estoque: data.estoque,
           status: data.status
         });
-        toast.success('Recompensa atualizada com sucesso!');
+        
+        if (result) {
+          console.log("Updated reward:", result); // Debug log
+          toast.success('Recompensa atualizada com sucesso!');
+          onSuccess();
+        }
       }
-      onSuccess();
     } catch (error) {
       console.error('Erro ao salvar recompensa:', error);
       toast.error('Erro ao salvar recompensa');

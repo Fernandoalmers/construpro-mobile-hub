@@ -32,6 +32,7 @@ const AdminRewardsScreen: React.FC = () => {
     try {
       setIsLoading(true);
       const rewardsData = await fetchRewards();
+      console.log('Admin rewards loaded:', rewardsData); // Debug log
       setRewards(rewardsData);
     } catch (error) {
       console.error('Error fetching rewards:', error);
@@ -53,7 +54,8 @@ const AdminRewardsScreen: React.FC = () => {
           schema: 'public', 
           table: 'resgates' 
         }, 
-        () => {
+        (payload) => {
+          console.log('Realtime admin rewards update received:', payload);
           loadRewards();
         }
       )

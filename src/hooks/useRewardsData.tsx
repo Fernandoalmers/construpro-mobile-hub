@@ -41,6 +41,8 @@ export const useRewardsData = (filters?: {
         throw rewardsError;
       }
       
+      console.log('Fetched user-facing rewards data:', rewardsData); // Debug log
+      
       // Transform data from database format to our app format
       const transformedRewards: Reward[] = (rewardsData || []).map(item => ({
         id: item.id,
@@ -86,7 +88,8 @@ export const useRewardsData = (filters?: {
           schema: 'public', 
           table: 'resgates' 
         }, 
-        () => {
+        (payload) => {
+          console.log('Realtime reward update received:', payload);
           fetchRewards();
         }
       )
