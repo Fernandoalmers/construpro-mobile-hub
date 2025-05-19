@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getProducts, Product } from '@/services/productService';
@@ -99,8 +98,8 @@ const HomeScreen: React.FC = () => {
   };
 
   const shortcuts = [
-    { id: 'extrato', label: 'Extrato', icon: <Receipt size={24} />, route: '/profile/points' },
-    { id: 'resgates', label: 'Resgates', icon: <Gift size={24} />, route: '/resgates' },
+    { id: 'extrato', label: 'Extrato', icon: <Receipt size={24} />, route: '/profile/points-history' },
+    { id: 'resgates', label: 'Resgates', icon: <Gift size={24} />, route: '/rewards' },
     { id: 'qrcode', label: 'QR Code', icon: <QrCode size={24} />, route: '/qrcode' },
     { id: 'contato', label: 'Contato', icon: <MessageSquare size={24} />, route: '/chat' },
   ];
