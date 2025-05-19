@@ -13,10 +13,11 @@ import { AdminReward } from '@/types/admin';
 import CustomInput from '@/components/common/CustomInput';
 import CustomButton from '@/components/common/CustomButton';
 import CustomSelect from '@/components/common/CustomSelect';
-import { createReward, fetchRewardCategories } from '@/services/adminRewardsService';
+import { createReward, fetchRewardCategories, updateReward } from '@/services/adminRewardsService';
 import { toast } from '@/components/ui/sonner';
 import { Upload, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 
 interface RewardFormProps {
   initialData?: Partial<AdminReward>;
@@ -91,7 +92,16 @@ const RewardForm: React.FC<RewardFormProps> = ({
         });
         toast.success('Recompensa criada com sucesso!');
       } else {
-        // Lógica para atualizar seria implementada aqui
+        // Lógica para atualizar uma recompensa existente
+        await updateReward(initialData.id, {
+          nome: data.nome,
+          descricao: data.descricao,
+          pontos: data.pontos,
+          categoria: data.categoria,
+          imagem_url: data.imagem_url,
+          estoque: data.estoque,
+          status: data.status
+        });
         toast.success('Recompensa atualizada com sucesso!');
       }
       onSuccess();
@@ -141,9 +151,9 @@ const RewardForm: React.FC<RewardFormProps> = ({
             <FormItem>
               <FormLabel>Descrição</FormLabel>
               <FormControl>
-                <CustomInput 
-                  as="textarea"
+                <Textarea 
                   placeholder="Descreva a recompensa" 
+                  className="resize-none min-h-[100px]"
                   {...field} 
                 />
               </FormControl>

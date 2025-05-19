@@ -42,12 +42,12 @@ export const fetchRewards = async (): Promise<AdminReward[]> => {
     return data.map(item => ({
       id: item.id,
       nome: item.item || 'Sem nome', // Mapping from resgates.item to reward.nome
-      descricao: item.descricao || item.item || 'Sem descrição', // No direct description in resgates table
+      descricao: item.descricao || item.item || 'Sem descrição',
       pontos: item.pontos,
       imagem_url: item.imagem_url,
-      categoria: item.categoria || 'Resgate', // Default category for resgates items
+      categoria: item.categoria || 'Resgate',
       status: item.status || 'pendente',
-      estoque: item.estoque || null, // If estoque exists in resgates
+      estoque: item.estoque || null,
       created_at: item.created_at,
       updated_at: item.updated_at || item.created_at
     }));
@@ -85,12 +85,12 @@ export const createReward = async (rewardData: Omit<AdminReward, 'id' | 'created
       .from('resgates')
       .insert({
         item: rewardData.nome,
-        descricao: rewardData.descricao, // Adding description
+        descricao: rewardData.descricao,
         pontos: rewardData.pontos,
         imagem_url: rewardData.imagem_url,
         status: rewardData.status || 'pendente',
-        estoque: rewardData.estoque, // Add estoque
-        categoria: rewardData.categoria, // Add categoria
+        estoque: rewardData.estoque,
+        categoria: rewardData.categoria,
         cliente_id: user.id  // Required field
       })
       .select()

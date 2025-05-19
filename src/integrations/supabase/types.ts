@@ -1279,10 +1279,13 @@ export type Database = {
       }
       resgates: {
         Row: {
+          categoria: string | null
           cliente_id: string
           codigo: string | null
           created_at: string | null
           data: string | null
+          descricao: string | null
+          estoque: number | null
           id: string
           imagem_url: string | null
           item: string
@@ -1291,10 +1294,13 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          categoria?: string | null
           cliente_id: string
           codigo?: string | null
           created_at?: string | null
           data?: string | null
+          descricao?: string | null
+          estoque?: number | null
           id?: string
           imagem_url?: string | null
           item: string
@@ -1303,10 +1309,13 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          categoria?: string | null
           cliente_id?: string
           codigo?: string | null
           created_at?: string | null
           data?: string | null
+          descricao?: string | null
+          estoque?: number | null
           id?: string
           imagem_url?: string | null
           item?: string
