@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, Search, ShoppingBag, User, LayoutDashboard, Gift, Package } from 'lucide-react';
+import { Home, Search, ShoppingBag, User, LayoutDashboard, Gift, Package, ShoppingCart } from 'lucide-react';
 import NavItem from './NavItem';
 import { useAuth } from '@/context/AuthContext';
 
@@ -99,10 +99,10 @@ const BottomNavigation: React.FC = () => {
           />
         ) : (
           <NavItem 
-            to="/orders" 
-            icon={<ShoppingBag size={20} />} 
-            label="Pedidos" 
-            isActive={isActive('/orders')} 
+            to="/cart" 
+            icon={<ShoppingCart size={20} />} 
+            label="Carrinho" 
+            isActive={isActive('/cart')} 
           />
         )}
         <NavItem 

@@ -70,10 +70,10 @@ export function useNavigationItems(userRole: string): NavigationItem[] {
       badge: undefined
     },
     {
-      name: 'Pedidos',
-      path: '/orders',
+      name: 'Carrinho',
+      path: '/cart',
       icon: <ShoppingCart size={24} />,
-      tooltip: 'Meus Pedidos',
+      tooltip: 'Meu Carrinho',
       badge: cartCount > 0 ? cartCount.toString() : undefined
     },
     {
