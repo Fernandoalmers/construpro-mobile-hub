@@ -10,6 +10,8 @@ export interface RedeemRequest {
 
 export const redeemReward = async (request: RedeemRequest): Promise<boolean> => {
   try {
+    console.log('Starting reward redemption process with:', request);
+    
     // Get current user
     const { data: { user } } = await supabase.auth.getUser();
     
@@ -25,11 +27,12 @@ export const redeemReward = async (request: RedeemRequest): Promise<boolean> => 
       // Check reward stock before proceeding
       const { data: reward, error: rewardError } = await supabase
         .from('resgates')
-        .select('estoque, status')
+        .select('estoque, status, item')
         .eq('id', request.rewardId)
         .single();
 
       if (rewardError) {
+        console.error('Reward fetch error:', rewardError);
         throw new Error('Recompensa não encontrada');
       }
 
@@ -43,12 +46,14 @@ export const redeemReward = async (request: RedeemRequest): Promise<boolean> => 
         throw new Error('Esta recompensa está esgotada');
       }
       
+      console.log('Creating redemption entry for:', reward.item);
+      
       // 1. Create the redemption entry with status 'pendente'
       const { data: redemption, error: redemptionError } = await supabase
         .from('resgates')
         .insert({
           cliente_id: user.id,
-          item: request.rewardId, // We'll actually store the rewardId here (for now)
+          item: reward.item, // Use the actual item name
           pontos: request.pontos,
           status: 'pendente',
           data: new Date().toISOString()
@@ -57,8 +62,11 @@ export const redeemReward = async (request: RedeemRequest): Promise<boolean> => 
         .single();
       
       if (redemptionError) {
+        console.error('Redemption creation error:', redemptionError);
         throw redemptionError;
       }
+      
+      console.log('Created redemption record:', redemption);
       
       // 2. Deduct points from user's balance
       const { error: pointsError } = await supabase.rpc(
@@ -67,8 +75,11 @@ export const redeemReward = async (request: RedeemRequest): Promise<boolean> => 
       );
       
       if (pointsError) {
+        console.error('Points adjustment error:', pointsError);
         throw pointsError;
       }
+      
+      console.log('Points deducted successfully');
       
       // 3. Create a record in points_transactions
       const { error: transactionError } = await supabase
@@ -77,13 +88,16 @@ export const redeemReward = async (request: RedeemRequest): Promise<boolean> => 
           user_id: user.id,
           pontos: -request.pontos,
           tipo: 'resgate',
-          descricao: `Resgate de recompensa`,
+          descricao: `Resgate de ${reward.item}`,
           referencia_id: redemption.id
         });
       
       if (transactionError) {
+        console.error('Transaction record error:', transactionError);
         throw transactionError;
       }
+      
+      console.log('Points transaction recorded successfully');
       
       // 4. Update stock if it's not null
       if (reward.estoque !== null) {
@@ -93,14 +107,18 @@ export const redeemReward = async (request: RedeemRequest): Promise<boolean> => 
           .eq('id', request.rewardId);
           
         if (stockError) {
+          console.error('Stock update error:', stockError);
           throw stockError;
         }
+        
+        console.log('Updated stock count');
       }
       
       // Commit the transaction
       await supabase.rpc('commit_transaction');
       
       toast.success('Resgate solicitado com sucesso!');
+      console.log('Redemption process completed successfully');
       return true;
       
     } catch (err) {

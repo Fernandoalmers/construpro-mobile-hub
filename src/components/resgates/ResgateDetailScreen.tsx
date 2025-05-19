@@ -139,6 +139,12 @@ const ResgateDetailScreen: React.FC = () => {
         return;
       }
       
+      console.log('Attempting to redeem reward with:', {
+        rewardId: reward.id,
+        pontos: reward.pontos,
+        addressId: selectedAddressId
+      });
+      
       const success = await redeemReward({
         rewardId: reward.id,
         pontos: reward.pontos,
@@ -188,7 +194,7 @@ const ResgateDetailScreen: React.FC = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
-      {/* Header - Reduced height with less padding */}
+      {/* Header */}
       <div className="bg-construPro-blue p-3 flex items-center">
         <button onClick={() => navigate(-1)} className="text-white mr-2">
           <ArrowLeft size={24} />
@@ -196,20 +202,20 @@ const ResgateDetailScreen: React.FC = () => {
         <h1 className="text-xl font-bold text-white">Detalhes da Recompensa</h1>
       </div>
       
-      {/* Product Image - Improved container with better padding */}
-      <div className="w-full bg-white flex justify-center items-center p-4" style={{ height: "280px" }}>
+      {/* Product Image - Improved container with better padding and object-fit */}
+      <div className="w-full bg-white flex justify-center items-center p-6" style={{ height: "280px" }}>
         <img 
           src={reward.imagemUrl} 
           alt={reward.titulo}
-          className="max-h-100 max-w-full object-contain"
-          style={{ maxHeight: "250px" }}
+          className="max-h-full max-w-full object-contain"
+          style={{ maxHeight: "240px" }}
           onError={(e) => {
             e.currentTarget.src = 'https://images.unsplash.com/photo-1618160702438-9b02ab6515c9?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&h=500&q=80';
           }}
         />
       </div>
       
-      {/* Reward Details - Improved spacing */}
+      {/* Reward Details */}
       <div className="p-4 space-y-4">
         <div>
           <h2 className="text-xl font-bold">{reward.titulo}</h2>
@@ -218,7 +224,7 @@ const ResgateDetailScreen: React.FC = () => {
           </div>
         </div>
         
-        {/* Delivery Estimate - MODIFIED: removed date range, only showing delivery time from admin panel */}
+        {/* Delivery Estimate - Only showing prazo_entrega from admin panel */}
         <Card className="p-4 border-l-4 border-construPro-blue">
           <div className="flex items-center mb-2">
             <Calendar className="text-construPro-blue mr-2" size={18} />
@@ -270,7 +276,7 @@ const ResgateDetailScreen: React.FC = () => {
         )}
       </div>
       
-      {/* Confirmation Dialog - Updated to simplify delivery info */}
+      {/* Confirmation Dialog - Simplified delivery info showing only prazo_entrega */}
       <Dialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
