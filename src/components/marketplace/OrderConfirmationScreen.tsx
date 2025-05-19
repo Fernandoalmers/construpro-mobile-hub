@@ -1,6 +1,7 @@
+
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { CheckCircle, ArrowLeft, Clock, ShoppingBag, Home } from 'lucide-react';
+import { CheckCircle, ArrowLeft, Clock, ShoppingBag, Home, Package, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import LoadingState from '../common/LoadingState';
 import ErrorState from '../common/ErrorState';
@@ -104,7 +105,7 @@ const OrderConfirmationScreen: React.FC = () => {
         <h1 className="text-xl font-bold">Confirmação de Pedido</h1>
       </div>
 
-      <div className="flex-1 p-4">
+      <div className="flex-1 p-4 pb-20">
         <div className="mb-6 text-center">
           <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
             <CheckCircle size={32} className="text-green-600" />
@@ -116,7 +117,7 @@ const OrderConfirmationScreen: React.FC = () => {
         </div>
 
         <Card className="mb-4 p-4">
-          <div className="grid grid-cols-2 gap-2 border-b pb-3 mb-3">
+          <div className="grid grid-cols-2 gap-y-3 border-b pb-3 mb-3">
             <div className="text-gray-600">Número do Pedido:</div>
             <div className="font-medium text-right">{displayOrderId}</div>
             
@@ -124,7 +125,7 @@ const OrderConfirmationScreen: React.FC = () => {
             <div className="text-right">{formattedDate}</div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 border-b pb-3 mb-3">
+          <div className="grid grid-cols-2 gap-y-3 border-b pb-3 mb-3">
             <div className="text-gray-600">Status:</div>
             <div className="text-right">
               <span className="bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full text-sm inline-flex items-center">
@@ -153,13 +154,16 @@ const OrderConfirmationScreen: React.FC = () => {
             </div>
           </div>
 
-          <div>
-            <h3 className="font-medium mb-3">Itens do Pedido</h3>
+          <div className="mb-4">
+            <h3 className="font-medium mb-3 flex items-center">
+              <Package className="mr-2" size={18} />
+              Itens do Pedido
+            </h3>
             {orderDetails.items && orderDetails.items.length > 0 ? (
               <div className="space-y-4">
                 {orderDetails.items.map((item: any) => (
-                  <div key={item.id} className="flex items-start gap-3 border-b border-gray-100 pb-3">
-                    <div className="w-16 h-16 bg-gray-100 rounded overflow-hidden flex-shrink-0">
+                  <div key={item.id} className="flex items-start gap-3 border-b border-gray-100 pb-4">
+                    <div className="w-20 h-20 bg-gray-100 rounded overflow-hidden flex-shrink-0">
                       <ProductImage 
                         imagemUrl={getProductImageUrl(item)}
                         productName={item.produtos?.nome || 'Produto'}
@@ -167,9 +171,17 @@ const OrderConfirmationScreen: React.FC = () => {
                       />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{item.produtos?.nome || 'Produto'}</p>
-                      <p className="text-xs text-gray-600">{item.quantidade}x R$ {item.preco_unitario?.toFixed(2)}</p>
-                      <p className="text-sm font-medium mt-1">R$ {item.subtotal?.toFixed(2)}</p>
+                      <p className="font-medium text-sm">{item.produtos?.nome || 'Produto'}</p>
+                      <div className="mt-1 text-gray-600 text-sm">
+                        <div className="flex justify-between items-center mt-1">
+                          <span>Quantidade: {item.quantidade}x</span>
+                          <span>R$ {item.preco_unitario?.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center mt-1">
+                          <span className="font-medium">Subtotal:</span>
+                          <span className="font-medium">R$ {item.subtotal?.toFixed(2)}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -180,9 +192,12 @@ const OrderConfirmationScreen: React.FC = () => {
           </div>
           
           {orderDetails.endereco_entrega && (
-            <div className="mt-4 pt-3 border-t">
-              <h3 className="font-medium mb-2">Endereço de Entrega</h3>
-              <p className="text-sm text-gray-600">
+            <div className="pt-3 border-t">
+              <h3 className="font-medium mb-2 flex items-center">
+                <MapPin className="mr-2" size={18} />
+                Endereço de Entrega
+              </h3>
+              <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md">
                 {typeof orderDetails.endereco_entrega === 'string' 
                   ? orderDetails.endereco_entrega
                   : `${orderDetails.endereco_entrega.logradouro}, ${orderDetails.endereco_entrega.numero}, ${orderDetails.endereco_entrega.bairro}, ${orderDetails.endereco_entrega.cidade} - ${orderDetails.endereco_entrega.estado}`
@@ -192,23 +207,25 @@ const OrderConfirmationScreen: React.FC = () => {
           )}
         </Card>
 
-        <div className="grid grid-cols-1 gap-3">
-          <Button 
-            variant="default" 
-            className="w-full"
-            onClick={() => navigate('/profile/orders')}
-          >
-            <ShoppingBag size={18} className="mr-2" />
-            Ver Meus Pedidos
-          </Button>
-          <Button 
-            variant="outline" 
-            className="w-full"
-            onClick={() => navigate('/marketplace')}
-          >
-            <Home size={18} className="mr-2" />
-            Continuar Comprando
-          </Button>
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t shadow-md">
+          <div className="grid grid-cols-2 gap-3 max-w-md mx-auto">
+            <Button 
+              variant="default" 
+              className="w-full"
+              onClick={() => navigate('/profile/orders')}
+            >
+              <ShoppingBag size={18} className="mr-2" />
+              Meus Pedidos
+            </Button>
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={() => navigate('/marketplace')}
+            >
+              <Home size={18} className="mr-2" />
+              Continuar
+            </Button>
+          </div>
         </div>
       </div>
     </div>
