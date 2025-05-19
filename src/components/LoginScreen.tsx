@@ -87,9 +87,7 @@ const LoginScreen: React.FC = () => {
       <div className="bg-construPro-blue py-16 rounded-b-3xl">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-white">Matershop</h1>
-          <p className="text-white opacity-80 mt-2">
-            Materiais, serviços e recompensas
-          </p>
+          <p className="text-white opacity-80 mt-2">Materiais, clube e recompensas</p>
         </div>
       </div>
 
