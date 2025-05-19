@@ -190,7 +190,7 @@ export const orderService = {
           // Fetch products in a single query
           const { data: productsData, error: productsError } = await supabase
             .from('produtos')
-            .select('id, nome, imagem_url, preco_normal, preco_promocional')
+            .select('id, nome, imagens, preco_normal, preco_promocional, descricao, categoria')
             .in('id', productIds);
             
           if (productsError) {
@@ -201,15 +201,34 @@ export const orderService = {
           const productsMap: {[key: string]: any} = {};
           if (productsData) {
             productsData.forEach(product => {
+              // Safe access to product properties
               productsMap[product.id] = product;
             });
           }
           
           // Combine item data with product data
-          itemsWithProducts = itemsData.map(item => ({
-            ...item,
-            produto: productsMap[item.produto_id] || null
-          }));
+          itemsWithProducts = itemsData.map(item => {
+            const productData = productsMap[item.produto_id] || null;
+            
+            // Extract image URL from product data if available
+            let imageUrl = null;
+            if (productData && productData.imagens && Array.isArray(productData.imagens) && productData.imagens.length > 0) {
+              const firstImage = productData.imagens[0];
+              if (typeof firstImage === 'string') {
+                imageUrl = firstImage;
+              } else if (firstImage && typeof firstImage === 'object') {
+                imageUrl = firstImage.url || firstImage.path || null;
+              }
+            }
+            
+            return {
+              ...item,
+              produto: productData ? {
+                ...productData,
+                imagem_url: imageUrl // Add imagem_url for backwards compatibility
+              } : null
+            };
+          });
         }
         
         // Combine order with items

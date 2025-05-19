@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ChevronLeft, Package, MapPin, Calendar, CreditCard, Award, Loader2 } from 'lucide-react';
@@ -94,6 +93,25 @@ const OrderDetailScreen: React.FC = () => {
       minute: "2-digit"
     });
   };
+  
+  // Helper to safely get product image URL
+  const getProductImageUrl = (item: any) => {
+    if (!item.produto) return null;
+    
+    // First check directly for imagem_url which we added in the service
+    if (item.produto.imagem_url) return item.produto.imagem_url;
+    
+    // Otherwise try to get it from imagens array
+    if (item.produto.imagens && Array.isArray(item.produto.imagens) && item.produto.imagens.length > 0) {
+      const firstImage = item.produto.imagens[0];
+      if (typeof firstImage === 'string') return firstImage;
+      if (firstImage && typeof firstImage === 'object') {
+        return firstImage.url || firstImage.path || null;
+      }
+    }
+    
+    return null;
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
@@ -172,8 +190,8 @@ const OrderDetailScreen: React.FC = () => {
                   <div 
                     className="w-16 h-16 bg-gray-200 rounded mr-3 bg-center bg-cover flex-shrink-0"
                     style={{ 
-                      backgroundImage: item.produto?.imagem_url ? 
-                        `url(${item.produto.imagem_url})` : 'none'
+                      backgroundImage: getProductImageUrl(item) ? 
+                        `url(${getProductImageUrl(item)})` : 'none'
                     }}
                   />
                   <div className="flex-1">
