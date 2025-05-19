@@ -86,7 +86,7 @@ const ResgateDetailScreen: React.FC = () => {
           titulo: data.item || 'Recompensa sem nome',
           pontos: data.pontos,
           categoria: data.categoria || 'Geral',
-          imagemUrl: data.imagem_url || 'https://images.unsplash.com/photo-1577132922436-e9c50c3f10c1?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&h=500&q=80',
+          imagemUrl: data.imagem_url || 'https://images.unsplash.com/photo-1618160702438-9b02ab6515c9?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&h=500&q=80',
           descricao: data.descricao || 'Nenhuma descrição disponível',
           estoque: data.estoque,
           prazoEntrega: data.prazo_entrega || '7-10 dias úteis',
@@ -104,27 +104,41 @@ const ResgateDetailScreen: React.FC = () => {
     fetchRewardDetails();
   }, [id]);
   
-  // Calculate date range for delivery
+  // Calculate date range for delivery based on the prazo_entrega field
   const today = new Date();
   let deliveryStart = new Date(today);
   let deliveryEnd = new Date(today);
   
   if (reward?.prazoEntrega) {
+    // Parse the prazoEntrega field to extract the delivery window
+    // Format could be like "Até XX dias úteis" or "XX-YY dias úteis"
     const matches = reward.prazoEntrega.match(/(\d+)(?:-(\d+))?\s*dias/i);
     if (matches) {
       const minDays = parseInt(matches[1], 10);
-      const maxDays = matches[2] ? parseInt(matches[2], 10) : minDays + 3;
+      const maxDays = matches[2] ? parseInt(matches[2], 10) : minDays;
       
       deliveryStart.setDate(today.getDate() + minDays);
       deliveryEnd.setDate(today.getDate() + maxDays);
     } else {
-      // Default if prazoEntrega format is not recognized
-      deliveryStart.setDate(today.getDate() + 7);
-      deliveryEnd.setDate(today.getDate() + 10);
+      // Handle case where prazoEntrega contains "Até X dias"
+      const ateDiasMatch = reward.prazoEntrega.match(/até\s+(\d+)\s*dias/i);
+      if (ateDiasMatch) {
+        const maxDays = parseInt(ateDiasMatch[1], 10);
+        // For "Até X dias", set min as half of max (or 3 days less)
+        const minDays = Math.max(1, maxDays - 3);
+        
+        deliveryStart.setDate(today.getDate() + minDays);
+        deliveryEnd.setDate(today.getDate() + maxDays);
+      } else {
+        // Default if format is not recognized
+        deliveryStart.setDate(today.getDate() + 3);
+        deliveryEnd.setDate(today.getDate() + 7);
+      }
     }
   } else {
-    deliveryStart.setDate(today.getDate() + 7);
-    deliveryEnd.setDate(today.getDate() + 10);
+    // Default fallback
+    deliveryStart.setDate(today.getDate() + 3);
+    deliveryEnd.setDate(today.getDate() + 7);
   }
   
   const formatDate = (date: Date) => {
@@ -213,12 +227,12 @@ const ResgateDetailScreen: React.FC = () => {
         <h1 className="text-xl font-bold text-white">Detalhes da Recompensa</h1>
       </div>
       
-      {/* Product Image - Fixed height with proper object fit */}
-      <div className="w-full bg-white flex justify-center items-center" style={{ height: "240px" }}>
+      {/* Product Image - Fixed height with flex centering for better display */}
+      <div className="w-full bg-white flex justify-center items-center" style={{ height: "280px" }}>
         <img 
           src={reward.imagemUrl} 
           alt={reward.titulo}
-          className="h-full w-auto object-contain max-h-[240px]"
+          className="max-h-[280px] w-auto object-contain p-4"
           onError={(e) => {
             e.currentTarget.src = 'https://images.unsplash.com/photo-1618160702438-9b02ab6515c9?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&h=500&q=80';
           }}
