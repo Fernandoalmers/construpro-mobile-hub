@@ -73,25 +73,6 @@ const OrderConfirmationScreen: React.FC = () => {
     minute: '2-digit'
   });
 
-  // Helper to safely get product image URL
-  const getProductImageUrl = (item: any) => {
-    if (!item.produtos) return null;
-    
-    // First check directly for imagem_url which we added in the service
-    if (item.produtos.imagem_url) return item.produtos.imagem_url;
-    
-    // Otherwise try to get it from imagens array
-    if (item.produtos.imagens && Array.isArray(item.produtos.imagens) && item.produtos.imagens.length > 0) {
-      const firstImage = item.produtos.imagens[0];
-      if (typeof firstImage === 'string') return firstImage;
-      if (firstImage && typeof firstImage === 'object') {
-        return firstImage.url || firstImage.path || null;
-      }
-    }
-    
-    return null;
-  };
-
   // Get order ID for display
   const displayOrderId = orderDetails.id ? orderDetails.id.substring(0, 8).toUpperCase() : '';
 
@@ -162,24 +143,24 @@ const OrderConfirmationScreen: React.FC = () => {
             {orderDetails.items && orderDetails.items.length > 0 ? (
               <div className="space-y-4">
                 {orderDetails.items.map((item: any) => (
-                  <div key={item.id} className="flex items-start gap-3 border-b border-gray-100 pb-4">
-                    <div className="w-20 h-20 bg-gray-100 rounded overflow-hidden flex-shrink-0">
+                  <div key={item.id} className="flex border-b border-gray-100 pb-4">
+                    <div className="w-20 h-20 flex-shrink-0 mr-3">
                       <ProductImage 
-                        imagemUrl={getProductImageUrl(item)}
-                        productName={item.produtos?.nome || 'Produto'}
+                        imagemUrl={item.produto?.imagem_url}
+                        productName={item.produto?.nome || 'Produto'}
                         size="lg"
                       />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm">{item.produtos?.nome || 'Produto'}</p>
-                      <div className="mt-1 text-gray-600 text-sm">
-                        <div className="flex justify-between items-center mt-1">
+                    <div className="flex-1">
+                      <h4 className="font-medium text-sm line-clamp-2">{item.produto?.nome || 'Produto'}</h4>
+                      <div className="mt-2 text-gray-600 text-sm">
+                        <div className="flex justify-between items-center">
                           <span>Quantidade: {item.quantidade}x</span>
-                          <span>R$ {item.preco_unitario?.toFixed(2)}</span>
+                          <span>R$ {Number(item.preco_unitario).toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between items-center mt-1">
                           <span className="font-medium">Subtotal:</span>
-                          <span className="font-medium">R$ {item.subtotal?.toFixed(2)}</span>
+                          <span className="font-medium">R$ {Number(item.subtotal).toFixed(2)}</span>
                         </div>
                       </div>
                     </div>
