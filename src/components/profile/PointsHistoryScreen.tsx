@@ -130,6 +130,26 @@ const PointsHistoryScreen: React.FC = () => {
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
 
+  // Format transaction description with reference id if available
+  const formatDescription = (transaction: Transaction) => {
+    // For redemption transactions, leave as is since they already mention what was redeemed
+    if (transaction.tipo === 'resgate') {
+      return transaction.descricao;
+    }
+    
+    // For purchases, add reference id as a code if available
+    if (transaction.referencia_id && transaction.tipo === 'compra') {
+      return (
+        <div>
+          {transaction.descricao}
+          <div className="text-xs text-gray-500">#{transaction.referencia_id.substring(0, 8)}</div>
+        </div>
+      );
+    }
+    
+    return transaction.descricao;
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
       {/* Header */}
@@ -245,7 +265,7 @@ const PointsHistoryScreen: React.FC = () => {
                     <div className="flex">
                       {getTransactionIcon(transaction.tipo)}
                       <div className="ml-3">
-                        <p className="font-medium">{transaction.descricao}</p>
+                        <p className="font-medium">{formatDescription(transaction)}</p>
                         <p className="text-xs text-gray-500">{formatDate(transaction.data)}</p>
                       </div>
                     </div>

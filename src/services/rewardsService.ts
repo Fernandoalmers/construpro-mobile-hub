@@ -89,7 +89,8 @@ export const redeemReward = async (request: RedeemRequest): Promise<boolean> => 
           pontos: -request.pontos,
           tipo: 'resgate',
           descricao: `Resgate de ${reward.item}`,
-          referencia_id: redemption.id
+          referencia_id: redemption.id,
+          data: new Date().toISOString() // Ensure we set the current date/time
         });
       
       if (transactionError) {
