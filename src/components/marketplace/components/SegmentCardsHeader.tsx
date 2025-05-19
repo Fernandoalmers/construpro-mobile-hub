@@ -1,6 +1,5 @@
 
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Construction, Zap, GlassWater, Square, Truck, Wrench, ShoppingBag } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getProductSegments } from '@/services/admin/productSegmentsService';
@@ -11,6 +10,7 @@ interface SegmentCardProps {
   icon: React.ReactNode;
   title: string;
   id: string;
+  imageUrl?: string | null;
   onClick: (segmentId: string) => void;
   isSelected?: boolean;
 }
@@ -19,6 +19,7 @@ const SegmentCard: React.FC<SegmentCardProps> = ({
   icon,
   title,
   id,
+  imageUrl,
   onClick,
   isSelected = false
 }) => {
@@ -32,10 +33,14 @@ const SegmentCard: React.FC<SegmentCardProps> = ({
     onClick={() => onClick(id)}
   >
     <div className={cn(
-      "w-12 h-12 rounded-full flex items-center justify-center mb-2", 
+      "w-12 h-12 rounded-full flex items-center justify-center mb-2 overflow-hidden", 
       isSelected ? "bg-white text-construPro-blue" : "bg-construPro-blue/10 text-construPro-blue"
     )}>
-      {icon}
+      {imageUrl ? (
+        <img src={imageUrl} alt={title} className="w-full h-full object-cover" />
+      ) : (
+        icon
+      )}
     </div>
     <span className="text-xs font-medium text-center">{title}</span>
   </div>;
@@ -53,6 +58,7 @@ const SegmentCardsHeader: React.FC<SegmentCardsHeaderProps> = ({
   const [segments, setSegments] = useState<Array<{
     id: string;
     nome: string;
+    image_url?: string | null;
   }>>([]);
   const [loading, setLoading] = useState(true);
 
@@ -126,6 +132,7 @@ const SegmentCardsHeader: React.FC<SegmentCardsHeaderProps> = ({
           key={segment.id}
           id={segment.id}
           title={segment.nome}
+          imageUrl={segment.image_url}
           icon={getIconForSegment(segment.nome)}
           onClick={onSegmentClick}
           isSelected={selectedSegment === segment.id}

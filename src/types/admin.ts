@@ -58,6 +58,7 @@ export interface AdminCategory {
 export interface AdminSegment {
   id: string;
   nome: string;
+  image_url?: string | null;
   status: string;
   categorias_count: number;
   created_at: string;

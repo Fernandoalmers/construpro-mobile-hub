@@ -6,7 +6,7 @@ export interface ProductSegment {
   id: string;
   nome: string;
   image_url?: string | null;
-  status?: string;
+  status: string;
 }
 
 export const getProductSegments = async (): Promise<ProductSegment[]> => {

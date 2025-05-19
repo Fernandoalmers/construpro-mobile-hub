@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { useTitle } from '@/hooks/use-title';
@@ -6,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { AlertTriangle, Plus, Search, Edit, Trash } from 'lucide-react';
+import { AlertTriangle, Plus, Search, Edit, Trash, Image as ImageIcon } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import LoadingState from '@/components/common/LoadingState';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -96,7 +95,7 @@ const AdminCategoriesScreen: React.FC = () => {
   const handleCreateCategory = async (data: {
     nome: string;
     segment_id?: string;
-    status?: string;
+    status: string;
   }) => {
     setIsSubmitting(true);
     try {
@@ -114,7 +113,7 @@ const AdminCategoriesScreen: React.FC = () => {
   const handleCreateSegment = async (
     data: {
       nome: string;
-      status?: string;
+      status: string;
       image_url?: string | null;
     },
     imageFile?: File
@@ -135,7 +134,7 @@ const AdminCategoriesScreen: React.FC = () => {
   const handleUpdateCategory = async (data: {
     nome: string;
     segment_id?: string;
-    status?: string;
+    status: string;
   }) => {
     if (!selectedCategory) return;
     
@@ -155,7 +154,7 @@ const AdminCategoriesScreen: React.FC = () => {
   const handleUpdateSegment = async (
     data: {
       nome: string;
-      status?: string;
+      status: string;
       image_url?: string | null;
     },
     imageFile?: File
@@ -348,7 +347,7 @@ const AdminCategoriesScreen: React.FC = () => {
                               </div>
                             ) : (
                               <div className="h-10 w-16 bg-gray-200 rounded-md flex items-center justify-center">
-                                <Image className="h-4 w-4 text-gray-400" />
+                                <ImageIcon className="h-4 w-4 text-gray-400" />
                               </div>
                             )}
                           </TableCell>

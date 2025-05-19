@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { logAdminAction } from './adminService';
@@ -281,7 +280,7 @@ export const uploadSegmentImage = async (file: File): Promise<string | null> => 
 };
 
 export const createSegment = async (
-  segmentData: Omit<AdminSegment, 'id' | 'created_at' | 'updated_at' | 'categorias_count'>, 
+  segmentData: Omit<AdminSegment, "id" | "created_at" | "updated_at" | "categorias_count">, 
   imageFile?: File
 ): Promise<boolean> => {
   try {

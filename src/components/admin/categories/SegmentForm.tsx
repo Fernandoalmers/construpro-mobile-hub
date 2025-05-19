@@ -12,8 +12,9 @@ import {
 import CustomInput from '@/components/common/CustomInput';
 import CustomSelect from '@/components/common/CustomSelect';
 import CustomButton from '@/components/common/CustomButton';
-import { Image, Upload, X } from 'lucide-react';
+import { Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Image } from 'lucide-react';
 
 interface SegmentFormProps {
   initialData?: {
@@ -24,7 +25,7 @@ interface SegmentFormProps {
   };
   onSubmit: (data: {
     nome: string;
-    status?: string;
+    status: string;
     image_url?: string | null;
   }, imageFile?: File) => void;
   isLoading: boolean;
@@ -47,7 +48,12 @@ const SegmentForm: React.FC<SegmentFormProps> = ({
   });
 
   const handleSubmit = form.handleSubmit((data) => {
-    onSubmit(data, imageFile || undefined);
+    // Ensure status is always defined
+    const formData = {
+      ...data,
+      status: data.status || 'ativo'
+    };
+    onSubmit(formData, imageFile || undefined);
   });
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {

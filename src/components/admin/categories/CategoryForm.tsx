@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { 
@@ -13,7 +12,7 @@ import { AdminSegment } from '@/types/admin';
 import CustomInput from '@/components/common/CustomInput';
 import CustomSelect from '@/components/common/CustomSelect';
 import CustomButton from '@/components/common/CustomButton';
-import { getProductSegments } from '@/services/admin/productSegmentsService';
+import { getProductSegments, ProductSegment } from '@/services/admin/productSegmentsService';
 
 interface CategoryFormProps {
   initialData?: {
@@ -25,7 +24,7 @@ interface CategoryFormProps {
   onSubmit: (data: {
     nome: string;
     segment_id?: string;
-    status?: string;
+    status: string;
   }) => void;
   isLoading: boolean;
 }
@@ -35,7 +34,7 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
   onSubmit, 
   isLoading 
 }) => {
-  const [segments, setSegments] = useState<AdminSegment[]>([]);
+  const [segments, setSegments] = useState<ProductSegment[]>([]);
   const [isLoadingSegments, setIsLoadingSegments] = useState<boolean>(false);
 
   const form = useForm({
@@ -63,7 +62,12 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
   }, []);
 
   const handleSubmit = form.handleSubmit((data) => {
-    onSubmit(data);
+    // Ensure status is always defined
+    const formData = {
+      ...data,
+      status: data.status || 'ativo'
+    };
+    onSubmit(formData);
   });
 
   const segmentOptions = segments.map(segment => ({
