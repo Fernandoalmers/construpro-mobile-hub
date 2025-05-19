@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getProducts, Product } from '@/services/productService';
@@ -152,7 +153,7 @@ const HomeScreen: React.FC = () => {
             <p className="text-gray-600">Seu saldo</p>
             <CustomButton 
               variant="link" 
-              onClick={() => navigate('/profile/points')}
+              onClick={() => navigate('/profile/points-history')}
               className="flex items-center text-construPro-blue p-0"
             >
               Ver extrato <ChevronRight size={16} />
