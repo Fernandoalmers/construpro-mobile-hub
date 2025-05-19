@@ -48,13 +48,25 @@ const FilterChips: React.FC<FilterChipsProps> = ({
   console.log('[FilterChips] Rendering with selected segments:', selectedSegments);
   console.log('[FilterChips] Segment options:', segmentOptions);
   
+  // Create a Set of displayed filter names to avoid duplicates
+  const displayedFilterNames = new Set<string>();
+  
   return (
     <div className="flex flex-wrap gap-2 mb-2">
       {selectedCategories.map(categoryId => {
         const category = allCategories.find(c => c.id === categoryId);
+        const categoryLabel = category?.label || categoryId;
+        
+        // Skip if we already have a segment with the same name
+        if (displayedFilterNames.has(categoryLabel)) {
+          return null;
+        }
+        
+        displayedFilterNames.add(categoryLabel);
+        
         return (
-          <Badge key={categoryId} variant="secondary" className="bg-white text-gray-800 flex items-center gap-1">
-            {category?.label || categoryId}
+          <Badge key={`category-${categoryId}`} variant="secondary" className="bg-white text-gray-800 flex items-center gap-1">
+            {categoryLabel}
             <button 
               onClick={() => onCategoryClick(categoryId)}
               className="ml-1 text-gray-500 hover:text-gray-800"
@@ -67,9 +79,18 @@ const FilterChips: React.FC<FilterChipsProps> = ({
       
       {selectedLojas.map(lojaId => {
         const loja = lojasOptions.find(l => l.id === lojaId);
+        const lojaLabel = loja?.label || lojaId;
+        
+        // Skip if we already have a filter with the same name
+        if (displayedFilterNames.has(lojaLabel)) {
+          return null;
+        }
+        
+        displayedFilterNames.add(lojaLabel);
+        
         return (
-          <Badge key={lojaId} variant="secondary" className="bg-white text-gray-800 flex items-center gap-1">
-            {loja?.label || lojaId}
+          <Badge key={`loja-${lojaId}`} variant="secondary" className="bg-white text-gray-800 flex items-center gap-1">
+            {lojaLabel}
             <button 
               onClick={() => onLojaClick(lojaId)}
               className="ml-1 text-gray-500 hover:text-gray-800"
@@ -82,9 +103,18 @@ const FilterChips: React.FC<FilterChipsProps> = ({
       
       {selectedRatings.map(ratingId => {
         const rating = ratingOptions.find(r => r.id === ratingId);
+        const ratingLabel = rating?.label || ratingId;
+        
+        // Skip if we already have a filter with the same name
+        if (displayedFilterNames.has(ratingLabel)) {
+          return null;
+        }
+        
+        displayedFilterNames.add(ratingLabel);
+        
         return (
-          <Badge key={ratingId} variant="secondary" className="bg-white text-gray-800 flex items-center gap-1">
-            {rating?.label || ratingId}
+          <Badge key={`rating-${ratingId}`} variant="secondary" className="bg-white text-gray-800 flex items-center gap-1">
+            {ratingLabel}
             <button 
               onClick={() => onRatingClick(ratingId)}
               className="ml-1 text-gray-500 hover:text-gray-800"
@@ -100,12 +130,22 @@ const FilterChips: React.FC<FilterChipsProps> = ({
         
         // Find the corresponding segment option for this ID
         const segment = segmentOptions.find(s => s.id === segmentId);
+        if (!segment) return null;
+        
+        const segmentLabel = segment.label;
+        
+        // Skip if we already have a filter with the same name displayed
+        if (displayedFilterNames.has(segmentLabel)) {
+          return null;
+        }
+        
+        displayedFilterNames.add(segmentLabel);
+        
         console.log('[FilterChips] Rendering segment chip:', segmentId, segment);
         
-        // Only show the segment if we found a matching option
-        return segment ? (
-          <Badge key={segmentId} variant="secondary" className="bg-white text-gray-800 flex items-center gap-1">
-            {segment.label}
+        return (
+          <Badge key={`segment-${segmentId}`} variant="secondary" className="bg-white text-gray-800 flex items-center gap-1">
+            {segmentLabel}
             <button 
               onClick={() => onSegmentClick(segmentId)}
               className="ml-1 text-gray-500 hover:text-gray-800"
@@ -113,7 +153,7 @@ const FilterChips: React.FC<FilterChipsProps> = ({
               ×
             </button>
           </Badge>
-        ) : null;
+        );
       })}
       
       {hasAnyFilter && (

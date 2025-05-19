@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -27,7 +26,6 @@ let segmentBlocks: Array<{
   name: string;
   icon: React.ReactNode;
   filter: { 
-    categoria?: string;
     segmento_id?: string;
     type?: string;
   };
@@ -59,14 +57,13 @@ const MarketplaceHomeScreen: React.FC = () => {
         const marmorariaId = segmentsData.find(s => s.nome.toLowerCase().includes('marm'))?.id;
         const aluguelId = segmentsData.find(s => s.nome.toLowerCase().includes('aluguel'))?.id;
         
-        // Update segment blocks with real IDs
+        // Update segment blocks with real IDs - REMOVED categoria parameter
         segmentBlocks = [
           {
             id: 'materiais-construcao',
             name: 'Materiais de Construção',
             icon: <Construction size={24} />,
             filter: { 
-              categoria: 'Materiais de Construção',
               segmento_id: materiaisConstId
             }
           },
@@ -75,7 +72,6 @@ const MarketplaceHomeScreen: React.FC = () => {
             name: 'Material Elétrico',
             icon: <Plug size={24} />,
             filter: { 
-              categoria: 'Materiais Elétricos',
               segmento_id: materiaisEletId
             }
           },
@@ -84,7 +80,6 @@ const MarketplaceHomeScreen: React.FC = () => {
             name: 'Vidraçaria',
             icon: <GlassWater size={24} />,
             filter: { 
-              categoria: 'Vidraçaria',
               segmento_id: vidracariaId
             }
           },
@@ -93,7 +88,6 @@ const MarketplaceHomeScreen: React.FC = () => {
             name: 'Marmoraria',
             icon: <Box size={24} />,
             filter: { 
-              categoria: 'Marmoraria',
               segmento_id: marmorariaId
             }
           },
@@ -102,7 +96,6 @@ const MarketplaceHomeScreen: React.FC = () => {
             name: 'Aluguel de Equipamentos',
             icon: <Hammer size={24} />,
             filter: { 
-              categoria: 'Aluguel',
               segmento_id: aluguelId
             }
           },
@@ -173,11 +166,7 @@ const MarketplaceHomeScreen: React.FC = () => {
     // Navigate to marketplace with filter parameters
     const queryParams = new URLSearchParams();
     
-    if (filter.categoria) {
-      queryParams.append('categoria', filter.categoria);
-    }
-    
-    // Add segment_id to URL parameters if available
+    // No longer add categoria to URL parameters, only segmento_id
     if (filter.segmento_id) {
       queryParams.append('segmento_id', filter.segmento_id);
       console.log(`[MarketplaceHomeScreen] Navigating to marketplace with segment_id: ${filter.segmento_id}`);

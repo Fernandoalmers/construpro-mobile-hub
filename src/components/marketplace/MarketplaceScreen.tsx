@@ -23,6 +23,8 @@ const MarketplaceScreen: React.FC = () => {
   const searchQuery = searchParams.get('search');
   const segmentIdParam = searchParams.get('segmento_id');
   
+  // Only initialize categories from URL if we have a categoria param
+  // This change prevents initializing with category when we only have segmento_id
   const initialCategories = categoryParam ? [categoryParam] : [];
   
   // State for segment selection - properly initialize with segmentIdParam
@@ -146,11 +148,19 @@ const MarketplaceScreen: React.FC = () => {
   // Update URL with segment ID
   const updateSegmentURL = (segmentId: string | null) => {
     const newSearchParams = new URLSearchParams(searchParams);
+    
+    // Clear the categoria parameter if segmentId is changing
+    // This ensures we don't have both category and segment filters
+    if (categoryParam) {
+      newSearchParams.delete('categoria');
+    }
+    
     if (segmentId) {
       newSearchParams.set('segmento_id', segmentId);
     } else {
       newSearchParams.delete('segmento_id');
     }
+    
     navigate(`${location.pathname}?${newSearchParams.toString()}`, { replace: true });
   };
 
@@ -227,11 +237,20 @@ const MarketplaceScreen: React.FC = () => {
   }, [products, selectedSegmentId, filteredProdutos, selectedSegments]);
 
   // Current category name for display
-  const currentCategoryName = selectedCategories.length === 1 ? 
-    categories.find(cat => cat.id === selectedCategories[0])?.label : 
-    selectedSegmentId ? 
-      segmentOptions.find(s => s.id === selectedSegmentId)?.label || "Produtos no segmento selecionado" : 
-      "Todos os Produtos";
+  const getCurrentDisplayName = () => {
+    if (selectedSegmentId) {
+      const segmentName = segmentOptions.find(s => s.id === selectedSegmentId)?.label;
+      if (segmentName) return segmentName;
+    }
+    
+    if (selectedCategories.length === 1) {
+      return categories.find(cat => cat.id === selectedCategories[0])?.label;
+    }
+    
+    return "Todos os Produtos";
+  };
+
+  const currentCategoryName = getCurrentDisplayName();
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 pb-20">
