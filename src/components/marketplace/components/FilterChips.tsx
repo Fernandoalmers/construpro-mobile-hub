@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { FilterOption } from '@/hooks/use-product-filter';
@@ -33,12 +34,18 @@ const FilterChips: React.FC<FilterChipsProps> = ({
   onSegmentClick = () => {},
   clearFilters
 }) => {
-  if (selectedCategories.length === 0 && 
-      selectedLojas.length === 0 && 
-      selectedRatings.length === 0 && 
-      selectedSegments.length === 0) {
+  // Only show the clear filters button if ANY filter is applied
+  const hasAnyFilter = selectedCategories.length > 0 || 
+                       selectedLojas.length > 0 || 
+                       selectedRatings.length > 0 || 
+                       selectedSegments.length > 0;
+                       
+  if (!hasAnyFilter) {
     return null;
   }
+  
+  // Add log to debug segment filter chips
+  console.log('[FilterChips] Rendering with selected segments:', selectedSegments);
   
   return (
     <div className="flex flex-wrap gap-2 mb-2">
@@ -89,9 +96,9 @@ const FilterChips: React.FC<FilterChipsProps> = ({
       
       {selectedSegments.map(segmentId => {
         const segment = segmentOptions.find(s => s.id === segmentId);
-        return (
+        return segment ? (
           <Badge key={segmentId} variant="secondary" className="bg-white text-gray-800 flex items-center gap-1">
-            {segment?.label}
+            {segment.label}
             <button 
               onClick={() => onSegmentClick(segmentId)}
               className="ml-1 text-gray-500 hover:text-gray-800"
@@ -99,15 +106,17 @@ const FilterChips: React.FC<FilterChipsProps> = ({
               ×
             </button>
           </Badge>
-        );
+        ) : null;
       })}
       
-      <button 
-        onClick={clearFilters}
-        className="text-white text-sm underline"
-      >
-        Limpar filtros
-      </button>
+      {hasAnyFilter && (
+        <button 
+          onClick={clearFilters}
+          className="text-white text-sm underline"
+        >
+          Limpar filtros
+        </button>
+      )}
     </div>
   );
 };

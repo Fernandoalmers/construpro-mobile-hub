@@ -22,6 +22,8 @@ const SegmentCard: React.FC<SegmentCardProps> = ({
   onClick,
   isSelected = false
 }) => {
+  console.log(`[SegmentCard] Rendering ${title} with isSelected=${isSelected}`);
+  
   return <div 
     className={cn(
       "flex flex-col items-center p-3 rounded-lg cursor-pointer transition-all", 

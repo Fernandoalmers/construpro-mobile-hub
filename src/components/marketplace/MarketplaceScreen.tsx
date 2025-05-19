@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useProductFilter } from '@/hooks/use-product-filter';
@@ -77,7 +76,7 @@ const MarketplaceScreen: React.FC = () => {
     handleCategoryClick,
     handleRatingClick,
     loadMoreProducts,
-    clearFilters,
+    clearFilters: originalClearFilters,
     setSelectedLojas,
     setPage
   } = useProductFilter({ 
@@ -85,6 +84,23 @@ const MarketplaceScreen: React.FC = () => {
     initialProducts: products,
     initialSearch: searchQuery || '' 
   });
+
+  // Modified clearFilters function that preserves segment selection
+  const clearFilters = () => {
+    // Call the original clearFilters but we'll keep the segment selection
+    originalClearFilters();
+    
+    // Log what we're keeping
+    console.log('[MarketplaceScreen] Clearing filters but preserving segment:', selectedSegmentId);
+    
+    // Make sure URL is updated to reflect we're keeping the segment
+    if (selectedSegmentId) {
+      updateSegmentURL(selectedSegmentId);
+    }
+    
+    // Reset page
+    setPage(1);
+  };
 
   // Segment filter handling
   const [selectedSegments, setSelectedSegments] = useState<string[]>(initialSegments);
@@ -107,7 +123,8 @@ const MarketplaceScreen: React.FC = () => {
         updateSegmentURL(newSegments[0] || null);
         return newSegments;
       } else {
-        const newSegments = [...prev, segmentId];
+        // For single segment selection, replace the array
+        const newSegments = [segmentId];
         updateSegmentURL(segmentId);
         return newSegments;
       }
@@ -202,8 +219,9 @@ const MarketplaceScreen: React.FC = () => {
       console.log(`[MarketplaceScreen] Products with segmento_id=${selectedSegmentId}:`, 
                  products.filter(p => p.segmento_id === selectedSegmentId).length);
       console.log('[MarketplaceScreen] Filtered products count:', filteredProdutos.length);
+      console.log('[MarketplaceScreen] Selected segments:', selectedSegments);
     }
-  }, [products, selectedSegmentId, filteredProdutos]);
+  }, [products, selectedSegmentId, filteredProdutos, selectedSegments]);
 
   // Current category name for display
   const currentCategoryName = selectedCategories.length === 1 ? 
