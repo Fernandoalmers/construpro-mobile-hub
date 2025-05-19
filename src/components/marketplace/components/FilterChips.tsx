@@ -44,7 +44,7 @@ const FilterChips: React.FC<FilterChipsProps> = ({
     return null;
   }
   
-  // Add log to debug segment filter chips
+  // Debug logs to help track selected segments and their options
   console.log('[FilterChips] Rendering with selected segments:', selectedSegments);
   console.log('[FilterChips] Segment options:', segmentOptions);
   
@@ -54,7 +54,7 @@ const FilterChips: React.FC<FilterChipsProps> = ({
         const category = allCategories.find(c => c.id === categoryId);
         return (
           <Badge key={categoryId} variant="secondary" className="bg-white text-gray-800 flex items-center gap-1">
-            {category?.label}
+            {category?.label || categoryId}
             <button 
               onClick={() => onCategoryClick(categoryId)}
               className="ml-1 text-gray-500 hover:text-gray-800"
@@ -69,7 +69,7 @@ const FilterChips: React.FC<FilterChipsProps> = ({
         const loja = lojasOptions.find(l => l.id === lojaId);
         return (
           <Badge key={lojaId} variant="secondary" className="bg-white text-gray-800 flex items-center gap-1">
-            {loja?.label}
+            {loja?.label || lojaId}
             <button 
               onClick={() => onLojaClick(lojaId)}
               className="ml-1 text-gray-500 hover:text-gray-800"
@@ -84,7 +84,7 @@ const FilterChips: React.FC<FilterChipsProps> = ({
         const rating = ratingOptions.find(r => r.id === ratingId);
         return (
           <Badge key={ratingId} variant="secondary" className="bg-white text-gray-800 flex items-center gap-1">
-            {rating?.label}
+            {rating?.label || ratingId}
             <button 
               onClick={() => onRatingClick(ratingId)}
               className="ml-1 text-gray-500 hover:text-gray-800"
@@ -96,8 +96,13 @@ const FilterChips: React.FC<FilterChipsProps> = ({
       })}
       
       {selectedSegments.map(segmentId => {
+        if (segmentId === "all") return null; // Skip the "all" segment filter chip
+        
+        // Find the corresponding segment option for this ID
         const segment = segmentOptions.find(s => s.id === segmentId);
         console.log('[FilterChips] Rendering segment chip:', segmentId, segment);
+        
+        // Only show the segment if we found a matching option
         return segment ? (
           <Badge key={segmentId} variant="secondary" className="bg-white text-gray-800 flex items-center gap-1">
             {segment.label}

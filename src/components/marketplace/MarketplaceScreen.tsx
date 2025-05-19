@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useProductFilter } from '@/hooks/use-product-filter';
@@ -25,10 +24,13 @@ const MarketplaceScreen: React.FC = () => {
   const segmentIdParam = searchParams.get('segmento_id');
   
   const initialCategories = categoryParam ? [categoryParam] : [];
-  const initialSegments = segmentIdParam ? [segmentIdParam] : [];
   
-  // State for segment selection - using segmento_id now
+  // State for segment selection - properly initialize with segmentIdParam
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(segmentIdParam);
+  // Important: Initialize selectedSegments with segmentIdParam if it exists
+  const [selectedSegments, setSelectedSegments] = useState<string[]>(
+    segmentIdParam ? [segmentIdParam] : []
+  );
   const [segmentOptions, setSegmentOptions] = useState<any[]>([]);
   
   // Use our custom hooks
@@ -108,17 +110,15 @@ const MarketplaceScreen: React.FC = () => {
     console.log('[MarketplaceScreen] Clearing filters but preserving segment:', selectedSegmentId);
     
     // Make sure URL is updated to reflect we're keeping the segment
-    if (selectedSegmentId) {
+    if (selectedSegmentId && selectedSegmentId !== "all") {
       updateSegmentURL(selectedSegmentId);
     }
     
     // Reset page
     setPage(1);
   };
-
-  // Segment filter handling
-  const [selectedSegments, setSelectedSegments] = useState<string[]>(initialSegments);
   
+  // Segment filter handling
   const handleSegmentClick = (segmentId: string) => {
     console.log('[MarketplaceScreen] Segment clicked:', segmentId);
     
@@ -130,25 +130,14 @@ const MarketplaceScreen: React.FC = () => {
       return;
     }
     
-    setSelectedSegments(prev => {
-      // Toggle the segment selection
-      if (prev.includes(segmentId)) {
-        const newSegments = prev.filter(id => id !== segmentId);
-        updateSegmentURL(newSegments[0] || null);
-        return newSegments;
-      } else {
-        // For single segment selection, replace the array
-        const newSegments = [segmentId];
-        updateSegmentURL(segmentId);
-        return newSegments;
-      }
-    });
+    // For single segment selection, replace the array
+    setSelectedSegments([segmentId]);
     
     // Update the selectedSegmentId for the data fetching
-    setSelectedSegmentId(prev => {
-      if (prev === segmentId) return null;
-      return segmentId;
-    });
+    setSelectedSegmentId(segmentId);
+    
+    // Update URL with segment ID
+    updateSegmentURL(segmentId);
     
     // Reset page
     setPage(1);
