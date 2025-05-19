@@ -7,3 +7,4 @@ export * from './clearCart';
 export * from './fixCartStockIssues';
 export * from './stockChecker';
 export * from './cartItemModifiers';
+export * from './verifyCartPointsCalculation';

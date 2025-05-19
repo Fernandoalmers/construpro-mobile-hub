@@ -26,11 +26,13 @@ export const orderService = {
             produto_id: item.produto_id,
             quantidade: item.quantidade,
             preco_unitario: item.preco,
-            subtotal: item.subtotal || item.preco * item.quantidade
+            subtotal: item.subtotal || item.preco * item.quantidade,
+            pontos: item.produto?.pontos || 0 // Pass points per product explicitly
           })),
           endereco_entrega: orderData.endereco_entrega,
           forma_pagamento: orderData.forma_pagamento,
           valor_total: orderData.valor_total,
+          pontos_ganhos: orderData.pontos_ganhos, // Pass the accurate total points
           status: 'Confirmado'  // Capitalized to match database constraint
         },
         maxRetries: 3 // Increase retries for critical operations like order creation

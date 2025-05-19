@@ -56,6 +56,65 @@ async function updateProductInventory(supabaseClient: any, items: any[]): Promis
   }
 }
 
+// Helper function to get total points from order items
+async function calculateOrderPoints(supabaseClient: any, items: any[], userType: string = 'consumidor'): Promise<number> {
+  console.log("Calculating points for order items with user type:", userType);
+  let totalPoints = 0;
+  
+  try {
+    // Fetch all product IDs at once for better performance
+    const productIds = items.map(item => item.produto_id).filter(Boolean);
+    
+    if (productIds.length === 0) {
+      console.warn("No valid product IDs found in order items");
+      return 0;
+    }
+    
+    const { data: products, error } = await supabaseClient
+      .from('produtos')
+      .select('id, pontos_consumidor, pontos_profissional')
+      .in('id', productIds);
+    
+    if (error) {
+      console.error("Error fetching product points data:", error);
+      return 0;
+    }
+    
+    if (!products || products.length === 0) {
+      console.warn("No products found for points calculation");
+      return 0;
+    }
+    
+    // Create a mapping of product ID to points info
+    const productPointsMap = products.reduce((acc, product) => {
+      acc[product.id] = {
+        consumerPoints: product.pontos_consumidor || 0,
+        professionalPoints: product.pontos_profissional || 0
+      };
+      return acc;
+    }, {});
+    
+    // Sum points for all items based on user type
+    items.forEach(item => {
+      if (item.produto_id && productPointsMap[item.produto_id]) {
+        const pointsInfo = productPointsMap[item.produto_id];
+        const pointsPerUnit = userType === 'profissional' 
+          ? pointsInfo.professionalPoints 
+          : pointsInfo.consumerPoints;
+        
+        totalPoints += (pointsPerUnit * item.quantidade);
+      }
+    });
+    
+    console.log(`Total points calculated for order: ${totalPoints}`);
+    return totalPoints;
+    
+  } catch (error) {
+    console.error("Error in calculateOrderPoints:", error);
+    return 0;
+  }
+}
+
 export async function handleGetOrders(req: Request, authHeader: string) {
   try {
     console.log("Getting orders for authenticated user");
@@ -319,6 +378,20 @@ export async function handleCreateOrder(req: Request, authHeader: string) {
     const user = await verifyUserToken(regularClient)
     console.log(`User authenticated successfully: ${user.id}`);
     
+    // Get user profile to determine if they are a consumer or professional
+    const { data: userProfile, error: profileError } = await regularClient
+      .from('profiles')
+      .select('papel, tipo_perfil')
+      .eq('id', user.id)
+      .single();
+    
+    if (profileError) {
+      console.error("Error fetching user profile:", profileError);
+    }
+    
+    const userType = userProfile?.papel || userProfile?.tipo_perfil || 'consumidor';
+    console.log(`User type determined as: ${userType}`);
+    
     // For database operations that might face RLS issues, use the service role client
     // The service role bypasses RLS policies entirely
     const serviceRoleClient = initSupabaseClient(token, true)
@@ -334,14 +407,31 @@ export async function handleCreateOrder(req: Request, authHeader: string) {
       orderData.status = "Confirmado";
     }
     
-    // Calculate points earned (10% of order total)
-    const pontos_ganhos = Math.floor(orderData.valor_total * 0.1)
-    
     try {
       console.log(`Creating order for user: ${user.id}`);
       
+      // Calculate product-specific points instead of using percentage of order total
+      let pontos_ganhos = orderData.pontos_ganhos;
+      
+      // If points weren't explicitly provided or calculated correctly in the frontend,
+      // calculate them here based on the products in the order
+      if (!pontos_ganhos || pontos_ganhos <= 0) {
+        pontos_ganhos = await calculateOrderPoints(serviceRoleClient, orderData.items, userType);
+        console.log(`Calculated points from products: ${pontos_ganhos}`);
+      } else {
+        console.log(`Using points provided from frontend: ${pontos_ganhos}`);
+        
+        // Double-check the points for debugging purposes
+        const calculatedPoints = await calculateOrderPoints(serviceRoleClient, orderData.items, userType);
+        if (calculatedPoints !== pontos_ganhos) {
+          console.warn(`Warning: Points mismatch. Frontend: ${pontos_ganhos}, Calculated: ${calculatedPoints}`);
+          // Use the calculated points as the correct value
+          pontos_ganhos = calculatedPoints;
+        }
+      }
+      
       // Create order with explicit user ID to satisfy RLS (but using service role to bypass RLS)
-      console.log("Inserting order record");
+      console.log("Inserting order record with points:", pontos_ganhos);
       const orderInsertData = {
         cliente_id: user.id,
         valor_total: orderData.valor_total,
@@ -399,7 +489,7 @@ export async function handleCreateOrder(req: Request, authHeader: string) {
       console.log("Product inventory updated successfully");
       
       // Add points transaction
-      console.log("Creating points transaction");
+      console.log("Creating points transaction with points:", pontos_ganhos);
       const { error: pointsError } = await serviceRoleClient
         .from('points_transactions')
         .insert({

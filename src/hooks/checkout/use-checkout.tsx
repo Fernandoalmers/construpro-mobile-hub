@@ -34,7 +34,10 @@ export function useCheckout() {
   const subtotal = cart?.summary?.subtotal || 0;
   const shipping = 0; // Free shipping
   const total = subtotal + shipping;
-  const totalPoints = cart?.summary?.totalPoints || Math.floor(total * 0.1);
+  
+  // Use the product-specific points directly from cart summary
+  // and don't calculate based on total amount
+  const totalPoints = cart?.summary?.totalPoints || 0;
   
   // Group items by store
   const storeGroupsRecord = useGroupItemsByStore(cartItems, cart?.stores || []);
@@ -89,7 +92,7 @@ export function useCheckout() {
       setProcessError(null);
       setOrderAttempts(prev => prev + 1);
       
-      // Prepare order data
+      // Prepare order data with product-specific points
       const orderData = {
         items: cartItems,
         endereco_entrega: selectedAddress,
@@ -166,3 +169,4 @@ export function useCheckout() {
     handleRetry
   };
 }
+
