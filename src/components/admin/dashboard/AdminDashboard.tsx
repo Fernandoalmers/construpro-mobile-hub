@@ -43,7 +43,7 @@ const AdminDashboard: React.FC = () => {
         <ErrorState 
           title="Erro ao carregar o painel administrativo" 
           message={error}
-          onRetry={() => window.location.reload()}
+          onRetry={() => refetch()} // Use the refetch function to retry
           retryText="Tentar novamente"
           errorDetails="Falha ao comunicar com o banco de dados. Verifique sua conexão ou entre em contato com o suporte."
         />
