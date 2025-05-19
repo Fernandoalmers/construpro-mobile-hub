@@ -60,10 +60,17 @@ export const getProductSegments = async (): Promise<ProductSegment[]> => {
     
     // Ensure any data returned has the required status property
     if (data) {
-      return data.map(item => ({
-        ...item,
-        status: item.status || 'ativo' // Set default status if missing
-      }));
+      // Since TypeScript doesn't know the exact shape of data here,
+      // we need to type-check each item or cast it appropriately
+      return data.map(item => {
+        const segment = item as Partial<ProductSegment>;
+        return {
+          id: segment.id!,
+          nome: segment.nome!,
+          image_url: segment.image_url || null,
+          status: segment.status || 'ativo' // Set default status if missing
+        };
+      });
     }
     
     return [];
