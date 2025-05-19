@@ -205,8 +205,8 @@ const ResgateDetailScreen: React.FC = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
-      {/* Header - Reduced height */}
-      <div className="bg-construPro-blue p-4 flex items-center">
+      {/* Header - Reduced height with less padding */}
+      <div className="bg-construPro-blue p-3 flex items-center">
         <button onClick={() => navigate(-1)} className="text-white mr-2">
           <ArrowLeft size={24} />
         </button>
@@ -214,18 +214,18 @@ const ResgateDetailScreen: React.FC = () => {
       </div>
       
       {/* Product Image - Fixed height with proper object fit */}
-      <div className="w-full h-auto">
+      <div className="w-full bg-white flex justify-center items-center" style={{ height: "240px" }}>
         <img 
           src={reward.imagemUrl} 
           alt={reward.titulo}
-          className="w-full object-contain max-h-[300px]"
+          className="h-full w-auto object-contain max-h-[240px]"
           onError={(e) => {
             e.currentTarget.src = 'https://images.unsplash.com/photo-1618160702438-9b02ab6515c9?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&h=500&q=80';
           }}
         />
       </div>
       
-      {/* Reward Details */}
+      {/* Reward Details - Improved spacing */}
       <div className="p-4 space-y-4">
         <div>
           <h2 className="text-xl font-bold">{reward.titulo}</h2>
@@ -234,26 +234,8 @@ const ResgateDetailScreen: React.FC = () => {
           </div>
         </div>
         
-        <Card className="p-4">
-          <h3 className="font-medium mb-2">Detalhes</h3>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-500">Categoria</span>
-              <span>{reward.categoria}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Prazo de entrega</span>
-              <span>{reward.prazoEntrega}</span>
-            </div>
-          </div>
-        </Card>
-        
-        <Card className="p-4">
-          <h3 className="font-medium mb-2">Descrição</h3>
-          <p className="text-sm text-gray-700">{reward.descricao}</p>
-        </Card>
-        
-        <Card className="p-4">
+        {/* Delivery Estimate - More prominent positioning */}
+        <Card className="p-4 border-l-4 border-construPro-blue">
           <div className="flex items-center mb-2">
             <Calendar className="text-construPro-blue mr-2" size={18} />
             <h3 className="font-medium">Previsão de entrega</h3>
@@ -261,6 +243,30 @@ const ResgateDetailScreen: React.FC = () => {
           <p className="text-sm">
             Chegará entre <span className="font-medium">{formatDate(deliveryStart)}</span> e <span className="font-medium">{formatDate(deliveryEnd)}</span>
           </p>
+          <p className="text-xs text-gray-500 mt-1">
+            Prazo de entrega: {reward.prazoEntrega}
+          </p>
+        </Card>
+        
+        <Card className="p-4">
+          <h3 className="font-medium mb-2">Detalhes</h3>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-500">Categoria</span>
+              <span>{reward.categoria}</span>
+            </div>
+            {reward.estoque !== null && (
+              <div className="flex justify-between">
+                <span className="text-gray-500">Disponibilidade</span>
+                <span>{reward.estoque} em estoque</span>
+              </div>
+            )}
+          </div>
+        </Card>
+        
+        <Card className="p-4">
+          <h3 className="font-medium mb-2">Descrição</h3>
+          <p className="text-sm text-gray-700">{reward.descricao}</p>
         </Card>
         
         <CustomButton
