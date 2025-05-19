@@ -32,22 +32,30 @@ export const getProductSegments = async (): Promise<ProductSegment[]> => {
       return fallbackData || [];
     }
     
-    // If the RPC function doesn't return the new fields, get them with a direct query
-    if (data && data.length > 0 && !('image_url' in data[0])) {
-      const segmentIds = data.map(s => s.id);
-      
-      const { data: completeData, error: completeError } = await supabase
-        .from('product_segments')
-        .select('id, nome, image_url, status')
-        .in('id', segmentIds)
-        .order('nome');
+    // Handle the case where the RPC function returns only id and nome (without status and image_url)
+    if (data && data.length > 0) {
+      // Check if data lacks the required status field
+      if (!('status' in data[0])) {
+        const segmentIds = data.map(s => s.id);
         
-      if (completeError) {
-        console.error('Error fetching complete segment data:', completeError);
-        return data;
+        const { data: completeData, error: completeError } = await supabase
+          .from('product_segments')
+          .select('id, nome, image_url, status')
+          .in('id', segmentIds)
+          .order('nome');
+          
+        if (completeError) {
+          console.error('Error fetching complete segment data:', completeError);
+          // If we can't get complete data, provide default status for each item
+          return data.map(item => ({
+            ...item,
+            status: 'ativo', // Default status
+            image_url: null  // Default image_url
+          }));
+        }
+        
+        return completeData || [];
       }
-      
-      return completeData || data;
     }
     
     return data || [];

@@ -2,8 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { Construction, Zap, GlassWater, Square, Truck, Wrench, ShoppingBag } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getProductSegments } from '@/services/admin/productSegmentsService';
-import { supabase } from '@/integrations/supabase/client';
+import { getProductSegments, ProductSegment } from '@/services/admin/productSegmentsService';
 import { toast } from '@/components/ui/sonner';
 
 interface SegmentCardProps {
@@ -55,11 +54,7 @@ const SegmentCardsHeader: React.FC<SegmentCardsHeaderProps> = ({
   selectedSegment,
   onSegmentClick
 }) => {
-  const [segments, setSegments] = useState<Array<{
-    id: string;
-    nome: string;
-    image_url?: string | null;
-  }>>([]);
+  const [segments, setSegments] = useState<ProductSegment[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -67,7 +62,7 @@ const SegmentCardsHeader: React.FC<SegmentCardsHeaderProps> = ({
       try {
         const segmentsData = await getProductSegments();
         console.log('[SegmentCardsHeader] Fetched segments:', segmentsData);
-        setSegments(segmentsData);
+        setSegments(segmentsData.filter(segment => segment.status === 'ativo'));
       } catch (error) {
         console.error('[SegmentCardsHeader] Error fetching segments:', error);
         toast.error('Erro ao carregar segmentos');
