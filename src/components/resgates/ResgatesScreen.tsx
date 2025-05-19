@@ -4,14 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import FilterChips from '../common/FilterChips';
 import CustomInput from '../common/CustomInput';
 import ListEmptyState from '../common/ListEmptyState';
-import { Search, Gift, History, ArrowUpRight } from 'lucide-react';
+import { Search, Gift } from 'lucide-react';
 import ResgateCard from './ResgateCard';
 import { useAuth } from '@/context/AuthContext';
 import { useRewardsData } from '@/hooks/useRewardsData';
 import LoadingState from '../common/LoadingState';
 import ErrorState from '../common/ErrorState';
-import { Button } from '@/components/ui/button';
-import ProgressBar from '../common/ProgressBar';
 
 const ResgatesScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -55,31 +53,11 @@ const ResgatesScreen: React.FC = () => {
         <div className="bg-white p-5 rounded-xl shadow-sm mb-5">
           <div className="flex justify-between items-center mb-2">
             <p className="text-gray-600 font-medium">Seu saldo</p>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="text-construPro-blue hover:text-construPro-blue/80 p-0 flex items-center gap-1"
-              onClick={() => navigate('/historico-resgates')}
-            >
-              <History className="h-4 w-4" />
-              <span>Histórico</span>
-            </Button>
           </div>
           
           <h2 className="text-3xl font-bold text-construPro-blue">
             {saldoPontos.toLocaleString()} pontos
           </h2>
-          
-          <div className="mt-3">
-            <ProgressBar 
-              value={saldoPontos} 
-              max={Math.max(5000, saldoPontos)} 
-              color="orange"
-              size="md"
-              showLabel
-              label={`${Math.round((saldoPontos/Math.max(5000, saldoPontos))*100)}% do próximo nível`}
-            />
-          </div>
         </div>
         
         <div className="space-y-3">
@@ -116,7 +94,7 @@ const ResgatesScreen: React.FC = () => {
         </div>
 
         {rewards.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="flex flex-col gap-3">
             {rewards.map(resgate => (
               <ResgateCard
                 key={resgate.id}
