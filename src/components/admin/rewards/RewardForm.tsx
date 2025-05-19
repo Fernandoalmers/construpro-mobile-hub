@@ -25,6 +25,8 @@ interface RewardFormProps {
   onCancel: () => void;
 }
 
+const DEFAULT_IMAGE_URL = 'https://images.unsplash.com/photo-1618160702438-9b02ab6515c9?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&h=500&q=80';
+
 const RewardForm: React.FC<RewardFormProps> = ({
   initialData,
   onSuccess,
@@ -42,7 +44,7 @@ const RewardForm: React.FC<RewardFormProps> = ({
       categoria: initialData?.categoria || 'Resgate',
       imagem_url: initialData?.imagem_url || '',
       estoque: initialData?.estoque || null,
-      status: initialData?.status || 'pendente'
+      status: initialData?.status || 'ativo' // Default to active
     }
   });
 
@@ -79,6 +81,11 @@ const RewardForm: React.FC<RewardFormProps> = ({
   const onSubmit = async (data: any) => {
     setIsLoading(true);
     try {
+      // Ensure image URL is set, even if blank in form
+      if (!data.imagem_url) {
+        data.imagem_url = DEFAULT_IMAGE_URL;
+      }
+      
       console.log("Form submission data:", data); // Debug log
       
       // Se estamos criando uma nova recompensa
@@ -90,7 +97,7 @@ const RewardForm: React.FC<RewardFormProps> = ({
           categoria: data.categoria,
           imagem_url: data.imagem_url,
           estoque: data.estoque,
-          status: data.status
+          status: data.status || 'ativo' // Default to active if not specified
         });
         
         if (result) {
@@ -130,8 +137,8 @@ const RewardForm: React.FC<RewardFormProps> = ({
   }));
 
   const statusOptions = [
-    { label: 'Pendente', value: 'pendente' },
     { label: 'Ativo', value: 'ativo' },
+    { label: 'Pendente', value: 'pendente' },
     { label: 'Inativo', value: 'inativo' }
   ];
 
@@ -262,12 +269,16 @@ const RewardForm: React.FC<RewardFormProps> = ({
             <FormItem>
               <FormLabel>Imagem da Recompensa</FormLabel>
               <div className="flex flex-col space-y-3">
-                {imagePreview && (
+                {(imagePreview || DEFAULT_IMAGE_URL) && (
                   <div className="relative w-32 h-32 border rounded overflow-hidden">
                     <img 
-                      src={imagePreview} 
+                      src={imagePreview || DEFAULT_IMAGE_URL} 
                       alt="Preview" 
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        console.error("Image loading error");
+                        e.currentTarget.src = DEFAULT_IMAGE_URL;
+                      }}
                     />
                   </div>
                 )}
@@ -296,7 +307,7 @@ const RewardForm: React.FC<RewardFormProps> = ({
                 
                 {!imagePreview && (
                   <p className="text-sm text-gray-500">
-                    Selecione uma imagem para a recompensa
+                    Imagem padrão será usada se nenhuma for selecionada
                   </p>
                 )}
               </div>

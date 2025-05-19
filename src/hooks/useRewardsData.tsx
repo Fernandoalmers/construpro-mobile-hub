@@ -30,7 +30,7 @@ export const useRewardsData = (filters?: {
       setIsLoading(true);
       setError(null);
       
-      // Get rewards from Supabase
+      // Get rewards from Supabase - only filter for active rewards
       const { data: rewardsData, error: rewardsError } = await supabase
         .from('resgates')
         .select('*')
@@ -55,6 +55,8 @@ export const useRewardsData = (filters?: {
         prazoEntrega: '7-10 dias úteis',
         status: item.status
       }));
+      
+      console.log('Transformed rewards for display:', transformedRewards); // Debug log
 
       setRewards(transformedRewards);
       

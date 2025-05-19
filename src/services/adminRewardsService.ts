@@ -84,15 +84,15 @@ export const createReward = async (rewardData: Omit<AdminReward, 'id' | 'created
     
     console.log('Creating reward with data:', rewardData); // Debug log
     
-    // Insert the new reward into resgates table
+    // Insert the new reward into resgates table with status 'ativo' instead of 'pendente'
     const { data, error } = await supabase
       .from('resgates')
       .insert({
         item: rewardData.nome,
         descricao: rewardData.descricao,
         pontos: rewardData.pontos,
-        imagem_url: rewardData.imagem_url,
-        status: rewardData.status || 'pendente',
+        imagem_url: rewardData.imagem_url || 'https://images.unsplash.com/photo-1618160702438-9b02ab6515c9?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&h=500&q=80',
+        status: 'ativo', // Default to active so it shows immediately
         estoque: rewardData.estoque,
         categoria: rewardData.categoria,
         cliente_id: user.id  // Required field
@@ -102,7 +102,7 @@ export const createReward = async (rewardData: Omit<AdminReward, 'id' | 'created
 
     if (error) {
       console.error('Error creating reward:', error);
-      toast.error('Erro ao criar recompensa');
+      toast.error('Erro ao criar recompensa: ' + error.message);
       return null;
     }
 
@@ -233,12 +233,30 @@ export const toggleRewardStatus = async (rewardId: string, currentStatus: string
  */
 export const fetchRewardCategories = async (): Promise<string[]> => {
   try {
-    // Since we don't have a dedicated categories table for rewards,
-    // we'll return a static list or extract from existing rewards
-    return ['Resgate', 'Vale Presente', 'Produto', 'Serviço', 'Outro'];
+    // First try to get categories from existing rewards
+    const { data, error } = await supabase
+      .from('resgates')
+      .select('categoria')
+      .not('categoria', 'is', null);
+      
+    if (error) {
+      console.error('Error fetching reward categories from DB:', error);
+      // Fall back to static list
+      return ['Resgate', 'Vale Presente', 'Produto', 'Serviço', 'Outro'];
+    }
+    
+    // Extract unique categories
+    const categories = Array.from(new Set(data.map(item => item.categoria).filter(Boolean)));
+    
+    // If no categories found, return default list
+    if (categories.length === 0) {
+      return ['Resgate', 'Vale Presente', 'Produto', 'Serviço', 'Outro'];
+    }
+    
+    return categories;
   } catch (error) {
     console.error('Error fetching reward categories:', error);
-    return [];
+    return ['Resgate', 'Vale Presente', 'Produto', 'Serviço', 'Outro'];
   }
 };
 
