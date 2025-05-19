@@ -10,7 +10,7 @@ export interface Reward {
   categoria: string;
   imagemUrl: string;
   descricao?: string;
-  estoque?: number;
+  estoque?: number | null;
   prazoEntrega?: string;
   status: string;
 }
@@ -44,21 +44,26 @@ export const useRewardsData = (filters?: {
       // Transform data from database format to our app format
       const transformedRewards: Reward[] = (rewardsData || []).map(item => ({
         id: item.id,
-        titulo: item.item,
+        titulo: item.item || 'Recompensa',
         pontos: item.pontos,
-        // Use default values for fields that don't exist in the database
-        categoria: 'Geral', // Default category
-        imagemUrl: item.imagem_url || 'https://images.unsplash.com/photo-1577132922436-e9c50c3f10c1?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&h=500&q=80',
-        descricao: 'Vale-compra para utilizar em qualquer loja parceira do ConstruPro+.',
-        estoque: 50,
+        categoria: item.categoria || 'Geral',
+        imagemUrl: item.imagem_url || 'https://images.unsplash.com/photo-1618160702438-9b02ab6515c9?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&h=500&q=80',
+        descricao: item.descricao || 'Vale-compra para utilizar em qualquer loja parceira do ConstruPro+.',
+        estoque: item.estoque,
         prazoEntrega: '7-10 dias úteis',
         status: item.status
       }));
 
       setRewards(transformedRewards);
       
-      // Set predefined categories since they don't exist in the database
-      setCategories(['Geral', 'Vale-compra', 'Eletrônicos', 'Casa']);
+      // Extract unique categories from rewards
+      const uniqueCategories = Array.from(new Set(transformedRewards.map(r => r.categoria)));
+      if (uniqueCategories.length > 0) {
+        setCategories(uniqueCategories);
+      } else {
+        // Set predefined categories if none exist
+        setCategories(['Geral', 'Vale-compra', 'Eletrônicos', 'Casa']);
+      }
       
     } catch (err: any) {
       console.error('Error fetching rewards:', err);
@@ -96,7 +101,8 @@ export const useRewardsData = (filters?: {
   const filteredRewards = rewards.filter(reward => {
     // Filter by search term
     const matchesSearch = !filters?.search || 
-      reward.titulo.toLowerCase().includes(filters.search.toLowerCase());
+      reward.titulo.toLowerCase().includes(filters.search.toLowerCase()) ||
+      (reward.descricao && reward.descricao.toLowerCase().includes(filters.search.toLowerCase()));
     
     // Filter by categories
     const matchesCategory = !filters?.categories?.length || 

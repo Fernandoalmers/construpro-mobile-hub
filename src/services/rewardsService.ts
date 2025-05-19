@@ -22,6 +22,27 @@ export const redeemReward = async (request: RedeemRequest): Promise<boolean> => 
     await supabase.rpc('begin_transaction');
     
     try {
+      // Check reward stock before proceeding
+      const { data: reward, error: rewardError } = await supabase
+        .from('resgates')
+        .select('estoque, status')
+        .eq('id', request.rewardId)
+        .single();
+
+      if (rewardError) {
+        throw new Error('Recompensa não encontrada');
+      }
+
+      // Check if reward is active
+      if (reward.status !== 'ativo') {
+        throw new Error('Esta recompensa não está disponível no momento');
+      }
+      
+      // Check if there's enough stock
+      if (reward.estoque !== null && reward.estoque <= 0) {
+        throw new Error('Esta recompensa está esgotada');
+      }
+      
       // 1. Create the redemption entry with status 'pendente'
       const { data: redemption, error: redemptionError } = await supabase
         .from('resgates')
@@ -62,6 +83,18 @@ export const redeemReward = async (request: RedeemRequest): Promise<boolean> => 
       
       if (transactionError) {
         throw transactionError;
+      }
+      
+      // 4. Update stock if it's not null
+      if (reward.estoque !== null) {
+        const { error: stockError } = await supabase
+          .from('resgates')
+          .update({ estoque: reward.estoque - 1 })
+          .eq('id', request.rewardId);
+          
+        if (stockError) {
+          throw stockError;
+        }
       }
       
       // Commit the transaction

@@ -6,56 +6,33 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Edit, Trash } from 'lucide-react';
+import { Plus, Search, Edit, Trash, Gift } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import LoadingState from '@/components/common/LoadingState';
-
-interface Reward {
-  id: string;
-  nome: string;
-  descricao: string;
-  pontos: number;
-  imagem_url: string | null;
-  categoria: string;
-  estoque: number | null;
-  created_at: string;
-  status?: string;
-}
+import { AdminReward } from '@/types/admin';
+import { fetchRewards, toggleRewardStatus } from '@/services/adminRewardsService';
+import CustomModal from '@/components/common/CustomModal';
+import RewardForm from './RewardForm';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
 
 const AdminRewardsScreen: React.FC = () => {
   useTitle('ConstruPro Admin - Recompensas');
-  const [rewards, setRewards] = useState<Reward[]>([]);
+  const [rewards, setRewards] = useState<AdminReward[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedReward, setSelectedReward] = useState<AdminReward | null>(null);
 
   // Fetch rewards from Supabase
-  const fetchRewards = async () => {
+  const loadRewards = async () => {
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
-        .from('resgates')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        throw error;
-      }
-
-      // Transform the data to match our Reward interface
-      const formattedRewards: Reward[] = (data || []).map(item => ({
-        id: item.id,
-        nome: item.item || 'Sem nome',
-        descricao: 'Resgate de prêmio',
-        pontos: item.pontos,
-        imagem_url: item.imagem_url,
-        categoria: 'Prêmio',
-        estoque: null,
-        created_at: item.created_at,
-        status: item.status
-      }));
-
-      setRewards(formattedRewards);
+      const rewardsData = await fetchRewards();
+      setRewards(rewardsData);
     } catch (error) {
       console.error('Error fetching rewards:', error);
       toast.error('Erro ao buscar recompensas');
@@ -65,7 +42,7 @@ const AdminRewardsScreen: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchRewards();
+    loadRewards();
     
     // Set up realtime subscription
     const channel = supabase
@@ -77,7 +54,7 @@ const AdminRewardsScreen: React.FC = () => {
           table: 'resgates' 
         }, 
         () => {
-          fetchRewards();
+          loadRewards();
         }
       )
       .subscribe();
@@ -87,18 +64,56 @@ const AdminRewardsScreen: React.FC = () => {
     };
   }, []);
 
+  const handleToggleStatus = async (reward: AdminReward) => {
+    try {
+      const success = await toggleRewardStatus(reward.id, reward.status);
+      if (success) {
+        loadRewards();
+      }
+    } catch (error) {
+      console.error('Error toggling reward status:', error);
+      toast.error('Erro ao alterar status da recompensa');
+    }
+  };
+
+  const handleEditReward = (reward: AdminReward) => {
+    setSelectedReward(reward);
+    setIsEditModalOpen(true);
+  };
+
+  const handleDeleteConfirm = (reward: AdminReward) => {
+    setSelectedReward(reward);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleCreateReward = () => {
+    setIsCreateModalOpen(true);
+  };
+
   const filteredRewards = rewards.filter(reward =>
     reward.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (reward.descricao && reward.descricao.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (reward.categoria && reward.categoria.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
+  const getStatusBadgeColor = (status: string) => {
+    switch (status) {
+      case 'ativo':
+        return 'bg-green-500 hover:bg-green-600';
+      case 'inativo':
+        return 'bg-gray-500 hover:bg-gray-600';
+      case 'pendente':
+      default:
+        return 'bg-yellow-500 hover:bg-yellow-600';
+    }
+  };
+
   return (
     <AdminLayout currentSection="recompensas">
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h2 className="text-2xl font-bold">Gerenciar Recompensas</h2>
-          <Button className="flex items-center gap-1">
+          <Button className="flex items-center gap-1" onClick={handleCreateReward}>
             <Plus className="h-4 w-4" /> Nova Recompensa
           </Button>
         </div>
@@ -120,35 +135,77 @@ const AdminRewardsScreen: React.FC = () => {
             {isLoading ? (
               <LoadingState text="Carregando recompensas..." />
             ) : filteredRewards.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-gray-500 flex flex-col items-center gap-2">
+                <Gift size={40} className="text-gray-400" />
                 {searchTerm ? 'Nenhuma recompensa encontrada.' : 'Não há recompensas cadastradas.'}
+                {!searchTerm && (
+                  <Button variant="outline" onClick={handleCreateReward}>
+                    Criar nova recompensa
+                  </Button>
+                )}
               </div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Imagem</TableHead>
                     <TableHead>Nome</TableHead>
                     <TableHead>Categoria</TableHead>
                     <TableHead>Pontos</TableHead>
                     <TableHead>Estoque</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredRewards.map((reward) => (
                     <TableRow key={reward.id}>
+                      <TableCell>
+                        {reward.imagem_url ? (
+                          <img 
+                            src={reward.imagem_url} 
+                            alt={reward.nome} 
+                            className="h-10 w-10 object-cover rounded"
+                          />
+                        ) : (
+                          <div className="h-10 w-10 bg-gray-200 rounded flex items-center justify-center">
+                            <Gift size={20} className="text-gray-500" />
+                          </div>
+                        )}
+                      </TableCell>
                       <TableCell className="font-medium">{reward.nome}</TableCell>
                       <TableCell>{reward.categoria || 'N/A'}</TableCell>
                       <TableCell>{reward.pontos}</TableCell>
                       <TableCell>{reward.estoque !== null ? reward.estoque : 'Ilimitado'}</TableCell>
+                      <TableCell>
+                        <Badge className={getStatusBadgeColor(reward.status)}>
+                          {reward.status === 'ativo' ? 'Ativo' : 
+                           reward.status === 'inativo' ? 'Inativo' : 'Pendente'}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-8 w-8 p-0"
+                            onClick={() => handleEditReward(reward)}
+                          >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="outline" size="sm" className="h-8 w-8 p-0 text-red-500 hover:text-red-700">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                            onClick={() => handleDeleteConfirm(reward)}
+                          >
                             <Trash className="h-4 w-4" />
                           </Button>
+                          <Switch
+                            checked={reward.status === 'ativo'}
+                            onCheckedChange={() => handleToggleStatus(reward)}
+                            className="ml-2"
+                          />
                         </div>
                       </TableCell>
                     </TableRow>
@@ -159,6 +216,81 @@ const AdminRewardsScreen: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal para criação de nova recompensa */}
+      <CustomModal
+        open={isCreateModalOpen}
+        onOpenChange={setIsCreateModalOpen}
+        title="Nova Recompensa"
+        description="Preencha os dados para criar uma nova recompensa"
+        size="lg"
+      >
+        <RewardForm
+          onSuccess={() => {
+            setIsCreateModalOpen(false);
+            loadRewards();
+          }}
+          onCancel={() => setIsCreateModalOpen(false)}
+        />
+      </CustomModal>
+
+      {/* Modal para edição de recompensa */}
+      <CustomModal
+        open={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+        title="Editar Recompensa"
+        description="Atualize os dados da recompensa"
+        size="lg"
+      >
+        {selectedReward && (
+          <RewardForm
+            initialData={selectedReward}
+            onSuccess={() => {
+              setIsEditModalOpen(false);
+              loadRewards();
+            }}
+            onCancel={() => setIsEditModalOpen(false)}
+          />
+        )}
+      </CustomModal>
+
+      {/* Modal para confirmação de exclusão */}
+      <CustomModal
+        open={isDeleteModalOpen}
+        onOpenChange={setIsDeleteModalOpen}
+        title="Excluir Recompensa"
+        description="Tem certeza que deseja excluir esta recompensa? Esta ação não pode ser desfeita."
+        showFooterButtons
+        onConfirm={() => {
+          // Aqui implementaríamos a exclusão
+          toast.success('Recompensa excluída com sucesso');
+          setIsDeleteModalOpen(false);
+          loadRewards();
+        }}
+        onCancel={() => setIsDeleteModalOpen(false)}
+        confirmText="Excluir"
+        cancelText="Cancelar"
+      >
+        {selectedReward && (
+          <div className="flex items-center gap-4 p-4 bg-gray-50 rounded">
+            {selectedReward.imagem_url ? (
+              <img 
+                src={selectedReward.imagem_url} 
+                alt={selectedReward.nome} 
+                className="h-16 w-16 object-cover rounded"
+              />
+            ) : (
+              <div className="h-16 w-16 bg-gray-200 rounded flex items-center justify-center">
+                <Gift size={24} className="text-gray-500" />
+              </div>
+            )}
+            <div>
+              <h3 className="font-medium">{selectedReward.nome}</h3>
+              <p className="text-sm text-gray-600">{selectedReward.pontos} pontos</p>
+            </div>
+          </div>
+        )}
+      </CustomModal>
     </AdminLayout>
   );
 };

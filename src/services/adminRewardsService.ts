@@ -8,7 +8,7 @@ import { toast } from '@/components/ui/sonner';
  */
 export const fetchRewards = async (): Promise<AdminReward[]> => {
   try {
-    // First, check if the table exists using the function
+    // First, check if the user is an admin
     const { data: isAdmin, error: checkError } = await supabase
       .rpc('is_admin');
       
@@ -41,13 +41,13 @@ export const fetchRewards = async (): Promise<AdminReward[]> => {
     // Transform the data to match our AdminReward interface
     return data.map(item => ({
       id: item.id,
-      nome: item.item, // Mapping from resgates.item to reward.nome
-      descricao: item.item, // No direct description in resgates table
+      nome: item.item || 'Sem nome', // Mapping from resgates.item to reward.nome
+      descricao: item.descricao || item.item || 'Sem descrição', // No direct description in resgates table
       pontos: item.pontos,
       imagem_url: item.imagem_url,
-      categoria: 'Resgate', // Default category for resgates items
-      status: item.status as string,
-      estoque: null, // No estoque info in resgates
+      categoria: item.categoria || 'Resgate', // Default category for resgates items
+      status: item.status || 'pendente',
+      estoque: item.estoque || null, // If estoque exists in resgates
       created_at: item.created_at,
       updated_at: item.updated_at || item.created_at
     }));
@@ -73,10 +73,9 @@ export const createReward = async (rewardData: Omit<AdminReward, 'id' | 'created
     }
     
     // We need to include cliente_id for the insertion to work
-    const user = supabase.auth.getUser();
-    const userId = (await user).data.user?.id;
+    const { data: { user } } = await supabase.auth.getUser();
     
-    if (!userId) {
+    if (!user) {
       toast.error('Usuário não autenticado');
       return null;
     }
@@ -86,10 +85,13 @@ export const createReward = async (rewardData: Omit<AdminReward, 'id' | 'created
       .from('resgates')
       .insert({
         item: rewardData.nome,
+        descricao: rewardData.descricao, // Adding description
         pontos: rewardData.pontos,
         imagem_url: rewardData.imagem_url,
         status: rewardData.status || 'pendente',
-        cliente_id: userId  // Required field
+        estoque: rewardData.estoque, // Add estoque
+        categoria: rewardData.categoria, // Add categoria
+        cliente_id: user.id  // Required field
       })
       .select()
       .single();
@@ -106,12 +108,12 @@ export const createReward = async (rewardData: Omit<AdminReward, 'id' | 'created
     return {
       id: data.id,
       nome: data.item,
-      descricao: rewardData.descricao,
+      descricao: data.descricao || data.item,
       pontos: data.pontos,
       imagem_url: data.imagem_url,
-      categoria: rewardData.categoria,
+      categoria: data.categoria || 'Resgate',
       status: data.status,
-      estoque: rewardData.estoque,
+      estoque: data.estoque,
       created_at: data.created_at,
       updated_at: data.updated_at || data.created_at
     };
@@ -142,9 +144,12 @@ export const updateReward = async (rewardId: string, rewardData: Partial<AdminRe
       .from('resgates')
       .update({
         item: rewardData.nome,
+        descricao: rewardData.descricao,
         pontos: rewardData.pontos,
         imagem_url: rewardData.imagem_url,
-        status: rewardData.status
+        status: rewardData.status,
+        estoque: rewardData.estoque,
+        categoria: rewardData.categoria
       })
       .eq('id', rewardId)
       .select()
@@ -162,12 +167,12 @@ export const updateReward = async (rewardId: string, rewardData: Partial<AdminRe
     return {
       id: data.id,
       nome: data.item,
-      descricao: rewardData.descricao || data.item,
+      descricao: data.descricao || data.item,
       pontos: data.pontos,
       imagem_url: data.imagem_url,
-      categoria: rewardData.categoria || 'Resgate',
+      categoria: data.categoria || 'Resgate',
       status: data.status,
-      estoque: rewardData.estoque || null,
+      estoque: data.estoque,
       created_at: data.created_at,
       updated_at: data.updated_at || data.created_at
     };
