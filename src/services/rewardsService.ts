@@ -81,17 +81,21 @@ export const redeemReward = async (request: RedeemRequest): Promise<boolean> => 
       
       console.log('Points deducted successfully');
       
-      // 3. Create a record in points_transactions
+      // 3. Create a record in points_transactions - FIXED description using reward.item
+      const transactionData = {
+        user_id: user.id,
+        pontos: -request.pontos,
+        tipo: 'resgate',
+        descricao: `Resgate de ${reward.item}`, // Important: Using the actual item name here
+        referencia_id: redemption.id,
+        data: new Date().toISOString() // Ensure we set the current date/time
+      };
+      
+      console.log('Creating points transaction with:', transactionData);
+      
       const { error: transactionError } = await supabase
         .from('points_transactions')
-        .insert({
-          user_id: user.id,
-          pontos: -request.pontos,
-          tipo: 'resgate',
-          descricao: `Resgate de ${reward.item}`,
-          referencia_id: redemption.id,
-          data: new Date().toISOString() // Ensure we set the current date/time
-        });
+        .insert(transactionData);
       
       if (transactionError) {
         console.error('Transaction record error:', transactionError);

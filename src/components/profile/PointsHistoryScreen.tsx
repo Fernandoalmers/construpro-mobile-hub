@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, CircleDollarSign, Filter, ShoppingBag, Users, Gift, Receipt, Briefcase } from 'lucide-react';
 import Card from '../common/Card';
@@ -56,6 +56,14 @@ const PointsHistoryScreen: React.FC = () => {
     },
     enabled: !!user
   });
+  
+  // Debug logging for transactions with tipo = 'resgate'
+  useEffect(() => {
+    if (transactions && transactions.length > 0) {
+      const resgates = transactions.filter(t => t.tipo === 'resgate');
+      console.log('Redemption transactions found:', resgates.length, resgates);
+    }
+  }, [transactions]);
   
   // Apply filters
   let filteredTransactions = [...transactions];
