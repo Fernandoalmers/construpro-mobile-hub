@@ -161,34 +161,73 @@ export const orderService = {
       
       console.log(`✅ [orderService.getOrderById] Successfully retrieved order ${orderId}`, orderData);
       
-      // Obter os itens do pedido
-      const { data: itemsData, error: itemsError } = await supabase
-        .from('order_items')
-        .select(`
-          id,
-          produto_id,
-          quantidade,
-          preco_unitario,
-          subtotal,
-          order_id,
-          produtos: produto_id (id, nome, imagem_url, preco_normal, preco_promocional)
-        `)
-        .eq('order_id', orderId);
-      
-      if (itemsError) {
-        console.error("❌ [orderService.getOrderById] Error fetching order items:", itemsError);
-        // Continue mesmo com erro nos itens
+      // Fetch order items directly from order_items table
+      try {
+        const { data: itemsData, error: itemsError } = await supabase
+          .from('order_items')
+          .select(`
+            id,
+            produto_id,
+            quantidade,
+            preco_unitario,
+            subtotal,
+            order_id
+          `)
+          .eq('order_id', orderId);
+          
+        if (itemsError) {
+          console.error("❌ [orderService.getOrderById] Error fetching order items:", itemsError);
+          // Continue even if there's an error with items
+        }
+        
+        // If we have items, fetch the product details for each item
+        let itemsWithProducts = [];
+        
+        if (itemsData && itemsData.length > 0) {
+          // Get all product IDs
+          const productIds = itemsData.map(item => item.produto_id);
+          
+          // Fetch products in a single query
+          const { data: productsData, error: productsError } = await supabase
+            .from('produtos')
+            .select('id, nome, imagem_url, preco_normal, preco_promocional')
+            .in('id', productIds);
+            
+          if (productsError) {
+            console.error("❌ [orderService.getOrderById] Error fetching products:", productsError);
+          }
+          
+          // Create a map of product ID to product data for quick lookup
+          const productsMap: {[key: string]: any} = {};
+          if (productsData) {
+            productsData.forEach(product => {
+              productsMap[product.id] = product;
+            });
+          }
+          
+          // Combine item data with product data
+          itemsWithProducts = itemsData.map(item => ({
+            ...item,
+            produto: productsMap[item.produto_id] || null
+          }));
+        }
+        
+        // Combine order with items
+        const orderWithItems = {
+          ...orderData,
+          items: itemsWithProducts || []
+        };
+        
+        console.log(`📊 [orderService.getOrderById] Order has ${orderWithItems.items?.length || 0} items`);
+        return orderWithItems;
+      } catch (itemError) {
+        console.error("❌ [orderService.getOrderById] Error processing order items:", itemError);
+        // Return order without items in case of error
+        return {
+          ...orderData,
+          items: []
+        };
       }
-      
-      // Combinar pedido com os itens
-      const order = {
-        ...orderData,
-        items: itemsData || []
-      };
-      
-      console.log(`📊 [orderService.getOrderById] Order has ${order.items?.length || 0} items`);
-      return order;
-      
     } catch (error: any) {
       console.error("❌ [orderService.getOrderById] Error:", error);
       toast.error("Erro ao carregar detalhes do pedido", {

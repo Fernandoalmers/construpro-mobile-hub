@@ -66,7 +66,7 @@ const OrderDetailScreen: React.FC = () => {
   }
 
   const order = orderData;
-  const orderItems = order.order_items || [];
+  const orderItems = order.items || [];
   
   // Status badge styling
   const getStatusBadge = (status: string) => {
@@ -165,24 +165,19 @@ const OrderDetailScreen: React.FC = () => {
         <Card className="p-4">
           <h3 className="font-medium mb-3">Itens do pedido</h3>
           
-          {orderItems.length === 0 ? (
-            <p className="text-center py-4 text-gray-500">Nenhum item encontrado neste pedido</p>
-          ) : (
+          {orderItems && orderItems.length > 0 ? (
             <div className="divide-y">
-              {orderItems.map((item, index) => (
+              {orderItems.map((item: any, index: number) => (
                 <div key={index} className="py-3 flex">
                   <div 
                     className="w-16 h-16 bg-gray-200 rounded mr-3 bg-center bg-cover flex-shrink-0"
                     style={{ 
-                      backgroundImage: item.produtos?.imagens && item.produtos.imagens.length > 0
-                        ? `url(${typeof item.produtos.imagens[0] === 'string' 
-                            ? item.produtos.imagens[0] 
-                            : item.produtos.imagens[0].url || ''})`
-                        : 'none'
+                      backgroundImage: item.produto?.imagem_url ? 
+                        `url(${item.produto.imagem_url})` : 'none'
                     }}
                   />
                   <div className="flex-1">
-                    <h4 className="font-medium">{item.produtos?.nome || 'Produto indisponível'}</h4>
+                    <h4 className="font-medium">{item.produto?.nome || 'Produto indisponível'}</h4>
                     <p className="text-sm text-gray-500">Qtd: {item.quantidade}</p>
                     <p className="text-sm font-medium mt-1">
                       R$ {Number(item.preco_unitario * item.quantidade).toFixed(2)}
@@ -191,6 +186,8 @@ const OrderDetailScreen: React.FC = () => {
                 </div>
               ))}
             </div>
+          ) : (
+            <p className="text-center py-4 text-gray-500">Nenhum item encontrado neste pedido</p>
           )}
           
           <Separator className="my-4" />
