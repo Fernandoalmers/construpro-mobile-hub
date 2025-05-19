@@ -18,13 +18,14 @@ import { useAddresses } from '@/hooks/useAddresses';
 
 interface Reward {
   id: string;
-  titulo: string;
+  titulo: string; // Maps to 'item' in database
   pontos: number;
   categoria: string;
-  imagemUrl: string;
+  imagemUrl: string; // Maps to 'imagem_url' in database
   descricao?: string;
-  estoque?: number;
+  estoque?: number | null;
   prazoEntrega?: string;
+  status: string;
 }
 
 const ResgateDetailScreen: React.FC = () => {
@@ -64,6 +65,7 @@ const ResgateDetailScreen: React.FC = () => {
           .single();
         
         if (error) {
+          console.error('Error fetching reward details:', error);
           throw error;
         }
         
@@ -71,16 +73,19 @@ const ResgateDetailScreen: React.FC = () => {
           throw new Error('Recompensa não encontrada');
         }
         
-        // Transform database data to our app format with default values for missing fields
+        console.log('Fetched reward data:', data); // Debug log
+        
+        // Transform database data to our app format
         setReward({
           id: data.id,
-          titulo: data.item,
+          titulo: data.item || 'Recompensa sem nome',
           pontos: data.pontos,
-          categoria: 'Geral', // Default category since it doesn't exist in DB
+          categoria: data.categoria || 'Geral',
           imagemUrl: data.imagem_url || 'https://images.unsplash.com/photo-1577132922436-e9c50c3f10c1?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&h=500&q=80',
-          descricao: 'Vale-compra para utilizar em qualquer loja parceira do ConstruPro+.',
-          estoque: 50, // Default value since it doesn't exist in DB
-          prazoEntrega: '7-10 dias úteis' // Default value since it doesn't exist in DB
+          descricao: data.descricao || 'Nenhuma descrição disponível',
+          estoque: data.estoque,
+          prazoEntrega: '7-10 dias úteis', // Default value as it doesn't exist in DB
+          status: data.status
         });
         
       } catch (err: any) {
@@ -103,7 +108,7 @@ const ResgateDetailScreen: React.FC = () => {
     const deliveryDays = reward.prazoEntrega.split('-').map(Number);
     
     deliveryStart.setDate(today.getDate() + deliveryDays[0]);
-    deliveryEnd.setDate(today.getDate() + deliveryDays[1] || deliveryDays[0] + 3);
+    deliveryEnd.setDate(today.getDate() + (deliveryDays[1] || deliveryDays[0] + 3));
   } else {
     deliveryStart.setDate(today.getDate() + 7);
     deliveryEnd.setDate(today.getDate() + 10);
@@ -127,7 +132,7 @@ const ResgateDetailScreen: React.FC = () => {
     // Verify if addresses exist
     if (addresses.length === 0) {
       toast.error('Você precisa cadastrar um endereço antes de resgatar');
-      navigate('/profile/address');
+      navigate('/profile/addresses');
       return;
     }
     
@@ -152,6 +157,7 @@ const ResgateDetailScreen: React.FC = () => {
         
         // Close dialog and navigate to history
         setIsConfirmDialogOpen(false);
+        toast.success('Resgate realizado com sucesso!');
         navigate('/historico-resgates');
       }
     } catch (err) {
@@ -184,6 +190,9 @@ const ResgateDetailScreen: React.FC = () => {
     );
   }
 
+  // Check if reward is in stock
+  const isOutOfStock = reward.estoque !== null && reward.estoque <= 0;
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
       {/* Header */}
@@ -200,6 +209,9 @@ const ResgateDetailScreen: React.FC = () => {
           src={reward.imagemUrl} 
           alt={reward.titulo}
           className="w-full h-full object-cover"
+          onError={(e) => {
+            e.currentTarget.src = 'https://images.unsplash.com/photo-1618160702438-9b02ab6515c9?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&h=500&q=80';
+          }}
         />
       </div>
       
@@ -219,13 +231,21 @@ const ResgateDetailScreen: React.FC = () => {
               <span className="text-gray-500">Categoria</span>
               <span>{reward.categoria}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Estoque</span>
-              <span>{reward.estoque} unidades</span>
-            </div>
+            {reward.estoque !== null && (
+              <div className="flex justify-between">
+                <span className="text-gray-500">Estoque</span>
+                <span>{reward.estoque} unidades</span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-gray-500">Prazo de entrega</span>
               <span>{reward.prazoEntrega}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">Status</span>
+              <span className={`${reward.status === 'ativo' ? 'text-green-600' : 'text-amber-600'}`}>
+                {reward.status === 'ativo' ? 'Disponível' : 'Indisponível'}
+              </span>
             </div>
           </div>
         </Card>
@@ -249,7 +269,7 @@ const ResgateDetailScreen: React.FC = () => {
           variant="primary"
           fullWidth
           onClick={handleRedeem}
-          disabled={(profile?.saldo_pontos || 0) < reward.pontos}
+          disabled={(profile?.saldo_pontos || 0) < reward.pontos || reward.status !== 'ativo' || isOutOfStock}
         >
           Resgatar por {reward.pontos} pontos
         </CustomButton>
@@ -257,6 +277,18 @@ const ResgateDetailScreen: React.FC = () => {
         {(profile?.saldo_pontos || 0) < reward.pontos && (
           <p className="text-sm text-center text-red-500">
             Você não possui saldo suficiente para este resgate.
+          </p>
+        )}
+        
+        {isOutOfStock && (
+          <p className="text-sm text-center text-red-500">
+            Este produto está fora de estoque.
+          </p>
+        )}
+        
+        {reward.status !== 'ativo' && (
+          <p className="text-sm text-center text-amber-500">
+            Esta recompensa não está disponível no momento.
           </p>
         )}
       </div>
