@@ -11,7 +11,7 @@ import { useIsAdmin } from '@/hooks/useIsAdmin';
 
 const AdminDashboard: React.FC = () => {
   const { isAdmin, isLoading: isAdminLoading } = useIsAdmin();
-  const { loading, error } = useDashboardData();
+  const { loading, error, refetch } = useDashboardData();
   
   // If admin status is still loading
   if (isAdminLoading) {
@@ -30,6 +30,7 @@ const AdminDashboard: React.FC = () => {
           title="Acesso Negado" 
           message="Você não tem permissões de administrador para acessar este painel."
           onRetry={() => window.location.href = '/profile'}
+          retryText="Ir para perfil"
         />
       </AdminLayout>
     );
@@ -43,6 +44,8 @@ const AdminDashboard: React.FC = () => {
           title="Erro ao carregar o painel administrativo" 
           message={error}
           onRetry={() => window.location.reload()}
+          retryText="Tentar novamente"
+          errorDetails="Falha ao comunicar com o banco de dados. Verifique sua conexão ou entre em contato com o suporte."
         />
       </AdminLayout>
     );
