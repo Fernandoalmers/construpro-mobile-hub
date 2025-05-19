@@ -74,17 +74,18 @@ export const createReward = async (rewardData: Omit<AdminReward, 'id' | 'created
       return null;
     }
     
-    // We need to include cliente_id for the insertion to work
+    // Get the current user - we will need to set this as cliente_id for RLS
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
       toast.error('Usuário não autenticado');
       return null;
     }
-    
+
     console.log('Creating reward with data:', rewardData); // Debug log
+    console.log('Current authenticated user:', user.id); // Debug log for user ID
     
-    // Insert the new reward into resgates table with status 'ativo' instead of 'pendente'
+    // Insert the new reward into resgates table with status 'ativo' and the current user as cliente_id
     const { data, error } = await supabase
       .from('resgates')
       .insert({
@@ -95,7 +96,7 @@ export const createReward = async (rewardData: Omit<AdminReward, 'id' | 'created
         status: 'ativo', // Default to active so it shows immediately
         estoque: rewardData.estoque,
         categoria: rewardData.categoria,
-        cliente_id: user.id  // Required field
+        cliente_id: user.id  // Very important: this ensures RLS policies are satisfied
       })
       .select()
       .single();
@@ -145,6 +146,14 @@ export const updateReward = async (rewardId: string, rewardData: Partial<AdminRe
       return null;
     }
 
+    // Get the current user ID for update operation
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      toast.error('Usuário não autenticado');
+      return null;
+    }
+
     // Update the reward in resgates table
     const { data, error } = await supabase
       .from('resgates')
@@ -155,7 +164,8 @@ export const updateReward = async (rewardId: string, rewardData: Partial<AdminRe
         imagem_url: rewardData.imagem_url,
         status: rewardData.status,
         estoque: rewardData.estoque,
-        categoria: rewardData.categoria
+        categoria: rewardData.categoria,
+        cliente_id: user.id // Ensure cliente_id is set for RLS policy
       })
       .eq('id', rewardId)
       .select()
@@ -204,13 +214,24 @@ export const toggleRewardStatus = async (rewardId: string, currentStatus: string
       return false;
     }
 
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      toast.error('Usuário não autenticado');
+      return false;
+    }
+
     // Determine the new status
     const newStatus = currentStatus === 'ativo' ? 'inativo' : 'ativo';
 
     // Update the status
     const { error } = await supabase
       .from('resgates')
-      .update({ status: newStatus })
+      .update({ 
+        status: newStatus,
+        cliente_id: user.id // Ensure cliente_id is set for RLS policy
+      })
       .eq('id', rewardId);
 
     if (error) {

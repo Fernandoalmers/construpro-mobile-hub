@@ -30,6 +30,10 @@ export const useRewardsData = (filters?: {
       setIsLoading(true);
       setError(null);
       
+      // Get current user for debugging
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('Current user fetching rewards:', user?.id);
+      
       // Get rewards from Supabase - only filter for active rewards
       const { data: rewardsData, error: rewardsError } = await supabase
         .from('resgates')
@@ -38,6 +42,7 @@ export const useRewardsData = (filters?: {
         .order('created_at', { ascending: false });
       
       if (rewardsError) {
+        console.error('Error fetching rewards:', rewardsError);
         throw rewardsError;
       }
       
