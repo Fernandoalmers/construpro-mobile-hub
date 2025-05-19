@@ -48,8 +48,8 @@ export const useRewardsData = (filters?: {
         pontos: item.pontos,
         categoria: item.categoria || 'Geral',
         imagemUrl: item.imagem_url || 'https://images.unsplash.com/photo-1577132922436-e9c50c3f10c1?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&h=500&q=80',
-        descricao: item.descricao,
-        estoque: item.estoque,
+        descricao: item.descricao || 'Vale-compra para utilizar em qualquer loja parceira do ConstruPro+.',
+        estoque: item.estoque || 50,
         prazoEntrega: item.prazo_entrega || '7-10 dias úteis',
         status: item.status
       }));

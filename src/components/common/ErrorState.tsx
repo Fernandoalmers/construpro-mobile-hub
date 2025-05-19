@@ -9,7 +9,11 @@ type ErrorStateProps = {
   onRetry?: () => void;
   className?: string;
   retryText?: string;
-  errorDetails?: string; // Added to optionally display technical details
+  errorDetails?: string;
+  action?: {
+    label: string;
+    onClick: () => void;
+  };
 };
 
 const ErrorState: React.FC<ErrorStateProps> = ({
@@ -18,7 +22,8 @@ const ErrorState: React.FC<ErrorStateProps> = ({
   onRetry,
   className = '',
   retryText = 'Tentar novamente',
-  errorDetails
+  errorDetails,
+  action
 }) => {
   const [showDetails, setShowDetails] = useState(false);
 
@@ -62,6 +67,16 @@ const ErrorState: React.FC<ErrorStateProps> = ({
           className="mt-2"
         >
           {retryText}
+        </CustomButton>
+      )}
+      
+      {action && (
+        <CustomButton 
+          variant="primary"
+          onClick={action.onClick}
+          className="mt-2"
+        >
+          {action.label}
         </CustomButton>
       )}
     </div>
