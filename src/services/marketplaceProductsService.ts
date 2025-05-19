@@ -56,6 +56,38 @@ export const getMarketplaceProducts = async (categoria?: string): Promise<Market
     
     console.log(`[getMarketplaceProducts] Retrieved ${data?.length || 0} products from database`);
     
+    // Map segments by name for easier lookups
+    const segmentsByName = new Map();
+    segments.forEach(segment => {
+      segmentsByName.set(segment.nome.toLowerCase(), segment.id);
+      // Also add simple versions without accents
+      const simplifiedName = segment.nome.toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      segmentsByName.set(simplifiedName, segment.id);
+    });
+    
+    // Common category to segment mappings
+    const categoryToSegmentMap: Record<string, string> = {
+      'ferramentas': 'Equipamentos',
+      'tintas': 'Materiais de Construção',
+      'hidráulica': 'Hidráulica',
+      'hidraulica': 'Hidráulica',
+      'elétrica': 'Elétrica',
+      'eletrica': 'Elétrica',
+      'iluminação': 'Elétrica',
+      'iluminacao': 'Elétrica',
+      'madeira': 'Materiais de Construção',
+      'pisos': 'Materiais de Construção',
+      'revestimento': 'Materiais de Construção',
+      'mármore': 'Marmoraria',
+      'marmore': 'Marmoraria',
+      'granito': 'Marmoraria',
+      'pedra': 'Marmoraria',
+      'máquinas': 'Equipamentos',
+      'maquinas': 'Equipamentos',
+      'equipamento': 'Equipamentos'
+    };
+    
     // Transform to marketplace product format
     const products = (data || []).map(item => {
       // Parse and ensure imagens is an array of strings
@@ -80,30 +112,60 @@ export const getMarketplaceProducts = async (categoria?: string): Promise<Market
       // Find the primary image or first available
       const imagemPrincipal = imagens.length > 0 ? imagens[0] : null;
       
-      // If segmento_id is null but segmento name exists, try to find matching segment ID
+      // Determine the segmento_id - enhanced approach
       let segmento_id = item.segmento_id;
-      if (!segmento_id && item.segmento) {
-        const matchingSegment = segments.find(
-          s => s.nome.toLowerCase() === item.segmento?.toLowerCase()
-        );
-        if (matchingSegment) {
-          segmento_id = matchingSegment.id;
-          console.log(`[getMarketplaceProducts] Matched segment for product ${item.id}: ${item.segmento} -> ${segmento_id}`);
+      let segmento = item.segmento;
+      
+      // Try multiple approaches to determine segment_id if not already set
+      if (!segmento_id) {
+        // 1. Try to find by exact segment name match
+        if (segmento && segmentsByName.has(segmento.toLowerCase())) {
+          segmento_id = segmentsByName.get(segmento.toLowerCase());
+          console.log(`[getMarketplaceProducts] Matched segment by name for product ${item.id}: ${segmento} -> ${segmento_id}`);
+        } 
+        // 2. Try to find by category mapping
+        else if (item.categoria) {
+          const lowerCategoria = item.categoria.toLowerCase();
+          
+          // Check each mapping for a match in the category
+          for (const [categoryKey, segmentName] of Object.entries(categoryToSegmentMap)) {
+            if (lowerCategoria.includes(categoryKey)) {
+              const mappedSegmentId = segmentsByName.get(segmentName.toLowerCase());
+              if (mappedSegmentId) {
+                segmento_id = mappedSegmentId;
+                segmento = segmentName; // Also update the segment name
+                console.log(`[getMarketplaceProducts] Mapped category to segment for product ${item.id}: "${item.categoria}" -> "${segmentName}" (${mappedSegmentId})`);
+                break;
+              }
+            }
+          }
         }
       }
       
-      // Special handling for "Materiais de Construção" segment
-      if (!segmento_id && item.categoria) {
-        const lowerCategoria = item.categoria.toLowerCase();
-        if (lowerCategoria.includes("material") || lowerCategoria.includes("construção")) {
-          // Find the "Materiais de Construção" segment
-          const materiaisSegment = segments.find(
-            s => s.nome.toLowerCase() === "materiais de construção"
+      // If still no segment_id, use default mapping based on keywords in name/description/category
+      if (!segmento_id) {
+        const lowerName = (item.nome || '').toLowerCase();
+        const lowerDesc = (item.descricao || '').toLowerCase();
+        const lowerCategoria = (item.categoria || '').toLowerCase();
+        
+        // Check for construction materials keywords
+        if (
+            lowerCategoria.includes('material') || 
+            lowerCategoria.includes('construção') ||
+            lowerCategoria.includes('construcao') ||
+            lowerName.includes('tijolo') ||
+            lowerName.includes('cimento') ||
+            lowerName.includes('areia') ||
+            lowerName.includes('argamassa')
+        ) {
+          const materiaisSegment = segments.find(s => 
+            s.nome.toLowerCase().includes('materiais') && 
+            s.nome.toLowerCase().includes('construção')
           );
-          
           if (materiaisSegment) {
             segmento_id = materiaisSegment.id;
-            console.log(`[getMarketplaceProducts] Assigned Materiais de Construção segment to product ${item.id} based on categoria: ${item.categoria}`);
+            segmento = materiaisSegment.nome;
+            console.log(`[getMarketplaceProducts] Assigned Materiais de Construção segment to product ${item.id} based on keywords`);
           }
         }
       }
@@ -116,7 +178,7 @@ export const getMarketplaceProducts = async (categoria?: string): Promise<Market
         preco_promocional: item.preco_promocional,
         pontos_consumidor: item.pontos_consumidor || 0,
         categoria: item.categoria,
-        segmento: item.segmento,
+        segmento: segmento,
         segmento_id: segmento_id,
         imagens,
         imagemPrincipal,
@@ -128,8 +190,34 @@ export const getMarketplaceProducts = async (categoria?: string): Promise<Market
     });
     
     console.log(`[getMarketplaceProducts] Processed ${products.length} products for marketplace`);
-    return products;
     
+    // Log distribution of products by segment
+    const segmentCounts: Record<string, number> = {};
+    products.forEach(product => {
+      if (product.segmento_id) {
+        segmentCounts[product.segmento_id] = (segmentCounts[product.segmento_id] || 0) + 1;
+      }
+    });
+    
+    console.log('[getMarketplaceProducts] Products by segment:', Object.entries(segmentCounts).map(([segmentId, count]) => {
+      const segmentName = segments.find(s => s.id === segmentId)?.nome || 'Unknown';
+      return `${segmentName} (${segmentId}): ${count} products`;
+    }));
+    
+    // Log products without segment
+    const productsWithoutSegment = products.filter(p => !p.segmento_id);
+    if (productsWithoutSegment.length > 0) {
+      console.log(`[getMarketplaceProducts] WARNING: ${productsWithoutSegment.length} products don't have a segment assigned`);
+      if (productsWithoutSegment.length <= 10) {
+        console.log('Products without segment:', productsWithoutSegment.map(p => ({
+          id: p.id,
+          nome: p.nome,
+          categoria: p.categoria
+        })));
+      }
+    }
+    
+    return products;
   } catch (error) {
     console.error('Error in getMarketplaceProducts:', error);
     toast.error('Erro ao carregar produtos');

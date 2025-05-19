@@ -76,7 +76,7 @@ export function useMarketplaceData(selectedSegmentId: string | null): Marketplac
     fetchData();
   }, []);
   
-  // Enhanced product filtering to handle both segmento_id and categoria
+  // Enhanced and more aggressive product filtering for segments
   const filteredProducts = useMemo(() => {
     if (!selectedSegmentId || selectedSegmentId === 'all') {
       console.log('[useMarketplaceData] No segment filter applied, returning all products:', products.length);
@@ -88,45 +88,70 @@ export function useMarketplaceData(selectedSegmentId: string | null): Marketplac
     
     console.log(`[useMarketplaceData] Filtering by segment: ID=${selectedSegmentId}, Name=${selectedSegmentName}`);
     
+    // Keywords that could indicate a product belongs to a segment (for fuzzy matching)
+    const segmentKeywords: Record<string, string[]> = {
+      'Materiais de Construção': ['material', 'construção', 'construcao', 'cimento', 'tijolo', 'areia', 'brita'],
+      'Elétrica': ['eletrica', 'elétrica', 'eletrico', 'elétrico', 'luz', 'lampada', 'lâmpada', 'fio', 'tomada', 'interruptor', 'disjuntor'],
+      'Hidráulica': ['hidraulica', 'hidráulica', 'agua', 'água', 'cano', 'tubo', 'torneira', 'pia', 'encanamento'],
+      'Marmoraria': ['marmor', 'mármore', 'granito', 'pedra', 'bancada'],
+      'Equipamentos': ['equipamento', 'máquina', 'maquina', 'ferramenta', 'aluguel'],
+      'Profissionais': ['profissional', 'serviço', 'servico', 'mão de obra', 'mao de obra']
+    };
+    
+    // Define keywords for the selected segment
+    const currentSegmentKeywords = Object.entries(segmentKeywords).find(([name]) => 
+      selectedSegmentName && name.toLowerCase().includes(selectedSegmentName.toLowerCase())
+    )?.[1] || [];
+    
+    if (currentSegmentKeywords.length > 0) {
+      console.log('[useMarketplaceData] Using keywords for fuzzy matching:', currentSegmentKeywords);
+    }
+
     return products.filter(product => {
-      // Match by segment ID (primary way)
+      // Direct match by segment ID (primary way)
       if (product.segmento_id === selectedSegmentId) {
         return true;
       }
       
-      // Match by segment name if available (fallback)
+      // Match by segment name if available
       if (product.segmento && selectedSegmentName && 
-          product.segmento.toLowerCase().includes(selectedSegmentName.toLowerCase())) {
+          product.segmento.toLowerCase() === selectedSegmentName.toLowerCase()) {
         return true;
       }
       
-      // Special handling for "Materiais de Construção" segment
-      if (selectedSegmentName === "Materiais de Construção" || 
-          selectedSegmentName?.toLowerCase().includes("material")) {
-        // Match by exact category
-        if (product.categoria && 
-            (product.categoria.toLowerCase().includes("material") || 
-             product.categoria.toLowerCase().includes("construção"))) {
-          return true;
-        }
+      // Category match (more relaxed)
+      const productCategoryLower = (product.categoria || '').toLowerCase();
+      
+      // If we have the selected segment name, check for category match with segment name
+      if (selectedSegmentName && productCategoryLower.includes(selectedSegmentName.toLowerCase())) {
+        console.log(`[useMarketplaceData] Product ${product.id} matched by category: ${product.categoria}`);
+        return true;
       }
       
-      // Enhanced matching for other segments
-      if (selectedSegmentName && product.categoria) {
-        // Try to match segment name with product category
-        const segmentWordsLower = selectedSegmentName.toLowerCase().split(/\s+/);
-        const categoryLower = product.categoria.toLowerCase();
-        
-        // If any significant word from segment name appears in category
-        for (const word of segmentWordsLower) {
-          // Skip common words
-          if (word.length <= 2 || ['de', 'da', 'do', 'para'].includes(word)) continue;
+      // Keyword-based matching (fuzzy match)
+      if (productCategoryLower && currentSegmentKeywords.length > 0) {
+        for (const keyword of currentSegmentKeywords) {
+          if (productCategoryLower.includes(keyword)) {
+            console.log(`[useMarketplaceData] Product ${product.id} matched by keyword '${keyword}' in category: ${product.categoria}`);
+            return true;
+          }
           
-          if (categoryLower.includes(word)) {
-            console.log(`[useMarketplaceData] Matched product ${product.nome} to segment by word "${word}" in category`);
+          // Also check in product name and description for more aggressive matching
+          const productNameLower = (product.nome || '').toLowerCase();
+          const productDescLower = (product.descricao || '').toLowerCase();
+          
+          if (productNameLower.includes(keyword) || productDescLower.includes(keyword)) {
+            console.log(`[useMarketplaceData] Product ${product.id} matched by keyword '${keyword}' in name/description`);
             return true;
           }
         }
+      }
+      
+      // Special case handling for common categories
+      if (selectedSegmentName === "Materiais de Construção" && 
+          (productCategoryLower.includes("material") || productCategoryLower.includes("construção") || 
+           productCategoryLower.includes("construcao"))) {
+        return true;
       }
       
       return false;
@@ -144,10 +169,10 @@ export function useMarketplaceData(selectedSegmentId: string | null): Marketplac
         `Selected segment: ${selectedSegment?.nome || 'Unknown'} (${selectedSegmentId})`
       );
       
-      // Log sample of the filtered products
-      if (filteredProducts.length > 0) {
-        console.log('[useMarketplaceData] Sample of filtered products:', 
-          filteredProducts.slice(0, 3).map(p => ({
+      if (filteredProducts.length === 0) {
+        console.log('[useMarketplaceData] WARNING: No products matched the segment filter!');
+        console.log('[useMarketplaceData] Sample of available products:', 
+          products.slice(0, 5).map(p => ({
             id: p.id,
             nome: p.nome, 
             segmento_id: p.segmento_id,
@@ -155,8 +180,6 @@ export function useMarketplaceData(selectedSegmentId: string | null): Marketplac
             categoria: p.categoria
           }))
         );
-      } else {
-        console.log('[useMarketplaceData] No products matched the segment filter');
       }
     }
   }, [selectedSegmentId, filteredProducts.length, products.length, segments]);
