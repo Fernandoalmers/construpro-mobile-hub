@@ -51,6 +51,7 @@ const PointsHistoryScreen: React.FC = () => {
         return [];
       }
       
+      console.log('Fetched transactions:', data);
       return data as Transaction[];
     },
     enabled: !!user
