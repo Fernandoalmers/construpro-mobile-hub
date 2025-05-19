@@ -1,7 +1,9 @@
+
 import React from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { FilterOption } from '@/hooks/use-product-filter';
+
 interface FilterDialogsProps {
   lojasOptions: FilterOption[];
   allCategories: FilterOption[];
@@ -16,6 +18,7 @@ interface FilterDialogsProps {
   onSegmentClick?: (segmentId: string) => void;
   onRatingClick?: (ratingId: string) => void;
 }
+
 const FilterDialogs: React.FC<FilterDialogsProps> = ({
   lojasOptions,
   allCategories,
@@ -103,10 +106,12 @@ const FilterDialogs: React.FC<FilterDialogsProps> = ({
         </DialogContent>
       </Dialog>
 
-      {/* Segment filter - Added as requested */}
+      {/* Segment filter - Fixed to correctly display the button */}
       <Dialog>
         <DialogTrigger asChild>
-          
+          <button className="flex items-center gap-1 bg-white text-gray-800 px-3 py-1.5 rounded-full text-sm whitespace-nowrap">
+            Segmento <ChevronDown size={16} />
+          </button>
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
@@ -122,4 +127,5 @@ const FilterDialogs: React.FC<FilterDialogsProps> = ({
       </Dialog>
     </div>;
 };
+
 export default FilterDialogs;

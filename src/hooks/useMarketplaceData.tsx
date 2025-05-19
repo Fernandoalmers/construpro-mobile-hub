@@ -76,9 +76,10 @@ export function useMarketplaceData(selectedSegmentId: string | null): Marketplac
     fetchData();
   }, []);
   
-  // Improved product filtering to handle both segmento_id and categoria
+  // Enhanced product filtering to handle both segmento_id and categoria
   const filteredProducts = useMemo(() => {
     if (!selectedSegmentId || selectedSegmentId === 'all') {
+      console.log('[useMarketplaceData] No segment filter applied, returning all products:', products.length);
       return products;
     }
     
@@ -90,25 +91,41 @@ export function useMarketplaceData(selectedSegmentId: string | null): Marketplac
     return products.filter(product => {
       // Match by segment ID (primary way)
       if (product.segmento_id === selectedSegmentId) {
-        console.log(`[useMarketplaceData] Product ${product.nome} matched by segmento_id`);
         return true;
       }
       
       // Match by segment name if available (fallback)
       if (product.segmento && selectedSegmentName && 
-          product.segmento.toLowerCase() === selectedSegmentName.toLowerCase()) {
-        console.log(`[useMarketplaceData] Product ${product.nome} matched by segmento name`);
+          product.segmento.toLowerCase().includes(selectedSegmentName.toLowerCase())) {
         return true;
       }
       
       // Special handling for "Materiais de Construção" segment
-      if (selectedSegmentName === "Materiais de Construção") {
+      if (selectedSegmentName === "Materiais de Construção" || 
+          selectedSegmentName?.toLowerCase().includes("material")) {
         // Match by exact category
         if (product.categoria && 
             (product.categoria.toLowerCase().includes("material") || 
              product.categoria.toLowerCase().includes("construção"))) {
-          console.log(`[useMarketplaceData] Product ${product.nome} matched as Material de Construção by categoria`);
           return true;
+        }
+      }
+      
+      // Enhanced matching for other segments
+      if (selectedSegmentName && product.categoria) {
+        // Try to match segment name with product category
+        const segmentWordsLower = selectedSegmentName.toLowerCase().split(/\s+/);
+        const categoryLower = product.categoria.toLowerCase();
+        
+        // If any significant word from segment name appears in category
+        for (const word of segmentWordsLower) {
+          // Skip common words
+          if (word.length <= 2 || ['de', 'da', 'do', 'para'].includes(word)) continue;
+          
+          if (categoryLower.includes(word)) {
+            console.log(`[useMarketplaceData] Matched product ${product.nome} to segment by word "${word}" in category`);
+            return true;
+          }
         }
       }
       
@@ -127,16 +144,20 @@ export function useMarketplaceData(selectedSegmentId: string | null): Marketplac
         `Selected segment: ${selectedSegment?.nome || 'Unknown'} (${selectedSegmentId})`
       );
       
-      // Log some of the filtered products to see what's happening
-      console.log('[useMarketplaceData] First 5 filtered products:', 
-        filteredProducts.slice(0, 5).map(p => ({
-          id: p.id,
-          nome: p.nome, 
-          segmento_id: p.segmento_id,
-          segmento: p.segmento,
-          categoria: p.categoria
-        }))
-      );
+      // Log sample of the filtered products
+      if (filteredProducts.length > 0) {
+        console.log('[useMarketplaceData] Sample of filtered products:', 
+          filteredProducts.slice(0, 3).map(p => ({
+            id: p.id,
+            nome: p.nome, 
+            segmento_id: p.segmento_id,
+            segmento: p.segmento,
+            categoria: p.categoria
+          }))
+        );
+      } else {
+        console.log('[useMarketplaceData] No products matched the segment filter');
+      }
     }
   }, [selectedSegmentId, filteredProducts.length, products.length, segments]);
   

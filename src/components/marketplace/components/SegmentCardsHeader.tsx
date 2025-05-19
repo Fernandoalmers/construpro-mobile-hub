@@ -1,9 +1,11 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Construction, Zap, GlassWater, Square, Truck, Wrench, ShoppingBag } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getProductSegments } from '@/services/admin/productSegmentsService';
 import { supabase } from '@/integrations/supabase/client';
+
 interface SegmentCardProps {
   icon: React.ReactNode;
   title: string;
@@ -11,6 +13,7 @@ interface SegmentCardProps {
   onClick: (segmentId: string) => void;
   isSelected?: boolean;
 }
+
 const SegmentCard: React.FC<SegmentCardProps> = ({
   icon,
   title,
@@ -25,10 +28,12 @@ const SegmentCard: React.FC<SegmentCardProps> = ({
       <span className="text-xs font-medium text-center">{title}</span>
     </div>;
 };
+
 interface SegmentCardsHeaderProps {
   selectedSegment: string | null;
   onSegmentClick: (segmentId: string) => void;
 }
+
 const SegmentCardsHeader: React.FC<SegmentCardsHeaderProps> = ({
   selectedSegment,
   onSegmentClick
@@ -38,6 +43,7 @@ const SegmentCardsHeader: React.FC<SegmentCardsHeaderProps> = ({
     nome: string;
   }>>([]);
   const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     const fetchSegments = async () => {
       try {
@@ -69,9 +75,10 @@ const SegmentCardsHeader: React.FC<SegmentCardsHeaderProps> = ({
     } else if (nameToLower.includes('profissional') || nameToLower.includes('serviço')) {
       return <Wrench size={24} />;
     } else {
-      return <Construction size={24} />; // Default icon
+      return <ShoppingBag size={24} />; // Default icon
     }
   };
+
   if (loading) {
     return <div className="w-full overflow-x-auto pb-2">
         <div className="flex space-x-4 px-4">
@@ -82,8 +89,38 @@ const SegmentCardsHeader: React.FC<SegmentCardsHeaderProps> = ({
         </div>
       </div>;
   }
+
+  // Add "Todos" segment as the first option
+  const allSegmentsOption = {
+    id: "all",
+    nome: "Todos"
+  };
+
   return <div className="w-full overflow-x-auto pb-2">
-      
+      <div className="flex space-x-4 px-4 py-3">
+        {/* "Todos" segment card */}
+        <SegmentCard
+          key="all"
+          id="all"
+          title="Todos"
+          icon={<ShoppingBag size={24} />}
+          onClick={onSegmentClick}
+          isSelected={selectedSegment === null || selectedSegment === "all"}
+        />
+        
+        {/* Render all segments from the database */}
+        {segments.map(segment => (
+          <SegmentCard
+            key={segment.id}
+            id={segment.id}
+            title={segment.nome}
+            icon={getIconForSegment(segment.nome)}
+            onClick={onSegmentClick}
+            isSelected={selectedSegment === segment.id}
+          />
+        ))}
+      </div>
     </div>;
 };
+
 export default SegmentCardsHeader;
