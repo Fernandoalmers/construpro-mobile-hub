@@ -118,11 +118,10 @@ export const useRewardsData = (filters?: {
     const matchesCategory = !filters?.categories?.length || 
       filters.categories.includes(reward.categoria);
     
-    // Filter by points available (only show rewards the user can afford)
-    const isAffordable = filters?.userPointsAvailable === undefined || 
-      reward.pontos <= filters.userPointsAvailable;
+    // We'll still show all rewards even if they're more than the available points
+    // The UI will show progress bars and different states based on this
     
-    return matchesSearch && matchesCategory && isAffordable;
+    return matchesSearch && matchesCategory;
   });
 
   return {
