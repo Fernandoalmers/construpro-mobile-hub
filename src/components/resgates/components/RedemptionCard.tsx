@@ -2,9 +2,8 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CheckCircle, Clock, Truck, AlertCircle } from 'lucide-react';
+import { CheckCircle, Clock, Truck, AlertCircle, Info } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import Avatar from '@/components/common/Avatar';
 
 interface Redemption {
   id: string;
@@ -75,8 +74,6 @@ const RedemptionCard: React.FC<RedemptionCardProps> = ({ redemption, onClick }) 
     }
   };
 
-  const statusInfo = getStatusInfo(redemption.status);
-
   const handleClick = () => {
     if (onClick) onClick(redemption.id);
   };
@@ -90,7 +87,7 @@ const RedemptionCard: React.FC<RedemptionCardProps> = ({ redemption, onClick }) 
 
   return (
     <div 
-      className="bg-white rounded-xl shadow-sm overflow-hidden transition-all hover:shadow-md" 
+      className="bg-white rounded-xl shadow-sm overflow-hidden transition-all hover:shadow-md cursor-pointer relative" 
       onClick={handleClick}
     >
       <div className="flex p-3">
@@ -144,9 +141,9 @@ const RedemptionCard: React.FC<RedemptionCardProps> = ({ redemption, onClick }) 
           </div>
           
           <div className="flex items-center justify-between mt-2">
-            <Badge className={`${statusInfo.color} border-none flex items-center gap-1 px-2 py-0.5 font-normal`}>
-              {statusInfo.icon}
-              <span>{statusInfo.label}</span>
+            <Badge className={`${getStatusInfo(redemption.status).color} border-none flex items-center gap-1 px-2 py-0.5 font-normal`}>
+              {getStatusInfo(redemption.status).icon}
+              <span>{getStatusInfo(redemption.status).label}</span>
             </Badge>
             
             {redemption.codigo && (
@@ -155,6 +152,11 @@ const RedemptionCard: React.FC<RedemptionCardProps> = ({ redemption, onClick }) 
               </div>
             )}
           </div>
+        </div>
+
+        {/* View details indicator */}
+        <div className="absolute right-2 top-2 text-gray-400">
+          <Info size={16} />
         </div>
       </div>
     </div>

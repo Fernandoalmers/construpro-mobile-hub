@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import RedemptionHeader from './components/RedemptionHeader';
 import RedemptionCard from './components/RedemptionCard';
 import RedemptionEmptyState from './components/RedemptionEmptyState';
+import RedemptionDetailsDialog from './components/RedemptionDetailsDialog';
 
 interface Redemption {
   id: string;
@@ -28,6 +29,8 @@ const HistoricoResgatesScreen: React.FC = () => {
   const [redemptions, setRedemptions] = useState<Redemption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedRedemptionId, setSelectedRedemptionId] = useState<string | null>(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   
   useEffect(() => {
     const fetchRedemptionHistory = async () => {
@@ -71,7 +74,8 @@ const HistoricoResgatesScreen: React.FC = () => {
   }, [user]);
 
   const handleRedemptionClick = (id: string) => {
-    navigate(`/resgate/${id}`);
+    setSelectedRedemptionId(id);
+    setDetailsDialogOpen(true);
   };
 
   if (isLoading) {
@@ -141,6 +145,13 @@ const HistoricoResgatesScreen: React.FC = () => {
           />
         )}
       </div>
+
+      {/* Redemption details dialog */}
+      <RedemptionDetailsDialog 
+        redemptionId={selectedRedemptionId}
+        open={detailsDialogOpen}
+        onOpenChange={setDetailsDialogOpen}
+      />
     </div>
   );
 };
