@@ -25,12 +25,13 @@ export const fetchRewards = async (): Promise<AdminReward[]> => {
       return [];
     }
 
-    // Retrieve only reward templates (not user redemption records)
-    // A template has either null cliente_id (created by admin) or it's a template created by this admin
+    // Retrieve reward templates using a more inclusive query:
+    // 1. Include rewards with null cliente_id (created by admin as templates) 
+    // 2. OR include rewards with status 'ativo' or 'inativo' (also templates)
     const { data, error } = await supabase
       .from('resgates')
       .select('*')
-      .is('cliente_id', null) // Only get rewards with null cliente_id (templates)
+      .or(`cliente_id.is.null,status.in.(ativo,inativo)`) // This more inclusive filter catches all templates
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -96,6 +97,7 @@ export const createReward = async (rewardData: Omit<AdminReward, 'id' | 'created
     console.log('Current authenticated user:', user.id); // Debug log for user ID
     
     // Insert the new reward into resgates table with status 'ativo' and null cliente_id (indicating it's a template)
+    // Explicitly setting cliente_id to null to ensure it's treated as a template
     const { data, error } = await supabase
       .from('resgates')
       .insert({
