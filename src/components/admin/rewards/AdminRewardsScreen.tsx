@@ -11,7 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import LoadingState from '@/components/common/LoadingState';
 import { AdminReward } from '@/types/admin';
-import { fetchRewards, toggleRewardStatus } from '@/services/adminRewardsService';
+import { fetchRewards, toggleRewardStatus, deleteReward } from '@/services/adminRewardsService';
 import CustomModal from '@/components/common/CustomModal';
 import RewardForm from './RewardForm';
 import { Switch } from '@/components/ui/switch';
@@ -86,6 +86,21 @@ const AdminRewardsScreen: React.FC = () => {
   const handleDeleteConfirm = (reward: AdminReward) => {
     setSelectedReward(reward);
     setIsDeleteModalOpen(true);
+  };
+
+  const handleDeleteReward = async () => {
+    if (!selectedReward) return;
+    
+    try {
+      const success = await deleteReward(selectedReward.id);
+      if (success) {
+        setIsDeleteModalOpen(false);
+        loadRewards();
+      }
+    } catch (error) {
+      console.error('Error deleting reward:', error);
+      toast.error('Erro ao excluir recompensa');
+    }
   };
 
   const handleCreateReward = () => {
@@ -263,12 +278,7 @@ const AdminRewardsScreen: React.FC = () => {
         title="Excluir Recompensa"
         description="Tem certeza que deseja excluir esta recompensa? Esta ação não pode ser desfeita."
         showFooterButtons
-        onConfirm={() => {
-          // Aqui implementaríamos a exclusão
-          toast.success('Recompensa excluída com sucesso');
-          setIsDeleteModalOpen(false);
-          loadRewards();
-        }}
+        onConfirm={handleDeleteReward}
         onCancel={() => setIsDeleteModalOpen(false)}
         confirmText="Excluir"
         cancelText="Cancelar"

@@ -25,12 +25,12 @@ export const fetchRewards = async (): Promise<AdminReward[]> => {
       return [];
     }
 
-    // Since the rewards table might not exist in some installations,
-    // we use the custom function and handle potential errors gracefully
+    // Retrieve only reward templates (not user redemption records)
+    // A template has either null cliente_id (created by admin) or it's a template created by this admin
     const { data, error } = await supabase
       .from('resgates')
       .select('*')
-      .or(`cliente_id.is.null,cliente_id.eq.${user.id}`)
+      .is('cliente_id', null) // Only get rewards with null cliente_id (templates)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -95,7 +95,7 @@ export const createReward = async (rewardData: Omit<AdminReward, 'id' | 'created
     console.log('Creating reward with data:', rewardData); // Debug log
     console.log('Current authenticated user:', user.id); // Debug log for user ID
     
-    // Insert the new reward into resgates table with status 'ativo' and the current user as cliente_id
+    // Insert the new reward into resgates table with status 'ativo' and null cliente_id (indicating it's a template)
     const { data, error } = await supabase
       .from('resgates')
       .insert({
@@ -107,7 +107,7 @@ export const createReward = async (rewardData: Omit<AdminReward, 'id' | 'created
         estoque: rewardData.estoque,
         prazo_entrega: rewardData.prazo_entrega,
         categoria: rewardData.categoria,
-        cliente_id: user.id  // Very important: this ensures RLS policies are satisfied
+        cliente_id: null  // Important: null indicates it's a reward template, not a redemption
       })
       .select()
       .single();
@@ -178,7 +178,7 @@ export const updateReward = async (rewardId: string, rewardData: Partial<AdminRe
         estoque: rewardData.estoque,
         prazo_entrega: rewardData.prazo_entrega,
         categoria: rewardData.categoria,
-        cliente_id: user.id // Ensure cliente_id is set for RLS policy
+        cliente_id: null // Ensure cliente_id remains null for templates
       })
       .eq('id', rewardId)
       .select()
@@ -228,14 +228,6 @@ export const toggleRewardStatus = async (rewardId: string, currentStatus: string
       return false;
     }
 
-    // Get current user
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      toast.error('Usuário não autenticado');
-      return false;
-    }
-
     // Determine the new status
     const newStatus = currentStatus === 'ativo' ? 'inativo' : 'ativo';
 
@@ -244,7 +236,7 @@ export const toggleRewardStatus = async (rewardId: string, currentStatus: string
       .from('resgates')
       .update({ 
         status: newStatus,
-        cliente_id: user.id // Ensure cliente_id is set for RLS policy
+        cliente_id: null // Ensure cliente_id remains null for templates
       })
       .eq('id', rewardId);
 
@@ -259,6 +251,42 @@ export const toggleRewardStatus = async (rewardId: string, currentStatus: string
   } catch (error) {
     console.error('Unexpected error toggling reward status:', error);
     toast.error('Erro inesperado ao alterar status da recompensa');
+    return false;
+  }
+};
+
+/**
+ * Delete a reward
+ */
+export const deleteReward = async (rewardId: string): Promise<boolean> => {
+  try {
+    // First verify admin status
+    const { error: adminError } = await supabase
+      .rpc('is_admin');
+
+    if (adminError) {
+      console.error('Admin check failed:', adminError);
+      toast.error('Permissão negada: apenas administradores podem excluir recompensas');
+      return false;
+    }
+
+    // Delete the reward
+    const { error } = await supabase
+      .from('resgates')
+      .delete()
+      .eq('id', rewardId);
+
+    if (error) {
+      console.error('Error deleting reward:', error);
+      toast.error('Erro ao excluir recompensa');
+      return false;
+    }
+
+    toast.success('Recompensa excluída com sucesso');
+    return true;
+  } catch (error) {
+    console.error('Unexpected error deleting reward:', error);
+    toast.error('Erro inesperado ao excluir recompensa');
     return false;
   }
 };
