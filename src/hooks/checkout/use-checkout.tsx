@@ -29,6 +29,21 @@ export function useCheckout() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [processError, setProcessError] = useState<string | null>(null);
   const [orderAttempts, setOrderAttempts] = useState(0);
+  const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
+  
+  // Track online/offline status
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
   
   // Calculate totals
   const subtotal = cart?.summary?.subtotal || 0;
@@ -78,6 +93,15 @@ export function useCheckout() {
   // Handle order placement
   const handlePlaceOrder = useCallback(async () => {
     try {
+      // Check if the device is online
+      if (!navigator.onLine) {
+        toast.error('Você está offline', {
+          description: 'Verifique sua conexão com a internet e tente novamente'
+        });
+        setProcessError('Dispositivo offline. Verifique sua conexão com a internet e tente novamente.');
+        return;
+      }
+      
       if (!selectedAddress) {
         toast.error('Selecione um endereço de entrega');
         return;
@@ -103,8 +127,35 @@ export function useCheckout() {
       
       console.log('Sending order with data:', orderData);
       
-      // Create order
-      const orderId = await orderService.createOrder(orderData);
+      // Create order with retry logic
+      let maxAttempts = 3;
+      let attempt = 1;
+      let orderId = null;
+      
+      while (attempt <= maxAttempts && !orderId) {
+        try {
+          if (attempt > 1) {
+            console.log(`Retry attempt ${attempt} of ${maxAttempts}`);
+            // Add increasing delay between retries (1s, 2s, 3s...)
+            await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+          }
+          
+          orderId = await orderService.createOrder(orderData);
+          if (orderId) break;
+        } catch (err: any) {
+          console.error(`Attempt ${attempt} failed:`, err);
+          
+          // If network error and not last attempt, retry
+          const isNetworkError = err.message?.includes('conexão') || 
+                                err.message?.includes('network') || 
+                                err.message?.includes('Failed to');
+                                
+          if (attempt === maxAttempts || !isNetworkError) {
+            throw err; // If last attempt or not network error, rethrow
+          }
+        }
+        attempt++;
+      }
       
       if (orderId) {
         // Success flow
@@ -113,7 +164,7 @@ export function useCheckout() {
         toast.success('Pedido realizado com sucesso!');
         navigate(`/order/confirmacao/${orderId}`); // Updated path to Portuguese version
       } else {
-        throw new Error('Falha ao processar pedido');
+        throw new Error('Falha ao processar pedido após várias tentativas');
       }
     } catch (error: any) {
       console.error('Error placing order:', error);
@@ -137,6 +188,14 @@ export function useCheckout() {
   
   // Handle retry
   const handleRetry = useCallback(() => {
+    // Check connection before retry
+    if (!navigator.onLine) {
+      toast.error('Você está offline', {
+        description: 'Conecte-se à internet para tentar novamente'
+      });
+      return;
+    }
+    
     setProcessError(null);
     handlePlaceOrder();
   }, [handlePlaceOrder]);
@@ -158,6 +217,7 @@ export function useCheckout() {
     processError,
     orderAttempts,
     isLoading: addressesLoading,
+    isOnline,
     
     // Actions
     setPaymentMethod,
@@ -169,4 +229,3 @@ export function useCheckout() {
     handleRetry
   };
 }
-

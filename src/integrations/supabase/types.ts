@@ -1591,6 +1591,27 @@ export type Database = {
         }
         Relationships: []
       }
+      vendor_orders_log: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          order_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          order_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          order_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -1611,6 +1632,10 @@ export type Database = {
       commit_transaction: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      execute_custom_sql: {
+        Args: { sql_statement: string }
+        Returns: Json
       }
       get_product_segments: {
         Args: Record<PropertyKey, never>
@@ -1653,6 +1678,10 @@ export type Database = {
         Returns: string
       }
       migrate_orders_to_pedidos: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      migrate_orders_to_vendor_customers: {
         Args: Record<PropertyKey, never>
         Returns: number
       }

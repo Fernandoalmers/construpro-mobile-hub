@@ -9,6 +9,7 @@ import Card from '../common/Card';
 import { orderService } from '@/services/orderService';
 import ProductImage from '../admin/products/components/ProductImage';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { toast } from '@/components/ui/sonner';
 
 const OrderConfirmationScreen: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>();
@@ -17,6 +18,8 @@ const OrderConfirmationScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [orderDetails, setOrderDetails] = useState<any>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [loadingRetry, setLoadingRetry] = useState(false);
 
   useEffect(() => {
     if (!orderId) {
@@ -30,7 +33,12 @@ const OrderConfirmationScreen: React.FC = () => {
         setLoading(true);
         console.log(`Buscando detalhes do pedido ${orderId}`);
         
-        // Fetch order details
+        // Add short delay before retry attempts to avoid overwhelming the server
+        if (retryCount > 0) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        
+        // Try to get order details with appropriate logging
         const order = await orderService.getOrderById(orderId);
         
         if (!order) {
@@ -39,16 +47,79 @@ const OrderConfirmationScreen: React.FC = () => {
         
         console.log('Detalhes do pedido recuperados:', order);
         setOrderDetails(order);
+        setError(null);
+        
+        // Show success message on successful retry
+        if (retryCount > 0) {
+          toast.success('Detalhes do pedido carregados com sucesso');
+        }
       } catch (err: any) {
         console.error('Error fetching order details:', err);
-        setError(err.message || 'Não foi possível carregar os detalhes do pedido');
+        
+        // Provide more specific error messages
+        let errorMessage = err.message || 'Não foi possível carregar os detalhes do pedido';
+        
+        // Check for specific network or connection errors
+        if (errorMessage.includes('Failed to fetch') || 
+            errorMessage.includes('Failed to send') || 
+            errorMessage.includes('network') ||
+            errorMessage.includes('connection')) {
+          errorMessage = 'Erro de conexão. Verifique sua internet e tente novamente.';
+        }
+        
+        setError(errorMessage);
       } finally {
         setLoading(false);
+        setLoadingRetry(false);
       }
     };
 
     fetchOrderDetails();
-  }, [orderId]);
+  }, [orderId, retryCount]);
+
+  const handleRetry = () => {
+    setLoadingRetry(true);
+    setRetryCount(prev => prev + 1);
+  };
+
+  // Mock data for development when needed (uncomment for testing without backend)
+  // If we're in development and have no order details, show mock data
+  useEffect(() => {
+    if (error && process.env.NODE_ENV === 'development' && orderId) {
+      // Provide mock data for development purposes
+      console.log('DEV MODE: Providing mock order data for development');
+      /*
+      setOrderDetails({
+        id: orderId,
+        status: 'Confirmado',
+        created_at: new Date().toISOString(),
+        forma_pagamento: 'credit',
+        valor_total: 259.90,
+        pontos_ganhos: 25,
+        endereco_entrega: {
+          logradouro: 'Rua de Teste',
+          numero: '123',
+          bairro: 'Centro',
+          cidade: 'São Paulo',
+          estado: 'SP',
+        },
+        items: [
+          {
+            id: '1',
+            quantidade: 2,
+            preco_unitario: 129.95,
+            subtotal: 259.90,
+            produto: {
+              nome: 'Produto de Teste',
+              imagem_url: null
+            }
+          }
+        ]
+      });
+      setError(null);
+      */
+    }
+  }, [error, orderId]);
 
   if (loading) {
     return <LoadingState text="Carregando detalhes do pedido..." />;
@@ -59,8 +130,9 @@ const OrderConfirmationScreen: React.FC = () => {
       <ErrorState 
         title="Erro ao carregar confirmação" 
         message={error || "Pedido não encontrado"}
-        onRetry={() => window.location.reload()}
-        retryText="Tentar novamente"
+        onRetry={handleRetry}
+        retryText={loadingRetry ? "Carregando..." : "Tentar novamente"}
+        retryDisabled={loadingRetry}
       />
     );
   }
