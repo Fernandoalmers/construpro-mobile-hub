@@ -52,7 +52,7 @@ const OrdersList: React.FC<OrdersListProps> = ({
         description={
           hasFilters
             ? "Tente ajustar os filtros de busca" 
-            : "Você ainda não tem nenhum pedido"
+            : "Você ainda não recebeu nenhum pedido ou os dados estão sendo carregados. Tente ativar o modo de depuração."
         }
         action={
           hasFilters ? {

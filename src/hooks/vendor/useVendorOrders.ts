@@ -13,7 +13,8 @@ export const useVendorOrders = () => {
   const [vendorProfileStatus, setVendorProfileStatus] = useState<'checking' | 'found' | 'not_found'>('checking');
   const [diagnosticResults, setDiagnosticResults] = useState<any>(null);
   const [isFixingVendorStatus, setIsFixingVendorStatus] = useState(false);
-  const [debugMode, setDebugMode] = useState(false);
+  // Iniciar com o modo debug ativado por padrão para facilitar diagnóstico
+  const [debugMode, setDebugMode] = useState(true);
   const [debugData, setDebugData] = useState<any>(null);
   
   // First check if the vendor profile exists
@@ -41,6 +42,9 @@ export const useVendorOrders = () => {
           // Check if vendor status is pending, which might be preventing orders from showing
           if (profile.status === 'pendente') {
             console.warn("⚠️ [useVendorOrders] Vendor status is 'pendente', which may be preventing orders from displaying");
+            toast.warning("Status do vendedor é 'pendente'", {
+              description: "Isso pode estar impedindo a visualização dos pedidos. Considere atualizar o status."
+            });
             
             // Auto-fix vendor status after a short delay
             setTimeout(async () => {
@@ -139,7 +143,7 @@ export const useVendorOrders = () => {
     }
   }, [debugMode]);
   
-  // Run debug fetch when debug mode changes
+  // Run debug fetch when debug mode changes or on component mount
   useEffect(() => {
     if (debugMode && vendorProfileStatus === 'found') {
       fetchDebugOrders();
@@ -197,9 +201,11 @@ export const useVendorOrders = () => {
         throw error;
       }
     },
-    staleTime: 30 * 1000, // 30 seconds - reduced to get fresher data
+    staleTime: 15 * 1000, // 15 seconds - reduzido ainda mais para obter dados mais recentes
     retry: 3, // Increase retries for more resilience
     enabled: vendorProfileStatus === 'found' && !isFixingVendorStatus,
+    refetchInterval: 30000, // Adicionar refresh automático a cada 30 segundos
+    refetchOnWindowFocus: true // Permitir refresh quando a janela retorna ao foco
   });
 
   // Force refresh whenever the component mounts or profile role is fixed
@@ -234,8 +240,8 @@ export const useVendorOrders = () => {
       toast.info('Forçando atualização completa...');
       
       try {
-        // Clear React Query cache completely
-        queryClient.clear();
+        // Clear React Query cache completely for vendorOrders
+        queryClient.removeQueries({ queryKey: ['vendorOrders'] });
         
         // Re-run vendor diagnostics
         const profile = await getVendorProfile();
@@ -244,7 +250,19 @@ export const useVendorOrders = () => {
           setDiagnosticResults(diagnostics);
           
           // Fetch orders directly with debug mode
-          await fetchDebugOrders();
+          const debugResult = await fetchDebugOrders();
+          
+          // Additional troubleshooting if needed
+          if (debugResult && (!debugResult.orders || debugResult.orders.length === 0)) {
+            console.log("🔍 [forceRefresh] No orders found in debug mode, trying direct database checks...");
+            
+            // Mostra o toast com os detalhes do diagnóstico
+            if (debugResult.debug) {
+              toast.info(`Diagnóstico: ${debugResult.debug.vendorProductsCount} produtos, ${debugResult.debug.orderItemsCount || 0} itens de pedido`, {
+                description: debugResult.debug.error || 'Verificando no banco de dados...'
+              });
+            }
+          }
         }
         
         // Refetch orders after cache clear
