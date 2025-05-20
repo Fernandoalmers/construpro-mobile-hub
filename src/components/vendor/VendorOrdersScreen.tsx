@@ -12,15 +12,17 @@ import { useOrderFilters, orderStatuses } from '@/hooks/vendor/useOrderFilters';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Card } from '@/components/ui/card';
-import { Store, AlertCircle, RefreshCcw, Bug, RotateCcw, Info, Users } from 'lucide-react';
+import { Store, AlertCircle, RefreshCcw, Bug, RotateCcw, Info, Users, Database } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { updateVendorStatus } from '@/services/vendor/orders/utils/diagnosticUtils';
 import { migrateCustomersFromOrders } from '@/services/vendorCustomersService';
+import { runOrdersMigration } from '@/services/vendor/utils/orderMigration';
 import DebugOrdersView from './orders/DebugOrdersView';
 
 const VendorOrdersScreen: React.FC = () => {
   const navigate = useNavigate();
   const [isMigrating, setIsMigrating] = React.useState(false);
+  const [isMigratingOrders, setIsMigratingOrders] = React.useState(false);
   
   // Use the custom hooks for data and filtering
   const { 
@@ -46,6 +48,55 @@ const VendorOrdersScreen: React.FC = () => {
     setFilterStatus,
     filteredOrders
   } = useOrderFilters(orders);
+
+  // Função para executar migração de pedidos
+  const handleMigrateOrders = async () => {
+    setIsMigratingOrders(true);
+    toast.loading("Migrando pedidos da tabela 'orders' para 'pedidos'...");
+    
+    try {
+      const result = await runOrdersMigration();
+      
+      if (result.success) {
+        toast.success(result.message || "Migração de pedidos concluída com sucesso!");
+        
+        // Aguardar um momento antes de atualizar os dados
+        setTimeout(() => {
+          forceRefresh();
+        }, 1000);
+      } else {
+        toast.error(result.message || "Erro na migração de pedidos");
+      }
+    } catch (error) {
+      console.error("Error migrating orders:", error);
+      toast.error("Erro ao migrar pedidos");
+    } finally {
+      setIsMigratingOrders(false);
+    }
+  };
+  
+  // Function to run migration
+  const runCustomersMigration = async () => {
+    setIsMigrating(true);
+    toast.loading("Migrando clientes a partir de pedidos existentes...");
+    try {
+      const result = await migrateCustomersFromOrders();
+      if (result) {
+        toast.success("Clientes migrados com sucesso!");
+        // Navigate to customers page to see results
+        setTimeout(() => {
+          navigate('/vendor/customers');
+        }, 1500);
+      } else {
+        toast.error("Falha ao migrar clientes. Verifique os logs para mais detalhes.");
+      }
+    } catch (error) {
+      console.error("Error running migration:", error);
+      toast.error("Erro ao migrar clientes.");
+    } finally {
+      setIsMigrating(false);
+    }
+  };
   
   // Show vendor profile setup message if profile is not found
   if (vendorProfileStatus === 'not_found') {
@@ -177,12 +228,31 @@ const VendorOrdersScreen: React.FC = () => {
               <div>
                 <h3 className="font-medium text-yellow-800">Diagnóstico e correção de problemas</h3>
                 <p className="text-sm text-yellow-700 mt-1">
-                  Se você não está vendo seus pedidos ou clientes, execute a migração de dados a seguir.
-                  Este processo sincronizará automaticamente seus clientes a partir dos pedidos existentes.
+                  Se você não está vendo seus pedidos ou clientes, execute as migrações abaixo.
+                  Este processo sincronizará automaticamente pedidos e clientes de todas as fontes.
                 </p>
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
+              <Button 
+                onClick={handleMigrateOrders}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+                size="sm"
+                disabled={isMigratingOrders}
+              >
+                {isMigratingOrders ? (
+                  <>
+                    <Database size={16} className="mr-1 animate-spin" />
+                    Migrando pedidos...
+                  </>
+                ) : (
+                  <>
+                    <Database size={16} className="mr-1" />
+                    Migrar pedidos
+                  </>
+                )}
+              </Button>
+              
               <Button 
                 onClick={runCustomersMigration}
                 className="bg-yellow-600 hover:bg-yellow-700 text-white"
@@ -192,12 +262,12 @@ const VendorOrdersScreen: React.FC = () => {
                 {isMigrating ? (
                   <>
                     <RefreshCcw size={16} className="mr-1 animate-spin" />
-                    Migrando dados...
+                    Migrando clientes...
                   </>
                 ) : (
                   <>
                     <RefreshCcw size={16} className="mr-1" />
-                    Migrar clientes de pedidos
+                    Migrar clientes
                   </>
                 )}
               </Button>
@@ -325,7 +395,7 @@ const VendorOrdersScreen: React.FC = () => {
               <ul className="text-sm text-gray-600 list-disc list-inside mb-4 text-left">
                 <li>Sua loja ainda não recebeu pedidos</li>
                 <li>Os produtos cadastrados não foram associados corretamente</li>
-                <li>É necessário importar os clientes de pedidos existentes</li>
+                <li>É necessário importar os pedidos existentes</li>
                 {showVendorStatusFix && (
                   <li className="font-medium text-yellow-700">
                     Seu perfil de vendedor está com status "pendente"
@@ -337,6 +407,23 @@ const VendorOrdersScreen: React.FC = () => {
                   Tentar novamente
                 </Button>
                 <Button
+                  onClick={handleMigrateOrders}
+                  className="mt-2 bg-blue-600 hover:bg-blue-700 text-white"
+                  disabled={isMigratingOrders}
+                >
+                  {isMigratingOrders ? (
+                    <>
+                      <Database size={16} className="mr-1 animate-spin" />
+                      Migrando pedidos...
+                    </>
+                  ) : (
+                    <>
+                      <Database size={16} className="mr-1" />
+                      Migrar pedidos
+                    </>
+                  )}
+                </Button>
+                <Button
                   onClick={runCustomersMigration}
                   className="mt-2 bg-yellow-600 hover:bg-yellow-700 text-white"
                   disabled={isMigrating}
@@ -344,12 +431,12 @@ const VendorOrdersScreen: React.FC = () => {
                   {isMigrating ? (
                     <>
                       <RefreshCcw size={16} className="mr-1 animate-spin" />
-                      Migrando dados...
+                      Migrando clientes...
                     </>
                   ) : (
                     <>
                       <RefreshCcw size={16} className="mr-1" />
-                      Migrar clientes de pedidos
+                      Migrar clientes
                     </>
                   )}
                 </Button>

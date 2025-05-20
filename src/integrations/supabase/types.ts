@@ -1652,9 +1652,21 @@ export type Database = {
         }
         Returns: string
       }
+      migrate_orders_to_pedidos: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      order_exists_in_pedidos: {
+        Args: { order_uuid: string }
+        Returns: boolean
+      }
       rollback_transaction: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      run_orders_migration: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       update_user_points: {
         Args: { user_id: string; points_to_add: number }
