@@ -88,8 +88,12 @@ export const createPointAdjustment = async (
       toast.error('Perfil de vendedor não encontrado');
       return false;
     }
+
+    // Store the vendor ID in localStorage for filtering in the UI
+    localStorage.setItem('vendor_profile_id', vendorProfile.id);
     
-    const { error } = await supabase
+    // First, insert the points adjustment record
+    const { error: insertError } = await supabase
       .from('pontos_ajustados')
       .insert({
         vendedor_id: vendorProfile.id,
@@ -99,7 +103,24 @@ export const createPointAdjustment = async (
         motivo
       });
     
-    if (error) throw error;
+    if (insertError) {
+      console.error('Error creating point adjustment:', insertError);
+      throw insertError;
+    }
+    
+    // Then call the function to update the user's points
+    const { error: updateError } = await supabase
+      .rpc('update_user_points', {
+        user_id: userId,
+        points_to_add: valor
+      });
+      
+    if (updateError) {
+      console.error('Error updating user points:', updateError);
+      toast.error('Erro ao atualizar pontos do usuário');
+      return false;
+    }
+    
     return true;
   } catch (error) {
     console.error('Error creating point adjustment:', error);

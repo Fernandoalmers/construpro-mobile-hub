@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { getVendorProfile } from './vendorProfileService';
 
@@ -92,6 +93,12 @@ export const searchCustomers = async (searchTerm: string): Promise<any[]> => {
     
     console.log('Searching profiles with term:', searchTerm);
     
+    // Get vendor id for future filtering if needed
+    const vendorProfile = await getVendorProfile();
+    if (vendorProfile) {
+      localStorage.setItem('vendor_profile_id', vendorProfile.id);
+    }
+    
     // Check if it's a specific UUID format
     if (isValidUUID(searchTerm)) {
       console.log('Searching for specific user ID:', searchTerm);
@@ -113,11 +120,11 @@ export const searchCustomers = async (searchTerm: string): Promise<any[]> => {
       const { data: emailUsers, error: emailError } = await supabase
         .from('profiles')
         .select('id, nome, email, telefone, cpf')
-        .ilike('email', searchTerm)
+        .ilike('email', `%${searchTerm}%`)
         .limit(10);
         
       if (!emailError && emailUsers && emailUsers.length > 0) {
-        console.log('Found users by exact email:', emailUsers);
+        console.log('Found users by email:', emailUsers);
         return emailUsers;
       }
     }
@@ -150,15 +157,15 @@ export const getCustomerPoints = async (userId: string): Promise<number> => {
       .from('profiles')
       .select('saldo_pontos')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
     
     if (error) {
       console.error('Error fetching customer points:', error);
       return 0;
     }
     
-    console.log('Customer points:', data.saldo_pontos || 0);
-    return data.saldo_pontos || 0;
+    console.log('Customer points:', data?.saldo_pontos || 0);
+    return data?.saldo_pontos || 0;
   } catch (error) {
     console.error('Error in getCustomerPoints:', error);
     return 0;

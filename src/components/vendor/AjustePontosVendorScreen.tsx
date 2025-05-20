@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Search, Plus, Minus, History, User, Loader2, X, Check } from 'lucide-react';
@@ -58,7 +59,7 @@ const AjustePontosVendorScreen: React.FC = () => {
   }, [location]);
 
   // Get customer's points
-  const { data: customerPoints = 0, isLoading: isLoadingPoints } = useQuery({
+  const { data: customerPoints = 0, isLoading: isLoadingPoints, refetch: refetchPoints } = useQuery({
     queryKey: ['customerPoints', selectedCustomerId],
     queryFn: () => selectedCustomerId ? getCustomerPoints(selectedCustomerId) : Promise.resolve(0),
     enabled: !!selectedCustomerId,
@@ -67,7 +68,8 @@ const AjustePontosVendorScreen: React.FC = () => {
   // Get point adjustments history for the selected customer
   const { 
     data: adjustments = [], 
-    isLoading: isLoadingAdjustments 
+    isLoading: isLoadingAdjustments,
+    refetch: refetchAdjustments
   } = useQuery({
     queryKey: ['pointAdjustments', selectedCustomerId],
     queryFn: () => selectedCustomerId ? getPointAdjustments(selectedCustomerId) : Promise.resolve([]),
@@ -88,7 +90,11 @@ const AjustePontosVendorScreen: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['pointAdjustments', selectedCustomerId] });
       
       // Switch to history tab after successful adjustment
-      setActiveTab('history');
+      setTimeout(() => {
+        refetchPoints();
+        refetchAdjustments();
+        setActiveTab('history');
+      }, 500);
     },
     onError: (error) => {
       toast.error('Erro ao ajustar pontos. Tente novamente.');
@@ -109,7 +115,14 @@ const AjustePontosVendorScreen: React.FC = () => {
         console.log('Searching for customers with term:', searchTerm);
         const results = await searchCustomers(searchTerm);
         console.log('Search results:', results);
-        setSearchResults(results);
+        
+        // Filter out results where id is equal to the vendor profile ID
+        // This is assuming vendor's can't adjust their own points
+        const filteredResults = results.filter(customer => 
+          customer.id !== localStorage.getItem('vendor_profile_id')
+        );
+        
+        setSearchResults(filteredResults);
         setShowSearchResults(true);
       } catch (error) {
         console.error('Error searching customers:', error);
@@ -136,7 +149,11 @@ const AjustePontosVendorScreen: React.FC = () => {
       setIsSearching(true);
       searchCustomers(searchTerm)
         .then(results => {
-          setSearchResults(results);
+          // Filter out results where id is equal to the vendor profile ID
+          const filteredResults = results.filter(customer => 
+            customer.id !== localStorage.getItem('vendor_profile_id')
+          );
+          setSearchResults(filteredResults);
           setShowSearchResults(true);
           setIsSearching(false);
         })
@@ -200,7 +217,7 @@ const AjustePontosVendorScreen: React.FC = () => {
       await createAdjustmentMutation.mutateAsync({
         userId: selectedCustomerId,
         tipo: isPositiveAdjustment ? 'adicao' : 'remocao',
-        valor: isPositiveAdjustment ? pontosValue : -pontosValue,
+        valor: pontosValue,
         motivo
       });
     } finally {
@@ -291,7 +308,7 @@ const AjustePontosVendorScreen: React.FC = () => {
                       >
                         <Avatar
                           src={undefined}
-                          fallback={customer.nome || 'U'}
+                          fallback={customer.nome?.charAt(0) || 'U'}
                           size="sm"
                           className="mr-3 flex-shrink-0"
                         />
@@ -329,32 +346,34 @@ const AjustePontosVendorScreen: React.FC = () => {
         {/* Selected Client Information */}
         {selectedCustomerId && selectedCustomer && (
           <Card className="overflow-hidden">
-            <div className="flex items-center justify-between p-4 bg-blue-50 border-b border-blue-100">
-              <div className="flex items-center">
-                <Avatar
-                  src={undefined}
-                  fallback={selectedCustomer.nome || 'Cliente'}
-                  size="md"
-                  className="mr-4"
-                />
-                <div>
-                  <h3 className="font-bold">{selectedCustomer.nome}</h3>
-                  <div className="flex flex-col sm:flex-row sm:gap-3 text-sm text-gray-600">
-                    {selectedCustomer.email && <span>{selectedCustomer.email}</span>}
-                    {selectedCustomer.telefone && <span>{selectedCustomer.telefone}</span>}
-                    {selectedCustomer.cpf && <span>CPF: {selectedCustomer.cpf}</span>}
+            <div className="p-4 bg-blue-50 border-b border-blue-100">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex items-center">
+                  <Avatar
+                    src={undefined}
+                    fallback={selectedCustomer.nome || 'Cliente'}
+                    size="md"
+                    className="mr-4"
+                  />
+                  <div>
+                    <h3 className="font-bold">{selectedCustomer.nome}</h3>
+                    <div className="flex flex-col sm:flex-row sm:gap-3 text-sm text-gray-600">
+                      {selectedCustomer.email && <span>{selectedCustomer.email}</span>}
+                      {selectedCustomer.telefone && <span>{selectedCustomer.telefone}</span>}
+                      {selectedCustomer.cpf && <span>CPF: {selectedCustomer.cpf}</span>}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="text-center bg-white px-4 py-2 rounded-lg shadow-sm">
-                <p className="text-xs text-blue-600 font-medium">Saldo de Pontos</p>
-                {isLoadingPoints ? (
-                  <div className="flex justify-center my-1">
-                    <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                  </div>
-                ) : (
-                  <p className="text-xl font-bold text-blue-700">{customerPoints}</p>
-                )}
+                <div className="bg-white px-6 py-3 rounded-lg shadow-sm text-center">
+                  <p className="text-xs text-blue-600 font-medium mb-1">Saldo de Pontos</p>
+                  {isLoadingPoints ? (
+                    <div className="flex justify-center my-1">
+                      <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                    </div>
+                  ) : (
+                    <p className="text-2xl font-bold text-blue-700">{customerPoints}</p>
+                  )}
+                </div>
               </div>
             </div>
   
