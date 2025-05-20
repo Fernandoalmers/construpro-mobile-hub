@@ -31,10 +31,12 @@ const VendorRoutes: React.FC = () => {
       <Route path="/customers" element={<EnhancedCustomersScreen />} />
       <Route path="/customers/:id" element={<CustomerDetailScreen />} />
       <Route path="/points-adjustment" element={<AjustePontosVendorScreen />} />
-      <Route path="/ajuste-pontos" element={<AjustePontosVendorScreen />} /> {/* Added Portuguese route */}
+      <Route path="/ajuste-pontos" element={<AjustePontosVendorScreen />} /> 
+      <Route path="points-adjustment" element={<AjustePontosVendorScreen />} /> {/* Added without leading slash */}
+      <Route path="ajuste-pontos" element={<AjustePontosVendorScreen />} /> {/* Added without leading slash */}
       <Route path="/settings" element={<ConfiguracoesVendorScreen />} />
       <Route path="/products" element={<ProductManagementScreen />} />
-      <Route path="/produtos" element={<ProductManagementScreen />} /> {/* Add this route for Portuguese URL */}
+      <Route path="/produtos" element={<ProductManagementScreen />} /> 
       <Route path="/products/new" element={<ProdutoFormScreen />} />
       <Route path="/products/edit/:id" element={<ProdutoEditScreen />} />
     </Routes>

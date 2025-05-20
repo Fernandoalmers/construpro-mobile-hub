@@ -21,13 +21,24 @@ const NotFound = () => {
         <p className="text-xl text-gray-600 mb-6">Oops! Página não encontrada</p>
         <p className="text-gray-500 mb-6">
           A página que você está procurando não existe ou foi removida.
+          <br />
+          <span className="text-sm mt-2 block">Rota tentada: {location.pathname}</span>
         </p>
-        <Button 
-          onClick={() => navigate("/")} 
-          className="bg-construPro-blue hover:bg-construPro-blue/90"
-        >
-          Voltar para Home
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <Button 
+            onClick={() => navigate("/")} 
+            className="bg-construPro-blue hover:bg-construPro-blue/90"
+          >
+            Voltar para Home
+          </Button>
+          <Button
+            onClick={() => navigate("/vendor")}
+            variant="outline"
+            className="border-construPro-blue text-construPro-blue"
+          >
+            Área do Lojista
+          </Button>
+        </div>
       </div>
     </div>
   );
