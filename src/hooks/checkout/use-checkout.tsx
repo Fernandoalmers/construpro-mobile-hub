@@ -1,15 +1,20 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useCart } from '@/hooks/use-cart';
-import { useAddresses } from '@/hooks/use-addresses';
+import { useAddresses } from '@/hooks/useAddresses';
 import { orderService } from '@/services/orderService';
 import { toast } from '@/components/ui/sonner';
 import { useNavigate } from 'react-router-dom';
+import { PaymentMethod } from './types';
+import { CartItem } from '@/types/cart';
+
+export type { PaymentMethod };
 
 export function useCheckout() {
-  const { cart, clearCart, cartItemsWithProducts, totalPrice, totalPoints } = useCart();
-  const { addresses, selectedAddress, selectAddress } = useAddresses();
-  const [paymentMethod, setPaymentMethod] = useState<string>('credit');
+  const { cart, clearCart, cartItems, isLoading: cartLoading } = useCart();
+  const { addresses, getPrimaryAddress } = useAddresses();
+  const [selectedAddress, setSelectedAddress] = useState<any>(null);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('credit');
   const [changeAmount, setChangeAmount] = useState<string>('');
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -18,7 +23,26 @@ export function useCheckout() {
   const [orderAttempts, setOrderAttempts] = useState(0);
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
   const navigate = useNavigate();
+  
+  // Initialize with primary address if available
+  useEffect(() => {
+    if (addresses.length > 0 && !selectedAddress) {
+      const primary = getPrimaryAddress();
+      if (primary) {
+        setSelectedAddress(primary);
+      }
+    }
+  }, [addresses, selectedAddress, getPrimaryAddress]);
 
+  // Select address function
+  const selectAddress = useCallback((address: any) => {
+    setSelectedAddress(address);
+    setShowAddressModal(false);
+  }, []);
+
+  // Get cartItems with products from cart context
+  const cartItemsWithProducts: CartItem[] = cartItems || [];
+  
   // Group cart items by store
   const storeGroups = cartItemsWithProducts.reduce((groups: any, item: any) => {
     const storeId = item.produto?.loja_id || 'unknown';
@@ -32,6 +56,10 @@ export function useCheckout() {
     groups[storeId].items.push(item);
     return groups;
   }, {});
+
+  // Calculate total price and points
+  const totalPrice = cartItemsWithProducts.reduce((sum, item) => sum + (item.subtotal || 0), 0);
+  const totalPoints = cartItemsWithProducts.reduce((sum, item) => sum + ((item.produto?.pontos || 0) * item.quantidade), 0);
 
   // Check online status
   useEffect(() => {
@@ -88,7 +116,7 @@ export function useCheckout() {
       return;
     }
     
-    if (cart.length === 0) {
+    if (cartItems.length === 0) {
       toast.error("Seu carrinho está vazio");
       return;
     }
@@ -156,7 +184,7 @@ export function useCheckout() {
     clearCart, 
     navigate,
     handleRetry,
-    cart.length,
+    cartItems.length,
     isOnline
   ]);
 
@@ -173,12 +201,12 @@ export function useCheckout() {
     showAddressModal,
     setShowAddressModal,
     isSubmitting,
-    isLoading,
+    isLoading: isLoading || cartLoading,
     subtotal,
     shipping,
     total,
     totalPoints,
-    storeGroups,
+    storeGroups: Object.values(storeGroups),
     handlePlaceOrder,
     processError,
     orderAttempts,

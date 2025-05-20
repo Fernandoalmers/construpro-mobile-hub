@@ -2,7 +2,7 @@
 import React from 'react';
 import { CreditCard, Banknote, Coins } from 'lucide-react';
 import Card from '@/components/common/Card';
-import { PaymentMethod } from '@/hooks/checkout/use-checkout';
+import { PaymentMethod } from '@/hooks/checkout/types';
 import { cn } from '@/lib/utils';
 
 interface PaymentMethodSectionProps {
