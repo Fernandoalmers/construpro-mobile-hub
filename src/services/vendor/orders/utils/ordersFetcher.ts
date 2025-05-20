@@ -1,8 +1,9 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { VendorOrder, OrderFilters, VendorCustomer } from "..";
+import { VendorOrder, OrderFilters, OrderItem } from "../types";
 import { fetchCustomerInfo } from "./clientInfoFetcher";
-import { fetchProductDetails } from "../../products/productFetcher";
+import { VendorCustomer } from "../../../vendorCustomersService";
+import { fetchProductDetails } from "../../../vendor/products/productFetcher";
 
 // Simple metrics utility since the imported one is missing
 const createDiagnosticMetrics = () => {
@@ -51,7 +52,11 @@ export const fetchVendorOrders = async (
     
     // Apply filters
     if (filters.status && filters.status !== 'all') {
-      query = query.eq('status', filters.status);
+      if (Array.isArray(filters.status)) {
+        query = query.in('status', filters.status);
+      } else {
+        query = query.eq('status', filters.status);
+      }
     }
     
     if (filters.startDate) {
@@ -66,7 +71,8 @@ export const fetchVendorOrders = async (
     }
     
     // Handle search filter if it exists in filters
-    if (filters.search && typeof filters.search === 'string') {
+    if ((filters.search && typeof filters.search === 'string') || 
+        (filters.searchTerm && typeof filters.searchTerm === 'string')) {
       // Since pedidos doesn't have customer name, we can't filter by it directly
       // We'll need to fetch all and filter in memory, or implement a more complex query
     }
@@ -93,6 +99,7 @@ export const fetchVendorOrders = async (
           forma_pagamento: order.forma_pagamento,
           valor_total: order.valor_total,
           endereco_entrega: order.endereco_entrega,
+          created_at: order.created_at,
           data_criacao: order.created_at,
           cliente: {
             id: order.usuario_id,
@@ -103,7 +110,7 @@ export const fetchVendorOrders = async (
             vendedor_id: vendorId,
             total_gasto: customerInfo?.total_gasto || 0
           },
-          items: [] // Items will be filled by getOrderDetails if/when needed
+          itens: [] // Items will be filled by getOrderDetails if/when needed
         };
         
         orders.push(fullOrder);
@@ -113,12 +120,13 @@ export const fetchVendorOrders = async (
     }
     
     // Apply search filter in memory if needed
-    if (filters.search && typeof filters.search === 'string' && filters.search.trim() !== '') {
-      const searchTerm = filters.search.toLowerCase();
+    const searchTerm = filters.search || filters.searchTerm;
+    if (searchTerm && typeof searchTerm === 'string' && searchTerm.trim() !== '') {
+      const searchTermLower = searchTerm.toLowerCase();
       return orders.filter(order => 
-        order.cliente.nome.toLowerCase().includes(searchTerm) ||
-        order.cliente.email?.toLowerCase().includes(searchTerm) ||
-        order.id.toLowerCase().includes(searchTerm)
+        order.cliente?.nome?.toLowerCase().includes(searchTermLower) ||
+        order.cliente?.email?.toLowerCase().includes(searchTermLower) ||
+        order.id.toLowerCase().includes(searchTermLower)
       );
     }
     
@@ -209,6 +217,7 @@ export const getOrderDetails = async (orderId: string): Promise<VendorOrder | nu
       forma_pagamento: orderData.forma_pagamento,
       valor_total: orderData.valor_total,
       endereco_entrega: orderData.endereco_entrega,
+      created_at: orderData.created_at,
       data_criacao: orderData.created_at,
       cliente: {
         id: orderData.usuario_id,
@@ -219,7 +228,7 @@ export const getOrderDetails = async (orderId: string): Promise<VendorOrder | nu
         vendedor_id: vendorId,
         total_gasto: customerInfo?.total_gasto || 0
       },
-      items
+      itens: items
     };
     
     return fullOrder;
@@ -346,6 +355,7 @@ export const fetchDirectVendorOrders = async (
           forma_pagamento: order.forma_pagamento,
           valor_total: order.valor_total,
           endereco_entrega: order.endereco_entrega,
+          created_at: order.created_at,
           data_criacao: order.created_at,
           cliente: {
             id: order.usuario_id,
@@ -356,7 +366,7 @@ export const fetchDirectVendorOrders = async (
             vendedor_id: vendorId,
             total_gasto: customerInfo?.total_gasto || 0
           },
-          items: []
+          itens: []
         };
         
         orders.push(fullOrder);

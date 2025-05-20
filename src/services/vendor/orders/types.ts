@@ -2,16 +2,17 @@
 import { VendorCustomer } from '../../vendorCustomersService';
 
 export interface OrderFilters {
-  status?: string[];
+  status?: string | string[];
   startDate?: string;
   endDate?: string;
+  search?: string;
   searchTerm?: string;
 }
 
 export interface OrderItem {
   id: string;
   pedido_id?: string; // Legacy field
-  order_id: string;
+  order_id?: string;
   produto_id: string;
   quantidade: number;
   preco_unitario: number;
@@ -32,9 +33,11 @@ export interface VendorOrder {
   forma_pagamento: string;
   endereco_entrega: any;
   created_at: string;
+  data_criacao?: string;
   data_entrega_estimada?: string;
   pontos_ganhos?: number;
   rastreio?: string; // Made optional as it doesn't exist in the database
   cliente?: VendorCustomer;
   itens?: OrderItem[];
+  items?: OrderItem[]; // Alias for itens for compatibility
 }
