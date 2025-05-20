@@ -243,11 +243,15 @@ export const setupVendorCustomerTrigger = async (): Promise<boolean> => {
  */
 async function executeSqlViaFunction(sqlString: string) {
   try {
+    // First get the session
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData?.session?.access_token || '';
+
     const response = await fetch(`${process.env.VITE_SUPABASE_URL}/functions/v1/db-utils`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${supabase.auth.session()?.access_token || ''}`,
+        'Authorization': `Bearer ${accessToken}`,
       },
       body: JSON.stringify({
         method: 'POST',
