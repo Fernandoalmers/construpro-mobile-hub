@@ -151,11 +151,13 @@ export const fetchDirectVendorOrdersWithDebug = async (
     console.log(`✅ [fetchDirectVendorOrdersWithDebug] Found ${vendorProductIds.length} products for vendor ${vendorId}`);
 
     // Get info about tables for debugging
-    const tables = ['orders', 'order_items', 'produtos', 'pedidos'];
-    for (const table of tables) {
+    const tablesToCheck = ['orders', 'order_items', 'produtos', 'pedidos'];
+    for (const table of tablesToCheck) {
       try {
+        // We need to use type assertion here to fix the TypeScript error
+        // since we're using a variable which TypeScript can't narrow to a literal type
         const { count, error: countError } = await supabase
-          .from(table)
+          .from(table as any)
           .select('*', { count: 'exact', head: true });
           
         if (!countError) {
@@ -189,7 +191,7 @@ export const fetchDirectVendorOrdersWithDebug = async (
     const { data: orderItemsData, error: orderItemsError } = await orderItemsQuery;
     
     if (orderItemsError) {
-      console.error('🚫 [fetchDirectVendorOrdersWithDebug] Error querying order_items:', orderItemsError);
+      console.error('🚫 [fetchDirectVendorOrdersWithDebug] Error querying order_items:', orderItemsError.message);
       debugInfo.orderItemsError = orderItemsError.message;
       debugInfo.queries[debugInfo.queries.length - 1].error = orderItemsError.message;
       
@@ -208,7 +210,7 @@ export const fetchDirectVendorOrdersWithDebug = async (
       });
       
       if (legacyItemsError) {
-        console.error('🚫 [fetchDirectVendorOrdersWithDebug] Error querying legacy itens_pedido:', legacyItemsError);
+        console.error('🚫 [fetchDirectVendorOrdersWithDebug] Error querying legacy itens_pedido:', legacyItemsError.message);
         debugInfo.legacyItemsError = legacyItemsError.message;
         debugInfo.queries[debugInfo.queries.length - 1].error = legacyItemsError.message;
       } else if (legacyItemsData && legacyItemsData.length > 0) {
