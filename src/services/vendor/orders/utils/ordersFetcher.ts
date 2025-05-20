@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { OrderItem, VendorOrder, OrderFilters } from '../types';
 
@@ -89,19 +90,26 @@ export const fetchDirectVendorOrders = async (
         const vendorItems = items.filter(item => {
           // Usando uma variável temporária para verificar e manter a inferência de tipo
           const produtos = item.produtos;
+          
+          // Verificar se produtos é nulo ou indefinido
           if (produtos === null || produtos === undefined) {
             return false;
           }
           
+          // Verificar se produtos é um objeto
           if (typeof produtos !== 'object') {
             return false;
           }
           
-          if (!('vendedor_id' in produtos)) {
+          // Verificar se o objeto tem a propriedade vendedor_id
+          // Usando assertion para informar ao TypeScript que produtos não é nulo aqui
+          const produtosObj = produtos as { vendedor_id?: string };
+          if (!produtosObj || !('vendedor_id' in produtosObj)) {
             return false;
           }
           
-          return produtos.vendedor_id === vendorId;
+          // Finalmente, verificar se o vendedor_id corresponde
+          return produtosObj.vendedor_id === vendorId;
         });
         
         if (vendorItems.length > 0) {
