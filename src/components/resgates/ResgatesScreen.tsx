@@ -1,12 +1,13 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search } from 'lucide-react';
+import { ArrowLeft, Search, History } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import LoadingState from '@/components/common/LoadingState';
 import ResgateCard from './ResgateCard';
 import { useAuth } from '@/context/AuthContext';
+import CustomButton from '@/components/common/CustomButton';
 
 interface Resgate {
   id: string;
@@ -99,11 +100,23 @@ const ResgatesScreen: React.FC = () => {
     <div className="flex flex-col min-h-screen bg-gray-100">
       {/* Header */}
       <div className="bg-construPro-blue p-6">
-        <div className="flex items-center mb-4">
-          <button onClick={() => navigate(-1)} className="text-white mr-2">
-            <ArrowLeft size={24} />
-          </button>
-          <h1 className="text-xl font-bold text-white">Resgates</h1>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center">
+            <button onClick={() => navigate(-1)} className="text-white mr-2">
+              <ArrowLeft size={24} />
+            </button>
+            <h1 className="text-xl font-bold text-white">Resgates</h1>
+          </div>
+          
+          {/* Add history button */}
+          <CustomButton 
+            variant="outline" 
+            className="bg-white/10 text-white border-white/20 hover:bg-white/20"
+            onClick={() => navigate('/historico-resgates')}
+            icon={<History size={16} />}
+          >
+            Histórico
+          </CustomButton>
         </div>
         
         <div className="bg-white rounded-lg p-4 mb-4 shadow-sm">

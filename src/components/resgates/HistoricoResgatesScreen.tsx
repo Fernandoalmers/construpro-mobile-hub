@@ -8,6 +8,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import LoadingState from '../common/LoadingState';
 import ErrorState from '../common/ErrorState';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface Redemption {
   id: string;
@@ -109,6 +111,24 @@ const HistoricoResgatesScreen: React.FC = () => {
     return statusMap[status] || status;
   };
 
+  // Format date in a user-friendly way
+  const formatDate = (dateString: string) => {
+    try {
+      return format(new Date(dateString), "dd 'de' MMMM, yyyy", { locale: ptBR });
+    } catch (e) {
+      return dateString;
+    }
+  };
+
+  const getDefaultImage = (item: string) => {
+    // Use the first letter of the item name to generate a consistent color
+    const letter = (item[0] || 'R').toUpperCase();
+    const charCode = letter.charCodeAt(0);
+    const hue = (charCode * 7) % 360; // Generate a hue based on the character code
+    
+    return `https://ui-avatars.com/api/?name=${letter}&background=${hue.toString(16)}&color=fff&size=200&bold=true`;
+  };
+
   if (isLoading) {
     return <LoadingState text="Carregando histórico..." />;
   }
@@ -146,11 +166,16 @@ const HistoricoResgatesScreen: React.FC = () => {
           <div className="space-y-4">
             {redemptions.map(redemption => (
               <Card key={redemption.id} className="p-4 flex gap-3">
-                <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100">
+                <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
                   <img 
-                    src={redemption.imagem_url || 'https://images.unsplash.com/photo-1577132922436-e9c50c3f10c1?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&h=500&q=80'} 
+                    src={redemption.imagem_url || getDefaultImage(redemption.item)} 
                     alt={redemption.item}
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.onerror = null; // Prevent infinite loop
+                      target.src = getDefaultImage(redemption.item);
+                    }}
                   />
                 </div>
                 
@@ -162,7 +187,7 @@ const HistoricoResgatesScreen: React.FC = () => {
                       {redemption.pontos} pontos
                     </span>
                     <span>
-                      {new Date(redemption.created_at).toLocaleDateString('pt-BR')}
+                      {formatDate(redemption.created_at)}
                     </span>
                   </div>
                   

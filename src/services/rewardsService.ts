@@ -27,7 +27,7 @@ export const redeemReward = async (request: RedeemRequest): Promise<boolean> => 
       // Check reward stock before proceeding
       const { data: reward, error: rewardError } = await supabase
         .from('resgates')
-        .select('estoque, status, item')
+        .select('estoque, status, item, imagem_url, descricao, categoria, prazo_entrega')
         .eq('id', request.rewardId)
         .single();
 
@@ -48,15 +48,19 @@ export const redeemReward = async (request: RedeemRequest): Promise<boolean> => 
       
       console.log('Creating redemption entry for:', reward.item);
       
-      // 1. Create the redemption entry with status 'pendente'
+      // 1. Create the redemption entry with status 'pendente' and copy all relevant fields from the template
       const { data: redemption, error: redemptionError } = await supabase
         .from('resgates')
         .insert({
           cliente_id: user.id,
-          item: reward.item, // Use the actual item name
+          item: reward.item,
           pontos: request.pontos,
           status: 'pendente',
-          data: new Date().toISOString()
+          data: new Date().toISOString(),
+          imagem_url: reward.imagem_url, // Copy the image URL from the template
+          descricao: reward.descricao, // Copy description
+          categoria: reward.categoria, // Copy category
+          prazo_entrega: reward.prazo_entrega // Copy delivery timeframe
         })
         .select()
         .single();
