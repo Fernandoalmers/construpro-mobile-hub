@@ -11,14 +11,16 @@ export const supabaseService = {
       method?: 'GET' | 'POST' | 'PUT' | 'DELETE', 
       body?: Record<string, any>,
       headers?: Record<string, string>,
-      maxRetries?: number
+      maxRetries?: number,
+      retryDelay?: number  // Added this property to the type definition
     } = {}
   ) {
     const { 
       method = 'POST', 
       body = undefined, 
       headers = {}, 
-      maxRetries = 2 
+      maxRetries = 2,
+      retryDelay = 1000  // Default retry delay of 1 second
     } = options;
     
     let retries = 0;
@@ -39,7 +41,9 @@ export const supabaseService = {
             // Only retry on network-related errors
             console.log(`Retry attempt ${retries + 1} for ${functionName}`);
             retries++;
-            await new Promise(resolve => setTimeout(resolve, 1000 * retries));
+            // Use the retryDelay option or calculate a delay based on retry count
+            const delay = retryDelay || 1000 * retries;
+            await new Promise(resolve => setTimeout(resolve, delay));
             continue;
           }
           throw error;
@@ -53,7 +57,9 @@ export const supabaseService = {
             error.message?.includes('connection'))) {
           console.log(`Retry attempt ${retries + 1} for ${functionName}`);
           retries++;
-          await new Promise(resolve => setTimeout(resolve, 1000 * retries));
+          // Use the retryDelay option or calculate a delay based on retry count
+          const delay = retryDelay || 1000 * retries;
+          await new Promise(resolve => setTimeout(resolve, delay));
           continue;
         }
         
