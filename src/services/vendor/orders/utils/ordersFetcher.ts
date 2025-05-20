@@ -89,10 +89,11 @@ export const fetchDirectVendorOrders = async (
         // Filtrar para incluir apenas itens com produtos deste vendedor
         const vendorItems = items.filter(item => {
           // Verificar se o produto existe e tem vendedor_id
-          return item.produtos && 
+          return item.produtos !== null && 
+                 item.produtos !== undefined && 
                  typeof item.produtos === 'object' && 
                  'vendedor_id' in item.produtos && 
-                 item.produtos?.vendedor_id === vendorId;
+                 item.produtos.vendedor_id === vendorId;
         });
         
         if (vendorItems.length > 0) {
