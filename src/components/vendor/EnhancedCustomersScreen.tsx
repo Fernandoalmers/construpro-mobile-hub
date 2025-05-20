@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { SearchX, Users, UserPlus } from 'lucide-react';
+import { SearchX, Users, UserPlus, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { getVendorCustomers, searchCustomers, VendorCustomer } from '@/services/vendorCustomersService';
+import { getVendorCustomers, VendorCustomer, seedTestCustomers } from '@/services/vendorCustomersService';
 import LoadingState from '../common/LoadingState';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -16,12 +17,25 @@ const EnhancedCustomersScreen: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('all');
+  const [isSeeding, setIsSeeding] = useState(false);
 
-  // Fetch customers data
-  const { data: customers = [], isLoading, error, refetch } = useQuery({
+  // Fetch customers data with explicit refetch interval
+  const { 
+    data: customers = [], 
+    isLoading, 
+    error, 
+    refetch,
+    isRefetching
+  } = useQuery({
     queryKey: ['vendorCustomers'],
-    queryFn: getVendorCustomers
+    queryFn: getVendorCustomers,
+    staleTime: 30 * 1000, // 30 seconds
   });
+
+  // Debug effect to log customers data
+  useEffect(() => {
+    console.log('EnhancedCustomersScreen - customers data:', customers);
+  }, [customers]);
 
   // Filter customers based on search and tab
   const filteredCustomers = customers.filter((customer) => {
@@ -64,15 +78,54 @@ const EnhancedCustomersScreen: React.FC = () => {
     navigate(`/vendor/points-adjustment?customerId=${customerId}`);
   };
 
+  // Force refresh data
+  const handleForceRefresh = async () => {
+    toast.loading('Atualizando dados dos clientes...');
+    
+    // Clear React Query cache for this query
+    await refetch();
+    
+    toast.success('Dados atualizados com sucesso!');
+  };
+
+  // Seed test customers (for development only)
+  const handleSeedTestCustomers = async () => {
+    if (isSeeding) return;
+    
+    setIsSeeding(true);
+    toast.loading('Criando clientes de teste...');
+    
+    try {
+      const success = await seedTestCustomers(5);
+      if (success) {
+        toast.success('Clientes de teste criados com sucesso!');
+        refetch();
+      } else {
+        toast.error('Erro ao criar clientes de teste');
+      }
+    } catch (error) {
+      console.error('Error seeding customers:', error);
+      toast.error('Erro ao criar clientes de teste');
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
   if (isLoading) return <LoadingState text="Carregando clientes..." />;
 
   if (error) {
+    console.error('Error fetching customers:', error);
     return (
       <div className="p-6">
         <Card className="p-8 text-center">
           <h2 className="text-xl font-bold mb-4 text-red-500">Erro ao carregar clientes</h2>
           <p className="mb-4 text-gray-600">Ocorreu um erro ao tentar carregar a lista de clientes.</p>
-          <Button onClick={() => refetch()}>Tentar novamente</Button>
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
+            <Button onClick={() => refetch()}>Tentar novamente</Button>
+            <Button variant="outline" onClick={handleSeedTestCustomers} disabled={isSeeding}>
+              {isSeeding ? 'Criando...' : 'Criar clientes de teste'}
+            </Button>
+          </div>
         </Card>
       </div>
     );
@@ -83,9 +136,20 @@ const EnhancedCustomersScreen: React.FC = () => {
       <div className="bg-white p-4 shadow-sm">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           <h1 className="text-2xl font-bold">Clientes</h1>
-          <Button onClick={() => navigate('/vendor')}>
-            Voltar para o Dashboard
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline"
+              onClick={handleForceRefresh}
+              disabled={isRefetching}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} />
+              Atualizar
+            </Button>
+            <Button onClick={() => navigate('/vendor')}>
+              Voltar para o Dashboard
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -141,14 +205,28 @@ const EnhancedCustomersScreen: React.FC = () => {
 
         {/* Customers List */}
         <div className="space-y-4">
-          <h2 className="font-bold text-lg">Lista de Clientes</h2>
+          <div className="flex justify-between items-center">
+            <h2 className="font-bold text-lg">Lista de Clientes</h2>
+            {customers.length === 0 && (
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={handleSeedTestCustomers}
+                disabled={isSeeding}
+              >
+                {isSeeding ? 'Criando...' : 'Criar clientes de teste'}
+              </Button>
+            )}
+          </div>
           
           {paginatedCustomers.length === 0 ? (
             <Card className="p-8 text-center">
               <SearchX className="mx-auto h-12 w-12 text-gray-400 mb-4" />
               <h3 className="text-lg font-medium mb-2">Nenhum cliente encontrado</h3>
               <p className="text-gray-500 mb-4">
-                Não encontramos clientes que correspondam a esse filtro.
+                {customers.length === 0 
+                  ? 'Você ainda não possui nenhum cliente registrado.' 
+                  : 'Não encontramos clientes que correspondam a esse filtro.'}
               </p>
               {searchTerm && (
                 <Button 
@@ -227,7 +305,10 @@ const EnhancedCustomersScreen: React.FC = () => {
                             <Button
                               size="sm"
                               variant="default"
-                              onClick={() => handleAddPoints(customer.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAddPoints(customer.usuario_id);
+                              }}
                               title="Adicionar ou remover pontos para este cliente"
                             >
                               <UserPlus className="h-4 w-4 mr-1" /> Pontos
@@ -243,11 +324,13 @@ const EnhancedCustomersScreen: React.FC = () => {
           )}
           
           {/* Pagination */}
-          <VendorPagination 
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={onPageChange}
-          />
+          {paginatedCustomers.length > 0 && (
+            <VendorPagination 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={onPageChange}
+            />
+          )}
         </div>
       </div>
     </div>

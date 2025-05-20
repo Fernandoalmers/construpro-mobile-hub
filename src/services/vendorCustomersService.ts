@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { getVendorProfile } from './vendorProfileService';
 
@@ -46,8 +45,24 @@ export const getVendorCustomers = async (): Promise<VendorCustomer[]> => {
       return [];
     }
     
-    console.log(`Found ${data.length} customers for vendor ${vendorProfile.id}`);
-    return data as VendorCustomer[];
+    // Log the actual data received from the database
+    console.log(`Found ${data?.length || 0} customers for vendor ${vendorProfile.id}:`, data);
+    
+    // If no data, try to check if the table exists and has data
+    if (!data || data.length === 0) {
+      // Check if the table has any data at all
+      const { count, error: countError } = await supabase
+        .from('clientes_vendedor')
+        .select('*', { count: 'exact', head: true });
+        
+      if (countError) {
+        console.error('Error checking clientes_vendedor table:', countError);
+      } else {
+        console.log(`clientes_vendedor table has ${count} total records`);
+      }
+    }
+    
+    return data as VendorCustomer[] || [];
   } catch (error) {
     console.error('Error in getVendorCustomers:', error);
     return [];
@@ -223,5 +238,106 @@ export const getCustomerPoints = async (userId: string): Promise<number> => {
   } catch (error) {
     console.error('Error in getCustomerPoints:', error);
     return 0;
+  }
+};
+
+// Adds a customer to the vendor's customer list if they don't already exist
+export const addVendorCustomer = async (customerData: {
+  usuario_id: string;
+  nome: string;
+  email?: string;
+  telefone?: string;
+}): Promise<VendorCustomer | null> => {
+  try {
+    // Get vendor id
+    const vendorProfile = await getVendorProfile();
+    if (!vendorProfile) {
+      console.error('Vendor profile not found');
+      return null;
+    }
+    
+    console.log('Adding customer for vendor:', vendorProfile.id, customerData);
+    
+    // Check if customer already exists
+    const { data: existingCustomer, error: checkError } = await supabase
+      .from('clientes_vendedor')
+      .select('*')
+      .eq('vendedor_id', vendorProfile.id)
+      .eq('usuario_id', customerData.usuario_id)
+      .maybeSingle();
+      
+    if (checkError) {
+      console.error('Error checking existing customer:', checkError);
+      return null;
+    }
+    
+    if (existingCustomer) {
+      console.log('Customer already exists:', existingCustomer);
+      return existingCustomer as VendorCustomer;
+    }
+    
+    // If customer doesn't exist, add them
+    const { data, error } = await supabase
+      .from('clientes_vendedor')
+      .insert([{
+        vendedor_id: vendorProfile.id,
+        usuario_id: customerData.usuario_id,
+        nome: customerData.nome,
+        email: customerData.email,
+        telefone: customerData.telefone,
+        total_gasto: 0
+      }])
+      .select()
+      .single();
+      
+    if (error) {
+      console.error('Error adding customer:', error);
+      return null;
+    }
+    
+    console.log('Customer added successfully:', data);
+    return data as VendorCustomer;
+  } catch (error) {
+    console.error('Error in addVendorCustomer:', error);
+    return null;
+  }
+};
+
+// This function will seed test customers if needed for development
+export const seedTestCustomers = async (count: number = 5): Promise<boolean> => {
+  try {
+    const vendorProfile = await getVendorProfile();
+    if (!vendorProfile) {
+      console.error('Vendor profile not found');
+      return false;
+    }
+    
+    console.log(`Seeding ${count} test customers for vendor:`, vendorProfile.id);
+    
+    const testCustomers = Array.from({ length: count }).map((_, i) => ({
+      vendedor_id: vendorProfile.id,
+      usuario_id: crypto.randomUUID(),
+      nome: `Cliente Teste ${i + 1}`,
+      email: `cliente${i + 1}@teste.com`,
+      telefone: `(11) 9${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`,
+      total_gasto: Math.floor(Math.random() * 10000) / 100,
+      ultimo_pedido: new Date(Date.now() - Math.floor(Math.random() * 90) * 24 * 60 * 60 * 1000).toISOString()
+    }));
+    
+    const { data, error } = await supabase
+      .from('clientes_vendedor')
+      .insert(testCustomers)
+      .select();
+      
+    if (error) {
+      console.error('Error seeding test customers:', error);
+      return false;
+    }
+    
+    console.log(`Successfully seeded ${data.length} test customers`);
+    return true;
+  } catch (error) {
+    console.error('Error in seedTestCustomers:', error);
+    return false;
   }
 };
