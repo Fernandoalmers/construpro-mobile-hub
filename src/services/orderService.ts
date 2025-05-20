@@ -34,7 +34,7 @@ export const orderService = {
           valor_total: orderData.valor_total,
           pontos_ganhos: orderData.pontos_ganhos, // Pass the accurate total points
           status: 'Confirmado',  // Capitalized to match database constraint
-          transaction_type: 'credito_compra' // Add transaction type correctly matching DB constraint
+          transaction_type: 'compra' // Use 'compra' instead of 'credito_compra' to match DB constraint
         },
         maxRetries: 5, // Increase from 3 to 5 retries for more reliability
         retryDelay: 1500 // Add delay between retries (1.5 seconds)
@@ -78,21 +78,12 @@ export const orderService = {
     try {
       console.log("🔍 [orderService.getOrders] Fetching orders for current user");
       
-      const { data, error } = await supabase
-        .from('orders')
-        .select(`
-          id, 
-          cliente_id, 
-          valor_total, 
-          pontos_ganhos,
-          status, 
-          forma_pagamento, 
-          endereco_entrega,
-          created_at,
-          updated_at,
-          rastreio
-        `)
-        .order('created_at', { ascending: false });
+      // Use supabaseService with retry logic for more reliability
+      const { data, error } = await supabaseService.invokeFunction('order-processing', {
+        method: 'GET',
+        maxRetries: 3,
+        retryDelay: 1000
+      });
       
       if (error) {
         console.error("❌ [orderService.getOrders] Error fetching orders:", error);
@@ -102,12 +93,15 @@ export const orderService = {
         throw error;
       }
       
-      if (!data) {
-        console.error("❌ [orderService.getOrders] No data returned");
+      if (!data?.success) {
+        console.error("❌ [orderService.getOrders] API returned error:", data?.error);
+        toast.error("Erro ao carregar pedidos", {
+          description: data?.error || "Ocorreu um erro desconhecido"
+        });
         return [];
       }
       
-      const orders = data || [];
+      const orders = data.orders || [];
       console.log(`✅ [orderService.getOrders] Retrieved ${orders.length} orders`);
       
       // If we have orders, log a sample to help with debugging

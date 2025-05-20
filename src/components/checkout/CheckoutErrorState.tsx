@@ -51,6 +51,8 @@ const CheckoutErrorState: React.FC<CheckoutErrorStateProps> = ({
       return "Problema de conexão. Verifique sua internet e tente novamente em alguns instantes.";
     } else if (isServerError) {
       return "Nosso servidor está enfrentando problemas temporários. Por favor, tente novamente em alguns instantes.";
+    } else if (error.toLowerCase().includes('points_transactions')) {
+      return "Erro ao processar pontos da compra. Estamos trabalhando para resolver este problema.";
     } else {
       return "Ocorreu um erro ao processar seu pedido.";
     }
@@ -114,22 +116,6 @@ const CheckoutErrorState: React.FC<CheckoutErrorStateProps> = ({
         >
           <RefreshCw size={16} className={shouldDisableRetry ? 'opacity-50' : ''} />
           {shouldDisableRetry ? 'Conecte-se à internet' : 'Tentar novamente'}
-        </button>
-        
-        {isPermissionError && (
-          <button
-            onClick={() => window.location.href = '/login?redirect=/checkout'}
-            className="border border-red-300 hover:bg-red-100 text-red-700 py-2 px-4 rounded text-sm transition-colors"
-          >
-            Fazer login novamente
-          </button>
-        )}
-        
-        <button
-          onClick={() => window.location.reload()}
-          className="border border-red-300 hover:bg-red-100 text-red-700 py-2 px-4 rounded text-sm transition-colors"
-        >
-          Recarregar página
         </button>
       </div>
     </div>

@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
@@ -366,12 +365,19 @@ serve(async (req) => {
             user_id: user.id,
             pontos: totalPoints,
             referencia_id: newOrder.id,
-            tipo: 'credito',
-            descricao: `Pontos ganhos na compra #${newOrder.id}`
+            tipo: 'compra', // Changed from 'credito' to 'compra' to match DB constraints
+            descricao: `Pontos ganhos na compra #${newOrder.id.substring(0,8)}`
           });
           
         if (pointsError) {
           console.error('Error creating points transaction:', pointsError);
+          console.error('Error code:', pointsError.code);
+          console.error('Error details:', pointsError.details);
+          console.error('Error message:', pointsError.message);
+          
+          // Continue with the order even if points transaction fails
+          // We'll just log the error but not fail the entire order
+          // This ensures the order is created even if points cannot be added
         } else {
           console.log('Points transaction created successfully');
         }

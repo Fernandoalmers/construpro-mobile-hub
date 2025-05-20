@@ -1,40 +1,51 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
 import { useCart } from '@/hooks/use-cart';
-import { useAddresses } from '@/hooks/useAddresses';
-import { toast } from '@/components/ui/sonner';
+import { useAddresses } from '@/hooks/use-addresses';
 import { orderService } from '@/services/orderService';
-import { CartItem } from '@/types/cart';
-import { Address } from '@/services/addressService';
-import { useGroupItemsByStore, storeGroupsToArray, StoreGroup } from '@/hooks/cart/use-group-items-by-store';
-
-// Define the PaymentMethod type
-export type PaymentMethod = 'credit' | 'debit' | 'money' | 'pix';
+import { toast } from '@/components/ui/sonner';
+import { useNavigate } from 'react-router-dom';
 
 export function useCheckout() {
-  const navigate = useNavigate();
-  const { cart, cartItems, clearCart, refreshCart } = useCart();
-  const { 
-    addresses, 
-    isLoading: addressesLoading, 
-    addAddress 
-  } = useAddresses();
-  
-  // State management
-  const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('credit');
-  const [changeAmount, setChangeAmount] = useState<string>('0');
+  const { cart, clearCart, cartItemsWithProducts, totalPrice, totalPoints } = useCart();
+  const { addresses, selectedAddress, selectAddress } = useAddresses();
+  const [paymentMethod, setPaymentMethod] = useState<string>('credit');
+  const [changeAmount, setChangeAmount] = useState<string>('');
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [processError, setProcessError] = useState<string | null>(null);
   const [orderAttempts, setOrderAttempts] = useState(0);
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
-  
-  // Track online/offline status
+  const navigate = useNavigate();
+
+  // Group cart items by store
+  const storeGroups = cartItemsWithProducts.reduce((groups: any, item: any) => {
+    const storeId = item.produto?.loja_id || 'unknown';
+    if (!groups[storeId]) {
+      groups[storeId] = {
+        storeId,
+        storeName: item.produto?.loja_nome || 'Loja',
+        items: []
+      };
+    }
+    groups[storeId].items.push(item);
+    return groups;
+  }, {});
+
+  // Check online status
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
+    const handleOnline = () => {
+      setIsOnline(true);
+      toast.success('Conexão restabelecida!');
+    };
+    
+    const handleOffline = () => {
+      setIsOnline(false);
+      toast.error('Você está offline', {
+        description: 'É necessário estar online para finalizar seu pedido'
+      });
+    };
     
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
@@ -44,188 +55,134 @@ export function useCheckout() {
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
-  
-  // Calculate totals
-  const subtotal = cart?.summary?.subtotal || 0;
-  const shipping = 0; // Free shipping
+
+  // Calculate subtotal and shipping
+  const subtotal = totalPrice;
+  const shipping = 15.90; // Fixed shipping price for now
   const total = subtotal + shipping;
-  
-  // Use the product-specific points directly from cart summary
-  // and don't calculate based on total amount
-  const totalPoints = cart?.summary?.totalPoints || 0;
-  
-  // Group items by store
-  const storeGroupsRecord = useGroupItemsByStore(cartItems, cart?.stores || []);
-  // Convert record to array for components that expect an array
-  const storeGroupsArray = storeGroupsToArray(storeGroupsRecord);
-  
-  // Set default address on load
+
+  // Initialize loading state
   useEffect(() => {
-    if (addresses && addresses.length > 0 && !selectedAddress) {
-      const defaultAddress = addresses.find(addr => addr.principal) || addresses[0];
-      setSelectedAddress(defaultAddress);
-    }
-  }, [addresses, selectedAddress]);
-  
-  // Select address handler
-  const selectAddress = useCallback((address: Address) => {
-    setSelectedAddress(address);
-    setShowAddressModal(false);
+    // Simulate loading data
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 800);
   }, []);
-  
-  // Add new address handler
-  const addNewAddress = useCallback(async (formData: Partial<Address>) => {
-    try {
-      // Use the addAddress function from useAddresses hook
-      if (addAddress) {
-        await addAddress(formData);
-        toast.success('Endereço adicionado com sucesso');
-      } else {
-        console.error('addAddress function is not available');
-        toast.error('Não foi possível adicionar o endereço');
-      }
-    } catch (error) {
-      console.error('Error adding address:', error);
-      toast.error('Erro ao adicionar endereço');
-    }
-  }, [addAddress]);
-  
-  // Handle order placement
+
+  const handleRetry = useCallback(() => {
+    setProcessError(null);
+    toast.info('Tentando novamente...');
+  }, []);
+
   const handlePlaceOrder = useCallback(async () => {
+    // Validation checks
+    if (!isOnline) {
+      toast.error("Você está offline", {
+        description: "Conecte-se à internet para finalizar o pedido"
+      });
+      return;
+    }
+    
+    if (!selectedAddress) {
+      toast.error("Selecione um endereço de entrega");
+      return;
+    }
+    
+    if (cart.length === 0) {
+      toast.error("Seu carrinho está vazio");
+      return;
+    }
+    
+    setIsSubmitting(true);
+    setOrderAttempts(prev => prev + 1);
+    setProcessError(null);
+    
     try {
-      // Check if the device is online
-      if (!navigator.onLine) {
-        toast.error('Você está offline', {
-          description: 'Verifique sua conexão com a internet e tente novamente'
-        });
-        setProcessError('Dispositivo offline. Verifique sua conexão com a internet e tente novamente.');
-        return;
-      }
+      console.log("Preparando para criar pedido com:", {
+        items: cartItemsWithProducts,
+        endereco: selectedAddress,
+        pagamento: paymentMethod,
+        total: total
+      });
       
-      if (!selectedAddress) {
-        toast.error('Selecione um endereço de entrega');
-        return;
-      }
-      
-      if (!cartItems.length) {
-        toast.error('Seu carrinho está vazio');
-        return;
-      }
-      
-      setIsSubmitting(true);
-      setProcessError(null);
-      setOrderAttempts(prev => prev + 1);
-      
-      // Prepare order data with product-specific points
-      const orderData = {
-        items: cartItems,
+      // Create order
+      const orderId = await orderService.createOrder({
+        items: cartItemsWithProducts,
         endereco_entrega: selectedAddress,
         forma_pagamento: paymentMethod,
         valor_total: total,
-        pontos_ganhos: totalPoints,
-      };
+        pontos_ganhos: totalPoints
+      });
       
-      console.log('Sending order with data:', orderData);
-      
-      // Create order with retry logic
-      let maxAttempts = 3;
-      let attempt = 1;
-      let orderId = null;
-      
-      while (attempt <= maxAttempts && !orderId) {
-        try {
-          if (attempt > 1) {
-            console.log(`Retry attempt ${attempt} of ${maxAttempts}`);
-            // Add increasing delay between retries (1s, 2s, 3s...)
-            await new Promise(resolve => setTimeout(resolve, attempt * 1000));
-          }
-          
-          orderId = await orderService.createOrder(orderData);
-          if (orderId) break;
-        } catch (err: any) {
-          console.error(`Attempt ${attempt} failed:`, err);
-          
-          // If network error and not last attempt, retry
-          const isNetworkError = err.message?.includes('conexão') || 
-                                err.message?.includes('network') || 
-                                err.message?.includes('Failed to');
-                                
-          if (attempt === maxAttempts || !isNetworkError) {
-            throw err; // If last attempt or not network error, rethrow
-          }
-        }
-        attempt++;
+      if (!orderId) {
+        throw new Error("Não foi possível completar seu pedido");
       }
       
-      if (orderId) {
-        // Success flow
-        clearCart();
-        refreshCart();
-        toast.success('Pedido realizado com sucesso!');
-        navigate(`/order/confirmacao/${orderId}`); // Updated path to Portuguese version
-      } else {
-        throw new Error('Falha ao processar pedido após várias tentativas');
-      }
+      // Order created successfully
+      console.log("Pedido criado com sucesso:", orderId);
+      
+      // Clear cart and navigate to confirmation page
+      clearCart();
+      toast.success("Pedido realizado com sucesso!", {
+        description: `Pedido #${orderId.substring(0, 8)} criado`
+      });
+      
+      // Navigate to order confirmation page
+      navigate(`/profile/orders/${orderId}`);
+      
     } catch (error: any) {
-      console.error('Error placing order:', error);
-      setProcessError(error.message || 'Erro ao processar seu pedido');
-      toast.error('Não foi possível completar seu pedido', {
-        description: error.message || 'Por favor, tente novamente'
+      console.error("Erro ao processar pedido:", error);
+      
+      // Set error message for display
+      setProcessError(error.message || "Não foi possível completar seu pedido");
+      
+      // Show toast with retry option
+      toast.error("Erro ao finalizar pedido", {
+        description: error.message || "Por favor, tente novamente em alguns instantes",
+        action: {
+          label: 'Tentar novamente',
+          onClick: handleRetry,
+        },
       });
     } finally {
       setIsSubmitting(false);
     }
   }, [
+    cartItemsWithProducts, 
     selectedAddress, 
-    cartItems, 
     paymentMethod, 
     total, 
     totalPoints, 
     clearCart, 
-    refreshCart, 
-    navigate
+    navigate,
+    handleRetry,
+    cart.length,
+    isOnline
   ]);
-  
-  // Handle retry
-  const handleRetry = useCallback(() => {
-    // Check connection before retry
-    if (!navigator.onLine) {
-      toast.error('Você está offline', {
-        description: 'Conecte-se à internet para tentar novamente'
-      });
-      return;
-    }
-    
-    setProcessError(null);
-    handlePlaceOrder();
-  }, [handlePlaceOrder]);
-  
+
   return {
-    // Data
+    cart,
+    cartItems: cartItemsWithProducts,
     addresses,
     selectedAddress,
+    selectAddress,
     paymentMethod,
+    setPaymentMethod,
     changeAmount,
-    cartItems,
-    storeGroups: storeGroupsArray,
+    setChangeAmount,
+    showAddressModal,
+    setShowAddressModal,
+    isSubmitting,
+    isLoading,
     subtotal,
     shipping,
     total,
     totalPoints,
-    showAddressModal,
-    isSubmitting,
+    storeGroups,
+    handlePlaceOrder,
     processError,
     orderAttempts,
-    isLoading: addressesLoading,
-    isOnline,
-    
-    // Actions
-    setPaymentMethod,
-    setChangeAmount,
-    setShowAddressModal,
-    selectAddress,
-    addNewAddress,
-    handlePlaceOrder,
-    handleRetry
+    handleRetry,
+    isOnline
   };
 }
