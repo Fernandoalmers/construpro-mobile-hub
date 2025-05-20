@@ -1,3 +1,4 @@
+
 import React from 'react';
 import Card from '../common/Card';
 import { Badge } from '@/components/ui/badge';
@@ -48,50 +49,75 @@ const ResgateCard: React.FC<ResgateCardProps> = ({ resgate, userPoints, onClick 
   
   return (
     <Card 
-      className="overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all"
+      className="overflow-hidden border border-gray-200 shadow-sm hover:shadow-md transition-all rounded-xl"
       onClick={handleClick}
     >
       <div className="flex flex-row h-full">
-        {/* Imagem à esquerda */}
-        <div className="w-1/4 max-w-[100px]">
-          <div className="h-full relative">
-            <img 
-              src={resgate.imagemUrl} 
-              alt={resgate.titulo} 
-              className="w-full h-full object-contain p-2 min-h-[100px]"
-              onError={(e) => {
-                e.currentTarget.src = 'https://via.placeholder.com/100x100?text=Recompensa';
-              }}
-            />
-            <Badge className="absolute top-2 left-2 bg-construPro-blue text-white text-xs font-medium">
-              {resgate.categoria}
-            </Badge>
-          </div>
+        {/* Enhanced image area with background */}
+        <div className="w-1/4 max-w-[100px] bg-gray-50 flex items-center justify-center relative">
+          <img 
+            src={resgate.imagemUrl} 
+            alt={resgate.titulo} 
+            className="w-full h-full object-contain p-2 min-h-[100px] transition-all duration-200 hover:scale-105"
+            onError={(e) => {
+              e.currentTarget.src = 'https://via.placeholder.com/100x100?text=Recompensa';
+            }}
+          />
+          {/* Enhanced badge position and styling */}
+          <Badge className="absolute top-2 left-2 bg-construPro-blue text-white text-xs font-medium px-2 py-0.5 rounded-md shadow-sm">
+            {resgate.categoria}
+          </Badge>
         </div>
         
-        {/* Informações à direita */}
-        <div className="w-3/4 p-3 flex flex-col justify-between">
+        {/* Enhanced information layout */}
+        <div className="w-3/4 p-4 flex flex-col justify-between">
           <div>
-            <h3 className="font-medium text-gray-900 line-clamp-2 text-sm mb-1">{resgate.titulo}</h3>
+            {/* Added product type label */}
+            <div className="mb-1.5">
+              <span className="text-xs font-medium text-construPro-orange bg-orange-50 px-2 py-0.5 rounded-full">
+                Recompensa
+              </span>
+            </div>
             
+            {/* Improved typography */}
+            <h3 className="font-semibold text-gray-900 line-clamp-2 text-sm mb-1.5">{resgate.titulo}</h3>
+            
+            {/* Description with better styling */}
             {resgate.descricao && (
-              <p className="text-xs text-gray-500 line-clamp-2 mb-2">{resgate.descricao}</p>
+              <p className="text-xs text-gray-500 line-clamp-2 mb-3">{resgate.descricao}</p>
             )}
           </div>
           
-          <div className="mt-auto space-y-2">
-            <div className="flex justify-between items-center text-sm font-medium">
-              <span className="text-construPro-orange">{resgate.pontos} pontos</span>
+          {/* Enhanced points display and progress section */}
+          <div className="mt-auto space-y-2.5">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center">
+                <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 mr-1">
+                  <Gift className="h-3 w-3 mr-1" /> 
+                </Badge>
+                <span className="text-sm font-bold text-construPro-orange">{resgate.pontos} pontos</span>
+              </div>
+              
+              {isAvailable && (
+                <span className="text-xs text-green-600 font-medium flex items-center">
+                  <span className="h-1.5 w-1.5 bg-green-500 rounded-full mr-1"></span>
+                  Disponível
+                </span>
+              )}
             </div>
             
+            {/* Enhanced progress bar */}
             <Progress 
               value={percentComplete} 
-              className={`h-1.5 rounded-full overflow-hidden transition-all duration-700 ease-in-out ${isAvailable ? 'bg-gray-100' : 'bg-gray-100'}`}
+              className={`h-1.5 rounded-full overflow-hidden transition-all duration-700 ease-in-out ${
+                isAvailable ? 'bg-gray-100' : 'bg-gray-100'
+              }`}
             />
             
+            {/* Enhanced button and locked state */}
             {isAvailable ? (
               <Button 
-                className="w-full bg-construPro-blue hover:bg-construPro-blue/90 text-white flex items-center justify-center gap-1 py-1 h-8"
+                className="w-full bg-construPro-blue hover:bg-construPro-blue/90 text-white flex items-center justify-center gap-1 py-1 h-8 rounded-lg shadow-sm"
                 onClick={handleResgateClick}
               >
                 <Gift className="h-3.5 w-3.5" /> 
@@ -99,7 +125,7 @@ const ResgateCard: React.FC<ResgateCardProps> = ({ resgate, userPoints, onClick 
                 <ChevronRight className="h-3.5 w-3.5" />
               </Button>
             ) : (
-              <div className="w-full py-1.5 px-2 rounded-md bg-gray-100 text-gray-500 flex items-center justify-center gap-1.5 text-xs">
+              <div className="w-full py-1.5 px-2 rounded-lg bg-gray-100 text-gray-500 flex items-center justify-center gap-1.5 text-xs border border-gray-200">
                 <Lock className="h-3 w-3" />
                 <span>Faltam {resgate.pontos - userPoints} pontos</span>
               </div>
