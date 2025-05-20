@@ -1,4 +1,3 @@
-
 import React from 'react';
 import Card from '../common/Card';
 import { Badge } from '@/components/ui/badge';
@@ -52,28 +51,26 @@ const ResgateCard: React.FC<ResgateCardProps> = ({ resgate, userPoints, onClick 
       className="overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all"
       onClick={handleClick}
     >
-      <div className="flex flex-col h-full">
-        {/* Badge e Categoria */}
-        <div className="relative">
-          <Badge className="absolute top-2 left-2 bg-construPro-blue text-white text-xs font-medium">
-            {resgate.categoria}
-          </Badge>
-
-          {/* Imagem do produto */}
-          <div className="h-24 flex items-center justify-center bg-gray-50">
+      <div className="flex flex-row h-full">
+        {/* Imagem à esquerda */}
+        <div className="w-1/4 max-w-[100px]">
+          <div className="h-full relative">
             <img 
               src={resgate.imagemUrl} 
               alt={resgate.titulo} 
-              className="h-full max-h-24 w-auto object-contain p-2"
+              className="w-full h-full object-contain p-2 min-h-[100px]"
               onError={(e) => {
                 e.currentTarget.src = 'https://via.placeholder.com/100x100?text=Recompensa';
               }}
             />
+            <Badge className="absolute top-2 left-2 bg-construPro-blue text-white text-xs font-medium">
+              {resgate.categoria}
+            </Badge>
           </div>
         </div>
         
-        {/* Informações do produto */}
-        <div className="p-3 flex flex-col justify-between flex-grow">
+        {/* Informações à direita */}
+        <div className="w-3/4 p-3 flex flex-col justify-between">
           <div>
             <h3 className="font-medium text-gray-900 line-clamp-2 text-sm mb-1">{resgate.titulo}</h3>
             
