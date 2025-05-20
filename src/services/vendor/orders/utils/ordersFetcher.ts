@@ -82,33 +82,21 @@ export const fetchDirectVendorOrders = async (
         }
         
         // Adicionar verificação extra para garantir que items existe antes de filtrar
-        if (!items) {
+        if (!items || items.length === 0) {
           return null;
         }
         
         // Filtrar para incluir apenas itens com produtos deste vendedor
         const vendorItems = items.filter(item => {
-          // Usando uma variável temporária para verificar e manter a inferência de tipo
-          const produtos = item.produtos;
-          
-          // Verificar se produtos é nulo ou indefinido
-          if (produtos === null || produtos === undefined) {
+          // Verificar se produtos existe e é um objeto antes de usá-lo
+          if (!item.produtos) {
             return false;
           }
           
-          // Verificar se produtos é um objeto
-          if (typeof produtos !== 'object') {
-            return false;
-          }
+          // Transformar em um tipo seguro para acessar a propriedade vendedor_id
+          const produtosObj = item.produtos as { id?: string; vendedor_id?: string };
           
-          // Verificar se o objeto tem a propriedade vendedor_id
-          // Usando assertion para informar ao TypeScript que produtos não é nulo aqui
-          const produtosObj = produtos as { vendedor_id?: string };
-          if (!produtosObj || !('vendedor_id' in produtosObj)) {
-            return false;
-          }
-          
-          // Finalmente, verificar se o vendedor_id corresponde
+          // Verificar se o vendedor_id corresponde ao vendedor solicitado
           return produtosObj.vendedor_id === vendorId;
         });
         
@@ -310,6 +298,29 @@ export const fetchDirectVendorOrdersWithDebug = async (
       }
       
       debug.vendorStatus = vendorData?.status || 'unknown';
+
+      // Verificar se existem registros na tabela de log de migração
+      const { count: logCount, error: logError } = await supabase
+        .from('vendor_orders_log')
+        .select('id', { count: 'exact', head: true });
+
+      if (logError) {
+        console.error('🚫 [Debug] Erro ao verificar logs de migração:', logError);
+      }
+
+      debug.migrationLogsCount = logCount || 0;
+
+      // Verificar clientes do vendedor
+      const { count: clientesCount, error: clientesError } = await supabase
+        .from('clientes_vendedor')
+        .select('id', { count: 'exact', head: true })
+        .eq('vendedor_id', vendorId);
+
+      if (clientesError) {
+        console.error('🚫 [Debug] Erro ao contar clientes do vendedor:', clientesError);
+      }
+
+      debug.clientesCount = clientesCount || 0;
     }
     
     return { orders, debug };
