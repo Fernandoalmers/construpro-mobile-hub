@@ -1,8 +1,8 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/components/ui/sonner';
-import { getVendorOrders, VendorOrder } from '@/services/vendor/orders';
+import { getVendorOrders, VendorOrder, fetchDirectVendorOrdersWithDebug } from '@/services/vendorOrdersService';
 import { ensureVendorProfileRole } from '@/services/vendorProfileService';
 import { getVendorProfile } from '@/services/vendorProfileService';
 import { runVendorDiagnostics, updateVendorStatus } from '@/services/vendor/orders/utils/diagnosticUtils';
@@ -13,6 +13,8 @@ export const useVendorOrders = () => {
   const [vendorProfileStatus, setVendorProfileStatus] = useState<'checking' | 'found' | 'not_found'>('checking');
   const [diagnosticResults, setDiagnosticResults] = useState<any>(null);
   const [isFixingVendorStatus, setIsFixingVendorStatus] = useState(false);
+  const [debugMode, setDebugMode] = useState(false);
+  const [debugData, setDebugData] = useState<any>(null);
   
   // First check if the vendor profile exists
   useEffect(() => {
@@ -118,6 +120,32 @@ export const useVendorOrders = () => {
     fixProfileRole();
   }, [vendorProfileStatus, queryClient]);
   
+  // Fetch direct vendor orders with debug info when in debug mode
+  const fetchDebugOrders = useCallback(async () => {
+    if (!debugMode) return null;
+    
+    try {
+      const profile = await getVendorProfile();
+      if (!profile) return null;
+      
+      console.log("🔍 [useVendorOrders] Fetching orders with debug info...");
+      const result = await fetchDirectVendorOrdersWithDebug(profile.id, undefined, true);
+      console.log("📊 [useVendorOrders] Debug data:", result.debug);
+      setDebugData(result);
+      return result;
+    } catch (error) {
+      console.error("🚫 [useVendorOrders] Error fetching debug orders:", error);
+      return null;
+    }
+  }, [debugMode]);
+  
+  // Run debug fetch when debug mode changes
+  useEffect(() => {
+    if (debugMode && vendorProfileStatus === 'found') {
+      fetchDebugOrders();
+    }
+  }, [debugMode, vendorProfileStatus, fetchDebugOrders]);
+  
   // Fetch orders with a shorter staleTime to ensure fresher data
   const { 
     data: orders = [], 
@@ -151,6 +179,9 @@ export const useVendorOrders = () => {
             if (profile.status === 'pendente') {
               console.warn("⚠️ [useVendorOrders] Vendor has status 'pendente', which may be preventing orders from showing");
             }
+            
+            // Try direct fetch as a fallback
+            await fetchDebugOrders();
           }
         } else {
           console.log("✅ [useVendorOrders] Orders found, sample first order:", {
@@ -179,7 +210,7 @@ export const useVendorOrders = () => {
     }
   }, [refetch, profileRoleFixed, vendorProfileStatus, isFixingVendorStatus]);
   
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     if (vendorProfileStatus === 'found') {
       toast.info('Atualizando lista de pedidos...');
       console.log("🔄 [useVendorOrders] Manually refreshing vendor orders");
@@ -187,10 +218,57 @@ export const useVendorOrders = () => {
       // Clear cache first to ensure fresh data
       queryClient.invalidateQueries({ queryKey: ['vendorOrders'] });
       refetch();
+      
+      // Also refresh debug data if in debug mode
+      if (debugMode) {
+        fetchDebugOrders();
+      }
     } else {
       toast.error('Configure seu perfil de vendedor primeiro');
     }
-  };
+  }, [vendorProfileStatus, queryClient, refetch, debugMode, fetchDebugOrders]);
+  
+  // Function to force a hard refresh
+  const forceRefresh = useCallback(async () => {
+    if (vendorProfileStatus === 'found') {
+      toast.info('Forçando atualização completa...');
+      
+      try {
+        // Clear React Query cache completely
+        queryClient.clear();
+        
+        // Re-run vendor diagnostics
+        const profile = await getVendorProfile();
+        if (profile) {
+          const diagnostics = await runVendorDiagnostics();
+          setDiagnosticResults(diagnostics);
+          
+          // Fetch orders directly with debug mode
+          await fetchDebugOrders();
+        }
+        
+        // Refetch orders after cache clear
+        setTimeout(() => {
+          refetch();
+          toast.success('Dados atualizados');
+        }, 500);
+      } catch (error) {
+        console.error("🚫 [useVendorOrders] Error during force refresh:", error);
+        toast.error('Erro ao atualizar dados');
+      }
+    }
+  }, [vendorProfileStatus, queryClient, refetch, fetchDebugOrders]);
+  
+  // Toggle debug mode
+  const toggleDebugMode = useCallback(() => {
+    setDebugMode(prev => !prev);
+    if (!debugMode) {
+      toast.info('Modo de depuração ativado');
+    } else {
+      toast.info('Modo de depuração desativado');
+      setDebugData(null);
+    }
+  }, [debugMode]);
 
   return {
     orders,
@@ -202,6 +280,10 @@ export const useVendorOrders = () => {
     profileRoleFixed,
     vendorProfileStatus,
     diagnosticResults,
-    isFixingVendorStatus
+    isFixingVendorStatus,
+    debugMode,
+    debugData,
+    toggleDebugMode,
+    forceRefresh
   };
 };

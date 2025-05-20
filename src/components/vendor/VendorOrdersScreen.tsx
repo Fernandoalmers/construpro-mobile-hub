@@ -10,10 +10,11 @@ import OrdersError from './orders/OrdersError';
 import { useVendorOrders } from '@/hooks/vendor/useVendorOrders';
 import { useOrderFilters, orderStatuses } from '@/hooks/vendor/useOrderFilters';
 import { Button } from '@/components/ui/button';
-import { Store, AlertCircle, RefreshCcw } from 'lucide-react';
+import { Store, AlertCircle, RefreshCcw, Bug, RotateCcw } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { toast } from '@/components/ui/sonner';
 import { updateVendorStatus } from '@/services/vendor/orders/utils/diagnosticUtils';
+import DebugOrdersView from './orders/DebugOrdersView';
 
 const VendorOrdersScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -28,7 +29,11 @@ const VendorOrdersScreen: React.FC = () => {
     handleRefresh,
     vendorProfileStatus,
     diagnosticResults,
-    isFixingVendorStatus
+    isFixingVendorStatus,
+    debugMode,
+    debugData,
+    toggleDebugMode,
+    forceRefresh
   } = useVendorOrders();
   
   const {
@@ -138,6 +143,31 @@ const VendorOrdersScreen: React.FC = () => {
       />
       
       <div className="p-6 space-y-6">
+        {/* Debug Controls */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={toggleDebugMode}
+              className={`flex items-center gap-1 ${debugMode ? 'bg-blue-50 border-blue-300' : ''}`}
+            >
+              <Bug size={16} className={debugMode ? 'text-blue-500' : ''} />
+              {debugMode ? 'Desativar Modo Debug' : 'Ativar Modo Debug'}
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={forceRefresh}
+              className="flex items-center gap-1"
+            >
+              <RotateCcw size={16} />
+              Forçar Atualização
+            </Button>
+          </div>
+        </div>
+        
         {/* Search and filters */}
         <OrderFilters 
           searchTerm={searchTerm}
@@ -146,6 +176,11 @@ const VendorOrdersScreen: React.FC = () => {
           setFilterStatus={setFilterStatus}
           orderStatuses={orderStatuses}
         />
+        
+        {/* Debug View - only shown when debug mode is active */}
+        {debugMode && debugData && (
+          <DebugOrdersView debugData={debugData} />
+        )}
         
         {/* Order Stats */}
         <OrderStats orders={orders} />
@@ -204,6 +239,14 @@ const VendorOrdersScreen: React.FC = () => {
                     Corrigir status do vendedor
                   </Button>
                 )}
+                <Button 
+                  variant="outline" 
+                  onClick={forceRefresh} 
+                  className="mt-2 flex items-center gap-1"
+                >
+                  <RotateCcw size={16} />
+                  Forçar Atualização
+                </Button>
               </div>
             </div>
           ) : (
