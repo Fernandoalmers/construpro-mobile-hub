@@ -33,7 +33,8 @@ export const orderService = {
           forma_pagamento: orderData.forma_pagamento,
           valor_total: orderData.valor_total,
           pontos_ganhos: orderData.pontos_ganhos, // Pass the accurate total points
-          status: 'Confirmado'  // Capitalized to match database constraint
+          status: 'Confirmado',  // Capitalized to match database constraint
+          transaction_type: 'credito_compra' // Add transaction type correctly matching DB constraint
         },
         maxRetries: 5, // Increase from 3 to 5 retries for more reliability
         retryDelay: 1500 // Add delay between retries (1.5 seconds)

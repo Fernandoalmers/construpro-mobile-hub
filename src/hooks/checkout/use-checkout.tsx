@@ -29,6 +29,21 @@ export function useCheckout() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [processError, setProcessError] = useState<string | null>(null);
   const [orderAttempts, setOrderAttempts] = useState(0);
+  const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
+  
+  // Track online/offline status
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
   
   // Calculate totals
   const subtotal = cart?.summary?.subtotal || 0;
@@ -78,6 +93,15 @@ export function useCheckout() {
   // Handle order placement
   const handlePlaceOrder = useCallback(async () => {
     try {
+      // Check if the device is online
+      if (!navigator.onLine) {
+        toast.error('Você está offline', {
+          description: 'Verifique sua conexão com a internet e tente novamente'
+        });
+        setProcessError('Dispositivo offline. Verifique sua conexão com a internet e tente novamente.');
+        return;
+      }
+      
       if (!selectedAddress) {
         toast.error('Selecione um endereço de entrega');
         return;
@@ -118,9 +142,17 @@ export function useCheckout() {
           
           orderId = await orderService.createOrder(orderData);
           if (orderId) break;
-        } catch (err) {
+        } catch (err: any) {
           console.error(`Attempt ${attempt} failed:`, err);
-          if (attempt === maxAttempts) throw err; // If last attempt, rethrow the error
+          
+          // If network error and not last attempt, retry
+          const isNetworkError = err.message?.includes('conexão') || 
+                                err.message?.includes('network') || 
+                                err.message?.includes('Failed to');
+                                
+          if (attempt === maxAttempts || !isNetworkError) {
+            throw err; // If last attempt or not network error, rethrow
+          }
         }
         attempt++;
       }
@@ -156,6 +188,14 @@ export function useCheckout() {
   
   // Handle retry
   const handleRetry = useCallback(() => {
+    // Check connection before retry
+    if (!navigator.onLine) {
+      toast.error('Você está offline', {
+        description: 'Conecte-se à internet para tentar novamente'
+      });
+      return;
+    }
+    
     setProcessError(null);
     handlePlaceOrder();
   }, [handlePlaceOrder]);
@@ -177,6 +217,7 @@ export function useCheckout() {
     processError,
     orderAttempts,
     isLoading: addressesLoading,
+    isOnline,
     
     // Actions
     setPaymentMethod,
