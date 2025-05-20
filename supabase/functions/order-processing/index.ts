@@ -107,7 +107,8 @@ serve(async (req) => {
         }), { status: 404, headers: { 'Content-Type': 'application/json' } });
       }
       
-      // Fetch order items
+      // Fetch order items with improved logging
+      console.log(`Now fetching items for order: ${orderId}`);
       const { data: orderItems, error: itemsError } = await supabaseAdmin
         .from('order_items')
         .select(`
@@ -124,12 +125,16 @@ serve(async (req) => {
         console.error('Error fetching order items:', itemsError);
       }
       
+      console.log(`Found ${orderItems?.length || 0} items for order ${orderId}`);
+      
       // Fetch product details for items
       let itemsWithProducts = [];
       
       if (orderItems && orderItems.length > 0) {
         // Get product details
         const productIds = orderItems.map(item => item.produto_id);
+        
+        console.log(`Fetching product details for ${productIds.length} products`);
         
         const { data: products, error: productsError } = await supabaseAdmin
           .from('produtos')
@@ -146,6 +151,7 @@ serve(async (req) => {
           products.forEach(product => {
             productsMap[product.id] = product;
           });
+          console.log(`Created product map with ${products.length} products`);
         }
         
         // Merge items with their product data
@@ -182,6 +188,8 @@ serve(async (req) => {
         ...orderData,
         items: itemsWithProducts || []
       };
+      
+      console.log(`✅ Sending complete order response for ID ${orderId}`);
       
       return new Response(JSON.stringify({
         success: true,

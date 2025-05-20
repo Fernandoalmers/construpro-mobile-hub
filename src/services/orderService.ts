@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { CartItem } from '@/types/cart';
@@ -160,7 +159,7 @@ export const orderService = {
           // Add a custom header for passing the order ID
           'x-order-id': orderId
         },
-        maxRetries: 2
+        maxRetries: 3
       });
       
       if (error) {
