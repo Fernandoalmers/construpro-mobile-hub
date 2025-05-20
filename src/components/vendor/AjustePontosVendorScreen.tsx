@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Search, Plus, Minus, History, User, Loader2, X, Check } from 'lucide-react';
+import { ArrowLeft, Search, Plus, Minus, History, User, Loader2, X, Check, RefreshCw } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -58,11 +58,12 @@ const AjustePontosVendorScreen: React.FC = () => {
     }
   }, [location]);
 
-  // Get customer's points
+  // Get customer's points with frequent refreshes
   const { data: customerPoints = 0, isLoading: isLoadingPoints, refetch: refetchPoints } = useQuery({
     queryKey: ['customerPoints', selectedCustomerId],
     queryFn: () => selectedCustomerId ? getCustomerPoints(selectedCustomerId) : Promise.resolve(0),
     enabled: !!selectedCustomerId,
+    refetchInterval: 5000, // Refresh every 5 seconds
   });
 
   // Get point adjustments history for the selected customer
@@ -74,6 +75,7 @@ const AjustePontosVendorScreen: React.FC = () => {
     queryKey: ['pointAdjustments', selectedCustomerId],
     queryFn: () => selectedCustomerId ? getPointAdjustments(selectedCustomerId) : Promise.resolve([]),
     enabled: !!selectedCustomerId,
+    refetchInterval: 5000, // Refresh every 5 seconds
   });
 
   // Create point adjustment mutation
@@ -102,6 +104,15 @@ const AjustePontosVendorScreen: React.FC = () => {
     }
   });
 
+  // Handle manual refresh of data
+  const handleRefreshData = () => {
+    if (selectedCustomerId) {
+      refetchPoints();
+      refetchAdjustments();
+      toast.success('Dados atualizados');
+    }
+  };
+
   // Handle search for customers with debounce
   useEffect(() => {
     if (!searchTerm || searchTerm.length < 3) {
@@ -116,13 +127,7 @@ const AjustePontosVendorScreen: React.FC = () => {
         const results = await searchCustomers(searchTerm);
         console.log('Search results:', results);
         
-        // Filter out results where id is equal to the vendor profile ID
-        // This is assuming vendor's can't adjust their own points
-        const filteredResults = results.filter(customer => 
-          customer.id !== localStorage.getItem('vendor_profile_id')
-        );
-        
-        setSearchResults(filteredResults);
+        setSearchResults(results || []);
         setShowSearchResults(true);
       } catch (error) {
         console.error('Error searching customers:', error);
@@ -149,11 +154,7 @@ const AjustePontosVendorScreen: React.FC = () => {
       setIsSearching(true);
       searchCustomers(searchTerm)
         .then(results => {
-          // Filter out results where id is equal to the vendor profile ID
-          const filteredResults = results.filter(customer => 
-            customer.id !== localStorage.getItem('vendor_profile_id')
-          );
-          setSearchResults(filteredResults);
+          setSearchResults(results || []);
           setShowSearchResults(true);
           setIsSearching(false);
         })
@@ -351,7 +352,7 @@ const AjustePontosVendorScreen: React.FC = () => {
                 <div className="flex items-center">
                   <Avatar
                     src={undefined}
-                    fallback={selectedCustomer.nome || 'Cliente'}
+                    fallback={selectedCustomer.nome?.charAt(0) || 'C'}
                     size="md"
                     className="mr-4"
                   />
@@ -364,15 +365,28 @@ const AjustePontosVendorScreen: React.FC = () => {
                     </div>
                   </div>
                 </div>
-                <div className="bg-white px-6 py-3 rounded-lg shadow-sm text-center">
-                  <p className="text-xs text-blue-600 font-medium mb-1">Saldo de Pontos</p>
-                  {isLoadingPoints ? (
-                    <div className="flex justify-center my-1">
-                      <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                <div className="flex flex-col">
+                  <div className="bg-white px-6 py-3 rounded-lg shadow-sm text-center">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-xs text-blue-600 font-medium">Saldo de Pontos</p>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6" 
+                        onClick={handleRefreshData}
+                        title="Atualizar dados"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                      </Button>
                     </div>
-                  ) : (
-                    <p className="text-2xl font-bold text-blue-700">{customerPoints}</p>
-                  )}
+                    {isLoadingPoints ? (
+                      <div className="flex justify-center my-1">
+                        <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                      </div>
+                    ) : (
+                      <p className="text-2xl font-bold text-blue-700">{customerPoints}</p>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -470,9 +484,20 @@ const AjustePontosVendorScreen: React.FC = () => {
               
               <TabsContent value="history" className="p-4 pt-0 focus:outline-none">
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2 py-2">
-                    <History size={16} className="text-gray-500" />
-                    <h3 className="font-medium text-gray-700">Histórico de Ajustes</h3>
+                  <div className="flex items-center justify-between py-2">
+                    <div className="flex items-center gap-2">
+                      <History size={16} className="text-gray-500" />
+                      <h3 className="font-medium text-gray-700">Histórico de Ajustes</h3>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleRefreshData}
+                      className="flex items-center gap-1"
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                      <span className="text-xs">Atualizar</span>
+                    </Button>
                   </div>
                   
                   {isLoadingAdjustments ? (

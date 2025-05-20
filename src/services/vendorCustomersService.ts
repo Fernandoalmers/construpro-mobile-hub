@@ -93,11 +93,23 @@ export const searchCustomers = async (searchTerm: string): Promise<any[]> => {
     
     console.log('Searching profiles with term:', searchTerm);
     
-    // Get vendor id for future filtering if needed
+    // Get vendor id for filtering out the vendor from search results
     const vendorProfile = await getVendorProfile();
+    let vendorId = '';
     if (vendorProfile) {
-      localStorage.setItem('vendor_profile_id', vendorProfile.id);
+      vendorId = vendorProfile.id;
+      localStorage.setItem('vendor_profile_id', vendorId);
     }
+    
+    // Get vendor user ID to exclude from search results
+    const { data: vendorData } = await supabase
+      .from('vendedores')
+      .select('usuario_id')
+      .eq('id', vendorId)
+      .single();
+    
+    const vendorUserId = vendorData?.usuario_id;
+    console.log('Excluding vendor user ID from search:', vendorUserId);
     
     // Check if it's a specific UUID format
     if (isValidUUID(searchTerm)) {
@@ -106,6 +118,7 @@ export const searchCustomers = async (searchTerm: string): Promise<any[]> => {
         .from('profiles')
         .select('id, nome, email, telefone, cpf')
         .eq('id', searchTerm)
+        .neq('id', vendorUserId) // Exclude vendor
         .limit(1);
         
       if (!specificError && specificUser && specificUser.length > 0) {
@@ -121,6 +134,7 @@ export const searchCustomers = async (searchTerm: string): Promise<any[]> => {
         .from('profiles')
         .select('id, nome, email, telefone, cpf')
         .ilike('email', `%${searchTerm}%`)
+        .neq('id', vendorUserId) // Exclude vendor
         .limit(10);
         
       if (!emailError && emailUsers && emailUsers.length > 0) {
@@ -135,6 +149,7 @@ export const searchCustomers = async (searchTerm: string): Promise<any[]> => {
       .from('profiles')
       .select('id, nome, email, telefone, cpf')
       .or(`nome.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,telefone.ilike.%${searchTerm}%,cpf.ilike.%${searchTerm}%`)
+      .neq('id', vendorUserId) // Exclude vendor
       .limit(10);
     
     if (error) {

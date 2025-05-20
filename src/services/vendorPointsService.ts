@@ -92,32 +92,25 @@ export const createPointAdjustment = async (
     // Store the vendor ID in localStorage for filtering in the UI
     localStorage.setItem('vendor_profile_id', vendorProfile.id);
     
-    // First, insert the points adjustment record
+    // Calculate the actual value based on tipo
+    // If removing points (remocao), we need to store a negative value
+    const adjustmentValue = tipo === 'remocao' ? -Math.abs(valor) : Math.abs(valor);
+    
+    // Insert the points adjustment record
+    // The database trigger we created will handle updating the user's points
     const { error: insertError } = await supabase
       .from('pontos_ajustados')
       .insert({
         vendedor_id: vendorProfile.id,
         usuario_id: userId,
         tipo,
-        valor,
+        valor: adjustmentValue,  // Store as positive for adicao, negative for remocao
         motivo
       });
     
     if (insertError) {
       console.error('Error creating point adjustment:', insertError);
-      throw insertError;
-    }
-    
-    // Then call the function to update the user's points
-    const { error: updateError } = await supabase
-      .rpc('update_user_points', {
-        user_id: userId,
-        points_to_add: valor
-      });
-      
-    if (updateError) {
-      console.error('Error updating user points:', updateError);
-      toast.error('Erro ao atualizar pontos do usuário');
+      toast.error('Erro ao ajustar pontos');
       return false;
     }
     
