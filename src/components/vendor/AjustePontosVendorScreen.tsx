@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Search, Plus, Minus, History, User, Loader2, X, Check } from 'lucide-react';
@@ -77,7 +76,7 @@ const AjustePontosVendorScreen: React.FC = () => {
 
   // Create point adjustment mutation
   const createAdjustmentMutation = useMutation({
-    mutationFn: (data: { userId: string, tipo: string, valor: number, motivo: string }) => 
+    mutationFn: (data: { userId: string, tipo: 'adicao' | 'remocao', valor: number, motivo: string }) => 
       createPointAdjustment(data.userId, data.tipo, data.valor, data.motivo),
     onSuccess: () => {
       toast.success(isPositiveAdjustment ? 'Pontos adicionados com sucesso!' : 'Pontos removidos com sucesso!');
