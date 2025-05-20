@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
@@ -16,7 +17,7 @@ serve(async (req) => {
       headers: {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, x-order-id",
       },
     });
   }
@@ -28,8 +29,16 @@ serve(async (req) => {
     const url = new URL(req.url);
     const method = req.method;
     
+    // Get order ID from URL search params or headers
+    let orderId = url.searchParams.get('id');
+    
+    // If not in URL params, try to get it from custom header
+    if (!orderId) {
+      orderId = req.headers.get('x-order-id');
+    }
+    
     // Log the request details
-    console.log(`Request parsed: Method=${method}, OrderId=${url.searchParams.get('id') || 'none'}`);
+    console.log(`Request parsed: Method=${method}, OrderId=${orderId || 'none'}`);
     
     // Authenticate user - who's making the request
     const authHeader = req.headers.get('Authorization') || '';
@@ -55,7 +64,6 @@ serve(async (req) => {
 
     // Handle GET request for order details
     if (method === 'GET') {
-      const orderId = url.searchParams.get('id');
       
       if (!orderId) {
         return new Response(JSON.stringify({

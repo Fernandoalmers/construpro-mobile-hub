@@ -31,7 +31,7 @@ const OrderConfirmationScreen: React.FC = () => {
         setLoading(true);
         console.log(`Buscando detalhes do pedido ${orderId}`);
         
-        // Fetch order details
+        // Fetch order details directly with the alternative method
         const order = await orderService.getOrderById(orderId);
         
         if (!order) {
