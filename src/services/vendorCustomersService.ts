@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { getVendorProfile } from './vendorProfileService';
+import { toast } from '@/components/ui/sonner';
 
 export interface VendorCustomer {
   id: string;
@@ -338,6 +339,91 @@ export const seedTestCustomers = async (count: number = 5): Promise<boolean> => 
     return true;
   } catch (error) {
     console.error('Error in seedTestCustomers:', error);
+    return false;
+  }
+};
+
+// New function to migrate customer data from existing point adjustments
+export const migrateCustomersFromPointAdjustments = async (): Promise<boolean> => {
+  try {
+    // Get vendor profile
+    const vendorProfile = await getVendorProfile();
+    if (!vendorProfile) {
+      console.error('Vendor profile not found');
+      return false;
+    }
+    
+    // Get all point adjustments made by this vendor
+    const { data: adjustments, error: adjustmentsError } = await supabase
+      .from('pontos_ajustados')
+      .select('usuario_id')
+      .eq('vendedor_id', vendorProfile.id)
+      .order('created_at', { ascending: false });
+    
+    if (adjustmentsError) {
+      console.error('Error fetching point adjustments:', adjustmentsError);
+      return false;
+    }
+    
+    if (!adjustments || adjustments.length === 0) {
+      console.log('No point adjustments found for this vendor');
+      return false;
+    }
+    
+    console.log(`Found ${adjustments.length} point adjustments for migration`);
+    
+    // Extract unique customer IDs from adjustments
+    const customerIds = [...new Set(adjustments.map(adj => adj.usuario_id))];
+    console.log(`Found ${customerIds.length} unique customers to migrate`);
+    
+    // Fetch customer information from profiles
+    const { data: customerProfiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, nome, email, telefone')
+      .in('id', customerIds);
+      
+    if (profilesError) {
+      console.error('Error fetching customer profiles:', profilesError);
+      return false;
+    }
+    
+    if (!customerProfiles || customerProfiles.length === 0) {
+      console.log('No customer profiles found for migration');
+      return false;
+    }
+    
+    console.log(`Found ${customerProfiles.length} customer profiles to migrate`);
+    
+    // Prepare customer data for insertion
+    const customersToAdd = customerProfiles.map(profile => ({
+      vendedor_id: vendorProfile.id,
+      usuario_id: profile.id,
+      nome: profile.nome || 'Cliente sem nome',
+      email: profile.email,
+      telefone: profile.telefone,
+      total_gasto: 0, // Default to 0 since we don't have order data
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }));
+    
+    // Insert customers into clientes_vendedor table, skipping any that already exist
+    const { data: insertedCustomers, error: insertError } = await supabase
+      .from('clientes_vendedor')
+      .upsert(customersToAdd, { 
+        onConflict: 'vendedor_id,usuario_id',
+        ignoreDuplicates: true 
+      })
+      .select();
+    
+    if (insertError) {
+      console.error('Error inserting customer data:', insertError);
+      return false;
+    }
+    
+    console.log(`Successfully migrated ${insertedCustomers?.length || 0} customers`);
+    return true;
+  } catch (error) {
+    console.error('Error in migrateCustomersFromPointAdjustments:', error);
     return false;
   }
 };

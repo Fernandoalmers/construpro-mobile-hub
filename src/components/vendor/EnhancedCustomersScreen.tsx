@@ -2,22 +2,29 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { SearchX, Users, UserPlus, RefreshCw } from 'lucide-react';
+import { SearchX, Users, UserPlus, RefreshCw, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { getVendorCustomers, VendorCustomer, seedTestCustomers } from '@/services/vendorCustomersService';
+import { 
+  getVendorCustomers, 
+  VendorCustomer, 
+  seedTestCustomers,
+  migrateCustomersFromPointAdjustments 
+} from '@/services/vendorCustomersService';
 import LoadingState from '../common/LoadingState';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from '@/components/ui/sonner';
 import VendorPagination from './common/VendorPagination';
 import { usePagination } from '@/hooks/vendor/usePagination';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 const EnhancedCustomersScreen: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [isSeeding, setIsSeeding] = useState(false);
+  const [isMigrating, setIsMigrating] = useState(false);
 
   // Fetch customers data with explicit refetch interval
   const { 
@@ -108,6 +115,29 @@ const EnhancedCustomersScreen: React.FC = () => {
       toast.error('Erro ao criar clientes de teste');
     } finally {
       setIsSeeding(false);
+    }
+  };
+
+  // Migrate customers from point adjustments
+  const handleMigrateCustomers = async () => {
+    if (isMigrating) return;
+    
+    setIsMigrating(true);
+    toast.loading('Migrando dados de clientes...');
+    
+    try {
+      const success = await migrateCustomersFromPointAdjustments();
+      if (success) {
+        toast.success('Clientes migrados com sucesso!');
+        refetch();
+      } else {
+        toast.error('Não foram encontrados dados para migração ou ocorreu um erro');
+      }
+    } catch (error) {
+      console.error('Error migrating customers:', error);
+      toast.error('Erro ao migrar clientes');
+    } finally {
+      setIsMigrating(false);
     }
   };
 
@@ -203,19 +233,61 @@ const EnhancedCustomersScreen: React.FC = () => {
           </Card>
         </div>
 
-        {/* Customers List */}
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="font-bold text-lg">Lista de Clientes</h2>
-            {customers.length === 0 && (
+        {/* Alert if no customers */}
+        {customers.length === 0 && (
+          <Alert className="bg-blue-50 border-blue-200 mb-4">
+            <AlertTitle className="text-blue-800">Nenhum cliente encontrado</AlertTitle>
+            <AlertDescription className="text-blue-700">
+              Você ainda não possui clientes registrados. Você pode criar clientes de teste para visualização
+              ou importar clientes de ajustes de pontos existentes.
+            </AlertDescription>
+            <div className="flex flex-wrap gap-3 mt-4">
+              <Button 
+                size="sm" 
+                variant="default" 
+                onClick={handleMigrateCustomers}
+                disabled={isMigrating}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                {isMigrating ? 'Migrando...' : 'Importar clientes de ajustes de pontos'}
+              </Button>
               <Button 
                 size="sm" 
                 variant="outline" 
                 onClick={handleSeedTestCustomers}
                 disabled={isSeeding}
               >
-                {isSeeding ? 'Criando...' : 'Criar clientes de teste'}
+                {isSeeding ? 'Criando...' : 'Criar 5 clientes de teste'}
               </Button>
+            </div>
+          </Alert>
+        )}
+
+        {/* Customers List */}
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="font-bold text-lg">Lista de Clientes</h2>
+            {customers.length === 0 ? null : (
+              <div className="flex gap-2">
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={handleMigrateCustomers}
+                  disabled={isMigrating}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  {isMigrating ? 'Migrando...' : 'Importar mais clientes'}
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={handleSeedTestCustomers}
+                  disabled={isSeeding}
+                >
+                  {isSeeding ? 'Criando...' : 'Adicionar clientes de teste'}
+                </Button>
+              </div>
             )}
           </div>
           
@@ -264,7 +336,7 @@ const EnhancedCustomersScreen: React.FC = () => {
                     <tbody className="bg-white divide-y divide-gray-200">
                       {paginatedCustomers.map((customer) => (
                         <tr key={customer.id} className="hover:bg-gray-50 cursor-pointer">
-                          <td className="px-6 py-4 whitespace-nowrap" onClick={() => handleViewCustomer(customer.id)}>
+                          <td className="px-6 py-4 whitespace-nowrap" onClick={() => handleViewCustomer(customer.usuario_id)}>
                             <div className="flex items-center">
                               <div className="h-10 w-10 flex-shrink-0 bg-gray-100 rounded-full flex items-center justify-center">
                                 {customer.nome?.[0]?.toUpperCase() || "C"}
@@ -274,21 +346,21 @@ const EnhancedCustomersScreen: React.FC = () => {
                                   {customer.nome || "Cliente"}
                                 </div>
                                 <div className="text-sm text-gray-500">
-                                  ID: {customer.id.substring(0, 8)}
+                                  ID: {customer.usuario_id.substring(0, 8)}
                                 </div>
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap" onClick={() => handleViewCustomer(customer.id)}>
+                          <td className="px-6 py-4 whitespace-nowrap" onClick={() => handleViewCustomer(customer.usuario_id)}>
                             <div className="text-sm text-gray-900">{customer.email || "—"}</div>
                             <div className="text-sm text-gray-500">{customer.telefone || "—"}</div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap" onClick={() => handleViewCustomer(customer.id)}>
+                          <td className="px-6 py-4 whitespace-nowrap" onClick={() => handleViewCustomer(customer.usuario_id)}>
                             <div className="text-sm text-gray-900">
                               {customer.ultimo_pedido ? new Date(customer.ultimo_pedido).toLocaleDateString() : "Nunca"}
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap" onClick={() => handleViewCustomer(customer.id)}>
+                          <td className="px-6 py-4 whitespace-nowrap" onClick={() => handleViewCustomer(customer.usuario_id)}>
                             <div className="text-sm text-gray-900 font-medium">
                               R$ {customer.total_gasto?.toFixed(2) || "0.00"}
                             </div>
@@ -298,7 +370,7 @@ const EnhancedCustomersScreen: React.FC = () => {
                               variant="outline"
                               size="sm"
                               className="mr-2"
-                              onClick={() => handleViewCustomer(customer.id)}
+                              onClick={() => handleViewCustomer(customer.usuario_id)}
                             >
                               Ver Detalhes
                             </Button>
