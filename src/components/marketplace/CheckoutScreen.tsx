@@ -1,7 +1,7 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, WifiOff } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useCheckout } from '@/hooks/checkout/use-checkout';
 import LoadingState from '@/components/common/LoadingState';
 import DeliveryAddressSection from '@/components/checkout/DeliveryAddressSection';
@@ -15,24 +15,8 @@ const CheckoutScreen: React.FC = () => {
   const navigate = useNavigate();
   const checkout = useCheckout();
 
-  // Alert user when offline
-  useEffect(() => {
-    if (!checkout.isOnline) {
-      toast.error('Você está offline', {
-        description: 'É necessário estar online para finalizar seu pedido'
-      });
-    }
-  }, [checkout.isOnline]);
-
   // Handler to debug and provide feedback during checkout
   const handleCheckout = () => {
-    if (!checkout.isOnline) {
-      toast.error("Você está offline", {
-        description: "Conecte-se à internet para finalizar o pedido"
-      });
-      return;
-    }
-    
     if (!checkout.selectedAddress) {
       toast.error("Selecione um endereço de entrega");
       return;
@@ -65,19 +49,6 @@ const CheckoutScreen: React.FC = () => {
         </button>
         <h1 className="text-xl font-bold">Finalizar Compra</h1>
       </div>
-      
-      {/* Offline Warning */}
-      {!checkout.isOnline && (
-        <div className="px-6 pt-4">
-          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md flex items-center gap-2 text-yellow-800">
-            <WifiOff size={18} />
-            <div>
-              <p className="font-medium">Você está offline</p>
-              <p className="text-xs">Conecte-se à internet para concluir seu pedido</p>
-            </div>
-          </div>
-        </div>
-      )}
       
       {/* Show error state if there's a processing error */}
       {checkout.processError && (
