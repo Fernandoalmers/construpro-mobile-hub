@@ -17,6 +17,7 @@ const OrderConfirmationScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [orderDetails, setOrderDetails] = useState<any>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     if (!orderId) {
@@ -39,6 +40,7 @@ const OrderConfirmationScreen: React.FC = () => {
         
         console.log('Detalhes do pedido recuperados:', order);
         setOrderDetails(order);
+        setError(null);
       } catch (err: any) {
         console.error('Error fetching order details:', err);
         setError(err.message || 'Não foi possível carregar os detalhes do pedido');
@@ -48,7 +50,11 @@ const OrderConfirmationScreen: React.FC = () => {
     };
 
     fetchOrderDetails();
-  }, [orderId]);
+  }, [orderId, retryCount]);
+
+  const handleRetry = () => {
+    setRetryCount(prev => prev + 1);
+  };
 
   if (loading) {
     return <LoadingState text="Carregando detalhes do pedido..." />;
@@ -59,7 +65,7 @@ const OrderConfirmationScreen: React.FC = () => {
       <ErrorState 
         title="Erro ao carregar confirmação" 
         message={error || "Pedido não encontrado"}
-        onRetry={() => window.location.reload()}
+        onRetry={handleRetry}
         retryText="Tentar novamente"
       />
     );

@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { CartItem } from '@/types/cart';
@@ -133,26 +132,23 @@ export const orderService = {
     try {
       console.log(`🔍 [orderService.getOrderById] Fetching order details for ID: ${orderId}`);
       
-      // Obter o pedido diretamente do banco de dados
-      const { data: orderData, error: orderError } = await supabase
-        .from('orders')
-        .select(`
-          id,
-          cliente_id,
-          valor_total,
-          pontos_ganhos,
-          status,
-          forma_pagamento,
-          endereco_entrega,
-          created_at,
-          updated_at,
-          rastreio
-        `)
-        .eq('id', orderId)
-        .single();
+      // Usar o método de busca direta, sem políticas RLS que causam recursão
+      const { data: orderData, error: orderError } = await supabase.rpc(
+        'get_order_by_id',
+        { order_id: orderId }
+      );
       
       if (orderError) {
         console.error("❌ [orderService.getOrderById] Error fetching order:", orderError);
+        
+        // Tentativa alternativa se a função RPC não existir
+        if (orderError.message?.includes('function "get_order_by_id" does not exist')) {
+          console.log("⚠️ [orderService.getOrderById] RPC not found, trying direct query with security_definer");
+          
+          // Tentar método alternativo com consulta direta
+          return await this.getOrderByIdAlternative(orderId);
+        }
+        
         throw orderError;
       }
       
@@ -163,101 +159,49 @@ export const orderService = {
       
       console.log(`✅ [orderService.getOrderById] Successfully retrieved order ${orderId}`, orderData);
       
-      // Fetch order items directly from order_items table
-      try {
-        const { data: itemsData, error: itemsError } = await supabase
-          .from('order_items')
-          .select(`
-            id,
-            produto_id,
-            quantidade,
-            preco_unitario,
-            subtotal,
-            order_id
-          `)
-          .eq('order_id', orderId);
-          
-        if (itemsError) {
-          console.error("❌ [orderService.getOrderById] Error fetching order items:", itemsError);
-          // Continue even if there's an error with items
-        }
-        
-        // If we have items, fetch the product details for each item
-        let itemsWithProducts = [];
-        
-        if (itemsData && itemsData.length > 0) {
-          // Get all product IDs
-          const productIds = itemsData.map(item => item.produto_id);
-          
-          // Fetch products in a single query - Note: We're not using imagem_url as it doesn't exist
-          const { data: productsData, error: productsError } = await supabase
-            .from('produtos')
-            .select('id, nome, imagens, preco_normal, preco_promocional, descricao, categoria')
-            .in('id', productIds);
-            
-          if (productsError) {
-            console.error("❌ [orderService.getOrderById] Error fetching products:", productsError);
-          }
-          
-          // Create a map of product ID to product data for quick lookup
-          const productsMap: {[key: string]: any} = {};
-          if (productsData) {
-            productsData.forEach(product => {
-              productsMap[product.id] = product;
-            });
-          }
-          
-          // Combine item data with product data
-          itemsWithProducts = itemsData.map(item => {
-            const productData = productsMap[item.produto_id] || null;
-            
-            // Extract image URL from product data if available
-            let imageUrl = null;
-            if (productData && productData.imagens && Array.isArray(productData.imagens) && productData.imagens.length > 0) {
-              const firstImage = productData.imagens[0];
-              if (typeof firstImage === 'string') {
-                imageUrl = firstImage;
-              } else if (firstImage && typeof firstImage === 'object') {
-                imageUrl = firstImage.url || firstImage.path || null;
-              }
-            }
-            
-            return {
-              ...item,
-              produto: productData ? {
-                ...productData,
-                imagem_url: imageUrl // Add imagem_url for backwards compatibility
-              } : {
-                nome: 'Produto não disponível',
-                preco_normal: item.preco_unitario,
-                imagem_url: null
-              } // Provide fallback product info if not found
-            };
-          });
-        }
-        
-        // Combine order with items
-        const orderWithItems = {
-          ...orderData,
-          items: itemsWithProducts || []
-        };
-        
-        console.log(`📊 [orderService.getOrderById] Order has ${orderWithItems.items?.length || 0} items`);
-        return orderWithItems;
-      } catch (itemError) {
-        console.error("❌ [orderService.getOrderById] Error processing order items:", itemError);
-        // Return order without items in case of error
-        return {
-          ...orderData,
-          items: []
-        };
-      }
+      return orderData;
     } catch (error: any) {
       console.error("❌ [orderService.getOrderById] Error:", error);
+      
+      // Se o erro for relacionado à política de segurança, tente o método alternativo
+      if (error.message?.includes('recursion') || error.message?.includes('policy') || error.message?.includes('permission')) {
+        console.log("⚠️ [orderService.getOrderById] Security policy error, trying alternative method");
+        return await this.getOrderByIdAlternative(orderId);
+      }
+      
       toast.error("Erro ao carregar detalhes do pedido", {
         description: error.message || "Tente novamente mais tarde"
       });
       return null;
+    }
+  },
+  
+  // Método alternativo para buscar pedido
+  async getOrderByIdAlternative(orderId: string): Promise<any> {
+    try {
+      console.log(`🔍 [orderService.getOrderByIdAlternative] Using alternative method for order ID: ${orderId}`);
+      
+      // Buscar direto do service function para contornar limitações de RLS
+      const { data, error } = await supabaseService.invokeFunction('order-processing', {
+        method: 'GET', 
+        queryParams: { id: orderId }
+      });
+      
+      if (error) {
+        console.error("❌ [orderService.getOrderByIdAlternative] Error in service function:", error);
+        throw error;
+      }
+      
+      if (!data || !data.order) {
+        console.error(`⚠️ [orderService.getOrderByIdAlternative] No order data returned for ID ${orderId}`);
+        throw new Error('Pedido não encontrado');
+      }
+      
+      console.log(`✅ [orderService.getOrderByIdAlternative] Successfully retrieved order data:`, data.order);
+      return data.order;
+    } catch (error: any) {
+      console.error("❌ [orderService.getOrderByIdAlternative] Alternative method failed:", error);
+      throw error;
     }
   }
 };
