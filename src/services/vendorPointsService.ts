@@ -25,6 +25,8 @@ export const getPointAdjustments = async (userId?: string): Promise<PointAdjustm
       return [];
     }
     
+    console.log('Fetching point adjustments for vendor:', vendorProfile.id, 'and user:', userId || 'all users');
+    
     let query = supabase
       .from('pontos_ajustados')
       .select(`
@@ -48,6 +50,8 @@ export const getPointAdjustments = async (userId?: string): Promise<PointAdjustm
       console.error('Error fetching point adjustments:', error);
       return [];
     }
+
+    console.log('Point adjustments found:', data?.length || 0);
 
     // Create safe adjustments with proper cliente handling
     const safeAdjustments = data.map(item => {
@@ -76,6 +80,59 @@ export const getPointAdjustments = async (userId?: string): Promise<PointAdjustm
   }
 };
 
+// Ensure the customer exists in clientes_vendedor table
+const ensureCustomerExists = async (
+  vendorId: string,
+  userId: string,
+  customerData: { nome: string, email?: string, telefone?: string }
+): Promise<boolean> => {
+  try {
+    console.log('Ensuring customer exists:', { vendorId, userId, customerData });
+    
+    // Check if customer already exists
+    const { data: existingCustomer, error: checkError } = await supabase
+      .from('clientes_vendedor')
+      .select('*')
+      .eq('vendedor_id', vendorId)
+      .eq('usuario_id', userId)
+      .maybeSingle();
+    
+    if (checkError) {
+      console.error('Error checking existing customer:', checkError);
+      return false;
+    }
+    
+    if (existingCustomer) {
+      console.log('Customer already exists:', existingCustomer);
+      return true;
+    }
+    
+    // Create customer if not exists
+    const { error: insertError } = await supabase
+      .from('clientes_vendedor')
+      .insert({
+        vendedor_id: vendorId,
+        usuario_id: userId,
+        nome: customerData.nome,
+        email: customerData.email || null,
+        telefone: customerData.telefone || null,
+        total_gasto: 0,
+        created_at: new Date().toISOString()
+      });
+    
+    if (insertError) {
+      console.error('Error creating customer:', insertError);
+      return false;
+    }
+    
+    console.log('Customer created successfully');
+    return true;
+  } catch (error) {
+    console.error('Error in ensureCustomerExists:', error);
+    return false;
+  }
+};
+
 export const createPointAdjustment = async (
   userId: string,
   tipo: string,
@@ -89,8 +146,38 @@ export const createPointAdjustment = async (
       return false;
     }
 
+    console.log('Creating point adjustment for user:', userId, 'by vendor:', vendorProfile.id);
+    
     // Store the vendor ID in localStorage for filtering in the UI
     localStorage.setItem('vendor_profile_id', vendorProfile.id);
+    
+    // Get customer profile data
+    const { data: customerProfile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, nome, email, telefone')
+      .eq('id', userId)
+      .single();
+    
+    if (profileError) {
+      console.error('Error fetching customer profile:', profileError);
+      toast.error('Erro ao buscar dados do cliente');
+      return false;
+    }
+    
+    // Ensure the customer exists in the vendor's customer list
+    const customerCreated = await ensureCustomerExists(
+      vendorProfile.id,
+      userId,
+      {
+        nome: customerProfile.nome || 'Cliente',
+        email: customerProfile.email,
+        telefone: customerProfile.telefone
+      }
+    );
+    
+    if (!customerCreated) {
+      console.warn('Could not create/verify customer relationship, but will continue with point adjustment');
+    }
     
     // Calculate the actual value based on tipo
     // If removing points (remocao), we need to store a negative value
@@ -114,6 +201,7 @@ export const createPointAdjustment = async (
       return false;
     }
     
+    console.log('Point adjustment created successfully');
     return true;
   } catch (error) {
     console.error('Error creating point adjustment:', error);

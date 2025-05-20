@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { getVendorProfile } from './vendorProfileService';
 
@@ -98,6 +99,8 @@ export const searchCustomers = async (searchTerm: string): Promise<any[]> => {
     if (vendorProfile) {
       vendorId = vendorProfile.id;
       localStorage.setItem('vendor_profile_id', vendorId);
+    } else {
+      console.warn('Vendor profile not found, search might include all users');
     }
     
     // Get vendor user ID to exclude from search results
@@ -105,7 +108,7 @@ export const searchCustomers = async (searchTerm: string): Promise<any[]> => {
       .from('vendedores')
       .select('usuario_id')
       .eq('id', vendorId)
-      .single();
+      .maybeSingle();
     
     const vendorUserId = vendorData?.usuario_id;
     console.log('Excluding vendor user ID from search:', vendorUserId);
@@ -117,7 +120,7 @@ export const searchCustomers = async (searchTerm: string): Promise<any[]> => {
         .from('profiles')
         .select('id, nome, email, telefone, cpf')
         .eq('id', searchTerm)
-        .neq('id', vendorUserId) // Exclude vendor
+        .neq('id', vendorUserId || '')  // Exclude vendor, with safe fallback
         .limit(1);
         
       if (!specificError && specificUser && specificUser.length > 0) {
@@ -134,7 +137,7 @@ export const searchCustomers = async (searchTerm: string): Promise<any[]> => {
         .from('profiles')
         .select('id, nome, email, telefone, cpf')
         .ilike('cpf', `%${cleanedSearchTerm}%`)
-        .neq('id', vendorUserId) // Exclude vendor
+        .neq('id', vendorUserId || '')  // Exclude vendor
         .limit(10);
         
       if (!cpfError && cpfUsers && cpfUsers.length > 0) {
@@ -150,7 +153,7 @@ export const searchCustomers = async (searchTerm: string): Promise<any[]> => {
         .from('profiles')
         .select('id, nome, email, telefone, cpf')
         .ilike('email', `%${searchTerm}%`)
-        .neq('id', vendorUserId) // Exclude vendor
+        .neq('id', vendorUserId || '')  // Exclude vendor
         .limit(10);
         
       if (!emailError && emailUsers && emailUsers.length > 0) {
@@ -168,7 +171,7 @@ export const searchCustomers = async (searchTerm: string): Promise<any[]> => {
           .from('profiles')
           .select('id, nome, email, telefone, cpf')
           .ilike('telefone', `%${phoneSearchTerm}%`)
-          .neq('id', vendorUserId) // Exclude vendor
+          .neq('id', vendorUserId || '')  // Exclude vendor
           .limit(10);
           
         if (!phoneError && phoneUsers && phoneUsers.length > 0) {
@@ -184,7 +187,8 @@ export const searchCustomers = async (searchTerm: string): Promise<any[]> => {
       .from('profiles')
       .select('id, nome, email, telefone, cpf')
       .or(`nome.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,telefone.ilike.%${searchTerm}%,cpf.ilike.%${searchTerm}%`)
-      .neq('id', vendorUserId) // Exclude vendor
+      .neq('id', vendorUserId || '')  // Exclude vendor
+      .order('nome')
       .limit(10);
     
     if (error) {

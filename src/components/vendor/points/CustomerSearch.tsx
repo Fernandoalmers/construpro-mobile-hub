@@ -5,7 +5,7 @@ import { toast } from '@/components/ui/sonner';
 import { Button } from '@/components/ui/button';
 import Avatar from '../../common/Avatar';
 import CustomInput from '../../common/CustomInput';
-import { searchCustomers } from '@/services/vendorService';
+import { searchCustomers } from '@/services/vendorCustomersService';
 
 export interface CustomerData {
   id: string;
@@ -91,7 +91,14 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
     }
   };
 
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
   const handleSelectCustomer = (customer: CustomerData) => {
+    console.log('Selected customer:', customer);
     onSelectCustomer(customer);
     setSearchTerm('');
     setSearchResults([]);
@@ -115,6 +122,7 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
             value={searchTerm}
             onChange={handleSearchChange}
             isSearch
+            onKeyPress={handleKeyPress}
             className="w-full pr-10"
           />
           {searchTerm && (
@@ -166,7 +174,7 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
                     className="mr-3 flex-shrink-0"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-sm text-gray-900 truncate">{customer.nome}</p>
+                    <p className="font-medium text-sm text-gray-900 truncate">{customer.nome || 'Usuário'}</p>
                     <div className="text-xs text-gray-500 flex flex-wrap gap-x-2">
                       {customer.cpf && <span className="truncate">CPF: {customer.cpf}</span>}
                       {customer.email && <span className="truncate">{customer.email}</span>}

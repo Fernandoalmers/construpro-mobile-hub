@@ -17,13 +17,18 @@ const PointsAdjustmentHistory: React.FC<PointsAdjustmentHistoryProps> = ({
   onRefresh 
 }) => {
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    try {
+      return new Date(dateString).toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (e) {
+      console.error('Error formatting date:', e);
+      return 'Data inválida';
+    }
   };
 
   return (
@@ -61,7 +66,7 @@ const PointsAdjustmentHistory: React.FC<PointsAdjustmentHistoryProps> = ({
                   <p className="text-sm text-gray-600 mt-1">{adjustment.motivo}</p>
                 </div>
                 <div className="text-xs text-gray-500 whitespace-nowrap ml-2">
-                  {adjustment.created_at ? formatDate(adjustment.created_at) : ''}
+                  {adjustment.created_at ? formatDate(adjustment.created_at) : 'Data desconhecida'}
                 </div>
               </div>
             </Card>
@@ -70,7 +75,10 @@ const PointsAdjustmentHistory: React.FC<PointsAdjustmentHistoryProps> = ({
       ) : (
         <div className="text-center py-8 bg-gray-50 rounded-lg">
           <p className="text-gray-500">
-            Nenhum ajuste de pontos registrado
+            Nenhum ajuste de pontos registrado para este cliente
+          </p>
+          <p className="text-xs text-gray-400 mt-1">
+            Os ajustes de pontos aparecerão aqui depois de realizados
           </p>
         </div>
       )}

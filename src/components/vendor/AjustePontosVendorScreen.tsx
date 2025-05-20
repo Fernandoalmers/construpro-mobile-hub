@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { toast } from '@/components/ui/sonner';
 
 import CustomerSearch from './points/CustomerSearch';
 import CustomerInfo from './points/CustomerInfo';
@@ -28,11 +29,28 @@ const AjustePontosVendorScreen: React.FC = () => {
     handleAdjustmentSuccess
   } = usePointsAdjustment();
 
+  // Display a toast message once when the component mounts
+  React.useEffect(() => {
+    // Add a small delay to ensure the toast shows after UI renders
+    const timer = setTimeout(() => {
+      toast.info(
+        'Busque um cliente pelo nome, CPF, telefone ou email para ajustar seus pontos.',
+        { duration: 5000 }
+      );
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       {/* Header */}
       <div className="bg-white p-4 flex items-center shadow-sm sticky top-0 z-10">
-        <button onClick={() => navigate('/vendor')} className="mr-4 hover:bg-gray-100 p-2 rounded-full">
+        <button 
+          onClick={() => navigate('/vendor')} 
+          className="mr-4 hover:bg-gray-100 p-2 rounded-full"
+          aria-label="Voltar"
+        >
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-xl font-bold">Ajuste de Pontos</h1>
