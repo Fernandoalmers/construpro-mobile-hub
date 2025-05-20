@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { getVendorProfile } from './vendorProfileService';
 
@@ -15,6 +14,13 @@ export interface VendorCustomer {
   updated_at?: string;
   avatar?: string | null;
 }
+
+// Helper function to validate UUID format
+const isValidUUID = (str: string): boolean => {
+  // UUID regex pattern
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidPattern.test(str);
+};
 
 // Vendor Customers Management
 export const getVendorCustomers = async (): Promise<VendorCustomer[]> => {
@@ -80,8 +86,9 @@ export const searchCustomers = async (searchTerm: string): Promise<any[]> => {
   try {
     console.log('Searching profiles with term:', searchTerm);
     
-    // Primeiro, verificar se é um ID específico
-    if (searchTerm.length >= 32 && !searchTerm.includes(' ')) {
+    // Check if it's a specific UUID format
+    if (searchTerm.length > 10 && isValidUUID(searchTerm)) {
+      console.log('Searching for specific user ID:', searchTerm);
       const { data: specificUser, error: specificError } = await supabase
         .from('profiles')
         .select('id, nome, email, telefone, cpf')
@@ -94,7 +101,8 @@ export const searchCustomers = async (searchTerm: string): Promise<any[]> => {
       }
     }
     
-    // Caso contrário, buscar por termos
+    // Otherwise search by text terms (name, email, phone, cpf)
+    console.log('Performing text search for:', searchTerm);
     const { data, error } = await supabase
       .from('profiles')
       .select('id, nome, email, telefone, cpf')
