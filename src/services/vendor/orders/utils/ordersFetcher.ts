@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { OrderItem, VendorOrder, OrderFilters } from '../types';
 import { fetchCustomerInfo } from './clientInfoFetcher';
@@ -159,7 +158,6 @@ export const fetchDirectVendorOrdersWithDebug = async (
     for (const table of tablesToCheck) {
       try {
         // We need to use type assertion here to fix the TypeScript error
-        // since we're using a variable which TypeScript can't narrow to a literal type
         const { count, error: countError } = await supabase
           .from(table as any)
           .select('*', { count: 'exact', head: true });
@@ -178,64 +176,60 @@ export const fetchDirectVendorOrdersWithDebug = async (
     let allOrderIdsFromItems: string[] = [];
     let filteringProcess: any = { steps: [] };
     
-    // IMPROVEMENT: Try direct SQL query approach first for better performance and reliability
+    // IMPROVEMENT: Using a better approach than direct SQL for better type safety and compatibility
     try {
-      console.log('🔍 [fetchDirectVendorOrdersWithDebug] Attempting direct SQL query to find related orders');
+      console.log('🔍 [fetchDirectVendorOrdersWithDebug] Attempting to find orders related to vendor products');
       
-      const directSqlQuery = `
-        SELECT DISTINCT o.* 
-        FROM orders o
-        JOIN order_items oi ON o.id = oi.order_id
-        WHERE oi.produto_id IN (
-          SELECT id FROM produtos WHERE vendedor_id = '${vendorId}'
-        )
-        ORDER BY o.created_at DESC
-        LIMIT 50
-      `;
-      
-      const { data: directOrdersData, error: directOrdersError } = await supabase
-        .rpc('exec_sql', { sql_query: directSqlQuery })
-        .select('*');
-      
-      if (directOrdersError) {
-        console.error('🚫 [fetchDirectVendorOrdersWithDebug] Direct SQL query failed:', directOrdersError.message);
-        debugInfo.directSqlError = directOrdersError.message;
-        debugInfo.rawSqlLog.push({
-          query: directSqlQuery,
-          error: directOrdersError.message,
-          timestamp: new Date().toISOString()
-        });
-      } else if (directOrdersData && directOrdersData.length > 0) {
-        console.log(`✅ [fetchDirectVendorOrdersWithDebug] Direct SQL found ${directOrdersData.length} orders`);
-        debugInfo.directSqlResults = directOrdersData.slice(0, 2);
-        debugInfo.directOrdersCount = directOrdersData.length;
-        debugInfo.rawSqlLog.push({
-          query: directSqlQuery,
-          results: directOrdersData.length,
-          timestamp: new Date().toISOString()
-        });
+      // First get order items containing vendor products
+      const { data: orderItems, error: orderItemsError } = await supabase
+        .from('order_items')
+        .select('order_id, produto_id')
+        .in('produto_id', vendorProductIds);
         
-        // Process these orders directly
-        const directOrders = directOrdersData.map((row: any) => row.result || row);
-        if (directOrders && directOrders.length > 0) {
-          // Process these direct orders - we'll do this in another section below
+      if (orderItemsError) {
+        console.error('🚫 [fetchDirectVendorOrdersWithDebug] Error fetching order items:', orderItemsError.message);
+        debugInfo.directQueryError = orderItemsError.message;
+      } else if (orderItems && orderItems.length > 0) {
+        // Get unique order IDs
+        const orderIds = [...new Set(orderItems.map(item => item.order_id))];
+        console.log(`✅ [fetchDirectVendorOrdersWithDebug] Found ${orderIds.length} orders related to vendor products`);
+        
+        // Fetch these orders
+        const { data: directOrdersData, error: directOrdersError } = await supabase
+          .from('orders')
+          .select('*')
+          .in('id', orderIds)
+          .order('created_at', { ascending: false })
+          .limit(50);
+          
+        if (directOrdersError) {
+          console.error('🚫 [fetchDirectVendorOrdersWithDebug] Error fetching direct orders:', directOrdersError.message);
+          debugInfo.directOrdersError = directOrdersError.message;
+        } else if (directOrdersData && directOrdersData.length > 0) {
+          console.log(`✅ [fetchDirectVendorOrdersWithDebug] Direct query found ${directOrdersData.length} orders`);
+          debugInfo.directOrdersResults = directOrdersData.slice(0, 2);
+          debugInfo.directOrdersCount = directOrdersData.length;
+          
+          // Add these order IDs to our processing list
+          allOrderIdsFromItems = [...allOrderIdsFromItems, ...directOrdersData.map(order => order.id)];
           debugInfo.directOrdersFound = true;
+          
+          // Log the found orders for debugging
+          console.log('📊 [fetchDirectVendorOrdersWithDebug] Sample order from direct query:', 
+            directOrdersData[0] ? {
+              id: directOrdersData[0].id,
+              status: directOrdersData[0].status,
+              valor_total: directOrdersData[0].valor_total
+            } : 'No sample available');
         }
-      } else {
-        console.log('⚠️ [fetchDirectVendorOrdersWithDebug] Direct SQL found no orders');
-        debugInfo.directSqlResults = [];
-        debugInfo.rawSqlLog.push({
-          query: directSqlQuery,
-          results: 0,
-          timestamp: new Date().toISOString()
-        });
       }
     } catch (err) {
-      console.error('🚫 [fetchDirectVendorOrdersWithDebug] Error with direct SQL approach:', err);
-      debugInfo.directSqlError = err instanceof Error ? err.message : 'Unknown SQL error';
+      console.error('🚫 [fetchDirectVendorOrdersWithDebug] Error with direct query approach:', err);
+      debugInfo.directQueryError = err instanceof Error ? err.message : 'Unknown query error';
     }
     
-    // Query order_items that contain vendor's products - this is our primary table
+    // Try the original approach as well for thoroughness
+    // Query order_items that contain vendor's products
     const orderItemsQuery = supabase
       .from('order_items')
       .select('order_id, produto_id, quantidade, preco_unitario, subtotal')
