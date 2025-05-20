@@ -1637,6 +1637,10 @@ export type Database = {
         Args: { sql_statement: string }
         Returns: Json
       }
+      get_order_by_id: {
+        Args: { order_id: string }
+        Returns: Json
+      }
       get_product_segments: {
         Args: Record<PropertyKey, never>
         Returns: {

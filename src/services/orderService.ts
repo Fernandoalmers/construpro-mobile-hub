@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { CartItem } from '@/types/cart';
@@ -176,70 +175,38 @@ export const orderService = {
     try {
       console.log(`🔍 [orderService.getOrderByIdDirect] Fetching order details directly for ID: ${orderId}`);
       
-      // Get basic order data
-      const { data: orderData, error: orderError } = await supabase
-        .from('orders')
-        .select(`
-          id,
-          cliente_id,
-          valor_total,
-          pontos_ganhos,
-          status,
-          forma_pagamento,
-          endereco_entrega,
-          created_at,
-          updated_at,
-          rastreio
-        `)
-        .eq('id', orderId)
-        .single();
+      // Use the database function we created to bypass RLS issues
+      const { data, error } = await supabase.rpc('get_order_by_id', { order_id: orderId });
       
-      if (orderError) {
-        console.error("❌ [orderService.getOrderByIdDirect] Error fetching order:", orderError);
-        
-        // If we still have RLS issues, try a more direct approach via RPC
-        if (orderError.message?.includes('row-level security')) {
-          console.log("🔄 [orderService.getOrderByIdDirect] Trying RPC fallback due to RLS issue");
-          const { data: rpcData, error: rpcError } = await supabase.rpc('get_order_by_id', { order_id: orderId });
-          
-          if (rpcError || !rpcData) {
-            throw new Error('Pedido não encontrado (RPC fallback failed)');
-          }
-          
-          return rpcData;
-        }
-        
-        throw orderError;
+      if (error) {
+        console.error("❌ [orderService.getOrderByIdDirect] Error using get_order_by_id function:", error);
+        throw error;
       }
       
-      if (!orderData) {
+      if (!data) {
         console.error(`⚠️ [orderService.getOrderByIdDirect] No order found with ID ${orderId}`);
         throw new Error('Pedido não encontrado');
       }
       
-      // Get order items separately to avoid potential RLS issues
-      const { data: itemsData, error: itemsError } = await supabase
-        .from('order_items')
-        .select(`
-          id,
-          produto_id,
-          quantidade,
-          preco_unitario,
-          subtotal,
-          order_id
-        `)
-        .eq('order_id', orderId);
-        
-      if (itemsError) {
-        console.error("❌ [orderService.getOrderByIdDirect] Error fetching order items:", itemsError);
+      console.log(`📊 [orderService.getOrderByIdDirect] Order retrieved successfully:`, data);
+      
+      // Ensure the data is properly formatted with 'items' property
+      const orderData = data;
+      
+      // If items is a string representation of an array (from JSON conversion), parse it
+      if (typeof orderData.items === 'string') {
+        try {
+          orderData.items = JSON.parse(orderData.items);
+        } catch (e) {
+          console.warn("Unable to parse items string:", e);
+          orderData.items = [];
+        }
       }
       
-      // Process items with product details
-      let itemsWithProducts = [];
-      
-      if (itemsData && itemsData.length > 0) {
+      // Process items to ensure they have product details
+      if (orderData.items && orderData.items.length > 0) {
         // Get all product IDs
-        const productIds = itemsData.map(item => item.produto_id);
+        const productIds = orderData.items.map((item: any) => item.produto_id);
         
         // Fetch products in a single query
         const { data: productsData, error: productsError } = await supabase
@@ -260,7 +227,7 @@ export const orderService = {
         }
         
         // Combine item data with product data
-        itemsWithProducts = itemsData.map(item => {
+        orderData.items = orderData.items.map((item: any) => {
           const productData = productsMap[item.produto_id] || null;
           
           // Extract image URL from product data if available
@@ -288,14 +255,7 @@ export const orderService = {
         });
       }
       
-      // Combine order with items
-      const orderWithItems = {
-        ...orderData,
-        items: itemsWithProducts || [] // Use 'items' instead of 'itens' for OrderConfirmationScreen
-      };
-      
-      console.log(`📊 [orderService.getOrderByIdDirect] Order has ${orderWithItems.items?.length || 0} items`);
-      return orderWithItems;
+      return orderData;
     } catch (error: any) {
       console.error("❌ [orderService.getOrderByIdDirect] Error:", error);
       throw error;
