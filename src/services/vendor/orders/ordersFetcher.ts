@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { OrderItem, VendorOrder } from './types';
 import { fetchCustomerInfo } from './utils/clientInfoFetcher';
 import { fetchProductsForItems } from './utils/productFetcher';
-import { fetchDirectVendorOrders } from './utils/ordersFetcher';
+import { fetchVendorOrders, fetchDirectVendorOrders, fetchDirectVendorOrdersWithDebug } from './utils/ordersFetcher';
 import { logDiagnosticInfo } from './utils/diagnosticUtils';
 
 // Main function to get all vendor orders
@@ -55,7 +55,7 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
       console.log('📦 [getVendorOrders] Sample first order:', {
         id: vendorOrders[0].id,
         status: vendorOrders[0].status,
-        items_count: vendorOrders[0].itens?.length || 0,
+        items_count: vendorOrders[0].items?.length || 0,
         customer: vendorOrders[0].cliente ? 
           { name: vendorOrders[0].cliente.nome, id: vendorOrders[0].cliente.id } : 'No customer info'
       });
@@ -81,4 +81,4 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
 };
 
 // Re-export the direct fetching function for other components that might need it
-export { fetchDirectVendorOrders } from './utils/ordersFetcher';
+export { fetchDirectVendorOrders, fetchDirectVendorOrdersWithDebug } from './utils/ordersFetcher';

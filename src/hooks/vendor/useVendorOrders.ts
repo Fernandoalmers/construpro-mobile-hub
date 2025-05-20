@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/components/ui/sonner';
@@ -40,6 +39,18 @@ export const useVendorOrders = () => {
           console.log("📊 [useVendorOrders] Diagnostics completed:", diagnostics);
           
           // Immediate fetch of debug information when profile is found
+          const fetchDebugOrdersImmediate = async (vendorId: string) => {
+            try {
+              console.log("🔍 [useVendorOrders] Immediately fetching debug orders data for vendor:", vendorId);
+              const result = await fetchDirectVendorOrdersWithDebug(vendorId);
+              console.log("📊 [useVendorOrders] Immediate debug data:", result);
+              setDebugData(result);
+              return result;
+            } catch (error) {
+              console.error("🚫 [useVendorOrders] Error in immediate debug fetch:", error);
+              return null;
+            }
+          };
           fetchDebugOrdersImmediate(profile.id);
           
           // Check if vendor status is pending, which might be preventing orders from showing
@@ -128,18 +139,7 @@ export const useVendorOrders = () => {
   }, [vendorProfileStatus, queryClient]);
   
   // Immediate fetch of debug orders without waiting for useEffect
-  const fetchDebugOrdersImmediate = async (vendorId: string) => {
-    try {
-      console.log("🔍 [useVendorOrders] Immediately fetching debug orders data for vendor:", vendorId);
-      const result = await fetchDirectVendorOrdersWithDebug(vendorId, undefined, true);
-      console.log("📊 [useVendorOrders] Immediate debug data:", result);
-      setDebugData(result);
-      return result;
-    } catch (error) {
-      console.error("🚫 [useVendorOrders] Error in immediate debug fetch:", error);
-      return null;
-    }
-  };
+  
   
   // Regular fetch debug orders function for callbacks
   const fetchDebugOrders = useCallback(async () => {
@@ -150,7 +150,7 @@ export const useVendorOrders = () => {
       if (!profile) return null;
       
       console.log("🔍 [useVendorOrders] Fetching orders with debug info...");
-      const result = await fetchDirectVendorOrdersWithDebug(profile.id, undefined, true);
+      const result = await fetchDirectVendorOrdersWithDebug(profile.id);
       console.log("📊 [useVendorOrders] Debug data:", result.debug);
       setDebugData(result);
       return result;
@@ -183,7 +183,7 @@ export const useVendorOrders = () => {
         // First try to get orders from debug function for more info
         const profile = await getVendorProfile();
         if (profile) {
-          const debugResult = await fetchDirectVendorOrdersWithDebug(profile.id, undefined, true);
+          const debugResult = await fetchDirectVendorOrdersWithDebug(profile.id);
           if (debugResult && debugResult.orders && debugResult.orders.length > 0) {
             console.log(`✅ [useVendorOrders] Found ${debugResult.orders.length} orders directly`);
             setDebugData(debugResult);
@@ -275,12 +275,8 @@ export const useVendorOrders = () => {
           const diagnostics = await runVendorDiagnostics();
           setDiagnosticResults(diagnostics);
           
-          // Fetch orders directly with debug mode and avoid caching
-          const debugResult = await fetchDirectVendorOrdersWithDebug(
-            profile.id, 
-            undefined,
-            true
-          );
+          // Fix this call to fetchDirectVendorOrdersWithDebug
+          const debugResult = await fetchDirectVendorOrdersWithDebug(profile.id);
           setDebugData(debugResult);
           
           console.log("🔍 [forceRefresh] Direct fetch results:", {
