@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { OrderItem, VendorOrder, OrderFilters } from '../types';
 
@@ -88,12 +87,21 @@ export const fetchDirectVendorOrders = async (
         
         // Filtrar para incluir apenas itens com produtos deste vendedor
         const vendorItems = items.filter(item => {
-          // Verificar se o produto existe e tem vendedor_id
-          return item.produtos !== null && 
-                 item.produtos !== undefined && 
-                 typeof item.produtos === 'object' && 
-                 'vendedor_id' in item.produtos && 
-                 item.produtos.vendedor_id === vendorId;
+          // Usando uma variável temporária para verificar e manter a inferência de tipo
+          const produtos = item.produtos;
+          if (produtos === null || produtos === undefined) {
+            return false;
+          }
+          
+          if (typeof produtos !== 'object') {
+            return false;
+          }
+          
+          if (!('vendedor_id' in produtos)) {
+            return false;
+          }
+          
+          return produtos.vendedor_id === vendorId;
         });
         
         if (vendorItems.length > 0) {
