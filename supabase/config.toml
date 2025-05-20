@@ -1,8 +1,30 @@
 
-orqnibkshlapwhjjmszh = "2024-05-12T19:29:00Z"
+# Update this file when you add functions, etc
+project_id = "orqnibkshlapwhjjmszh"
+
+[functions.address-management]
+verify_jwt = true
+
+[functions.points-management]
+verify_jwt = true
+
+[functions.referral-processing]
+verify_jwt = true
+
+[functions.profile-update]
+verify_jwt = true
+
+[functions.auth-signup]
+verify_jwt = false
+
+[functions.order-processing]
+verify_jwt = true
 
 [functions.db-utils]
 verify_jwt = true
 
-[functions.create-sql-function]
+[functions.marketplace-management]
+verify_jwt = true
+
+[functions.services-management]
 verify_jwt = true

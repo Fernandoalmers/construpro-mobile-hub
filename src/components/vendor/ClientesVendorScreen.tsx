@@ -215,22 +215,9 @@ const ClientesVendorScreen: React.FC = () => {
           </p>
         </Card>
 
-        {/* Import and refresh actions - Always show migration button */}
-        <Card className="p-4 bg-yellow-50 border-yellow-200">
-          <h3 className="font-medium text-yellow-800 mb-2">Diagnóstico e correção de problemas</h3>
-          <p className="text-xs text-yellow-700 mb-3">
-            Se você não está vendo seus clientes ou se acha que faltam dados, você pode tentar importar novamente.
-          </p>
+        {/* Import and refresh actions */}
+        {customers.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            <CustomButton 
-              variant="primary"
-              onClick={handleMigrateFromOrders}
-              disabled={isImporting}
-              icon={<Download size={16} />}
-              className="bg-yellow-600 hover:bg-yellow-700"
-            >
-              {isImporting ? "Importando..." : "MIGRAR CLIENTES DE PEDIDOS"}
-            </CustomButton>
             <CustomButton 
               variant="outline"
               onClick={() => refetch()}
@@ -238,8 +225,16 @@ const ClientesVendorScreen: React.FC = () => {
             >
               Atualizar lista
             </CustomButton>
+            <CustomButton 
+              variant="outline"
+              onClick={handleMigrateFromOrders}
+              disabled={isImporting}
+              icon={<Download size={16} />}
+            >
+              {isImporting ? "Importando..." : "Importar clientes de pedidos"}
+            </CustomButton>
           </div>
-        </Card>
+        )}
 
         {/* Search and filters */}
         <div className="flex flex-col space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4">
