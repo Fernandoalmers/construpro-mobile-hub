@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { CheckCircle, ArrowLeft, Clock, ShoppingBag, Home, Package, MapPin } from 'lucide-react';
+import { CheckCircle, ArrowLeft, Clock, ShoppingBag, Home, Package, MapPin, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import LoadingState from '../common/LoadingState';
 import ErrorState from '../common/ErrorState';
@@ -9,6 +9,7 @@ import Card from '../common/Card';
 import { orderService } from '@/services/orderService';
 import ProductImage from '../admin/products/components/ProductImage';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { toast } from '@/components/ui/sonner';
 
 const OrderConfirmationScreen: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>();
@@ -17,6 +18,7 @@ const OrderConfirmationScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [orderDetails, setOrderDetails] = useState<any>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     if (!orderId) {
@@ -28,9 +30,9 @@ const OrderConfirmationScreen: React.FC = () => {
     const fetchOrderDetails = async () => {
       try {
         setLoading(true);
-        console.log(`Buscando detalhes do pedido ${orderId}`);
+        console.log(`Buscando detalhes do pedido ${orderId} (tentativa: ${retryCount + 1})`);
         
-        // Fetch order details
+        // Fetch order details with the enhanced service that handles RLS issues
         const order = await orderService.getOrderById(orderId);
         
         if (!order) {
@@ -39,16 +41,38 @@ const OrderConfirmationScreen: React.FC = () => {
         
         console.log('Detalhes do pedido recuperados:', order);
         setOrderDetails(order);
+        setLoading(false);
       } catch (err: any) {
         console.error('Error fetching order details:', err);
-        setError(err.message || 'Não foi possível carregar os detalhes do pedido');
-      } finally {
-        setLoading(false);
+        
+        // If we've tried less than 3 times and it's an RLS error, retry after a delay
+        if (retryCount < 2 && err.message?.includes('security policy')) {
+          console.log(`Tentando novamente em 1 segundo (tentativa ${retryCount + 1})`);
+          setRetryCount(prev => prev + 1);
+          setTimeout(() => {
+            // This will trigger the useEffect again
+            setRetryCount(prev => prev);
+          }, 1000);
+        } else {
+          setError(err.message || 'Não foi possível carregar os detalhes do pedido');
+          setLoading(false);
+          
+          // Show toast for better visibility
+          toast.error('Erro ao carregar confirmação do pedido', {
+            description: err.message || 'Verifique sua conexão e tente novamente'
+          });
+        }
       }
     };
 
     fetchOrderDetails();
-  }, [orderId]);
+  }, [orderId, retryCount]);
+
+  const handleRetry = () => {
+    setLoading(true);
+    setError(null);
+    setRetryCount(prev => prev + 1);
+  };
 
   if (loading) {
     return <LoadingState text="Carregando detalhes do pedido..." />;
@@ -59,7 +83,7 @@ const OrderConfirmationScreen: React.FC = () => {
       <ErrorState 
         title="Erro ao carregar confirmação" 
         message={error || "Pedido não encontrado"}
-        onRetry={() => window.location.reload()}
+        onRetry={handleRetry}
         retryText="Tentar novamente"
       />
     );
@@ -140,6 +164,7 @@ const OrderConfirmationScreen: React.FC = () => {
               <Package className="mr-2" size={18} />
               Itens do Pedido
             </h3>
+            {/* Important change: using items instead of itens */}
             {orderDetails.items && orderDetails.items.length > 0 ? (
               <div className="space-y-4">
                 {orderDetails.items.map((item: any) => (

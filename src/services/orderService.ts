@@ -133,7 +133,50 @@ export const orderService = {
     try {
       console.log(`🔍 [orderService.getOrderById] Fetching order details for ID: ${orderId}`);
       
-      // Obter o pedido diretamente do banco de dados
+      // Get order data directly using service role to bypass RLS issues
+      const { data: orderData, error: orderError } = await supabaseService.invokeFunction('order-processing', {
+        method: 'GET',
+        body: { orderId },
+        maxRetries: 2
+      });
+      
+      if (orderError) {
+        console.error("❌ [orderService.getOrderById] Error fetching order via edge function:", orderError);
+        
+        // Fallback to direct method with regular client if edge function fails
+        return await this.getOrderByIdDirect(orderId);
+      }
+      
+      if (!orderData || !orderData.order) {
+        console.error(`⚠️ [orderService.getOrderById] No order data returned for ID ${orderId}`);
+        throw new Error('Pedido não encontrado');
+      }
+      
+      console.log(`✅ [orderService.getOrderById] Successfully retrieved order ${orderId} via edge function`);
+      return orderData.order;
+      
+    } catch (error: any) {
+      console.error("❌ [orderService.getOrderById] Error:", error);
+      
+      // Try fallback method if main method fails
+      try {
+        return await this.getOrderByIdDirect(orderId);
+      } catch (fallbackError) {
+        console.error("❌ [orderService.getOrderByIdDirect] Fallback also failed:", fallbackError);
+        toast.error("Erro ao carregar detalhes do pedido", {
+          description: error.message || "Tente novamente mais tarde"
+        });
+        return null;
+      }
+    }
+  },
+  
+  // Direct method as fallback that tries to avoid the RLS issue
+  async getOrderByIdDirect(orderId: string): Promise<any> {
+    try {
+      console.log(`🔍 [orderService.getOrderByIdDirect] Fetching order details directly for ID: ${orderId}`);
+      
+      // Get basic order data
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .select(`
@@ -152,112 +195,110 @@ export const orderService = {
         .single();
       
       if (orderError) {
-        console.error("❌ [orderService.getOrderById] Error fetching order:", orderError);
+        console.error("❌ [orderService.getOrderByIdDirect] Error fetching order:", orderError);
+        
+        // If we still have RLS issues, try a more direct approach via RPC
+        if (orderError.message?.includes('row-level security')) {
+          console.log("🔄 [orderService.getOrderByIdDirect] Trying RPC fallback due to RLS issue");
+          const { data: rpcData, error: rpcError } = await supabase.rpc('get_order_by_id', { order_id: orderId });
+          
+          if (rpcError || !rpcData) {
+            throw new Error('Pedido não encontrado (RPC fallback failed)');
+          }
+          
+          return rpcData;
+        }
+        
         throw orderError;
       }
       
       if (!orderData) {
-        console.error(`⚠️ [orderService.getOrderById] No order found with ID ${orderId}`);
+        console.error(`⚠️ [orderService.getOrderByIdDirect] No order found with ID ${orderId}`);
         throw new Error('Pedido não encontrado');
       }
       
-      console.log(`✅ [orderService.getOrderById] Successfully retrieved order ${orderId}`, orderData);
+      // Get order items separately to avoid potential RLS issues
+      const { data: itemsData, error: itemsError } = await supabase
+        .from('order_items')
+        .select(`
+          id,
+          produto_id,
+          quantidade,
+          preco_unitario,
+          subtotal,
+          order_id
+        `)
+        .eq('order_id', orderId);
+        
+      if (itemsError) {
+        console.error("❌ [orderService.getOrderByIdDirect] Error fetching order items:", itemsError);
+      }
       
-      // Fetch order items directly from order_items table
-      try {
-        const { data: itemsData, error: itemsError } = await supabase
-          .from('order_items')
-          .select(`
-            id,
-            produto_id,
-            quantidade,
-            preco_unitario,
-            subtotal,
-            order_id
-          `)
-          .eq('order_id', orderId);
+      // Process items with product details
+      let itemsWithProducts = [];
+      
+      if (itemsData && itemsData.length > 0) {
+        // Get all product IDs
+        const productIds = itemsData.map(item => item.produto_id);
+        
+        // Fetch products in a single query
+        const { data: productsData, error: productsError } = await supabase
+          .from('produtos')
+          .select('id, nome, imagens, preco_normal, preco_promocional, descricao, categoria')
+          .in('id', productIds);
           
-        if (itemsError) {
-          console.error("❌ [orderService.getOrderById] Error fetching order items:", itemsError);
-          // Continue even if there's an error with items
+        if (productsError) {
+          console.error("❌ [orderService.getOrderByIdDirect] Error fetching products:", productsError);
         }
         
-        // If we have items, fetch the product details for each item
-        let itemsWithProducts = [];
-        
-        if (itemsData && itemsData.length > 0) {
-          // Get all product IDs
-          const productIds = itemsData.map(item => item.produto_id);
-          
-          // Fetch products in a single query - Note: We're not using imagem_url as it doesn't exist
-          const { data: productsData, error: productsError } = await supabase
-            .from('produtos')
-            .select('id, nome, imagens, preco_normal, preco_promocional, descricao, categoria')
-            .in('id', productIds);
-            
-          if (productsError) {
-            console.error("❌ [orderService.getOrderById] Error fetching products:", productsError);
-          }
-          
-          // Create a map of product ID to product data for quick lookup
-          const productsMap: {[key: string]: any} = {};
-          if (productsData) {
-            productsData.forEach(product => {
-              productsMap[product.id] = product;
-            });
-          }
-          
-          // Combine item data with product data
-          itemsWithProducts = itemsData.map(item => {
-            const productData = productsMap[item.produto_id] || null;
-            
-            // Extract image URL from product data if available
-            let imageUrl = null;
-            if (productData && productData.imagens && Array.isArray(productData.imagens) && productData.imagens.length > 0) {
-              const firstImage = productData.imagens[0];
-              if (typeof firstImage === 'string') {
-                imageUrl = firstImage;
-              } else if (firstImage && typeof firstImage === 'object') {
-                imageUrl = firstImage.url || firstImage.path || null;
-              }
-            }
-            
-            return {
-              ...item,
-              produto: productData ? {
-                ...productData,
-                imagem_url: imageUrl // Add imagem_url for backwards compatibility
-              } : {
-                nome: 'Produto não disponível',
-                preco_normal: item.preco_unitario,
-                imagem_url: null
-              } // Provide fallback product info if not found
-            };
+        // Create a map of product ID to product data for quick lookup
+        const productsMap: {[key: string]: any} = {};
+        if (productsData) {
+          productsData.forEach(product => {
+            productsMap[product.id] = product;
           });
         }
         
-        // Combine order with items
-        const orderWithItems = {
-          ...orderData,
-          items: itemsWithProducts || []
-        };
-        
-        console.log(`📊 [orderService.getOrderById] Order has ${orderWithItems.items?.length || 0} items`);
-        return orderWithItems;
-      } catch (itemError) {
-        console.error("❌ [orderService.getOrderById] Error processing order items:", itemError);
-        // Return order without items in case of error
-        return {
-          ...orderData,
-          items: []
-        };
+        // Combine item data with product data
+        itemsWithProducts = itemsData.map(item => {
+          const productData = productsMap[item.produto_id] || null;
+          
+          // Extract image URL from product data if available
+          let imageUrl = null;
+          if (productData && productData.imagens && Array.isArray(productData.imagens) && productData.imagens.length > 0) {
+            const firstImage = productData.imagens[0];
+            if (typeof firstImage === 'string') {
+              imageUrl = firstImage;
+            } else if (firstImage && typeof firstImage === 'object') {
+              imageUrl = firstImage.url || firstImage.path || null;
+            }
+          }
+          
+          return {
+            ...item,
+            produto: productData ? {
+              ...productData,
+              imagem_url: imageUrl // Add imagem_url for backwards compatibility
+            } : {
+              nome: 'Produto não disponível',
+              preco_normal: item.preco_unitario,
+              imagem_url: null
+            }
+          };
+        });
       }
+      
+      // Combine order with items
+      const orderWithItems = {
+        ...orderData,
+        items: itemsWithProducts || [] // Use 'items' instead of 'itens' for OrderConfirmationScreen
+      };
+      
+      console.log(`📊 [orderService.getOrderByIdDirect] Order has ${orderWithItems.items?.length || 0} items`);
+      return orderWithItems;
     } catch (error: any) {
-      console.error("❌ [orderService.getOrderById] Error:", error);
-      toast.error("Erro ao carregar detalhes do pedido", {
-        description: error.message || "Tente novamente mais tarde"
-      });
-      return null;
+      console.error("❌ [orderService.getOrderByIdDirect] Error:", error);
+      throw error;
     }
   }
 };

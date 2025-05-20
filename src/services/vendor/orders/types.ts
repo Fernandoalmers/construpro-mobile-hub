@@ -33,7 +33,7 @@ export interface VendorOrder {
   forma_pagamento: string;
   endereco_entrega: any;
   created_at: string;
-  data_criacao?: string;
+  data_criacao?: string; // Added to be compatible with both property names
   data_entrega_estimada?: string;
   pontos_ganhos?: number;
   rastreio?: string; // Made optional as it doesn't exist in the database
