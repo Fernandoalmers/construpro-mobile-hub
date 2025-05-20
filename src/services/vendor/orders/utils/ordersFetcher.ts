@@ -92,8 +92,7 @@ export const fetchDirectVendorOrdersWithDebug = async (
     // First, get all products belonging to this vendor for debugging
     const { data: vendorProducts, error: vendorProductsError } = await supabase
       .from('produtos')
-      .select('id, nome, descricao, preco, categoria, vendedor_id')
-      .eq('vendedor_id', vendorId);
+      .select('id, nome, descricao, preco_normal, categoria, vendedor_id');
       
     if (vendorProductsError) {
       console.error('🚫 [fetchDirectVendorOrdersWithDebug] Error fetching vendor products:', vendorProductsError);
