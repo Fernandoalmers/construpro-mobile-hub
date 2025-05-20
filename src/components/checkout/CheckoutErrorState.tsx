@@ -26,7 +26,9 @@ const CheckoutErrorState: React.FC<CheckoutErrorStateProps> = ({
     error.toLowerCase().includes('connection') || 
     error.toLowerCase().includes('comunicar') ||
     error.toLowerCase().includes('internet') ||
-    error.toLowerCase().includes('timeout');
+    error.toLowerCase().includes('timeout') ||
+    error.toLowerCase().includes('failed to fetch') ||
+    error.toLowerCase().includes('failed to send');
     
   const isServerError =
     error.toLowerCase().includes('servidor') ||
@@ -38,7 +40,7 @@ const CheckoutErrorState: React.FC<CheckoutErrorStateProps> = ({
     if (isPermissionError) {
       return "Problema de autorização. Você pode precisar fazer login novamente.";
     } else if (isNetworkError) {
-      return "Problema de conexão. Verifique sua internet e tente novamente.";
+      return "Problema de conexão. Verifique sua internet e tente novamente em alguns instantes.";
     } else if (isServerError) {
       return "Nosso servidor está enfrentando problemas temporários. Por favor, tente novamente em alguns instantes.";
     } else {

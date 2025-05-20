@@ -103,8 +103,27 @@ export function useCheckout() {
       
       console.log('Sending order with data:', orderData);
       
-      // Create order
-      const orderId = await orderService.createOrder(orderData);
+      // Create order with retry logic
+      let maxAttempts = 3;
+      let attempt = 1;
+      let orderId = null;
+      
+      while (attempt <= maxAttempts && !orderId) {
+        try {
+          if (attempt > 1) {
+            console.log(`Retry attempt ${attempt} of ${maxAttempts}`);
+            // Add increasing delay between retries (1s, 2s, 3s...)
+            await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+          }
+          
+          orderId = await orderService.createOrder(orderData);
+          if (orderId) break;
+        } catch (err) {
+          console.error(`Attempt ${attempt} failed:`, err);
+          if (attempt === maxAttempts) throw err; // If last attempt, rethrow the error
+        }
+        attempt++;
+      }
       
       if (orderId) {
         // Success flow
@@ -113,7 +132,7 @@ export function useCheckout() {
         toast.success('Pedido realizado com sucesso!');
         navigate(`/order/confirmacao/${orderId}`); // Updated path to Portuguese version
       } else {
-        throw new Error('Falha ao processar pedido');
+        throw new Error('Falha ao processar pedido após várias tentativas');
       }
     } catch (error: any) {
       console.error('Error placing order:', error);
@@ -169,4 +188,3 @@ export function useCheckout() {
     handleRetry
   };
 }
-

@@ -35,7 +35,8 @@ export const orderService = {
           pontos_ganhos: orderData.pontos_ganhos, // Pass the accurate total points
           status: 'Confirmado'  // Capitalized to match database constraint
         },
-        maxRetries: 3 // Increase retries for critical operations like order creation
+        maxRetries: 5, // Increase from 3 to 5 retries for more reliability
+        retryDelay: 1500 // Add delay between retries (1.5 seconds)
       });
       
       // Check for error in the response
@@ -47,8 +48,8 @@ export const orderService = {
           throw new Error('Erro de permissão: o sistema não conseguiu criar o pedido devido a restrições de segurança. Por favor, tente novamente em alguns instantes ou contate o suporte.');
         }
         
-        if (error.message?.includes('network') || error.message?.includes('timeout') || error.message?.includes('connection')) {
-          throw new Error('Erro de conexão: não conseguimos comunicar com o servidor. Verifique sua internet e tente novamente.');
+        if (error.message?.includes('network') || error.message?.includes('timeout') || error.message?.includes('connection') || error.message?.includes('Failed to fetch') || error.message?.includes('Failed to send')) {
+          throw new Error('Erro de conexão: não conseguimos comunicar com o servidor. Verifique sua internet e tente novamente em alguns instantes.');
         }
         
         throw new Error(error.message || 'Falha ao criar pedido');
@@ -158,7 +159,8 @@ export const orderService = {
           // Add a custom header for passing the order ID
           'x-order-id': orderId
         },
-        maxRetries: 5  // Increase retries for better reliability
+        maxRetries: 5,  // Increase retries for better reliability
+        retryDelay: 1200 // Add delay between retries (1.2 seconds)
       });
       
       if (error) {
@@ -181,7 +183,7 @@ export const orderService = {
           error.message?.includes('Failed to send') || 
           error.message?.includes('network') ||
           error.message?.includes('connection')) {
-        throw new Error('Erro de conexão com o servidor. Por favor, verifique sua conexão e tente novamente.');
+        throw new Error('Erro de conexão com o servidor. Por favor, verifique sua conexão e tente novamente em alguns instantes.');
       }
       
       throw error;
