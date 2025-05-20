@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { CartItem } from '@/types/cart';
@@ -133,7 +134,6 @@ export const orderService = {
       console.log(`🔍 [orderService.getOrderById] Fetching order details for ID: ${orderId}`);
       
       // We will directly try the alternative method that uses the edge function
-      // since the RPC function doesn't exist
       return await this.getOrderByIdAlternative(orderId);
       
     } catch (error: any) {
@@ -142,7 +142,7 @@ export const orderService = {
       toast.error("Erro ao carregar detalhes do pedido", {
         description: error.message || "Tente novamente mais tarde"
       });
-      return null;
+      throw error; // Re-throw to be handled by the component
     }
   },
   
@@ -152,14 +152,13 @@ export const orderService = {
       console.log(`🔍 [orderService.getOrderByIdAlternative] Using alternative method for order ID: ${orderId}`);
       
       // Buscar direto do service function para contornar limitações de RLS
-      // Add the ID as part of the URL query string
       const { data, error } = await supabaseService.invokeFunction('order-processing', {
         method: 'GET',
         headers: {
           // Add a custom header for passing the order ID
           'x-order-id': orderId
         },
-        maxRetries: 3
+        maxRetries: 5  // Increase retries for better reliability
       });
       
       if (error) {
@@ -176,6 +175,15 @@ export const orderService = {
       return data.order;
     } catch (error: any) {
       console.error("❌ [orderService.getOrderByIdAlternative] Alternative method failed:", error);
+      
+      // Provide more helpful error message for network issues
+      if (error.message?.includes('Failed to fetch') || 
+          error.message?.includes('Failed to send') || 
+          error.message?.includes('network') ||
+          error.message?.includes('connection')) {
+        throw new Error('Erro de conexão com o servidor. Por favor, verifique sua conexão e tente novamente.');
+      }
+      
       throw error;
     }
   }

@@ -8,17 +8,21 @@ const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 );
 
+// CORS headers for all responses
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-order-id, x-client-info, apikey',
+  'Access-Control-Max-Age': '86400',
+};
+
 serve(async (req) => {
   // CORS headers
   if (req.method === "OPTIONS") {
     console.log("Handling CORS preflight request");
     return new Response(null, {
       status: 204,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization, x-order-id",
-      },
+      headers: corsHeaders
     });
   }
 
@@ -35,6 +39,7 @@ serve(async (req) => {
     // If not in URL params, try to get it from custom header
     if (!orderId) {
       orderId = req.headers.get('x-order-id');
+      console.log(`Getting order ID from header: ${orderId}`);
     }
     
     // Log the request details
@@ -46,7 +51,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         success: false,
         error: 'Authorization header missing or invalid'
-      }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+      }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     
     const token = authHeader.replace('Bearer ', '');
@@ -57,7 +62,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         success: false,
         error: 'Authentication failed'
-      }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+      }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     console.log(`User authenticated successfully: ${user.id}`);
@@ -69,7 +74,7 @@ serve(async (req) => {
         return new Response(JSON.stringify({
           success: false,
           error: 'Order ID is required'
-        }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+        }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
       
       console.log(`Fetching order details for ID: ${orderId}`);
@@ -97,14 +102,24 @@ serve(async (req) => {
         return new Response(JSON.stringify({
           success: false,
           error: orderError.message
-        }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+        }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
       
       if (!orderData) {
+        console.log(`No order found with ID: ${orderId}`);
         return new Response(JSON.stringify({
           success: false,
           error: 'Pedido não encontrado'
-        }), { status: 404, headers: { 'Content-Type': 'application/json' } });
+        }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      
+      // Verify the user is authorized to view this order
+      if (orderData.cliente_id !== user.id) {
+        console.error(`User ${user.id} is not authorized to view order ${orderId} belonging to ${orderData.cliente_id}`);
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Você não tem permissão para ver este pedido'
+        }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
       
       // Fetch order items with improved logging
@@ -194,7 +209,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         success: true,
         order: orderWithItems
-      }), { headers: { 'Content-Type': 'application/json' } });
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     
     // Handle POST request to create an order
@@ -386,13 +401,14 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       success: false,
       error: 'Method not supported'
-    }), { status: 405, headers: { 'Content-Type': 'application/json' } });
+    }), { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     
   } catch (err) {
     console.error('Unhandled error in order processing:', err);
     return new Response(JSON.stringify({
       success: false,
-      error: 'Internal server error'
-    }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+      error: 'Internal server error',
+      details: err.message
+    }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });
