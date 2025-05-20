@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { CartItem } from '@/types/cart';
@@ -190,69 +191,81 @@ export const orderService = {
       
       console.log(`📊 [orderService.getOrderByIdDirect] Order retrieved successfully:`, data);
       
-      // Ensure the data is properly formatted with 'items' property
-      const orderData = data;
+      // Safely process the order data from JSON response
+      const orderData = data as Record<string, any>;
       
-      // If items is a string representation of an array (from JSON conversion), parse it
-      if (typeof orderData.items === 'string') {
-        try {
-          orderData.items = JSON.parse(orderData.items);
-        } catch (e) {
-          console.warn("Unable to parse items string:", e);
-          orderData.items = [];
-        }
-      }
-      
-      // Process items to ensure they have product details
-      if (orderData.items && orderData.items.length > 0) {
-        // Get all product IDs
-        const productIds = orderData.items.map((item: any) => item.produto_id);
+      // Handle items property safely with proper type checking
+      if (orderData.items) {
+        let itemsArray: any[] = [];
         
-        // Fetch products in a single query
-        const { data: productsData, error: productsError } = await supabase
-          .from('produtos')
-          .select('id, nome, imagens, preco_normal, preco_promocional, descricao, categoria')
-          .in('id', productIds);
+        // If items is a string representation of an array (from JSON conversion), parse it
+        if (typeof orderData.items === 'string') {
+          try {
+            itemsArray = JSON.parse(orderData.items);
+            orderData.items = itemsArray;
+          } catch (e) {
+            console.warn("Unable to parse items string:", e);
+            orderData.items = [];
+          }
+        } else if (Array.isArray(orderData.items)) {
+          // If already an array, use directly
+          itemsArray = orderData.items;
+        }
+        
+        // Process items to ensure they have product details
+        if (itemsArray && itemsArray.length > 0) {
+          // Get all product IDs
+          const productIds = itemsArray.map((item: any) => item.produto_id);
           
-        if (productsError) {
-          console.error("❌ [orderService.getOrderByIdDirect] Error fetching products:", productsError);
-        }
-        
-        // Create a map of product ID to product data for quick lookup
-        const productsMap: {[key: string]: any} = {};
-        if (productsData) {
-          productsData.forEach(product => {
-            productsMap[product.id] = product;
-          });
-        }
-        
-        // Combine item data with product data
-        orderData.items = orderData.items.map((item: any) => {
-          const productData = productsMap[item.produto_id] || null;
-          
-          // Extract image URL from product data if available
-          let imageUrl = null;
-          if (productData && productData.imagens && Array.isArray(productData.imagens) && productData.imagens.length > 0) {
-            const firstImage = productData.imagens[0];
-            if (typeof firstImage === 'string') {
-              imageUrl = firstImage;
-            } else if (firstImage && typeof firstImage === 'object') {
-              imageUrl = firstImage.url || firstImage.path || null;
-            }
+          // Fetch products in a single query
+          const { data: productsData, error: productsError } = await supabase
+            .from('produtos')
+            .select('id, nome, imagens, preco_normal, preco_promocional, descricao, categoria')
+            .in('id', productIds);
+            
+          if (productsError) {
+            console.error("❌ [orderService.getOrderByIdDirect] Error fetching products:", productsError);
           }
           
-          return {
-            ...item,
-            produto: productData ? {
-              ...productData,
-              imagem_url: imageUrl // Add imagem_url for backwards compatibility
-            } : {
-              nome: 'Produto não disponível',
-              preco_normal: item.preco_unitario,
-              imagem_url: null
+          // Create a map of product ID to product data for quick lookup
+          const productsMap: {[key: string]: any} = {};
+          if (productsData) {
+            productsData.forEach(product => {
+              productsMap[product.id] = product;
+            });
+          }
+          
+          // Combine item data with product data
+          orderData.items = itemsArray.map((item: any) => {
+            const productData = productsMap[item.produto_id] || null;
+            
+            // Extract image URL from product data if available
+            let imageUrl = null;
+            if (productData && productData.imagens && Array.isArray(productData.imagens) && productData.imagens.length > 0) {
+              const firstImage = productData.imagens[0];
+              if (typeof firstImage === 'string') {
+                imageUrl = firstImage;
+              } else if (firstImage && typeof firstImage === 'object') {
+                imageUrl = firstImage.url || firstImage.path || null;
+              }
             }
-          };
-        });
+            
+            return {
+              ...item,
+              produto: productData ? {
+                ...productData,
+                imagem_url: imageUrl // Add imagem_url for backwards compatibility
+              } : {
+                nome: 'Produto não disponível',
+                preco_normal: item.preco_unitario,
+                imagem_url: null
+              }
+            };
+          });
+        }
+      } else {
+        // Ensure items is always an array to prevent undefined errors
+        orderData.items = [];
       }
       
       return orderData;
