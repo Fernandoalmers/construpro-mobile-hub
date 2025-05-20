@@ -3,7 +3,7 @@ import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Check, X, Package } from 'lucide-react';
+import { Check, X, Package, Info } from 'lucide-react';
 import { AdminRedemption } from '@/types/admin';
 
 interface RedemptionTableProps {
@@ -12,6 +12,7 @@ interface RedemptionTableProps {
   onReject: (id: string) => void;
   onMarkAsDelivered: (id: string) => void;
   isProcessing: boolean;
+  onViewDetails: (id: string) => void;
 }
 
 const getRedemptionStatusBadgeColor = (status: string): string => {
@@ -34,7 +35,8 @@ const RedemptionTable: React.FC<RedemptionTableProps> = React.memo(({
   onApprove,
   onReject,
   onMarkAsDelivered,
-  isProcessing
+  isProcessing,
+  onViewDetails
 }) => {
   return (
     <div className="rounded-md border">
@@ -51,7 +53,11 @@ const RedemptionTable: React.FC<RedemptionTableProps> = React.memo(({
         </TableHeader>
         <TableBody>
           {redemptions.map(redemption => (
-            <TableRow key={redemption.id}>
+            <TableRow 
+              key={redemption.id} 
+              className="cursor-pointer hover:bg-gray-50"
+              onClick={() => onViewDetails(redemption.id)}
+            >
               <TableCell className="font-medium">{redemption.cliente_nome}</TableCell>
               <TableCell>
                 {redemption.imagem_url && (
@@ -73,7 +79,7 @@ const RedemptionTable: React.FC<RedemptionTableProps> = React.memo(({
                 </Badge>
               </TableCell>
               <TableCell>{new Date(redemption.data).toLocaleDateString('pt-BR')}</TableCell>
-              <TableCell>
+              <TableCell onClick={(e) => e.stopPropagation()}>
                 <div className="flex space-x-2">
                   {redemption.status === 'pendente' && (
                     <>
@@ -108,6 +114,13 @@ const RedemptionTable: React.FC<RedemptionTableProps> = React.memo(({
                       <Package className="h-4 w-4 mr-1" /> Marcar Entregue
                     </Button>
                   )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => onViewDetails(redemption.id)}
+                  >
+                    <Info className="h-4 w-4" />
+                  </Button>
                 </div>
               </TableCell>
             </TableRow>

@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { 
   fetchRedemptions, 
@@ -16,6 +15,8 @@ export const useRedemptionsManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedRedemptionId, setSelectedRedemptionId] = useState<string | null>(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const loadingRef = useRef(false); // To prevent multiple simultaneous load requests
 
   const loadRedemptions = useCallback(async (forceRefresh = false) => {
@@ -119,6 +120,11 @@ export const useRedemptionsManagement = () => {
       setIsProcessing(false);
     }
   }, [isProcessing]);
+  
+  const handleViewDetails = useCallback((redemptionId: string) => {
+    setSelectedRedemptionId(redemptionId);
+    setDetailsDialogOpen(true);
+  }, []);
 
   return {
     redemptions,
@@ -130,9 +136,13 @@ export const useRedemptionsManagement = () => {
     statusFilter,
     setStatusFilter,
     isProcessing,
+    selectedRedemptionId,
+    detailsDialogOpen,
+    setDetailsDialogOpen,
     loadRedemptions,
     handleApproveRedemption,
     handleRejectRedemption,
-    handleMarkAsDelivered
+    handleMarkAsDelivered,
+    handleViewDetails
   };
 };

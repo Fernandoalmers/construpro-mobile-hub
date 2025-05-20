@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import RedemptionFilters from './RedemptionFilters';
 import RedemptionTable from './RedemptionTable';
 import RedemptionTableSkeleton from './RedemptionTableSkeleton';
+import RedemptionDetailsDialog from '@/components/resgates/components/RedemptionDetailsDialog';
 import { useTitle } from '@/hooks/use-title';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
@@ -17,6 +17,8 @@ const RedemptionsManagementScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedRedemptionId, setSelectedRedemptionId] = useState<string | null>(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   
   const fetchRedemptions = async () => {
     try {
@@ -195,6 +197,11 @@ const RedemptionsManagementScreen: React.FC = () => {
     }
   };
   
+  const handleViewDetails = (redemptionId: string) => {
+    setSelectedRedemptionId(redemptionId);
+    setDetailsDialogOpen(true);
+  };
+  
   return (
     <AdminLayout currentSection="resgates">
       <div className="space-y-6">
@@ -226,9 +233,17 @@ const RedemptionsManagementScreen: React.FC = () => {
             onReject={handleReject}
             onMarkAsDelivered={handleMarkAsDelivered}
             isProcessing={isProcessing}
+            onViewDetails={handleViewDetails}
           />
         )}
       </div>
+      
+      {/* Redemption details dialog */}
+      <RedemptionDetailsDialog 
+        redemptionId={selectedRedemptionId}
+        open={detailsDialogOpen}
+        onOpenChange={setDetailsDialogOpen}
+      />
     </AdminLayout>
   );
 };
