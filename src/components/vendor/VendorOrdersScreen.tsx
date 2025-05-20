@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import LoadingState from '../common/LoadingState';
@@ -6,28 +7,20 @@ import OrderStats from './orders/OrderStats';
 import OrderFilters from './orders/OrderFilters';
 import OrdersList from './orders/OrdersList';
 import OrdersError from './orders/OrdersError';
-import DebugOrdersView from './orders/DebugOrdersView';
 import { useVendorOrders } from '@/hooks/vendor/useVendorOrders';
 import { useOrderFilters, orderStatuses } from '@/hooks/vendor/useOrderFilters';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Card } from '@/components/ui/card';
+import { Store, AlertCircle, RefreshCcw, Bug, RotateCcw, Info, Users } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
-
-// Import our new components
-import DiagnosticActions from './orders/DiagnosticActions';
-import CustomerRegistrationInfo from './orders/CustomerRegistrationInfo';
-import DebugControls from './orders/DebugControls';
-import VendorStatusAlert from './orders/VendorStatusAlert';
-import EmptyOrdersState from './orders/EmptyOrdersState';
-import ProfileSetupMessage from './orders/ProfileSetupMessage';
-
-// Import necessary services
 import { updateVendorStatus } from '@/services/vendor/orders/utils/diagnosticUtils';
 import { migrateCustomersFromOrders } from '@/services/vendorCustomersService';
-import { runOrdersMigration } from '@/services/vendor/utils/orderMigration';
+import DebugOrdersView from './orders/DebugOrdersView';
 
 const VendorOrdersScreen: React.FC = () => {
   const navigate = useNavigate();
   const [isMigrating, setIsMigrating] = React.useState(false);
-  const [isMigratingOrders, setIsMigratingOrders] = React.useState(false);
   
   // Use the custom hooks for data and filtering
   const { 
@@ -53,43 +46,44 @@ const VendorOrdersScreen: React.FC = () => {
     setFilterStatus,
     filteredOrders
   } = useOrderFilters(orders);
-
-  // Check if we need to fix vendor status
-  const vendorStatus = diagnosticResults?.vendorProfile?.status || 
-                      diagnosticResults?.diagnosticInfo?.vendorStatus;
-  const showVendorStatusFix = vendorStatus === 'pendente';
-  const vendorId = diagnosticResults?.vendorProfile?.id;
-
-  // Fix vendor status handler
-  const fixVendorStatus = () => {
-    if (!vendorId) {
-      toast.error("ID do vendedor não encontrado");
-      return;
-    }
-    
-    toast.loading("Atualizando status do vendedor...");
-    
-    updateVendorStatus(vendorId, 'ativo')
-      .then(result => {
-        if (result.success) {
-          toast.success("Status do vendedor atualizado com sucesso");
-          // Refresh data
-          setTimeout(() => {
-            refetch();
-          }, 1000);
-        } else {
-          toast.error("Erro ao atualizar status do vendedor");
-        }
-      })
-      .catch(error => {
-        toast.error("Erro ao atualizar status do vendedor");
-        console.error("Error updating vendor status:", error);
-      });
-  };
-
+  
   // Show vendor profile setup message if profile is not found
   if (vendorProfileStatus === 'not_found') {
-    return <ProfileSetupMessage onBack={() => navigate('/profile')} />;
+    return (
+      <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
+        <OrdersHeader 
+          onBack={() => navigate('/profile')} 
+          onRefresh={() => {}} 
+          isRefetching={false} 
+        />
+        
+        <div className="p-6 flex flex-col items-center justify-center flex-grow">
+          <Card className="p-6 max-w-md w-full text-center">
+            <Store size={64} className="mx-auto text-gray-400 mb-4" />
+            <h2 className="text-xl font-bold mb-2">Configure seu perfil de vendedor</h2>
+            <p className="text-gray-600 mb-6">
+              Você precisa configurar seu perfil de vendedor para poder acessar e gerenciar seus pedidos.
+            </p>
+            <Button 
+              onClick={() => navigate('/auth/vendor-profile')}
+              className="w-full bg-construPro-blue hover:bg-blue-700 mb-4"
+            >
+              Configurar Perfil
+            </Button>
+            <Button 
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                toast.info('Alternando para modo consumidor');
+                navigate('/profile');
+              }}
+            >
+              Voltar para Perfil
+            </Button>
+          </Card>
+        </div>
+      </div>
+    );
   }
 
   if (isLoading || isFixingVendorStatus) {
@@ -110,6 +104,61 @@ const VendorOrdersScreen: React.FC = () => {
     );
   }
 
+  // Check if we need to fix vendor status
+  const vendorStatus = diagnosticResults?.vendorProfile?.status || 
+                      diagnosticResults?.diagnosticInfo?.vendorStatus;
+  const showVendorStatusFix = vendorStatus === 'pendente';
+  
+  const fixVendorStatus = async () => {
+    const vendorId = diagnosticResults?.vendorProfile?.id;
+    if (!vendorId) {
+      toast.error("ID do vendedor não encontrado");
+      return;
+    }
+    
+    toast.loading("Atualizando status do vendedor...");
+    
+    try {
+      const result = await updateVendorStatus(vendorId, 'ativo');
+      
+      if (result.success) {
+        toast.success("Status do vendedor atualizado com sucesso");
+        // Refresh data
+        setTimeout(() => {
+          refetch();
+        }, 1000);
+      } else {
+        toast.error("Erro ao atualizar status do vendedor");
+      }
+    } catch (error) {
+      toast.error("Erro ao atualizar status do vendedor");
+      console.error("Error updating vendor status:", error);
+    }
+  };
+
+  // Function to run migration
+  const runCustomersMigration = async () => {
+    setIsMigrating(true);
+    toast.loading("Migrando clientes a partir de pedidos existentes...");
+    try {
+      const result = await migrateCustomersFromOrders();
+      if (result) {
+        toast.success("Clientes migrados com sucesso!");
+        // Navigate to customers page to see results
+        setTimeout(() => {
+          navigate('/vendor/customers');
+        }, 1500);
+      } else {
+        toast.error("Falha ao migrar clientes. Verifique os logs para mais detalhes.");
+      }
+    } catch (error) {
+      console.error("Error running migration:", error);
+      toast.error("Erro ao migrar clientes.");
+    } finally {
+      setIsMigrating(false);
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
       {/* Header */}
@@ -121,21 +170,107 @@ const VendorOrdersScreen: React.FC = () => {
       
       <div className="p-6 space-y-6">
         {/* Diagnostic Actions - Enhanced migration card */}
-        <DiagnosticActions 
-          showVendorStatusFix={showVendorStatusFix}
-          vendorId={vendorId}
-          onRefresh={forceRefresh}
-        />
+        <Card className="p-4 bg-yellow-50 border-yellow-200">
+          <div className="flex flex-col gap-3">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-yellow-500 mt-0.5" />
+              <div>
+                <h3 className="font-medium text-yellow-800">Diagnóstico e correção de problemas</h3>
+                <p className="text-sm text-yellow-700 mt-1">
+                  Se você não está vendo seus pedidos ou clientes, execute a migração de dados a seguir.
+                  Este processo sincronizará automaticamente seus clientes a partir dos pedidos existentes.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button 
+                onClick={runCustomersMigration}
+                className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                size="sm"
+                disabled={isMigrating}
+              >
+                {isMigrating ? (
+                  <>
+                    <RefreshCcw size={16} className="mr-1 animate-spin" />
+                    Migrando dados...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCcw size={16} className="mr-1" />
+                    Migrar clientes de pedidos
+                  </>
+                )}
+              </Button>
+              
+              <Button 
+                onClick={() => navigate('/vendor/customers')}
+                variant="outline"
+                size="sm"
+                className="border-yellow-300 text-yellow-700"
+              >
+                <Users size={16} className="mr-1" />
+                Ver clientes
+              </Button>
+              
+              {showVendorStatusFix && (
+                <Button 
+                  onClick={fixVendorStatus}
+                  className="bg-red-500 hover:bg-red-600 text-white"
+                  size="sm"
+                >
+                  Corrigir status do vendedor
+                </Button>
+              )}
+            </div>
+          </div>
+        </Card>
 
         {/* Customer Registration Info Alert */}
-        <CustomerRegistrationInfo />
+        <Card className="p-4 bg-blue-50 border-blue-200">
+          <div className="flex items-start gap-3">
+            <Info className="h-5 w-5 text-blue-500 mt-0.5" />
+            <div>
+              <h3 className="font-medium text-blue-800">Registro automático de clientes</h3>
+              <p className="text-sm text-blue-700 mt-1">
+                Quando um cliente faz uma compra, ele é automaticamente registrado na sua lista de clientes.
+                Você também pode importar clientes de pedidos existentes na página de clientes.
+              </p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="mt-2 bg-white hover:bg-blue-100 border-blue-200"
+                onClick={() => navigate('/vendor/customers')}
+              >
+                Ver lista de clientes
+              </Button>
+            </div>
+          </div>
+        </Card>
 
         {/* Debug Controls */}
-        <DebugControls 
-          debugMode={debugMode}
-          toggleDebugMode={toggleDebugMode}
-          forceRefresh={forceRefresh}
-        />
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={toggleDebugMode}
+              className={`flex items-center gap-1 ${debugMode ? 'bg-blue-50 border-blue-300' : ''}`}
+            >
+              <Bug size={16} className={debugMode ? 'text-blue-500' : ''} />
+              {debugMode ? 'Desativar Modo Debug' : 'Ativar Modo Debug'}
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={forceRefresh}
+              className="flex items-center gap-1"
+            >
+              <RotateCcw size={16} />
+              Forçar Atualização
+            </Button>
+          </div>
+        </div>
         
         {/* Search and filters */}
         <OrderFilters 
@@ -159,52 +294,83 @@ const VendorOrdersScreen: React.FC = () => {
           <h2 className="font-bold text-lg">Lista de pedidos</h2>
           
           {showVendorStatusFix && (
-            <VendorStatusAlert onFixVendorStatus={fixVendorStatus} />
+            <Card className="p-4 mb-4 border-yellow-300 bg-yellow-50">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="h-6 w-6 text-yellow-500" />
+                <div className="flex-1">
+                  <h3 className="font-medium text-yellow-800">Status do vendedor pendente</h3>
+                  <p className="text-sm text-yellow-700 mt-1">
+                    O status do seu perfil de vendedor está como "pendente", o que pode impedir a visualização dos pedidos.
+                  </p>
+                </div>
+                <Button 
+                  onClick={fixVendorStatus}
+                  className="bg-yellow-600 hover:bg-yellow-700 text-white flex items-center gap-2"
+                  size="sm"
+                >
+                  <RefreshCcw size={16} />
+                  Corrigir status
+                </Button>
+              </div>
+            </Card>
           )}
           
           {orders.length === 0 && !isRefetching ? (
-            <EmptyOrdersState 
-              onRefresh={handleRefresh}
-              onMigrateOrders={() => {
-                setIsMigratingOrders(true);
-                runOrdersMigration()
-                  .then(result => {
-                    if (result.success) {
-                      toast.success(result.message || "Migração de pedidos concluída com sucesso!");
-                      setTimeout(() => forceRefresh(), 1000);
-                    } else {
-                      toast.error(result.message || "Erro na migração de pedidos");
-                    }
-                  })
-                  .catch(error => {
-                    console.error("Error migrating orders:", error);
-                    toast.error("Erro ao migrar pedidos");
-                  })
-                  .finally(() => setIsMigratingOrders(false));
-              }}
-              onMigrateCustomers={() => {
-                setIsMigrating(true);
-                migrateCustomersFromOrders()
-                  .then(result => {
-                    if (result) {
-                      toast.success("Clientes migrados com sucesso!");
-                      setTimeout(() => navigate('/vendor/customers'), 1500);
-                    } else {
-                      toast.error("Falha ao migrar clientes. Verifique os logs para mais detalhes.");
-                    }
-                  })
-                  .catch(error => {
-                    console.error("Error running migration:", error);
-                    toast.error("Erro ao migrar clientes.");
-                  })
-                  .finally(() => setIsMigrating(false));
-              }}
-              onForceRefresh={forceRefresh}
-              isMigratingOrders={isMigratingOrders}
-              isMigratingCustomers={isMigrating}
-              showVendorStatusFix={showVendorStatusFix}
-              onFixVendorStatus={fixVendorStatus}
-            />
+            <div className="rounded-lg border p-8 text-center">
+              <AlertCircle className="mx-auto h-10 w-10 text-yellow-500 mb-3" />
+              <h3 className="text-lg font-medium mb-2">Nenhum pedido encontrado</h3>
+              <p className="text-gray-500 mb-4">
+                Não encontramos pedidos vinculados à sua loja. Isto pode ocorrer por alguns motivos:
+              </p>
+              <ul className="text-sm text-gray-600 list-disc list-inside mb-4 text-left">
+                <li>Sua loja ainda não recebeu pedidos</li>
+                <li>Os produtos cadastrados não foram associados corretamente</li>
+                <li>É necessário importar os clientes de pedidos existentes</li>
+                {showVendorStatusFix && (
+                  <li className="font-medium text-yellow-700">
+                    Seu perfil de vendedor está com status "pendente"
+                  </li>
+                )}
+              </ul>
+              <div className="flex flex-wrap gap-2 justify-center">
+                <Button onClick={handleRefresh} className="mt-2">
+                  Tentar novamente
+                </Button>
+                <Button
+                  onClick={runCustomersMigration}
+                  className="mt-2 bg-yellow-600 hover:bg-yellow-700 text-white"
+                  disabled={isMigrating}
+                >
+                  {isMigrating ? (
+                    <>
+                      <RefreshCcw size={16} className="mr-1 animate-spin" />
+                      Migrando dados...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCcw size={16} className="mr-1" />
+                      Migrar clientes de pedidos
+                    </>
+                  )}
+                </Button>
+                {showVendorStatusFix && (
+                  <Button 
+                    onClick={fixVendorStatus}
+                    className="mt-2 bg-yellow-600 hover:bg-yellow-700"
+                  >
+                    Corrigir status do vendedor
+                  </Button>
+                )}
+                <Button 
+                  variant="outline" 
+                  onClick={forceRefresh} 
+                  className="mt-2 flex items-center gap-1"
+                >
+                  <RotateCcw size={16} />
+                  Forçar Atualização
+                </Button>
+              </div>
+            </div>
           ) : (
             <OrdersList 
               orders={filteredOrders}

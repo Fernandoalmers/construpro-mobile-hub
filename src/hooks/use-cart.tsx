@@ -1,9 +1,10 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { CartContextProvider, useCartContext } from '@/context/CartContext';
 import { useCartData } from './cart/use-cart-data';
 import { useCartOperations } from './cart/use-cart-operations';
-import { CartContextType, CartItem } from '@/types/cart';
+import { CartContextType } from '@/types/cart';
 import { addToCart as addToCartService } from '@/services/cart/operations/addToCart';
 import { cleanupAbandonedCarts } from '@/services/cart/cartCleanup';
 
@@ -75,9 +76,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     updateQuantity: operations.updateQuantity,
     removeItem: operations.removeItem,
     clearCart: operations.clearCart,
-    refreshCart,
-    totalPrice: cartItems.reduce((sum: number, item: CartItem) => sum + (item.subtotal || 0), 0),
-    totalPoints: cartItems.reduce((sum: number, item: CartItem) => sum + ((item.produto?.pontos || 0) * item.quantidade), 0)
+    refreshCart
   };
 
   return <CartContextProvider value={value}>{children}</CartContextProvider>;

@@ -12,7 +12,6 @@ export interface CartItem {
     imagem_url: string;
     estoque: number;
     loja_id: string;
-    loja_nome?: string;
     pontos: number;
   };
 }
@@ -44,6 +43,4 @@ export interface CartContextType {
   removeItem: (cartItemId: string) => Promise<void>;
   clearCart: () => Promise<void>;
   refreshCart: () => Promise<void>;
-  totalPrice: number;
-  totalPoints: number;
 }

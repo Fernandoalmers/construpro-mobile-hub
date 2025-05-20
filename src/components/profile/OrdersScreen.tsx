@@ -1,7 +1,7 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Package, TruckIcon, ShoppingBag, ArrowRight, Search, RefreshCw } from 'lucide-react';
+import { ChevronLeft, Package, TruckIcon, ShoppingBag, ArrowRight, Search } from 'lucide-react';
 import Card from '../common/Card';
 import CustomButton from '../common/CustomButton';
 import { toast } from "@/components/ui/sonner";
@@ -16,42 +16,21 @@ const OrdersScreen: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [statusFilter, setStatusFilter] = useState<string>("todos");
-  const [isRefetching, setIsRefetching] = useState(false);
   
   // Fetch orders from Supabase using orderService
   const { 
     data: orders = [], 
     isLoading, 
-    error,
-    refetch
+    error 
   } = useQuery({
     queryKey: ['userOrders'],
     queryFn: orderService.getOrders,
     staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: 3, // Retry 3 times if failed
-    retryDelay: attempt => Math.min(attempt * 1000, 3000), // Exponential backoff
   });
   
-  // Handle manual refresh
-  const handleRefresh = async () => {
-    setIsRefetching(true);
-    await refetch();
-    setIsRefetching(false);
-  };
-  
-  // Show error toast if there's a problem fetching orders
-  useEffect(() => {
-    if (error) {
-      console.error('Error fetching orders:', error);
-      toast.error('Não foi possível carregar seus pedidos', {
-        description: 'Tente novamente em alguns instantes',
-        action: {
-          label: 'Tentar novamente',
-          onClick: () => refetch()
-        }
-      });
-    }
-  }, [error, refetch]);
+  if (error) {
+    console.error('Error fetching orders:', error);
+  }
   
   // Filter orders by status if not "todos"
   const filteredOrders = statusFilter === "todos" 
@@ -134,21 +113,8 @@ const OrdersScreen: React.FC = () => {
         </div>
       </div>
       
-      {/* Orders List - Enhanced error handling and refresh capability */}
+      {/* Orders List - Improved card design for mobile */}
       <div className="p-4 space-y-3 pb-24">
-        {/* Refresh button at the top */}
-        <div className="flex justify-end">
-          <CustomButton
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={isRefetching}
-            icon={<RefreshCw size={16} className={isRefetching ? 'animate-spin' : ''} />}
-          >
-            {isRefetching ? 'Atualizando...' : 'Atualizar'}
-          </CustomButton>
-        </div>
-        
         {filteredOrders.length === 0 ? (
           <div className="text-center py-10">
             <ShoppingBag className="mx-auto text-gray-400 mb-3" size={40} />

@@ -33,11 +33,9 @@ export const orderService = {
           forma_pagamento: orderData.forma_pagamento,
           valor_total: orderData.valor_total,
           pontos_ganhos: orderData.pontos_ganhos, // Pass the accurate total points
-          status: 'Confirmado',  // Capitalized to match database constraint
-          transaction_type: 'compra' // Use 'compra' instead of 'credito_compra' to match DB constraint
+          status: 'Confirmado'  // Capitalized to match database constraint
         },
-        maxRetries: 5, // Increase from 3 to 5 retries for more reliability
-        retryDelay: 1500 // Add delay between retries (1.5 seconds)
+        maxRetries: 3 // Increase retries for critical operations like order creation
       });
       
       // Check for error in the response
@@ -49,8 +47,8 @@ export const orderService = {
           throw new Error('Erro de permissão: o sistema não conseguiu criar o pedido devido a restrições de segurança. Por favor, tente novamente em alguns instantes ou contate o suporte.');
         }
         
-        if (error.message?.includes('network') || error.message?.includes('timeout') || error.message?.includes('connection') || error.message?.includes('Failed to fetch') || error.message?.includes('Failed to send')) {
-          throw new Error('Erro de conexão: não conseguimos comunicar com o servidor. Verifique sua internet e tente novamente em alguns instantes.');
+        if (error.message?.includes('network') || error.message?.includes('timeout') || error.message?.includes('connection')) {
+          throw new Error('Erro de conexão: não conseguimos comunicar com o servidor. Verifique sua internet e tente novamente.');
         }
         
         throw new Error(error.message || 'Falha ao criar pedido');
@@ -78,12 +76,21 @@ export const orderService = {
     try {
       console.log("🔍 [orderService.getOrders] Fetching orders for current user");
       
-      // Use supabaseService with retry logic for more reliability
-      const { data, error } = await supabaseService.invokeFunction('order-processing', {
-        method: 'GET',
-        maxRetries: 3,
-        retryDelay: 1000
-      });
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          id, 
+          cliente_id, 
+          valor_total, 
+          pontos_ganhos,
+          status, 
+          forma_pagamento, 
+          endereco_entrega,
+          created_at,
+          updated_at,
+          rastreio
+        `)
+        .order('created_at', { ascending: false });
       
       if (error) {
         console.error("❌ [orderService.getOrders] Error fetching orders:", error);
@@ -93,15 +100,12 @@ export const orderService = {
         throw error;
       }
       
-      if (!data?.success) {
-        console.error("❌ [orderService.getOrders] API returned error:", data?.error);
-        toast.error("Erro ao carregar pedidos", {
-          description: data?.error || "Ocorreu um erro desconhecido"
-        });
+      if (!data) {
+        console.error("❌ [orderService.getOrders] No data returned");
         return [];
       }
       
-      const orders = data.orders || [];
+      const orders = data || [];
       console.log(`✅ [orderService.getOrders] Retrieved ${orders.length} orders`);
       
       // If we have orders, log a sample to help with debugging
@@ -129,59 +133,131 @@ export const orderService = {
     try {
       console.log(`🔍 [orderService.getOrderById] Fetching order details for ID: ${orderId}`);
       
-      // We will directly try the alternative method that uses the edge function
-      return await this.getOrderByIdAlternative(orderId);
+      // Obter o pedido diretamente do banco de dados
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .select(`
+          id,
+          cliente_id,
+          valor_total,
+          pontos_ganhos,
+          status,
+          forma_pagamento,
+          endereco_entrega,
+          created_at,
+          updated_at,
+          rastreio
+        `)
+        .eq('id', orderId)
+        .single();
       
-    } catch (error: any) {
-      console.error("❌ [orderService.getOrderById] Error:", error);
-      
-      toast.error("Erro ao carregar detalhes do pedido", {
-        description: error.message || "Tente novamente mais tarde"
-      });
-      throw error; // Re-throw to be handled by the component
-    }
-  },
-  
-  // Método alternativo para buscar pedido
-  async getOrderByIdAlternative(orderId: string): Promise<any> {
-    try {
-      console.log(`🔍 [orderService.getOrderByIdAlternative] Using alternative method for order ID: ${orderId}`);
-      
-      // Buscar direto do service function para contornar limitações de RLS
-      const { data, error } = await supabaseService.invokeFunction('order-processing', {
-        method: 'GET',
-        headers: {
-          // Add a custom header for passing the order ID
-          'x-order-id': orderId
-        },
-        maxRetries: 5,  // Increase retries for better reliability
-        retryDelay: 1200 // Add delay between retries (1.2 seconds)
-      });
-      
-      if (error) {
-        console.error("❌ [orderService.getOrderByIdAlternative] Error in service function:", error);
-        throw error;
+      if (orderError) {
+        console.error("❌ [orderService.getOrderById] Error fetching order:", orderError);
+        throw orderError;
       }
       
-      if (!data || !data.order) {
-        console.error(`⚠️ [orderService.getOrderByIdAlternative] No order data returned for ID ${orderId}`);
+      if (!orderData) {
+        console.error(`⚠️ [orderService.getOrderById] No order found with ID ${orderId}`);
         throw new Error('Pedido não encontrado');
       }
       
-      console.log(`✅ [orderService.getOrderByIdAlternative] Successfully retrieved order data:`, data.order);
-      return data.order;
-    } catch (error: any) {
-      console.error("❌ [orderService.getOrderByIdAlternative] Alternative method failed:", error);
+      console.log(`✅ [orderService.getOrderById] Successfully retrieved order ${orderId}`, orderData);
       
-      // Provide more helpful error message for network issues
-      if (error.message?.includes('Failed to fetch') || 
-          error.message?.includes('Failed to send') || 
-          error.message?.includes('network') ||
-          error.message?.includes('connection')) {
-        throw new Error('Erro de conexão com o servidor. Por favor, verifique sua conexão e tente novamente em alguns instantes.');
+      // Fetch order items directly from order_items table
+      try {
+        const { data: itemsData, error: itemsError } = await supabase
+          .from('order_items')
+          .select(`
+            id,
+            produto_id,
+            quantidade,
+            preco_unitario,
+            subtotal,
+            order_id
+          `)
+          .eq('order_id', orderId);
+          
+        if (itemsError) {
+          console.error("❌ [orderService.getOrderById] Error fetching order items:", itemsError);
+          // Continue even if there's an error with items
+        }
+        
+        // If we have items, fetch the product details for each item
+        let itemsWithProducts = [];
+        
+        if (itemsData && itemsData.length > 0) {
+          // Get all product IDs
+          const productIds = itemsData.map(item => item.produto_id);
+          
+          // Fetch products in a single query - Note: We're not using imagem_url as it doesn't exist
+          const { data: productsData, error: productsError } = await supabase
+            .from('produtos')
+            .select('id, nome, imagens, preco_normal, preco_promocional, descricao, categoria')
+            .in('id', productIds);
+            
+          if (productsError) {
+            console.error("❌ [orderService.getOrderById] Error fetching products:", productsError);
+          }
+          
+          // Create a map of product ID to product data for quick lookup
+          const productsMap: {[key: string]: any} = {};
+          if (productsData) {
+            productsData.forEach(product => {
+              productsMap[product.id] = product;
+            });
+          }
+          
+          // Combine item data with product data
+          itemsWithProducts = itemsData.map(item => {
+            const productData = productsMap[item.produto_id] || null;
+            
+            // Extract image URL from product data if available
+            let imageUrl = null;
+            if (productData && productData.imagens && Array.isArray(productData.imagens) && productData.imagens.length > 0) {
+              const firstImage = productData.imagens[0];
+              if (typeof firstImage === 'string') {
+                imageUrl = firstImage;
+              } else if (firstImage && typeof firstImage === 'object') {
+                imageUrl = firstImage.url || firstImage.path || null;
+              }
+            }
+            
+            return {
+              ...item,
+              produto: productData ? {
+                ...productData,
+                imagem_url: imageUrl // Add imagem_url for backwards compatibility
+              } : {
+                nome: 'Produto não disponível',
+                preco_normal: item.preco_unitario,
+                imagem_url: null
+              } // Provide fallback product info if not found
+            };
+          });
+        }
+        
+        // Combine order with items
+        const orderWithItems = {
+          ...orderData,
+          items: itemsWithProducts || []
+        };
+        
+        console.log(`📊 [orderService.getOrderById] Order has ${orderWithItems.items?.length || 0} items`);
+        return orderWithItems;
+      } catch (itemError) {
+        console.error("❌ [orderService.getOrderById] Error processing order items:", itemError);
+        // Return order without items in case of error
+        return {
+          ...orderData,
+          items: []
+        };
       }
-      
-      throw error;
+    } catch (error: any) {
+      console.error("❌ [orderService.getOrderById] Error:", error);
+      toast.error("Erro ao carregar detalhes do pedido", {
+        description: error.message || "Tente novamente mais tarde"
+      });
+      return null;
     }
   }
 };

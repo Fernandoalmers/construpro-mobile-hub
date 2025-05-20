@@ -10,7 +10,6 @@ type ErrorStateProps = {
   className?: string;
   retryText?: string;
   errorDetails?: string;
-  retryDisabled?: boolean;  // Add this property
   action?: {
     label: string;
     onClick: () => void;
@@ -24,7 +23,6 @@ const ErrorState: React.FC<ErrorStateProps> = ({
   className = '',
   retryText = 'Tentar novamente',
   errorDetails,
-  retryDisabled = false,  // Add this prop with a default value
   action
 }) => {
   const [showDetails, setShowDetails] = useState(false);
@@ -67,7 +65,6 @@ const ErrorState: React.FC<ErrorStateProps> = ({
           variant="primary"
           onClick={onRetry}
           className="mt-2"
-          disabled={retryDisabled}  // Use the retryDisabled prop here
         >
           {retryText}
         </CustomButton>
