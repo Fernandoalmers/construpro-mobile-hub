@@ -92,7 +92,7 @@ export const fetchDirectVendorOrders = async (
           return item.produtos && 
                  typeof item.produtos === 'object' && 
                  'vendedor_id' in item.produtos && 
-                 item.produtos.vendedor_id === vendorId;
+                 item.produtos?.vendedor_id === vendorId;
         });
         
         if (vendorItems.length > 0) {

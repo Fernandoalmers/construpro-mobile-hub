@@ -31,8 +31,15 @@ export const runOrdersMigration = async (): Promise<{
     if (data && typeof data === 'object' && data !== null) {
       // Extrair propriedades seguras usando operador de acesso opcional
       const migrationData = data as Record<string, any>;
-      const migratedCount = migrationData.migrated_count || 0;
-      const message = migrationData.message || 'Migração concluída com sucesso';
+      
+      // Acessar as propriedades com segurança
+      const migratedCount = typeof migrationData.migrated_count === 'number' 
+        ? migrationData.migrated_count 
+        : 0;
+        
+      const message = typeof migrationData.message === 'string' 
+        ? migrationData.message 
+        : 'Migração concluída com sucesso';
       
       return {
         success: true,
