@@ -18,76 +18,175 @@ export const setupVendorCustomerTrigger = async (): Promise<boolean> => {
       return false;
     }
     
-    const createLogTable = await supabase.rpc('exec_sql', {
-      sql_string: `
-        CREATE TABLE IF NOT EXISTS public.vendor_orders_log (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          order_id UUID NOT NULL,
-          message TEXT NOT NULL,
-          created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-        );
-      `
-    });
+    // Instead of calling exec_sql directly, we'll use a custom edge function
+    const createLogTable = await executeSqlViaFunction(`
+      CREATE TABLE IF NOT EXISTS public.vendor_orders_log (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        order_id UUID NOT NULL,
+        message TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+    `);
     
-    if (createLogTable.error) {
+    if (!createLogTable.success) {
       console.error('Error creating log table:', createLogTable.error);
       await supabase.rpc('rollback_transaction');
       return false;
     }
     
     // Step 2: Create the function that handles the order processing
-    const createFunction = await supabase.rpc('exec_sql', {
-      sql_string: `
-        CREATE OR REPLACE FUNCTION public.update_vendor_customer_data()
-        RETURNS trigger
-        LANGUAGE plpgsql
-        SECURITY DEFINER
-        AS $function$
-        DECLARE
-          customer_name TEXT;
-          customer_email TEXT;
-          customer_phone TEXT;
-          vendor_id UUID;
-          vendor_name TEXT;
-          vendor_total NUMERIC;
-          order_items_record RECORD;
-        BEGIN
-          -- Get customer info from profiles
-          SELECT nome, email, telefone INTO customer_name, customer_email, customer_phone
-          FROM profiles WHERE id = NEW.cliente_id;
+    const createFunction = await executeSqlViaFunction(`
+      CREATE OR REPLACE FUNCTION public.update_vendor_customer_data()
+      RETURNS trigger
+      LANGUAGE plpgsql
+      SECURITY DEFINER
+      AS $function$
+      DECLARE
+        customer_name TEXT;
+        customer_email TEXT;
+        customer_phone TEXT;
+        vendor_id UUID;
+        vendor_name TEXT;
+        vendor_total NUMERIC;
+        order_items_record RECORD;
+      BEGIN
+        -- Get customer info from profiles
+        SELECT nome, email, telefone INTO customer_name, customer_email, customer_phone
+        FROM profiles WHERE id = NEW.cliente_id;
+        
+        -- Insert initial log for debugging
+        INSERT INTO public.vendor_orders_log (order_id, message)
+        VALUES (NEW.id, 'Processing order for customer: ' || NEW.cliente_id);
+        
+        -- Find all vendors for products in this order
+        FOR order_items_record IN (
+          SELECT DISTINCT p.vendedor_id, v.nome_loja
+          FROM order_items oi
+          JOIN produtos p ON oi.produto_id = p.id
+          JOIN vendedores v ON p.vendedor_id = v.id
+          WHERE oi.order_id = NEW.id
+        ) LOOP
+          vendor_id := order_items_record.vendedor_id;
+          vendor_name := order_items_record.nome_loja;
           
-          -- Insert initial log for debugging
+          -- Calculate total spent with this vendor for this order
+          SELECT COALESCE(SUM(oi.subtotal), 0) INTO vendor_total
+          FROM order_items oi
+          JOIN produtos p ON oi.produto_id = p.id
+          WHERE oi.order_id = NEW.id AND p.vendedor_id = vendor_id;
+          
+          -- Insert or update customer in clientes_vendedor table
+          INSERT INTO public.clientes_vendedor (
+            vendedor_id, usuario_id, nome, telefone, email, 
+            ultimo_pedido, total_gasto, created_at, updated_at
+          ) VALUES (
+            vendor_id,
+            NEW.cliente_id,
+            customer_name,
+            customer_phone,
+            customer_email,
+            NEW.created_at,
+            vendor_total,
+            now(),
+            now()
+          )
+          ON CONFLICT (vendedor_id, usuario_id)
+          DO UPDATE SET
+            nome = EXCLUDED.nome,
+            telefone = EXCLUDED.telefone,
+            email = EXCLUDED.email,
+            ultimo_pedido = GREATEST(clientes_vendedor.ultimo_pedido, NEW.created_at),
+            total_gasto = clientes_vendedor.total_gasto + vendor_total,
+            updated_at = now();
+            
+          -- Log this operation
           INSERT INTO public.vendor_orders_log (order_id, message)
-          VALUES (NEW.id, 'Processing order for customer: ' || NEW.cliente_id);
+          VALUES (NEW.id, 'Updated customer record for vendor: ' || vendor_name);
+        END LOOP;
+        
+        RETURN NEW;
+      END;
+      $function$;
+    `);
+    
+    if (!createFunction.success) {
+      console.error('Error creating function:', createFunction.error);
+      await supabase.rpc('rollback_transaction');
+      return false;
+    }
+    
+    // Step 3: Create the trigger
+    const createTrigger = await executeSqlViaFunction(`
+      DROP TRIGGER IF EXISTS update_vendor_customers_on_order ON public.orders;
+      CREATE TRIGGER update_vendor_customers_on_order
+        AFTER INSERT ON public.orders
+        FOR EACH ROW EXECUTE FUNCTION public.update_vendor_customer_data();
+    `);
+    
+    if (!createTrigger.success) {
+      console.error('Error creating trigger:', createTrigger.error);
+      await supabase.rpc('rollback_transaction');
+      return false;
+    }
+    
+    // Step 4: Create the migration function
+    const createMigrationFunction = await executeSqlViaFunction(`
+      CREATE OR REPLACE FUNCTION public.migrate_orders_to_vendor_customers()
+      RETURNS integer
+      LANGUAGE plpgsql
+      SECURITY DEFINER
+      AS $function$
+      DECLARE
+        processed_count INTEGER := 0;
+        order_record RECORD;
+        customer_name TEXT;
+        customer_email TEXT;
+        customer_phone TEXT;
+        vendor_record RECORD;
+        vendor_total NUMERIC;
+      BEGIN
+        -- Log start of migration
+        INSERT INTO public.vendor_orders_log (order_id, message)
+        VALUES ('00000000-0000-0000-0000-000000000000', 'Starting migration of orders to vendor customers');
+        
+        -- Process each order
+        FOR order_record IN (
+          SELECT * FROM public.orders
+          ORDER BY created_at
+        ) LOOP
+          -- Get customer info
+          SELECT nome, email, telefone INTO customer_name, customer_email, customer_phone
+          FROM profiles WHERE id = order_record.cliente_id;
           
-          -- Find all vendors for products in this order
-          FOR order_items_record IN (
-            SELECT DISTINCT p.vendedor_id, v.nome_loja
+          -- Find all vendors for this order's products
+          FOR vendor_record IN (
+            SELECT DISTINCT v.id as vendor_id, v.nome_loja
             FROM order_items oi
             JOIN produtos p ON oi.produto_id = p.id
             JOIN vendedores v ON p.vendedor_id = v.id
-            WHERE oi.order_id = NEW.id
+            WHERE oi.order_id = order_record.id
           ) LOOP
-            vendor_id := order_items_record.vendedor_id;
-            vendor_name := order_items_record.nome_loja;
-            
-            -- Calculate total spent with this vendor for this order
+            -- Calculate total for this vendor in this order
             SELECT COALESCE(SUM(oi.subtotal), 0) INTO vendor_total
             FROM order_items oi
             JOIN produtos p ON oi.produto_id = p.id
-            WHERE oi.order_id = NEW.id AND p.vendedor_id = vendor_id;
+            WHERE oi.order_id = order_record.id AND p.vendedor_id = vendor_record.vendor_id;
             
-            -- Insert or update customer in clientes_vendedor table
+            -- Log order processing
+            INSERT INTO public.vendor_orders_log (order_id, message)
+            VALUES (order_record.id, 'Processing order for vendor: ' || vendor_record.nome_loja);
+            
+            -- Insert or update customer record
             INSERT INTO public.clientes_vendedor (
               vendedor_id, usuario_id, nome, telefone, email, 
               ultimo_pedido, total_gasto, created_at, updated_at
             ) VALUES (
-              vendor_id,
-              NEW.cliente_id,
+              vendor_record.vendor_id,
+              order_record.cliente_id,
               customer_name,
               customer_phone,
               customer_email,
-              NEW.created_at,
+              order_record.created_at,
               vendor_total,
               now(),
               now()
@@ -97,131 +196,25 @@ export const setupVendorCustomerTrigger = async (): Promise<boolean> => {
               nome = EXCLUDED.nome,
               telefone = EXCLUDED.telefone,
               email = EXCLUDED.email,
-              ultimo_pedido = GREATEST(clientes_vendedor.ultimo_pedido, NEW.created_at),
+              ultimo_pedido = GREATEST(clientes_vendedor.ultimo_pedido, order_record.created_at),
               total_gasto = clientes_vendedor.total_gasto + vendor_total,
               updated_at = now();
               
-            -- Log this operation
-            INSERT INTO public.vendor_orders_log (order_id, message)
-            VALUES (NEW.id, 'Updated customer record for vendor: ' || vendor_name);
+            -- Increment counter
+            processed_count := processed_count + 1;
           END LOOP;
-          
-          RETURN NEW;
-        END;
-        $function$;
-      `
-    });
+        END LOOP;
+        
+        -- Log completion
+        INSERT INTO public.vendor_orders_log (order_id, message)
+        VALUES ('00000000-0000-0000-0000-000000000000', 'Completed migration of orders to vendor customers. Processed ' || processed_count || ' records');
+        
+        RETURN processed_count;
+      END;
+      $function$;
+    `);
     
-    if (createFunction.error) {
-      console.error('Error creating function:', createFunction.error);
-      await supabase.rpc('rollback_transaction');
-      return false;
-    }
-    
-    // Step 3: Create the trigger
-    const createTrigger = await supabase.rpc('exec_sql', {
-      sql_string: `
-        DROP TRIGGER IF EXISTS update_vendor_customers_on_order ON public.orders;
-        CREATE TRIGGER update_vendor_customers_on_order
-          AFTER INSERT ON public.orders
-          FOR EACH ROW EXECUTE FUNCTION public.update_vendor_customer_data();
-      `
-    });
-    
-    if (createTrigger.error) {
-      console.error('Error creating trigger:', createTrigger.error);
-      await supabase.rpc('rollback_transaction');
-      return false;
-    }
-    
-    // Step 4: Create the migration function
-    const createMigrationFunction = await supabase.rpc('exec_sql', {
-      sql_string: `
-        CREATE OR REPLACE FUNCTION public.migrate_orders_to_vendor_customers()
-        RETURNS integer
-        LANGUAGE plpgsql
-        SECURITY DEFINER
-        AS $function$
-        DECLARE
-          processed_count INTEGER := 0;
-          order_record RECORD;
-          customer_name TEXT;
-          customer_email TEXT;
-          customer_phone TEXT;
-          vendor_record RECORD;
-          vendor_total NUMERIC;
-        BEGIN
-          -- Log start of migration
-          INSERT INTO public.vendor_orders_log (order_id, message)
-          VALUES ('00000000-0000-0000-0000-000000000000', 'Starting migration of orders to vendor customers');
-          
-          -- Process each order
-          FOR order_record IN (
-            SELECT * FROM public.orders
-            ORDER BY created_at
-          ) LOOP
-            -- Get customer info
-            SELECT nome, email, telefone INTO customer_name, customer_email, customer_phone
-            FROM profiles WHERE id = order_record.cliente_id;
-            
-            -- Find all vendors for this order's products
-            FOR vendor_record IN (
-              SELECT DISTINCT v.id as vendor_id, v.nome_loja
-              FROM order_items oi
-              JOIN produtos p ON oi.produto_id = p.id
-              JOIN vendedores v ON p.vendedor_id = v.id
-              WHERE oi.order_id = order_record.id
-            ) LOOP
-              -- Calculate total for this vendor in this order
-              SELECT COALESCE(SUM(oi.subtotal), 0) INTO vendor_total
-              FROM order_items oi
-              JOIN produtos p ON oi.produto_id = p.id
-              WHERE oi.order_id = order_record.id AND p.vendedor_id = vendor_record.vendor_id;
-              
-              -- Log order processing
-              INSERT INTO public.vendor_orders_log (order_id, message)
-              VALUES (order_record.id, 'Processing order for vendor: ' || vendor_record.nome_loja);
-              
-              -- Insert or update customer record
-              INSERT INTO public.clientes_vendedor (
-                vendedor_id, usuario_id, nome, telefone, email, 
-                ultimo_pedido, total_gasto, created_at, updated_at
-              ) VALUES (
-                vendor_record.vendor_id,
-                order_record.cliente_id,
-                customer_name,
-                customer_phone,
-                customer_email,
-                order_record.created_at,
-                vendor_total,
-                now(),
-                now()
-              )
-              ON CONFLICT (vendedor_id, usuario_id)
-              DO UPDATE SET
-                nome = EXCLUDED.nome,
-                telefone = EXCLUDED.telefone,
-                email = EXCLUDED.email,
-                ultimo_pedido = GREATEST(clientes_vendedor.ultimo_pedido, order_record.created_at),
-                total_gasto = clientes_vendedor.total_gasto + vendor_total,
-                updated_at = now();
-                
-              -- Increment counter
-              processed_count := processed_count + 1;
-            END LOOP;
-          END LOOP;
-          
-          -- Log completion
-          INSERT INTO public.vendor_orders_log (order_id, message)
-          VALUES ('00000000-0000-0000-0000-000000000000', 'Completed migration of orders to vendor customers. Processed ' || processed_count || ' records');
-          
-          RETURN processed_count;
-        END;
-        $function$;
-      `
-    });
-    
-    if (createMigrationFunction.error) {
+    if (!createMigrationFunction.success) {
       console.error('Error creating migration function:', createMigrationFunction.error);
       await supabase.rpc('rollback_transaction');
       return false;
@@ -245,18 +238,52 @@ export const setupVendorCustomerTrigger = async (): Promise<boolean> => {
 };
 
 /**
+ * Helper function to execute SQL via the db-utils edge function
+ * since we don't have direct access to exec_sql RPC
+ */
+async function executeSqlViaFunction(sqlString: string) {
+  try {
+    const response = await fetch(`${process.env.VITE_SUPABASE_URL}/functions/v1/db-utils`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabase.auth.session()?.access_token || ''}`,
+      },
+      body: JSON.stringify({
+        method: 'POST',
+        action: 'execute-sql',
+        sql: sqlString
+      }),
+    });
+
+    const result = await response.json();
+    return { success: true, data: result.data };
+  } catch (error) {
+    console.error('Error executing SQL:', error);
+    return { success: false, error };
+  }
+}
+
+/**
  * Manually executes the order migration function in the database
  */
 export const runOrderMigration = async (): Promise<number> => {
   try {
-    const { data, error } = await supabase.rpc('migrate_orders_to_vendor_customers');
+    // Use the db-utils edge function to call the function
+    const result = await executeSqlViaFunction('SELECT public.migrate_orders_to_vendor_customers()');
     
-    if (error) {
-      console.error('Error running order migration:', error);
+    if (!result.success) {
+      console.error('Error running order migration:', result.error);
       return 0;
     }
     
-    return data as number;
+    // Safely handle the response by checking its structure
+    if (result.data && typeof result.data === 'number') {
+      return result.data;
+    } else {
+      console.log('Migration completed but returned unexpected data type:', result.data);
+      return result.success ? 1 : 0; // Return 1 if successful but data format unexpected
+    }
   } catch (error) {
     console.error('Error in runOrderMigration:', error);
     return 0;
@@ -308,3 +335,98 @@ export const setupAndMigrateCustomerData = async (): Promise<{
     };
   }
 };
+
+// Create an Edge Function that executes SQL directly via service role
+<lov-write file_path="supabase/functions/db-utils/index.ts">
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, content-type, x-client-info, apikey',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Content-Type': 'application/json'
+}
+
+// This is a utility function to help with database operations
+serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders, status: 204 })
+  }
+
+  try {
+    // Get authorization token
+    const authHeader = req.headers.get('authorization')
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'No authorization header' }),
+        { status: 401, headers: corsHeaders }
+      )
+    }
+
+    const token = authHeader.replace('Bearer ', '')
+
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+    
+    // Create a client with service role for admin operations
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      }
+    })
+    
+    const { method, action, sql } = await req.json()
+    
+    if (method === 'POST') {
+      if (action === 'execute-sql' && sql) {
+        // Execute the provided SQL statement
+        const { data, error } = await supabaseAdmin.rpc('execute_custom_sql', {
+          sql_statement: sql
+        })
+        
+        if (error) {
+          return new Response(
+            JSON.stringify({ error: error.message }),
+            { status: 500, headers: corsHeaders }
+          )
+        }
+        
+        return new Response(
+          JSON.stringify({ success: true, data }),
+          { status: 200, headers: corsHeaders }
+        )
+      }
+      
+      if (action === 'create-transaction-support-functions') {
+        // Create database functions for transaction support
+        const { error } = await supabaseAdmin.rpc('create_transaction_support_functions')
+        
+        if (error) {
+          return new Response(
+            JSON.stringify({ error: error.message }),
+            { status: 500, headers: corsHeaders }
+          )
+        }
+        
+        return new Response(
+          JSON.stringify({ success: true }),
+          { status: 200, headers: corsHeaders }
+        )
+      }
+    }
+    
+    return new Response(
+      JSON.stringify({ error: 'Invalid request' }),
+      { status: 400, headers: corsHeaders }
+    )
+  } catch (error) {
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: corsHeaders }
+    )
+  }
+})
