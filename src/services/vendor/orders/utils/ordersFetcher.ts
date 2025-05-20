@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { OrderItem, VendorOrder, OrderFilters } from '../types';
 import { fetchCustomerInfo } from './clientInfoFetcher';
@@ -91,12 +92,12 @@ export const fetchDirectVendorOrdersWithDebug = async (
     // First, get all products belonging to this vendor for debugging
     const { data: vendorProducts, error: vendorProductsError } = await supabase
       .from('produtos')
-      .select('id, nome')
+      .select('id, nome, descricao, preco, categoria, vendedor_id')
       .eq('vendedor_id', vendorId);
       
     if (vendorProductsError) {
       console.error('🚫 [fetchDirectVendorOrdersWithDebug] Error fetching vendor products:', vendorProductsError);
-      return {orders: []};
+      return {orders: [], debug: {error: vendorProductsError.message, vendorId}};
     }
     
     const debugInfo: any = {
@@ -104,7 +105,8 @@ export const fetchDirectVendorOrdersWithDebug = async (
       timestamp: new Date().toISOString(),
       vendorProductsCount: vendorProducts?.length || 0,
       vendorProductsSample: vendorProducts?.slice(0, 3) || [],
-      queriedTables: []
+      queriedTables: [],
+      queries: [] // Add a new array to store query details
     };
     
     if (!vendorProducts || vendorProducts.length === 0) {
@@ -120,12 +122,20 @@ export const fetchDirectVendorOrdersWithDebug = async (
     
     // Query order_items that contain vendor's products
     // This is more reliable than 'itens_pedido' which might be legacy
-    const { data: orderItemsData, error: orderItemsError } = await supabase
+    const orderItemsQuery = supabase
       .from('order_items')
-      .select('order_id, produto_id')
+      .select('order_id, produto_id, quantidade, preco_unitario, subtotal')
       .in('produto_id', vendorProductIds);
       
     debugInfo.queriedTables.push('order_items');
+    debugInfo.queries.push({
+      table: 'order_items',
+      operation: 'select',
+      filter: `produto_id IN [${vendorProductIds.slice(0, 3)}...]`,
+      timestamp: new Date().toISOString()
+    });
+    
+    const { data: orderItemsData, error: orderItemsError } = await orderItemsQuery;
     
     if (orderItemsError) {
       console.error('🚫 [fetchDirectVendorOrdersWithDebug] Error querying order_items:', orderItemsError);
@@ -138,6 +148,12 @@ export const fetchDirectVendorOrdersWithDebug = async (
         .in('produto_id', vendorProductIds);
         
       debugInfo.queriedTables.push('itens_pedido');
+      debugInfo.queries.push({
+        table: 'itens_pedido',
+        operation: 'select',
+        filter: `produto_id IN [${vendorProductIds.slice(0, 3)}...]`,
+        timestamp: new Date().toISOString()
+      });
       
       if (legacyItemsError) {
         console.error('🚫 [fetchDirectVendorOrdersWithDebug] Error querying legacy itens_pedido:', legacyItemsError);
@@ -164,6 +180,12 @@ export const fetchDirectVendorOrdersWithDebug = async (
         .in('id', legacyOrderIds);
         
       debugInfo.queriedTables.push('pedidos');
+      debugInfo.queries.push({
+        table: 'pedidos',
+        operation: 'select',
+        filter: `id IN [${legacyOrderIds.slice(0, 3)}...]`,
+        timestamp: new Date().toISOString()
+      });
       
       if (legacyOrdersError) {
         console.error('🚫 [fetchDirectVendorOrdersWithDebug] Error fetching legacy orders:', legacyOrdersError);
@@ -188,6 +210,17 @@ export const fetchDirectVendorOrdersWithDebug = async (
     if (!orderItemsData || orderItemsData.length === 0) {
       console.log('⚠️ [fetchDirectVendorOrdersWithDebug] No order items found containing vendor products');
       debugInfo.orderItemsCount = 0;
+      
+      // Additional diagnostics - check if ANY order_items exist
+      const { count: totalOrderItemsCount, error: countError } = await supabase
+        .from('order_items')
+        .select('*', { count: 'exact', head: true });
+        
+      if (!countError) {
+        debugInfo.totalOrderItemsInSystem = totalOrderItemsCount || 0;
+        console.log(`ℹ️ [fetchDirectVendorOrdersWithDebug] Total order_items in system: ${totalOrderItemsCount || 0}`);
+      }
+      
       return {orders: [], debug: debugInfo};
     }
     
@@ -219,6 +252,12 @@ export const fetchDirectVendorOrdersWithDebug = async (
       .in('id', orderIds);
       
     debugInfo.queriedTables.push('orders');
+    debugInfo.queries.push({
+      table: 'orders',
+      operation: 'select',
+      filter: `id IN [${orderIds.slice(0, 3)}...]`,
+      timestamp: new Date().toISOString()
+    });
       
     // Apply filters if provided
     if (filters) {
@@ -251,6 +290,17 @@ export const fetchDirectVendorOrdersWithDebug = async (
     if (!ordersData || ordersData.length === 0) {
       console.log('⚠️ [fetchDirectVendorOrdersWithDebug] No orders found matching the criteria');
       debugInfo.ordersCount = 0;
+      
+      // Check if the orders table exists and has data at all
+      const { count: totalOrdersCount, error: ordersCountError } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true });
+        
+      if (!ordersCountError) {
+        debugInfo.totalOrdersInSystem = totalOrdersCount || 0;
+        console.log(`ℹ️ [fetchDirectVendorOrdersWithDebug] Total orders in system: ${totalOrdersCount || 0}`);
+      }
+      
       return {orders: [], debug: debugInfo};
     }
     
@@ -276,6 +326,7 @@ export const fetchDirectVendorOrdersWithDebug = async (
         
         // Skip this order if none of the items belong to this vendor
         if (vendorOrderItems.length === 0) {
+          console.log(`⚠️ [fetchDirectVendorOrdersWithDebug] Order ${order.id} has no items from this vendor after filtering`);
           continue;
         }
         
@@ -301,6 +352,11 @@ export const fetchDirectVendorOrdersWithDebug = async (
         });
       } catch (err) {
         console.error('🚫 [fetchDirectVendorOrdersWithDebug] Error processing order:', order.id, err);
+        debugInfo.processingErrors = debugInfo.processingErrors || [];
+        debugInfo.processingErrors.push({
+          orderId: order.id,
+          error: err instanceof Error ? err.message : 'Unknown error'
+        });
       }
     }
     
