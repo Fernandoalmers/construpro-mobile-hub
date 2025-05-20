@@ -129,36 +129,42 @@ export const useVendorOrders = () => {
     queryKey: ['vendorOrders'],
     queryFn: async () => {
       console.log("🔍 [useVendorOrders] Fetching vendor orders from service...");
-      const results = await getVendorOrders();
-      console.log(`📊 [useVendorOrders] Fetched ${results.length} vendor orders`);
       
-      // Additional check for debugging if no orders were found
-      if (results.length === 0) {
-        console.log("⚠️ [useVendorOrders] No orders returned from getVendorOrders");
+      try {
+        const results = await getVendorOrders();
+        console.log(`📊 [useVendorOrders] Fetched ${results.length} vendor orders`);
         
-        const profile = await getVendorProfile();
-        if (profile) {
-          console.log("ℹ️ [useVendorOrders] Vendor profile re-checked:", {
-            id: profile.id,
-            nome_loja: profile.nome_loja,
-            usuario_id: profile.usuario_id,
-            status: profile.status || 'unknown'
-          });
+        // Additional check for debugging if no orders were found
+        if (results.length === 0) {
+          console.log("⚠️ [useVendorOrders] No orders returned from getVendorOrders");
           
-          // If status is pending, log a warning
-          if (profile.status === 'pendente') {
-            console.warn("⚠️ [useVendorOrders] Vendor has status 'pendente', which may be preventing orders from showing");
+          const profile = await getVendorProfile();
+          if (profile) {
+            console.log("ℹ️ [useVendorOrders] Vendor profile re-checked:", {
+              id: profile.id,
+              nome_loja: profile.nome_loja,
+              usuario_id: profile.usuario_id,
+              status: profile.status || 'unknown'
+            });
+            
+            // If status is pending, log a warning
+            if (profile.status === 'pendente') {
+              console.warn("⚠️ [useVendorOrders] Vendor has status 'pendente', which may be preventing orders from showing");
+            }
           }
+        } else {
+          console.log("✅ [useVendorOrders] Orders found, sample first order:", {
+            id: results[0]?.id,
+            status: results[0]?.status,
+            items_count: results[0]?.itens?.length || 0
+          });
         }
-      } else {
-        console.log("✅ [useVendorOrders] Orders found, sample first order:", {
-          id: results[0]?.id,
-          status: results[0]?.status,
-          items_count: results[0]?.itens?.length || 0
-        });
+        
+        return results;
+      } catch (error) {
+        console.error("🚫 [useVendorOrders] Error fetching orders:", error);
+        throw error;
       }
-      
-      return results;
     },
     staleTime: 30 * 1000, // 30 seconds - reduced to get fresher data
     retry: 3, // Increase retries for more resilience

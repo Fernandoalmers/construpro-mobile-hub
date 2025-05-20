@@ -69,8 +69,7 @@ export const fetchOrderItemsForOrder = async (orderId: string): Promise<OrderIte
 };
 
 /**
- * Fetches orders directly for a vendor by filtering the pedidos table
- * using the vendedor_id field.
+ * Fetches orders that are associated with a vendor by checking order_items and produtos tables
  * 
  * @param vendorId The ID of the vendor
  * @param filters Optional filters for the orders
@@ -81,27 +80,68 @@ export const fetchDirectVendorOrders = async (
   filters?: OrderFilters
 ): Promise<VendorOrder[]> => {
   try {
-    console.log(`🔍 [fetchDirectVendorOrders] Fetching orders directly for vendor ID: ${vendorId}`);
+    console.log(`🔍 [fetchDirectVendorOrders] Fetching orders for vendor ID: ${vendorId}`);
     
     if (!vendorId) {
       console.error('🚫 [fetchDirectVendorOrders] Vendor ID is required');
       return [];
     }
     
+    // First, we need to get products that belong to this vendor
+    const { data: vendorProducts, error: vendorProductsError } = await supabase
+      .from('produtos')
+      .select('id')
+      .eq('vendedor_id', vendorId);
+      
+    if (vendorProductsError) {
+      console.error('🚫 [fetchDirectVendorOrders] Error fetching vendor products:', vendorProductsError);
+      return [];
+    }
+    
+    if (!vendorProducts || vendorProducts.length === 0) {
+      console.log('⚠️ [fetchDirectVendorOrders] No products found for vendor:', vendorId);
+      return [];
+    }
+    
+    const vendorProductIds = vendorProducts.map(product => product.id);
+    console.log(`✅ [fetchDirectVendorOrders] Found ${vendorProductIds.length} products for vendor ${vendorId}`);
+    
+    // Find order_items that contain the vendor's products
+    const { data: orderItemsData, error: orderItemsError } = await supabase
+      .from('order_items')
+      .select('order_id')
+      .in('produto_id', vendorProductIds);
+      
+    if (orderItemsError) {
+      console.error('🚫 [fetchDirectVendorOrders] Error fetching order items:', orderItemsError);
+      return [];
+    }
+    
+    if (!orderItemsData || orderItemsData.length === 0) {
+      console.log('⚠️ [fetchDirectVendorOrders] No orders found containing this vendor\'s products');
+      return [];
+    }
+    
+    // Get unique order IDs
+    const orderIds = [...new Set(orderItemsData.map(item => item.order_id))];
+    console.log(`✅ [fetchDirectVendorOrders] Found ${orderIds.length} orders containing vendor's products`);
+    
+    // Fetch full order details from the orders table
     let query = supabase
-      .from('pedidos')
+      .from('orders')
       .select(`
         id, 
-        usuario_id,
+        cliente_id,
         valor_total,
         status,
         forma_pagamento,
         endereco_entrega,
         created_at,
-        vendedor_id,
-        data_entrega_estimada
+        updated_at,
+        pontos_ganhos,
+        rastreio
       `)
-      .eq('vendedor_id', vendorId);
+      .in('id', orderIds);
       
     // Apply filters if provided
     if (filters) {
@@ -129,7 +169,7 @@ export const fetchDirectVendorOrders = async (
     }
     
     if (!ordersData || ordersData.length === 0) {
-      console.log('⚠️ [fetchDirectVendorOrders] No orders found for vendor:', vendorId);
+      console.log('⚠️ [fetchDirectVendorOrders] No orders found from orders table for the identified order IDs');
       return [];
     }
     
@@ -140,27 +180,41 @@ export const fetchDirectVendorOrders = async (
     
     for (const order of ordersData) {
       try {
-        // Fetch customer information using usuario_id
-        const clienteInfo = await fetchCustomerInfo(order.usuario_id, vendorId);
+        // Fetch customer information using cliente_id
+        const clienteInfo = await fetchCustomerInfo(order.cliente_id, vendorId);
         
-        // Fetch order items
+        // Fetch order items for this order
         const orderItems = await fetchOrderItemsForOrder(order.id);
+        
+        // Filter order items to only include this vendor's products
+        const vendorOrderItems = orderItems.filter(item => 
+          vendorProductIds.includes(item.produto_id)
+        );
+        
+        // Skip this order if none of the items belong to this vendor
+        if (vendorOrderItems.length === 0) {
+          continue;
+        }
+        
+        // Calculate subtotal for just this vendor's items
+        const vendorSubtotal = vendorOrderItems.reduce((sum, item) => 
+          sum + (item.subtotal || (item.quantidade * item.preco_unitario) || 0), 0);
         
         // Create vendor order object with all required information
         vendorOrders.push({
           id: order.id,
-          vendedor_id: order.vendedor_id,
-          cliente_id: order.usuario_id,
-          valor_total: order.valor_total,
-          status: order.status || 'pendente',
+          vendedor_id: vendorId, // Add vendor ID reference
+          cliente_id: order.cliente_id,
+          valor_total: vendorSubtotal, // Use subtotal of just this vendor's items
+          status: order.status || 'Pendente',
           forma_pagamento: order.forma_pagamento || 'Não especificado',
           endereco_entrega: order.endereco_entrega,
           created_at: order.created_at || new Date().toISOString(),
-          data_entrega_estimada: order.data_entrega_estimada,
-          pontos_ganhos: 0, // Default since the field doesn't exist in the table
-          rastreio: null, // Set to null since the column doesn't exist
+          data_entrega_estimada: null, // Not available in orders table
+          pontos_ganhos: order.pontos_ganhos || 0,
+          rastreio: order.rastreio,
           cliente: clienteInfo,
-          itens: orderItems
+          itens: vendorOrderItems
         });
       } catch (err) {
         console.error('🚫 [fetchDirectVendorOrders] Error processing order:', order.id, err);
@@ -192,16 +246,18 @@ export const fetchOrdersById = async (orderIds: string[]): Promise<any[]> => {
     console.log(`📝 [fetchOrdersById] Fetching ${orderIds.length} orders by IDs.`);
     
     const { data: ordersData, error: ordersError } = await supabase
-      .from('pedidos')
+      .from('orders')
       .select(`
         id, 
-        usuario_id, 
+        cliente_id, 
         valor_total,
         status,
         forma_pagamento,
         endereco_entrega,
         created_at,
-        vendedor_id
+        updated_at,
+        pontos_ganhos,
+        rastreio
       `)
       .in('id', orderIds)
       .order('created_at', { ascending: false });
@@ -224,5 +280,26 @@ export const fetchOrdersById = async (orderIds: string[]): Promise<any[]> => {
   }
 };
 
-// Export only the functions that are still relevant
-export { getVendorProductIds } from './productFetcher';
+// Function to get product IDs belonging to a vendor
+export const getVendorProductIds = async (vendorId: string): Promise<string[]> => {
+  try {
+    if (!vendorId) {
+      return [];
+    }
+    
+    const { data: products, error } = await supabase
+      .from('produtos')
+      .select('id')
+      .eq('vendedor_id', vendorId);
+      
+    if (error || !products) {
+      console.error('Error fetching vendor products:', error);
+      return [];
+    }
+    
+    return products.map(product => product.id);
+  } catch (error) {
+    console.error('Error in getVendorProductIds:', error);
+    return [];
+  }
+};

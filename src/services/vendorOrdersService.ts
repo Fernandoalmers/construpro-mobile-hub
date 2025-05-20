@@ -1,5 +1,5 @@
 
-import { getVendorOrders, updateOrderStatus, VendorOrder, OrderItem } from './vendor/orders';
+import { getVendorOrders, updateOrderStatus, VendorOrder, OrderItem, OrderFilters } from './vendor/orders';
 
 export { getVendorOrders, updateOrderStatus };
-export type { VendorOrder, OrderItem };
+export type { VendorOrder, OrderItem, OrderFilters };
