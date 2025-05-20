@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { getVendorProfile } from './vendorProfileService';
 import { toast } from '@/components/ui/sonner';
@@ -343,7 +344,7 @@ export const seedTestCustomers = async (count: number = 5): Promise<boolean> => 
   }
 };
 
-// New function to migrate customer data from existing point adjustments
+// Function to migrate customer data from existing point adjustments
 export const migrateCustomersFromPointAdjustments = async (): Promise<boolean> => {
   try {
     // Get vendor profile
@@ -425,5 +426,109 @@ export const migrateCustomersFromPointAdjustments = async (): Promise<boolean> =
   } catch (error) {
     console.error('Error in migrateCustomersFromPointAdjustments:', error);
     return false;
+  }
+};
+
+// Function to migrate customers data from existing orders
+export const migrateCustomersFromOrders = async (): Promise<boolean> => {
+  try {
+    const vendorProfile = await getVendorProfile();
+    if (!vendorProfile) {
+      console.error('Vendor profile not found');
+      return false;
+    }
+    
+    console.log('Starting migration of customers from orders for vendor:', vendorProfile.id);
+    
+    // Import the migration helper dynamically
+    const { setupAndMigrateCustomerData } = await import('./vendor/utils/migrateHelper');
+    
+    // Run the complete setup and migration
+    const result = await setupAndMigrateCustomerData();
+    
+    console.log('Migration result:', result);
+    
+    if (result.success) {
+      toast.success(result.message);
+      return true;
+    } else {
+      toast.error(result.message);
+      return false;
+    }
+  } catch (error) {
+    console.error('Error in migrateCustomersFromOrders:', error);
+    return false;
+  }
+};
+
+// Function to get specific customer details by email
+export const findCustomerByEmail = async (email: string): Promise<VendorCustomer | null> => {
+  try {
+    const vendorProfile = await getVendorProfile();
+    if (!vendorProfile) {
+      console.error('Vendor profile not found');
+      return null;
+    }
+    
+    // First find the user profile by email
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, nome, email, telefone')
+      .eq('email', email)
+      .maybeSingle();
+    
+    if (profileError || !profileData) {
+      console.error('Error finding profile by email or profile not found:', profileError);
+      return null;
+    }
+    
+    console.log('Found profile by email:', profileData);
+    
+    // Now check if this user is already a customer of this vendor
+    const { data: customerData, error: customerError } = await supabase
+      .from('clientes_vendedor')
+      .select('*')
+      .eq('vendedor_id', vendorProfile.id)
+      .eq('usuario_id', profileData.id)
+      .maybeSingle();
+    
+    if (customerError) {
+      console.error('Error checking for existing customer:', customerError);
+      return null;
+    }
+    
+    // If customer exists, return it
+    if (customerData) {
+      console.log('Customer already exists for this vendor:', customerData);
+      return customerData as VendorCustomer;
+    }
+    
+    // If not, create a new customer entry
+    console.log('Creating new customer entry for profile:', profileData.id);
+    const { data: newCustomer, error: createError } = await supabase
+      .from('clientes_vendedor')
+      .insert([{
+        vendedor_id: vendorProfile.id,
+        usuario_id: profileData.id,
+        nome: profileData.nome || 'Cliente',
+        email: profileData.email,
+        telefone: profileData.telefone,
+        total_gasto: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }])
+      .select()
+      .single();
+    
+    if (createError) {
+      console.error('Error creating new customer:', createError);
+      return null;
+    }
+    
+    console.log('Successfully created new customer:', newCustomer);
+    return newCustomer as VendorCustomer;
+  } catch (error) {
+    console.error('Error in findCustomerByEmail:', error);
+    return null;
   }
 };
