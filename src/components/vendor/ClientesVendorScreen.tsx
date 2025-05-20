@@ -1,25 +1,20 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search, Eye, Edit2, SortDesc, Download, RefreshCw, UserPlus } from 'lucide-react';
+import { ArrowLeft, Search, Eye, Edit2, SortDesc } from 'lucide-react';
 import { Card } from '@/components/ui/card';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import CustomInput from '../common/CustomInput';
 import CustomButton from '../common/CustomButton';
 import Avatar from '../common/Avatar';
 import ListEmptyState from '../common/ListEmptyState';
 import { useQuery } from '@tanstack/react-query';
-import { getVendorCustomers, VendorCustomer, migrateCustomersFromPointAdjustments, migrateCustomersFromOrders, findCustomerByEmail } from '@/services/vendorCustomersService';
+import { getVendorCustomers, VendorCustomer } from '@/services/vendorService';
 import LoadingState from '../common/LoadingState';
-import { toast } from '@/components/ui/sonner';
 
 const ClientesVendorScreen: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'nome' | 'total_gasto'>('total_gasto');
-  const [isImporting, setIsImporting] = useState(false);
-  const [emailSearch, setEmailSearch] = useState('');
-  const [isSearchingEmail, setIsSearchingEmail] = useState(false);
   
   // Fetch customers
   const { data: customers = [], isLoading, error, refetch } = useQuery({
@@ -51,71 +46,6 @@ const ClientesVendorScreen: React.FC = () => {
   
   const handleViewExtrato = (clienteId: string) => {
     navigate(`/vendor/clientes/${clienteId}/extrato`);
-  };
-
-  const handleMigrateFromOrders = async () => {
-    setIsImporting(true);
-    toast.loading("Importando clientes dos pedidos...");
-    
-    try {
-      const result = await migrateCustomersFromOrders();
-      if (result) {
-        toast.success("Clientes importados com sucesso dos pedidos existentes!");
-        refetch();
-      } else {
-        toast.error("Não foi possível importar clientes dos pedidos");
-      }
-    } catch (error) {
-      console.error("Erro ao importar clientes:", error);
-      toast.error("Erro ao importar clientes dos pedidos");
-    } finally {
-      setIsImporting(false);
-    }
-  };
-  
-  const handleMigrateFromAdjustments = async () => {
-    setIsImporting(true);
-    toast.loading("Importando clientes dos ajustes de pontos...");
-    
-    try {
-      const result = await migrateCustomersFromPointAdjustments();
-      if (result) {
-        toast.success("Clientes importados com sucesso dos ajustes de pontos!");
-        refetch();
-      } else {
-        toast.error("Não foi possível importar clientes dos ajustes");
-      }
-    } catch (error) {
-      console.error("Erro ao importar clientes:", error);
-      toast.error("Erro ao importar clientes dos ajustes");
-    } finally {
-      setIsImporting(false);
-    }
-  };
-
-  const handleEmailSearch = async () => {
-    if (!emailSearch || emailSearch.trim() === '') {
-      toast.error("Digite um email para buscar");
-      return;
-    }
-    
-    setIsSearchingEmail(true);
-    toast.loading(`Buscando cliente pelo email: ${emailSearch}`);
-    
-    try {
-      const result = await findCustomerByEmail(emailSearch);
-      if (result) {
-        toast.success(`Cliente encontrado: ${result.nome}`);
-        refetch();
-      } else {
-        toast.error(`Não foi encontrado cliente com email: ${emailSearch}`);
-      }
-    } catch (error) {
-      console.error("Erro ao buscar cliente por email:", error);
-      toast.error("Erro ao buscar cliente por email");
-    } finally {
-      setIsSearchingEmail(false);
-    }
   };
 
   if (isLoading) {
@@ -164,78 +94,6 @@ const ClientesVendorScreen: React.FC = () => {
       </div>
       
       <div className="p-6 space-y-6">
-        {/* Alert for import options */}
-        {customers.length === 0 && (
-          <Alert className="bg-blue-50 border-blue-200">
-            <AlertTitle className="text-blue-800">Nenhum cliente encontrado</AlertTitle>
-            <AlertDescription className="text-blue-700">
-              Você ainda não possui clientes na sua lista. Utilize os botões abaixo para importar clientes de pedidos existentes ou ajustes de pontos.
-            </AlertDescription>
-            <div className="flex flex-wrap gap-2 mt-3">
-              <CustomButton 
-                variant="primary"
-                onClick={handleMigrateFromOrders}
-                disabled={isImporting}
-                icon={<Download size={16} />}
-              >
-                {isImporting ? "Importando..." : "Importar clientes dos pedidos"}
-              </CustomButton>
-              <CustomButton 
-                variant="outline"
-                onClick={handleMigrateFromAdjustments}
-                disabled={isImporting}
-              >
-                {isImporting ? "Importando..." : "Importar dos ajustes de pontos"}
-              </CustomButton>
-            </div>
-          </Alert>
-        )}
-
-        {/* Search by email section */}
-        <Card className="p-4">
-          <h3 className="font-medium mb-2">Buscar cliente por email</h3>
-          <div className="flex gap-2">
-            <CustomInput
-              placeholder="Email do cliente..."
-              value={emailSearch}
-              onChange={(e) => setEmailSearch(e.target.value)}
-              className="w-full"
-            />
-            <CustomButton
-              variant="primary"
-              onClick={handleEmailSearch}
-              disabled={isSearchingEmail || !emailSearch}
-              icon={<UserPlus size={16} />}
-            >
-              {isSearchingEmail ? "Buscando..." : "Buscar"}
-            </CustomButton>
-          </div>
-          <p className="text-xs text-gray-500 mt-2">
-            Se o cliente existir no sistema mas não estiver vinculado à sua loja, ele será adicionado automaticamente.
-          </p>
-        </Card>
-
-        {/* Import and refresh actions */}
-        {customers.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            <CustomButton 
-              variant="outline"
-              onClick={() => refetch()}
-              icon={<RefreshCw size={16} />}
-            >
-              Atualizar lista
-            </CustomButton>
-            <CustomButton 
-              variant="outline"
-              onClick={handleMigrateFromOrders}
-              disabled={isImporting}
-              icon={<Download size={16} />}
-            >
-              {isImporting ? "Importando..." : "Importar clientes de pedidos"}
-            </CustomButton>
-          </div>
-        )}
-
         {/* Search and filters */}
         <div className="flex flex-col space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4">
           <CustomInput
@@ -355,7 +213,7 @@ const ClientesVendorScreen: React.FC = () => {
             <ListEmptyState
               icon={<Search className="h-12 w-12 text-gray-400" />}
               title="Nenhum cliente encontrado"
-              description={searchTerm ? "Nenhum cliente corresponde aos critérios de busca." : "Ainda não há clientes registrados."}
+              description="Ainda não há clientes registrados ou nenhum corresponde à busca."
             />
           )}
         </div>

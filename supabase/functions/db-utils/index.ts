@@ -40,14 +40,12 @@ serve(async (req) => {
       }
     })
     
-    const { method, action, sql } = await req.json()
+    const { method, action } = await req.json()
     
     if (method === 'POST') {
-      if (action === 'execute-sql' && sql) {
-        // Execute the provided SQL statement
-        const { data, error } = await supabaseAdmin.rpc('execute_custom_sql', {
-          sql_statement: sql
-        })
+      if (action === 'create-transaction-support-functions') {
+        // Create database functions for transaction support
+        const { error } = await supabaseAdmin.rpc('create_transaction_support_functions')
         
         if (error) {
           return new Response(
@@ -57,14 +55,14 @@ serve(async (req) => {
         }
         
         return new Response(
-          JSON.stringify({ success: true, data }),
+          JSON.stringify({ success: true }),
           { status: 200, headers: corsHeaders }
         )
       }
       
-      if (action === 'create-transaction-support-functions') {
-        // Create database functions for transaction support
-        const { error } = await supabaseAdmin.rpc('create_transaction_support_functions')
+      if (action === 'create-increment-points-function') {
+        // Create function to increment points safely
+        const { error } = await supabaseAdmin.rpc('create_increment_points_function')
         
         if (error) {
           return new Response(
