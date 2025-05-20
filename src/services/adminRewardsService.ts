@@ -17,11 +17,20 @@ export const fetchRewards = async (): Promise<AdminReward[]> => {
       return [];
     }
 
+    // Get the current admin user's ID
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      console.error('User not authenticated');
+      return [];
+    }
+
     // Since the rewards table might not exist in some installations,
     // we use the custom function and handle potential errors gracefully
     const { data, error } = await supabase
       .from('resgates')
       .select('*')
+      .or(`cliente_id.is.null,cliente_id.eq.${user.id}`)
       .order('created_at', { ascending: false });
 
     if (error) {
