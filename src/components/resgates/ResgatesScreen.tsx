@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search, History } from 'lucide-react';
+import { ArrowLeft, Search, History, Gift } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import LoadingState from '@/components/common/LoadingState';
