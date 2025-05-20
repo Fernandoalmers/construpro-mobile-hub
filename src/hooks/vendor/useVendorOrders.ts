@@ -6,7 +6,6 @@ import { getVendorOrders, VendorOrder, fetchDirectVendorOrdersWithDebug } from '
 import { ensureVendorProfileRole } from '@/services/vendorProfileService';
 import { getVendorProfile } from '@/services/vendorProfileService';
 import { runVendorDiagnostics, updateVendorStatus } from '@/services/vendor/orders/utils/diagnosticUtils';
-import { runOrdersMigration } from '@/services/vendor/utils/orderMigration';
 
 export const useVendorOrders = () => {
   const queryClient = useQueryClient();
@@ -55,29 +54,6 @@ export const useVendorOrders = () => {
               await fixVendorStatus(profile.id);
             }, 1500);
           }
-
-          // Run migration automatically on first load if there are no orders
-          setTimeout(async () => {
-            const debugResult = await fetchDirectVendorOrdersWithDebug(profile.id, undefined, true);
-            if (debugResult?.orders?.length === 0) {
-              console.log("⚠️ [useVendorOrders] No orders found, running migration automatically...");
-              
-              // Run orders migration first
-              const ordersMigrationResult = await runOrdersMigration();
-              if (ordersMigrationResult.success) {
-                console.log("✅ [useVendorOrders] Orders migration completed:", ordersMigrationResult);
-                toast.success("Migração de pedidos concluída automaticamente");
-              } else {
-                console.error("🚫 [useVendorOrders] Orders migration failed:", ordersMigrationResult);
-              }
-              
-              // Refresh data after migration
-              queryClient.invalidateQueries({ queryKey: ['vendorOrders'] });
-              setTimeout(() => {
-                refetch();
-              }, 1000);
-            }
-          }, 2000);
         } else {
           setVendorProfileStatus('not_found');
           console.error("🚫 [useVendorOrders] No vendor profile found for current user");
