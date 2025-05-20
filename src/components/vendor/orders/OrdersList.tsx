@@ -31,15 +31,17 @@ const OrdersList: React.FC<OrdersListProps> = ({
         console.log("⚠️ [OrdersList] No filters active, but still no orders - might be a data issue");
       }
     } else if (orders?.length > 0) {
-      console.log("✅ [OrdersList] Sample first order:", {
+      console.log("✅ [OrdersList] Orders found! Sample first order:", {
         id: orders[0]?.id,
         status: orders[0]?.status,
         cliente: orders[0]?.cliente?.nome,
-        items_count: orders[0]?.itens?.length || 0
+        items_count: orders[0]?.itens?.length || 0,
+        created_at: orders[0]?.created_at,
+        total: orders[0]?.valor_total
       });
       
-      // Log more detailed info about order structure to help with debugging
-      console.log("✅ [OrdersList] First order full structure:", JSON.stringify(orders[0], null, 2));
+      // Log all order IDs for easier debugging
+      console.log("📋 [OrdersList] All order IDs:", orders.map(o => o.id));
     }
   }, [orders, hasFilters]);
 
@@ -52,7 +54,7 @@ const OrdersList: React.FC<OrdersListProps> = ({
         description={
           hasFilters
             ? "Tente ajustar os filtros de busca" 
-            : "Você ainda não tem nenhum pedido"
+            : "Você ainda não recebeu nenhum pedido ou os dados estão sendo carregados. Tente ativar o modo de depuração."
         }
         action={
           hasFilters ? {

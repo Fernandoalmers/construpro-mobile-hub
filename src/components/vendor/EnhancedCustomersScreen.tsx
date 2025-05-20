@@ -1,27 +1,48 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { SearchX, Users, UserPlus } from 'lucide-react';
+import { SearchX, Users, UserPlus, RefreshCw, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { getVendorCustomers, searchCustomers, VendorCustomer } from '@/services/vendorCustomersService';
+import { 
+  getVendorCustomers, 
+  VendorCustomer, 
+  seedTestCustomers,
+  migrateCustomersFromPointAdjustments 
+} from '@/services/vendorCustomersService';
 import LoadingState from '../common/LoadingState';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from '@/components/ui/sonner';
 import VendorPagination from './common/VendorPagination';
 import { usePagination } from '@/hooks/vendor/usePagination';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 const EnhancedCustomersScreen: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('all');
+  const [isSeeding, setIsSeeding] = useState(false);
+  const [isMigrating, setIsMigrating] = useState(false);
 
-  // Fetch customers data
-  const { data: customers = [], isLoading, error, refetch } = useQuery({
+  // Fetch customers data with explicit refetch interval
+  const { 
+    data: customers = [], 
+    isLoading, 
+    error, 
+    refetch,
+    isRefetching
+  } = useQuery({
     queryKey: ['vendorCustomers'],
-    queryFn: getVendorCustomers
+    queryFn: getVendorCustomers,
+    staleTime: 30 * 1000, // 30 seconds
   });
+
+  // Debug effect to log customers data
+  useEffect(() => {
+    console.log('EnhancedCustomersScreen - customers data:', customers);
+  }, [customers]);
 
   // Filter customers based on search and tab
   const filteredCustomers = customers.filter((customer) => {
@@ -64,15 +85,77 @@ const EnhancedCustomersScreen: React.FC = () => {
     navigate(`/vendor/points-adjustment?customerId=${customerId}`);
   };
 
+  // Force refresh data
+  const handleForceRefresh = async () => {
+    toast.loading('Atualizando dados dos clientes...');
+    
+    // Clear React Query cache for this query
+    await refetch();
+    
+    toast.success('Dados atualizados com sucesso!');
+  };
+
+  // Seed test customers (for development only)
+  const handleSeedTestCustomers = async () => {
+    if (isSeeding) return;
+    
+    setIsSeeding(true);
+    toast.loading('Criando clientes de teste...');
+    
+    try {
+      const success = await seedTestCustomers(5);
+      if (success) {
+        toast.success('Clientes de teste criados com sucesso!');
+        refetch();
+      } else {
+        toast.error('Erro ao criar clientes de teste');
+      }
+    } catch (error) {
+      console.error('Error seeding customers:', error);
+      toast.error('Erro ao criar clientes de teste');
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
+  // Migrate customers from point adjustments
+  const handleMigrateCustomers = async () => {
+    if (isMigrating) return;
+    
+    setIsMigrating(true);
+    toast.loading('Migrando dados de clientes...');
+    
+    try {
+      const success = await migrateCustomersFromPointAdjustments();
+      if (success) {
+        toast.success('Clientes migrados com sucesso!');
+        refetch();
+      } else {
+        toast.error('Não foram encontrados dados para migração ou ocorreu um erro');
+      }
+    } catch (error) {
+      console.error('Error migrating customers:', error);
+      toast.error('Erro ao migrar clientes');
+    } finally {
+      setIsMigrating(false);
+    }
+  };
+
   if (isLoading) return <LoadingState text="Carregando clientes..." />;
 
   if (error) {
+    console.error('Error fetching customers:', error);
     return (
       <div className="p-6">
         <Card className="p-8 text-center">
           <h2 className="text-xl font-bold mb-4 text-red-500">Erro ao carregar clientes</h2>
           <p className="mb-4 text-gray-600">Ocorreu um erro ao tentar carregar a lista de clientes.</p>
-          <Button onClick={() => refetch()}>Tentar novamente</Button>
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
+            <Button onClick={() => refetch()}>Tentar novamente</Button>
+            <Button variant="outline" onClick={handleSeedTestCustomers} disabled={isSeeding}>
+              {isSeeding ? 'Criando...' : 'Criar clientes de teste'}
+            </Button>
+          </div>
         </Card>
       </div>
     );
@@ -83,9 +166,20 @@ const EnhancedCustomersScreen: React.FC = () => {
       <div className="bg-white p-4 shadow-sm">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           <h1 className="text-2xl font-bold">Clientes</h1>
-          <Button onClick={() => navigate('/vendor')}>
-            Voltar para o Dashboard
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline"
+              onClick={handleForceRefresh}
+              disabled={isRefetching}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} />
+              Atualizar
+            </Button>
+            <Button onClick={() => navigate('/vendor')}>
+              Voltar para o Dashboard
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -139,16 +233,72 @@ const EnhancedCustomersScreen: React.FC = () => {
           </Card>
         </div>
 
+        {/* Alert if no customers */}
+        {customers.length === 0 && (
+          <Alert className="bg-blue-50 border-blue-200 mb-4">
+            <AlertTitle className="text-blue-800">Nenhum cliente encontrado</AlertTitle>
+            <AlertDescription className="text-blue-700">
+              Você ainda não possui clientes registrados. Você pode criar clientes de teste para visualização
+              ou importar clientes de ajustes de pontos existentes.
+            </AlertDescription>
+            <div className="flex flex-wrap gap-3 mt-4">
+              <Button 
+                size="sm" 
+                variant="default" 
+                onClick={handleMigrateCustomers}
+                disabled={isMigrating}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                {isMigrating ? 'Migrando...' : 'Importar clientes de ajustes de pontos'}
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={handleSeedTestCustomers}
+                disabled={isSeeding}
+              >
+                {isSeeding ? 'Criando...' : 'Criar 5 clientes de teste'}
+              </Button>
+            </div>
+          </Alert>
+        )}
+
         {/* Customers List */}
         <div className="space-y-4">
-          <h2 className="font-bold text-lg">Lista de Clientes</h2>
+          <div className="flex justify-between items-center">
+            <h2 className="font-bold text-lg">Lista de Clientes</h2>
+            {customers.length === 0 ? null : (
+              <div className="flex gap-2">
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={handleMigrateCustomers}
+                  disabled={isMigrating}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  {isMigrating ? 'Migrando...' : 'Importar mais clientes'}
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={handleSeedTestCustomers}
+                  disabled={isSeeding}
+                >
+                  {isSeeding ? 'Criando...' : 'Adicionar clientes de teste'}
+                </Button>
+              </div>
+            )}
+          </div>
           
           {paginatedCustomers.length === 0 ? (
             <Card className="p-8 text-center">
               <SearchX className="mx-auto h-12 w-12 text-gray-400 mb-4" />
               <h3 className="text-lg font-medium mb-2">Nenhum cliente encontrado</h3>
               <p className="text-gray-500 mb-4">
-                Não encontramos clientes que correspondam a esse filtro.
+                {customers.length === 0 
+                  ? 'Você ainda não possui nenhum cliente registrado.' 
+                  : 'Não encontramos clientes que correspondam a esse filtro.'}
               </p>
               {searchTerm && (
                 <Button 
@@ -186,7 +336,7 @@ const EnhancedCustomersScreen: React.FC = () => {
                     <tbody className="bg-white divide-y divide-gray-200">
                       {paginatedCustomers.map((customer) => (
                         <tr key={customer.id} className="hover:bg-gray-50 cursor-pointer">
-                          <td className="px-6 py-4 whitespace-nowrap" onClick={() => handleViewCustomer(customer.id)}>
+                          <td className="px-6 py-4 whitespace-nowrap" onClick={() => handleViewCustomer(customer.usuario_id)}>
                             <div className="flex items-center">
                               <div className="h-10 w-10 flex-shrink-0 bg-gray-100 rounded-full flex items-center justify-center">
                                 {customer.nome?.[0]?.toUpperCase() || "C"}
@@ -196,21 +346,21 @@ const EnhancedCustomersScreen: React.FC = () => {
                                   {customer.nome || "Cliente"}
                                 </div>
                                 <div className="text-sm text-gray-500">
-                                  ID: {customer.id.substring(0, 8)}
+                                  ID: {customer.usuario_id.substring(0, 8)}
                                 </div>
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap" onClick={() => handleViewCustomer(customer.id)}>
+                          <td className="px-6 py-4 whitespace-nowrap" onClick={() => handleViewCustomer(customer.usuario_id)}>
                             <div className="text-sm text-gray-900">{customer.email || "—"}</div>
                             <div className="text-sm text-gray-500">{customer.telefone || "—"}</div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap" onClick={() => handleViewCustomer(customer.id)}>
+                          <td className="px-6 py-4 whitespace-nowrap" onClick={() => handleViewCustomer(customer.usuario_id)}>
                             <div className="text-sm text-gray-900">
                               {customer.ultimo_pedido ? new Date(customer.ultimo_pedido).toLocaleDateString() : "Nunca"}
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap" onClick={() => handleViewCustomer(customer.id)}>
+                          <td className="px-6 py-4 whitespace-nowrap" onClick={() => handleViewCustomer(customer.usuario_id)}>
                             <div className="text-sm text-gray-900 font-medium">
                               R$ {customer.total_gasto?.toFixed(2) || "0.00"}
                             </div>
@@ -220,14 +370,17 @@ const EnhancedCustomersScreen: React.FC = () => {
                               variant="outline"
                               size="sm"
                               className="mr-2"
-                              onClick={() => handleViewCustomer(customer.id)}
+                              onClick={() => handleViewCustomer(customer.usuario_id)}
                             >
                               Ver Detalhes
                             </Button>
                             <Button
                               size="sm"
                               variant="default"
-                              onClick={() => handleAddPoints(customer.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAddPoints(customer.usuario_id);
+                              }}
                               title="Adicionar ou remover pontos para este cliente"
                             >
                               <UserPlus className="h-4 w-4 mr-1" /> Pontos
@@ -243,11 +396,13 @@ const EnhancedCustomersScreen: React.FC = () => {
           )}
           
           {/* Pagination */}
-          <VendorPagination 
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={onPageChange}
-          />
+          {paginatedCustomers.length > 0 && (
+            <VendorPagination 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={onPageChange}
+            />
+          )}
         </div>
       </div>
     </div>

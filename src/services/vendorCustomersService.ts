@@ -1,11 +1,11 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { getVendorProfile } from './vendorProfileService';
+import { setupAndMigrateCustomerData } from './vendor/utils/migrateHelper';
 
 export interface VendorCustomer {
   id: string;
-  vendedor_id: string;
   usuario_id: string;
+  vendedor_id: string;
   nome: string;
   telefone?: string;
   email?: string;
@@ -13,40 +13,34 @@ export interface VendorCustomer {
   total_gasto: number;
   created_at?: string;
   updated_at?: string;
-  avatar?: string | null;
 }
 
-// Helper function to validate UUID format
-const isValidUUID = (str: string): boolean => {
-  // UUID regex pattern
-  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  return uuidPattern.test(str);
-};
-
-// Vendor Customers Management
+/**
+ * Fetches all customers for the current vendor
+ */
 export const getVendorCustomers = async (): Promise<VendorCustomer[]> => {
   try {
-    // Get vendor id
-    const vendorProfile = await getVendorProfile();
-    if (!vendorProfile) {
-      console.error('Vendor profile not found');
+    // Get the vendor ID for the current user
+    const { data: vendorData, error: vendorError } = await supabase.rpc('get_vendor_id');
+    
+    if (vendorError || !vendorData) {
+      console.error('Error fetching vendor ID:', vendorError);
       return [];
     }
     
-    console.log('Fetching customers for vendor:', vendorProfile.id);
+    const vendorId = vendorData;
     
+    // Get customers for this vendor
     const { data, error } = await supabase
       .from('clientes_vendedor')
       .select('*')
-      .eq('vendedor_id', vendorProfile.id)
-      .order('total_gasto', { ascending: false });
-    
+      .eq('vendedor_id', vendorId);
+      
     if (error) {
       console.error('Error fetching vendor customers:', error);
       return [];
     }
     
-    console.log(`Found ${data.length} customers for vendor ${vendorProfile.id}`);
     return data as VendorCustomer[];
   } catch (error) {
     console.error('Error in getVendorCustomers:', error);
@@ -54,24 +48,31 @@ export const getVendorCustomers = async (): Promise<VendorCustomer[]> => {
   }
 };
 
+/**
+ * Fetches a specific customer for the current vendor
+ */
 export const getVendorCustomer = async (userId: string): Promise<VendorCustomer | null> => {
   try {
-    // Get vendor id
-    const vendorProfile = await getVendorProfile();
-    if (!vendorProfile) {
-      console.error('Vendor profile not found');
+    // Get the vendor ID for the current user
+    const { data: vendorData, error: vendorError } = await supabase.rpc('get_vendor_id');
+    
+    if (vendorError || !vendorData) {
+      console.error('Error fetching vendor ID:', vendorError);
       return null;
     }
     
+    const vendorId = vendorData;
+    
+    // Get customer for this vendor
     const { data, error } = await supabase
       .from('clientes_vendedor')
       .select('*')
-      .eq('vendedor_id', vendorProfile.id)
+      .eq('vendedor_id', vendorId)
       .eq('usuario_id', userId)
-      .single();
-    
+      .maybeSingle();
+      
     if (error) {
-      console.error('Error fetching customer:', error);
+      console.error('Error fetching vendor customer:', error);
       return null;
     }
     
@@ -82,129 +83,43 @@ export const getVendorCustomer = async (userId: string): Promise<VendorCustomer 
   }
 };
 
-// Search for customers by name, email, or phone
-export const searchCustomers = async (searchTerm: string): Promise<any[]> => {
+/**
+ * Searches for customers by name, email, or phone
+ */
+export const searchCustomers = async (searchTerm: string): Promise<VendorCustomer[]> => {
   try {
-    // If search term is too short, don't search
-    if (searchTerm.length < 3) {
-      console.log('Search term too short, minimum 3 characters required');
+    // Get the vendor ID for the current user
+    const { data: vendorData, error: vendorError } = await supabase.rpc('get_vendor_id');
+    
+    if (vendorError || !vendorData) {
+      console.error('Error fetching vendor ID:', vendorError);
       return [];
     }
     
-    console.log('Searching profiles with term:', searchTerm);
+    const vendorId = vendorData;
     
-    // Get vendor id for filtering out the vendor from search results
-    const vendorProfile = await getVendorProfile();
-    let vendorId = '';
-    if (vendorProfile) {
-      vendorId = vendorProfile.id;
-      localStorage.setItem('vendor_profile_id', vendorId);
-    } else {
-      console.warn('Vendor profile not found, search might include all users');
-    }
-    
-    // Get vendor user ID to exclude from search results
-    const { data: vendorData } = await supabase
-      .from('vendedores')
-      .select('usuario_id')
-      .eq('id', vendorId)
-      .maybeSingle();
-    
-    const vendorUserId = vendorData?.usuario_id;
-    console.log('Excluding vendor user ID from search:', vendorUserId);
-    
-    // Check if it's a specific UUID format
-    if (isValidUUID(searchTerm)) {
-      console.log('Searching for specific user ID:', searchTerm);
-      const { data: specificUser, error: specificError } = await supabase
-        .from('profiles')
-        .select('id, nome, email, telefone, cpf')
-        .eq('id', searchTerm)
-        .neq('id', vendorUserId || '')  // Exclude vendor, with safe fallback
-        .limit(1);
-        
-      if (!specificError && specificUser && specificUser.length > 0) {
-        console.log('Found specific user by ID:', specificUser);
-        return specificUser;
-      }
-    }
-    
-    // Special handling for CPF format (remove any non-numeric characters)
-    const cleanedSearchTerm = searchTerm.replace(/\D/g, '');
-    if (cleanedSearchTerm.length >= 9) {
-      console.log('Searching by cleaned CPF:', cleanedSearchTerm);
-      const { data: cpfUsers, error: cpfError } = await supabase
-        .from('profiles')
-        .select('id, nome, email, telefone, cpf')
-        .ilike('cpf', `%${cleanedSearchTerm}%`)
-        .neq('id', vendorUserId || '')  // Exclude vendor
-        .limit(10);
-        
-      if (!cpfError && cpfUsers && cpfUsers.length > 0) {
-        console.log('Found users by CPF:', cpfUsers);
-        return cpfUsers;
-      }
-    }
-    
-    // Special handling for email format
-    if (searchTerm.includes('@')) {
-      console.log('Searching by email:', searchTerm);
-      const { data: emailUsers, error: emailError } = await supabase
-        .from('profiles')
-        .select('id, nome, email, telefone, cpf')
-        .ilike('email', `%${searchTerm}%`)
-        .neq('id', vendorUserId || '')  // Exclude vendor
-        .limit(10);
-        
-      if (!emailError && emailUsers && emailUsers.length > 0) {
-        console.log('Found users by email:', emailUsers);
-        return emailUsers;
-      }
-    }
-    
-    // Search by phone number (remove formatting)
-    if (/\d/.test(searchTerm)) {
-      const phoneSearchTerm = searchTerm.replace(/\D/g, '');
-      if (phoneSearchTerm.length >= 8) {
-        console.log('Searching by phone:', phoneSearchTerm);
-        const { data: phoneUsers, error: phoneError } = await supabase
-          .from('profiles')
-          .select('id, nome, email, telefone, cpf')
-          .ilike('telefone', `%${phoneSearchTerm}%`)
-          .neq('id', vendorUserId || '')  // Exclude vendor
-          .limit(10);
-          
-        if (!phoneError && phoneUsers && phoneUsers.length > 0) {
-          console.log('Found users by phone:', phoneUsers);
-          return phoneUsers;
-        }
-      }
-    }
-    
-    // Otherwise search by text terms (name, email, phone, cpf)
-    console.log('Performing general text search for:', searchTerm);
+    // Search for customers
     const { data, error } = await supabase
-      .from('profiles')
-      .select('id, nome, email, telefone, cpf')
-      .or(`nome.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,telefone.ilike.%${searchTerm}%,cpf.ilike.%${searchTerm}%`)
-      .neq('id', vendorUserId || '')  // Exclude vendor
-      .order('nome')
-      .limit(10);
-    
+      .from('clientes_vendedor')
+      .select('*')
+      .eq('vendedor_id', vendorId)
+      .or(`nome.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,telefone.ilike.%${searchTerm}%`);
+      
     if (error) {
-      console.error('Error searching customers:', error);
+      console.error('Error searching vendor customers:', error);
       return [];
     }
     
-    console.log(`Search found ${data?.length || 0} results`);
-    return data || [];
+    return data as VendorCustomer[];
   } catch (error) {
     console.error('Error in searchCustomers:', error);
     return [];
   }
 };
 
-// Fetch customer points
+/**
+ * Gets a customer's points by user ID
+ */
 export const getCustomerPoints = async (userId: string): Promise<number> => {
   try {
     const { data, error } = await supabase
@@ -212,16 +127,267 @@ export const getCustomerPoints = async (userId: string): Promise<number> => {
       .select('saldo_pontos')
       .eq('id', userId)
       .maybeSingle();
-    
-    if (error) {
+      
+    if (error || !data) {
       console.error('Error fetching customer points:', error);
       return 0;
     }
     
-    console.log('Customer points:', data?.saldo_pontos || 0);
-    return data?.saldo_pontos || 0;
+    return data.saldo_pontos || 0;
   } catch (error) {
     console.error('Error in getCustomerPoints:', error);
     return 0;
+  }
+};
+
+/**
+ * Adds a customer to the vendor's customer list
+ */
+export const addVendorCustomer = async (
+  email: string, 
+  name: string, 
+  phone?: string
+): Promise<boolean> => {
+  try {
+    // Get the vendor ID for the current user
+    const { data: vendorData, error: vendorError } = await supabase.rpc('get_vendor_id');
+    
+    if (vendorError || !vendorData) {
+      console.error('Error fetching vendor ID:', vendorError);
+      return false;
+    }
+    
+    const vendorId = vendorData;
+    
+    // First check if user exists in profiles
+    const { data: userData, error: userError } = await supabase
+      .from('profiles')
+      .select('id, nome, email, telefone')
+      .eq('email', email.toLowerCase())
+      .maybeSingle();
+      
+    if (userError) {
+      console.error('Error checking if user exists:', userError);
+      return false;
+    }
+    
+    if (!userData) {
+      console.log('User with email not found:', email);
+      return false;
+    }
+    
+    // Check if customer already exists for this vendor
+    const { data: existingCustomer, error: existingError } = await supabase
+      .from('clientes_vendedor')
+      .select('id')
+      .eq('vendedor_id', vendorId)
+      .eq('usuario_id', userData.id)
+      .maybeSingle();
+      
+    if (existingError) {
+      console.error('Error checking existing customer:', existingError);
+      return false;
+    }
+    
+    if (existingCustomer) {
+      console.log('Customer already exists for this vendor');
+      return true; // Customer already exists, consider this a success
+    }
+    
+    // Add customer to vendor's list
+    const { error: insertError } = await supabase
+      .from('clientes_vendedor')
+      .insert({
+        vendedor_id: vendorId,
+        usuario_id: userData.id,
+        nome: userData.nome || name,
+        email: userData.email || email,
+        telefone: userData.telefone || phone,
+        total_gasto: 0
+      });
+      
+    if (insertError) {
+      console.error('Error adding customer to vendor:', insertError);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in addVendorCustomer:', error);
+    return false;
+  }
+};
+
+/**
+ * Find a customer by email and add them to vendor's customer list if found
+ */
+export const findCustomerByEmail = async (email: string): Promise<VendorCustomer | null> => {
+  try {
+    // First check if user exists in profiles
+    const { data: userData, error: userError } = await supabase
+      .from('profiles')
+      .select('id, nome, email, telefone')
+      .eq('email', email.toLowerCase())
+      .maybeSingle();
+      
+    if (userError) {
+      console.error('Error checking if user exists:', userError);
+      return null;
+    }
+    
+    if (!userData) {
+      console.log('User with email not found:', email);
+      return null;
+    }
+    
+    // Add the customer to vendor's list
+    const success = await addVendorCustomer(userData.email, userData.nome, userData.telefone);
+    
+    if (!success) {
+      console.error('Failed to add customer to vendor');
+      return null;
+    }
+    
+    // Get the newly added customer
+    return await getVendorCustomer(userData.id);
+  } catch (error) {
+    console.error('Error in findCustomerByEmail:', error);
+    return null;
+  }
+};
+
+/**
+ * Migrates customers from point adjustments
+ */
+export const migrateCustomersFromPointAdjustments = async (): Promise<boolean> => {
+  try {
+    // Get the vendor ID for the current user
+    const { data: vendorData, error: vendorError } = await supabase.rpc('get_vendor_id');
+    
+    if (vendorError || !vendorData) {
+      console.error('Error fetching vendor ID:', vendorError);
+      return false;
+    }
+    
+    const vendorId = vendorData;
+    
+    // Get all unique customers from point adjustments
+    const { data: adjustments, error: adjustmentsError } = await supabase
+      .from('pontos_ajustados')
+      .select('usuario_id')
+      .eq('vendedor_id', vendorId)
+      .order('created_at', { ascending: false });
+      
+    if (adjustmentsError) {
+      console.error('Error fetching point adjustments:', adjustmentsError);
+      return false;
+    }
+    
+    if (!adjustments || adjustments.length === 0) {
+      console.log('No point adjustments found for this vendor');
+      return false;
+    }
+    
+    // Get unique user IDs
+    const uniqueUserIds = [...new Set(adjustments.map(a => a.usuario_id))];
+    
+    // Get user data for these users
+    const { data: users, error: usersError } = await supabase
+      .from('profiles')
+      .select('id, nome, email, telefone')
+      .in('id', uniqueUserIds);
+      
+    if (usersError || !users) {
+      console.error('Error fetching users:', usersError);
+      return false;
+    }
+    
+    // Create a batch insert for all customers
+    const customerInserts = users.map(user => ({
+      vendedor_id: vendorId,
+      usuario_id: user.id,
+      nome: user.nome || 'Cliente sem nome',
+      email: user.email,
+      telefone: user.telefone,
+      total_gasto: 0 // Default value, we don't know purchase history from point adjustments
+    }));
+    
+    // Insert all customers, ignore conflicts
+    const { error: insertError } = await supabase
+      .from('clientes_vendedor')
+      .upsert(customerInserts, { 
+        onConflict: 'vendedor_id,usuario_id',
+        ignoreDuplicates: true
+      });
+      
+    if (insertError) {
+      console.error('Error inserting customers:', insertError);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in migrateCustomersFromPointAdjustments:', error);
+    return false;
+  }
+};
+
+/**
+ * Creates test customers for development purposes
+ */
+export const seedTestCustomers = async (count: number = 5): Promise<boolean> => {
+  try {
+    // Get the vendor ID for the current user
+    const { data: vendorData, error: vendorError } = await supabase.rpc('get_vendor_id');
+    
+    if (vendorError || !vendorData) {
+      console.error('Error fetching vendor ID:', vendorError);
+      return false;
+    }
+    
+    const vendorId = vendorData;
+    
+    // Create test customers
+    const customers = [];
+    for (let i = 1; i <= count; i++) {
+      customers.push({
+        vendedor_id: vendorId,
+        usuario_id: crypto.randomUUID(),
+        nome: `Cliente Teste ${i}`,
+        email: `teste${i}@example.com`,
+        telefone: `9${Math.floor(10000000 + Math.random() * 90000000)}`,
+        total_gasto: Math.floor(Math.random() * 10000) / 100,
+        ultimo_pedido: new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000).toISOString()
+      });
+    }
+    
+    // Insert customers
+    const { error: insertError } = await supabase
+      .from('clientes_vendedor')
+      .insert(customers);
+      
+    if (insertError) {
+      console.error('Error inserting test customers:', insertError);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in seedTestCustomers:', error);
+    return false;
+  }
+};
+
+/**
+ * Migrates customers from orders using the trigger function in the database
+ */
+export const migrateCustomersFromOrders = async (): Promise<boolean> => {
+  try {
+    // Call our helper function from migrateHelper.ts
+    const result = await setupAndMigrateCustomerData();
+    return result.success;
+  } catch (error) {
+    console.error('Error in migrateCustomersFromOrders:', error);
+    return false;
   }
 };

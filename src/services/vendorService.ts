@@ -12,6 +12,10 @@ import {
   getVendorCustomer,
   searchCustomers,
   getCustomerPoints,
+  addVendorCustomer,
+  seedTestCustomers,
+  migrateCustomersFromPointAdjustments,
+  migrateCustomersFromOrders,
   VendorCustomer 
 } from './vendorCustomersService';
 import { 
@@ -70,6 +74,10 @@ export {
   getVendorCustomer,
   searchCustomers,
   getCustomerPoints,
+  addVendorCustomer,
+  seedTestCustomers,
+  migrateCustomersFromPointAdjustments,
+  migrateCustomersFromOrders,
   
   // Points
   getPointAdjustments,
