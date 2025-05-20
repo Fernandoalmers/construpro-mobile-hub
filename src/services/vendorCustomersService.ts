@@ -84,10 +84,16 @@ export const getVendorCustomer = async (userId: string): Promise<VendorCustomer 
 // Search for customers by name, email, or phone
 export const searchCustomers = async (searchTerm: string): Promise<any[]> => {
   try {
+    // If search term is too short, don't search
+    if (searchTerm.length < 3) {
+      console.log('Search term too short, minimum 3 characters required');
+      return [];
+    }
+    
     console.log('Searching profiles with term:', searchTerm);
     
     // Check if it's a specific UUID format
-    if (searchTerm.length > 10 && isValidUUID(searchTerm)) {
+    if (isValidUUID(searchTerm)) {
       console.log('Searching for specific user ID:', searchTerm);
       const { data: specificUser, error: specificError } = await supabase
         .from('profiles')
@@ -101,8 +107,23 @@ export const searchCustomers = async (searchTerm: string): Promise<any[]> => {
       }
     }
     
+    // Special handling for email format
+    if (searchTerm.includes('@')) {
+      console.log('Searching by email:', searchTerm);
+      const { data: emailUsers, error: emailError } = await supabase
+        .from('profiles')
+        .select('id, nome, email, telefone, cpf')
+        .ilike('email', searchTerm)
+        .limit(10);
+        
+      if (!emailError && emailUsers && emailUsers.length > 0) {
+        console.log('Found users by exact email:', emailUsers);
+        return emailUsers;
+      }
+    }
+    
     // Otherwise search by text terms (name, email, phone, cpf)
-    console.log('Performing text search for:', searchTerm);
+    console.log('Performing general text search for:', searchTerm);
     const { data, error } = await supabase
       .from('profiles')
       .select('id, nome, email, telefone, cpf')
