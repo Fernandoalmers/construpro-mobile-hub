@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import LoadingState from '../common/LoadingState';
@@ -184,29 +183,6 @@ const VendorOrdersScreen: React.FC = () => {
     } catch (error) {
       toast.error("Erro ao atualizar status do vendedor");
       console.error("Error updating vendor status:", error);
-    }
-  };
-
-  // Function to run migration
-  const runCustomersMigration = async () => {
-    setIsMigrating(true);
-    toast.loading("Migrando clientes a partir de pedidos existentes...");
-    try {
-      const result = await migrateCustomersFromOrders();
-      if (result) {
-        toast.success("Clientes migrados com sucesso!");
-        // Navigate to customers page to see results
-        setTimeout(() => {
-          navigate('/vendor/customers');
-        }, 1500);
-      } else {
-        toast.error("Falha ao migrar clientes. Verifique os logs para mais detalhes.");
-      }
-    } catch (error) {
-      console.error("Error running migration:", error);
-      toast.error("Erro ao migrar clientes.");
-    } finally {
-      setIsMigrating(false);
     }
   };
 

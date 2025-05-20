@@ -72,7 +72,7 @@ export const fetchDirectVendorOrders = async (
             quantidade,
             preco_unitario,
             subtotal,
-            produtos(id, vendedor_id)
+            produtos!inner(id, vendedor_id)
           `)
           .eq('order_id', order.id);
           
@@ -81,8 +81,19 @@ export const fetchDirectVendorOrders = async (
           return null;
         }
         
+        // Adicionar verificação extra para garantir que items existe antes de filtrar
+        if (!items) {
+          return null;
+        }
+        
         // Filtrar para incluir apenas itens com produtos deste vendedor
-        const vendorItems = items?.filter(item => item.produtos?.vendedor_id === vendorId) || [];
+        const vendorItems = items.filter(item => {
+          // Verificar se o produto existe e tem vendedor_id
+          return item.produtos && 
+                 typeof item.produtos === 'object' && 
+                 'vendedor_id' in item.produtos && 
+                 item.produtos.vendedor_id === vendorId;
+        });
         
         if (vendorItems.length > 0) {
           // Calcular o subtotal para este vendedor
@@ -95,6 +106,17 @@ export const fetchDirectVendorOrders = async (
             .eq('id', order.cliente_id)
             .single();
           
+          // Mapear para o formato VendorOrder com informações extras para corresponder ao tipo
+          const customerInfo = cliente ? {
+            id: cliente.id,
+            nome: cliente.nome || '',
+            email: cliente.email || '',
+            telefone: cliente.telefone || '',
+            usuario_id: cliente.id, // Usando o mesmo ID para manter consistência
+            vendedor_id: vendorId,  // Adicionando vendedor_id para corresponder ao tipo VendorCustomer
+            total_gasto: vendorTotal // Adicionando total_gasto com o valor atual
+          } : null;
+          
           // Mapear para o formato VendorOrder
           return {
             id: order.id,
@@ -106,7 +128,7 @@ export const fetchDirectVendorOrders = async (
             endereco_entrega: order.endereco_entrega,
             created_at: order.created_at,
             rastreio: order.rastreio || null,
-            cliente: cliente || null,
+            cliente: customerInfo,
             itens: vendorItems.map(item => ({
               id: item.id,
               order_id: item.order_id,
@@ -122,7 +144,7 @@ export const fetchDirectVendorOrders = async (
       }));
       
       // Filtrar orders nulos (aqueles sem itens deste vendedor)
-      vendorOrders = orderItems.filter(Boolean) as VendorOrder[];
+      vendorOrders = (orderItems.filter(Boolean) as VendorOrder[]);
     }
     
     // Processar pedidos caso existam
@@ -154,6 +176,18 @@ export const fetchDirectVendorOrders = async (
           .eq('id', pedido.usuario_id)
           .single();
         
+        // Criar objeto cliente no formato VendorCustomer
+        const customerInfo = cliente ? {
+          id: cliente.id,
+          nome: cliente.nome || '',
+          email: cliente.email || '',
+          telefone: cliente.telefone || '',
+          usuario_id: pedido.usuario_id,
+          vendedor_id: pedido.vendedor_id,
+          total_gasto: pedido.valor_total
+        } : null;
+        
+        // Retornar pedido no formato VendorOrder
         return {
           id: pedido.id,
           cliente_id: pedido.usuario_id,
@@ -164,9 +198,9 @@ export const fetchDirectVendorOrders = async (
           endereco_entrega: pedido.endereco_entrega,
           created_at: pedido.created_at,
           data_entrega_estimada: pedido.data_entrega_estimada || null,
-          cliente: cliente || null,
+          cliente: customerInfo,
           itens: itens || []
-        };
+        } as VendorOrder;
       }));
       
       // Adicionar pedidos formatados à lista de vendorOrders

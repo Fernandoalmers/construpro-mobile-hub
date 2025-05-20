@@ -26,10 +26,26 @@ export const runOrdersMigration = async (): Promise<{
     }
     
     console.log("✅ Migração de pedidos concluída:", data);
+    
+    // Verificar se data é um objeto e tem as propriedades esperadas
+    if (data && typeof data === 'object' && data !== null) {
+      // Extrair propriedades seguras usando operador de acesso opcional
+      const migrationData = data as Record<string, any>;
+      const migratedCount = migrationData.migrated_count || 0;
+      const message = migrationData.message || 'Migração concluída com sucesso';
+      
+      return {
+        success: true,
+        migratedCount: migratedCount,
+        message: message
+      };
+    }
+    
+    // Caso data não seja o esperado, retornar valores padrão
     return {
       success: true,
-      migratedCount: data?.migrated_count || 0,
-      message: data?.message || 'Migração concluída com sucesso'
+      migratedCount: 0,
+      message: 'Migração concluída com sucesso'
     };
   } catch (error) {
     console.error("🚫 Erro inesperado na migração de pedidos:", error);
