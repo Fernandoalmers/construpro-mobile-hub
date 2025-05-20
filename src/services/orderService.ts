@@ -192,13 +192,13 @@ export const orderService = {
       console.log(`📊 [orderService.getOrderByIdDirect] Order retrieved successfully:`, data);
       
       // Safely process the order data from JSON response
-      const orderData = data as Record<string, any>;
+      const orderData: Record<string, any> = data;
       
-      // Handle items property safely with proper type checking
-      if (orderData.items) {
+      // Handle items property safely
+      if (typeof orderData.items !== 'undefined') {
         let itemsArray: any[] = [];
         
-        // If items is a string representation of an array (from JSON conversion), parse it
+        // Parse items if it's a string representation of JSON
         if (typeof orderData.items === 'string') {
           try {
             itemsArray = JSON.parse(orderData.items);
@@ -210,6 +210,14 @@ export const orderService = {
         } else if (Array.isArray(orderData.items)) {
           // If already an array, use directly
           itemsArray = orderData.items;
+        } else if (orderData.items && typeof orderData.items === 'object') {
+          // If it's a JSONB object but not an array
+          console.warn("Items is an object but not an array, converting to array");
+          itemsArray = [orderData.items];
+        } else {
+          // Default to empty array
+          itemsArray = [];
+          orderData.items = itemsArray;
         }
         
         // Process items to ensure they have product details

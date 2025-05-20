@@ -71,7 +71,7 @@ const OrderConfirmationScreen: React.FC = () => {
   const handleRetry = () => {
     setLoading(true);
     setError(null);
-    setRetryCount(prev => prev + 1);
+    setRetryCount(0); // Reset retry count to start fresh
   };
 
   if (loading) {
@@ -164,11 +164,11 @@ const OrderConfirmationScreen: React.FC = () => {
               <Package className="mr-2" size={18} />
               Itens do Pedido
             </h3>
-            {/* Important change: using items instead of itens */}
-            {orderDetails.items && orderDetails.items.length > 0 ? (
+            
+            {orderDetails.items && Array.isArray(orderDetails.items) && orderDetails.items.length > 0 ? (
               <div className="space-y-4">
-                {orderDetails.items.map((item: any) => (
-                  <div key={item.id} className="flex border-b border-gray-100 pb-4">
+                {orderDetails.items.map((item: any, index: number) => (
+                  <div key={item.id || index} className="flex border-b border-gray-100 pb-4">
                     <div className="w-20 h-20 flex-shrink-0 mr-3">
                       <ProductImage 
                         imagemUrl={item.produto?.imagem_url}
@@ -185,7 +185,7 @@ const OrderConfirmationScreen: React.FC = () => {
                         </div>
                         <div className="flex justify-between items-center mt-1">
                           <span className="font-medium">Subtotal:</span>
-                          <span className="font-medium">R$ {Number(item.subtotal).toFixed(2)}</span>
+                          <span className="font-medium">R$ {Number(item.subtotal || (item.preco_unitario * item.quantidade)).toFixed(2)}</span>
                         </div>
                       </div>
                     </div>
