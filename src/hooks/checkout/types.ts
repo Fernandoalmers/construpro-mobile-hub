@@ -1,9 +1,11 @@
 
 import { Address } from '@/services/addressService';
 import { CartItem } from '@/types/cart';
+import { StoreGroup as CartStoreGroup } from '@/hooks/cart/use-group-items-by-store';
 
 export type PaymentMethod = 'credit' | 'debit' | 'money' | 'pix';
 
+// Update StoreGroup to match the one from use-group-items-by-store
 export interface StoreGroup {
   storeId: string;
   storeName: string;

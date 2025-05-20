@@ -1,11 +1,10 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useCart } from '@/hooks/use-cart';
 import { useAddresses } from '@/hooks/useAddresses';
 import { orderService } from '@/services/orderService';
 import { toast } from '@/components/ui/sonner';
 import { useNavigate } from 'react-router-dom';
-import { PaymentMethod } from './types';
+import { PaymentMethod, StoreGroup } from './types';
 import { CartItem } from '@/types/cart';
 
 export type { PaymentMethod };
@@ -43,19 +42,21 @@ export function useCheckout() {
   // Get cartItems with products from cart context
   const cartItemsWithProducts: CartItem[] = cartItems || [];
   
-  // Group cart items by store
-  const storeGroups = cartItemsWithProducts.reduce((groups: any, item: any) => {
-    const storeId = item.produto?.loja_id || 'unknown';
-    if (!groups[storeId]) {
-      groups[storeId] = {
-        storeId,
-        storeName: item.produto?.loja_nome || 'Loja',
-        items: []
-      };
-    }
-    groups[storeId].items.push(item);
-    return groups;
-  }, {});
+  // Group cart items by store - explicitly typed as StoreGroup[]
+  const storeGroups: StoreGroup[] = Object.values(
+    cartItemsWithProducts.reduce((groups: Record<string, StoreGroup>, item: CartItem) => {
+      const storeId = item.produto?.loja_id || 'unknown';
+      if (!groups[storeId]) {
+        groups[storeId] = {
+          storeId,
+          storeName: item.produto?.loja_nome || 'Loja',
+          items: []
+        };
+      }
+      groups[storeId].items.push(item);
+      return groups;
+    }, {})
+  );
 
   // Calculate total price and points
   const totalPrice = cartItemsWithProducts.reduce((sum, item) => sum + (item.subtotal || 0), 0);
@@ -206,7 +207,7 @@ export function useCheckout() {
     shipping,
     total,
     totalPoints,
-    storeGroups: Object.values(storeGroups),
+    storeGroups, // Now properly typed as StoreGroup[]
     handlePlaceOrder,
     processError,
     orderAttempts,

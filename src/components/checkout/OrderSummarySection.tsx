@@ -3,7 +3,7 @@ import React from 'react';
 import { CheckCircle } from 'lucide-react';
 import Card from '@/components/common/Card';
 import CustomButton from '@/components/common/CustomButton';
-import { StoreGroup } from '@/hooks/cart/use-group-items-by-store';
+import { StoreGroup } from '@/hooks/checkout/types';
 
 interface OrderSummarySectionProps {
   storeGroups: StoreGroup[];
