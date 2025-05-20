@@ -13,8 +13,7 @@ export const useVendorOrders = () => {
   const [vendorProfileStatus, setVendorProfileStatus] = useState<'checking' | 'found' | 'not_found'>('checking');
   const [diagnosticResults, setDiagnosticResults] = useState<any>(null);
   const [isFixingVendorStatus, setIsFixingVendorStatus] = useState(false);
-  // Debug mode is ALWAYS activated by default for easier diagnosis
-  const [debugMode, setDebugMode] = useState(true);
+  const [debugMode, setDebugMode] = useState(false);
   const [debugData, setDebugData] = useState<any>(null);
   
   // First check if the vendor profile exists
@@ -39,15 +38,9 @@ export const useVendorOrders = () => {
           setDiagnosticResults(diagnostics);
           console.log("📊 [useVendorOrders] Diagnostics completed:", diagnostics);
           
-          // Immediate fetch of debug information when profile is found
-          fetchDebugOrdersImmediate(profile.id);
-          
           // Check if vendor status is pending, which might be preventing orders from showing
           if (profile.status === 'pendente') {
             console.warn("⚠️ [useVendorOrders] Vendor status is 'pendente', which may be preventing orders from displaying");
-            toast.warning("Status do vendedor é 'pendente'", {
-              description: "Isso pode estar impedindo a visualização dos pedidos. Considere atualizar o status."
-            });
             
             // Auto-fix vendor status after a short delay
             setTimeout(async () => {
@@ -127,21 +120,7 @@ export const useVendorOrders = () => {
     fixProfileRole();
   }, [vendorProfileStatus, queryClient]);
   
-  // Immediate fetch of debug orders without waiting for useEffect
-  const fetchDebugOrdersImmediate = async (vendorId: string) => {
-    try {
-      console.log("🔍 [useVendorOrders] Immediately fetching debug orders data for vendor:", vendorId);
-      const result = await fetchDirectVendorOrdersWithDebug(vendorId, undefined, true);
-      console.log("📊 [useVendorOrders] Immediate debug data:", result);
-      setDebugData(result);
-      return result;
-    } catch (error) {
-      console.error("🚫 [useVendorOrders] Error in immediate debug fetch:", error);
-      return null;
-    }
-  };
-  
-  // Regular fetch debug orders function for callbacks
+  // Fetch direct vendor orders with debug info when in debug mode
   const fetchDebugOrders = useCallback(async () => {
     if (!debugMode) return null;
     
@@ -180,22 +159,8 @@ export const useVendorOrders = () => {
       console.log("🔍 [useVendorOrders] Fetching vendor orders from service...");
       
       try {
-        // First try to get orders from debug function for more info
-        const profile = await getVendorProfile();
-        if (profile) {
-          const debugResult = await fetchDirectVendorOrdersWithDebug(profile.id, undefined, true);
-          if (debugResult && debugResult.orders && debugResult.orders.length > 0) {
-            console.log(`✅ [useVendorOrders] Found ${debugResult.orders.length} orders directly`);
-            setDebugData(debugResult);
-            return debugResult.orders;
-          } else {
-            console.log("⚠️ [useVendorOrders] No orders from direct debug fetch, trying standard method");
-          }
-        }
-        
-        // Fall back to standard method
         const results = await getVendorOrders();
-        console.log(`📊 [useVendorOrders] Fetched ${results.length} vendor orders via standard method`);
+        console.log(`📊 [useVendorOrders] Fetched ${results.length} vendor orders`);
         
         // Additional check for debugging if no orders were found
         if (results.length === 0) {
@@ -214,6 +179,9 @@ export const useVendorOrders = () => {
             if (profile.status === 'pendente') {
               console.warn("⚠️ [useVendorOrders] Vendor has status 'pendente', which may be preventing orders from showing");
             }
+            
+            // Try direct fetch as a fallback
+            await fetchDebugOrders();
           }
         } else {
           console.log("✅ [useVendorOrders] Orders found, sample first order:", {
@@ -229,11 +197,9 @@ export const useVendorOrders = () => {
         throw error;
       }
     },
-    staleTime: 5 * 1000, // 5 seconds - Reduced even more for fresher data
+    staleTime: 30 * 1000, // 30 seconds - reduced to get fresher data
     retry: 3, // Increase retries for more resilience
     enabled: vendorProfileStatus === 'found' && !isFixingVendorStatus,
-    refetchInterval: 15000, // Auto refresh every 15 seconds
-    refetchOnWindowFocus: true
   });
 
   // Force refresh whenever the component mounts or profile role is fixed
@@ -253,21 +219,23 @@ export const useVendorOrders = () => {
       queryClient.invalidateQueries({ queryKey: ['vendorOrders'] });
       refetch();
       
-      // Also refresh debug data
-      fetchDebugOrders();
+      // Also refresh debug data if in debug mode
+      if (debugMode) {
+        fetchDebugOrders();
+      }
     } else {
       toast.error('Configure seu perfil de vendedor primeiro');
     }
-  }, [vendorProfileStatus, queryClient, refetch, fetchDebugOrders]);
+  }, [vendorProfileStatus, queryClient, refetch, debugMode, fetchDebugOrders]);
   
-  // Function to force a hard refresh - completely clear cache
+  // Function to force a hard refresh
   const forceRefresh = useCallback(async () => {
     if (vendorProfileStatus === 'found') {
       toast.info('Forçando atualização completa...');
       
       try {
-        // Clear React Query cache completely for vendorOrders
-        queryClient.removeQueries({ queryKey: ['vendorOrders'] });
+        // Clear React Query cache completely
+        queryClient.clear();
         
         // Re-run vendor diagnostics
         const profile = await getVendorProfile();
@@ -275,56 +243,32 @@ export const useVendorOrders = () => {
           const diagnostics = await runVendorDiagnostics();
           setDiagnosticResults(diagnostics);
           
-          // Fetch orders directly with debug mode and avoid caching
-          const debugResult = await fetchDirectVendorOrdersWithDebug(
-            profile.id, 
-            undefined,
-            true
-          );
-          setDebugData(debugResult);
-          
-          console.log("🔍 [forceRefresh] Direct fetch results:", {
-            orderCount: debugResult?.orders?.length || 0,
-            vendorProductsCount: debugResult?.debug?.vendorProductsCount || 0,
-            orderItemsCount: debugResult?.debug?.orderItemsCount || 0
-          });
-          
-          // Update UI with diagnostic info
-          if (debugResult.debug) {
-            toast.info(`Diagnóstico: ${debugResult.debug.vendorProductsCount} produtos, ${debugResult.debug.orderItemsCount || 0} itens de pedido`);
-            
-            // If orders were found, show success message
-            if (debugResult.orders && debugResult.orders.length > 0) {
-              toast.success(`${debugResult.orders.length} pedidos encontrados!`);
-              
-              // Immediately update the order list
-              queryClient.setQueryData(['vendorOrders'], debugResult.orders);
-            }
-          }
-          
-          // Refetch orders after cache clear
-          setTimeout(() => {
-            refetch();
-          }, 500);
+          // Fetch orders directly with debug mode
+          await fetchDebugOrders();
         }
+        
+        // Refetch orders after cache clear
+        setTimeout(() => {
+          refetch();
+          toast.success('Dados atualizados');
+        }, 500);
       } catch (error) {
         console.error("🚫 [useVendorOrders] Error during force refresh:", error);
         toast.error('Erro ao atualizar dados');
       }
     }
-  }, [vendorProfileStatus, queryClient, refetch]);
+  }, [vendorProfileStatus, queryClient, refetch, fetchDebugOrders]);
   
   // Toggle debug mode
   const toggleDebugMode = useCallback(() => {
     setDebugMode(prev => !prev);
     if (!debugMode) {
       toast.info('Modo de depuração ativado');
-      // Fetch debug data when enabling
-      fetchDebugOrders();
     } else {
       toast.info('Modo de depuração desativado');
+      setDebugData(null);
     }
-  }, [debugMode, fetchDebugOrders]);
+  }, [debugMode]);
 
   return {
     orders,
