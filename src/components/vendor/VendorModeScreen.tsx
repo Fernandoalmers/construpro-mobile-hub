@@ -37,7 +37,7 @@ const VendorModeScreen: React.FC = () => {
       icon: <CreditCard className="h-8 w-8" />,
       description: 'Adicione ou remova pontos de clientes',
       color: 'bg-amber-100 text-amber-600',
-      onClick: () => navigate('/vendor/points-adjustment')
+      onClick: () => navigate('/vendor/ajuste-pontos')
     },
     { 
       title: 'Configurações', 
