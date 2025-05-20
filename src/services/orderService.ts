@@ -192,7 +192,10 @@ export const orderService = {
       console.log(`📊 [orderService.getOrderByIdDirect] Order retrieved successfully:`, data);
       
       // Safely process the order data from JSON response
-      const orderData: Record<string, any> = data;
+      // Fix: Check if data is an object before treating it as one
+      const orderData: Record<string, any> = typeof data === 'object' && data !== null 
+        ? data 
+        : { error: "Formato de dados inválido" };
       
       // Handle items property safely
       if (typeof orderData.items !== 'undefined') {
