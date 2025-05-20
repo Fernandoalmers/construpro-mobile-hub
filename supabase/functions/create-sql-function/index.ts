@@ -40,40 +40,44 @@ serve(async (req) => {
       }
     })
     
-    // Create the SQL execution function if it doesn't exist already
-    const createFunctionSQL = `
-    CREATE OR REPLACE FUNCTION public.execute_custom_sql(sql_statement TEXT)
-    RETURNS JSONB 
-    LANGUAGE plpgsql
-    SECURITY DEFINER 
-    SET search_path = public
-    AS $$
-    DECLARE
-      result JSONB;
-    BEGIN
-      EXECUTE sql_statement;
-      result := '{"status": "success"}'::JSONB;
-      RETURN result;
-    EXCEPTION WHEN OTHERS THEN
-      result := jsonb_build_object(
-        'status', 'error',
-        'error', SQLERRM,
-        'detail', SQLSTATE
-      );
-      RETURN result;
-    END;
-    $$;
-    
-    -- Grant execution permission to authenticated users
-    GRANT EXECUTE ON FUNCTION public.execute_custom_sql TO authenticated;
-    `
-    
-    // Create the SQL execution function
-    const { data, error } = await supabase.rpc('execute_custom_sql', {
-      sql_statement: createFunctionSQL
-    })
+    // Create the SQL execution function using direct SQL execution
+    // instead of calling the function we're trying to create
+    const { data, error } = await supabase.from('_exec_sql').select('*').execute(`
+      CREATE OR REPLACE FUNCTION public.execute_custom_sql(sql_statement TEXT)
+      RETURNS JSONB 
+      LANGUAGE plpgsql
+      SECURITY DEFINER 
+      SET search_path = public
+      AS $$
+      DECLARE
+        result JSONB;
+      BEGIN
+        EXECUTE sql_statement;
+        result := '{"status": "success"}'::JSONB;
+        RETURN result;
+      EXCEPTION WHEN OTHERS THEN
+        result := jsonb_build_object(
+          'status', 'error',
+          'error', SQLERRM,
+          'detail', SQLSTATE
+        );
+        RETURN result;
+      END;
+      $$;
+      
+      -- Grant execution permission to authenticated users
+      GRANT EXECUTE ON FUNCTION public.execute_custom_sql TO authenticated;
+    `);
     
     if (error) {
+      // Special handling for when the function already exists
+      if (error.message && error.message.includes('already exists')) {
+        return new Response(
+          JSON.stringify({ success: true, message: 'SQL execution function already exists' }),
+          { status: 200, headers: corsHeaders }
+        )
+      }
+      
       return new Response(
         JSON.stringify({ error: error.message }),
         { status: 500, headers: corsHeaders }

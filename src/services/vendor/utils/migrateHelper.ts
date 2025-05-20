@@ -10,7 +10,37 @@ import { supabase } from '@/integrations/supabase/client';
  */
 export const setupVendorCustomerTrigger = async (): Promise<boolean> => {
   try {
-    // Step 1: Create the log table if it doesn't exist
+    // Step 1: First ensure the SQL execution function exists by calling the edge function
+    const session = await supabase.auth.getSession();
+    if (!session?.data?.session) {
+      console.error('No active session found');
+      return false;
+    }
+    const token = session.data.session.access_token;
+    
+    // Call the create-sql-function edge function to ensure our SQL function exists
+    try {
+      const functionResponse = await fetch(`${process.env.VITE_SUPABASE_URL}/functions/v1/create-sql-function`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        }
+      });
+      
+      if (!functionResponse.ok) {
+        const errorData = await functionResponse.json();
+        console.error('Error setting up SQL function:', errorData);
+        return false;
+      }
+      
+      console.log('SQL function setup successful');
+    } catch (error) {
+      console.error('Error calling SQL function setup:', error);
+      // Continue anyway as the function might already exist
+    }
+    
+    // Step 2: Create the log table if it doesn't exist
     const { error: tableError } = await supabase.rpc('begin_transaction');
     
     if (tableError) {
@@ -18,7 +48,7 @@ export const setupVendorCustomerTrigger = async (): Promise<boolean> => {
       return false;
     }
     
-    // Instead of calling exec_sql directly, we'll use a custom edge function
+    // Call db-utils edge function to execute SQL safely
     const createLogTable = await executeSqlViaFunction(`
       CREATE TABLE IF NOT EXISTS public.vendor_orders_log (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -34,7 +64,7 @@ export const setupVendorCustomerTrigger = async (): Promise<boolean> => {
       return false;
     }
     
-    // Step 2: Create the function that handles the order processing
+    // Step 3: Create the function that handles the order processing
     const createFunction = await executeSqlViaFunction(`
       CREATE OR REPLACE FUNCTION public.update_vendor_customer_data()
       RETURNS trigger
@@ -115,7 +145,7 @@ export const setupVendorCustomerTrigger = async (): Promise<boolean> => {
       return false;
     }
     
-    // Step 3: Create the trigger
+    // Step 4: Create the trigger
     const createTrigger = await executeSqlViaFunction(`
       DROP TRIGGER IF EXISTS update_vendor_customers_on_order ON public.orders;
       CREATE TRIGGER update_vendor_customers_on_order
@@ -129,7 +159,7 @@ export const setupVendorCustomerTrigger = async (): Promise<boolean> => {
       return false;
     }
     
-    // Step 4: Create the migration function
+    // Step 5: Create the migration function
     const createMigrationFunction = await executeSqlViaFunction(`
       CREATE OR REPLACE FUNCTION public.migrate_orders_to_vendor_customers()
       RETURNS integer
@@ -239,13 +269,18 @@ export const setupVendorCustomerTrigger = async (): Promise<boolean> => {
 
 /**
  * Helper function to execute SQL via the db-utils edge function
- * since we don't have direct access to exec_sql RPC
+ * with improved error handling and authentication
  */
 async function executeSqlViaFunction(sqlString: string) {
   try {
     // First get the session
     const { data: sessionData } = await supabase.auth.getSession();
-    const accessToken = sessionData?.session?.access_token || '';
+    const accessToken = sessionData?.session?.access_token;
+    
+    if (!accessToken) {
+      console.error('No access token available for SQL execution');
+      return { success: false, error: 'Authentication required' };
+    }
 
     const response = await fetch(`${process.env.VITE_SUPABASE_URL}/functions/v1/db-utils`, {
       method: 'POST',
@@ -260,6 +295,12 @@ async function executeSqlViaFunction(sqlString: string) {
       }),
     });
 
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Error response from db-utils:', errorData);
+      return { success: false, error: errorData };
+    }
+
     const result = await response.json();
     return { success: true, data: result.data };
   } catch (error) {
@@ -270,9 +311,22 @@ async function executeSqlViaFunction(sqlString: string) {
 
 /**
  * Manually executes the order migration function in the database
+ * with improved error handling
  */
 export const runOrderMigration = async (): Promise<number> => {
   try {
+    console.log('Starting order migration process...');
+    
+    // First ensure all required functions and triggers are set up
+    const setupSuccess = await setupVendorCustomerTrigger();
+    
+    if (!setupSuccess) {
+      console.error('Failed to set up database triggers and functions');
+      return 0;
+    }
+    
+    console.log('Database triggers and functions set up successfully, running migration...');
+    
     // Use the db-utils edge function to call the function
     const result = await executeSqlViaFunction('SELECT public.migrate_orders_to_vendor_customers()');
     
@@ -281,13 +335,23 @@ export const runOrderMigration = async (): Promise<number> => {
       return 0;
     }
     
-    // Safely handle the response by checking its structure
-    if (result.data && typeof result.data === 'number') {
-      return result.data;
-    } else {
-      console.log('Migration completed but returned unexpected data type:', result.data);
-      return result.success ? 1 : 0; // Return 1 if successful but data format unexpected
+    console.log('Migration completed:', result);
+    
+    // Safely handle the response
+    if (result.data && result.data.status === 'success') {
+      // Try to extract the count from the result
+      try {
+        const countMatch = JSON.stringify(result.data).match(/\d+/);
+        if (countMatch) {
+          return parseInt(countMatch[0], 10);
+        }
+      } catch (e) {
+        console.error('Error parsing migration result:', e);
+      }
+      return 1; // Return 1 if successful but couldn't parse count
     }
+    
+    return 0;
   } catch (error) {
     console.error('Error in runOrderMigration:', error);
     return 0;
@@ -296,6 +360,7 @@ export const runOrderMigration = async (): Promise<number> => {
 
 /**
  * A complete function that sets up the database triggers and runs the migration
+ * with improved logging and error handling
  */
 export const setupAndMigrateCustomerData = async (): Promise<{ 
   success: boolean;
@@ -303,10 +368,13 @@ export const setupAndMigrateCustomerData = async (): Promise<{
   message: string; 
 }> => {
   try {
+    console.log('Starting setup and migration of customer data...');
+    
     // First setup the database functions and triggers
     const setupSuccess = await setupVendorCustomerTrigger();
     
     if (!setupSuccess) {
+      console.error('Failed to set up database functions and triggers');
       return {
         success: false,
         migratedCount: 0,
@@ -314,8 +382,12 @@ export const setupAndMigrateCustomerData = async (): Promise<{
       };
     }
     
+    console.log('Database setup successful, running migration...');
+    
     // Then run the migration
     const migratedCount = await runOrderMigration();
+    
+    console.log(`Migration completed, processed ${migratedCount} records`);
     
     if (migratedCount > 0) {
       return {
@@ -327,7 +399,7 @@ export const setupAndMigrateCustomerData = async (): Promise<{
       return {
         success: true,
         migratedCount: 0,
-        message: 'Configuração concluída, mas nenhum cliente foi migrado'
+        message: 'Configuração concluída, mas nenhum cliente foi migrado. Verifique se existem pedidos.'
       };
     }
   } catch (error) {

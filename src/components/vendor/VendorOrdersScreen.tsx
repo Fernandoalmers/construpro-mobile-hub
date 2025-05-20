@@ -12,7 +12,7 @@ import { useOrderFilters, orderStatuses } from '@/hooks/vendor/useOrderFilters';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Card } from '@/components/ui/card';
-import { Store, AlertCircle, RefreshCcw, Bug, RotateCcw, Info } from 'lucide-react';
+import { Store, AlertCircle, RefreshCcw, Bug, RotateCcw, Info, Users } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { updateVendorStatus } from '@/services/vendor/orders/utils/diagnosticUtils';
 import { migrateCustomersFromOrders } from '@/services/vendorCustomersService';
@@ -20,6 +20,7 @@ import DebugOrdersView from './orders/DebugOrdersView';
 
 const VendorOrdersScreen: React.FC = () => {
   const navigate = useNavigate();
+  const [isMigrating, setIsMigrating] = React.useState(false);
   
   // Use the custom hooks for data and filtering
   const { 
@@ -135,8 +136,9 @@ const VendorOrdersScreen: React.FC = () => {
     }
   };
 
-  // New function to run migration
+  // Function to run migration
   const runCustomersMigration = async () => {
+    setIsMigrating(true);
     toast.loading("Migrando clientes a partir de pedidos existentes...");
     try {
       const result = await migrateCustomersFromOrders();
@@ -152,6 +154,8 @@ const VendorOrdersScreen: React.FC = () => {
     } catch (error) {
       console.error("Error running migration:", error);
       toast.error("Erro ao migrar clientes.");
+    } finally {
+      setIsMigrating(false);
     }
   };
 
@@ -165,7 +169,7 @@ const VendorOrdersScreen: React.FC = () => {
       />
       
       <div className="p-6 space-y-6">
-        {/* Diagnostic Actions - Added action to run migration */}
+        {/* Diagnostic Actions - Enhanced migration card */}
         <Card className="p-4 bg-yellow-50 border-yellow-200">
           <div className="flex flex-col gap-3">
             <div className="flex items-start gap-3">
@@ -173,7 +177,8 @@ const VendorOrdersScreen: React.FC = () => {
               <div>
                 <h3 className="font-medium text-yellow-800">Diagnóstico e correção de problemas</h3>
                 <p className="text-sm text-yellow-700 mt-1">
-                  Se você não está vendo seus pedidos ou clientes, talvez seja necessário executar uma sincronização.
+                  Se você não está vendo seus pedidos ou clientes, execute a migração de dados a seguir.
+                  Este processo sincronizará automaticamente seus clientes a partir dos pedidos existentes.
                 </p>
               </div>
             </div>
@@ -182,9 +187,29 @@ const VendorOrdersScreen: React.FC = () => {
                 onClick={runCustomersMigration}
                 className="bg-yellow-600 hover:bg-yellow-700 text-white"
                 size="sm"
+                disabled={isMigrating}
               >
-                <RefreshCcw size={16} className="mr-1" />
-                Migrar clientes de pedidos
+                {isMigrating ? (
+                  <>
+                    <RefreshCcw size={16} className="mr-1 animate-spin" />
+                    Migrando dados...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCcw size={16} className="mr-1" />
+                    Migrar clientes de pedidos
+                  </>
+                )}
+              </Button>
+              
+              <Button 
+                onClick={() => navigate('/vendor/customers')}
+                variant="outline"
+                size="sm"
+                className="border-yellow-300 text-yellow-700"
+              >
+                <Users size={16} className="mr-1" />
+                Ver clientes
               </Button>
               
               {showVendorStatusFix && (
@@ -300,6 +325,7 @@ const VendorOrdersScreen: React.FC = () => {
               <ul className="text-sm text-gray-600 list-disc list-inside mb-4 text-left">
                 <li>Sua loja ainda não recebeu pedidos</li>
                 <li>Os produtos cadastrados não foram associados corretamente</li>
+                <li>É necessário importar os clientes de pedidos existentes</li>
                 {showVendorStatusFix && (
                   <li className="font-medium text-yellow-700">
                     Seu perfil de vendedor está com status "pendente"
@@ -309,6 +335,23 @@ const VendorOrdersScreen: React.FC = () => {
               <div className="flex flex-wrap gap-2 justify-center">
                 <Button onClick={handleRefresh} className="mt-2">
                   Tentar novamente
+                </Button>
+                <Button
+                  onClick={runCustomersMigration}
+                  className="mt-2 bg-yellow-600 hover:bg-yellow-700 text-white"
+                  disabled={isMigrating}
+                >
+                  {isMigrating ? (
+                    <>
+                      <RefreshCcw size={16} className="mr-1 animate-spin" />
+                      Migrando dados...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCcw size={16} className="mr-1" />
+                      Migrar clientes de pedidos
+                    </>
+                  )}
                 </Button>
                 {showVendorStatusFix && (
                   <Button 
