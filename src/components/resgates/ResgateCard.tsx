@@ -1,3 +1,4 @@
+
 import React from 'react';
 import Card from '../common/Card';
 import { Badge } from '@/components/ui/badge';
@@ -51,28 +52,30 @@ const ResgateCard: React.FC<ResgateCardProps> = ({ resgate, userPoints, onClick 
       className="overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all"
       onClick={handleClick}
     >
-      <div className="flex flex-row h-full">
-        {/* Imagem à esquerda */}
-        <div className="w-1/4 max-w-[100px]">
-          <div className="h-full relative">
+      <div className="flex flex-col h-full">
+        {/* Badge e Categoria */}
+        <div className="relative">
+          <Badge className="absolute top-2 left-2 bg-construPro-blue text-white text-xs font-medium">
+            {resgate.categoria}
+          </Badge>
+
+          {/* Imagem do produto */}
+          <div className="h-24 flex items-center justify-center bg-gray-50">
             <img 
               src={resgate.imagemUrl} 
               alt={resgate.titulo} 
-              className="w-full h-full object-contain p-2 min-h-[100px]"
+              className="h-full max-h-24 w-auto object-contain p-2"
               onError={(e) => {
-                e.currentTarget.src = 'https://images.unsplash.com/photo-1618160702438-9b02ab6515c9?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&h=500&q=80';
+                e.currentTarget.src = 'https://via.placeholder.com/100x100?text=Recompensa';
               }}
             />
-            <Badge className="absolute top-2 left-2 bg-construPro-blue text-white text-xs font-medium">
-              {resgate.categoria}
-            </Badge>
           </div>
         </div>
         
-        {/* Informações à direita */}
-        <div className="w-3/4 p-3 flex flex-col justify-between">
+        {/* Informações do produto */}
+        <div className="p-3 flex flex-col justify-between flex-grow">
           <div>
-            <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2">{resgate.titulo}</h3>
+            <h3 className="font-medium text-gray-900 line-clamp-2 text-sm mb-1">{resgate.titulo}</h3>
             
             {resgate.descricao && (
               <p className="text-xs text-gray-500 line-clamp-2 mb-2">{resgate.descricao}</p>
@@ -84,28 +87,26 @@ const ResgateCard: React.FC<ResgateCardProps> = ({ resgate, userPoints, onClick 
               <span className="text-construPro-orange">{resgate.pontos} pontos</span>
             </div>
             
-            <div className="space-y-2">
-              <Progress 
-                value={percentComplete} 
-                className={`h-1.5 rounded-full overflow-hidden transition-all duration-700 ease-in-out ${isAvailable ? 'bg-gray-100' : 'bg-gray-100'}`}
-              />
-              
-              {isAvailable ? (
-                <Button 
-                  className="w-full bg-construPro-blue hover:bg-construPro-blue/90 text-white flex items-center justify-center gap-1 py-1 h-8 animate-fade-in"
-                  onClick={handleResgateClick}
-                >
-                  <Gift className="h-3.5 w-3.5" /> 
-                  <span>Resgatar</span>
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </Button>
-              ) : (
-                <div className="w-full py-1.5 px-2 rounded-md bg-gray-100 text-gray-500 flex items-center justify-center gap-1.5 text-xs">
-                  <Lock className="h-3 w-3" />
-                  <span>Faltam {resgate.pontos - userPoints} pontos</span>
-                </div>
-              )}
-            </div>
+            <Progress 
+              value={percentComplete} 
+              className={`h-1.5 rounded-full overflow-hidden transition-all duration-700 ease-in-out ${isAvailable ? 'bg-gray-100' : 'bg-gray-100'}`}
+            />
+            
+            {isAvailable ? (
+              <Button 
+                className="w-full bg-construPro-blue hover:bg-construPro-blue/90 text-white flex items-center justify-center gap-1 py-1 h-8"
+                onClick={handleResgateClick}
+              >
+                <Gift className="h-3.5 w-3.5" /> 
+                <span>Resgatar</span>
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Button>
+            ) : (
+              <div className="w-full py-1.5 px-2 rounded-md bg-gray-100 text-gray-500 flex items-center justify-center gap-1.5 text-xs">
+                <Lock className="h-3 w-3" />
+                <span>Faltam {resgate.pontos - userPoints} pontos</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
