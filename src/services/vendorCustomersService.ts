@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { getVendorProfile } from './vendorProfileService';
 
@@ -127,6 +126,23 @@ export const searchCustomers = async (searchTerm: string): Promise<any[]> => {
       }
     }
     
+    // Special handling for CPF format (remove any non-numeric characters)
+    const cleanedSearchTerm = searchTerm.replace(/\D/g, '');
+    if (cleanedSearchTerm.length >= 9) {
+      console.log('Searching by cleaned CPF:', cleanedSearchTerm);
+      const { data: cpfUsers, error: cpfError } = await supabase
+        .from('profiles')
+        .select('id, nome, email, telefone, cpf')
+        .ilike('cpf', `%${cleanedSearchTerm}%`)
+        .neq('id', vendorUserId) // Exclude vendor
+        .limit(10);
+        
+      if (!cpfError && cpfUsers && cpfUsers.length > 0) {
+        console.log('Found users by CPF:', cpfUsers);
+        return cpfUsers;
+      }
+    }
+    
     // Special handling for email format
     if (searchTerm.includes('@')) {
       console.log('Searching by email:', searchTerm);
@@ -140,6 +156,25 @@ export const searchCustomers = async (searchTerm: string): Promise<any[]> => {
       if (!emailError && emailUsers && emailUsers.length > 0) {
         console.log('Found users by email:', emailUsers);
         return emailUsers;
+      }
+    }
+    
+    // Search by phone number (remove formatting)
+    if (/\d/.test(searchTerm)) {
+      const phoneSearchTerm = searchTerm.replace(/\D/g, '');
+      if (phoneSearchTerm.length >= 8) {
+        console.log('Searching by phone:', phoneSearchTerm);
+        const { data: phoneUsers, error: phoneError } = await supabase
+          .from('profiles')
+          .select('id, nome, email, telefone, cpf')
+          .ilike('telefone', `%${phoneSearchTerm}%`)
+          .neq('id', vendorUserId) // Exclude vendor
+          .limit(10);
+          
+        if (!phoneError && phoneUsers && phoneUsers.length > 0) {
+          console.log('Found users by phone:', phoneUsers);
+          return phoneUsers;
+        }
       }
     }
     

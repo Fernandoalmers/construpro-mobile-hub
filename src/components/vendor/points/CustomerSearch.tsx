@@ -24,16 +24,20 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<CustomerData[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [noResultsFound, setNoResultsFound] = useState(false);
 
   // Handle search for customers with debounce
   useEffect(() => {
     if (!searchTerm || searchTerm.length < 3) {
       setShowSearchResults(false);
+      setNoResultsFound(false);
       return;
     }
     
     const searchCustomersDebounced = async () => {
       setIsSearching(true);
+      setNoResultsFound(false);
+      
       try {
         console.log('Searching for customers with term:', searchTerm);
         const results = await searchCustomers(searchTerm);
@@ -41,9 +45,11 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
         
         setSearchResults(results || []);
         setShowSearchResults(true);
+        setNoResultsFound(results.length === 0);
       } catch (error) {
         console.error('Error searching customers:', error);
         toast.error('Erro ao buscar clientes. Tente novamente.');
+        setNoResultsFound(true);
       } finally {
         setIsSearching(false);
       }
@@ -58,21 +64,26 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
     if (e.target.value.length === 0) {
       setSearchResults([]);
       setShowSearchResults(false);
+      setNoResultsFound(false);
     }
   };
 
   const handleSearch = () => {
     if (searchTerm.length >= 3) {
       setIsSearching(true);
+      setNoResultsFound(false);
+      
       searchCustomers(searchTerm)
         .then(results => {
           setSearchResults(results || []);
           setShowSearchResults(true);
+          setNoResultsFound(results.length === 0);
           setIsSearching(false);
         })
         .catch(error => {
           console.error('Error searching customers:', error);
           toast.error('Erro ao buscar clientes. Tente novamente.');
+          setNoResultsFound(true);
           setIsSearching(false);
         });
     } else {
@@ -83,13 +94,16 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
   const handleSelectCustomer = (customer: CustomerData) => {
     onSelectCustomer(customer);
     setSearchTerm('');
+    setSearchResults([]);
     setShowSearchResults(false);
+    setNoResultsFound(false);
   };
 
   const handleClearSearch = () => {
     setSearchTerm('');
     setSearchResults([]);
     setShowSearchResults(false);
+    setNoResultsFound(false);
   };
 
   return (
@@ -177,6 +191,18 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
               </p>
             </div>
           )}
+        </div>
+      )}
+      
+      {noResultsFound && !isSearching && searchTerm.length >= 3 && (
+        <div className="mt-4 text-center py-6 bg-gray-50 rounded-lg border border-gray-200">
+          <User className="mx-auto h-8 w-8 text-gray-400" />
+          <p className="mt-2 text-sm text-gray-700 font-medium">
+            Nenhum cliente encontrado
+          </p>
+          <p className="text-xs text-gray-500 mt-1 max-w-md mx-auto">
+            Verifique se os dados informados estão corretos e tente novamente.
+          </p>
         </div>
       )}
     </div>
