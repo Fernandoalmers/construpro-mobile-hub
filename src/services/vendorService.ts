@@ -14,6 +14,8 @@ import {
   getCustomerPoints,
   addVendorCustomer,
   seedTestCustomers,
+  migrateCustomersFromPointAdjustments,
+  migrateCustomersFromOrders,
   VendorCustomer 
 } from './vendorCustomersService';
 import { 
@@ -74,6 +76,8 @@ export {
   getCustomerPoints,
   addVendorCustomer,
   seedTestCustomers,
+  migrateCustomersFromPointAdjustments,
+  migrateCustomersFromOrders,
   
   // Points
   getPointAdjustments,

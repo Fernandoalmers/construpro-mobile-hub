@@ -15,6 +15,7 @@ import { Card } from '@/components/ui/card';
 import { Store, AlertCircle, RefreshCcw, Bug, RotateCcw, Info } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { updateVendorStatus } from '@/services/vendor/orders/utils/diagnosticUtils';
+import { migrateCustomersFromOrders } from '@/services/vendorCustomersService';
 import DebugOrdersView from './orders/DebugOrdersView';
 
 const VendorOrdersScreen: React.FC = () => {
@@ -134,6 +135,26 @@ const VendorOrdersScreen: React.FC = () => {
     }
   };
 
+  // New function to run migration
+  const runCustomersMigration = async () => {
+    toast.loading("Migrando clientes a partir de pedidos existentes...");
+    try {
+      const result = await migrateCustomersFromOrders();
+      if (result) {
+        toast.success("Clientes migrados com sucesso!");
+        // Navigate to customers page to see results
+        setTimeout(() => {
+          navigate('/vendor/customers');
+        }, 1500);
+      } else {
+        toast.error("Falha ao migrar clientes. Verifique os logs para mais detalhes.");
+      }
+    } catch (error) {
+      console.error("Error running migration:", error);
+      toast.error("Erro ao migrar clientes.");
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
       {/* Header */}
@@ -144,6 +165,41 @@ const VendorOrdersScreen: React.FC = () => {
       />
       
       <div className="p-6 space-y-6">
+        {/* Diagnostic Actions - Added action to run migration */}
+        <Card className="p-4 bg-yellow-50 border-yellow-200">
+          <div className="flex flex-col gap-3">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-yellow-500 mt-0.5" />
+              <div>
+                <h3 className="font-medium text-yellow-800">Diagnóstico e correção de problemas</h3>
+                <p className="text-sm text-yellow-700 mt-1">
+                  Se você não está vendo seus pedidos ou clientes, talvez seja necessário executar uma sincronização.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button 
+                onClick={runCustomersMigration}
+                className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                size="sm"
+              >
+                <RefreshCcw size={16} className="mr-1" />
+                Migrar clientes de pedidos
+              </Button>
+              
+              {showVendorStatusFix && (
+                <Button 
+                  onClick={fixVendorStatus}
+                  className="bg-red-500 hover:bg-red-600 text-white"
+                  size="sm"
+                >
+                  Corrigir status do vendedor
+                </Button>
+              )}
+            </div>
+          </div>
+        </Card>
+
         {/* Customer Registration Info Alert */}
         <Card className="p-4 bg-blue-50 border-blue-200">
           <div className="flex items-start gap-3">
