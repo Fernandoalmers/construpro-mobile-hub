@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
@@ -13,7 +12,7 @@ import {
   NotFoundScreen, VendorDashboardScreen, VendorProductsScreen,
   VendorCustomersScreen, AuthProvider, ProtectedRoute,
   MarketplaceScreenWrapper, AdminSettingsScreen, AdminRewardsScreen, 
-  AdminCategoriesScreen, CartProvider
+  AdminCategoriesScreen, CartProvider, UserDataScreen
 } from './imports';
 import { useAuth } from './context/AuthContext';
 import BottomTabNavigator from './components/layout/BottomTabNavigator';
@@ -97,6 +96,7 @@ function App() {
         <Route path="/profile/referrals" element={<ProtectedRoute><ReferralsScreen /></ProtectedRoute>} />
         <Route path="/profile/favorites" element={<ProtectedRoute><FavoritesScreen /></ProtectedRoute>} />
         <Route path="/profile/settings" element={<ProtectedRoute><SettingsScreen /></ProtectedRoute>} />
+        <Route path="/profile/user-data" element={<ProtectedRoute><UserDataScreen /></ProtectedRoute>} />
         
         {/* Rewards related routes */}
         <Route path="/rewards" element={<ProtectedRoute><RewardsScreen /></ProtectedRoute>} />

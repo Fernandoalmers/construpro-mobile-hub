@@ -1,6 +1,3 @@
-
-
-
 // Common
 export { default as LoadingState } from './components/common/LoadingState';
 
@@ -32,6 +29,7 @@ export { default as HomeScreen } from './components/home/HomeScreen';
 
 // Profile
 export { default as ProfileScreen } from './components/profile/ProfileScreen';
+export { default as UserDataScreen } from './components/profile/UserDataScreen';
 
 // Rewards
 export { default as RewardsScreen } from './components/resgates/ResgatesScreen';
@@ -74,4 +72,3 @@ export { default as ProductSegmentSelect } from './components/vendor/ProductSegm
 
 // Marketplace
 export { default as MarketplaceScreenWrapper } from './components/marketplace/MarketplaceScreenWrapper';
-
