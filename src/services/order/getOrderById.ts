@@ -115,24 +115,22 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
         // Fix TypeScript errors by properly checking produto validity and casting
         let productData: OrderItem['produto'];
         
-        // Always check if produto exists before trying to access it
         if (hasError) {
           // Use default product if there's an error or produto is missing
           productData = defaultProduct;
         } else {
-          // Safety checks to ensure produto is valid
-          // Create a safe copy with proper null check before accessing properties
-          const safeProduto = produtoExists ? item.produto! : null;
+          // Create a safe copy with proper null check 
+          // TypeScript still warns about null even though we checked produtoExists,
+          // so we'll handle it with a ternary and explicit type assertions
+          const safeProduto = produtoExists ? (item.produto as any) : null;
           
-          if (
-            safeProduto !== null &&
-            typeof safeProduto === 'object' &&
-            !('error' in safeProduto) &&
-            'id' in safeProduto &&
-            'nome' in safeProduto
-          ) {
-            // Cast to unknown first, then to the proper type to avoid TypeScript errors
-            productData = safeProduto as unknown as OrderItem['produto'];
+          // Additional null check before property access
+          if (safeProduto && 
+              typeof safeProduto === 'object' &&
+              !('error' in safeProduto) &&
+              'id' in safeProduto &&
+              'nome' in safeProduto) {
+            productData = safeProduto as OrderItem['produto'];
           } else {
             // Fallback to default product if structure is invalid
             productData = defaultProduct;
