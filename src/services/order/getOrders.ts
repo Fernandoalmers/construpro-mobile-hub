@@ -106,7 +106,6 @@ export async function getOrders(): Promise<OrderData[]> {
               preco_normal: Number(safeProduto.preco_normal) || item.preco_unitario,
               categoria: safeProduto.categoria || '',
               preco_promocional: safeProduto.preco_promocional,
-              // Add imagem_url for consistency
               imagem_url: getProductImageUrl(safeProduto)
             };
           }

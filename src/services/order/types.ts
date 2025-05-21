@@ -63,6 +63,7 @@ export interface ProductData {
   preco_promocional?: number;
   descricao?: string;
   categoria?: string;
+  imagem_url?: string | null; // Added imagem_url to be consistent
   [key: string]: any;
 }
 
