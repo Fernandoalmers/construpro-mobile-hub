@@ -18,37 +18,56 @@ const ProductImage: React.FC<ProductImageProps> = ({
   
   // Extract image URL from either direct URL or images array
   const getImageUrl = React.useMemo(() => {
+    // Debug log the image data we received
+    console.log(`[ProductImage] Resolving image for ${productName}:`, {
+      hasImageUrl: !!imagemUrl, 
+      hasImagens: !!imagens,
+      imagensLength: imagens && Array.isArray(imagens) ? imagens.length : 0,
+      imagensType: imagens && Array.isArray(imagens) && imagens.length > 0 ? 
+        typeof imagens[0] : 'none'
+    });
+    
     // First priority: direct imagemUrl if available
     if (imagemUrl) {
       return imagemUrl;
     }
     
     // Second priority: extract from imagens array if available
-    if (imagens && Array.isArray(imagens) && imagens.length > 0) {
-      const firstImage = imagens[0];
-      
-      // Handle different image formats
-      if (typeof firstImage === 'string') {
-        return firstImage;
+    if (imagens) {
+      // Handle case where imagens is a string directly
+      if (typeof imagens === 'string') {
+        return imagens;
       }
       
-      if (typeof firstImage === 'object' && firstImage !== null) {
-        return firstImage.url || firstImage.path || firstImage.src || null;
+      // Handle array of images
+      if (Array.isArray(imagens) && imagens.length > 0) {
+        const firstImage = imagens[0];
+        
+        // Handle different image formats
+        if (typeof firstImage === 'string') {
+          return firstImage;
+        }
+        
+        if (typeof firstImage === 'object' && firstImage !== null) {
+          return firstImage.url || firstImage.path || firstImage.src || null;
+        }
       }
     }
     
     return null;
-  }, [imagemUrl, imagens]);
+  }, [imagemUrl, imagens, productName]);
   
   // Log debug info 
   React.useEffect(() => {
     if (!getImageUrl) {
-      console.log(`[ProductImage] No image URL for product: ${productName}`, {
+      console.log(`[ProductImage] No image URL resolved for product: ${productName}`, {
         hasDirectUrl: !!imagemUrl,
-        hasImagens: !!imagens && Array.isArray(imagens) && imagens.length > 0,
+        hasImagens: !!imagens,
         imagensType: imagens && Array.isArray(imagens) && imagens.length > 0 ? 
           typeof imagens[0] : 'none'
       });
+    } else {
+      console.log(`[ProductImage] Successfully resolved image URL for ${productName}: ${getImageUrl.substring(0, 50)}...`);
     }
   }, [getImageUrl, imagemUrl, imagens, productName]);
   

@@ -49,7 +49,10 @@ const OrderDetailScreen: React.FC = () => {
           produto_id: firstItem.produto_id,
           produto: firstItem.produto ? {
             nome: firstItem.produto.nome,
-            hasImage: !!firstItem.produto.imagem_url
+            hasImage: !!firstItem.produto.imagem_url,
+            hasImagens: !!firstItem.produto.imagens && 
+                       Array.isArray(firstItem.produto.imagens) && 
+                       firstItem.produto.imagens.length > 0
           } : 'No product data'
         });
       } else {
@@ -109,7 +112,10 @@ const OrderDetailScreen: React.FC = () => {
       produto_id: orderItems[0].produto_id,
       produto: orderItems[0].produto ? {
         nome: orderItems[0].produto.nome,
-        hasImage: !!orderItems[0].produto.imagem_url
+        hasImage: !!orderItems[0].produto.imagem_url,
+        hasImagens: !!orderItems[0].produto.imagens && 
+                   Array.isArray(orderItems[0].produto.imagens) && 
+                   orderItems[0].produto.imagens.length > 0
       } : 'No product data'
     } : 'No items'
   });
