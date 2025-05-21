@@ -90,17 +90,16 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
     
     if (itemsData && Array.isArray(itemsData)) {
       itemsData.forEach(item => {
-        // First check if produto exists at all
-        const isProductMissing = !item.produto;
+        // First validate if produto exists at all using a separate variable
+        const produtoExists = item.produto !== null && item.produto !== undefined;
         
-        // If produto exists, check if it has error property (SelectQueryError)
-        const isProductError = !isProductMissing && 
+        // Check specifically for error property only if produto exists
+        const hasErrorProperty = produtoExists && 
           typeof item.produto === 'object' && 
-          item.produto !== null && 
           'error' in item.produto;
         
-        // Either product is missing or has an error
-        const hasError = isProductMissing || isProductError;
+        // Either product doesn't exist or has an error
+        const hasError = !produtoExists || hasErrorProperty;
         
         // Create the default product structure for when there's an error
         const defaultProduct = {
@@ -116,20 +115,24 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
         // Fix TypeScript errors by properly checking produto validity and casting
         let productData: OrderItem['produto'];
         
+        // Always check if produto exists before trying to access it
         if (hasError) {
           // Use default product if there's an error or produto is missing
           productData = defaultProduct;
         } else {
           // Safety checks to ensure produto is valid
+          // Create a safe copy with proper null check before accessing properties
+          const safeProduto = produtoExists ? item.produto! : null;
+          
           if (
-            item.produto !== null &&
-            typeof item.produto === 'object' &&
-            !('error' in item.produto) &&
-            'id' in item.produto &&
-            'nome' in item.produto
+            safeProduto !== null &&
+            typeof safeProduto === 'object' &&
+            !('error' in safeProduto) &&
+            'id' in safeProduto &&
+            'nome' in safeProduto
           ) {
             // Cast to unknown first, then to the proper type to avoid TypeScript errors
-            productData = item.produto as unknown as OrderItem['produto'];
+            productData = safeProduto as unknown as OrderItem['produto'];
           } else {
             // Fallback to default product if structure is invalid
             productData = defaultProduct;
