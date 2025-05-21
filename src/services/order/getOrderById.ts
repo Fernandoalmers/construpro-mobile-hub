@@ -113,15 +113,28 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
           preco_promocional: undefined
         };
         
-        // We need to check explicitly for null or undefined before accessing produto
-        const produtoIsValid = item.produto !== null && 
-                             item.produto !== undefined && 
-                             typeof item.produto === 'object' && 
-                             !('error' in (item.produto || {}));
+        // Fix TypeScript errors by properly checking produto validity and casting
+        let productData: OrderItem['produto'];
         
-        // Fix the error on line 100 by creating a safe produto reference
-        // Use a definite non-null assertion with type check to satisfy TypeScript
-        const produto = produtoIsValid ? item.produto! : null;
+        if (hasError) {
+          // Use default product if there's an error or produto is missing
+          productData = defaultProduct;
+        } else {
+          // Safety checks to ensure produto is valid
+          if (
+            item.produto !== null &&
+            typeof item.produto === 'object' &&
+            !('error' in item.produto) &&
+            'id' in item.produto &&
+            'nome' in item.produto
+          ) {
+            // Cast to unknown first, then to the proper type to avoid TypeScript errors
+            productData = item.produto as unknown as OrderItem['produto'];
+          } else {
+            // Fallback to default product if structure is invalid
+            productData = defaultProduct;
+          }
+        }
         
         const orderItem: OrderItem = {
           id: item.id,
@@ -129,9 +142,7 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
           quantidade: item.quantidade,
           preco_unitario: item.preco_unitario,
           subtotal: item.subtotal,
-          // Use default product for errors, otherwise use produto after type checking
-          produto: hasError || !produtoIsValid ? defaultProduct : 
-            (produto as OrderItem['produto'])
+          produto: productData
         };
         
         processedItems.push(orderItem);
