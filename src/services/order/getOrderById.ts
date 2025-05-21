@@ -121,7 +121,8 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
         } else {
           // To address the TypeScript error, we need a more explicit check and casting
           // First create a safe copy of the produto with proper null check
-          const safeProduto = produtoExists && item.produto ? { ...item.produto } : null;
+          // Ensure item.produto is an object before spreading
+          const safeProduto = produtoExists && typeof item.produto === 'object' ? { ...item.produto as Record<string, any> } : null;
           
           // Then do a thorough check of the object structure before using it
           if (safeProduto !== null && 
