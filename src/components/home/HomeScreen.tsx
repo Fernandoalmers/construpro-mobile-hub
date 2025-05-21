@@ -7,12 +7,12 @@ import LoadingState from '../common/LoadingState';
 import ErrorState from '../common/ErrorState';
 import Card from '../common/Card';
 import Avatar from '../common/Avatar';
-import ProgressBar from '../common/ProgressBar';
 import CustomButton from '../common/CustomButton';
 import { Receipt, Gift, QrCode, MessageSquare, Award, ChevronRight } from 'lucide-react';
 import { calculateMonthlyPoints, calculateLevelInfo, getCurrentMonthName } from '@/utils/pointsCalculations';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import MonthlyLevelProgress from '../profile/points-history/MonthlyLevelProgress';
 
 // Define the shortcuts array for the quick access section
 const shortcuts = [
@@ -184,34 +184,10 @@ const HomeScreen: React.FC = () => {
 
       {/* Level Card */}
       <div className="px-6 -mt-6">
-        <Card className="p-4">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center">
-              <Award size={18} className="text-construPro-orange mr-2" />
-              <h3 className="font-medium">Nível do mês de {currentMonth}</h3>
-            </div>
-            <span 
-              className="font-bold"
-              style={{ color: levelInfo.levelColor }}
-            >
-              {levelInfo.levelName}
-            </span>
-          </div>
-          <ProgressBar 
-            value={levelInfo.currentProgress} 
-            max={levelInfo.maxProgress} 
-            size="md"
-            color="blue"
-            animated={true}
-          />
-          <p className="text-xs text-gray-500 mt-1 text-right">
-            {levelInfo.nextLevel 
-              ? `Faltam ${levelInfo.pointsToNextLevel} pontos para o nível ${
-                  levelInfo.nextLevel.charAt(0).toUpperCase() + levelInfo.nextLevel.slice(1)
-                }` 
-              : 'Nível máximo do mês atingido!'}
-          </p>
-        </Card>
+        <MonthlyLevelProgress
+          currentMonth={currentMonth}
+          levelInfo={levelInfo}
+        />
       </div>
 
       {/* Shortcuts */}
