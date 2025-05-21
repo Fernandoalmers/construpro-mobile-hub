@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getProducts, Product } from '@/services/productService';
@@ -13,6 +14,56 @@ import { Receipt, Gift, QrCode, MessageSquare, Award, ChevronRight } from 'lucid
 import { calculateMonthlyPoints, calculateLevelInfo, getCurrentMonthName } from '@/utils/pointsCalculations';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+
+// Define the shortcuts array for the quick access section
+const shortcuts = [
+  {
+    id: 'receipt',
+    label: 'Compras',
+    route: '/profile/purchases',
+    icon: <Receipt size={24} />
+  },
+  {
+    id: 'rewards',
+    label: 'Resgates',
+    route: '/resgates',
+    icon: <Gift size={24} />
+  },
+  {
+    id: 'scan',
+    label: 'Escanear',
+    route: '/scan',
+    icon: <QrCode size={24} />
+  },
+  {
+    id: 'chat',
+    label: 'Suporte',
+    route: '/chat',
+    icon: <MessageSquare size={24} />
+  }
+];
+
+// Define the promotion items
+const promoItems = [
+  {
+    id: 1,
+    title: 'Dobro de pontos em materiais elétricos',
+    description: 'Promoção válida até 30/06/2025',
+    color: 'bg-amber-50'
+  },
+  {
+    id: 2,
+    title: 'Compre e ganhe um brinde',
+    description: 'Nas compras acima de R$ 300,00',
+    color: 'bg-blue-50'
+  },
+  {
+    id: 3,
+    title: 'Indique um amigo e ganhe 500 pontos',
+    description: 'Cada amigo que se cadastrar',
+    color: 'bg-green-50'
+  }
+];
 
 const HomeScreen: React.FC = () => {
   const navigate = useNavigate();
