@@ -25,13 +25,15 @@ export const fetchRewards = async (): Promise<AdminReward[]> => {
       return [];
     }
 
-    // Retrieve reward templates using one of two conditions:
-    // 1. Include rewards with null cliente_id (created by admin as templates) 
-    // 2. OR include rewards with status 'ativo' or 'inativo' (also templates)
+    console.log('Fetching rewards as admin:', user.id); // Debug log
+
+    // Use a more comprehensive query to retrieve all reward templates:
+    // 1. Get templates where cliente_id is NULL (admin created templates)
+    // 2. OR where status is 'ativo' or 'inativo' (indicating it's a template)
     const { data, error } = await supabase
       .from('resgates')
       .select('*')
-      .is('cliente_id', null) // Only get templates where cliente_id is NULL
+      .or('cliente_id.is.null,status.in.(ativo,inativo)') // Retrieve both null cliente_id AND templates with status
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -43,6 +45,7 @@ export const fetchRewards = async (): Promise<AdminReward[]> => {
     }
 
     console.log('Fetched rewards data:', data); // Debug log
+    console.log('Number of rewards found:', data ? data.length : 0); // Additional debug log
 
     // Safety measure to ensure we always return an array
     if (!data || !Array.isArray(data)) {
