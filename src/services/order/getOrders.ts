@@ -97,12 +97,18 @@ export async function getOrders(): Promise<OrderData[]> {
           const safeProduto = item.produto as Record<string, any>;
           
           if ('id' in safeProduto && 'nome' in safeProduto) {
-            productData = safeProduto as OrderItem['produto'];
-            
-            // Add consistent image URL access
-            if (!productData.imagem_url) {
-              productData.imagem_url = getProductImageUrl(productData);
-            }
+            // Create a valid product object ensuring all required fields are present
+            productData = {
+              id: safeProduto.id,
+              nome: safeProduto.nome,
+              imagens: Array.isArray(safeProduto.imagens) ? safeProduto.imagens : [],
+              descricao: safeProduto.descricao || '',
+              preco_normal: Number(safeProduto.preco_normal) || item.preco_unitario,
+              categoria: safeProduto.categoria || '',
+              preco_promocional: safeProduto.preco_promocional,
+              // Add imagem_url for consistency
+              imagem_url: getProductImageUrl(safeProduto)
+            };
           }
         }
         
