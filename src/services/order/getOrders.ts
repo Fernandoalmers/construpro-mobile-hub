@@ -1,7 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
-import { OrderData, OrderItem } from './types';
+import { OrderData, OrderItem, ProductData } from './types';
 import { getProductImageUrl } from './getOrderById';
 
 export async function getOrders(): Promise<OrderData[]> {
@@ -86,7 +86,8 @@ export async function getOrders(): Promise<OrderData[]> {
           descricao: '',
           preco_normal: item.preco_unitario,
           categoria: '',
-          preco_promocional: undefined
+          preco_promocional: undefined,
+          imagem_url: null
         };
         
         // Process product data safely
