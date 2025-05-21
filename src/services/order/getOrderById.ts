@@ -90,7 +90,7 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
     
     if (itemsData && Array.isArray(itemsData)) {
       itemsData.forEach(item => {
-        // First validate if produto exists at all using a separate variable
+        // First validate if produto exists at all 
         const produtoExists = item.produto !== null && item.produto !== undefined;
         
         // Check specifically for error property only if produto exists
@@ -119,12 +119,11 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
           // Use default product if there's an error or produto is missing
           productData = defaultProduct;
         } else {
-          // Create a safe copy with proper null check 
-          // TypeScript still warns about null even though we checked produtoExists,
-          // so we'll handle it with a ternary and explicit type assertions
-          const safeProduto = produtoExists ? (item.produto as any) : null;
+          // We've already checked produtoExists, so we can now safely use a non-null assertion
+          // with a type cast to avoid TypeScript warnings
+          const safeProduto = item.produto as Record<string, any>;
           
-          // Additional null check before property access
+          // Additional property check 
           if (safeProduto && 
               typeof safeProduto === 'object' &&
               !('error' in safeProduto) &&
