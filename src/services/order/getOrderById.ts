@@ -96,7 +96,7 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
         // Check specifically for error property only if produto exists
         const hasErrorProperty = produtoExists && 
           typeof item.produto === 'object' && 
-          'error' in item.produto;
+          'error' in (item.produto || {});
         
         // Either product doesn't exist or has an error
         const hasError = !produtoExists || hasErrorProperty;
@@ -121,10 +121,10 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
         } else {
           // To address the TypeScript error, we need a more explicit check and casting
           // First create a safe copy of the produto with proper null check
-          const safeProduto = produtoExists ? item.produto! : null;
+          const safeProduto = produtoExists && item.produto ? { ...item.produto } : null;
           
           // Then do a thorough check of the object structure before using it
-          if (safeProduto && 
+          if (safeProduto !== null && 
               typeof safeProduto === 'object' &&
               !('error' in safeProduto) &&
               'id' in safeProduto &&
