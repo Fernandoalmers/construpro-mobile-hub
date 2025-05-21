@@ -1633,6 +1633,10 @@ export type Database = {
         Args: { order_id: string }
         Returns: boolean
       }
+      can_vendor_access_order: {
+        Args: { order_id: string; vendor_id: string }
+        Returns: boolean
+      }
       commit_transaction: {
         Args: Record<PropertyKey, never>
         Returns: undefined

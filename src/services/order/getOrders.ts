@@ -79,7 +79,7 @@ export async function getOrders(): Promise<OrderData[]> {
         }
         
         // Create default product as fallback
-        const defaultProduct = {
+        const defaultProduct: ProductData = {
           id: item.produto_id,
           nome: 'Produto indisponível',
           imagens: [] as any[],
@@ -91,7 +91,7 @@ export async function getOrders(): Promise<OrderData[]> {
         };
         
         // Process product data safely
-        let productData = defaultProduct;
+        let productData: ProductData = defaultProduct;
         
         if (item.produto !== null && typeof item.produto === 'object') {
           // Safely access produto properties
