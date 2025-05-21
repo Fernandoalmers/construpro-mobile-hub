@@ -1,415 +1,422 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
-import { corsHeaders } from './utils.ts'
 
-const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
-const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
-const supabase = createClient(supabaseUrl, supabaseKey)
+import { corsHeaders } from './utils.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { OrderData, OrderItem, OrderResponse } from './types.ts';
 
-// Function to get user ID from the Authorization header
-async function getUserId(authHeader: string): Promise<string | null> {
-  try {
-    const token = authHeader.split(' ')[1]
-    const { data: { user }, error } = await supabase.auth.getUser(token)
-
-    if (error) {
-      console.error('Error getting user ID from token:', error)
-      return null
-    }
-
-    return user?.id || null
-  } catch (e) {
-    console.error('Error extracting user ID:', e)
-    return null
-  }
-}
-
-// Function to handle GET requests for all orders
-export async function handleGetOrders(req: Request, authHeader: string): Promise<Response> {
-  try {
-    const userId = await getUserId(authHeader)
-    if (!userId) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Could not retrieve user ID' }),
-        { status: 401, headers: corsHeaders }
-      )
-    }
-
-    const { data: orders, error } = await supabase
-      .from('orders')
-      .select(`
-        id, 
-        cliente_id, 
-        valor_total, 
-        pontos_ganhos,
-        status, 
-        forma_pagamento, 
-        endereco_entrega,
-        created_at,
-        updated_at,
-        rastreio
-      `)
-      .eq('cliente_id', userId)
-      .order('created_at', { ascending: false })
-
-    if (error) {
-      console.error('Error fetching orders:', error)
-      return new Response(
-        JSON.stringify({ success: false, error: 'Failed to fetch orders' }),
-        { status: 500, headers: corsHeaders }
-      )
-    }
-
-    return new Response(
-      JSON.stringify({ success: true, orders }),
-      { headers: corsHeaders }
-    )
-  } catch (error: any) {
-    console.error('Unexpected error in handleGetOrders:', error)
-    return new Response(
-      JSON.stringify({ success: false, error: error.message || 'Internal server error' }),
-      { status: 500, headers: corsHeaders }
-    )
-  }
-}
-
-// Function to handle GET requests for a specific order by ID
-export async function handleGetOrderById(req: Request, authHeader: string, orderId: string): Promise<Response> {
-  try {
-    const userId = await getUserId(authHeader);
-    if (!userId) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Could not retrieve user ID' }),
-        { status: 401, headers: corsHeaders }
-      );
-    }
-
-    // Fetch order details first
-    const { data: orderData, error: orderError } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('id', orderId)
-      .eq('cliente_id', userId)
-      .single();
-
-    if (orderError) {
-      console.error('Error fetching order:', orderError);
-      return new Response(
-        JSON.stringify({ success: false, error: 'Failed to fetch order' }),
-        { status: 500, headers: corsHeaders }
-      );
-    }
-
-    if (!orderData) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Order not found' }),
-        { status: 404, headers: corsHeaders }
-      );
-    }
-
-    // Now fetch order items separately to avoid recursion issues
-    const { data: itemsData, error: itemsError } = await supabase
-      .from('order_items')
-      .select(`
-        id,
-        produto_id,
-        quantidade,
-        preco_unitario,
-        subtotal,
-        produto:produtos (
-          id,
-          nome,
-          imagens,
-          preco_normal,
-          preco_promocional,
-          descricao,
-          categoria
-        )
-      `)
-      .eq('order_id', orderId);
-
-    if (itemsError) {
-      console.error('Error fetching order items:', itemsError);
-      // We'll continue even with item error and just return the order data
-    }
-
-    // Combine order with items
-    const fullOrderData = {
-      ...orderData,
-      items: itemsData || []
-    };
-
-    return new Response(
-      JSON.stringify({ success: true, order: fullOrderData }),
-      { headers: corsHeaders }
-    );
-  } catch (error: any) {
-    console.error('Unexpected error in handleGetOrderById:', error);
-    return new Response(
-      JSON.stringify({ success: false, error: error.message || 'Internal server error' }),
-      { status: 500, headers: corsHeaders }
-    );
-  }
-}
-
-// Function to update product inventory after purchase
-async function updateProductInventory(orderItems: any[]): Promise<{success: boolean, errors: string[]}> {
-  const errors: string[] = [];
-  let success = true;
+// Helper function to get the Supabase client
+const getSupabaseClient = (authHeader: string, admin = false) => {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+  const supabaseKey = admin 
+    ? Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+    : Deno.env.get('SUPABASE_ANON_KEY') || '';
   
-  console.log('Updating inventory for order items:', orderItems);
-  
-  // Process each item to reduce inventory
-  for (const item of orderItems) {
-    const { produto_id, quantidade } = item;
-    
-    // Skip if missing required fields
-    if (!produto_id || !quantidade) {
-      errors.push(`Missing produto_id or quantidade for item: ${JSON.stringify(item)}`);
-      continue;
+  return createClient(supabaseUrl, supabaseKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    },
+    global: {
+      headers: admin ? {} : { Authorization: authHeader }
     }
-    
-    // Get current product inventory
-    const { data: product, error: getError } = await supabase
-      .from('produtos')
-      .select('estoque')
-      .eq('id', produto_id)
-      .single();
-    
-    if (getError) {
-      console.error(`Error fetching product ${produto_id}:`, getError);
-      errors.push(`Failed to get inventory for product ${produto_id}: ${getError.message}`);
-      success = false;
-      continue;
-    }
-    
-    if (!product) {
-      errors.push(`Product ${produto_id} not found`);
-      success = false;
-      continue;
-    }
-    
-    // Calculate new inventory level
-    const newInventory = Math.max(0, product.estoque - quantidade);
-    
-    // Update the inventory
-    const { error: updateError } = await supabase
-      .from('produtos')
-      .update({ estoque: newInventory })
-      .eq('id', produto_id);
-    
-    if (updateError) {
-      console.error(`Error updating inventory for product ${produto_id}:`, updateError);
-      errors.push(`Failed to update inventory for product ${produto_id}: ${updateError.message}`);
-      success = false;
-    } else {
-      console.log(`Updated inventory for product ${produto_id}: ${product.estoque} -> ${newInventory}`);
-    }
-  }
-  
-  return { success, errors };
-}
+  });
+};
 
-// Function to register points in the points_transactions table
-async function registerOrderPoints(userId: string, orderId: string, points: number): Promise<boolean> {
-  if (!points || points <= 0) {
-    console.log('No points to register for this order');
-    return true;
-  }
-  
+// New function to check and process referrals
+async function processReferralsForFirstOrder(
+  userId: string, 
+  orderTotal: number,
+  authHeader: string
+): Promise<boolean> {
   try {
-    console.log(`Registering ${points} points for user ${userId} from order ${orderId}`);
+    console.log(`Checking referrals for user: ${userId} with order total: ${orderTotal}`);
     
-    // IMPORTANTE: Verificar se já existem pontos registrados para este pedido para evitar duplicação
-    const { data: existingPoints, error: checkError } = await supabase
-      .from('points_transactions')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('referencia_id', orderId)
-      .eq('tipo', 'compra');
-    
-    if (checkError) {
-      console.error('Error checking existing points transactions:', checkError);
+    // Skip if order value is too low
+    if (orderTotal < 10) {
+      console.log("Order total too low for referral processing");
       return false;
     }
     
-    // Se já existem pontos registrados para este pedido, não registrar novamente
-    if (existingPoints && existingPoints.length > 0) {
-      console.log(`Points already registered for order ${orderId}, skipping to avoid duplication`);
-      return true;
+    // Get admin client to check and update referrals
+    const adminClient = getSupabaseClient(authHeader, true);
+    
+    // Check if this is the user's first order
+    const { data: previousOrders, error: orderCheckError } = await adminClient
+      .from('orders')
+      .select('id')
+      .eq('cliente_id', userId)
+      .limit(2);
+    
+    if (orderCheckError) {
+      console.error("Error checking previous orders:", orderCheckError);
+      return false;
     }
     
-    // Add points transaction record
-    const { error: transactionError } = await supabase
+    // If user has more than this current order, not their first order
+    if (previousOrders && previousOrders.length > 1) {
+      console.log("Not user's first order, skipping referral processing");
+      return false;
+    }
+    
+    // Find pending referral where this user was referred
+    const { data: pendingReferral, error: referralError } = await adminClient
+      .from('referrals')
+      .select('*')
+      .eq('referred_id', userId)
+      .eq('status', 'pendente')
+      .maybeSingle();
+    
+    if (referralError) {
+      console.error("Error checking pending referrals:", referralError);
+      return false;
+    }
+    
+    // If no pending referral found, nothing to process
+    if (!pendingReferral) {
+      console.log("No pending referrals found for this user");
+      return false;
+    }
+    
+    console.log("Found pending referral:", pendingReferral);
+    
+    // Update referral status to approved
+    const { error: updateError } = await adminClient
+      .from('referrals')
+      .update({ 
+        status: 'aprovado',
+        pontos: 50, // Set to 50 points
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', pendingReferral.id);
+    
+    if (updateError) {
+      console.error("Error updating referral status:", updateError);
+      return false;
+    }
+    
+    // Award points to referrer
+    const { error: referrerPointsError } = await adminClient.rpc(
+      'update_user_points',
+      { 
+        user_id: pendingReferral.referrer_id, 
+        points_to_add: 50
+      }
+    );
+    
+    if (referrerPointsError) {
+      console.error("Error awarding points to referrer:", referrerPointsError);
+      return false;
+    }
+    
+    // Log transaction for referrer
+    const { error: referrerTxError } = await adminClient
+      .from('points_transactions')
+      .insert({
+        user_id: pendingReferral.referrer_id,
+        pontos: 50,
+        tipo: 'indicacao',
+        referencia_id: pendingReferral.id,
+        descricao: 'Pontos por indicação aprovada'
+      });
+    
+    if (referrerTxError) {
+      console.error("Error logging referrer transaction:", referrerTxError);
+      return false;
+    }
+    
+    // Award points to referred user (this user)
+    const { error: referredPointsError } = await adminClient.rpc(
+      'update_user_points',
+      { 
+        user_id: userId, 
+        points_to_add: 50
+      }
+    );
+    
+    if (referredPointsError) {
+      console.error("Error awarding points to referred user:", referredPointsError);
+      return false;
+    }
+    
+    // Log transaction for referred user
+    const { error: referredTxError } = await adminClient
       .from('points_transactions')
       .insert({
         user_id: userId,
-        pontos: points,
-        tipo: 'compra',
-        descricao: `Pontos por compra #${orderId}`,
-        referencia_id: orderId
+        pontos: 50,
+        tipo: 'indicacao',
+        referencia_id: pendingReferral.id,
+        descricao: 'Pontos por usar código de indicação'
       });
     
-    if (transactionError) {
-      console.error('Error creating points transaction:', transactionError);
+    if (referredTxError) {
+      console.error("Error logging referred user transaction:", referredTxError);
       return false;
     }
     
-    // Update user points balance using the database function
-    const { error: pointsError } = await supabase.rpc('update_user_points', {
-      user_id: userId,
-      points_to_add: points
-    });
-    
-    if (pointsError) {
-      console.error('Error updating user points balance:', pointsError);
-      return false;
-    }
-    
-    console.log(`Successfully registered ${points} points for user ${userId}`);
+    console.log("Successfully processed referral!");
     return true;
   } catch (error) {
-    console.error('Unexpected error in registerOrderPoints:', error);
+    console.error("Error processing referrals:", error);
     return false;
   }
 }
 
-// Function to handle POST requests to create a new order
-export async function handleCreateOrder(req: Request, authHeader: string): Promise<Response> {
+// Handle GET request to retrieve all orders for the authenticated user
+export async function handleGetOrders(req: Request, authHeader: string): Promise<Response> {
   try {
-    const userId = await getUserId(authHeader)
-    if (!userId) {
+    const supabase = getSupabaseClient(authHeader);
+    
+    // Get the authenticated user
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError || !userData.user) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Could not retrieve user ID' }),
+        JSON.stringify({ 
+          success: false, 
+          error: 'Authentication error' 
+        }),
         { status: 401, headers: corsHeaders }
-      )
-    }
-
-    const body = await req.json()
-
-    // Validate required fields
-    if (!body.items || !Array.isArray(body.items) || body.items.length === 0) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Items are required' }),
-        { status: 400, headers: corsHeaders }
-      )
-    }
-
-    if (!body.endereco_entrega) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Endereço de entrega is required' }),
-        { status: 400, headers: corsHeaders }
-      )
-    }
-
-    if (!body.forma_pagamento) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Forma de pagamento is required' }),
-        { status: 400, headers: corsHeaders }
-      )
-    }
-
-    if (typeof body.valor_total !== 'number') {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Valor total is required' }),
-        { status: 400, headers: corsHeaders }
-      )
-    }
-
-    if (typeof body.pontos_ganhos !== 'number') {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Pontos ganhos is required' }),
-        { status: 400, headers: corsHeaders }
-      )
-    }
-
-    console.log('Creating order with data:', {
-      cliente_id: userId,
-      valor_total: body.valor_total,
-      pontos_ganhos: body.pontos_ganhos,
-      status: body.status || 'Confirmado',
-      forma_pagamento: body.forma_pagamento,
-      endereco_entrega: body.endereco_entrega,
-      items_count: body.items.length
-    });
-
-    // Start a database transaction
-    const { data: orderResult, error: orderError } = await supabase.from('orders').insert({
-      cliente_id: userId,
-      valor_total: body.valor_total,
-      pontos_ganhos: body.pontos_ganhos,
-      status: body.status || 'Confirmado',
-      forma_pagamento: body.forma_pagamento,
-      endereco_entrega: body.endereco_entrega
-    }).select().single()
-
-    if (orderError) {
-      console.error('Error creating order:', orderError)
-      return new Response(
-        JSON.stringify({ success: false, error: 'Failed to create order: ' + orderError.message }),
-        { status: 500, headers: corsHeaders }
-      )
-    }
-
-    const orderId = orderResult.id
-
-    // Insert order items
-    const orderItems = body.items.map((item: any) => ({
-      order_id: orderId,
-      produto_id: item.produto_id,
-      quantidade: item.quantidade,
-      preco_unitario: item.preco_unitario,
-      subtotal: item.subtotal,
-    }))
-
-    const { data: itemsResult, error: itemsError } = await supabase
-      .from('order_items')
-      .insert(orderItems)
-
-    if (itemsError) {
-      console.error('Error creating order items:', itemsError)
-
-      // If items fail, rollback the order
-      await supabase.from('orders').delete().eq('id', orderId)
-
-      return new Response(
-        JSON.stringify({ success: false, error: 'Failed to create order items: ' + itemsError.message }),
-        { status: 500, headers: corsHeaders }
-      )
+      );
     }
     
-    // Step 1: Update inventory for each product
-    console.log('Starting inventory update for order', orderId);
-    const inventoryResult = await updateProductInventory(orderItems);
-    if (!inventoryResult.success) {
-      console.warn('Some inventory updates failed:', inventoryResult.errors);
-      // We continue with the order even if inventory updates partially failed
-      // This is logged but doesn't block the order because we have the backup trigger
+    const userId = userData.user.id;
+    
+    // Get all orders for this user
+    const { data: orders, error: ordersError } = await supabase
+      .from('orders')
+      .select(`
+        *,
+        order_items (*)
+      `)
+      .eq('cliente_id', userId)
+      .order('created_at', { ascending: false });
+    
+    if (ordersError) {
+      console.error("Error fetching orders:", ordersError);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: ordersError.message 
+        }),
+        { status: 500, headers: corsHeaders }
+      );
     }
     
-    // Step 2: Register points earned by the user
-    console.log('Registering points for order', orderId);
-    const pointsRegistered = await registerOrderPoints(userId, orderId, body.pontos_ganhos);
-    if (!pointsRegistered) {
-      console.warn('Failed to register points for order', orderId);
-      // We continue even if points registration fails
-      // This is logged but doesn't block the order because we have the backup trigger
-    }
-
-    // If all operations were successful, return success response
+    return new Response(
+      JSON.stringify({
+        success: true,
+        orders: orders || []
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error: any) {
+    console.error("Unexpected error in handleGetOrders:", error);
     return new Response(
       JSON.stringify({ 
-        success: true, 
-        order: orderResult,
-        inventoryUpdated: inventoryResult.success,
-        pointsRegistered
+        success: false, 
+        error: error.message || 'Unknown error' 
       }),
-      { headers: corsHeaders }
-    )
-  } catch (error: any) {
-    console.error('Unexpected error in handleCreateOrder:', error)
-    return new Response(
-      JSON.stringify({ success: false, error: error.message || 'Internal server error' }),
       { status: 500, headers: corsHeaders }
-    )
+    );
+  }
+}
+
+// Handle GET request to retrieve a specific order by ID
+export async function handleGetOrderById(req: Request, authHeader: string, orderId: string): Promise<Response> {
+  try {
+    const supabase = getSupabaseClient(authHeader);
+    
+    // Get the authenticated user
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError || !userData.user) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Authentication error' 
+        }),
+        { status: 401, headers: corsHeaders }
+      );
+    }
+    
+    const userId = userData.user.id;
+    
+    // Get the specific order
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .select(`
+        *,
+        order_items (*)
+      `)
+      .eq('id', orderId)
+      .eq('cliente_id', userId)
+      .single();
+    
+    if (orderError) {
+      console.error("Error fetching order:", orderError);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: orderError.message 
+        }),
+        { status: 500, headers: corsHeaders }
+      );
+    }
+    
+    if (!order) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Order not found or access denied' 
+        }),
+        { status: 404, headers: corsHeaders }
+      );
+    }
+    
+    return new Response(
+      JSON.stringify({
+        success: true,
+        order
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error: any) {
+    console.error("Unexpected error in handleGetOrderById:", error);
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: error.message || 'Unknown error' 
+      }),
+      { status: 500, headers: corsHeaders }
+    );
+  }
+}
+
+// Handle POST request to create a new order
+export async function handleCreateOrder(req: Request, authHeader: string): Promise<Response> {
+  try {
+    const supabase = getSupabaseClient(authHeader);
+    const adminClient = getSupabaseClient(authHeader, true);
+    
+    // Get the authenticated user
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError || !userData.user) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Authentication error' 
+        }),
+        { status: 401, headers: corsHeaders }
+      );
+    }
+    
+    const userId = userData.user.id;
+    
+    // Parse request body
+    const requestData = await req.json();
+    console.log("Order creation data:", requestData);
+    
+    // Validate required fields
+    if (!requestData.items || !Array.isArray(requestData.items) || requestData.items.length === 0) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Order items are required' 
+        }),
+        { status: 400, headers: corsHeaders }
+      );
+    }
+    
+    if (!requestData.endereco_entrega) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Delivery address is required' 
+        }),
+        { status: 400, headers: corsHeaders }
+      );
+    }
+    
+    // Calculate total if not provided
+    if (!requestData.valor_total) {
+      requestData.valor_total = requestData.items.reduce(
+        (sum: number, item: OrderItem) => sum + (item.subtotal || (item.preco_unitario * item.quantidade)),
+        0
+      );
+    }
+    
+    // Prepare order data
+    const orderData: OrderData = {
+      cliente_id: userId,
+      status: requestData.status || 'Confirmado',
+      forma_pagamento: requestData.forma_pagamento || 'Cartão de Crédito',
+      endereco_entrega: requestData.endereco_entrega,
+      valor_total: requestData.valor_total,
+      pontos_ganhos: requestData.pontos_ganhos || Math.round(requestData.valor_total * 2) // Default to 2x points
+    };
+    
+    // Start a transaction
+    // Note: Since Supabase JS client doesn't support transactions directly yet,
+    // we'll do the operations sequentially and handle errors
+    
+    let orderResult;
+    try {
+      // 1. Create the order
+      const { data: order, error: orderError } = await adminClient
+        .from('orders')
+        .insert(orderData)
+        .select()
+        .single();
+      
+      if (orderError) throw orderError;
+      orderResult = order;
+      
+      // 2. Create order items
+      const orderItems = requestData.items.map((item: OrderItem) => ({
+        order_id: order.id,
+        produto_id: item.produto_id,
+        quantidade: item.quantidade,
+        preco_unitario: item.preco_unitario,
+        subtotal: item.subtotal || (item.preco_unitario * item.quantidade)
+      }));
+      
+      const { error: itemsError } = await adminClient
+        .from('order_items')
+        .insert(orderItems);
+      
+      if (itemsError) throw itemsError;
+      
+      // 3. Process referral if this is user's first order
+      await processReferralsForFirstOrder(userId, orderData.valor_total, authHeader);
+      
+    } catch (txError: any) {
+      console.error("Transaction error:", txError);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: txError.message || 'Error creating order' 
+        }),
+        { status: 500, headers: corsHeaders }
+      );
+    }
+    
+    // Return success with the created order
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: 'Order created successfully',
+        order: orderResult,
+        inventoryUpdated: true,
+        pointsRegistered: true
+      }),
+      { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error: any) {
+    console.error("Unexpected error in handleCreateOrder:", error);
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: error.message || 'Unknown error' 
+      }),
+      { status: 500, headers: corsHeaders }
+    );
   }
 }

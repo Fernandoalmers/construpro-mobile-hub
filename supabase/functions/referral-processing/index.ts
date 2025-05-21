@@ -212,7 +212,7 @@ serve(async (req) => {
           referrer_id: referrer.id,
           referred_id: user.id,
           status: 'pendente',
-          pontos: 300 // Default points for referrals
+          pontos: 50 // Changed from 300 to 50 points
         });
       
       if (createError) {
@@ -285,7 +285,7 @@ serve(async (req) => {
           'update_user_points',
           { 
             user_id: referral.referrer_id, 
-            points_to_add: pontos || 300 
+            points_to_add: pontos || 50 // Changed from 300 to 50 points
           }
         );
         
@@ -301,7 +301,7 @@ serve(async (req) => {
           .from('points_transactions')
           .insert({
             user_id: referral.referrer_id,
-            pontos: pontos || 300,
+            pontos: pontos || 50, // Changed from 300 to 50 points
             tipo: 'indicacao',
             referencia_id: id,
             descricao: 'Pontos por indicação aprovada'
@@ -319,7 +319,7 @@ serve(async (req) => {
           'update_user_points',
           { 
             user_id: referral.referred_id, 
-            points_to_add: pontos || 300 
+            points_to_add: pontos || 50 // Changed from 300 to 50 points 
           }
         );
         
@@ -335,7 +335,7 @@ serve(async (req) => {
           .from('points_transactions')
           .insert({
             user_id: referral.referred_id,
-            pontos: pontos || 300,
+            pontos: pontos || 50, // Changed from 300 to 50 points
             tipo: 'indicacao',
             referencia_id: id,
             descricao: 'Pontos por se cadastrar com código de indicação'
@@ -354,7 +354,7 @@ serve(async (req) => {
         .from('referrals')
         .update({
           status,
-          pontos: pontos || 300
+          pontos: pontos || 50 // Changed from 300 to 50 points
         })
         .eq('id', id);
       
