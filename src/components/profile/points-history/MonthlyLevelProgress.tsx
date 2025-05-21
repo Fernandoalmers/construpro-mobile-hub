@@ -35,9 +35,8 @@ const MonthlyLevelProgress: React.FC<MonthlyLevelProgressProps> = ({
           value={levelInfo.currentProgress} 
           max={levelInfo.maxProgress} 
           size="md"
-          color="custom"
-          customColorClass="bg-amber-500"
-          animated={false}
+          color="blue"
+          animated={true}
         />
         <div className="flex justify-between text-xs text-gray-600 mt-1">
           <span>{percentage}%</span>

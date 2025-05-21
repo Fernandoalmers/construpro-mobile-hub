@@ -8,10 +8,9 @@ interface ProgressBarProps {
   showLabel?: boolean;
   label?: string;
   size?: 'sm' | 'md' | 'lg';
-  color?: 'default' | 'orange' | 'blue' | 'green' | 'custom';
+  color?: 'default' | 'orange' | 'blue' | 'green';
   className?: string;
   animated?: boolean;
-  customColorClass?: string;
 }
 
 const ProgressBar: React.FC<ProgressBarProps> = ({
@@ -23,7 +22,6 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
   color = 'default',
   className,
   animated = false,
-  customColorClass,
 }) => {
   const percentage = Math.min(100, Math.max(0, (value / max) * 100));
 
@@ -38,7 +36,6 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
     orange: 'bg-construPro-orange',
     blue: 'bg-blue-500',
     green: 'bg-green-500',
-    custom: customColorClass || 'bg-construPro-orange',
   };
 
   return (
