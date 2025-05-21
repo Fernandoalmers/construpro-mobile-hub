@@ -46,7 +46,7 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
   }
 }
 
-// Helper function to standardize product image access across the application
+// Improved helper function to standardize product image access across the application
 export function getProductImageUrl(produto: any): string | null {
   if (!produto) return null;
   
@@ -67,6 +67,9 @@ export function getProductImageUrl(produto: any): string | null {
       if (typeof firstImage === 'object' && firstImage !== null) {
         return firstImage.url || firstImage.path || firstImage.src || null;
       }
+    } else if (typeof produto.imagens === 'string') {
+      // Handle case where imagens might be a single string URL
+      return produto.imagens;
     }
   }
   
@@ -120,9 +123,18 @@ function processOrderItems(orderData: OrderData): void {
         return item;
       }
       
-      // Add image URL helper for consistent access
+      // IMPROVED: Add image URL helper for consistent access
       if (!itemProduto.imagem_url) {
         itemProduto.imagem_url = getProductImageUrl(itemProduto);
+        
+        // Debug logging for image URL extraction
+        console.log(`Product ${itemProduto.id} image extraction:`, {
+          hasImageUrl: !!itemProduto.imagem_url,
+          hasImagens: !!itemProduto.imagens,
+          imagesCount: itemProduto.imagens && Array.isArray(itemProduto.imagens) ? itemProduto.imagens.length : 0,
+          firstImageType: itemProduto.imagens && Array.isArray(itemProduto.imagens) && itemProduto.imagens.length > 0 ? 
+            typeof itemProduto.imagens[0] : 'none'
+        });
       }
     } else {
       // Not an object, use default
@@ -133,6 +145,17 @@ function processOrderItems(orderData: OrderData): void {
   });
   
   console.log(`Processed items: ${orderData.items.length} items available`);
+  
+  // Debug log first item to verify image processing
+  if (orderData.items.length > 0) {
+    const firstItem = orderData.items[0];
+    console.log("First item product data:", {
+      id: firstItem.produto_id,
+      nome: firstItem.produto?.nome,
+      hasImage: !!firstItem.produto?.imagem_url,
+      imageUrl: firstItem.produto?.imagem_url?.substring(0, 50)
+    });
+  }
 }
 
 // Direct method as fallback - uses explicit queries rather than RPC
@@ -208,9 +231,17 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
           if ('id' in safeProduto && 'nome' in safeProduto) {
             productData = safeProduto as OrderItem['produto'];
             
-            // Add consistent image URL access
+            // IMPROVED: Add consistent image URL access
             if (!productData.imagem_url) {
               productData.imagem_url = getProductImageUrl(productData);
+              
+              // Debug log image extraction
+              console.log(`Direct order item product ${productData.id} image extraction:`, {
+                success: !!productData.imagem_url,
+                imagesType: productData.imagens ? typeof productData.imagens : 'none',
+                imagesCount: productData.imagens && Array.isArray(productData.imagens) ? 
+                  productData.imagens.length : 0
+              });
             }
           }
         }

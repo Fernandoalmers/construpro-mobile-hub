@@ -31,6 +31,33 @@ const OrderDetailScreen: React.FC = () => {
     enabled: !!id
   });
 
+  // Add more detailed logging to help debug the items issue
+  React.useEffect(() => {
+    if (orderData) {
+      console.log("📊 [OrderDetailScreen] Order data loaded:", {
+        id: orderData.id,
+        status: orderData.status,
+        hasItems: !!orderData.items,
+        itemsCount: orderData.items?.length || 0
+      });
+      
+      // If we have items, check the first one for debugging
+      if (orderData.items && orderData.items.length > 0) {
+        const firstItem = orderData.items[0];
+        console.log("📦 [OrderDetailScreen] First item details:", {
+          id: firstItem.id,
+          produto_id: firstItem.produto_id,
+          produto: firstItem.produto ? {
+            nome: firstItem.produto.nome,
+            hasImage: !!firstItem.produto.imagem_url
+          } : 'No product data'
+        });
+      } else {
+        console.warn("⚠️ [OrderDetailScreen] No items found in order data");
+      }
+    }
+  }, [orderData]);
+
   if (isLoading) {
     return (
       <div className="flex flex-col min-h-screen bg-gray-100 p-6 pt-12">
@@ -71,6 +98,7 @@ const OrderDetailScreen: React.FC = () => {
   }
 
   const order = orderData as OrderData;
+  // Ensure we always have an array of items, even if empty
   const orderItems = order.items || [];
   
   console.log("💾 [OrderDetailScreen] Rendering order details:", {

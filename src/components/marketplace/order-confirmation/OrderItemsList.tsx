@@ -9,6 +9,28 @@ interface OrderItemsListProps {
 }
 
 const OrderItemsList: React.FC<OrderItemsListProps> = ({ items }) => {
+  // Log detailed info about items for debugging
+  React.useEffect(() => {
+    if (items && Array.isArray(items)) {
+      console.log(`[OrderItemsList] Rendering ${items.length} items`);
+      if (items.length > 0) {
+        const firstItem = items[0];
+        console.log("[OrderItemsList] First item details:", {
+          id: firstItem.id,
+          produto_id: firstItem.produto_id,
+          produto: firstItem.produto ? {
+            id: firstItem.produto.id,
+            nome: firstItem.produto.nome,
+            hasImagem: !!firstItem.produto.imagem_url,
+            hasImagens: firstItem.produto.imagens && 
+                       Array.isArray(firstItem.produto.imagens) && 
+                       firstItem.produto.imagens.length > 0
+          } : 'No product data'
+        });
+      }
+    }
+  }, [items]);
+  
   return (
     <div className="mb-4">
       <h3 className="font-medium mb-3 flex items-center">

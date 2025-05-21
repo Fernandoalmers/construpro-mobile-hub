@@ -10,6 +10,13 @@ interface ProductImageProps {
 const ProductImage: React.FC<ProductImageProps> = ({ imagemUrl, productName, size = 'sm' }) => {
   const [imageError, setImageError] = React.useState(false);
   
+  // Log debug info 
+  React.useEffect(() => {
+    if (!imagemUrl) {
+      console.log(`[ProductImage] No image URL for product: ${productName}`);
+    }
+  }, [imagemUrl, productName]);
+  
   const sizeClasses = {
     sm: "w-10 h-10",
     lg: "w-full aspect-square"
@@ -19,6 +26,7 @@ const ProductImage: React.FC<ProductImageProps> = ({ imagemUrl, productName, siz
     return (
       <div 
         className={`${sizeClasses[size]} bg-gray-200 rounded flex items-center justify-center text-gray-400`}
+        title={`Imagem não disponível para: ${productName}`}
       >
         <span className="text-xs">Imagem</span>
       </div>
@@ -30,7 +38,10 @@ const ProductImage: React.FC<ProductImageProps> = ({ imagemUrl, productName, siz
       src={imagemUrl} 
       alt={productName}
       className={`${sizeClasses[size]} object-cover rounded`}
-      onError={() => setImageError(true)}
+      onError={() => {
+        console.log(`[ProductImage] Error loading image for: ${productName}, URL: ${imagemUrl}`);
+        setImageError(true);
+      }}
     />
   );
 };
