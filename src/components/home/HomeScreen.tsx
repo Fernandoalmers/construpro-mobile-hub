@@ -10,6 +10,9 @@ import Avatar from '../common/Avatar';
 import ProgressBar from '../common/ProgressBar';
 import CustomButton from '../common/CustomButton';
 import { Receipt, Gift, QrCode, MessageSquare, Award, ChevronRight } from 'lucide-react';
+import { calculateMonthlyPoints, calculateLevelInfo, getCurrentMonthName } from '@/utils/pointsCalculations';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 const HomeScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -19,6 +22,28 @@ const HomeScreen: React.FC = () => {
   const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Fetch point transactions for monthly level calculation
+  const { data: transactions = [] } = useQuery({
+    queryKey: ['pointsHistory', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      
+      const { data, error } = await supabase
+        .from('points_transactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('data', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching points history:', error);
+        return [];
+      }
+      
+      return data;
+    },
+    enabled: !!user
+  });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -62,69 +87,14 @@ const HomeScreen: React.FC = () => {
     );
   }
 
-  // Calculate level info based on real user points
+  // Calculate level info based on monthly points
   const saldoPontos = profile?.saldo_pontos || 0;
   
-  const levelPoints = {
-    bronze: { min: 0, max: 2000 },
-    silver: { min: 2000, max: 5000 },
-    gold: { min: 5000, max: 5000 }, // Max is same as min for gold since it's the highest
-  };
-
-  let currentLevel = 'bronze';
-  let nextLevel = 'silver';
-  let currentProgress = 0;
-  let maxProgress = 2000;
+  // Calculate monthly points and level
+  const monthlyPoints = calculateMonthlyPoints(transactions);
+  const levelInfo = calculateLevelInfo(monthlyPoints);
+  const currentMonth = getCurrentMonthName();
   
-  if (saldoPontos >= levelPoints.gold.min) {
-    currentLevel = 'gold';
-    nextLevel = '';
-    currentProgress = 5000;
-    maxProgress = 5000;
-  } else if (saldoPontos >= levelPoints.silver.min) {
-    currentLevel = 'silver';
-    nextLevel = 'gold';
-    currentProgress = saldoPontos - levelPoints.silver.min;
-    maxProgress = levelPoints.gold.min - levelPoints.silver.min;
-  } else {
-    currentProgress = saldoPontos;
-    maxProgress = levelPoints.silver.min;
-  }
-  
-  const levelMap = {
-    bronze: { color: '#CD7F32', name: 'Bronze' },
-    silver: { color: '#C0C0C0', name: 'Prata' },
-    gold: { color: '#FFD700', name: 'Ouro' },
-  };
-
-  const shortcuts = [
-    { id: 'extrato', label: 'Extrato', icon: <Receipt size={24} />, route: '/profile/points-history' },
-    { id: 'resgates', label: 'Resgates', icon: <Gift size={24} />, route: '/rewards' },
-    { id: 'qrcode', label: 'QR Code', icon: <QrCode size={24} />, route: '/qrcode' },
-    { id: 'contato', label: 'Contato', icon: <MessageSquare size={24} />, route: '/chat' },
-  ];
-
-  const promoItems = [
-    { 
-      id: 1, 
-      title: 'Ganhe 2x mais pontos', 
-      description: 'Em compras de ferramentas elétricas neste final de semana',
-      color: 'bg-blue-100'
-    },
-    { 
-      id: 2, 
-      title: 'Desconto exclusivo', 
-      description: 'Membros Prata e Ouro têm 15% OFF em EPIs',
-      color: 'bg-construPro-orange/10'
-    },
-    { 
-      id: 3, 
-      title: 'Nova loja parceira', 
-      description: 'Conheça a Super Construção e ganhe pontos extras',
-      color: 'bg-green-100'
-    },
-  ];
-
   // Get user's name from profile or user metadata
   const userName = profile?.nome || user?.user_metadata?.nome || "Usuário";
 
@@ -168,23 +138,28 @@ const HomeScreen: React.FC = () => {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center">
               <Award size={18} className="text-construPro-orange mr-2" />
-              <h3 className="font-medium">Seu nível</h3>
+              <h3 className="font-medium">Nível do mês de {currentMonth}</h3>
             </div>
             <span 
               className="font-bold"
-              style={{ color: levelMap[currentLevel as keyof typeof levelMap].color }}
+              style={{ color: levelInfo.levelColor }}
             >
-              {levelMap[currentLevel as keyof typeof levelMap].name}
+              {levelInfo.levelName}
             </span>
           </div>
           <ProgressBar 
-            value={currentProgress} 
-            max={maxProgress} 
+            value={levelInfo.currentProgress} 
+            max={levelInfo.maxProgress} 
             size="md"
             color="orange"
+            animated={true}
           />
           <p className="text-xs text-gray-500 mt-1 text-right">
-            {nextLevel ? `Faltam ${maxProgress - currentProgress} pontos para o nível ${levelMap[nextLevel as keyof typeof levelMap].name}` : 'Nível máximo atingido!'}
+            {levelInfo.nextLevel 
+              ? `Faltam ${levelInfo.pointsToNextLevel} pontos para o nível ${
+                  levelInfo.nextLevel.charAt(0).toUpperCase() + levelInfo.nextLevel.slice(1)
+                }` 
+              : 'Nível máximo do mês atingido!'}
           </p>
         </Card>
       </div>

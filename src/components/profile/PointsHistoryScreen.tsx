@@ -15,15 +15,13 @@ import { useAuth } from '../../context/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
-
-interface Transaction {
-  id: string;
-  tipo: string;
-  pontos: number;
-  data: string;
-  descricao: string;
-  referencia_id?: string;
-}
+import ProgressBar from '../common/ProgressBar';
+import { 
+  calculateMonthlyPoints, 
+  calculateLevelInfo, 
+  getCurrentMonthName,
+  Transaction 
+} from '@/utils/pointsCalculations';
 
 const PointsHistoryScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -64,13 +62,10 @@ const PointsHistoryScreen: React.FC = () => {
     enabled: !!user
   });
   
-  // Debug logging for transactions with tipo = 'resgate'
-  useEffect(() => {
-    if (transactions && transactions.length > 0) {
-      const resgates = transactions.filter(t => t.tipo === 'resgate');
-      console.log('Redemption transactions found:', resgates.length, resgates);
-    }
-  }, [transactions]);
+  // Calculate monthly points and level info
+  const monthlyPoints = calculateMonthlyPoints(transactions);
+  const levelInfo = calculateLevelInfo(monthlyPoints);
+  const currentMonth = getCurrentMonthName();
   
   // Apply filters
   let filteredTransactions = [...transactions];
@@ -188,8 +183,41 @@ const PointsHistoryScreen: React.FC = () => {
         </div>
       </div>
       
+      {/* Monthly Level Progress */}
+      <div className="px-6 -mt-6 mb-4">
+        <Card className="p-4">
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="text-sm text-gray-600">
+              Nível do mês de {currentMonth}
+            </h3>
+            <span 
+              className="font-bold"
+              style={{ color: levelInfo.levelColor }}
+            >
+              {levelInfo.levelName}
+            </span>
+          </div>
+          
+          <ProgressBar 
+            value={levelInfo.currentProgress} 
+            max={levelInfo.maxProgress} 
+            size="md"
+            color="orange"
+            animated={true}
+          />
+          
+          <p className="text-xs text-gray-500 mt-1 text-center">
+            {levelInfo.nextLevel 
+              ? `Faltam ${levelInfo.pointsToNextLevel} pontos para o nível ${
+                  levelInfo.nextLevel.charAt(0).toUpperCase() + levelInfo.nextLevel.slice(1)
+                }` 
+              : 'Nível máximo do mês atingido!'}
+          </p>
+        </Card>
+      </div>
+      
       {/* Points Summary */}
-      <div className="px-6 -mt-6">
+      <div className="px-6">
         <Card className="p-4">
           <h3 className="text-sm text-gray-600 mb-1">Saldo atual</h3>
           <div className="flex items-baseline">

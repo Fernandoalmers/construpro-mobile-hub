@@ -1,7 +1,7 @@
-
 import type { Config } from "tailwindcss";
+import { fontFamily } from "tailwindcss/defaultTheme";
 
-export default {
+const config = {
 	darkMode: ["class"],
 	content: [
 		"./pages/**/*.{ts,tsx}",
@@ -113,6 +113,10 @@ export default {
 				'slide-up': {
 					'0%': { transform: 'translateY(20px)', opacity: '0' },
 					'100%': { transform: 'translateY(0)', opacity: '1' }
+				},
+				pulseSubtle: {
+					"0%, 100%": { opacity: "1" },
+					"50%": { opacity: "0.8" }
 				}
 			},
 			animation: {
@@ -122,9 +126,12 @@ export default {
 				'fade-in': 'fade-in 0.3s ease-out',
 				'fade-out': 'fade-out 0.3s ease-out',
 				'scale-in': 'scale-in 0.2s ease-out',
-				'slide-up': 'slide-up 0.3s ease-out'
+				'slide-up': 'slide-up 0.3s ease-out',
+				"pulse-subtle": "pulseSubtle 2s infinite"
 			}
 		}
 	},
 	plugins: [require("tailwindcss-animate")],
 } satisfies Config;
+
+export default config;

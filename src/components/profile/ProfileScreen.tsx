@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Avatar from '../common/Avatar';
@@ -33,6 +32,8 @@ import { useAuth, UserRole } from '../../context/AuthContext';
 import { toast } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import ChangePasswordModal from './ChangePasswordModal';
+import { useQuery } from '@tanstack/react-query';
+import { calculateMonthlyPoints, calculateLevelInfo, getCurrentMonthName } from '@/utils/pointsCalculations';
 
 const ProfileScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -59,6 +60,33 @@ const ProfileScreen: React.FC = () => {
     }
   }, [profile]);
 
+  // Fetch point transactions for monthly level calculation
+  const { data: transactions = [] } = useQuery({
+    queryKey: ['pointsHistory', authUser?.id],
+    queryFn: async () => {
+      if (!authUser) return [];
+      
+      const { data, error } = await supabase
+        .from('points_transactions')
+        .select('*')
+        .eq('user_id', authUser.id)
+        .order('data', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching points history:', error);
+        return [];
+      }
+      
+      return data;
+    },
+    enabled: !!authUser
+  });
+
+  // Get monthly points and level info
+  const monthlyPoints = calculateMonthlyPoints(transactions);
+  const levelInfo = calculateLevelInfo(monthlyPoints);
+  const currentMonth = getCurrentMonthName();
+  
   // Calculate level info
   const levelPoints = {
     bronze: { min: 0, max: 2000 },
@@ -383,26 +411,29 @@ const ProfileScreen: React.FC = () => {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center">
               <Award size={18} className="text-construPro-orange mr-2" />
-              <h3 className="font-medium">Nível</h3>
+              <h3 className="font-medium">Nível do mês de {currentMonth}</h3>
             </div>
             <span 
               className="font-bold"
-              style={{ color: levelMap[currentLevel as keyof typeof levelMap].color }}
+              style={{ color: levelInfo.levelColor }}
             >
-              {levelMap[currentLevel as keyof typeof levelMap].name}
+              {levelInfo.levelName}
             </span>
           </div>
           <ProgressBar 
-            value={currentProgress} 
-            max={maxProgress} 
+            value={levelInfo.currentProgress} 
+            max={levelInfo.maxProgress} 
             showLabel={true}
             size="md"
             color="orange"
+            animated={true}
           />
           <p className="text-xs text-gray-500 mt-1 text-center">
-            {nextLevel 
-              ? `Faltam ${maxProgress - currentProgress} pontos para o nível ${levelMap[nextLevel as keyof typeof levelMap].name}` 
-              : 'Nível máximo atingido!'}
+            {levelInfo.nextLevel 
+              ? `Faltam ${levelInfo.pointsToNextLevel} pontos para o nível ${
+                  levelInfo.nextLevel.charAt(0).toUpperCase() + levelInfo.nextLevel.slice(1)
+                }` 
+              : 'Nível máximo do mês atingido!'}
           </p>
         </Card>
       </div>
