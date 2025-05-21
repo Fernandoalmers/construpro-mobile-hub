@@ -11,7 +11,7 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
     // Get order data directly using service role to bypass RLS issues
     const { data: orderData, error: orderError } = await supabaseService.invokeFunction('order-processing', {
       method: 'GET',
-      body: { orderId },
+      path: `/${orderId}`, // Use path parameter instead of body for GET request
       maxRetries: 2
     });
     

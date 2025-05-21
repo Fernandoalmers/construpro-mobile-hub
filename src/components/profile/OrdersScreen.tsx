@@ -131,11 +131,12 @@ const OrdersScreen: React.FC = () => {
         ) : (
           filteredOrders.map((order) => {
             // Get summary data about the order
-            const firstItemName = order.order_items && order.order_items.length > 0 
-              ? (order.order_items[0]?.produtos?.nome || 'Produto')
+            const orderItems = order.items || [];
+            const firstItemName = orderItems && orderItems.length > 0 
+              ? (orderItems[0]?.produto?.nome || 'Produto')
               : 'Pedido';
             
-            const additionalItemsCount = (order.order_items?.length || 1) - 1;
+            const additionalItemsCount = (orderItems?.length || 1) - 1;
             
             return (
               <Card key={order.id} className="overflow-hidden">
