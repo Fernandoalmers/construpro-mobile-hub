@@ -133,7 +133,7 @@ async function processItemsWithProductData(items: any[], orderId: string): Promi
   // Fetch products for all items in a single query
   const { data: products, error } = await supabase
     .from('produtos')
-    .select('id, nome, imagens, imagem_url, descricao, preco_normal, preco_promocional, categoria')
+    .select('id, nome, imagens, descricao, preco_normal, preco_promocional, categoria')
     .in('id', productIds);
   
   if (error) {
@@ -157,10 +157,8 @@ async function processItemsWithProductData(items: any[], orderId: string): Promi
   const productsMap: Record<string, any> = {};
   products.forEach(product => {
     productsMap[product.id] = product;
-    // Add standardized image URL
-    if (!product.imagem_url) {
-      product.imagem_url = getProductImageUrl(product);
-    }
+    // We're not setting imagem_url here as it doesn't exist in the produtos table
+    // We'll use getProductImageUrl when we need the image
   });
   
   // Map the items with their products
@@ -173,6 +171,11 @@ async function processItemsWithProductData(items: any[], orderId: string): Promi
       preco_normal: item.preco_unitario,
       categoria: ''
     };
+    
+    // Add standardized image URL 
+    if (productData) {
+      productData.imagem_url = getProductImageUrl(productData);
+    }
     
     return {
       ...item,
@@ -203,43 +206,23 @@ function processOrderItems(orderData: OrderData): void {
     };
     
     // Check if product data exists
-    const produtoExists = item.produto !== null && item.produto !== undefined;
-    
-    // Safe type check before accessing properties
-    if (!produtoExists) {
+    if (!item.produto) {
       item.produto = defaultProduct;
       return item;
     }
     
-    // Safe access to produto object
-    if (typeof item.produto === 'object') {
-      // Check if it's an error object
-      const itemProduto = item.produto as Record<string, any>;
-      const hasError = 'error' in itemProduto;
-      
-      if (hasError) {
+    // Safe type check before accessing properties
+    if (typeof item.produto === 'object' && item.produto !== null) {
+      // Check if it has the expected shape (not an error object)
+      if ('id' in item.produto && 'nome' in item.produto) {
+        // It's a valid product, add the standardized image URL
+        if (!item.produto.imagem_url) {
+          item.produto.imagem_url = getProductImageUrl(item.produto);
+        }
+      } else {
+        // It's either an error object or malformed data, use default
+        console.warn(`[processOrderItems] Invalid product data for produto_id ${item.produto_id}:`, item.produto);
         item.produto = defaultProduct;
-        return item;
-      }
-      
-      // Ensure essential properties exist
-      if (!itemProduto.id || !itemProduto.nome) {
-        item.produto = defaultProduct;
-        return item;
-      }
-      
-      // IMPROVED: Add image URL helper for consistent access
-      if (!itemProduto.imagem_url) {
-        itemProduto.imagem_url = getProductImageUrl(itemProduto);
-        
-        // Debug logging for image URL extraction
-        console.log(`Product ${itemProduto.id} image extraction:`, {
-          hasImageUrl: !!itemProduto.imagem_url,
-          hasImagens: !!itemProduto.imagens,
-          imagesCount: itemProduto.imagens && Array.isArray(itemProduto.imagens) ? itemProduto.imagens.length : 0,
-          firstImageType: itemProduto.imagens && Array.isArray(itemProduto.imagens) && itemProduto.imagens.length > 0 ? 
-            typeof itemProduto.imagens[0] : 'none'
-        });
       }
     } else {
       // Not an object, use default
