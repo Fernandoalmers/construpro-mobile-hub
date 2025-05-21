@@ -3,10 +3,10 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
 import LoadingState from '../common/LoadingState';
-import ErrorState from '../common/ErrorState';
 import { orderService } from '@/services/orderService';
 import { useIsMobile } from '@/hooks/use-mobile';
 import CheckoutErrorState from '../checkout/CheckoutErrorState';
+import { OrderData } from '@/services/order/types';
 
 // Imported components
 import OrderHeader from './order-confirmation/OrderHeader';
@@ -21,7 +21,7 @@ const OrderConfirmationScreen: React.FC = () => {
   const isMobile = useIsMobile();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [orderDetails, setOrderDetails] = useState<any>(null);
+  const [orderDetails, setOrderDetails] = useState<OrderData | null>(null);
   const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
@@ -37,7 +37,7 @@ const OrderConfirmationScreen: React.FC = () => {
         console.log(`Buscando detalhes do pedido ${orderId} (tentativa: ${retryCount + 1})`);
         
         // Try with increased timeout for first attempt
-        let order;
+        let order: OrderData | null;
         
         try {
           // First try with direct method

@@ -10,6 +10,7 @@ import { orderService } from '@/services/orderService';
 import LoadingState from '../common/LoadingState';
 import { toast } from '@/components/ui/sonner';
 import ProductImage from '../admin/products/components/ProductImage';
+import { OrderData } from '@/services/order/types';
 
 const OrderDetailScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -66,7 +67,7 @@ const OrderDetailScreen: React.FC = () => {
     );
   }
 
-  const order = orderData;
+  const order = orderData as OrderData;
   const orderItems = order.items || [];
   
   // Status badge styling

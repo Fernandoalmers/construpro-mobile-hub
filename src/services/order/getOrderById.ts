@@ -1,8 +1,9 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
+import { OrderData } from './types';
 
-export async function getOrderById(orderId: string) {
+export async function getOrderById(orderId: string): Promise<OrderData | null> {
   try {
     console.log("🔍 [orderService.getOrderById] Fetching order with ID:", orderId);
     
@@ -21,8 +22,16 @@ export async function getOrderById(orderId: string) {
       return null;
     }
     
+    // Ensure orderData is properly typed
+    const typedOrderData = typeof orderData === 'object' ? orderData as OrderData : null;
+    
+    if (!typedOrderData) {
+      console.error("⚠️ [orderService.getOrderById] Invalid order data format:", orderData);
+      return null;
+    }
+    
     console.log("✅ [orderService.getOrderById] Successfully retrieved order data");
-    return orderData;
+    return typedOrderData;
   } catch (error: any) {
     console.error("❌ [orderService.getOrderById] Error:", error);
     toast.error("Erro ao carregar detalhes do pedido", {
@@ -33,7 +42,7 @@ export async function getOrderById(orderId: string) {
 }
 
 // Direct method as fallback - uses explicit queries rather than RPC
-export async function getOrderByIdDirect(orderId: string) {
+export async function getOrderByIdDirect(orderId: string): Promise<OrderData | null> {
   try {
     console.log("🔄 [orderService.getOrderByIdDirect] Fetching order directly with ID:", orderId);
     
@@ -77,7 +86,7 @@ export async function getOrderByIdDirect(orderId: string) {
     }
     
     // Combine order with items
-    const fullOrder = {
+    const fullOrder: OrderData = {
       ...orderData,
       items: itemsData || []
     };
