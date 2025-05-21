@@ -30,6 +30,11 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
       return null;
     }
     
+    // Process items if they exist in the RPC response
+    if (typedOrderData.items && Array.isArray(typedOrderData.items)) {
+      processOrderItems(typedOrderData);
+    }
+    
     console.log("✅ [orderService.getOrderById] Successfully retrieved order data");
     return typedOrderData;
   } catch (error: any) {
@@ -39,6 +44,88 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
     });
     return null;
   }
+}
+
+// Helper function to standardize product image access across the application
+export function getProductImageUrl(produto: any): string | null {
+  if (!produto) return null;
+  
+  // Direct image_url property
+  if (produto.imagem_url) return produto.imagem_url;
+  
+  // Check images array with various formats
+  if (produto.imagens) {
+    if (Array.isArray(produto.imagens) && produto.imagens.length > 0) {
+      const firstImage = produto.imagens[0];
+      
+      // If image is a string URL
+      if (typeof firstImage === 'string') {
+        return firstImage;
+      }
+      
+      // If image is an object with URL property
+      if (typeof firstImage === 'object' && firstImage !== null) {
+        return firstImage.url || firstImage.path || firstImage.src || null;
+      }
+    }
+  }
+  
+  return null;
+}
+
+// Helper function to process order items and standardize product data
+function processOrderItems(orderData: OrderData): void {
+  if (!orderData.items || !Array.isArray(orderData.items)) return;
+  
+  orderData.items = orderData.items.map(item => {
+    // Create default product as fallback
+    const defaultProduct = {
+      id: item.produto_id,
+      nome: 'Produto indisponível',
+      imagens: [] as any[],
+      descricao: '',
+      preco_normal: item.preco_unitario,
+      categoria: '',
+      preco_promocional: undefined
+    };
+    
+    // Check if product data exists
+    const produtoExists = item.produto !== null && item.produto !== undefined;
+    
+    // Safe type check before accessing properties
+    if (!produtoExists) {
+      item.produto = defaultProduct;
+      return item;
+    }
+    
+    // Safe access to produto object
+    if (typeof item.produto === 'object') {
+      // Check if it's an error object
+      const itemProduto = item.produto as Record<string, any>;
+      const hasError = 'error' in itemProduto;
+      
+      if (hasError) {
+        item.produto = defaultProduct;
+        return item;
+      }
+      
+      // Ensure essential properties exist
+      if (!itemProduto.id || !itemProduto.nome) {
+        item.produto = defaultProduct;
+        return item;
+      }
+      
+      // Add image URL helper for consistent access
+      if (!itemProduto.imagem_url) {
+        itemProduto.imagem_url = getProductImageUrl(itemProduto);
+      }
+    } else {
+      // Not an object, use default
+      item.produto = defaultProduct;
+    }
+    
+    return item;
+  });
 }
 
 // Direct method as fallback - uses explicit queries rather than RPC
@@ -90,17 +177,6 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
     
     if (itemsData && Array.isArray(itemsData)) {
       itemsData.forEach(item => {
-        // First validate if produto exists at all 
-        const produtoExists = item.produto !== null && item.produto !== undefined;
-        
-        // Check specifically for error property only if produto exists
-        const hasErrorProperty = produtoExists && 
-          typeof item.produto === 'object' && 
-          'error' in (item.produto || {});
-        
-        // Either product doesn't exist or has an error
-        const hasError = !produtoExists || hasErrorProperty;
-        
         // Create the default product structure for when there's an error
         const defaultProduct = {
           id: item.produto_id,
@@ -112,29 +188,21 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
           preco_promocional: undefined
         };
         
-        // Fix TypeScript errors by properly checking produto validity and casting
-        let productData: OrderItem['produto'];
+        // Process product data with careful type checking
+        let productData: OrderItem['produto'] = defaultProduct;
         
-        if (hasError) {
-          // Use default product if there's an error or produto is missing
-          productData = defaultProduct;
-        } else {
-          // To address the TypeScript error, we need a more explicit check and casting
-          // First create a safe copy of the produto with proper null check
-          // Ensure item.produto is an object before spreading
-          const safeProduto = produtoExists && typeof item.produto === 'object' ? { ...item.produto as Record<string, any> } : null;
+        if (item.produto !== null && typeof item.produto === 'object') {
+          // Safe type casting
+          const safeProduto = item.produto as Record<string, any>;
           
-          // Then do a thorough check of the object structure before using it
-          if (safeProduto !== null && 
-              typeof safeProduto === 'object' &&
-              !('error' in safeProduto) &&
-              'id' in safeProduto &&
-              'nome' in safeProduto) {
-            // Now TypeScript should know this is a valid product
+          // Verify if essential product properties exist
+          if ('id' in safeProduto && 'nome' in safeProduto) {
             productData = safeProduto as OrderItem['produto'];
-          } else {
-            // Fallback to default product if structure is invalid
-            productData = defaultProduct;
+            
+            // Add consistent image URL access
+            if (!productData.imagem_url) {
+              productData.imagem_url = getProductImageUrl(productData);
+            }
           }
         }
         

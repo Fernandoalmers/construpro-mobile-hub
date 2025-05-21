@@ -9,8 +9,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '../../context/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { orderService } from '@/services/orderService';
+import { getProductImageUrl } from '@/services/order/getOrders';
 import LoadingState from '../common/LoadingState';
 import ListEmptyState from '../common/ListEmptyState';
+import { OrderData } from '@/services/order/types';
+import ProductImage from '../admin/products/components/ProductImage';
 
 const OrdersScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -57,6 +60,31 @@ const OrdersScreen: React.FC = () => {
       default:
         return "bg-gray-100 text-gray-800";
     }
+  };
+  
+  // Helper to safely get product info from an order
+  const getOrderSummary = (order: OrderData) => {
+    const orderItems = order.items || [];
+    
+    if (!orderItems.length) {
+      return {
+        firstItemName: 'Pedido',
+        additionalItemsCount: 0,
+        hasItems: false
+      };
+    }
+    
+    const firstItem = orderItems[0];
+    const firstItemProduct = firstItem.produto;
+    const firstItemName = firstItemProduct?.nome || 'Produto';
+    const additionalItemsCount = orderItems.length - 1;
+    
+    return {
+      firstItemName,
+      additionalItemsCount,
+      hasItems: true,
+      firstItem
+    };
   };
   
   const handleTrackOrder = (orderId: string) => {
@@ -146,13 +174,8 @@ const OrdersScreen: React.FC = () => {
           </div>
         ) : (
           filteredOrders.map((order) => {
-            // Get summary data about the order
-            const orderItems = order.items || [];
-            const firstItemName = orderItems && orderItems.length > 0 
-              ? (orderItems[0]?.produto?.nome || 'Produto')
-              : 'Pedido';
-            
-            const additionalItemsCount = (orderItems?.length || 1) - 1;
+            // Get order summary data safely
+            const orderSummary = getOrderSummary(order);
             
             return (
               <Card key={order.id} className="overflow-hidden">
@@ -160,23 +183,51 @@ const OrdersScreen: React.FC = () => {
                   <div className="flex justify-between items-start mb-1">
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs text-gray-500">Pedido #{order.id.substring(0, 8)}</span>
+                        <span className="text-xs text-gray-500">
+                          Pedido #{order.id.substring(0, 8)}
+                        </span>
                         <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusBadge(order.status)}`}>
                           {order.status}
                         </span>
                       </div>
                       <h3 className="font-medium text-sm line-clamp-1 mt-1">
-                        {firstItemName}
-                        {additionalItemsCount > 0 && ` + ${additionalItemsCount} ${additionalItemsCount === 1 ? 'item' : 'itens'}`}
+                        {orderSummary.firstItemName}
+                        {orderSummary.additionalItemsCount > 0 && 
+                          ` + ${orderSummary.additionalItemsCount} ${
+                            orderSummary.additionalItemsCount === 1 ? 'item' : 'itens'
+                          }`
+                        }
                       </h3>
                     </div>
                     <div className="text-right">
-                      <div className="font-medium">R$ {Number(order.valor_total).toFixed(2)}</div>
+                      <div className="font-medium">
+                        R$ {Number(order.valor_total).toFixed(2)}
+                      </div>
                       <div className="text-xs text-gray-500">
                         {new Date(order.created_at).toLocaleDateString('pt-BR')}
                       </div>
                     </div>
                   </div>
+                  
+                  {/* Show product image if available */}
+                  {orderSummary.hasItems && orderSummary.firstItem && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <div className="w-12 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0">
+                        <ProductImage 
+                          imagemUrl={
+                            orderSummary.firstItem.produto?.imagem_url || 
+                            getProductImageUrl(orderSummary.firstItem.produto)
+                          }
+                          productName={orderSummary.firstItemName}
+                          size="sm"
+                        />
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {orderSummary.firstItem.quantidade}x {orderSummary.firstItemName.substring(0, 20)}
+                        {orderSummary.firstItemName.length > 20 ? '...' : ''}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 
                 {/* Buttons row - Made more mobile friendly */}

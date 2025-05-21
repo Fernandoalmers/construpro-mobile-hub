@@ -1,13 +1,15 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
-import { OrderData } from './types';
+import { OrderData, OrderItem } from './types';
+import { getProductImageUrl } from './getOrderById';
 
 export async function getOrders(): Promise<OrderData[]> {
   try {
     console.log("🔍 [orderService.getOrders] Fetching orders for current user");
     
-    const { data, error } = await supabase
+    // First fetch the orders
+    const { data: ordersData, error: ordersError } = await supabase
       .from('orders')
       .select(`
         id, 
@@ -23,32 +25,107 @@ export async function getOrders(): Promise<OrderData[]> {
       `)
       .order('created_at', { ascending: false });
     
-    if (error) {
-      console.error("❌ [orderService.getOrders] Error fetching orders:", error);
+    if (ordersError) {
+      console.error("❌ [orderService.getOrders] Error fetching orders:", ordersError);
       toast.error("Não foi possível carregar seus pedidos", {
-        description: error.message
+        description: ordersError.message
       });
-      throw error;
+      throw ordersError;
     }
     
-    if (!data) {
-      console.error("❌ [orderService.getOrders] No data returned");
+    if (!ordersData || ordersData.length === 0) {
+      console.log("ℹ️ [orderService.getOrders] No orders found or empty result");
       return [];
     }
     
-    const orders = data || [];
-    console.log(`✅ [orderService.getOrders] Retrieved ${orders.length} orders`);
+    // Get a list of order IDs to fetch items for
+    const orderIds = ordersData.map(order => order.id);
     
-    // If we have orders, log a sample to help with debugging
-    if (orders.length > 0) {
-      console.log("📊 [orderService.getOrders] Sample order:", {
-        id: orders[0].id,
-        status: orders[0].status,
-        created_at: orders[0].created_at
-      });
-    } else {
-      console.log("⚠️ [orderService.getOrders] No orders found");
+    // Fetch the first item for each order (for display in list)
+    const { data: itemsData, error: itemsError } = await supabase
+      .from('order_items')
+      .select(`
+        id,
+        order_id,
+        produto_id,
+        quantidade,
+        preco_unitario,
+        subtotal,
+        produto:produto_id (
+          id,
+          nome,
+          imagens,
+          descricao,
+          preco_normal,
+          preco_promocional,
+          categoria
+        )
+      `)
+      .in('order_id', orderIds);
+    
+    if (itemsError) {
+      console.error("❌ [orderService.getOrders] Error fetching order items:", itemsError);
+      // Continue with orders, but they won't have items
     }
+    
+    // Group items by order ID
+    const itemsByOrderId: Record<string, OrderItem[]> = {};
+    
+    if (itemsData && Array.isArray(itemsData)) {
+      // Process items and group them by order_id
+      itemsData.forEach(item => {
+        if (!itemsByOrderId[item.order_id]) {
+          itemsByOrderId[item.order_id] = [];
+        }
+        
+        // Create default product as fallback
+        const defaultProduct = {
+          id: item.produto_id,
+          nome: 'Produto indisponível',
+          imagens: [] as any[],
+          descricao: '',
+          preco_normal: item.preco_unitario,
+          categoria: '',
+          preco_promocional: undefined
+        };
+        
+        // Process product data safely
+        let productData = defaultProduct;
+        
+        if (item.produto !== null && typeof item.produto === 'object') {
+          // Safely access produto properties
+          const safeProduto = item.produto as Record<string, any>;
+          
+          if ('id' in safeProduto && 'nome' in safeProduto) {
+            productData = safeProduto as OrderItem['produto'];
+            
+            // Add consistent image URL access
+            if (!productData.imagem_url) {
+              productData.imagem_url = getProductImageUrl(productData);
+            }
+          }
+        }
+        
+        const orderItem: OrderItem = {
+          id: item.id,
+          produto_id: item.produto_id,
+          quantidade: item.quantidade,
+          preco_unitario: item.preco_unitario,
+          subtotal: item.subtotal || (item.quantidade * item.preco_unitario),
+          produto: productData
+        };
+        
+        itemsByOrderId[item.order_id].push(orderItem);
+      });
+    }
+    
+    // Combine orders with their items
+    const orders: OrderData[] = ordersData.map(order => ({
+      ...order,
+      items: itemsByOrderId[order.id] || []
+    }));
+    
+    console.log(`✅ [orderService.getOrders] Retrieved ${orders.length} orders with items`);
     
     return orders;
   } catch (error: any) {
@@ -59,3 +136,6 @@ export async function getOrders(): Promise<OrderData[]> {
     return [];
   }
 }
+
+// Export the getProductImageUrl helper for other components to use
+export { getProductImageUrl };

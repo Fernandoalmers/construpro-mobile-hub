@@ -7,6 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import CustomButton from '../common/CustomButton';
 import { useQuery } from '@tanstack/react-query';
 import { orderService } from '@/services/orderService';
+import { getProductImageUrl } from '@/services/order/getOrders';
 import LoadingState from '../common/LoadingState';
 import { toast } from '@/components/ui/sonner';
 import ProductImage from '../admin/products/components/ProductImage';
@@ -70,6 +71,19 @@ const OrderDetailScreen: React.FC = () => {
   const order = orderData as OrderData;
   const orderItems = order.items || [];
   
+  console.log("💾 [OrderDetailScreen] Rendering order details:", {
+    orderId: order.id,
+    itemsCount: orderItems.length,
+    firstItem: orderItems.length > 0 ? {
+      id: orderItems[0].id,
+      produto_id: orderItems[0].produto_id,
+      produto: orderItems[0].produto ? {
+        nome: orderItems[0].produto.nome,
+        hasImage: !!getProductImageUrl(orderItems[0].produto)
+      } : 'No product data'
+    } : 'No items'
+  });
+  
   // Status badge styling
   const getStatusBadge = (status: string) => {
     switch(status) {
@@ -95,25 +109,6 @@ const OrderDetailScreen: React.FC = () => {
       hour: "2-digit",
       minute: "2-digit"
     });
-  };
-  
-  // Helper to safely get product image URL
-  const getProductImageUrl = (item: any) => {
-    if (!item.produto) return null;
-    
-    // First check directly for imagem_url which we added in the service
-    if (item.produto.imagem_url) return item.produto.imagem_url;
-    
-    // Otherwise try to get it from imagens array
-    if (item.produto.imagens && Array.isArray(item.produto.imagens) && item.produto.imagens.length > 0) {
-      const firstImage = item.produto.imagens[0];
-      if (typeof firstImage === 'string') return firstImage;
-      if (firstImage && typeof firstImage === 'object') {
-        return firstImage.url || firstImage.path || null;
-      }
-    }
-    
-    return null;
   };
 
   return (
@@ -151,7 +146,7 @@ const OrderDetailScreen: React.FC = () => {
             
             <div className="flex items-center gap-2 text-gray-600">
               <Award size={16} />
-              <span>Pontos ganhos: {order.pontos_ganhos}</span>
+              <span>Pontos ganhos: {order.pontos_ganhos || 0}</span>
             </div>
             
             {order.rastreio && (
@@ -171,7 +166,10 @@ const OrderDetailScreen: React.FC = () => {
                   <p className="text-sm text-gray-600">
                     {typeof order.endereco_entrega === 'string' 
                       ? order.endereco_entrega
-                      : `${order.endereco_entrega.logradouro}, ${order.endereco_entrega.numero}, ${order.endereco_entrega.cidade} - ${order.endereco_entrega.estado}`
+                      : `${order.endereco_entrega.logradouro || ''}, 
+                         ${order.endereco_entrega.numero || ''}, 
+                         ${order.endereco_entrega.cidade || ''} - 
+                         ${order.endereco_entrega.estado || ''}`
                     }
                   </p>
                 )}
@@ -192,7 +190,10 @@ const OrderDetailScreen: React.FC = () => {
                 <div key={index} className="py-3 flex">
                   <div className="w-16 h-16 bg-gray-200 rounded mr-3 flex-shrink-0 overflow-hidden">
                     <ProductImage 
-                      imagemUrl={getProductImageUrl(item)}
+                      imagemUrl={
+                        item.produto?.imagem_url || 
+                        getProductImageUrl(item.produto)
+                      }
                       productName={item.produto?.nome || 'Produto'}
                       size="lg"
                     />
