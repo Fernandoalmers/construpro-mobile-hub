@@ -13,6 +13,9 @@ const MonthlyLevelProgress: React.FC<MonthlyLevelProgressProps> = ({
   currentMonth,
   levelInfo,
 }) => {
+  // Calculate the percentage for display
+  const percentage = Math.round((levelInfo.currentProgress / levelInfo.maxProgress) * 100);
+  
   return (
     <Card className="p-4">
       <div className="flex justify-between items-center mb-2">
@@ -27,13 +30,19 @@ const MonthlyLevelProgress: React.FC<MonthlyLevelProgressProps> = ({
         </span>
       </div>
       
-      <ProgressBar 
-        value={levelInfo.currentProgress} 
-        max={levelInfo.maxProgress} 
-        size="md"
-        color="blue"
-        animated={true}
-      />
+      <div className="relative">
+        <ProgressBar 
+          value={levelInfo.currentProgress} 
+          max={levelInfo.maxProgress} 
+          size="md"
+          color="blue"
+          animated={true}
+        />
+        <div className="flex justify-between text-xs text-gray-600 mt-1">
+          <span>{percentage}%</span>
+          <span>{levelInfo.currentProgress}/{levelInfo.maxProgress}</span>
+        </div>
+      </div>
       
       <p className="text-xs text-gray-500 mt-1 text-center">
         {levelInfo.nextLevel 
