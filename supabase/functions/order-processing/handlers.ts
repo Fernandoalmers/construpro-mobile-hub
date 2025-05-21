@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { corsHeaders } from './utils.ts'
 
@@ -219,6 +218,25 @@ async function registerOrderPoints(userId: string, orderId: string, points: numb
   
   try {
     console.log(`Registering ${points} points for user ${userId} from order ${orderId}`);
+    
+    // IMPORTANTE: Verificar se já existem pontos registrados para este pedido para evitar duplicação
+    const { data: existingPoints, error: checkError } = await supabase
+      .from('points_transactions')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('referencia_id', orderId)
+      .eq('tipo', 'compra');
+    
+    if (checkError) {
+      console.error('Error checking existing points transactions:', checkError);
+      return false;
+    }
+    
+    // Se já existem pontos registrados para este pedido, não registrar novamente
+    if (existingPoints && existingPoints.length > 0) {
+      console.log(`Points already registered for order ${orderId}, skipping to avoid duplication`);
+      return true;
+    }
     
     // Add points transaction record
     const { error: transactionError } = await supabase

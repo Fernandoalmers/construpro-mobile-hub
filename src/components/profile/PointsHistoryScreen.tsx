@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, CircleDollarSign, Filter, ShoppingBag, Users, Gift, Receipt, Briefcase } from 'lucide-react';
+import { ChevronLeft, CircleDollarSign, Filter, ShoppingBag, Users, Gift, Receipt, Briefcase, RefreshCw } from 'lucide-react';
 import Card from '../common/Card';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
@@ -15,6 +14,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'react-toastify';
 
 interface Transaction {
   id: string;
@@ -27,15 +27,22 @@ interface Transaction {
 
 const PointsHistoryScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   
   const [typeFilter, setTypeFilter] = useState<string>("todos");
   const [originFilter, setOriginFilter] = useState<string>("todos");
   const [periodFilter, setPeriodFilter] = useState<string>("todos");
   const [showFilters, setShowFilters] = useState(false);
   
+  // Call refreshProfile when component mounts to ensure we have the latest data
+  useEffect(() => {
+    if (user) {
+      refreshProfile();
+    }
+  }, [user, refreshProfile]);
+  
   // Fetch transactions from Supabase
-  const { data: transactions = [], isLoading } = useQuery({
+  const { data: transactions = [], isLoading, refetch } = useQuery({
     queryKey: ['pointsHistory', user?.id],
     queryFn: async () => {
       if (!user) return [];
@@ -193,6 +200,21 @@ const PointsHistoryScreen: React.FC = () => {
               <p className="font-medium text-red-600">-{totalRedeemed} pontos</p>
             </div>
           </div>
+          
+          {/* Adicionar botão para atualizar dados */}
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => {
+              refreshProfile();
+              refetch();
+              toast.success('Dados atualizados');
+            }}
+            className="w-full mt-3 flex items-center justify-center"
+          >
+            <RefreshCw size={14} className="mr-2" />
+            Atualizar saldo e transações
+          </Button>
         </Card>
       </div>
       

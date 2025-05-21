@@ -7,6 +7,7 @@ import { orderService } from '@/services/orderService';
 import { useIsMobile } from '@/hooks/use-mobile';
 import CheckoutErrorState from '../checkout/CheckoutErrorState';
 import { OrderData } from '@/services/order/types';
+import { useAuth } from '@/context/AuthContext';
 
 // Imported components
 import OrderHeader from './order-confirmation/OrderHeader';
@@ -23,6 +24,7 @@ const OrderConfirmationScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [orderDetails, setOrderDetails] = useState<OrderData | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const { refreshProfile } = useAuth();
 
   useEffect(() => {
     if (!orderId) {
@@ -53,6 +55,10 @@ const OrderConfirmationScreen: React.FC = () => {
         
         console.log('Detalhes do pedido recuperados:', order);
         setOrderDetails(order);
+
+        // IMPORTANTE: Atualizar o perfil do usuário para obter o saldo de pontos atualizado
+        await refreshProfile();
+        
         setLoading(false);
       } catch (err: any) {
         console.error('Error fetching order details:', err);
@@ -78,7 +84,7 @@ const OrderConfirmationScreen: React.FC = () => {
     };
 
     fetchOrderDetails();
-  }, [orderId, retryCount]);
+  }, [orderId, retryCount, refreshProfile]);
 
   const handleRetry = () => {
     setLoading(true);

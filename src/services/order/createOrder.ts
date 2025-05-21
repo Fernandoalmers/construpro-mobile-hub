@@ -2,6 +2,7 @@
 import { supabaseService } from '../supabaseService';
 import { toast } from '@/components/ui/sonner';
 import { CreateOrderPayload, OrderResponse } from './types';
+import { useAuth } from '@/context/AuthContext';
 
 export async function createOrder(orderData: CreateOrderPayload): Promise<string | null> {
   try {
