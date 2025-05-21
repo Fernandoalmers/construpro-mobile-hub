@@ -35,7 +35,7 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
       processOrderItems(typedOrderData);
     }
     
-    console.log("✅ [orderService.getOrderById] Successfully retrieved order data");
+    console.log("✅ [orderService.getOrderById] Successfully retrieved order data:", typedOrderData);
     return typedOrderData;
   } catch (error: any) {
     console.error("❌ [orderService.getOrderById] Error:", error);
@@ -75,7 +75,12 @@ export function getProductImageUrl(produto: any): string | null {
 
 // Helper function to process order items and standardize product data
 function processOrderItems(orderData: OrderData): void {
-  if (!orderData.items || !Array.isArray(orderData.items)) return;
+  if (!orderData.items || !Array.isArray(orderData.items)) {
+    orderData.items = []; // Ensure items is always an array
+    return;
+  }
+  
+  console.log(`Processing ${orderData.items.length} order items`);
   
   orderData.items = orderData.items.map(item => {
     // Create default product as fallback
@@ -126,6 +131,8 @@ function processOrderItems(orderData: OrderData): void {
     
     return item;
   });
+  
+  console.log(`Processed items: ${orderData.items.length} items available`);
 }
 
 // Direct method as fallback - uses explicit queries rather than RPC
@@ -176,6 +183,8 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
     const processedItems: OrderItem[] = [];
     
     if (itemsData && Array.isArray(itemsData)) {
+      console.log(`Found ${itemsData.length} items for order ${orderId}`);
+      
       itemsData.forEach(item => {
         // Create the default product structure for when there's an error
         const defaultProduct = {
@@ -217,6 +226,8 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
         
         processedItems.push(orderItem);
       });
+    } else {
+      console.warn("⚠️ [orderService.getOrderByIdDirect] No items found for order:", orderId);
     }
     
     // Combine order with processed items
@@ -225,7 +236,11 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
       items: processedItems
     };
     
-    console.log("✅ [orderService.getOrderByIdDirect] Successfully retrieved full order data");
+    console.log("✅ [orderService.getOrderByIdDirect] Successfully retrieved full order data:", {
+      orderId: fullOrder.id,
+      itemCount: processedItems.length
+    });
+    
     return fullOrder;
   } catch (error: any) {
     console.error("❌ [orderService.getOrderByIdDirect] Error:", error);

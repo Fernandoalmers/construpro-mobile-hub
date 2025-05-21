@@ -1,13 +1,12 @@
 
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, Package, MapPin, Calendar, CreditCard, Award, Loader2 } from 'lucide-react';
+import { ChevronLeft, Package, MapPin, Calendar, CreditCard, Award } from 'lucide-react';
 import Card from '../common/Card';
 import { Separator } from '@/components/ui/separator';
 import CustomButton from '../common/CustomButton';
 import { useQuery } from '@tanstack/react-query';
 import { orderService } from '@/services/orderService';
-import { getProductImageUrl } from '@/services/order/getOrders';
 import LoadingState from '../common/LoadingState';
 import { toast } from '@/components/ui/sonner';
 import ProductImage from '../admin/products/components/ProductImage';
@@ -79,7 +78,7 @@ const OrderDetailScreen: React.FC = () => {
       produto_id: orderItems[0].produto_id,
       produto: orderItems[0].produto ? {
         nome: orderItems[0].produto.nome,
-        hasImage: !!getProductImageUrl(orderItems[0].produto)
+        hasImage: !!orderItems[0].produto.imagem_url
       } : 'No product data'
     } : 'No items'
   });
@@ -112,7 +111,7 @@ const OrderDetailScreen: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
+    <div className="flex flex-col min-h-screen bg-gray-100">
       {/* Header */}
       <div className="bg-construPro-blue p-6 pt-12">
         <div className="flex items-center mb-4">
@@ -123,117 +122,117 @@ const OrderDetailScreen: React.FC = () => {
         </div>
       </div>
       
-      {/* Order Summary */}
-      <div className="px-6 -mt-6">
-        <Card className="p-4">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="font-medium">Pedido #{order.id.substring(0, 8)}</h3>
-            <span className={`text-xs px-2 py-1 rounded-full ${getStatusBadge(order.status)}`}>
-              {order.status}
-            </span>
-          </div>
-          
-          <div className="flex flex-col gap-2 text-sm mb-4">
-            <div className="flex items-center gap-2 text-gray-600">
-              <Calendar size={16} />
-              <span>Realizado em {formatDate(order.created_at)}</span>
+      {/* Content Container with proper padding for bottom buttons */}
+      <div className="flex-1 px-6 pb-32"> {/* Increased bottom padding to avoid button cutoff */}
+        {/* Order Summary */}
+        <div className="-mt-6 mb-4">
+          <Card className="p-4">
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="font-medium">Pedido #{order.id.substring(0, 8)}</h3>
+              <span className={`text-xs px-2 py-1 rounded-full ${getStatusBadge(order.status)}`}>
+                {order.status}
+              </span>
             </div>
             
-            <div className="flex items-center gap-2 text-gray-600">
-              <CreditCard size={16} />
-              <span>Pagamento: {order.forma_pagamento}</span>
-            </div>
-            
-            <div className="flex items-center gap-2 text-gray-600">
-              <Award size={16} />
-              <span>Pontos ganhos: {order.pontos_ganhos || 0}</span>
-            </div>
-            
-            {order.rastreio && (
+            <div className="flex flex-col gap-2 text-sm mb-4">
               <div className="flex items-center gap-2 text-gray-600">
-                <Package size={16} />
-                <span>Código de rastreio: {order.rastreio}</span>
+                <Calendar size={16} />
+                <span>Realizado em {formatDate(order.created_at)}</span>
               </div>
-            )}
-          </div>
-          
-          <div className="bg-gray-50 p-3 rounded-md mb-4">
-            <div className="flex items-start gap-2">
-              <MapPin size={16} className="text-gray-600 mt-0.5" />
-              <div>
-                <p className="font-medium">Endereço de entrega</p>
-                {order.endereco_entrega && (
-                  <p className="text-sm text-gray-600">
-                    {typeof order.endereco_entrega === 'string' 
-                      ? order.endereco_entrega
-                      : `${order.endereco_entrega.logradouro || ''}, 
-                         ${order.endereco_entrega.numero || ''}, 
-                         ${order.endereco_entrega.cidade || ''} - 
-                         ${order.endereco_entrega.estado || ''}`
-                    }
-                  </p>
-                )}
+              
+              <div className="flex items-center gap-2 text-gray-600">
+                <CreditCard size={16} />
+                <span>Pagamento: {order.forma_pagamento}</span>
               </div>
-            </div>
-          </div>
-        </Card>
-      </div>
-      
-      {/* Order Items */}
-      <div className="px-6 mt-4">
-        <Card className="p-4">
-          <h3 className="font-medium mb-3">Itens do pedido</h3>
-          
-          {orderItems && orderItems.length > 0 ? (
-            <div className="divide-y">
-              {orderItems.map((item: any, index: number) => (
-                <div key={index} className="py-3 flex">
-                  <div className="w-16 h-16 bg-gray-200 rounded mr-3 flex-shrink-0 overflow-hidden">
-                    <ProductImage 
-                      imagemUrl={
-                        item.produto?.imagem_url || 
-                        getProductImageUrl(item.produto)
-                      }
-                      productName={item.produto?.nome || 'Produto'}
-                      size="lg"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-medium">{item.produto?.nome || 'Produto indisponível'}</h4>
-                    <p className="text-sm text-gray-500">Qtd: {item.quantidade}</p>
-                    <p className="text-sm font-medium mt-1">
-                      R$ {Number(item.preco_unitario * item.quantidade).toFixed(2)}
-                    </p>
-                  </div>
+              
+              <div className="flex items-center gap-2 text-gray-600">
+                <Award size={16} />
+                <span>Pontos ganhos: {order.pontos_ganhos || 0}</span>
+              </div>
+              
+              {order.rastreio && (
+                <div className="flex items-center gap-2 text-gray-600">
+                  <Package size={16} />
+                  <span>Código de rastreio: {order.rastreio}</span>
                 </div>
-              ))}
+              )}
             </div>
-          ) : (
-            <p className="text-center py-4 text-gray-500">Nenhum item encontrado neste pedido</p>
-          )}
-          
-          <Separator className="my-4" />
-          
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Subtotal:</span>
-              <span>R$ {Number(order.valor_total).toFixed(2)}</span>
+            
+            <div className="bg-gray-50 p-3 rounded-md mb-4">
+              <div className="flex items-start gap-2">
+                <MapPin size={16} className="text-gray-600 mt-0.5" />
+                <div>
+                  <p className="font-medium">Endereço de entrega</p>
+                  {order.endereco_entrega && (
+                    <p className="text-sm text-gray-600">
+                      {typeof order.endereco_entrega === 'string' 
+                        ? order.endereco_entrega
+                        : `${order.endereco_entrega.logradouro || ''}, 
+                           ${order.endereco_entrega.numero || ''}, 
+                           ${order.endereco_entrega.cidade || ''} - 
+                           ${order.endereco_entrega.estado || ''}`
+                      }
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="flex justify-between text-sm">
-              <span>Frete:</span>
-              <span>Grátis</span>
+          </Card>
+        </div>
+        
+        {/* Order Items */}
+        <div className="mb-4">
+          <Card className="p-4">
+            <h3 className="font-medium mb-3">Itens do pedido</h3>
+            
+            {orderItems && orderItems.length > 0 ? (
+              <div className="divide-y">
+                {orderItems.map((item: any, index: number) => (
+                  <div key={index} className="py-3 flex">
+                    <div className="w-16 h-16 bg-gray-50 rounded mr-3 flex-shrink-0 overflow-hidden">
+                      <ProductImage 
+                        imagemUrl={item.produto?.imagem_url}
+                        productName={item.produto?.nome || 'Produto'}
+                        size="lg"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-medium">{item.produto?.nome || 'Produto indisponível'}</h4>
+                      <p className="text-sm text-gray-500">Qtd: {item.quantidade}</p>
+                      <p className="text-sm font-medium mt-1">
+                        R$ {Number(item.preco_unitario * item.quantidade).toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center py-4 text-gray-500">Nenhum item encontrado neste pedido</p>
+            )}
+            
+            <Separator className="my-4" />
+            
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Subtotal:</span>
+                <span>R$ {Number(order.valor_total).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Frete:</span>
+                <span>Grátis</span>
+              </div>
+              <div className="flex justify-between font-medium">
+                <span>Total:</span>
+                <span>R$ {Number(order.valor_total).toFixed(2)}</span>
+              </div>
             </div>
-            <div className="flex justify-between font-medium">
-              <span>Total:</span>
-              <span>R$ {Number(order.valor_total).toFixed(2)}</span>
-            </div>
-          </div>
-        </Card>
+          </Card>
+        </div>
       </div>
       
-      {/* Actions */}
-      <div className="p-6">
-        <div className="flex gap-3">
+      {/* Actions - Fixed at the bottom with proper spacing */}
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t shadow-md">
+        <div className="flex gap-3 max-w-lg mx-auto">
           <CustomButton 
             variant="outline" 
             fullWidth

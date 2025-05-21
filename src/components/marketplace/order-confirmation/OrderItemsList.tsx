@@ -2,9 +2,10 @@
 import React from 'react';
 import { Package } from 'lucide-react';
 import ProductImage from '../../admin/products/components/ProductImage';
+import { OrderItem } from '@/services/order/types';
 
 interface OrderItemsListProps {
-  items: any[];
+  items: OrderItem[];
 }
 
 const OrderItemsList: React.FC<OrderItemsListProps> = ({ items }) => {
@@ -17,9 +18,9 @@ const OrderItemsList: React.FC<OrderItemsListProps> = ({ items }) => {
       
       {items && Array.isArray(items) && items.length > 0 ? (
         <div className="space-y-4">
-          {items.map((item: any, index: number) => (
+          {items.map((item: OrderItem, index: number) => (
             <div key={item.id || index} className="flex border-b border-gray-100 pb-4">
-              <div className="w-20 h-20 flex-shrink-0 mr-3">
+              <div className="w-20 h-20 flex-shrink-0 mr-3 bg-gray-50 rounded overflow-hidden">
                 <ProductImage 
                   imagemUrl={item.produto?.imagem_url}
                   productName={item.produto?.nome || 'Produto'}
