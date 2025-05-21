@@ -120,8 +120,10 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
                              !('error' in (item.produto || {}));
         
         // Fix the error on line 100 by safely accessing item.produto
+        // Instead of directly accessing item.produto, create a local variable with safe default
         const produto = hasError || !produtoIsValid ? defaultProduct : item.produto;
         
+        // Now produto is guaranteed to be valid when we reference it
         const orderItem: OrderItem = {
           id: item.id,
           produto_id: item.produto_id,
