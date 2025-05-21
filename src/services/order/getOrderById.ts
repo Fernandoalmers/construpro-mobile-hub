@@ -90,8 +90,10 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
     
     if (itemsData && Array.isArray(itemsData)) {
       itemsData.forEach(item => {
-        // Check if produto is a SelectQueryError (has error: true property)
-        const hasError = item.produto && typeof item.produto === 'object' && 'error' in item.produto;
+        // More robust check for errors - check if produto exists first
+        // Then check if it's an object with error property
+        const hasError = !item.produto || 
+          (typeof item.produto === 'object' && item.produto !== null && 'error' in item.produto);
         
         const orderItem: OrderItem = {
           id: item.id,
@@ -99,15 +101,17 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
           quantidade: item.quantidade,
           preco_unitario: item.preco_unitario,
           subtotal: item.subtotal,
-          // Handle missing or error produtos by providing default values
+          // Create a valid product object that satisfies the type requirements
           produto: hasError ? {
             id: item.produto_id,
             nome: 'Produto indisponível',
-            imagens: [],
+            imagens: [] as any[],
             descricao: '',
             preco_normal: item.preco_unitario,
-            categoria: ''
-          } : item.produto
+            categoria: '',
+            // Adding required properties for the type
+            preco_promocional: undefined
+          } : item.produto as OrderItem['produto'] // Cast to the correct type
         };
         
         processedItems.push(orderItem);
