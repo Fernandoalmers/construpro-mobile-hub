@@ -148,22 +148,32 @@ const PointsHistoryScreen: React.FC = () => {
 
   // Format transaction description with reference id if available
   const formatDescription = (transaction: Transaction) => {
-    // For redemption transactions, leave as is since they already mention what was redeemed
+    let shortDescription;
+    
+    // For purchases, format the description more concisely
+    if (transaction.tipo === 'compra') {
+      shortDescription = 'Pontos por compra';
+      
+      // If we have a reference ID, show only the first 8 chars
+      if (transaction.referencia_id) {
+        const shortId = transaction.referencia_id.substring(0, 8);
+        return (
+          <div>
+            {shortDescription}
+            <div className="text-xs text-gray-500">#{shortId}</div>
+          </div>
+        );
+      }
+      return shortDescription;
+    }
+    
+    // For redemptions, keep description brief
     if (transaction.tipo === 'resgate') {
       return transaction.descricao;
     }
     
-    // For purchases, add reference id as a code if available
-    if (transaction.referencia_id && transaction.tipo === 'compra') {
-      return (
-        <div>
-          {transaction.descricao}
-          <div className="text-xs text-gray-500">#{transaction.referencia_id.substring(0, 8)}</div>
-        </div>
-      );
-    }
-    
-    return transaction.descricao;
+    // For all other types, keep it simple with basic type info
+    return transaction.descricao || `Transação de ${transaction.tipo}`;
   };
 
   return (
