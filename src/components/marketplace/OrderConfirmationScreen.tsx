@@ -4,7 +4,6 @@ import { useParams } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
 import LoadingState from '../common/LoadingState';
 import ErrorState from '../common/ErrorState';
-import Card from '../common/Card';
 import { orderService } from '@/services/orderService';
 import { useIsMobile } from '@/hooks/use-mobile';
 import CheckoutErrorState from '../checkout/CheckoutErrorState';
@@ -38,7 +37,15 @@ const OrderConfirmationScreen: React.FC = () => {
         console.log(`Buscando detalhes do pedido ${orderId} (tentativa: ${retryCount + 1})`);
         
         // Try with increased timeout for first attempt
-        const order = await orderService.getOrderById(orderId);
+        let order;
+        
+        try {
+          // First try with direct method
+          order = await orderService.getOrderByIdDirect(orderId);
+        } catch (directError) {
+          console.log("Error with direct method, falling back to regular method", directError);
+          order = await orderService.getOrderById(orderId);
+        }
         
         if (!order) {
           throw new Error('Pedido não encontrado');
@@ -56,6 +63,7 @@ const OrderConfirmationScreen: React.FC = () => {
           setRetryCount(prev => prev + 1);
           setTimeout(() => {
             // This will trigger the useEffect again
+            fetchOrderDetails();
           }, 1000);
         } else {
           setError(err.message || 'Não foi possível carregar os detalhes do pedido');
@@ -101,13 +109,13 @@ const OrderConfirmationScreen: React.FC = () => {
         
         <OrderSummaryCard orderDetails={orderDetails} />
         
-        <Card className="mb-4 p-4">
+        <div className="mb-4 p-4 bg-white rounded-lg shadow">
           <OrderItemsList items={orderDetails.items || []} />
           
           {orderDetails.endereco_entrega && (
             <DeliveryAddressDisplay endereco={orderDetails.endereco_entrega} />
           )}
-        </Card>
+        </div>
 
         <OrderActionButtons />
       </div>

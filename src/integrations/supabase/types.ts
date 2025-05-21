@@ -1629,6 +1629,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      can_access_order: {
+        Args: { order_id: string }
+        Returns: boolean
+      }
       commit_transaction: {
         Args: Record<PropertyKey, never>
         Returns: undefined

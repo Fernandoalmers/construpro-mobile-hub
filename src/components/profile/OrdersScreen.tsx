@@ -21,7 +21,8 @@ const OrdersScreen: React.FC = () => {
   const { 
     data: orders = [], 
     isLoading, 
-    error 
+    error,
+    refetch 
   } = useQuery({
     queryKey: ['userOrders'],
     queryFn: orderService.getOrders,
@@ -67,6 +68,11 @@ const OrdersScreen: React.FC = () => {
     // In a real app, this would add items to cart from this order
     toast.success("Itens adicionados ao carrinho");
     navigate('/marketplace');
+  };
+
+  const handleRetry = () => {
+    toast.info("Tentando carregar pedidos novamente...");
+    refetch();
   };
 
   if (isLoading) {
@@ -120,13 +126,23 @@ const OrdersScreen: React.FC = () => {
             <ShoppingBag className="mx-auto text-gray-400 mb-3" size={40} />
             <h3 className="text-lg font-medium text-gray-700">Nenhum pedido encontrado</h3>
             <p className="text-gray-500 mt-1">Você ainda não tem pedidos com este status</p>
-            <CustomButton 
-              variant="primary" 
-              className="mt-4"
-              onClick={() => navigate('/marketplace')}
-            >
-              Ir para loja
-            </CustomButton>
+            {error ? (
+              <CustomButton 
+                variant="primary" 
+                className="mt-4"
+                onClick={handleRetry}
+              >
+                Tentar novamente
+              </CustomButton>
+            ) : (
+              <CustomButton 
+                variant="primary" 
+                className="mt-4"
+                onClick={() => navigate('/marketplace')}
+              >
+                Ir para loja
+              </CustomButton>
+            )}
           </div>
         ) : (
           filteredOrders.map((order) => {

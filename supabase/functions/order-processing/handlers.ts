@@ -84,37 +84,10 @@ export async function handleGetOrderById(req: Request, authHeader: string, order
       );
     }
 
-    // Fetch order and related items using a single query with JOIN
+    // Fetch order details first
     const { data: orderData, error: orderError } = await supabase
       .from('orders')
-      .select(`
-        id,
-        cliente_id,
-        valor_total,
-        pontos_ganhos,
-        status,
-        forma_pagamento,
-        endereco_entrega,
-        created_at,
-        updated_at,
-        rastreio,
-        items: order_items (
-          id,
-          produto_id,
-          quantidade,
-          preco_unitario,
-          subtotal,
-          produto: produtos (
-            id,
-            nome,
-            imagens,
-            preco_normal,
-            preco_promocional,
-            descricao,
-            categoria
-          )
-        )
-      `)
+      .select('*')
       .eq('id', orderId)
       .eq('cliente_id', userId)
       .single();
@@ -134,8 +107,40 @@ export async function handleGetOrderById(req: Request, authHeader: string, order
       );
     }
 
+    // Now fetch order items separately to avoid recursion issues
+    const { data: itemsData, error: itemsError } = await supabase
+      .from('order_items')
+      .select(`
+        id,
+        produto_id,
+        quantidade,
+        preco_unitario,
+        subtotal,
+        produto:produtos (
+          id,
+          nome,
+          imagens,
+          preco_normal,
+          preco_promocional,
+          descricao,
+          categoria
+        )
+      `)
+      .eq('order_id', orderId);
+
+    if (itemsError) {
+      console.error('Error fetching order items:', itemsError);
+      // We'll continue even with item error and just return the order data
+    }
+
+    // Combine order with items
+    const fullOrderData = {
+      ...orderData,
+      items: itemsData || []
+    };
+
     return new Response(
-      JSON.stringify({ success: true, order: orderData }),
+      JSON.stringify({ success: true, order: fullOrderData }),
       { headers: corsHeaders }
     );
   } catch (error: any) {
