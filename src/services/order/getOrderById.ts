@@ -9,9 +9,13 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
     console.log(`🔍 [orderService.getOrderById] Fetching order details for ID: ${orderId}`);
     
     // Get order data directly using service role to bypass RLS issues
+    // Using URL params since we're using a GET request
     const { data: orderData, error: orderError } = await supabaseService.invokeFunction('order-processing', {
       method: 'GET',
-      path: `/${orderId}`, // Use path parameter instead of body for GET request
+      // Pass orderId as part of the URL path instead of using 'path' property
+      headers: {
+        'order-id': orderId // Add as header as an alternative
+      },
       maxRetries: 2
     });
     

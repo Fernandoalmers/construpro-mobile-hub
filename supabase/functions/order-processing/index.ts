@@ -35,9 +35,19 @@ serve(async (req) => {
     const lastPathSegment = path[path.length - 1];
     if (lastPathSegment && lastPathSegment !== 'order-processing') {
       orderId = lastPathSegment;
+      console.log(`Order ID found in path: ${orderId}`);
     }
     
-    // If orderID wasn't in the path, check request body for POST or GET with body
+    // If no orderId in path, check headers
+    if (!orderId) {
+      const headerOrderId = req.headers.get('order-id');
+      if (headerOrderId) {
+        orderId = headerOrderId;
+        console.log(`Order ID found in header: ${orderId}`);
+      }
+    }
+    
+    // If still no orderId, check request body for POST or GET with body
     if (!orderId && (req.method === 'GET' || req.method === 'POST')) {
       // Clone the request to avoid consuming it
       const clonedReq = req.clone();
