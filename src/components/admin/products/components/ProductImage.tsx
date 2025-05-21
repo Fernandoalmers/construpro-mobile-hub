@@ -5,24 +5,59 @@ interface ProductImageProps {
   imagemUrl: string | null | undefined;
   productName: string;
   size?: 'sm' | 'lg';
+  imagens?: Array<string | {url?: string, path?: string, src?: string}> | null; // Add support for imagens array
 }
 
-const ProductImage: React.FC<ProductImageProps> = ({ imagemUrl, productName, size = 'sm' }) => {
+const ProductImage: React.FC<ProductImageProps> = ({ 
+  imagemUrl, 
+  productName, 
+  size = 'sm',
+  imagens
+}) => {
   const [imageError, setImageError] = React.useState(false);
+  
+  // Extract image URL from either direct URL or images array
+  const getImageUrl = React.useMemo(() => {
+    // First priority: direct imagemUrl if available
+    if (imagemUrl) {
+      return imagemUrl;
+    }
+    
+    // Second priority: extract from imagens array if available
+    if (imagens && Array.isArray(imagens) && imagens.length > 0) {
+      const firstImage = imagens[0];
+      
+      // Handle different image formats
+      if (typeof firstImage === 'string') {
+        return firstImage;
+      }
+      
+      if (typeof firstImage === 'object' && firstImage !== null) {
+        return firstImage.url || firstImage.path || firstImage.src || null;
+      }
+    }
+    
+    return null;
+  }, [imagemUrl, imagens]);
   
   // Log debug info 
   React.useEffect(() => {
-    if (!imagemUrl) {
-      console.log(`[ProductImage] No image URL for product: ${productName}`);
+    if (!getImageUrl) {
+      console.log(`[ProductImage] No image URL for product: ${productName}`, {
+        hasDirectUrl: !!imagemUrl,
+        hasImagens: !!imagens && Array.isArray(imagens) && imagens.length > 0,
+        imagensType: imagens && Array.isArray(imagens) && imagens.length > 0 ? 
+          typeof imagens[0] : 'none'
+      });
     }
-  }, [imagemUrl, productName]);
+  }, [getImageUrl, imagemUrl, imagens, productName]);
   
   const sizeClasses = {
     sm: "w-10 h-10",
     lg: "w-full aspect-square"
   };
   
-  if (!imagemUrl || imageError) {
+  if (!getImageUrl || imageError) {
     return (
       <div 
         className={`${sizeClasses[size]} bg-gray-200 rounded flex items-center justify-center text-gray-400`}
@@ -35,11 +70,11 @@ const ProductImage: React.FC<ProductImageProps> = ({ imagemUrl, productName, siz
   
   return (
     <img 
-      src={imagemUrl} 
+      src={getImageUrl} 
       alt={productName}
       className={`${sizeClasses[size]} object-cover rounded`}
       onError={() => {
-        console.log(`[ProductImage] Error loading image for: ${productName}, URL: ${imagemUrl}`);
+        console.log(`[ProductImage] Error loading image for: ${productName}, URL: ${getImageUrl}`);
         setImageError(true);
       }}
     />

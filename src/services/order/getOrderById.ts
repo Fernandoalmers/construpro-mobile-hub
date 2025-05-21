@@ -55,6 +55,7 @@ export function getProductImageUrl(produto: any): string | null {
   
   // Check images array with various formats
   if (produto.imagens) {
+    // Check if it's a valid array with content
     if (Array.isArray(produto.imagens) && produto.imagens.length > 0) {
       const firstImage = produto.imagens[0];
       
@@ -153,7 +154,10 @@ function processOrderItems(orderData: OrderData): void {
       id: firstItem.produto_id,
       nome: firstItem.produto?.nome,
       hasImage: !!firstItem.produto?.imagem_url,
-      imageUrl: firstItem.produto?.imagem_url?.substring(0, 50)
+      imageUrl: firstItem.produto?.imagem_url?.substring(0, 50),
+      hasImagens: !!firstItem.produto?.imagens && 
+                Array.isArray(firstItem.produto?.imagens) && 
+                firstItem.produto?.imagens.length > 0
     });
   }
 }
@@ -184,8 +188,14 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
     const { data: itemsData, error: itemsError } = await supabase
       .from('order_items')
       .select(`
-        *,
-        produto:produto_id (
+        id,
+        order_id,
+        produto_id,
+        quantidade,
+        preco_unitario,
+        subtotal,
+        created_at,
+        produtos:produto_id (
           id,
           nome,
           imagens,
@@ -205,7 +215,7 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
     // Process items to ensure type safety with produtos
     const processedItems: OrderItem[] = [];
     
-    if (itemsData && Array.isArray(itemsData)) {
+    if (itemsData && Array.isArray(itemsData) && itemsData.length > 0) {
       console.log(`Found ${itemsData.length} items for order ${orderId}`);
       
       itemsData.forEach(item => {
@@ -223,9 +233,9 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
         // Process product data with careful type checking
         let productData: OrderItem['produto'] = defaultProduct;
         
-        if (item.produto !== null && typeof item.produto === 'object') {
+        if (item.produtos !== null && typeof item.produtos === 'object') {
           // Safe type casting
-          const safeProduto = item.produto as Record<string, any>;
+          const safeProduto = item.produtos as Record<string, any>;
           
           // Verify if essential product properties exist
           if ('id' in safeProduto && 'nome' in safeProduto) {
@@ -269,7 +279,12 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
     
     console.log("✅ [orderService.getOrderByIdDirect] Successfully retrieved full order data:", {
       orderId: fullOrder.id,
-      itemCount: processedItems.length
+      itemCount: processedItems.length,
+      firstItem: processedItems.length > 0 ? {
+        id: processedItems[0].id,
+        productName: processedItems[0].produto?.nome,
+        hasImage: !!processedItems[0].produto?.imagem_url
+      } : 'No items'
     });
     
     return fullOrder;

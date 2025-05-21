@@ -45,6 +45,7 @@ const OrderItemsList: React.FC<OrderItemsListProps> = ({ items }) => {
               <div className="w-20 h-20 flex-shrink-0 mr-3 bg-gray-50 rounded overflow-hidden">
                 <ProductImage 
                   imagemUrl={item.produto?.imagem_url}
+                  imagens={item.produto?.imagens}
                   productName={item.produto?.nome || 'Produto'}
                   size="lg"
                 />
