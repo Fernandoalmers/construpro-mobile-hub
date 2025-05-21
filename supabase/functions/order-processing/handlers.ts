@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { corsHeaders } from './utils.ts'
 
@@ -152,6 +151,109 @@ export async function handleGetOrderById(req: Request, authHeader: string, order
   }
 }
 
+// Function to update product inventory after purchase
+async function updateProductInventory(orderItems: any[]): Promise<{success: boolean, errors: string[]}> {
+  const errors: string[] = [];
+  let success = true;
+  
+  console.log('Updating inventory for order items:', orderItems);
+  
+  // Process each item to reduce inventory
+  for (const item of orderItems) {
+    const { produto_id, quantidade } = item;
+    
+    // Skip if missing required fields
+    if (!produto_id || !quantidade) {
+      errors.push(`Missing produto_id or quantidade for item: ${JSON.stringify(item)}`);
+      continue;
+    }
+    
+    // Get current product inventory
+    const { data: product, error: getError } = await supabase
+      .from('produtos')
+      .select('estoque')
+      .eq('id', produto_id)
+      .single();
+    
+    if (getError) {
+      console.error(`Error fetching product ${produto_id}:`, getError);
+      errors.push(`Failed to get inventory for product ${produto_id}: ${getError.message}`);
+      success = false;
+      continue;
+    }
+    
+    if (!product) {
+      errors.push(`Product ${produto_id} not found`);
+      success = false;
+      continue;
+    }
+    
+    // Calculate new inventory level
+    const newInventory = Math.max(0, product.estoque - quantidade);
+    
+    // Update the inventory
+    const { error: updateError } = await supabase
+      .from('produtos')
+      .update({ estoque: newInventory })
+      .eq('id', produto_id);
+    
+    if (updateError) {
+      console.error(`Error updating inventory for product ${produto_id}:`, updateError);
+      errors.push(`Failed to update inventory for product ${produto_id}: ${updateError.message}`);
+      success = false;
+    } else {
+      console.log(`Updated inventory for product ${produto_id}: ${product.estoque} -> ${newInventory}`);
+    }
+  }
+  
+  return { success, errors };
+}
+
+// Function to register points in the points_transactions table
+async function registerOrderPoints(userId: string, orderId: string, points: number): Promise<boolean> {
+  if (!points || points <= 0) {
+    console.log('No points to register for this order');
+    return true;
+  }
+  
+  try {
+    console.log(`Registering ${points} points for user ${userId} from order ${orderId}`);
+    
+    // Add points transaction record
+    const { error: transactionError } = await supabase
+      .from('points_transactions')
+      .insert({
+        user_id: userId,
+        pontos: points,
+        tipo: 'compra',
+        descricao: `Pontos por compra #${orderId}`,
+        referencia_id: orderId
+      });
+    
+    if (transactionError) {
+      console.error('Error creating points transaction:', transactionError);
+      return false;
+    }
+    
+    // Update user points balance using the database function
+    const { error: pointsError } = await supabase.rpc('update_user_points', {
+      user_id: userId,
+      points_to_add: points
+    });
+    
+    if (pointsError) {
+      console.error('Error updating user points balance:', pointsError);
+      return false;
+    }
+    
+    console.log(`Successfully registered ${points} points for user ${userId}`);
+    return true;
+  } catch (error) {
+    console.error('Unexpected error in registerOrderPoints:', error);
+    return false;
+  }
+}
+
 // Function to handle POST requests to create a new order
 export async function handleCreateOrder(req: Request, authHeader: string): Promise<Response> {
   try {
@@ -245,10 +347,33 @@ export async function handleCreateOrder(req: Request, authHeader: string): Promi
         { status: 500, headers: corsHeaders }
       )
     }
+    
+    // New Step 1: Update inventory for each product
+    console.log('Starting inventory update for order', orderId);
+    const inventoryResult = await updateProductInventory(orderItems);
+    if (!inventoryResult.success) {
+      console.warn('Some inventory updates failed:', inventoryResult.errors);
+      // We continue with the order even if inventory updates partially failed
+      // This is logged but doesn't block the order
+    }
+    
+    // New Step 2: Register points earned by the user
+    console.log('Registering points for order', orderId);
+    const pointsRegistered = await registerOrderPoints(userId, orderId, body.pontos_ganhos);
+    if (!pointsRegistered) {
+      console.warn('Failed to register points for order', orderId);
+      // We continue even if points registration fails
+      // This is logged but doesn't block the order
+    }
 
     // If all operations were successful, commit the transaction
     return new Response(
-      JSON.stringify({ success: true, order: orderResult }),
+      JSON.stringify({ 
+        success: true, 
+        order: orderResult,
+        inventoryUpdated: inventoryResult.success,
+        pointsRegistered
+      }),
       { headers: corsHeaders }
     )
   } catch (error: any) {

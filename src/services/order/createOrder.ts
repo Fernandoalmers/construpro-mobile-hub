@@ -51,6 +51,17 @@ export async function createOrder(orderData: CreateOrderPayload): Promise<string
       throw new Error(errorMsg);
     }
     
+    // Add informative toast messages about inventory and points
+    if (data.inventoryUpdated === false) {
+      console.warn('Some inventory updates failed, but order was created');
+      toast.warning('Pedido criado, mas algumas atualizações de estoque falharam. O administrador foi notificado.');
+    }
+    
+    if (data.pointsRegistered === false) {
+      console.warn('Points registration failed, but order was created');
+      toast.warning('Pedido criado, mas houve um problema ao registrar seus pontos. O administrador foi notificado.');
+    }
+    
     // Success!
     console.log("Order created successfully:", data.order);
     return data.order.id;
