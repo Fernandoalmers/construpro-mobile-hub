@@ -1,7 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
-import { OrderData } from './types';
+import { OrderData, OrderItem } from './types';
 
 export async function getOrderById(orderId: string): Promise<OrderData | null> {
   try {
@@ -85,10 +85,39 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
       // Continue with the order data even if items failed
     }
     
-    // Combine order with items
+    // Process items to ensure type safety with produtos
+    const processedItems: OrderItem[] = [];
+    
+    if (itemsData && Array.isArray(itemsData)) {
+      itemsData.forEach(item => {
+        // Check if produto is a SelectQueryError (has error: true property)
+        const hasError = item.produto && typeof item.produto === 'object' && 'error' in item.produto;
+        
+        const orderItem: OrderItem = {
+          id: item.id,
+          produto_id: item.produto_id,
+          quantidade: item.quantidade,
+          preco_unitario: item.preco_unitario,
+          subtotal: item.subtotal,
+          // Handle missing or error produtos by providing default values
+          produto: hasError ? {
+            id: item.produto_id,
+            nome: 'Produto indisponível',
+            imagens: [],
+            descricao: '',
+            preco_normal: item.preco_unitario,
+            categoria: ''
+          } : item.produto
+        };
+        
+        processedItems.push(orderItem);
+      });
+    }
+    
+    // Combine order with processed items
     const fullOrder: OrderData = {
       ...orderData,
-      items: itemsData || []
+      items: processedItems
     };
     
     console.log("✅ [orderService.getOrderByIdDirect] Successfully retrieved full order data");
