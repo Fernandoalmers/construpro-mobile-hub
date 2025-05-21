@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { CheckCircle, ArrowLeft, Clock, ShoppingBag, Home, Package, MapPin, AlertTriangle } from 'lucide-react';
+import { CheckCircle, ArrowLeft, Clock, ShoppingBag, Home, Package, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import LoadingState from '../common/LoadingState';
 import ErrorState from '../common/ErrorState';
@@ -10,6 +10,7 @@ import { orderService } from '@/services/orderService';
 import ProductImage from '../admin/products/components/ProductImage';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from '@/components/ui/sonner';
+import CheckoutErrorState from '../checkout/CheckoutErrorState';
 
 const OrderConfirmationScreen: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>();
@@ -32,7 +33,7 @@ const OrderConfirmationScreen: React.FC = () => {
         setLoading(true);
         console.log(`Buscando detalhes do pedido ${orderId} (tentativa: ${retryCount + 1})`);
         
-        // Fetch order details with the enhanced service that handles RLS issues
+        // Try with increased timeout for first attempt
         const order = await orderService.getOrderById(orderId);
         
         if (!order) {
@@ -45,13 +46,12 @@ const OrderConfirmationScreen: React.FC = () => {
       } catch (err: any) {
         console.error('Error fetching order details:', err);
         
-        // If we've tried less than 3 times and it's an RLS error, retry after a delay
-        if (retryCount < 2 && err.message?.includes('security policy')) {
+        // If we've tried less than 3 times, retry after a delay
+        if (retryCount < 2) {
           console.log(`Tentando novamente em 1 segundo (tentativa ${retryCount + 1})`);
           setRetryCount(prev => prev + 1);
           setTimeout(() => {
             // This will trigger the useEffect again
-            setRetryCount(prev => prev);
           }, 1000);
         } else {
           setError(err.message || 'Não foi possível carregar os detalhes do pedido');
@@ -80,11 +80,10 @@ const OrderConfirmationScreen: React.FC = () => {
 
   if (error || !orderDetails) {
     return (
-      <ErrorState 
-        title="Erro ao carregar confirmação" 
-        message={error || "Pedido não encontrado"}
+      <CheckoutErrorState 
+        error={error || "Pedido não encontrado"}
+        attemptCount={retryCount}
         onRetry={handleRetry}
-        retryText="Tentar novamente"
       />
     );
   }

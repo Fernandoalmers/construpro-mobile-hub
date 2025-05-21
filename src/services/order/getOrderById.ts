@@ -8,13 +8,11 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
   try {
     console.log(`🔍 [orderService.getOrderById] Fetching order details for ID: ${orderId}`);
     
-    // Get order data directly using service role to bypass RLS issues
-    // Using URL params since we're using a GET request
+    // Get order data using Edge Function
     const { data: orderData, error: orderError } = await supabaseService.invokeFunction('order-processing', {
       method: 'GET',
-      // Pass orderId as part of the URL path instead of using 'path' property
       headers: {
-        'order-id': orderId // Add as header as an alternative
+        'order-id': orderId
       },
       maxRetries: 2
     });
