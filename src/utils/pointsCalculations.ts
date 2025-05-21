@@ -24,17 +24,33 @@ export interface LevelInfo {
   pointsToNextLevel: number;
 }
 
-// Level thresholds for monthly points
+// Level thresholds for monthly points - Updated with new ranges
 export const MONTHLY_LEVEL_THRESHOLDS = {
-  bronze: { min: 0, max: 500 },
-  silver: { min: 500, max: 1000 },
-  gold: { min: 1000, max: 1000 }, // Gold is the highest level
+  bronze: { min: 0, max: 1999 },
+  silver: { min: 2000, max: 4999 },
+  gold: { min: 5000, max: 5000 }, // Gold is the highest level
 };
 
 export const LEVEL_MAP = {
   bronze: { color: '#CD7F32', name: 'Bronze' },
   silver: { color: '#C0C0C0', name: 'Prata' },
   gold: { color: '#FFD700', name: 'Ouro' },
+};
+
+// Month names in Portuguese
+const MONTH_NAMES_PT = {
+  'January': 'Janeiro',
+  'February': 'Fevereiro',
+  'March': 'Março',
+  'April': 'Abril',
+  'May': 'Maio',
+  'June': 'Junho',
+  'July': 'Julho',
+  'August': 'Agosto',
+  'September': 'Setembro',
+  'October': 'Outubro',
+  'November': 'Novembro',
+  'December': 'Dezembro'
 };
 
 /**
@@ -58,10 +74,11 @@ export function calculateMonthlyPoints(transactions: Transaction[]): number {
 }
 
 /**
- * Get the current month name for display
+ * Get the current month name in Portuguese for display
  */
 export function getCurrentMonthName(): string {
-  return format(new Date(), 'MMMM');
+  const englishMonth = format(new Date(), 'MMMM');
+  return MONTH_NAMES_PT[englishMonth as keyof typeof MONTH_NAMES_PT] || englishMonth;
 }
 
 /**
@@ -70,8 +87,8 @@ export function getCurrentMonthName(): string {
 export function calculateLevelInfo(monthlyPoints: number): LevelInfo {
   let currentLevel = 'bronze';
   let nextLevel = 'silver';
-  let currentProgress = 0;
-  let maxProgress = 500;
+  let currentProgress = monthlyPoints;
+  let maxProgress = MONTHLY_LEVEL_THRESHOLDS.silver.min;
   
   if (monthlyPoints >= MONTHLY_LEVEL_THRESHOLDS.gold.min) {
     currentLevel = 'gold';
@@ -83,9 +100,6 @@ export function calculateLevelInfo(monthlyPoints: number): LevelInfo {
     nextLevel = 'gold';
     currentProgress = monthlyPoints - MONTHLY_LEVEL_THRESHOLDS.silver.min;
     maxProgress = MONTHLY_LEVEL_THRESHOLDS.gold.min - MONTHLY_LEVEL_THRESHOLDS.silver.min;
-  } else {
-    currentProgress = monthlyPoints;
-    maxProgress = MONTHLY_LEVEL_THRESHOLDS.silver.min;
   }
   
   const levelName = LEVEL_MAP[currentLevel as keyof typeof LEVEL_MAP].name;

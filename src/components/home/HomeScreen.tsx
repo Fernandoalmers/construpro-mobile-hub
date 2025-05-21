@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getProducts, Product } from '@/services/productService';
@@ -202,7 +201,7 @@ const HomeScreen: React.FC = () => {
             value={levelInfo.currentProgress} 
             max={levelInfo.maxProgress} 
             size="md"
-            color="orange"
+            color="blue"
             animated={true}
           />
           <p className="text-xs text-gray-500 mt-1 text-right">

@@ -202,7 +202,7 @@ const PointsHistoryScreen: React.FC = () => {
             value={levelInfo.currentProgress} 
             max={levelInfo.maxProgress} 
             size="md"
-            color="orange"
+            color="blue"
             animated={true}
           />
           
