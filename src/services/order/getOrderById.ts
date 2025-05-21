@@ -113,6 +113,12 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
           preco_promocional: undefined
         };
         
+        // We need to check explicitly for null or undefined before accessing produto
+        const produtoIsValid = item.produto !== null && 
+                             item.produto !== undefined && 
+                             typeof item.produto === 'object' && 
+                             !('error' in (item.produto || {}));
+        
         const orderItem: OrderItem = {
           id: item.id,
           produto_id: item.produto_id,
@@ -120,13 +126,8 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
           preco_unitario: item.preco_unitario,
           subtotal: item.subtotal,
           // Use default product for errors, otherwise cast to required type with a proper type assertion
-          // First cast to unknown then to the target type to avoid type compatibility errors
-          produto: hasError ? defaultProduct : (
-            // Make sure we're dealing with a valid product object before casting
-            typeof item.produto === 'object' && item.produto !== null && !('error' in item.produto)
-              ? (item.produto as unknown as OrderItem['produto'])
-              : defaultProduct
-          )
+          produto: hasError || !produtoIsValid ? defaultProduct : 
+            (item.produto as unknown as OrderItem['produto'])
         };
         
         processedItems.push(orderItem);
