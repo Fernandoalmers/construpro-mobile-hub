@@ -119,15 +119,18 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
                              typeof item.produto === 'object' && 
                              !('error' in (item.produto || {}));
         
+        // Fix the error on line 100 by safely accessing item.produto
+        const produto = hasError || !produtoIsValid ? defaultProduct : item.produto;
+        
         const orderItem: OrderItem = {
           id: item.id,
           produto_id: item.produto_id,
           quantidade: item.quantidade,
           preco_unitario: item.preco_unitario,
           subtotal: item.subtotal,
-          // Use default product for errors, otherwise cast to required type with a proper type assertion
+          // Use default product for errors, otherwise cast to required type
           produto: hasError || !produtoIsValid ? defaultProduct : 
-            (item.produto as unknown as OrderItem['produto'])
+            (produto as unknown as OrderItem['produto'])
         };
         
         processedItems.push(orderItem);
