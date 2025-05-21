@@ -14,7 +14,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'react-toastify';
+import { toast } from '@/components/ui/sonner';
 
 interface Transaction {
   id: string;
@@ -201,7 +201,7 @@ const PointsHistoryScreen: React.FC = () => {
             </div>
           </div>
           
-          {/* Adicionar botão para atualizar dados */}
+          {/* Botão para atualizar dados */}
           <Button 
             variant="outline" 
             size="sm"
