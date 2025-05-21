@@ -11,6 +11,7 @@ interface ProgressBarProps {
   color?: 'default' | 'orange' | 'blue' | 'green';
   className?: string;
   animated?: boolean;
+  customColorClass?: string;
 }
 
 const ProgressBar: React.FC<ProgressBarProps> = ({
@@ -22,6 +23,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
   color = 'default',
   className,
   animated = false,
+  customColorClass,
 }) => {
   const percentage = Math.min(100, Math.max(0, (value / max) * 100));
 
@@ -50,7 +52,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
         <div
           className={cn(
             "rounded-full transition-all duration-1000 ease-out", 
-            colorClassMap[color],
+            customColorClass || colorClassMap[color],
             animated && "animate-pulse-subtle"
           )}
           style={{ width: `${percentage}%` }}

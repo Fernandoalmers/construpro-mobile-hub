@@ -53,7 +53,10 @@ const UserDataScreen: React.FC = () => {
     }
   });
   
-  const [loading, setLoading] = useState(false);
+  // Show debugging information
+  useEffect(() => {
+    console.log('Profile loaded in UserDataScreen:', profile);
+  }, [profile]);
 
   // Carregar dados do perfil quando o componente montar
   useEffect(() => {
@@ -78,14 +81,17 @@ const UserDataScreen: React.FC = () => {
   }, [profile]);
   
   const updateProfileMutation = useMutation({
-    mutationFn: (data: any) => updateProfile(data),
+    mutationFn: async (data: any) => {
+      console.log('Updating profile with data:', data);
+      return updateProfile(data);
+    },
     onSuccess: () => {
       toast.success('Dados atualizados com sucesso');
       navigate('/profile');
     },
     onError: (error: any) => {
-      toast.error(`Erro ao atualizar dados: ${error.message}`);
-      console.error(error);
+      console.error('Error updating profile:', error);
+      toast.error(`Erro ao atualizar dados: ${error.message || 'Erro desconhecido'}`);
     }
   });
   
@@ -119,6 +125,7 @@ const UserDataScreen: React.FC = () => {
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Form submitted with data:', formData);
     
     updateProfileMutation.mutate({
       nome: formData.nome,

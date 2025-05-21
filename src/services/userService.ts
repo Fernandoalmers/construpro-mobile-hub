@@ -45,6 +45,7 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
       return null;
     }
 
+    console.log("Retrieved user profile:", profile);
     return profile as UserProfile;
   } catch (error) {
     console.error("Error in getUserProfile:", error);
@@ -60,6 +61,31 @@ export const updateUserProfile = async (profileData: Partial<UserProfile>): Prom
       return null;
     }
 
+    console.log("Updating profile with data:", profileData);
+
+    // First try using the edge function if available
+    try {
+      const response = await fetch(`${supabase.supabaseUrl}/functions/v1/profile-update`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+        },
+        body: JSON.stringify(profileData)
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log("Profile updated via edge function:", result);
+        return result.data as UserProfile;
+      } else {
+        console.warn("Edge function failed, falling back to direct update:", await response.text());
+      }
+    } catch (edgeFunctionError) {
+      console.warn("Error using edge function for profile update, falling back to direct update:", edgeFunctionError);
+    }
+
+    // Fallback to direct update
     const { data, error } = await supabase
       .from('profiles')
       .update(profileData)
@@ -72,6 +98,7 @@ export const updateUserProfile = async (profileData: Partial<UserProfile>): Prom
       return null;
     }
 
+    console.log("Profile updated successfully:", data);
     return data as UserProfile;
   } catch (error) {
     console.error("Error in updateUserProfile:", error);
