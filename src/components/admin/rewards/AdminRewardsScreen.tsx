@@ -78,6 +78,17 @@ const AdminRewardsScreen: React.FC = () => {
     }
   };
 
+  const confirmToggleStatus = (reward: AdminReward) => {
+    const newStatus = reward.status === 'ativo' ? 'inativo' : 'ativo';
+    const confirmMessage = `Tem certeza que deseja ${
+      newStatus === 'ativo' ? 'ativar' : 'desativar'
+    } esta recompensa?`;
+    
+    if (window.confirm(confirmMessage)) {
+      handleToggleStatus(reward);
+    }
+  };
+
   const handleEditReward = (reward: AdminReward) => {
     setSelectedReward(reward);
     setIsEditModalOpen(true);
@@ -183,6 +194,9 @@ const AdminRewardsScreen: React.FC = () => {
                             src={reward.imagem_url} 
                             alt={reward.nome} 
                             className="h-10 w-10 object-cover rounded"
+                            onError={(e) => {
+                              e.currentTarget.src = 'https://images.unsplash.com/photo-1618160702438-9b02ab6515c9?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&h=500&q=80';
+                            }}
                           />
                         ) : (
                           <div className="h-10 w-10 bg-gray-200 rounded flex items-center justify-center">
@@ -207,6 +221,7 @@ const AdminRewardsScreen: React.FC = () => {
                             size="sm" 
                             className="h-8 w-8 p-0"
                             onClick={() => handleEditReward(reward)}
+                            title="Editar recompensa"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -215,13 +230,15 @@ const AdminRewardsScreen: React.FC = () => {
                             size="sm" 
                             className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
                             onClick={() => handleDeleteConfirm(reward)}
+                            title="Excluir recompensa"
                           >
                             <Trash className="h-4 w-4" />
                           </Button>
                           <Switch
                             checked={reward.status === 'ativo'}
-                            onCheckedChange={() => handleToggleStatus(reward)}
+                            onCheckedChange={() => confirmToggleStatus(reward)}
                             className="ml-2"
+                            title={reward.status === 'ativo' ? 'Desativar' : 'Ativar'}
                           />
                         </div>
                       </TableCell>
@@ -290,6 +307,9 @@ const AdminRewardsScreen: React.FC = () => {
                 src={selectedReward.imagem_url} 
                 alt={selectedReward.nome} 
                 className="h-16 w-16 object-cover rounded"
+                onError={(e) => {
+                  e.currentTarget.src = 'https://images.unsplash.com/photo-1618160702438-9b02ab6515c9?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&h=500&q=80';
+                }}
               />
             ) : (
               <div className="h-16 w-16 bg-gray-200 rounded flex items-center justify-center">

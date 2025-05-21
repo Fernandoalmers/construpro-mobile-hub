@@ -31,7 +31,7 @@ export const fetchRewards = async (): Promise<AdminReward[]> => {
     const { data, error } = await supabase
       .from('resgates')
       .select('*')
-      .or(`cliente_id.is.null,status.in.(ativo,inativo)`) // This more inclusive filter catches all templates
+      .is('cliente_id', null) // Only get templates where cliente_id is NULL
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -76,10 +76,10 @@ export const fetchRewards = async (): Promise<AdminReward[]> => {
 export const createReward = async (rewardData: Omit<AdminReward, 'id' | 'created_at' | 'updated_at'>): Promise<AdminReward | null> => {
   try {
     // First verify admin status
-    const { error: adminError } = await supabase
+    const { data: isAdmin, error: adminError } = await supabase
       .rpc('is_admin');
 
-    if (adminError) {
+    if (adminError || !isAdmin) {
       console.error('Admin check failed:', adminError);
       toast.error('Permissão negada: apenas administradores podem criar recompensas');
       return null;
@@ -97,7 +97,6 @@ export const createReward = async (rewardData: Omit<AdminReward, 'id' | 'created
     console.log('Current authenticated user:', user.id); // Debug log for user ID
     
     // Insert the new reward into resgates table with status 'ativo' and null cliente_id (indicating it's a template)
-    // Explicitly setting cliente_id to null to ensure it's treated as a template
     const { data, error } = await supabase
       .from('resgates')
       .insert({
@@ -105,7 +104,7 @@ export const createReward = async (rewardData: Omit<AdminReward, 'id' | 'created
         descricao: rewardData.descricao,
         pontos: rewardData.pontos,
         imagem_url: rewardData.imagem_url || 'https://images.unsplash.com/photo-1618160702438-9b02ab6515c9?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&h=500&q=80',
-        status: 'ativo', // Default to active so it shows immediately
+        status: rewardData.status || 'ativo', // Default to active so it shows immediately
         estoque: rewardData.estoque,
         prazo_entrega: rewardData.prazo_entrega,
         categoria: rewardData.categoria,
@@ -151,24 +150,19 @@ export const createReward = async (rewardData: Omit<AdminReward, 'id' | 'created
 export const updateReward = async (rewardId: string, rewardData: Partial<AdminReward>): Promise<AdminReward | null> => {
   try {
     // First verify admin status
-    const { error: adminError } = await supabase
+    const { data: isAdmin, error: adminError } = await supabase
       .rpc('is_admin');
 
-    if (adminError) {
+    if (adminError || !isAdmin) {
       console.error('Admin check failed:', adminError);
       toast.error('Permissão negada: apenas administradores podem atualizar recompensas');
       return null;
     }
 
-    // Get the current user ID for update operation
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      toast.error('Usuário não autenticado');
-      return null;
-    }
+    console.log('Updating reward with ID:', rewardId);
+    console.log('Update data:', rewardData);
 
-    // Update the reward in resgates table
+    // Update the reward in resgates table - explicitly set cliente_id to null to ensure it remains a template
     const { data, error } = await supabase
       .from('resgates')
       .update({
@@ -188,10 +182,11 @@ export const updateReward = async (rewardId: string, rewardData: Partial<AdminRe
 
     if (error) {
       console.error('Error updating reward:', error);
-      toast.error('Erro ao atualizar recompensa');
+      toast.error('Erro ao atualizar recompensa: ' + error.message);
       return null;
     }
 
+    console.log('Updated reward data:', data);
     toast.success('Recompensa atualizada com sucesso');
 
     // Transform to AdminReward format
@@ -221,10 +216,10 @@ export const updateReward = async (rewardId: string, rewardData: Partial<AdminRe
 export const toggleRewardStatus = async (rewardId: string, currentStatus: string): Promise<boolean> => {
   try {
     // First verify admin status
-    const { error: adminError } = await supabase
+    const { data: isAdmin, error: adminError } = await supabase
       .rpc('is_admin');
 
-    if (adminError) {
+    if (adminError || !isAdmin) {
       console.error('Admin check failed:', adminError);
       toast.error('Permissão negada: apenas administradores podem alterar status');
       return false;
@@ -233,7 +228,9 @@ export const toggleRewardStatus = async (rewardId: string, currentStatus: string
     // Determine the new status
     const newStatus = currentStatus === 'ativo' ? 'inativo' : 'ativo';
 
-    // Update the status
+    console.log(`Toggling reward ${rewardId} status from ${currentStatus} to ${newStatus}`);
+
+    // Update the status - explicitly set cliente_id to null
     const { error } = await supabase
       .from('resgates')
       .update({ 
@@ -244,7 +241,7 @@ export const toggleRewardStatus = async (rewardId: string, currentStatus: string
 
     if (error) {
       console.error('Error toggling reward status:', error);
-      toast.error('Erro ao alterar status da recompensa');
+      toast.error('Erro ao alterar status da recompensa: ' + error.message);
       return false;
     }
 
@@ -263,14 +260,16 @@ export const toggleRewardStatus = async (rewardId: string, currentStatus: string
 export const deleteReward = async (rewardId: string): Promise<boolean> => {
   try {
     // First verify admin status
-    const { error: adminError } = await supabase
+    const { data: isAdmin, error: adminError } = await supabase
       .rpc('is_admin');
 
-    if (adminError) {
+    if (adminError || !isAdmin) {
       console.error('Admin check failed:', adminError);
       toast.error('Permissão negada: apenas administradores podem excluir recompensas');
       return false;
     }
+
+    console.log(`Deleting reward with ID: ${rewardId}`);
 
     // Delete the reward
     const { error } = await supabase
@@ -280,7 +279,7 @@ export const deleteReward = async (rewardId: string): Promise<boolean> => {
 
     if (error) {
       console.error('Error deleting reward:', error);
-      toast.error('Erro ao excluir recompensa');
+      toast.error('Erro ao excluir recompensa: ' + error.message);
       return false;
     }
 

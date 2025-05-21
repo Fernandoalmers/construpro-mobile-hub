@@ -15,10 +15,11 @@ import CustomButton from '@/components/common/CustomButton';
 import CustomSelect from '@/components/common/CustomSelect';
 import { createReward, fetchRewardCategories, updateReward } from '@/services/adminRewardsService';
 import { toast } from '@/components/ui/sonner';
-import { Upload, Image } from 'lucide-react';
+import { Upload, Image, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 interface RewardFormProps {
   initialData?: Partial<AdminReward>;
@@ -37,6 +38,7 @@ const RewardForm: React.FC<RewardFormProps> = ({
   const [imagePreview, setImagePreview] = useState<string | null>(initialData?.imagem_url || null);
   const [categories, setCategories] = useState<string[]>(['Resgate', 'Vale Presente', 'Produto', 'Serviço', 'Outro']);
   const [adminStatus, setAdminStatus] = useState<boolean>(false);
+  const [formError, setFormError] = useState<string | null>(null);
   
   const form = useForm({
     defaultValues: {
@@ -48,7 +50,8 @@ const RewardForm: React.FC<RewardFormProps> = ({
       estoque: initialData?.estoque || null,
       prazo_entrega: initialData?.prazo_entrega || '7-10 dias úteis',
       status: initialData?.status || 'ativo' // Default to active
-    }
+    },
+    mode: 'onChange',
   });
 
   // Check admin status on component mount
@@ -62,8 +65,13 @@ const RewardForm: React.FC<RewardFormProps> = ({
         }
         setAdminStatus(!!data);
         console.log("Admin status:", data);
+        
+        if (!data) {
+          setFormError('Você precisa ser um administrador para gerenciar recompensas.');
+        }
       } catch (err) {
         console.error("Error checking admin status:", err);
+        setFormError('Erro ao verificar permissões de administrador.');
       }
     };
     
@@ -86,9 +94,38 @@ const RewardForm: React.FC<RewardFormProps> = ({
     loadCategories();
   }, []);
 
+  const validateForm = () => {
+    const values = form.getValues();
+    
+    if (!values.nome) {
+      setFormError('O nome da recompensa é obrigatório.');
+      return false;
+    }
+    
+    if (!values.pontos || values.pontos <= 0) {
+      setFormError('O valor de pontos deve ser maior que zero.');
+      return false;
+    }
+
+    setFormError(null);
+    return true;
+  };
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Verifica tamanho (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Imagem muito grande. Máximo de 5MB permitido.");
+        return;
+      }
+
+      // Verifica tipo
+      if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
+        toast.error("Formato de imagem não suportado. Use JPG, PNG, WEBP ou GIF.");
+        return;
+      }
+
       // Temporariamente mostrar preview da imagem selecionada
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -101,6 +138,8 @@ const RewardForm: React.FC<RewardFormProps> = ({
   };
 
   const onSubmit = async (data: any) => {
+    if (!validateForm()) return;
+
     setIsLoading(true);
     try {
       // Ensure image URL is set, even if blank in form
@@ -134,6 +173,8 @@ const RewardForm: React.FC<RewardFormProps> = ({
           console.log("Created reward:", result); // Debug log
           toast.success('Recompensa criada com sucesso!');
           onSuccess();
+        } else {
+          setFormError('Erro ao criar recompensa. Verifique os dados e tente novamente.');
         }
       } else {
         // Lógica para atualizar uma recompensa existente
@@ -152,10 +193,13 @@ const RewardForm: React.FC<RewardFormProps> = ({
           console.log("Updated reward:", result); // Debug log
           toast.success('Recompensa atualizada com sucesso!');
           onSuccess();
+        } else {
+          setFormError('Erro ao atualizar recompensa. Verifique os dados e tente novamente.');
         }
       }
     } catch (error) {
       console.error('Erro ao salvar recompensa:', error);
+      setFormError('Erro inesperado. Tente novamente mais tarde.');
       toast.error('Erro ao salvar recompensa');
     } finally {
       setIsLoading(false);
@@ -172,16 +216,35 @@ const RewardForm: React.FC<RewardFormProps> = ({
     { label: 'Pendente', value: 'pendente' },
     { label: 'Inativo', value: 'inativo' }
   ];
+  
+  if (formError) {
+    return (
+      <Alert variant="destructive" className="mb-4">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Erro</AlertTitle>
+        <AlertDescription>{formError}</AlertDescription>
+      </Alert>
+    );
+  }
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        {formError && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Erro</AlertTitle>
+            <AlertDescription>{formError}</AlertDescription>
+          </Alert>
+        )}
+
         <FormField
           control={form.control}
           name="nome"
+          rules={{ required: "Nome da recompensa é obrigatório" }}
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Nome da Recompensa</FormLabel>
+              <FormLabel>Nome da Recompensa *</FormLabel>
               <FormControl>
                 <CustomInput 
                   placeholder="Digite o nome da recompensa" 
@@ -215,9 +278,13 @@ const RewardForm: React.FC<RewardFormProps> = ({
           <FormField
             control={form.control}
             name="pontos"
+            rules={{ 
+              required: "Pontos são obrigatórios",
+              min: { value: 1, message: "Deve ser maior que zero" }
+            }}
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Pontos Necessários</FormLabel>
+                <FormLabel>Pontos Necessários *</FormLabel>
                 <FormControl>
                   <CustomInput 
                     type="number"
@@ -259,9 +326,10 @@ const RewardForm: React.FC<RewardFormProps> = ({
           <FormField
             control={form.control}
             name="categoria"
+            rules={{ required: "Categoria é obrigatória" }}
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Categoria</FormLabel>
+                <FormLabel>Categoria *</FormLabel>
                 <FormControl>
                   <CustomSelect 
                     options={categoryOptions}
@@ -277,9 +345,10 @@ const RewardForm: React.FC<RewardFormProps> = ({
           <FormField
             control={form.control}
             name="status"
+            rules={{ required: "Status é obrigatório" }}
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Status</FormLabel>
+                <FormLabel>Status *</FormLabel>
                 <FormControl>
                   <CustomSelect 
                     options={statusOptions}
