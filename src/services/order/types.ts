@@ -47,7 +47,7 @@ export interface OrderItem {
     preco_normal?: number;
     preco_promocional?: number;
     imagem_url?: string | null;
-    imagens?: string[] | {url?: string, path?: string}[];
+    imagens?: string[] | {url?: string, path?: string}[] | any; // Updated to make this more flexible
     descricao?: string;
     categoria?: string;
     [key: string]: any;
@@ -58,7 +58,7 @@ export interface OrderItem {
 export interface ProductData {
   id: string;
   nome: string;
-  imagens?: any[];
+  imagens?: any[]; // Updated to match with Json type from Supabase
   preco_normal: number;
   preco_promocional?: number;
   descricao?: string;

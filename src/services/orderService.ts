@@ -2,9 +2,10 @@
 import { createOrder } from './order/createOrder';
 import { getOrders } from './order/getOrders';
 import { getOrderById, getOrderByIdDirect } from './order/getOrderById';
-import { CreateOrderPayload } from './order/types';
+import type { CreateOrderPayload } from './order/types';
 
-export { CreateOrderPayload } from './order/types';
+// Re-export types with 'export type' syntax for compatibility with isolatedModules
+export type { CreateOrderPayload } from './order/types';
 
 export const orderService = {
   createOrder,

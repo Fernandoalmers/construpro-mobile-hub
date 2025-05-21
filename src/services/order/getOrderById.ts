@@ -130,10 +130,15 @@ async function enrichOrderItemsWithProductData(orderData: Record<string, any>, i
   }
   
   // Create a map of product ID to product data for quick lookup
-  const productsMap: Record<string, ProductData> = {};
+  const productsMap: Record<string, any> = {};
   if (productsData) {
     productsData.forEach(product => {
-      productsMap[product.id] = product;
+      // Ensure product data is compatible with ProductData type
+      productsMap[product.id] = {
+        ...product,
+        // Ensure imagens is treated as any[] for type compatibility
+        imagens: product.imagens || []
+      };
     });
   }
   
@@ -143,12 +148,30 @@ async function enrichOrderItemsWithProductData(orderData: Record<string, any>, i
     
     // Extract image URL from product data if available
     let imageUrl = null;
-    if (productData && productData.imagens && Array.isArray(productData.imagens) && productData.imagens.length > 0) {
-      const firstImage = productData.imagens[0];
-      if (typeof firstImage === 'string') {
-        imageUrl = firstImage;
-      } else if (firstImage && typeof firstImage === 'object') {
-        imageUrl = firstImage.url || firstImage.path || null;
+    if (productData && productData.imagens) {
+      const imagens = productData.imagens;
+      if (Array.isArray(imagens) && imagens.length > 0) {
+        const firstImage = imagens[0];
+        if (typeof firstImage === 'string') {
+          imageUrl = firstImage;
+        } else if (firstImage && typeof firstImage === 'object') {
+          imageUrl = firstImage.url || firstImage.path || null;
+        }
+      } else if (typeof imagens === 'string') {
+        // Handle case where imagens might be a JSON string
+        try {
+          const parsedImages = JSON.parse(imagens);
+          if (Array.isArray(parsedImages) && parsedImages.length > 0) {
+            const firstImage = parsedImages[0];
+            if (typeof firstImage === 'string') {
+              imageUrl = firstImage;
+            } else if (firstImage && typeof firstImage === 'object') {
+              imageUrl = firstImage.url || firstImage.path || null;
+            }
+          }
+        } catch (e) {
+          console.warn("Unable to parse imagens string:", e);
+        }
       }
     }
     
