@@ -65,7 +65,8 @@ export const updateUserProfile = async (profileData: Partial<UserProfile>): Prom
 
     // First try using the edge function if available
     try {
-      const response = await fetch(`${supabase.supabaseUrl}/functions/v1/profile-update`, {
+      // Use the correct way to access the Supabase URL
+      const response = await fetch("https://orqnibkshlapwhjjmszh.supabase.co/functions/v1/profile-update", {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
