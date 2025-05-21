@@ -60,6 +60,12 @@ export async function createOrder(orderData: CreateOrderPayload): Promise<string
     if (data.pointsRegistered === false) {
       console.warn('Points registration failed, but order was created');
       toast.warning('Pedido criado, mas houve um problema ao registrar seus pontos. O administrador foi notificado.');
+    } else {
+      // Show a success message specifically about points if they were registered successfully
+      const pointsAmount = orderData.pontos_ganhos;
+      if (pointsAmount > 0) {
+        toast.success(`Você ganhou ${pointsAmount} pontos com esta compra!`);
+      }
     }
     
     // Success!

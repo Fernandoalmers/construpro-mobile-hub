@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { corsHeaders } from './utils.ts'
 
@@ -303,6 +304,16 @@ export async function handleCreateOrder(req: Request, authHeader: string): Promi
       )
     }
 
+    console.log('Creating order with data:', {
+      cliente_id: userId,
+      valor_total: body.valor_total,
+      pontos_ganhos: body.pontos_ganhos,
+      status: body.status || 'Confirmado',
+      forma_pagamento: body.forma_pagamento,
+      endereco_entrega: body.endereco_entrega,
+      items_count: body.items.length
+    });
+
     // Start a database transaction
     const { data: orderResult, error: orderError } = await supabase.from('orders').insert({
       cliente_id: userId,
@@ -316,7 +327,7 @@ export async function handleCreateOrder(req: Request, authHeader: string): Promi
     if (orderError) {
       console.error('Error creating order:', orderError)
       return new Response(
-        JSON.stringify({ success: false, error: 'Failed to create order' }),
+        JSON.stringify({ success: false, error: 'Failed to create order: ' + orderError.message }),
         { status: 500, headers: corsHeaders }
       )
     }
@@ -343,30 +354,30 @@ export async function handleCreateOrder(req: Request, authHeader: string): Promi
       await supabase.from('orders').delete().eq('id', orderId)
 
       return new Response(
-        JSON.stringify({ success: false, error: 'Failed to create order items' }),
+        JSON.stringify({ success: false, error: 'Failed to create order items: ' + itemsError.message }),
         { status: 500, headers: corsHeaders }
       )
     }
     
-    // New Step 1: Update inventory for each product
+    // Step 1: Update inventory for each product
     console.log('Starting inventory update for order', orderId);
     const inventoryResult = await updateProductInventory(orderItems);
     if (!inventoryResult.success) {
       console.warn('Some inventory updates failed:', inventoryResult.errors);
       // We continue with the order even if inventory updates partially failed
-      // This is logged but doesn't block the order
+      // This is logged but doesn't block the order because we have the backup trigger
     }
     
-    // New Step 2: Register points earned by the user
+    // Step 2: Register points earned by the user
     console.log('Registering points for order', orderId);
     const pointsRegistered = await registerOrderPoints(userId, orderId, body.pontos_ganhos);
     if (!pointsRegistered) {
       console.warn('Failed to register points for order', orderId);
       // We continue even if points registration fails
-      // This is logged but doesn't block the order
+      // This is logged but doesn't block the order because we have the backup trigger
     }
 
-    // If all operations were successful, commit the transaction
+    // If all operations were successful, return success response
     return new Response(
       JSON.stringify({ 
         success: true, 
