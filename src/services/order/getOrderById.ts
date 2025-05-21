@@ -119,8 +119,9 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
                              typeof item.produto === 'object' && 
                              !('error' in (item.produto || {}));
         
-        // Fix the error on line 100 by creating a produto variable that is guaranteed to be non-null
-        const produtoValue = produtoIsValid ? item.produto : null;
+        // Fix the error on line 100 by creating a safe producto reference
+        // Explicitly define a non-null value to use for casting
+        const safeProducto = produtoIsValid ? item.produto : null;
         
         const orderItem: OrderItem = {
           id: item.id,
@@ -128,9 +129,9 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
           quantidade: item.quantidade,
           preco_unitario: item.preco_unitario,
           subtotal: item.subtotal,
-          // Use default product for errors, otherwise cast to required type
+          // Use default product for errors, otherwise use the safe non-null reference for casting
           produto: hasError || !produtoIsValid ? defaultProduct : 
-            (produtoValue as unknown as OrderItem['produto'])
+            (safeProducto as unknown as OrderItem['produto'])
         };
         
         processedItems.push(orderItem);
