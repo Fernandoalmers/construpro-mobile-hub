@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Edit, Trash, Gift } from 'lucide-react';
+import { Plus, Search, Edit, Trash, Gift, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import LoadingState from '@/components/common/LoadingState';
@@ -16,6 +16,8 @@ import CustomModal from '@/components/common/CustomModal';
 import RewardForm from './RewardForm';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { Alert } from '@/components/ui/alert';
+import ListEmptyState from '@/components/common/ListEmptyState';
 
 const AdminRewardsScreen: React.FC = () => {
   useTitle('ConstruPro Admin - Recompensas');
@@ -26,16 +28,23 @@ const AdminRewardsScreen: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedReward, setSelectedReward] = useState<AdminReward | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Fetch rewards from Supabase
   const loadRewards = async () => {
     try {
       setIsLoading(true);
+      setError(null);
       const rewardsData = await fetchRewards();
       console.log('Admin rewards loaded:', rewardsData); // Debug log
       setRewards(rewardsData);
+      
+      if (rewardsData.length === 0) {
+        console.log('No rewards found in the database');
+      }
     } catch (error) {
       console.error('Error fetching rewards:', error);
+      setError('Erro ao buscar recompensas. Tente novamente mais tarde.');
       toast.error('Erro ao buscar recompensas');
     } finally {
       setIsLoading(false);
@@ -146,6 +155,13 @@ const AdminRewardsScreen: React.FC = () => {
           </Button>
         </div>
 
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4 mr-2" />
+            <span>{error}</span>
+          </Alert>
+        )}
+
         <Card>
           <CardHeader>
             <CardTitle>Recompensas Disponíveis</CardTitle>
@@ -163,15 +179,18 @@ const AdminRewardsScreen: React.FC = () => {
             {isLoading ? (
               <LoadingState text="Carregando recompensas..." />
             ) : filteredRewards.length === 0 ? (
-              <div className="text-center py-8 text-gray-500 flex flex-col items-center gap-2">
-                <Gift size={40} className="text-gray-400" />
-                {searchTerm ? 'Nenhuma recompensa encontrada.' : 'Não há recompensas cadastradas.'}
-                {!searchTerm && (
-                  <Button variant="outline" onClick={handleCreateReward}>
-                    Criar nova recompensa
-                  </Button>
-                )}
-              </div>
+              <ListEmptyState 
+                icon={<Gift size={40} className="text-gray-400" />}
+                title={searchTerm ? "Nenhuma recompensa encontrada" : "Não há recompensas cadastradas"}
+                description={searchTerm 
+                  ? "Nenhuma recompensa corresponde à sua busca. Tente usar termos diferentes."
+                  : "Você ainda não cadastrou nenhuma recompensa. Clique no botão abaixo para adicionar sua primeira recompensa."
+                }
+                action={{
+                  label: "Criar nova recompensa",
+                  onClick: handleCreateReward
+                }}
+              />
             ) : (
               <Table>
                 <TableHeader>

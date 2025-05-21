@@ -25,7 +25,7 @@ export const fetchRewards = async (): Promise<AdminReward[]> => {
       return [];
     }
 
-    // Retrieve reward templates using a more inclusive query:
+    // Retrieve reward templates using one of two conditions:
     // 1. Include rewards with null cliente_id (created by admin as templates) 
     // 2. OR include rewards with status 'ativo' or 'inativo' (also templates)
     const { data, error } = await supabase
