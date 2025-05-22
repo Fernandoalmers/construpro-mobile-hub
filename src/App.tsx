@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
@@ -132,7 +133,13 @@ function App() {
         <Route path="/vendor" element={<ProtectedRoute><VendorModeScreen /></ProtectedRoute>} />
         <Route path="/vendor/products" element={<ProtectedRoute><ProductManagementScreen /></ProtectedRoute>} />
         <Route path="/vendor/product-new" element={<ProtectedRoute><ProductFormScreen /></ProtectedRoute>} />
+        
+        {/* Adicionando a nova rota para a edição de produtos */}
         <Route path="/vendor/product-edit/:id" element={<ProtectedRoute><ProdutoEditScreen /></ProtectedRoute>} />
+        
+        {/* Adicionando a rota alternativa que está sendo usada */}
+        <Route path="/vendor/products/edit/:id" element={<ProtectedRoute><ProdutoEditScreen /></ProtectedRoute>} />
+        
         <Route path="/vendor/orders" element={<ProtectedRoute><ProdutosVendorScreen /></ProtectedRoute>} />
         <Route path="/vendor/orders/:id" element={<ProtectedRoute><VendorOrderDetailScreen /></ProtectedRoute>} />
         <Route path="/vendor/customers" element={<ProtectedRoute><ClientesVendorScreen /></ProtectedRoute>} />
