@@ -53,7 +53,6 @@ const ProdutoEditScreen: React.FC = () => {
           pontos_consumidor: productData.pontos_consumidor || 0,
           pontos_profissional: productData.pontos_profissional || 0,
           estoque: productData.estoque || 0,
-          marca: productData.marca || '',
           imagens: Array.isArray(productData.imagens) ? productData.imagens : []
         };
         
