@@ -11,6 +11,7 @@ import { ensureVendorProfileRole } from '@/services/vendorProfileService';
 export const usePointsAdjustment = () => {
   const location = useLocation();
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+  const [relationId, setRelationId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('form');
   const [searchResults, setSearchResults] = useState<CustomerData[]>([]);
 
@@ -34,8 +35,8 @@ export const usePointsAdjustment = () => {
     const clienteId = params.get('customerId') || params.get('clienteId');
     if (clienteId) {
       console.log('Client ID found in URL:', clienteId);
-      setSelectedCustomerId(clienteId);
-      // Fetch customer data to display
+      
+      // Search for the customer to get the usuario_id
       searchCustomers(clienteId).then(results => {
         console.log('Search results for client ID:', results);
         if (results && results.length > 0) {
@@ -50,8 +51,17 @@ export const usePointsAdjustment = () => {
             vendedor_id: customer.vendedor_id,
             total_gasto: customer.total_gasto || 0
           }));
+          
           setSearchResults(customerData);
-          toast.success('Cliente selecionado com sucesso');
+          
+          // Use the usuario_id for the profile operations
+          if (customerData[0]?.usuario_id) {
+            setSelectedCustomerId(customerData[0].usuario_id);
+            setRelationId(customerData[0].id);
+            toast.success('Cliente selecionado com sucesso');
+          } else {
+            toast.error('Cliente não encontrado ou sem ID de usuário');
+          }
         } else {
           toast.error('Cliente não encontrado');
         }
@@ -124,7 +134,13 @@ export const usePointsAdjustment = () => {
 
   const handleSelectCustomer = (customer: CustomerData) => {
     console.log('Selected customer in hook:', customer);
-    setSelectedCustomerId(customer.id);
+    
+    // Store the relation ID separately
+    setRelationId(customer.id);
+    
+    // Use usuario_id for profile operations
+    setSelectedCustomerId(customer.usuario_id);
+    
     setSearchResults([customer]);
     // Switch to form tab when a customer is selected
     setActiveTab('form');
@@ -145,6 +161,7 @@ export const usePointsAdjustment = () => {
     if (selectedCustomerId) {
       console.log('Current hook state:', { 
         selectedCustomerId, 
+        relationId,
         customerPoints, 
         adjustmentsCount: adjustments.length,
         isLoadingPoints,
@@ -153,11 +170,11 @@ export const usePointsAdjustment = () => {
         isAdjustmentsError: isAdjustmentsError ? adjustmentsError : null
       });
     }
-  }, [selectedCustomerId, customerPoints, adjustments, isLoadingPoints, isLoadingAdjustments, isPointsError, isAdjustmentsError, pointsError, adjustmentsError]);
+  }, [selectedCustomerId, relationId, customerPoints, adjustments, isLoadingPoints, isLoadingAdjustments, isPointsError, isAdjustmentsError, pointsError, adjustmentsError]);
 
   return {
     selectedCustomerId,
-    selectedCustomer: searchResults.find(c => c.id === selectedCustomerId),
+    selectedCustomer: searchResults.find(c => c.id === relationId),
     customerPoints,
     isLoadingPoints,
     adjustments,
