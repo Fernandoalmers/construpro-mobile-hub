@@ -117,33 +117,6 @@ export const createPointAdjustment = async (
       return false;
     }
     
-    // Now handle the points transaction entry manually since the trigger might be causing issues
-    // Map our adjustment types to valid points_transactions tipos
-    const transactionTipo = tipo === 'adicao' ? 'compra' : 'resgate';
-    
-    const { error: transactionError } = await supabase
-      .from('points_transactions')
-      .insert({
-        user_id: userId,
-        pontos: adjustmentValue,  // Use the same value (positive or negative)
-        tipo: transactionTipo,    // Using valid transaction types
-        descricao: `Ajuste de pontos: ${motivo}`,
-        referencia_id: insertData.id
-      });
-      
-    if (transactionError) {
-      console.error('Error creating points transaction record:', transactionError);
-      toast.error('Pontos ajustados, mas houve um erro ao registrar a transação');
-      // We don't fail the whole operation if just the transaction record fails
-    }
-    
-    // Update the user's points balance directly
-    // FIX: Call adjust_user_points with proper type handling to avoid PostgrestFilterBuilder assignment to number type
-    await supabase.rpc('adjust_user_points', { 
-      user_id: userId, 
-      points_to_add: adjustmentValue 
-    });
-    
     console.log('Point adjustment created successfully:', insertData);
     toast.success('Ajuste de pontos realizado com sucesso!');
     return true;
