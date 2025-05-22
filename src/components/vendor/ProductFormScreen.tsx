@@ -97,7 +97,7 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
       nome: '',
       descricao: '',
       categoria: '',
-      segmento: '', // Added segmento default value
+      segmento: '',
       marca: '',
       tags: [],
       unidadeVenda: 'unidade',
@@ -210,23 +210,14 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
     setIsSubmitting(true);
     
     try {
-      // Get current form values for category and segment
-      const currentCategory = values.categoria;
-      const currentSegment = values.segmento;
-      
-      // Log the values being submitted
-      console.log("Submitting form with category:", currentCategory);
-      console.log("Submitting form with segment:", currentSegment);
-      console.log("Submitting form with segment ID:", segmentId);
-      
       // Prepare data for API
       const productData = {
         id: productId,
         nome: values.nome,
         descricao: values.descricao,
-        categoria: currentCategory, // Use current value
-        segmento: currentSegment,   // Use current value
-        segmento_id: segmentId,     // Include segment ID if available
+        categoria: values.categoria || 'Geral', // Ensure categoria is not undefined
+        segmento: values.segmento,
+        segmento_id: segmentId, // Include segment ID if available
         preco_normal: values.preco,
         preco_promocional: values.precoPromocional || null,
         estoque: values.estoque,
@@ -250,7 +241,7 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
       
       toast.success(isEditing ? "Produto atualizado" : "Produto cadastrado", {
         description: isEditing 
-          ? "O produto foi atualizado e enviado para aprovação." 
+          ? "As alterações foram salvas com sucesso." 
           : "O produto foi cadastrado com sucesso."
       });
       

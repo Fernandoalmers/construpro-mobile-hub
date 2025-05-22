@@ -43,7 +43,9 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
       vendedor_id: vendor.id,
       // When updating, set status to 'pendente' to require re-approval
       status: isUpdate ? 'pendente' as const : 'pendente' as const,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
+      // Ensure imagens is stored as JSON
+      imagens: productData.imagens ? JSON.stringify(productData.imagens) : '[]'
     };
     
     // Remove id when creating a new product
