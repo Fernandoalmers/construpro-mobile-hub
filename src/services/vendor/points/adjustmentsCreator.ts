@@ -136,6 +136,13 @@ export const createPointAdjustment = async (
     
     console.log('Using customer data:', customerData);
     
+    // Validate the point adjustment type
+    if (tipo !== 'adicao' && tipo !== 'remocao') {
+      console.error('Invalid adjustment type:', tipo);
+      toast.error('Tipo de ajuste inválido. Use "adicao" ou "remocao".');
+      return false;
+    }
+    
     // Ensure the customer exists in the vendor's customer list
     const customerCreated = await ensureCustomerExists(
       vendorProfile.id,

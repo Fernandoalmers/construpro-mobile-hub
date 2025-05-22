@@ -36,7 +36,7 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
     },
     onSuccess: () => {
       console.log('Points adjustment successful for customer ID:', customerId);
-      // Toast message moved to createPointAdjustment for better error handling
+      // Clear form fields
       setPontos('');
       setMotivo('');
 
@@ -63,14 +63,14 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
         queryClient.refetchQueries({
           queryKey: ['pointAdjustments', customerId]
         });
-      }, 500);
+      }, 1000); // Increased timeout to ensure the database has time to process
 
       // Notify parent component
       onSuccess();
     },
     onError: (error: Error) => {
       console.error('Error in points adjustment mutation:', error);
-      // Toast message moved to createPointAdjustment for better error handling
+      // Error handling is done in the createPointAdjustment function
     }
   });
 
