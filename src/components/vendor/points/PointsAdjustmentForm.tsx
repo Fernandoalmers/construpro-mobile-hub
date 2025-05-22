@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createPointAdjustment } from '@/services/vendorService';
+import { createPointAdjustment } from '@/services/vendor/points';
 
 interface PointsAdjustmentFormProps {
   customerId: string;
@@ -26,9 +26,12 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
 
   // Create point adjustment mutation
   const createAdjustmentMutation = useMutation({
-    mutationFn: (data: { userId: string, tipo: 'adicao' | 'remocao', valor: number, motivo: string }) => 
-      createPointAdjustment(data.userId, data.tipo, data.valor, data.motivo),
+    mutationFn: (data: { userId: string, tipo: 'adicao' | 'remocao', valor: number, motivo: string }) => {
+      console.log('Mutation function called with data:', data);
+      return createPointAdjustment(data.userId, data.tipo, data.valor, data.motivo);
+    },
     onSuccess: () => {
+      console.log('Points adjustment successful for customer ID:', customerId);
       toast.success(isPositiveAdjustment ? 'Pontos adicionados com sucesso!' : 'Pontos removidos com sucesso!');
       setPontos('');
       setMotivo('');
@@ -40,12 +43,18 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
       // Also invalidate user's points transactions data
       queryClient.invalidateQueries({ queryKey: ['pointsHistory'] });
       
+      // Force a refetch of the customer's points and adjustments
+      setTimeout(() => {
+        queryClient.refetchQueries({ queryKey: ['customerPoints', customerId] });
+        queryClient.refetchQueries({ queryKey: ['pointAdjustments', customerId] });
+      }, 500);
+      
       // Notify parent component
       onSuccess();
     },
     onError: (error) => {
-      toast.error('Erro ao ajustar pontos. Tente novamente.');
-      console.error('Error creating point adjustment:', error);
+      console.error('Error in points adjustment mutation:', error);
+      toast.error('Erro ao ajustar pontos. Verifique o console para detalhes.');
     }
   });
 
@@ -62,6 +71,8 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
       toast.error('Preencha todos os campos obrigatórios.');
       return;
     }
+    
+    console.log('Submitting form with customer ID:', customerId);
     
     const pontosValue = parseInt(pontos);
     if (isNaN(pontosValue) || pontosValue <= 0) {

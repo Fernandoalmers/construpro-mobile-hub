@@ -2,7 +2,8 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
-import { getCustomerPoints, getPointAdjustments, searchCustomers } from '@/services/vendorService';
+import { getCustomerPoints, searchCustomers } from '@/services/vendorService';
+import { getPointAdjustments } from '@/services/vendor/points';
 import { CustomerData } from './CustomerSearch';
 import { toast } from '@/components/ui/sonner';
 
@@ -39,24 +40,44 @@ export const usePointsAdjustment = () => {
   const { 
     data: customerPoints = 0, 
     isLoading: isLoadingPoints, 
-    refetch: refetchPoints 
+    refetch: refetchPoints,
+    isError: isPointsError,
+    error: pointsError
   } = useQuery({
     queryKey: ['customerPoints', selectedCustomerId],
-    queryFn: () => selectedCustomerId ? getCustomerPoints(selectedCustomerId) : Promise.resolve(0),
+    queryFn: () => {
+      console.log('Fetching points for customer ID:', selectedCustomerId);
+      if (!selectedCustomerId) return Promise.resolve(0);
+      return getCustomerPoints(selectedCustomerId);
+    },
     enabled: !!selectedCustomerId,
     staleTime: 10000, // 10 seconds
+    retry: 2,
+    onError: (error) => {
+      console.error('Error fetching customer points:', error);
+    }
   });
 
   // Get point adjustments history for the selected customer
   const { 
     data: adjustments = [], 
     isLoading: isLoadingAdjustments,
-    refetch: refetchAdjustments
+    refetch: refetchAdjustments,
+    isError: isAdjustmentsError,
+    error: adjustmentsError
   } = useQuery({
     queryKey: ['pointAdjustments', selectedCustomerId],
-    queryFn: () => selectedCustomerId ? getPointAdjustments(selectedCustomerId) : Promise.resolve([]),
+    queryFn: () => {
+      console.log('Fetching adjustments for customer ID:', selectedCustomerId);
+      if (!selectedCustomerId) return Promise.resolve([]);
+      return getPointAdjustments(selectedCustomerId);
+    },
     enabled: !!selectedCustomerId,
     staleTime: 10000, // 10 seconds
+    retry: 2,
+    onError: (error) => {
+      console.error('Error fetching point adjustments:', error);
+    }
   });
 
   // Handle manual refresh of data
@@ -86,6 +107,21 @@ export const usePointsAdjustment = () => {
       setActiveTab('history');
     }, 500);
   };
+
+  // Debug output of important state for troubleshooting
+  useEffect(() => {
+    if (selectedCustomerId) {
+      console.log('Current hook state:', { 
+        selectedCustomerId, 
+        customerPoints, 
+        adjustmentsCount: adjustments.length,
+        isLoadingPoints,
+        isLoadingAdjustments,
+        isPointsError: isPointsError ? pointsError : null,
+        isAdjustmentsError: isAdjustmentsError ? adjustmentsError : null
+      });
+    }
+  }, [selectedCustomerId, customerPoints, adjustments, isLoadingPoints, isLoadingAdjustments]);
 
   return {
     selectedCustomerId,
