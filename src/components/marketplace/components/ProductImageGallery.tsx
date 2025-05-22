@@ -40,7 +40,8 @@ const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
         images.forEach(img => {
           if (typeof img === 'string') {
             // If image is a string, add it directly (with proper type checking)
-            if (img.trim && img.trim() !== '' && !result.includes(img)) {
+            // Fix: Use optional chaining to safely access trim method
+            if (typeof img === 'string' && img?.trim() !== '' && !result.includes(img)) {
               result.push(img);
             }
           } else if (img && typeof img === 'object') {
