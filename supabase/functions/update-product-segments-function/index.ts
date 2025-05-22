@@ -39,7 +39,7 @@ serve(async (req) => {
       throw dropError;
     }
 
-    // Now create the updated function
+    // Now create the updated function with proper search_path
     const { error } = await supabase.rpc("admin_query", {
       query: `
         CREATE OR REPLACE FUNCTION public.get_product_segments()
