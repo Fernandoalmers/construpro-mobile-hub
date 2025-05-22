@@ -45,10 +45,12 @@ const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
             }
           } else if (img && typeof img === 'object') {
             // If image is an object, try to extract URL from common fields
-            const imgUrl = img.url || img.path || img.src;
-            // Fixed: First check if imgUrl exists AND is a string, then call trim()
-            if (imgUrl && typeof imgUrl === 'string' && imgUrl.trim() !== '' && !result.includes(imgUrl)) {
-              result.push(imgUrl);
+            const imgUrl: string | undefined = img.url || img.path || img.src;
+            // Explicit type guard - make sure TypeScript knows imgUrl is a string
+            if (imgUrl !== undefined && typeof imgUrl === 'string') {
+              if (imgUrl.trim() !== '' && !result.includes(imgUrl)) {
+                result.push(imgUrl);
+              }
             }
           }
         });
