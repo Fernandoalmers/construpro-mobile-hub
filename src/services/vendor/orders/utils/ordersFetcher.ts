@@ -1,8 +1,7 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { VendorOrder, OrderFilters, OrderItem } from "../types";
 import { fetchCustomerInfo } from "./clientInfoFetcher";
-import { VendorCustomer } from "../../../vendorCustomersService";
+import { VendorCustomer } from '../../../vendorCustomersService';
 import { fetchProductDetails } from "../../../vendor/products/productFetcher";
 
 // Simple metrics utility since the imported one is missing
