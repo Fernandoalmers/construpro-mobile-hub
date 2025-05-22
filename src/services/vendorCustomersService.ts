@@ -46,10 +46,19 @@ export const getVendorCustomers = async (): Promise<VendorCustomer[]> => {
     console.log('Fetching vendor customers');
     
     // Get the vendor ID of the current logged in user
+    const authUser = await supabase.auth.getUser();
+    const userId = authUser.data.user?.id;
+    
+    if (!userId) {
+      console.error('No authenticated user found');
+      toast.error('Erro ao buscar identificação do vendedor');
+      return [];
+    }
+    
     const { data: vendorData, error: vendorError } = await supabase
       .from('vendedores')
       .select('id')
-      .eq('usuario_id', supabase.auth.getUser().then(res => res.data.user?.id))
+      .eq('usuario_id', userId)
       .maybeSingle();
       
     if (vendorError || !vendorData) {
@@ -260,9 +269,25 @@ export const addVendorCustomer = async (customerData: Partial<VendorCustomer>): 
       return null;
     }
     
+    // Ensure nome is present and not undefined/null
+    if (!customerData.nome) {
+      console.error('Customer name is required');
+      toast.error('Nome do cliente é obrigatório');
+      return null;
+    }
+    
+    // Ensure usuario_id is present and not undefined/null
+    if (!customerData.usuario_id) {
+      console.error('Customer user ID is required');
+      toast.error('ID do usuário é obrigatório');
+      return null;
+    }
+    
     // Combine the customer data with the vendor ID
     const newCustomer = {
       ...customerData,
+      nome: customerData.nome,  // Ensure nome is explicitly set
+      usuario_id: customerData.usuario_id, // Ensure usuario_id is explicitly set
       vendedor_id: vendorData.id,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -431,7 +456,7 @@ export const migrateCustomersFromPointAdjustments = async (): Promise<boolean> =
     const customersToInsert = profiles.map(profile => ({
       vendedor_id: vendorId,
       usuario_id: profile.id,
-      nome: profile.nome || 'Usuário',
+      nome: profile.nome || 'Usuário', // Ensure nome is always set, never undefined
       email: profile.email,
       telefone: profile.telefone,
       cpf: profile.cpf,
@@ -463,30 +488,6 @@ export const migrateCustomersFromPointAdjustments = async (): Promise<boolean> =
 export const migrateCustomersFromOrders = async (): Promise<boolean> => {
   try {
     console.log('Migrating customers from orders');
-    
-    // Get the vendor ID of the current logged in user
-    const authUser = await supabase.auth.getUser();
-    const userId = authUser.data.user?.id;
-    
-    if (!userId) {
-      console.error('No authenticated user found');
-      toast.error('Usuário não autenticado');
-      return false;
-    }
-    
-    const { data: vendorData, error: vendorError } = await supabase
-      .from('vendedores')
-      .select('id')
-      .eq('usuario_id', userId)
-      .maybeSingle();
-      
-    if (vendorError || !vendorData) {
-      console.error('Error fetching vendor ID:', vendorError);
-      toast.error('Erro ao buscar identificação do vendedor');
-      return false;
-    }
-    
-    const vendorId = vendorData.id;
     
     // Execute the RPC function to migrate customers from orders
     const { data, error } = await supabase.rpc('run_orders_migration');
