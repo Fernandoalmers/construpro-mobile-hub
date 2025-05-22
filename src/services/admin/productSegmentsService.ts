@@ -36,7 +36,7 @@ export const getProductSegments = async (): Promise<ProductSegment[]> => {
       return fallbackData || [];
     }
     
-    // The current function might only return id and nome fields
+    // Handle the response data - it could be missing some fields depending on when the DB function was updated
     if (data && data.length > 0) {
       console.log('[ProductSegmentsService] RPC returned data:', data);
       
@@ -74,13 +74,17 @@ export const getProductSegments = async (): Promise<ProductSegment[]> => {
     // If we get here, we assume the data has all required fields
     if (data) {
       console.log('[ProductSegmentsService] Returning segments data directly from RPC');
-      // Ensure all data has the required fields with proper types
-      return data.map(item => ({
-        id: item.id,
-        nome: item.nome,
-        image_url: item.image_url || null,
-        status: item.status || 'ativo'
-      }));
+      // Ensure all data has the required fields with proper types using type assertion
+      return data.map(item => {
+        // Use type assertion to tell TypeScript this object has the properties we expect
+        const typedItem = item as { id: string; nome: string; image_url?: string | null; status?: string };
+        return {
+          id: typedItem.id,
+          nome: typedItem.nome,
+          image_url: typedItem.image_url || null,
+          status: typedItem.status || 'ativo'
+        };
+      });
     }
     
     console.log('[ProductSegmentsService] No segments data returned');
