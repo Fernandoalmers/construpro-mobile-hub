@@ -3,7 +3,7 @@ import React from 'react';
 import { Eye, Edit2, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import ProductStatusBadge from './ProductStatusBadge';
 import { VendorProduct } from '@/services/vendor/products/types';
 
 interface ProductItemProps {
@@ -19,19 +19,6 @@ const ProductItem: React.FC<ProductItemProps> = ({
   onDelete,
   onEdit
 }) => {
-  const getStatusBadge = () => {
-    switch (produto.status) {
-      case 'aprovado':
-        return <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Aprovado</Badge>;
-      case 'inativo':
-        return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-200">Inativo</Badge>;
-      case 'rejeitado':
-        return <Badge className="bg-red-100 text-red-800 hover:bg-red-200">Rejeitado</Badge>;
-      default:
-        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">Pendente</Badge>;
-    }
-  };
-
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -107,7 +94,9 @@ const ProductItem: React.FC<ProductItemProps> = ({
               </div>
               <div className="flex flex-col items-end">
                 <p className="font-medium">{formatPrice(produto.preco_normal)}</p>
-                {getStatusBadge()}
+                <div className="mt-1">
+                  <ProductStatusBadge status={produto.status || 'pendente'} />
+                </div>
               </div>
             </div>
             
