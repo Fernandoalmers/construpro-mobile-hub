@@ -2,11 +2,14 @@
 export { 
   getVendorProducts,
   getVendorProduct,
-  saveVendorProduct,
-  deleteVendorProduct,
-  updateProductStatus,
   fetchProductDetails
 } from './productFetcher';
+
+export { 
+  saveVendorProduct,
+  deleteVendorProduct,
+  updateProductStatus
+} from './productOperations';
 
 export { 
   uploadProductImage,
@@ -21,4 +24,4 @@ export {
   subscribeToAllProducts
 } from './productRealtime';
 
-export * from './types';
+export type { VendorProduct, VendorProductInput, ProductImage } from './types';

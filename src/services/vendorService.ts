@@ -26,9 +26,6 @@ import {
 
 // Import and re-export from our new modular product services
 import {
-  // Types
-  VendorProduct, ProductImage,
-  
   // Product functions
   getVendorProducts,
   getVendorProduct,
@@ -39,6 +36,9 @@ import {
   updateProductImages,
   subscribeToVendorProducts
 } from './vendor/products';
+
+// Import types
+import type { VendorProduct, ProductImage } from './vendor/products/types';
 
 // Type exports
 export type { VendorProfile };

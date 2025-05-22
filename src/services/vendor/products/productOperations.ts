@@ -32,6 +32,11 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
     const isUpdate = !!productData.id;
     console.log(`[productOperations] ${isUpdate ? 'Updating' : 'Creating'} product for vendor ID:`, vendor.id);
     
+    // Ensure categoria is not undefined before saving
+    if (!productData.categoria) {
+      productData.categoria = 'Geral'; // Default category if none provided
+    }
+    
     // Prepare data for insert/update
     const dbData = {
       ...productData,

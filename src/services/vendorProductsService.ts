@@ -9,19 +9,15 @@ import {
   updateProductImage,
   deleteProductImage,
   subscribeToVendorProducts,
-  subscribeToAllProducts
-} from './vendor/products';
-
-// Import these from the operations file
-import {
+  subscribeToAllProducts,
+  fetchProductDetails,
   saveVendorProduct,
   deleteVendorProduct,
   updateProductStatus
-} from './vendor/products/productOperations';
+} from './vendor/products';
 
-// Import types separately to use 'export type'
-import type { VendorProduct, VendorProductInput } from './vendor/products/types';
-import type { ProductImage } from './vendor/products/productImages';
+// Import types separately
+import type { VendorProduct, VendorProductInput, ProductImage } from './vendor/products/types';
 
 // Re-export functions
 export {
@@ -36,8 +32,9 @@ export {
   updateProductImage,
   deleteProductImage,
   subscribeToVendorProducts,
-  subscribeToAllProducts
+  subscribeToAllProducts,
+  fetchProductDetails
 };
 
-// Re-export types with 'export type'
+// Re-export types
 export type { VendorProduct, VendorProductInput, ProductImage };
