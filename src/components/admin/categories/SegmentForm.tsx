@@ -38,6 +38,8 @@ const SegmentForm: React.FC<SegmentFormProps> = ({
 }) => {
   const [previewImage, setPreviewImage] = useState<string | null>(initialData?.image_url || null);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageLoading, setImageLoading] = useState<boolean>(false);
+  const [imageError, setImageError] = useState<boolean>(false);
 
   const form = useForm({
     defaultValues: {
@@ -60,21 +62,56 @@ const SegmentForm: React.FC<SegmentFormProps> = ({
     const file = e.target.files?.[0];
     
     if (file) {
+      console.log(`[SegmentForm] Selected file: ${file.name}, type: ${file.type}, size: ${file.size}`);
+      
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        console.error(`[SegmentForm] Invalid file type: ${file.type}`);
+        setImageError(true);
+        return;
+      }
+      
+      // Size validation (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        console.error(`[SegmentForm] File too large: ${file.size} bytes`);
+        setImageError(true);
+        return;
+      }
+      
+      setImageError(false);
       setImageFile(file);
+      setImageLoading(true);
       
       // Create preview URL
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreviewImage(reader.result as string);
+        setImageLoading(false);
+      };
+      reader.onerror = () => {
+        console.error('[SegmentForm] Error reading file');
+        setImageError(true);
+        setImageLoading(false);
       };
       reader.readAsDataURL(file);
     }
   };
 
+  const handleImageLoad = () => {
+    console.log('[SegmentForm] Image loaded successfully');
+  };
+
+  const handleImageError = () => {
+    console.error('[SegmentForm] Error loading image');
+    setImageError(true);
+  };
+
   const removeImage = () => {
     setImageFile(null);
     setPreviewImage(null);
+    setImageError(false);
     form.setValue('image_url', null);
+    console.log('[SegmentForm] Image removed');
   };
 
   const statusOptions = [
@@ -105,12 +142,20 @@ const SegmentForm: React.FC<SegmentFormProps> = ({
         <FormItem>
           <FormLabel>Imagem do Segmento</FormLabel>
           <div className="mt-1 flex flex-col gap-4">
-            {previewImage ? (
+            {imageLoading && (
+              <div className="w-full max-w-[200px] h-[120px] flex items-center justify-center bg-gray-100 rounded-lg">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-construPro-blue"></div>
+              </div>
+            )}
+            
+            {previewImage && !imageLoading ? (
               <div className="relative w-full max-w-[200px] h-[120px] overflow-hidden rounded-lg border">
                 <img 
                   src={previewImage} 
                   alt="Preview da imagem do segmento" 
                   className="w-full h-full object-cover"
+                  onLoad={handleImageLoad}
+                  onError={handleImageError}
                 />
                 <Button
                   type="button"
@@ -122,11 +167,16 @@ const SegmentForm: React.FC<SegmentFormProps> = ({
                   <X className="h-4 w-4" />
                 </Button>
               </div>
-            ) : (
+            ) : !imageLoading ? (
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center">
                 <Image className="h-10 w-10 text-gray-400" />
                 <p className="mt-2 text-sm text-gray-500">Carregar imagem para o segmento</p>
-                <p className="text-xs text-gray-400">Recomendado: 800x600px</p>
+                <p className="text-xs text-gray-400">Recomendado: 800x600px, máximo 5MB</p>
+                {imageError && (
+                  <p className="text-xs text-red-500 mt-1">
+                    Erro ao carregar imagem. Verifique o formato e tamanho.
+                  </p>
+                )}
                 <div className="mt-4">
                   <label htmlFor="segment-image" className="cursor-pointer">
                     <input
@@ -147,7 +197,7 @@ const SegmentForm: React.FC<SegmentFormProps> = ({
                   </label>
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
         </FormItem>
 
@@ -174,7 +224,7 @@ const SegmentForm: React.FC<SegmentFormProps> = ({
             type="submit" 
             variant="primary" 
             loading={isLoading}
-            disabled={isLoading}
+            disabled={isLoading || imageLoading}
           >
             {initialData?.id ? 'Atualizar Segmento' : 'Criar Segmento'}
           </CustomButton>

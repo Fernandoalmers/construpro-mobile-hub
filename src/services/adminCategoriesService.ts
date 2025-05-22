@@ -255,26 +255,53 @@ export const createCategory = async (categoryData: Omit<AdminCategory, 'id' | 'c
 
 export const uploadSegmentImage = async (file: File): Promise<string | null> => {
   try {
+    console.log('[AdminCategoriesService] Starting segment image upload');
+    
+    // Check if the bucket exists first
+    const { data: buckets } = await supabase.storage.listBuckets();
+    const bucketExists = buckets?.some(bucket => bucket.name === 'segment-images');
+    
+    if (!bucketExists) {
+      console.error('[AdminCategoriesService] segment-images bucket does not exist');
+      toast.error('Erro ao fazer upload: bucket de imagens não existe');
+      return null;
+    }
+    
+    // Create a unique filename with original extension
     const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+    const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
     const filePath = `${fileName}`;
 
-    const { error: uploadError } = await supabase.storage
+    console.log(`[AdminCategoriesService] Uploading file: ${fileName}`);
+
+    // Upload the file
+    const { data: uploadData, error: uploadError } = await supabase.storage
       .from('segment-images')
-      .upload(filePath, file);
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
 
     if (uploadError) {
-      throw uploadError;
+      console.error('[AdminCategoriesService] Upload error:', uploadError);
+      toast.error(`Erro ao fazer upload da imagem: ${uploadError.message}`);
+      return null;
     }
 
+    console.log('[AdminCategoriesService] Upload successful:', uploadData);
+
+    // Get the public URL
     const { data } = supabase.storage
       .from('segment-images')
       .getPublicUrl(filePath);
     
+    console.log('[AdminCategoriesService] Public URL:', data.publicUrl);
+    toast.success('Imagem enviada com sucesso');
+    
     return data.publicUrl;
-  } catch (error) {
-    console.error('Error uploading segment image:', error);
-    toast.error('Erro ao fazer upload da imagem do segmento');
+  } catch (error: any) {
+    console.error('[AdminCategoriesService] Error uploading segment image:', error);
+    toast.error(`Erro ao fazer upload da imagem: ${error.message || 'Erro desconhecido'}`);
     return null;
   }
 };
@@ -284,6 +311,8 @@ export const createSegment = async (
   imageFile?: File
 ): Promise<boolean> => {
   try {
+    console.log('[AdminCategoriesService] Creating new segment:', segmentData.nome);
+    
     // Check if table exists
     const { error: tableCheckError } = await supabase
       .from('product_segments')
@@ -299,11 +328,13 @@ export const createSegment = async (
     let imageUrl = null;
     
     if (imageFile) {
+      console.log('[AdminCategoriesService] Uploading segment image for new segment');
       imageUrl = await uploadSegmentImage(imageFile);
       if (!imageUrl) {
         toast.error('Erro ao fazer upload da imagem. Segmento não foi criado.');
         return false;
       }
+      console.log('[AdminCategoriesService] Image uploaded successfully:', imageUrl);
     }
     
     const { error } = await supabase
@@ -314,7 +345,10 @@ export const createSegment = async (
         image_url: imageUrl || segmentData.image_url
       });
       
-    if (error) throw error;
+    if (error) {
+      console.error('[AdminCategoriesService] Error creating segment:', error);
+      throw error;
+    }
     
     // Log the admin action
     await logAdminAction({
@@ -327,7 +361,7 @@ export const createSegment = async (
     toast.success('Segmento criado com sucesso');
     return true;
   } catch (error) {
-    console.error('Error creating segment:', error);
+    console.error('[AdminCategoriesService] Error creating segment:', error);
     toast.error('Erro ao criar segmento');
     return false;
   }
@@ -373,6 +407,8 @@ export const updateSegment = async (
   imageFile?: File
 ): Promise<boolean> => {
   try {
+    console.log(`[AdminCategoriesService] Updating segment ${id}:`, segmentData);
+    
     const updateData: any = {};
     
     if (segmentData.nome !== undefined) updateData.nome = segmentData.nome;
@@ -380,10 +416,13 @@ export const updateSegment = async (
     
     // Handle image update
     if (imageFile) {
+      console.log('[AdminCategoriesService] Uploading new image for segment update');
       const imageUrl = await uploadSegmentImage(imageFile);
       if (imageUrl) {
         updateData.image_url = imageUrl;
+        console.log('[AdminCategoriesService] New image uploaded successfully:', imageUrl);
       } else {
+        console.error('[AdminCategoriesService] Failed to upload new image');
         toast.error('Erro ao fazer upload da imagem. Outros dados foram atualizados.');
       }
     } else if (segmentData.image_url !== undefined) {
@@ -397,7 +436,10 @@ export const updateSegment = async (
       .update(updateData)
       .eq('id', id);
       
-    if (error) throw error;
+    if (error) {
+      console.error('[AdminCategoriesService] Error updating segment:', error);
+      throw error;
+    }
     
     // Log the admin action
     await logAdminAction({
@@ -410,7 +452,7 @@ export const updateSegment = async (
     toast.success('Segmento atualizado com sucesso');
     return true;
   } catch (error) {
-    console.error('Error updating segment:', error);
+    console.error('[AdminCategoriesService] Error updating segment:', error);
     toast.error('Erro ao atualizar segmento');
     return false;
   }

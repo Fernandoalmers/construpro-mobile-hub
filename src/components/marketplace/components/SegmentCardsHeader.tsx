@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { Construction, Zap, GlassWater, Square, Truck, Wrench, ShoppingBag } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getProductSegments, ProductSegment } from '@/services/admin/productSegmentsService';
+import { getProductSegments, ProductSegment, listSegmentImages } from '@/services/admin/productSegmentsService';
 import { toast } from '@/components/ui/sonner';
 
 interface SegmentCardProps {
@@ -22,7 +22,19 @@ const SegmentCard: React.FC<SegmentCardProps> = ({
   onClick,
   isSelected = false
 }) => {
-  console.log(`[SegmentCard] Rendering ${title} with isSelected=${isSelected}, id=${id}`);
+  const [imageError, setImageError] = useState(false);
+  
+  useEffect(() => {
+    if (imageUrl) {
+      // Reset error state when image URL changes
+      setImageError(false);
+    }
+  }, [imageUrl]);
+
+  const handleImageError = () => {
+    console.error(`[SegmentCard] Image failed to load: ${imageUrl}`);
+    setImageError(true);
+  };
   
   return <div 
     className={cn(
@@ -35,8 +47,13 @@ const SegmentCard: React.FC<SegmentCardProps> = ({
       "w-12 h-12 rounded-full flex items-center justify-center mb-2 overflow-hidden", 
       isSelected ? "bg-white text-construPro-blue" : "bg-construPro-blue/10 text-construPro-blue"
     )}>
-      {imageUrl ? (
-        <img src={imageUrl} alt={title} className="w-full h-full object-cover" />
+      {imageUrl && !imageError ? (
+        <img 
+          src={imageUrl} 
+          alt={title} 
+          className="w-full h-full object-cover" 
+          onError={handleImageError}
+        />
       ) : (
         icon
       )}
@@ -62,6 +79,11 @@ const SegmentCardsHeader: React.FC<SegmentCardsHeaderProps> = ({
       try {
         const segmentsData = await getProductSegments();
         console.log('[SegmentCardsHeader] Fetched segments:', segmentsData);
+        
+        // Debug: List files in segment-images bucket to help diagnose issues
+        const imageFiles = await listSegmentImages();
+        console.log('[SegmentCardsHeader] Available segment images:', imageFiles);
+        
         setSegments(segmentsData.filter(segment => segment.status === 'ativo'));
       } catch (error) {
         console.error('[SegmentCardsHeader] Error fetching segments:', error);
@@ -92,11 +114,6 @@ const SegmentCardsHeader: React.FC<SegmentCardsHeaderProps> = ({
       return <ShoppingBag size={24} />; // Default icon
     }
   };
-  
-  // For debugging
-  useEffect(() => {
-    console.log('[SegmentCardsHeader] Selected segment:', selectedSegment);
-  }, [selectedSegment]);
 
   if (loading) {
     return <div className="w-full overflow-x-auto pb-2">
