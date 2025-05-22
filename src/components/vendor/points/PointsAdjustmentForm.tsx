@@ -40,7 +40,7 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
       setPontos('');
       setMotivo('');
 
-      // Invalidate queries to update data
+      // Invalidate queries to update data immediately
       queryClient.invalidateQueries({
         queryKey: ['customerPoints', customerId]
       });
@@ -54,7 +54,7 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
         queryKey: ['pointsHistory']
       });
       
-      // Force a refetch of the customer's points and adjustments with a short delay
+      // Force a refetch of the customer's points with a short delay
       setTimeout(() => {
         queryClient.refetchQueries({
           queryKey: ['customerPoints', customerId]
@@ -70,7 +70,7 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
     },
     onError: (error: Error) => {
       console.error('Error in points adjustment mutation:', error);
-      // Error handling is done in the createPointAdjustment function
+      toast.error('Erro ao ajustar pontos: ' + error.message);
     }
   });
 
@@ -117,7 +117,7 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
       await createAdjustmentMutation.mutateAsync({
         userId: customerId,
         tipo: isPositiveAdjustment ? 'adicao' : 'remocao',
-        valor: pontosValue,
+        valor: isPositiveAdjustment ? pontosValue : -pontosValue,
         motivo
       });
     } catch (error) {

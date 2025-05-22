@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
@@ -7,6 +6,7 @@ import { getPointAdjustments } from '@/services/vendor/points/adjustmentsFetcher
 import { CustomerData } from './CustomerSearch';
 import { toast } from '@/components/ui/sonner';
 import { ensureVendorProfileRole } from '@/services/vendorProfileService';
+import { useQueryClient } from '@tanstack/react-query';
 
 export const usePointsAdjustment = () => {
   const location = useLocation();
@@ -14,6 +14,7 @@ export const usePointsAdjustment = () => {
   const [relationId, setRelationId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('form');
   const [searchResults, setSearchResults] = useState<CustomerData[]>([]);
+  const queryClient = useQueryClient();
 
   // Check vendor role on component mount
   useEffect(() => {
@@ -72,7 +73,7 @@ export const usePointsAdjustment = () => {
     }
   }, [location]);
 
-  // Get customer's points
+  // Get customer's points with shorter staleTime and more retries
   const { 
     data: customerPoints = 0, 
     isLoading: isLoadingPoints, 
@@ -93,8 +94,9 @@ export const usePointsAdjustment = () => {
       }
     },
     enabled: !!selectedCustomerId,
-    staleTime: 10000, // 10 seconds
-    retry: 2
+    staleTime: 1000, // 1 second (reduced from 10 seconds)
+    retry: 3,        // Increased from 2
+    refetchOnWindowFocus: true
   });
 
   // Get point adjustments history for the selected customer
@@ -124,21 +126,33 @@ export const usePointsAdjustment = () => {
     retry: 2
   });
 
-  // Handle manual refresh of data
+  // Handle manual refresh of data with more debugging
   const handleRefreshData = () => {
     if (selectedCustomerId) {
       console.log('Manually refreshing data for customer:', selectedCustomerId);
       toast.loading('Atualizando dados...');
       
-      Promise.all([refetchPoints(), refetchAdjustments()])
-        .then(() => {
-          toast.success('Dados atualizados com sucesso');
-          console.log('Data refreshed successfully');
-        })
-        .catch((error) => {
-          console.error('Error refreshing data:', error);
-          toast.error('Erro ao atualizar dados');
-        });
+      // Force invalidate the queries first
+      queryClient.invalidateQueries({
+        queryKey: ['customerPoints', selectedCustomerId]
+      });
+      
+      queryClient.invalidateQueries({
+        queryKey: ['pointAdjustments', selectedCustomerId]
+      });
+      
+      // Then refetch with a small delay
+      setTimeout(() => {
+        Promise.all([refetchPoints(), refetchAdjustments()])
+          .then(() => {
+            toast.success('Dados atualizados com sucesso');
+            console.log('Data refreshed successfully');
+          })
+          .catch((error) => {
+            console.error('Error refreshing data:', error);
+            toast.error('Erro ao atualizar dados');
+          });
+      }, 300);
     }
   };
 
@@ -163,7 +177,18 @@ export const usePointsAdjustment = () => {
   };
 
   const handleAdjustmentSuccess = () => {
-    // Switch to history tab after successful adjustment
+    // Immediately invalidate the queries
+    if (selectedCustomerId) {
+      queryClient.invalidateQueries({
+        queryKey: ['customerPoints', selectedCustomerId]
+      });
+      
+      queryClient.invalidateQueries({
+        queryKey: ['pointAdjustments', selectedCustomerId]
+      });
+    }
+    
+    // Then switch to history tab after successful adjustment and refresh data
     setTimeout(() => {
       refetchPoints();
       refetchAdjustments();

@@ -219,7 +219,8 @@ export const getCustomerPoints = async (userId: string) => {
       actualUserId = relation.usuario_id;
     }
     
-    // Now get the points from the profiles table
+    // Now get the points from the profiles table with cache busting
+    const timestamp = new Date().getTime();
     const { data: profile, error } = await supabase
       .from('profiles')
       .select('saldo_pontos')

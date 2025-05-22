@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { RefreshCw, Loader2, Award } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -73,7 +72,7 @@ const CustomerInfo: React.FC<CustomerInfoProps> = ({
               {customer.telefone && (
                 <span className="flex items-center">
                   <span className="text-gray-400 mr-1 hidden sm:inline">•</span>
-                  {formatPhone(customer.telefone)}
+                  {customer.telefone}
                 </span>
               )}
               {customer.cpf && (
