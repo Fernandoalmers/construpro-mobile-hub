@@ -4,7 +4,7 @@ import { Eye, Edit2, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { VendorProduct } from '@/services/vendorService';
+import { VendorProduct } from '@/services/vendor/products/types';
 
 interface ProductItemProps {
   produto: VendorProduct;
@@ -57,6 +57,15 @@ const ProductItem: React.FC<ProductItemProps> = ({
     }
   } else if (Array.isArray(produto.imagens) && produto.imagens.length > 0) {
     imagemUrl = produto.imagens[0];
+  } else if (produto.imagens && typeof produto.imagens === 'object') {
+    // Handle case when imagens is a Json object
+    try {
+      const stringifiedImages = JSON.stringify(produto.imagens);
+      const parsedImages = JSON.parse(stringifiedImages);
+      imagemUrl = Array.isArray(parsedImages) && parsedImages.length > 0 ? parsedImages[0] : undefined;
+    } catch (e) {
+      console.error('Error handling Json imagens:', e);
+    }
   }
 
   return (
