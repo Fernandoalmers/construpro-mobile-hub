@@ -135,10 +135,15 @@ export const usePointsAdjustment = () => {
   const handleSelectCustomer = (customer: CustomerData) => {
     console.log('Selected customer in hook:', customer);
     
-    // Store the relation ID separately
-    setRelationId(customer.id);
+    // Validate and use the usuario_id (profile ID) for operations, not the relation ID
+    if (!customer.usuario_id) {
+      console.error('Error: Customer has no valid usuario_id:', customer);
+      toast.error('Este cliente não tem um ID de usuário válido');
+      return;
+    }
     
-    // Use usuario_id for profile operations
+    // Store both IDs separately
+    setRelationId(customer.id);
     setSelectedCustomerId(customer.usuario_id);
     
     setSearchResults([customer]);

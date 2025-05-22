@@ -55,8 +55,30 @@ export const createPointAdjustment = async (
     // Store the vendor ID in localStorage for filtering in the UI and future operations
     localStorage.setItem('vendor_profile_id', vendorProfile.id);
     
-    // IMPROVED: Log exactly what ID we're using before the profile lookup
-    console.log('Looking up customer profile with EXACT user ID:', userId);
+    // Validate the userId format
+    if (!userId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+      console.error('Invalid UUID format for user ID:', userId);
+      toast.error('Formato de ID de usuário inválido');
+      return false;
+    }
+    
+    console.log('Looking up customer profile with ID:', userId);
+    
+    // First check if this is actually a relation ID instead of a user ID
+    const { data: relationCheck, error: relationError } = await supabase
+      .from('clientes_vendedor')
+      .select('id, usuario_id, nome, email, telefone, cpf')
+      .eq('id', userId)
+      .maybeSingle();
+      
+    if (relationCheck && relationCheck.usuario_id) {
+      console.log('ID provided is a relation ID, using usuario_id instead:', relationCheck.usuario_id);
+      userId = relationCheck.usuario_id;
+      
+      // Show a warning in development, but continue with the right ID
+      console.warn('Relation ID was passed instead of user ID - switching to correct user ID');
+      // toast.warning('Usando ID de usuário correto a partir da relação');
+    }
     
     // Get customer profile data - using maybeSingle instead of single to prevent errors
     const { data: customerProfile, error: profileError } = await supabase
@@ -71,51 +93,54 @@ export const createPointAdjustment = async (
       return false;
     }
     
-    // IMPROVED: More detailed logging about the profile lookup results
     console.log('Customer profile lookup result:', customerProfile ? 'Found' : 'Not found');
     
+    let customerData: any = null;
+    
     if (!customerProfile) {
-      // IMPROVED: Do another lookup to check if this ID exists in a different format or table
-      console.error('Customer profile not found for ID:', userId);
+      console.error('Customer profile not found in profiles table for ID:', userId);
       
-      // Try a debug query to see if this ID exists in relacionamento cliente_vendedor
-      const { data: debugClienteVendedor } = await supabase
+      // If profile not found, try to get data from cliente_vendedor table instead
+      const { data: vendorCustomerData, error: vendorCustomerError } = await supabase
         .from('clientes_vendedor')
-        .select('id, usuario_id')
-        .eq('id', userId)
+        .select('id, usuario_id, nome, email, telefone, cpf')
+        .eq('usuario_id', userId)
+        .eq('vendedor_id', vendorProfile.id)
         .maybeSingle();
         
-      if (debugClienteVendedor) {
-        console.error('CRITICAL ERROR: The ID provided matches a cliente_vendedor relation ID, not a user ID!');
-        console.error('Found relation:', debugClienteVendedor);
-        console.error('Should be using usuario_id:', debugClienteVendedor.usuario_id);
-        toast.error('Erro: ID de relacionamento sendo usado no lugar de ID de usuário');
-      } else {
-        // Try a more general search to see if the user exists at all
-        const { data: anyUserMatches } = await supabase
-          .from('profiles')
-          .select('id')
-          .limit(5);
-          
-        console.error('Could not find user with ID:', userId);
-        console.error('Sample of existing users:', anyUserMatches);
-        toast.error('Perfil de cliente não encontrado. Verifique o ID do usuário.');
+      if (vendorCustomerError) {
+        console.error('Error checking vendor customer data:', vendorCustomerError);
       }
       
-      return false;
+      if (vendorCustomerData) {
+        console.log('Found customer data in cliente_vendedor table:', vendorCustomerData);
+        customerData = {
+          id: userId,
+          nome: vendorCustomerData.nome || 'Cliente',
+          email: vendorCustomerData.email,
+          telefone: vendorCustomerData.telefone,
+          cpf: vendorCustomerData.cpf
+        };
+      } else {
+        console.error('Customer not found in any table. ID:', userId);
+        toast.error('Perfil de cliente não encontrado. Verifique o ID do usuário.');
+        return false;
+      }
+    } else {
+      customerData = customerProfile;
     }
     
-    console.log('Found customer profile:', customerProfile);
+    console.log('Using customer data:', customerData);
     
     // Ensure the customer exists in the vendor's customer list
     const customerCreated = await ensureCustomerExists(
       vendorProfile.id,
       userId,
       {
-        nome: customerProfile.nome || 'Cliente',
-        email: customerProfile.email,
-        telefone: customerProfile.telefone,
-        cpf: customerProfile.cpf
+        nome: customerData.nome || 'Cliente',
+        email: customerData.email,
+        telefone: customerData.telefone,
+        cpf: customerData.cpf
       }
     );
     
