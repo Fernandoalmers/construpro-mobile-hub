@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 
@@ -119,12 +118,12 @@ export const searchCustomers = async (query: string): Promise<VendorCustomer[]> 
     
     const vendorId = vendorData.id;
     
-    // Search for customers that match the query
+    // Search for customers that match the query - ONLY using fields that exist in the table
     const { data, error } = await supabase
       .from('clientes_vendedor')
       .select('*')
       .eq('vendedor_id', vendorId)
-      .or(`nome.ilike.%${query}%,email.ilike.%${query}%,telefone.ilike.%${query}%,cpf.ilike.%${query}%`);
+      .or(`nome.ilike.%${query}%,email.ilike.%${query}%,telefone.ilike.%${query}%`);
     
     if (error) {
       console.error('Error searching customers:', error);
