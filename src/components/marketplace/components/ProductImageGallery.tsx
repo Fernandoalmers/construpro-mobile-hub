@@ -57,14 +57,15 @@ const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
         });
       } else {
         // If images prop is a string instead of array
-        // First check if it's actually a string to avoid the "trim is not a function" error
-        const imagesStr = typeof images === 'string' ? images : '';
-        if (imagesStr !== '') {
-          const trimmedImagesStr = imagesStr.trim();
+        // We need to be explicit about the type checking here
+        if (typeof images === 'string') {
+          // Now TypeScript knows images is definitely a string
+          const trimmedImagesStr = images.trim();
           if (trimmedImagesStr !== '' && !result.includes(trimmedImagesStr)) {
             result.push(trimmedImagesStr);
           }
         }
+        // If images is neither an array nor a string, we don't process it
       }
     }
 
