@@ -138,21 +138,11 @@ export const createPointAdjustment = async (
     }
     
     // Update the user's points balance directly
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({ 
-        saldo_pontos: supabase.rpc('adjust_user_points', { 
-          user_id: userId, 
-          points_to_add: adjustmentValue 
-        })
-      })
-      .eq('id', userId);
-      
-    if (updateError) {
-      console.error('Error updating user points balance:', updateError);
-      toast.error('Erro ao atualizar saldo de pontos do cliente');
-      return false;
-    }
+    // FIX: Call adjust_user_points with proper type handling to avoid PostgrestFilterBuilder assignment to number type
+    await supabase.rpc('adjust_user_points', { 
+      user_id: userId, 
+      points_to_add: adjustmentValue 
+    });
     
     console.log('Point adjustment created successfully:', insertData);
     toast.success('Ajuste de pontos realizado com sucesso!');
