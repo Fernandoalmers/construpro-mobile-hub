@@ -116,7 +116,7 @@ export const deleteVendorProduct = async (productId: string): Promise<boolean> =
  */
 export const updateProductStatus = async (
   productId: string, 
-  status: 'pendente' | 'aprovado' | 'rejeitado'
+  status: 'pendente' | 'aprovado' | 'rejeitado' | 'inativo'
 ): Promise<boolean> => {
   try {
     console.log(`[productOperations] Updating product ${productId} status to: ${status}`);

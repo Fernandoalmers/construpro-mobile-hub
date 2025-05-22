@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ShoppingBag, Plus } from 'lucide-react';
@@ -95,7 +96,7 @@ const ProductManagementScreen: React.FC = () => {
   
   // Toggle product status mutation
   const toggleStatusMutation = useMutation({
-    mutationFn: async ({ productId, newStatus }: { productId: string; newStatus: 'pendente' | 'aprovado' | 'inativo' }) => {
+    mutationFn: async ({ productId, newStatus }: { productId: string; newStatus: 'pendente' | 'aprovado' | 'rejeitado' | 'inativo' }) => {
       return await updateProductStatus(productId, newStatus);
     },
     onSuccess: () => {
@@ -136,7 +137,7 @@ const ProductManagementScreen: React.FC = () => {
 
   const handleToggleStatus = (productId: string, currentStatus: string) => {
     // Logic to determine the next status
-    let newStatus: 'pendente' | 'aprovado' | 'inativo';
+    let newStatus: 'pendente' | 'aprovado' | 'rejeitado' | 'inativo';
     
     if (currentStatus === 'ativo' || currentStatus === 'aprovado') {
       newStatus = 'inativo';
