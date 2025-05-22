@@ -109,7 +109,7 @@ const CustomerInfo: React.FC<CustomerInfoProps> = ({
                 <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
               </div>
             ) : (
-              <p className="text-2xl font-bold text-blue-700">{customerPoints}</p>
+              <p className="text-2xl font-bold text-blue-700">{customerPoints || 0}</p>
             )}
           </div>
         </div>
