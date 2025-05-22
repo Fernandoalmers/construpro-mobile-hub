@@ -55,11 +55,15 @@ const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
             }
           }
         });
-      } else if (typeof images === 'string') {
+      } else {
         // If images prop is a string instead of array
-        const imagesStr = images.trim();
-        if (imagesStr !== '' && !result.includes(imagesStr)) {
-          result.push(imagesStr);
+        // First check if it's actually a string to avoid the "trim is not a function" error
+        const imagesStr = typeof images === 'string' ? images : '';
+        if (imagesStr !== '') {
+          const trimmedImagesStr = imagesStr.trim();
+          if (trimmedImagesStr !== '' && !result.includes(trimmedImagesStr)) {
+            result.push(trimmedImagesStr);
+          }
         }
       }
     }
