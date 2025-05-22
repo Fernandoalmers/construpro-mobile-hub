@@ -40,14 +40,14 @@ const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
         images.forEach(img => {
           if (typeof img === 'string') {
             // If image is a string, add it directly (with proper type checking)
-            if (img && typeof img === 'string' && img.trim() !== '' && !result.includes(img)) {
+            if (img && img.trim() !== '' && !result.includes(img)) {
               result.push(img);
             }
           } else if (img && typeof img === 'object') {
             // If image is an object, try to extract URL from common fields
             const imgUrl = img.url || img.path || img.src;
-            // Fix: Add type guard before calling trim method
-            if (typeof imgUrl === 'string' && imgUrl && imgUrl.trim() !== '' && !result.includes(imgUrl)) {
+            // Fix: Ensure imgUrl is a string before calling trim()
+            if (imgUrl && typeof imgUrl === 'string' && imgUrl.trim() !== '' && !result.includes(imgUrl)) {
               result.push(imgUrl);
             }
           }
