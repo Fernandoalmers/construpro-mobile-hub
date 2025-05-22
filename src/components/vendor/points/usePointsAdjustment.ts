@@ -56,10 +56,16 @@ export const usePointsAdjustment = () => {
     error: pointsError
   } = useQuery({
     queryKey: ['customerPoints', selectedCustomerId],
-    queryFn: () => {
+    queryFn: async () => {
       console.log('Fetching points for customer ID:', selectedCustomerId);
-      if (!selectedCustomerId) return Promise.resolve(0);
-      return getCustomerPoints(selectedCustomerId);
+      if (!selectedCustomerId) return 0;
+      try {
+        return await getCustomerPoints(selectedCustomerId);
+      } catch (error) {
+        console.error('Error fetching customer points:', error);
+        toast.error('Erro ao buscar pontos do cliente');
+        return 0;
+      }
     },
     enabled: !!selectedCustomerId,
     staleTime: 10000, // 10 seconds
@@ -75,10 +81,16 @@ export const usePointsAdjustment = () => {
     error: adjustmentsError
   } = useQuery({
     queryKey: ['pointAdjustments', selectedCustomerId],
-    queryFn: () => {
+    queryFn: async () => {
       console.log('Fetching adjustments for customer ID:', selectedCustomerId);
-      if (!selectedCustomerId) return Promise.resolve([]);
-      return getPointAdjustments(selectedCustomerId);
+      if (!selectedCustomerId) return [];
+      try {
+        return await getPointAdjustments(selectedCustomerId);
+      } catch (error) {
+        console.error('Error fetching point adjustments:', error);
+        toast.error('Erro ao buscar histórico de ajustes');
+        return [];
+      }
     },
     enabled: !!selectedCustomerId,
     staleTime: 10000, // 10 seconds
@@ -126,7 +138,7 @@ export const usePointsAdjustment = () => {
         isAdjustmentsError: isAdjustmentsError ? adjustmentsError : null
       });
     }
-  }, [selectedCustomerId, customerPoints, adjustments, isLoadingPoints, isLoadingAdjustments]);
+  }, [selectedCustomerId, customerPoints, adjustments, isLoadingPoints, isLoadingAdjustments, isPointsError, isAdjustmentsError, pointsError, adjustmentsError]);
 
   return {
     selectedCustomerId,

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createPointAdjustment } from '@/services/vendorService';
+import { createPointAdjustment } from '@/services/vendor/points/adjustmentsCreator';
 
 interface PointsAdjustmentFormProps {
   customerId: string;
@@ -26,9 +26,13 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
 
   // Create point adjustment mutation
   const createAdjustmentMutation = useMutation({
-    mutationFn: (data: { userId: string; tipo: string; valor: number; motivo: string }) => {
+    mutationFn: async (data: { userId: string; tipo: string; valor: number; motivo: string }) => {
       console.log('Mutation function called with data:', data);
-      return createPointAdjustment(data.userId, data.tipo, data.valor, data.motivo);
+      const result = await createPointAdjustment(data.userId, data.tipo, data.valor, data.motivo);
+      if (!result) {
+        throw new Error('Falha ao ajustar pontos');
+      }
+      return result;
     },
     onSuccess: () => {
       console.log('Points adjustment successful for customer ID:', customerId);
@@ -64,9 +68,9 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
       // Notify parent component
       onSuccess();
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       console.error('Error in points adjustment mutation:', error);
-      toast.error('Erro ao ajustar pontos. Verifique o console para detalhes.');
+      toast.error(`Erro ao ajustar pontos: ${error.message}`);
     }
   });
 
@@ -98,12 +102,17 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
       return;
     }
 
-    await createAdjustmentMutation.mutateAsync({
-      userId: customerId,
-      tipo: isPositiveAdjustment ? 'adicao' : 'remocao',
-      valor: pontosValue,
-      motivo
-    });
+    try {
+      await createAdjustmentMutation.mutateAsync({
+        userId: customerId,
+        tipo: isPositiveAdjustment ? 'adicao' : 'remocao',
+        valor: pontosValue,
+        motivo
+      });
+    } catch (error) {
+      console.error('Error submitting points adjustment:', error);
+      // Error is already handled by mutation's onError
+    }
   };
 
   return (

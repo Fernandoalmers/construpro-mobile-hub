@@ -16,22 +16,49 @@ export const createPointAdjustment = async (
   try {
     console.log('Creating point adjustment with params:', { userId, tipo, valor, motivo });
     
-    const vendorProfile = await getVendorProfile();
-    if (!vendorProfile) {
-      console.error('Vendor profile not found');
-      toast.error('Perfil de vendedor não encontrado');
+    // Get vendor profile - using stored ID first if available
+    const storedVendorId = localStorage.getItem('vendor_profile_id');
+    let vendorProfile;
+    
+    if (storedVendorId) {
+      console.log('Using stored vendor ID:', storedVendorId);
+      // Verify the stored ID is still valid
+      const { data: vendorCheck, error: vendorCheckError } = await supabase
+        .from('vendedores')
+        .select('id, nome_loja')
+        .eq('id', storedVendorId)
+        .maybeSingle();
+        
+      if (vendorCheckError) {
+        console.warn('Error verifying stored vendor ID:', vendorCheckError);
+      }
+      
+      if (vendorCheck) {
+        vendorProfile = vendorCheck;
+        console.log('Verified vendor from stored ID:', vendorProfile.nome_loja);
+      } else {
+        console.log('Stored vendor ID not valid, fetching current profile');
+        vendorProfile = await getVendorProfile();
+      }
+    } else {
+      vendorProfile = await getVendorProfile();
+    }
+    
+    if (!vendorProfile || !vendorProfile.id) {
+      console.error('Vendor profile not found or incomplete:', vendorProfile);
+      toast.error('Perfil de vendedor não encontrado. Por favor, faça login novamente.');
       return false;
     }
 
     console.log('Creating point adjustment for user:', userId, 'by vendor:', vendorProfile.id);
     
-    // Store the vendor ID in localStorage for filtering in the UI
+    // Store the vendor ID in localStorage for filtering in the UI and future operations
     localStorage.setItem('vendor_profile_id', vendorProfile.id);
     
     // Get customer profile data - using maybeSingle instead of single to prevent errors
     const { data: customerProfile, error: profileError } = await supabase
       .from('profiles')
-      .select('id, nome, email, telefone')
+      .select('id, nome, email, telefone, cpf')
       .eq('id', userId)
       .maybeSingle();
     
@@ -56,7 +83,8 @@ export const createPointAdjustment = async (
       {
         nome: customerProfile.nome || 'Cliente',
         email: customerProfile.email,
-        telefone: customerProfile.telefone
+        telefone: customerProfile.telefone,
+        cpf: customerProfile.cpf
       }
     );
     
@@ -84,7 +112,7 @@ export const createPointAdjustment = async (
         motivo
       })
       .select('*')
-      .single();
+      .maybeSingle();
     
     if (insertError) {
       console.error('Error creating point adjustment:', insertError);
@@ -94,9 +122,9 @@ export const createPointAdjustment = async (
     
     console.log('Point adjustment created successfully:', insertedData);
     return true;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating point adjustment:', error);
-    toast.error('Erro ao ajustar pontos. Verifique o console para detalhes.');
+    toast.error(`Erro ao ajustar pontos: ${error?.message || 'Verifique o console para detalhes'}`);
     return false;
   }
 };

@@ -1,14 +1,23 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { VendorCustomer } from '@/services/vendorCustomersService';
 
 /**
- * Ensures the customer exists in clientes_vendedor table
+ * Customer data interface
+ */
+interface CustomerData {
+  nome: string;
+  email?: string;
+  telefone?: string;
+  cpf?: string;
+}
+
+/**
+ * Ensures a customer exists in the vendor's customer list
  */
 export const ensureCustomerExists = async (
   vendorId: string,
   userId: string,
-  customerData: { nome: string, email?: string, telefone?: string }
+  customerData: CustomerData
 ): Promise<boolean> => {
   try {
     console.log('Ensuring customer exists:', { vendorId, userId, customerData });
@@ -16,40 +25,57 @@ export const ensureCustomerExists = async (
     // Check if customer already exists
     const { data: existingCustomer, error: checkError } = await supabase
       .from('clientes_vendedor')
-      .select('*')
+      .select('id')
       .eq('vendedor_id', vendorId)
       .eq('usuario_id', userId)
       .maybeSingle();
-    
+      
     if (checkError) {
-      console.error('Error checking existing customer:', checkError);
+      console.error('Error checking if customer exists:', checkError);
       return false;
     }
     
     if (existingCustomer) {
-      console.log('Customer already exists:', existingCustomer);
+      console.log('Customer already exists, updating data');
+      
+      // Update customer data
+      const { error: updateError } = await supabase
+        .from('clientes_vendedor')
+        .update({
+          nome: customerData.nome,
+          email: customerData.email,
+          telefone: customerData.telefone,
+          updated_at: new Date().toISOString()
+        })
+        .eq('vendedor_id', vendorId)
+        .eq('usuario_id', userId);
+        
+      if (updateError) {
+        console.error('Error updating customer:', updateError);
+        return false;
+      }
+      
       return true;
     }
     
-    // Create customer if not exists
+    // Customer doesn't exist, create new record
+    console.log('Customer does not exist, creating new record');
     const { error: insertError } = await supabase
       .from('clientes_vendedor')
       .insert({
         vendedor_id: vendorId,
         usuario_id: userId,
         nome: customerData.nome,
-        email: customerData.email || null,
-        telefone: customerData.telefone || null,
-        total_gasto: 0,
-        created_at: new Date().toISOString()
+        email: customerData.email,
+        telefone: customerData.telefone,
+        total_gasto: 0
       });
-    
+      
     if (insertError) {
       console.error('Error creating customer:', insertError);
       return false;
     }
     
-    console.log('Customer created successfully');
     return true;
   } catch (error) {
     console.error('Error in ensureCustomerExists:', error);
@@ -58,12 +84,10 @@ export const ensureCustomerExists = async (
 };
 
 /**
- * Searches for customers in the profiles table
+ * Search for customer profiles in the general users pool
  */
-export const searchCustomerProfiles = async (searchTerm: string): Promise<VendorCustomer[]> => {
+export const searchCustomerProfiles = async (searchTerm: string): Promise<any[]> => {
   try {
-    console.log('Searching customer profiles with term:', searchTerm);
-    // Search in profiles table for any user matching search criteria
     const { data, error } = await supabase
       .from('profiles')
       .select('id, nome, email, telefone, cpf')
@@ -75,21 +99,7 @@ export const searchCustomerProfiles = async (searchTerm: string): Promise<Vendor
       return [];
     }
     
-    console.log(`Found ${data?.length || 0} customer profiles`);
-    
-    // Map the profile data to match VendorCustomer interface
-    const customers: VendorCustomer[] = (data || []).map(profile => ({
-      id: profile.id,
-      usuario_id: profile.id,
-      vendedor_id: '', // Empty string since we don't know the vendor ID
-      nome: profile.nome || 'Usuário',
-      email: profile.email,
-      telefone: profile.telefone,
-      total_gasto: 0, // Default to 0
-      cpf: profile.cpf
-    }));
-    
-    return customers;
+    return data || [];
   } catch (error) {
     console.error('Error in searchCustomerProfiles:', error);
     return [];

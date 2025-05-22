@@ -1,75 +1,42 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/sonner';
-import { getVendorProfile } from '../../vendorProfileService';
-import { VendorCustomer } from '../../vendorCustomersService';
 import { PointAdjustment } from './types';
+import { toast } from '@/components/ui/sonner';
 
 /**
- * Fetches point adjustments for a specific vendor, optionally filtered by user
+ * Fetches point adjustment history for a specific customer
  */
-export const getPointAdjustments = async (userId?: string): Promise<PointAdjustment[]> => {
+export const getPointAdjustments = async (userId: string): Promise<PointAdjustment[]> => {
   try {
-    console.log('Fetching point adjustments for user ID:', userId || 'all');
+    console.log('Fetching point adjustments for user:', userId);
     
-    // Get vendor id
-    const vendorProfile = await getVendorProfile();
-    if (!vendorProfile) {
-      console.error('Vendor profile not found');
-      return [];
-    }
-    
-    console.log('Fetching point adjustments for vendor:', vendorProfile.id, 'and user:', userId || 'all users');
+    // Optional: If we have a stored vendor ID, use it to filter the results
+    const vendorId = localStorage.getItem('vendor_profile_id');
     
     let query = supabase
       .from('pontos_ajustados')
-      .select(`
-        *,
-        cliente:usuario_id (
-          id,
-          nome,
-          email,
-          telefone
-        )
-      `)
-      .eq('vendedor_id', vendorProfile.id);
-    
-    if (userId) {
-      query = query.eq('usuario_id', userId);
+      .select('*')
+      .eq('usuario_id', userId)
+      .order('created_at', { ascending: false });
+      
+    // If we have a vendor ID, filter by it as well
+    if (vendorId) {
+      query = query.eq('vendedor_id', vendorId);
     }
-    
-    const { data, error } = await query.order('created_at', { ascending: false });
+      
+    const { data, error } = await query;
     
     if (error) {
       console.error('Error fetching point adjustments:', error);
+      toast.error('Erro ao carregar histórico de ajustes');
       return [];
     }
-
-    console.log('Point adjustments found:', data?.length || 0, data);
-
-    // Create safe adjustments with proper cliente handling
-    const safeAdjustments = data.map(item => {
-      // Create a cliente object safely
-      const clienteData = item.cliente as any;
-      const clienteInfo: VendorCustomer = {
-        id: item.usuario_id || '',
-        vendedor_id: vendorProfile.id,
-        usuario_id: item.usuario_id,
-        nome: clienteData && clienteData.nome ? clienteData.nome : 'Cliente',
-        telefone: clienteData && clienteData.telefone ? clienteData.telefone : '',
-        email: clienteData && clienteData.email ? clienteData.email : '',
-        total_gasto: 0
-      };
-      
-      return {
-        ...item,
-        cliente: clienteInfo
-      };
-    });
     
-    return safeAdjustments as PointAdjustment[];
+    console.log(`Found ${data?.length || 0} point adjustments for user:`, userId);
+    return data || [];
   } catch (error) {
     console.error('Error in getPointAdjustments:', error);
+    toast.error('Erro ao buscar histórico de ajustes de pontos');
     return [];
   }
 };
