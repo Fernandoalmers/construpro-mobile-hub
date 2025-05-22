@@ -98,26 +98,18 @@ export const createPointAdjustment = async (
     
     console.log('Preparing to insert point adjustment with value:', adjustmentValue);
     
-    // Get current user's session for RPC call 
-    const { data: authData } = await supabase.auth.getSession();
-    if (!authData.session) {
-      console.error('No active session found');
-      toast.error('Sessão expirada. Por favor, faça login novamente.');
-      return false;
-    }
-
-    // Use RPC function to bypass RLS policy issues
-    // Fix: Use a type assertion to handle the RPC function name type
-    const { data: insertedData, error: insertError } = await supabase.rpc(
-      'create_point_adjustment' as any,
-      {
-        p_vendedor_id: vendorProfile.id,
-        p_usuario_id: userId,
-        p_tipo: tipo,
-        p_valor: adjustmentValue,
-        p_motivo: motivo
-      }
-    );
+    // Insert the point adjustment record
+    const { data: insertData, error: insertError } = await supabase
+      .from('pontos_ajustados')
+      .insert({
+        vendedor_id: vendorProfile.id,
+        usuario_id: userId,
+        tipo: tipo,
+        valor: adjustmentValue,
+        motivo: motivo
+      })
+      .select('*')
+      .single();
     
     if (insertError) {
       console.error('Error creating point adjustment:', insertError);
@@ -125,7 +117,44 @@ export const createPointAdjustment = async (
       return false;
     }
     
-    console.log('Point adjustment created successfully:', insertedData);
+    // Now handle the points transaction entry manually since the trigger might be causing issues
+    // Map our adjustment types to valid points_transactions tipos
+    const transactionTipo = tipo === 'adicao' ? 'compra' : 'resgate';
+    
+    const { error: transactionError } = await supabase
+      .from('points_transactions')
+      .insert({
+        user_id: userId,
+        pontos: adjustmentValue,  // Use the same value (positive or negative)
+        tipo: transactionTipo,    // Using valid transaction types
+        descricao: `Ajuste de pontos: ${motivo}`,
+        referencia_id: insertData.id
+      });
+      
+    if (transactionError) {
+      console.error('Error creating points transaction record:', transactionError);
+      toast.error('Pontos ajustados, mas houve um erro ao registrar a transação');
+      // We don't fail the whole operation if just the transaction record fails
+    }
+    
+    // Update the user's points balance directly
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ 
+        saldo_pontos: supabase.rpc('adjust_user_points', { 
+          user_id: userId, 
+          points_to_add: adjustmentValue 
+        })
+      })
+      .eq('id', userId);
+      
+    if (updateError) {
+      console.error('Error updating user points balance:', updateError);
+      toast.error('Erro ao atualizar saldo de pontos do cliente');
+      return false;
+    }
+    
+    console.log('Point adjustment created successfully:', insertData);
     toast.success('Ajuste de pontos realizado com sucesso!');
     return true;
   } catch (error: any) {
