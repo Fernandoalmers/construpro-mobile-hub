@@ -51,18 +51,22 @@ const ProductItem: React.FC<ProductItemProps> = ({
   if (typeof produto.imagens === 'string') {
     try {
       const parsedImages = JSON.parse(produto.imagens);
-      imagemUrl = Array.isArray(parsedImages) && parsedImages.length > 0 ? parsedImages[0] : undefined;
+      if (Array.isArray(parsedImages) && parsedImages.length > 0) {
+        imagemUrl = String(parsedImages[0]); // Ensure we convert to string
+      }
     } catch (e) {
       console.error('Error parsing produto.imagens:', e);
     }
   } else if (Array.isArray(produto.imagens) && produto.imagens.length > 0) {
-    imagemUrl = produto.imagens[0];
+    imagemUrl = String(produto.imagens[0]); // Ensure we convert to string
   } else if (produto.imagens && typeof produto.imagens === 'object') {
     // Handle case when imagens is a Json object
     try {
       const stringifiedImages = JSON.stringify(produto.imagens);
       const parsedImages = JSON.parse(stringifiedImages);
-      imagemUrl = Array.isArray(parsedImages) && parsedImages.length > 0 ? parsedImages[0] : undefined;
+      if (Array.isArray(parsedImages) && parsedImages.length > 0) {
+        imagemUrl = String(parsedImages[0]); // Ensure we convert to string
+      }
     } catch (e) {
       console.error('Error handling Json imagens:', e);
     }
