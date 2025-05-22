@@ -5,7 +5,7 @@ interface ProductImageProps {
   imagemUrl: string | null | undefined;
   productName: string;
   size?: 'sm' | 'lg';
-  imagens?: Array<string | {url?: string, path?: string, src?: string}> | null; // Add support for imagens array
+  imagens?: Array<string | {url?: string, path?: string, src?: string}> | null | string; // Support for various image formats
 }
 
 const ProductImage: React.FC<ProductImageProps> = ({ 
@@ -32,7 +32,7 @@ const ProductImage: React.FC<ProductImageProps> = ({
       return imagemUrl;
     }
     
-    // Second priority: extract from imagens array if available
+    // Second priority: extract from imagens
     if (imagens) {
       // Handle case where imagens is a string directly
       if (typeof imagens === 'string') {
@@ -50,6 +50,16 @@ const ProductImage: React.FC<ProductImageProps> = ({
         
         if (typeof firstImage === 'object' && firstImage !== null) {
           return firstImage.url || firstImage.path || firstImage.src || null;
+        }
+      }
+      
+      // Try to parse JSON string if needed
+      if (typeof imagens === 'object' && !Array.isArray(imagens)) {
+        try {
+          const imgObj = imagens as any;
+          return imgObj.url || imgObj.path || imgObj.src || null;
+        } catch (e) {
+          console.error('Error parsing image object:', e);
         }
       }
     }

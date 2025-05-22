@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 
 interface ProductImageGalleryProps {
   mainImage: string;
-  images?: string[];
+  images?: string[] | Array<{url?: string, path?: string, src?: string}>;
   productName: string;
   hasDiscount: boolean;
   discountPercentage?: number;
@@ -25,8 +25,40 @@ const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
   hasDiscount,
   discountPercentage
 }) => {
-  // Combine main image and additional images
-  const allImages = mainImage ? [mainImage, ...(images || []).filter(img => img !== mainImage)] : images || [];
+  // Process the images to handle various formats
+  const processImages = React.useMemo(() => {
+    const result: string[] = [];
+    
+    // Add main image if it's a valid URL
+    if (mainImage && typeof mainImage === 'string' && mainImage.trim() !== '') {
+      result.push(mainImage);
+    }
+    
+    // Process additional images
+    if (images) {
+      if (Array.isArray(images)) {
+        images.forEach(img => {
+          if (typeof img === 'string' && img.trim() !== '' && !result.includes(img)) {
+            // If image is a string, add it directly
+            result.push(img);
+          } else if (img && typeof img === 'object') {
+            // If image is an object, try to extract URL from common fields
+            const imgUrl = img.url || img.path || img.src;
+            if (imgUrl && typeof imgUrl === 'string' && imgUrl.trim() !== '' && !result.includes(imgUrl)) {
+              result.push(imgUrl);
+            }
+          }
+        });
+      } else if (typeof images === 'string' && images.trim() !== '' && !result.includes(images)) {
+        // If images prop is a string instead of array
+        result.push(images);
+      }
+    }
+
+    console.log(`[ProductImageGallery] Processed ${result.length} images for "${productName}"`);
+    return result;
+  }, [mainImage, images, productName]);
+  
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // Handle thumbnail click
@@ -36,14 +68,14 @@ const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
 
   // Handle next/previous buttons
   const handlePrevious = () => {
-    setCurrentImageIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1));
+    setCurrentImageIndex((prev) => (prev === 0 ? processImages.length - 1 : prev - 1));
   };
 
   const handleNext = () => {
-    setCurrentImageIndex((prev) => (prev === allImages.length - 1 ? 0 : prev + 1));
+    setCurrentImageIndex((prev) => (prev === processImages.length - 1 ? 0 : prev + 1));
   };
 
-  if (allImages.length === 0) {
+  if (processImages.length === 0) {
     return (
       <div className="bg-white p-6 rounded-lg shadow-sm">
         <div className="aspect-square relative bg-gray-100 rounded-md flex items-center justify-center">
@@ -58,13 +90,17 @@ const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
       {/* Main carousel */}
       <Carousel className="w-full">
         <CarouselContent>
-          {allImages.map((image, index) => (
+          {processImages.map((imageUrl, index) => (
             <CarouselItem key={index} className="flex justify-center">
               <div className="aspect-square relative w-full">
                 <img
-                  src={image || 'https://via.placeholder.com/400'}
+                  src={imageUrl || 'https://via.placeholder.com/400?text=Indisponível'}
                   alt={`${productName} - imagem ${index + 1}`}
                   className="w-full h-full object-contain rounded-md"
+                  onError={(e) => {
+                    console.error(`Error loading image ${index}:`, imageUrl);
+                    e.currentTarget.src = 'https://via.placeholder.com/400?text=Erro';
+                  }}
                 />
                 {hasDiscount && discountPercentage && index === 0 && (
                   <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold rounded-md px-2 py-1">
@@ -80,9 +116,9 @@ const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
       </Carousel>
 
       {/* Image thumbnails */}
-      {allImages.length > 1 && (
+      {processImages.length > 1 && (
         <div className="flex mt-4 gap-2 overflow-x-auto pb-2 justify-center">
-          {allImages.map((url, index) => (
+          {processImages.map((imageUrl, index) => (
             <div 
               key={index} 
               className={cn(
@@ -94,9 +130,12 @@ const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
               onClick={() => handleThumbnailClick(index)}
             >
               <img 
-                src={url} 
+                src={imageUrl || 'https://via.placeholder.com/150?text=Indisponível'} 
                 alt={`${productName} - miniatura ${index + 1}`} 
-                className="w-full h-full object-contain" 
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  e.currentTarget.src = 'https://via.placeholder.com/150?text=Erro';
+                }}
               />
             </div>
           ))}

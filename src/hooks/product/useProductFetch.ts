@@ -22,6 +22,52 @@ interface VendorData {
   [key: string]: any; // Allow for other properties
 }
 
+// Helper function to extract image URLs from different formats
+const extractImageUrls = (imageData: any): string[] => {
+  const urls: string[] = [];
+
+  if (!imageData) return urls;
+
+  // If it's a string, try to parse it as JSON
+  if (typeof imageData === 'string') {
+    try {
+      const parsed = JSON.parse(imageData);
+      if (Array.isArray(parsed)) {
+        return parsed.map(img => {
+          if (typeof img === 'string') return img;
+          if (img && typeof img === 'object') return img.url || img.path || img.src || '';
+          return '';
+        }).filter(url => url);
+      }
+      return [imageData]; // Single string URL
+    } catch (e) {
+      // If it's not valid JSON, treat it as a direct URL
+      return [imageData];
+    }
+  }
+
+  // If it's already an array
+  if (Array.isArray(imageData)) {
+    imageData.forEach(img => {
+      if (typeof img === 'string') {
+        urls.push(img);
+      } else if (img && typeof img === 'object') {
+        const url = img.url || img.path || img.src;
+        if (url) urls.push(String(url));
+      }
+    });
+    return urls;
+  }
+
+  // If it's an object with url/path/src property
+  if (imageData && typeof imageData === 'object') {
+    const url = imageData.url || imageData.path || imageData.src;
+    if (url) return [String(url)];
+  }
+
+  return urls;
+};
+
 export function useProductFetch(id: string | undefined) {
   const [state, setState] = useState<ProductFetchState>({
     product: null,
@@ -59,6 +105,10 @@ export function useProductFetch(id: string | undefined) {
 
         console.log("Produto data:", data);
         
+        // Extract images properly
+        const extractedImages = extractImageUrls(data.imagens);
+        console.log("Extracted images:", extractedImages);
+        
         // Process product data safely with type checking
         const productData: Product = {
           id: data.id,
@@ -69,12 +119,8 @@ export function useProductFetch(id: string | undefined) {
           preco_promocional: data.preco_promocional,
           categoria: data.categoria,
           segmento: data.segmento || '',
-          imagem_url: Array.isArray(data.imagens) && data.imagens.length > 0 
-            ? String(data.imagens[0])
-            : undefined,
-          imagens: Array.isArray(data.imagens) 
-            ? data.imagens.map(img => String(img))
-            : [],
+          imagem_url: extractedImages.length > 0 ? extractedImages[0] : undefined,
+          imagens: extractedImages,
           estoque: data.estoque || 0,
           pontos: data.pontos_consumidor || 0,
           pontos_consumidor: data.pontos_consumidor || 0,
