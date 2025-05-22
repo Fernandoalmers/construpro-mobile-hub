@@ -67,17 +67,21 @@ export const createPointAdjustment = async (
     // First check if this is actually a relation ID instead of a user ID
     const { data: relationCheck, error: relationError } = await supabase
       .from('clientes_vendedor')
-      .select('id, usuario_id, nome, email, telefone, cpf')
+      .select('id, usuario_id, nome, email, telefone')
       .eq('id', userId)
       .maybeSingle();
       
+    if (relationError) {
+      console.error('Error checking relation:', relationError);
+    }
+    
+    // If we found a relation and it has usuario_id, use that instead
     if (relationCheck && relationCheck.usuario_id) {
       console.log('ID provided is a relation ID, using usuario_id instead:', relationCheck.usuario_id);
       userId = relationCheck.usuario_id;
       
       // Show a warning in development, but continue with the right ID
       console.warn('Relation ID was passed instead of user ID - switching to correct user ID');
-      // toast.warning('Usando ID de usuário correto a partir da relação');
     }
     
     // Get customer profile data - using maybeSingle instead of single to prevent errors
@@ -103,7 +107,7 @@ export const createPointAdjustment = async (
       // If profile not found, try to get data from cliente_vendedor table instead
       const { data: vendorCustomerData, error: vendorCustomerError } = await supabase
         .from('clientes_vendedor')
-        .select('id, usuario_id, nome, email, telefone, cpf')
+        .select('id, usuario_id, nome, email, telefone')
         .eq('usuario_id', userId)
         .eq('vendedor_id', vendorProfile.id)
         .maybeSingle();
@@ -119,7 +123,7 @@ export const createPointAdjustment = async (
           nome: vendorCustomerData.nome || 'Cliente',
           email: vendorCustomerData.email,
           telefone: vendorCustomerData.telefone,
-          cpf: vendorCustomerData.cpf
+          cpf: null // CPF field doesn't exist in clientes_vendedor table
         };
       } else {
         console.error('Customer not found in any table. ID:', userId);
