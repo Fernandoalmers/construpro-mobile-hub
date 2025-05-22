@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createPointAdjustment } from '@/services/vendor/points';
+import { createPointAdjustment } from '@/services/vendorService';
 
 interface PointsAdjustmentFormProps {
   customerId: string;
@@ -17,7 +17,7 @@ interface PointsAdjustmentFormProps {
 const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({ 
   customerId, 
   customerPoints,
-  onSuccess
+  onSuccess 
 }) => {
   const [pontos, setPontos] = useState('');
   const [motivo, setMotivo] = useState('');
@@ -26,7 +26,7 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
 
   // Create point adjustment mutation
   const createAdjustmentMutation = useMutation({
-    mutationFn: (data: { userId: string, tipo: 'adicao' | 'remocao', valor: number, motivo: string }) => {
+    mutationFn: (data: { userId: string; tipo: string; valor: number; motivo: string }) => {
       console.log('Mutation function called with data:', data);
       return createPointAdjustment(data.userId, data.tipo, data.valor, data.motivo);
     },
@@ -35,20 +35,32 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
       toast.success(isPositiveAdjustment ? 'Pontos adicionados com sucesso!' : 'Pontos removidos com sucesso!');
       setPontos('');
       setMotivo('');
-      
+
       // Invalidate queries to update data
-      queryClient.invalidateQueries({ queryKey: ['customerPoints', customerId] });
-      queryClient.invalidateQueries({ queryKey: ['pointAdjustments', customerId] });
+      queryClient.invalidateQueries({
+        queryKey: ['customerPoints', customerId]
+      });
       
+      queryClient.invalidateQueries({
+        queryKey: ['pointAdjustments', customerId]
+      });
+
       // Also invalidate user's points transactions data
-      queryClient.invalidateQueries({ queryKey: ['pointsHistory'] });
+      queryClient.invalidateQueries({
+        queryKey: ['pointsHistory']
+      });
       
       // Force a refetch of the customer's points and adjustments
       setTimeout(() => {
-        queryClient.refetchQueries({ queryKey: ['customerPoints', customerId] });
-        queryClient.refetchQueries({ queryKey: ['pointAdjustments', customerId] });
+        queryClient.refetchQueries({
+          queryKey: ['customerPoints', customerId]
+        });
+        
+        queryClient.refetchQueries({
+          queryKey: ['pointAdjustments', customerId]
+        });
       }, 500);
-      
+
       // Notify parent component
       onSuccess();
     },
@@ -66,12 +78,12 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!customerId || !pontos || !motivo) {
       toast.error('Preencha todos os campos obrigatórios.');
       return;
     }
-    
+
     console.log('Submitting form with customer ID:', customerId);
     
     const pontosValue = parseInt(pontos);
@@ -79,13 +91,13 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
       toast.error('O valor de pontos deve ser maior que zero.');
       return;
     }
-    
+
     // If removing points, check if customer has enough points
     if (!isPositiveAdjustment && pontosValue > customerPoints) {
       toast.error(`O cliente possui apenas ${customerPoints} pontos disponíveis.`);
       return;
     }
-    
+
     await createAdjustmentMutation.mutateAsync({
       userId: customerId,
       tipo: isPositiveAdjustment ? 'adicao' : 'remocao',
@@ -104,66 +116,54 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
             onClick={() => setIsPositiveAdjustment(true)}
             className="flex items-center justify-center gap-2"
           >
-            <Plus className="h-4 w-4" /> 
+            <Plus className="h-4 w-4" />
             <span>Adicionar</span>
           </Button>
+          
           <Button
             type="button"
             variant={!isPositiveAdjustment ? "default" : "outline"}
             onClick={() => setIsPositiveAdjustment(false)}
             className="flex items-center justify-center gap-2"
           >
-            <Minus className="h-4 w-4" /> 
+            <Minus className="h-4 w-4" />
             <span>Remover</span>
           </Button>
         </div>
         
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-            <span className="text-gray-500">
-              {isPositiveAdjustment ? "+" : "-"}
-            </span>
-          </div>
+        <div>
+          <label htmlFor="pontos" className="block text-sm font-medium mb-1">
+            Quantidade de pontos
+          </label>
           <Input
+            id="pontos"
             value={pontos}
             onChange={handlePontosChange}
-            placeholder="Quantidade de pontos"
-            className="pl-8"
+            placeholder="Ex: 100"
+            className="w-full"
             required
           />
         </div>
         
-        {!isPositiveAdjustment && (
-          <p className="text-xs text-gray-500 mt-1">
-            {customerPoints > 0 
-              ? `Cliente possui ${customerPoints} pontos disponíveis` 
-              : 'Cliente não possui pontos disponíveis'}
-          </p>
-        )}
-      </div>
-      
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">
-          Motivo <span className="text-red-500">*</span>
-        </label>
-        <Textarea
-          value={motivo}
-          onChange={(e) => setMotivo(e.target.value)}
-          placeholder="Descreva o motivo do ajuste de pontos"
-          required
-          rows={3}
-        />
-        <p className="text-xs text-gray-500">
-          Informe detalhes que ajudem a identificar este ajuste no futuro
-        </p>
+        <div>
+          <label htmlFor="motivo" className="block text-sm font-medium mb-1">
+            Motivo
+          </label>
+          <Textarea
+            id="motivo"
+            value={motivo}
+            onChange={e => setMotivo(e.target.value)}
+            placeholder="Descreva o motivo do ajuste..."
+            className="min-h-[100px]"
+            required
+          />
+        </div>
       </div>
       
       <Button 
         type="submit" 
-        className="w-full" 
-        disabled={createAdjustmentMutation.isPending || !pontos || !motivo || (
-          !isPositiveAdjustment && parseInt(pontos) > customerPoints
-        )}
+        className="w-full"
+        disabled={createAdjustmentMutation.isPending || !pontos || !motivo}
       >
         {createAdjustmentMutation.isPending ? (
           <>
@@ -171,7 +171,9 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
             Processando...
           </>
         ) : (
-          `Confirmar ${isPositiveAdjustment ? 'Adição' : 'Remoção'} de Pontos`
+          <>
+            {isPositiveAdjustment ? 'Adicionar' : 'Remover'} Pontos
+          </>
         )}
       </Button>
     </form>

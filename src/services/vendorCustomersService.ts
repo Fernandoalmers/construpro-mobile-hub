@@ -91,26 +91,86 @@ export const searchCustomers = async (searchTerm: string): Promise<VendorCustome
     // Get the vendor ID for the current user
     const { data: vendorData, error: vendorError } = await supabase.rpc('get_vendor_id');
     
-    if (vendorError || !vendorData) {
+    if (vendorError) {
       console.error('Error fetching vendor ID:', vendorError);
       return [];
     }
     
     const vendorId = vendorData;
     
-    // Search for customers
-    const { data, error } = await supabase
+    if (!vendorId) {
+      console.error('No vendor ID found. User may not be a vendor.');
+      
+      // Fallback approach: Search profiles directly if vendor ID is not available
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, nome, email, telefone, cpf')
+        .or(`nome.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,telefone.ilike.%${searchTerm}%,cpf.ilike.%${searchTerm}%`)
+        .limit(10);
+        
+      if (profilesError) {
+        console.error('Error searching profiles:', profilesError);
+        return [];
+      }
+      
+      // Convert profiles to VendorCustomer format
+      return (profiles || []).map(profile => ({
+        id: profile.id,
+        usuario_id: profile.id,
+        vendedor_id: vendorId || '',
+        nome: profile.nome || 'Usuário',
+        email: profile.email,
+        telefone: profile.telefone,
+        total_gasto: 0
+      }));
+    }
+    
+    console.log('Searching for customers with vendor ID:', vendorId);
+    console.log('Search term:', searchTerm);
+    
+    // Search for customers first in the clientes_vendedor table
+    const { data: existingCustomers, error: existingError } = await supabase
       .from('clientes_vendedor')
       .select('*')
       .eq('vendedor_id', vendorId)
-      .or(`nome.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,telefone.ilike.%${searchTerm}%`);
+      .or(`nome.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,telefone.ilike.%${searchTerm}%`)
+      .limit(10);
       
-    if (error) {
-      console.error('Error searching vendor customers:', error);
+    if (existingError) {
+      console.error('Error searching existing customers:', existingError);
       return [];
     }
     
-    return data as VendorCustomer[];
+    if (existingCustomers && existingCustomers.length > 0) {
+      console.log('Found existing customers:', existingCustomers.length);
+      return existingCustomers as VendorCustomer[];
+    }
+    
+    // If no customers found in vendor's list, search in profiles
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, nome, email, telefone, cpf')
+      .or(`nome.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,telefone.ilike.%${searchTerm}%,cpf.ilike.%${searchTerm}%`)
+      .limit(10);
+      
+    if (profilesError) {
+      console.error('Error searching profiles:', profilesError);
+      return [];
+    }
+    
+    console.log('Found profiles:', profiles?.length || 0);
+    
+    // Convert profiles to VendorCustomer format
+    return (profiles || []).map(profile => ({
+      id: profile.id,
+      usuario_id: profile.id,
+      vendedor_id: vendorId,
+      nome: profile.nome || 'Usuário',
+      email: profile.email,
+      telefone: profile.telefone,
+      total_gasto: 0,
+      cpf: profile.cpf // Add CPF for display purposes
+    }));
   } catch (error) {
     console.error('Error in searchCustomers:', error);
     return [];

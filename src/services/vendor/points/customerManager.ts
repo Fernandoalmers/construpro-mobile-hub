@@ -55,3 +55,29 @@ export const ensureCustomerExists = async (
     return false;
   }
 };
+
+/**
+ * Searches for customers in the profiles table
+ */
+export const searchCustomerProfiles = async (searchTerm: string): Promise<any[]> => {
+  try {
+    console.log('Searching customer profiles with term:', searchTerm);
+    // Search in profiles table for any user matching search criteria
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, nome, email, telefone, cpf')
+      .or(`nome.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,telefone.ilike.%${searchTerm}%,cpf.ilike.%${searchTerm}%`)
+      .limit(10);
+      
+    if (error) {
+      console.error('Error searching customer profiles:', error);
+      return [];
+    }
+    
+    console.log(`Found ${data?.length || 0} customer profiles`);
+    return data || [];
+  } catch (error) {
+    console.error('Error in searchCustomerProfiles:', error);
+    return [];
+  }
+};

@@ -2,8 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
-import { getCustomerPoints, searchCustomers } from '@/services/vendorService';
-import { getPointAdjustments } from '@/services/vendor/points';
+import { getCustomerPoints, searchCustomers, getPointAdjustments } from '@/services/vendorService';
 import { CustomerData } from './CustomerSearch';
 import { toast } from '@/components/ui/sonner';
 
@@ -16,14 +15,14 @@ export const usePointsAdjustment = () => {
   // Check for clientId in URL
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const clienteId = params.get('clienteId');
+    const clienteId = params.get('customerId') || params.get('clienteId');
     if (clienteId) {
       console.log('Client ID found in URL:', clienteId);
       setSelectedCustomerId(clienteId);
       // Fetch customer data to display
       searchCustomers(clienteId).then(results => {
         console.log('Search results for client ID:', results);
-        if (results.length > 0) {
+        if (results && results.length > 0) {
           setSearchResults(results);
           toast.success('Cliente selecionado com sucesso');
         } else {

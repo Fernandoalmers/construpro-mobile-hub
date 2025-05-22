@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import Avatar from '../../common/Avatar';
 import CustomInput from '../../common/CustomInput';
 import { searchCustomers } from '@/services/vendorCustomersService';
+import { searchCustomerProfiles } from '@/services/vendor/points/customerManager';
 
 export interface CustomerData {
   id: string;
@@ -40,8 +41,26 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
       
       try {
         console.log('Searching for customers with term:', searchTerm);
-        const results = await searchCustomers(searchTerm);
-        console.log('Search results:', results);
+        
+        // Try searching in vendor's customers first
+        let results = await searchCustomers(searchTerm);
+        
+        // If no results, try searching in all profiles as a fallback
+        if (results.length === 0) {
+          console.log('No vendor customers found, searching all profiles');
+          const profileResults = await searchCustomerProfiles(searchTerm);
+          
+          // Map profile results to CustomerData format
+          results = profileResults.map(profile => ({
+            id: profile.id,
+            nome: profile.nome || 'Usuário',
+            telefone: profile.telefone,
+            email: profile.email,
+            cpf: profile.cpf
+          }));
+        }
+        
+        console.log('Combined search results:', results);
         
         setSearchResults(results || []);
         setShowSearchResults(true);
