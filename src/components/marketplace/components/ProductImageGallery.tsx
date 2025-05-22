@@ -46,7 +46,7 @@ const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
           } else if (img && typeof img === 'object') {
             // If image is an object, try to extract URL from common fields
             const imgUrl = img.url || img.path || img.src;
-            // Fix: Ensure imgUrl is a string before calling trim()
+            // Fixed: First check if imgUrl exists AND is a string, then call trim()
             if (imgUrl && typeof imgUrl === 'string' && imgUrl.trim() !== '' && !result.includes(imgUrl)) {
               result.push(imgUrl);
             }
