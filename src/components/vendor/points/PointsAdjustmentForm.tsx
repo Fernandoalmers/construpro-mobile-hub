@@ -36,7 +36,7 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
     },
     onSuccess: () => {
       console.log('Points adjustment successful for customer ID:', customerId);
-      // Toast message moved to createPointAdjustment for better error handling
+      toast.success(isPositiveAdjustment ? 'Pontos adicionados com sucesso!' : 'Pontos removidos com sucesso!');
       setPontos('');
       setMotivo('');
 
@@ -54,7 +54,7 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
         queryKey: ['pointsHistory']
       });
       
-      // Force a refetch of the customer's points and adjustments with a short delay
+      // Force a refetch of the customer's points and adjustments
       setTimeout(() => {
         queryClient.refetchQueries({
           queryKey: ['customerPoints', customerId]
@@ -70,7 +70,7 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
     },
     onError: (error: Error) => {
       console.error('Error in points adjustment mutation:', error);
-      // Toast message moved to createPointAdjustment for better error handling
+      toast.error(`Erro ao ajustar pontos: ${error.message}`);
     }
   });
 

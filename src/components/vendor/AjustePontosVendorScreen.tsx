@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -12,7 +12,6 @@ import PointsAdjustmentForm from './points/PointsAdjustmentForm';
 import PointsAdjustmentHistory from './points/PointsAdjustmentHistory';
 import EmptyCustomerState from './points/EmptyCustomerState';
 import { usePointsAdjustment } from './points/usePointsAdjustment';
-import { deployPointsRpcFunctions } from '@/services/vendor/points/deployRpcFunctions';
 
 const AjustePontosVendorScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -30,17 +29,8 @@ const AjustePontosVendorScreen: React.FC = () => {
     handleAdjustmentSuccess
   } = usePointsAdjustment();
 
-  // Deploy RPC functions when component mounts
-  useEffect(() => {
-    const setupRpcFunctions = async () => {
-      await deployPointsRpcFunctions();
-    };
-    
-    setupRpcFunctions().catch(console.error);
-  }, []);
-
   // Display a toast message once when the component mounts
-  useEffect(() => {
+  React.useEffect(() => {
     // Add a small delay to ensure the toast shows after UI renders
     const timer = setTimeout(() => {
       toast.info(
