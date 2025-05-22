@@ -41,7 +41,7 @@ export const getProductSegments = async (): Promise<ProductSegment[]> => {
       console.log('[ProductSegmentsService] RPC returned data:', data);
       
       // Check if data might be missing required fields (image_url or status)
-      if (!('image_url' in data[0]) || !('status' in data[0])) {
+      if (!data[0].hasOwnProperty('image_url') || !data[0].hasOwnProperty('status')) {
         // We need to fetch the complete records from the table
         const segmentIds = data.map(s => s.id);
         
@@ -57,10 +57,12 @@ export const getProductSegments = async (): Promise<ProductSegment[]> => {
           console.error('[ProductSegmentsService] Error fetching complete segment data:', completeError);
           
           // If we can't get complete data, provide default values for missing fields
+          // Use explicit type assertion to make TypeScript happy
           return data.map(item => ({
-            ...item,
-            image_url: item.image_url || null,
-            status: item.status || 'ativo' // Default status
+            id: item.id,
+            nome: item.nome,
+            image_url: null,
+            status: 'ativo' // Default status
           }));
         }
         
@@ -72,7 +74,13 @@ export const getProductSegments = async (): Promise<ProductSegment[]> => {
     // If we get here, we assume the data has all required fields
     if (data) {
       console.log('[ProductSegmentsService] Returning segments data directly from RPC');
-      return data;
+      // Ensure all data has the required fields with proper types
+      return data.map(item => ({
+        id: item.id,
+        nome: item.nome,
+        image_url: item.image_url || null,
+        status: item.status || 'ativo'
+      }));
     }
     
     console.log('[ProductSegmentsService] No segments data returned');
