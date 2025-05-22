@@ -55,6 +55,9 @@ export const createPointAdjustment = async (
     // Store the vendor ID in localStorage for filtering in the UI and future operations
     localStorage.setItem('vendor_profile_id', vendorProfile.id);
     
+    // IMPROVED: Log exactly what ID we're using before the profile lookup
+    console.log('Looking up customer profile with EXACT user ID:', userId);
+    
     // Get customer profile data - using maybeSingle instead of single to prevent errors
     const { data: customerProfile, error: profileError } = await supabase
       .from('profiles')
@@ -68,9 +71,37 @@ export const createPointAdjustment = async (
       return false;
     }
     
+    // IMPROVED: More detailed logging about the profile lookup results
+    console.log('Customer profile lookup result:', customerProfile ? 'Found' : 'Not found');
+    
     if (!customerProfile) {
+      // IMPROVED: Do another lookup to check if this ID exists in a different format or table
       console.error('Customer profile not found for ID:', userId);
-      toast.error('Perfil de cliente não encontrado');
+      
+      // Try a debug query to see if this ID exists in relacionamento cliente_vendedor
+      const { data: debugClienteVendedor } = await supabase
+        .from('clientes_vendedor')
+        .select('id, usuario_id')
+        .eq('id', userId)
+        .maybeSingle();
+        
+      if (debugClienteVendedor) {
+        console.error('CRITICAL ERROR: The ID provided matches a cliente_vendedor relation ID, not a user ID!');
+        console.error('Found relation:', debugClienteVendedor);
+        console.error('Should be using usuario_id:', debugClienteVendedor.usuario_id);
+        toast.error('Erro: ID de relacionamento sendo usado no lugar de ID de usuário');
+      } else {
+        // Try a more general search to see if the user exists at all
+        const { data: anyUserMatches } = await supabase
+          .from('profiles')
+          .select('id')
+          .limit(5);
+          
+        console.error('Could not find user with ID:', userId);
+        console.error('Sample of existing users:', anyUserMatches);
+        toast.error('Perfil de cliente não encontrado. Verifique o ID do usuário.');
+      }
+      
       return false;
     }
     

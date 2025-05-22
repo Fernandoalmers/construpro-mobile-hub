@@ -125,6 +125,19 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
 
   const handleSelectCustomer = (customer: CustomerData) => {
     console.log('Selected customer:', customer);
+    console.log('DEBUG - Important IDs:', {
+      relation_id: customer.id,
+      usuario_id: customer.usuario_id,
+      vendedor_id: customer.vendedor_id
+    });
+    
+    // Make sure we're passing the usuario_id, not the relation id
+    if (!customer.usuario_id) {
+      console.error('WARNING: Selected customer has no usuario_id!', customer);
+      toast.error('Erro: Cliente sem ID de usuário válido');
+      return;
+    }
+    
     onSelectCustomer(customer);
     setSearchTerm('');
     setSearchResults([]);

@@ -89,6 +89,11 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
     }
 
     console.log('Submitting form with customer ID:', customerId);
+    console.log('DEBUG - Customer ID details:', { 
+      id: customerId, 
+      length: customerId.length,
+      isUUID: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(customerId)
+    });
     
     const pontosValue = parseInt(pontos);
     if (isNaN(pontosValue) || pontosValue <= 0) {
