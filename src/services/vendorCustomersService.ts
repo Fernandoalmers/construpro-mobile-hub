@@ -9,6 +9,7 @@ export interface VendorCustomer {
   nome: string;
   telefone?: string;
   email?: string;
+  cpf?: string; // Add cpf property
   ultimo_pedido?: string;
   total_gasto: number;
   created_at?: string;
@@ -121,6 +122,7 @@ export const searchCustomers = async (searchTerm: string): Promise<VendorCustome
         nome: profile.nome || 'Usuário',
         email: profile.email,
         telefone: profile.telefone,
+        cpf: profile.cpf, // Include cpf
         total_gasto: 0
       }));
     }
@@ -169,7 +171,7 @@ export const searchCustomers = async (searchTerm: string): Promise<VendorCustome
       email: profile.email,
       telefone: profile.telefone,
       total_gasto: 0,
-      cpf: profile.cpf // Add CPF for display purposes
+      cpf: profile.cpf // Include cpf
     }));
   } catch (error) {
     console.error('Error in searchCustomers:', error);

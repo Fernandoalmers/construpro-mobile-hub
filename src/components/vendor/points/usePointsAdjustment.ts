@@ -30,7 +30,7 @@ export const usePointsAdjustment = () => {
             nome: customer.nome || 'Usuário',
             telefone: customer.telefone,
             email: customer.email,
-            cpf: customer.cpf,
+            cpf: customer.cpf, // This should now be valid with the updated interface
             usuario_id: customer.usuario_id,
             vendedor_id: customer.vendedor_id,
             total_gasto: customer.total_gasto || 0

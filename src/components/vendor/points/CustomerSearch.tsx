@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Search, X, Check, Loader2, User } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
@@ -60,7 +61,7 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
             nome: profile.nome || 'Usuário',
             telefone: profile.telefone,
             email: profile.email,
-            cpf: profile.cpf,
+            cpf: profile.cpf, // This should now be valid with the updated interface
             vendedor_id: '', // Empty string for now
             total_gasto: 0 // Default to 0
           }));
