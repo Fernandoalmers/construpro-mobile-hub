@@ -1641,6 +1641,16 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      create_point_adjustment: {
+        Args: {
+          p_vendedor_id: string
+          p_usuario_id: string
+          p_tipo: string
+          p_valor: number
+          p_motivo: string
+        }
+        Returns: Json
+      }
       execute_custom_sql: {
         Args: { sql_statement: string }
         Returns: Json
@@ -1648,6 +1658,18 @@ export type Database = {
       get_order_by_id: {
         Args: { order_id: string }
         Returns: Json
+      }
+      get_point_adjustments_for_vendor: {
+        Args: { p_usuario_id: string; p_vendedor_id: string }
+        Returns: {
+          created_at: string | null
+          id: string
+          motivo: string
+          tipo: string
+          usuario_id: string
+          valor: number
+          vendedor_id: string
+        }[]
       }
       get_product_segments: {
         Args: Record<PropertyKey, never>

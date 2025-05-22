@@ -107,8 +107,9 @@ export const createPointAdjustment = async (
     }
 
     // Use RPC function to bypass RLS policy issues
+    // Fix: Use a type assertion to handle the RPC function name type
     const { data: insertedData, error: insertError } = await supabase.rpc(
-      'create_point_adjustment',
+      'create_point_adjustment' as any,
       {
         p_vendedor_id: vendorProfile.id,
         p_usuario_id: userId,
