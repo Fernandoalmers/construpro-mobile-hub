@@ -114,3 +114,56 @@ export const getVendorProduct = async (id: string): Promise<VendorProduct | null
     return null;
   }
 };
+
+/**
+ * Fetch product details by ID
+ * This function is used by other modules like ordersFetcher
+ */
+export const fetchProductDetails = async (productId: string): Promise<any> => {
+  try {
+    console.log('[productFetcher] Fetching product details for:', productId);
+    
+    if (!productId) {
+      console.error('[productFetcher] No product ID provided to fetchProductDetails');
+      return null;
+    }
+    
+    // Fetch the product
+    const { data, error } = await supabase
+      .from('produtos')
+      .select('id, nome, preco_normal, imagens, descricao, categoria, vendedor_id')
+      .eq('id', productId)
+      .single();
+    
+    if (error) {
+      console.error('[productFetcher] Error fetching product details:', error);
+      return null;
+    }
+    
+    if (!data) {
+      console.error('[productFetcher] No product details found with ID:', productId);
+      return null;
+    }
+    
+    // Extract image URL
+    let imageUrl = null;
+    if (data.imagens && Array.isArray(data.imagens) && data.imagens.length > 0) {
+      imageUrl = typeof data.imagens[0] === 'string' ? data.imagens[0] : null;
+    }
+    
+    // Return formatted product details
+    return {
+      id: data.id,
+      nome: data.nome,
+      preco: data.preco_normal,
+      imagem_url: imageUrl,
+      descricao: data.descricao,
+      categoria: data.categoria,
+      vendedor_id: data.vendedor_id
+    };
+    
+  } catch (error) {
+    console.error('[productFetcher] Error in fetchProductDetails:', error);
+    return null;
+  }
+};
