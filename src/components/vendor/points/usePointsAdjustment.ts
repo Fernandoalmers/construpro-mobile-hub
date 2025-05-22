@@ -52,10 +52,7 @@ export const usePointsAdjustment = () => {
     },
     enabled: !!selectedCustomerId,
     staleTime: 10000, // 10 seconds
-    retry: 2,
-    onError: (error) => {
-      console.error('Error fetching customer points:', error);
-    }
+    retry: 2
   });
 
   // Get point adjustments history for the selected customer
@@ -74,10 +71,7 @@ export const usePointsAdjustment = () => {
     },
     enabled: !!selectedCustomerId,
     staleTime: 10000, // 10 seconds
-    retry: 2,
-    onError: (error) => {
-      console.error('Error fetching point adjustments:', error);
-    }
+    retry: 2
   });
 
   // Handle manual refresh of data

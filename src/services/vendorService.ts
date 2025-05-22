@@ -22,7 +22,7 @@ import {
   getPointAdjustments,
   createPointAdjustment,
   PointAdjustment
-} from './vendorPointsService';
+} from './vendor/points';
 
 // Import and re-export from our new modular product services
 import {
