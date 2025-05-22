@@ -6,12 +6,27 @@ import { getCustomerPoints, searchCustomers } from '@/services/vendorService';
 import { getPointAdjustments } from '@/services/vendor/points/adjustmentsFetcher';
 import { CustomerData } from './CustomerSearch';
 import { toast } from '@/components/ui/sonner';
+import { ensureVendorProfileRole } from '@/services/vendorProfileService';
 
 export const usePointsAdjustment = () => {
   const location = useLocation();
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('form');
   const [searchResults, setSearchResults] = useState<CustomerData[]>([]);
+
+  // Check vendor role on component mount
+  useEffect(() => {
+    const verifyVendorRole = async () => {
+      try {
+        await ensureVendorProfileRole();
+      } catch (error) {
+        console.error('Error verifying vendor role:', error);
+        toast.error('Erro ao verificar perfil de vendedor');
+      }
+    };
+    
+    verifyVendorRole();
+  }, []);
 
   // Check for clientId in URL
   useEffect(() => {
@@ -30,7 +45,7 @@ export const usePointsAdjustment = () => {
             nome: customer.nome || 'Usuário',
             telefone: customer.telefone,
             email: customer.email,
-            cpf: customer.cpf, // This should now be valid with the updated interface
+            cpf: customer.cpf,
             usuario_id: customer.usuario_id,
             vendedor_id: customer.vendedor_id,
             total_gasto: customer.total_gasto || 0
