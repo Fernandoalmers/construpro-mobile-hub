@@ -45,6 +45,12 @@ const ProdutoEditScreen: React.FC = () => {
           segmento: productData.segmento || '',  // Ensure segmento exists even if null/undefined
           categoria: productData.categoria || '', // Ensure categoria exists even if null/undefined
           segmento_id: productData.segmento_id || null, // Preserve segment ID if available
+          preco_normal: productData.preco_normal || 0,
+          preco_promocional: productData.preco_promocional || null,
+          pontos_consumidor: productData.pontos_consumidor || 0,
+          pontos_profissional: productData.pontos_profissional || 0,
+          estoque: productData.estoque || 0,
+          imagens: Array.isArray(productData.imagens) ? productData.imagens : []
         };
         
         console.log("[ProdutoEditScreen] Enhanced product data:", enhancedProductData);

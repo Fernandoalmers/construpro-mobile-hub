@@ -101,13 +101,15 @@ export const getVendorProduct = async (id: string): Promise<VendorProduct | null
       return null;
     }
     
+    // Log product data for debugging
+    console.log('[VendorProducts] getVendorProduct:', data);
+    
     // Verify this product belongs to the current vendor
     if (data.vendedor_id !== vendor.id) {
       console.warn('[productFetcher] Product does not belong to current vendor');
       // Still returning the product, but with a warning (you could return null to enforce access control)
     }
     
-    console.log('[productFetcher] Product data:', data);
     return data as VendorProduct;
   } catch (error) {
     console.error('[productFetcher] Error in getVendorProduct:', error);

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ShoppingBag, Plus } from 'lucide-react';
@@ -163,6 +162,11 @@ const ProductManagementScreen: React.FC = () => {
     navigate('/vendor/products/new');
   };
   
+  const handleEdit = (id: string) => {
+    console.log(`Redirecting to edit product with ID: ${id}`);
+    navigate(`/vendor/products/edit/${id}`);
+  };
+  
   if (error) {
     toast.error('Erro ao carregar produtos');
     console.error('Error fetching products:', error);
@@ -224,7 +228,7 @@ const ProductManagementScreen: React.FC = () => {
             products={filteredProducts}
             onToggleStatus={handleToggleStatus}
             onDelete={handleDelete}
-            onEdit={(id) => navigate(`/vendor/products/edit/${id}`)}
+            onEdit={handleEdit}
             onClearFilters={handleClearFilters}
           />
         )}
