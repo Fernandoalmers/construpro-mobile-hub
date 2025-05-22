@@ -37,6 +37,9 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
       queryClient.invalidateQueries({ queryKey: ['customerPoints', customerId] });
       queryClient.invalidateQueries({ queryKey: ['pointAdjustments', customerId] });
       
+      // Also invalidate user's points transactions data
+      queryClient.invalidateQueries({ queryKey: ['pointsHistory'] });
+      
       // Notify parent component
       onSuccess();
     },

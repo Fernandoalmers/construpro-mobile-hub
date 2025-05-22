@@ -184,7 +184,9 @@ export const createPointAdjustment = async (
     const adjustmentValue = tipo === 'remocao' ? -Math.abs(valor) : Math.abs(valor);
     
     // Insert the points adjustment record
-    // The database trigger we created will handle updating the user's points
+    // The database triggers we created will handle:
+    // 1. Updating the user's points balance via update_points_on_adjustment trigger
+    // 2. Creating a transaction record via register_transaction_after_adjustment trigger
     const { error: insertError } = await supabase
       .from('pontos_ajustados')
       .insert({
