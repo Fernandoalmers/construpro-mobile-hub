@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { VendorCustomer } from '@/services/vendorCustomersService';
 
 /**
  * Ensures the customer exists in clientes_vendedor table
@@ -59,7 +60,7 @@ export const ensureCustomerExists = async (
 /**
  * Searches for customers in the profiles table
  */
-export const searchCustomerProfiles = async (searchTerm: string): Promise<any[]> => {
+export const searchCustomerProfiles = async (searchTerm: string): Promise<VendorCustomer[]> => {
   try {
     console.log('Searching customer profiles with term:', searchTerm);
     // Search in profiles table for any user matching search criteria
@@ -75,7 +76,20 @@ export const searchCustomerProfiles = async (searchTerm: string): Promise<any[]>
     }
     
     console.log(`Found ${data?.length || 0} customer profiles`);
-    return data || [];
+    
+    // Map the profile data to match VendorCustomer interface
+    const customers: VendorCustomer[] = (data || []).map(profile => ({
+      id: profile.id,
+      usuario_id: profile.id,
+      vendedor_id: '', // Empty string since we don't know the vendor ID
+      nome: profile.nome || 'Usuário',
+      email: profile.email,
+      telefone: profile.telefone,
+      total_gasto: 0, // Default to 0
+      cpf: profile.cpf
+    }));
+    
+    return customers;
   } catch (error) {
     console.error('Error in searchCustomerProfiles:', error);
     return [];

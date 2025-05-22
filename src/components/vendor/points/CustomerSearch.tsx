@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Search, X, Check, Loader2, User } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
@@ -7,6 +6,7 @@ import Avatar from '../../common/Avatar';
 import CustomInput from '../../common/CustomInput';
 import { searchCustomers } from '@/services/vendorCustomersService';
 import { searchCustomerProfiles } from '@/services/vendor/points/customerManager';
+import { VendorCustomer } from '@/services/vendorCustomersService';
 
 export interface CustomerData {
   id: string;
@@ -14,6 +14,9 @@ export interface CustomerData {
   telefone?: string;
   email?: string;
   cpf?: string;
+  usuario_id: string;
+  vendedor_id: string;
+  total_gasto: number;
 }
 
 interface CustomerSearchProps {
@@ -50,13 +53,16 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
           console.log('No vendor customers found, searching all profiles');
           const profileResults = await searchCustomerProfiles(searchTerm);
           
-          // Map profile results to CustomerData format
+          // Map profile results to VendorCustomer format
           results = profileResults.map(profile => ({
             id: profile.id,
+            usuario_id: profile.id, // Use profile id as usuario_id
             nome: profile.nome || 'Usuário',
             telefone: profile.telefone,
             email: profile.email,
-            cpf: profile.cpf
+            cpf: profile.cpf,
+            vendedor_id: '', // Empty string for now
+            total_gasto: 0 // Default to 0
           }));
         }
         

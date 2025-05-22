@@ -2,7 +2,8 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
-import { getCustomerPoints, searchCustomers, getPointAdjustments } from '@/services/vendorService';
+import { getCustomerPoints, searchCustomers } from '@/services/vendorService';
+import { getPointAdjustments } from '@/services/vendor/points/adjustmentsFetcher';
 import { CustomerData } from './CustomerSearch';
 import { toast } from '@/components/ui/sonner';
 
@@ -23,7 +24,18 @@ export const usePointsAdjustment = () => {
       searchCustomers(clienteId).then(results => {
         console.log('Search results for client ID:', results);
         if (results && results.length > 0) {
-          setSearchResults(results);
+          // Map to ensure it matches CustomerData interface
+          const customerData: CustomerData[] = results.map(customer => ({
+            id: customer.id,
+            nome: customer.nome || 'Usuário',
+            telefone: customer.telefone,
+            email: customer.email,
+            cpf: customer.cpf,
+            usuario_id: customer.usuario_id,
+            vendedor_id: customer.vendedor_id,
+            total_gasto: customer.total_gasto || 0
+          }));
+          setSearchResults(customerData);
           toast.success('Cliente selecionado com sucesso');
         } else {
           toast.error('Cliente não encontrado');
