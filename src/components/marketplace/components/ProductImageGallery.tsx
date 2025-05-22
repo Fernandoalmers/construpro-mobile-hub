@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 
 interface ProductImageGalleryProps {
   mainImage: string;
-  images?: string[] | Array<{url?: string, path?: string, src?: string}>;
+  images?: string | string[] | Array<{url?: string, path?: string, src?: string}>;
   productName: string;
   hasDiscount: boolean;
   discountPercentage?: number;
