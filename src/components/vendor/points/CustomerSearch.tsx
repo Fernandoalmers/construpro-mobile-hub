@@ -5,7 +5,7 @@ import { toast } from '@/components/ui/sonner';
 import { Button } from '@/components/ui/button';
 import Avatar from '../../common/Avatar';
 import CustomInput from '../../common/CustomInput';
-import { searchCustomers } from '@/services/vendorCustomersService';
+import { searchCustomers } from '@/services/vendor/customers';
 import { searchCustomerProfiles } from '@/services/vendor/points/customerManager';
 
 export interface CustomerData {

@@ -17,7 +17,7 @@ import {
   migrateCustomersFromPointAdjustments,
   migrateCustomersFromOrders,
   VendorCustomer 
-} from './vendorCustomersService';
+} from './vendor/customers';
 import { 
   getPointAdjustments,
   createPointAdjustment,

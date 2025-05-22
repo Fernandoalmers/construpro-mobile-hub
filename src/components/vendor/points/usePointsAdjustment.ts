@@ -1,7 +1,8 @@
+
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
-import { getCustomerPoints, searchCustomers } from '@/services/vendorService';
+import { getCustomerPoints, searchCustomers } from '@/services/vendor/customers';
 import { getPointAdjustments } from '@/services/vendor/points/adjustmentsFetcher';
 import { CustomerData } from './CustomerSearch';
 import { toast } from '@/components/ui/sonner';
