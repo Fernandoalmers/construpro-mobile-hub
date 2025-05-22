@@ -13,27 +13,41 @@ export const getPointAdjustments = async (userId: string): Promise<PointAdjustme
     // Optional: If we have a stored vendor ID, use it to filter the results
     const vendorId = localStorage.getItem('vendor_profile_id');
     
-    let query = supabase
-      .from('pontos_ajustados')
-      .select('*')
-      .eq('usuario_id', userId)
-      .order('created_at', { ascending: false });
-      
-    // If we have a vendor ID, filter by it as well
+    // Use RPC function to bypass RLS if needed
     if (vendorId) {
-      query = query.eq('vendedor_id', vendorId);
-    }
+      const { data, error } = await supabase.rpc(
+        'get_point_adjustments_for_vendor',
+        { 
+          p_usuario_id: userId,
+          p_vendedor_id: vendorId
+        }
+      );
       
-    const { data, error } = await query;
-    
-    if (error) {
-      console.error('Error fetching point adjustments:', error);
-      toast.error('Erro ao carregar histórico de ajustes');
-      return [];
+      if (error) {
+        console.error('Error fetching point adjustments via RPC:', error);
+        toast.error('Erro ao carregar histórico de ajustes');
+        return [];
+      }
+      
+      console.log(`Found ${data?.length || 0} point adjustments for user:`, userId);
+      return data || [];
+    } else {
+      // Fallback to direct query if no vendor ID
+      let { data, error } = await supabase
+        .from('pontos_ajustados')
+        .select('*')
+        .eq('usuario_id', userId)
+        .order('created_at', { ascending: false });
+        
+      if (error) {
+        console.error('Error fetching point adjustments:', error);
+        toast.error('Erro ao carregar histórico de ajustes');
+        return [];
+      }
+      
+      console.log(`Found ${data?.length || 0} point adjustments for user:`, userId);
+      return data || [];
     }
-    
-    console.log(`Found ${data?.length || 0} point adjustments for user:`, userId);
-    return data || [];
   } catch (error) {
     console.error('Error in getPointAdjustments:', error);
     toast.error('Erro ao buscar histórico de ajustes de pontos');
