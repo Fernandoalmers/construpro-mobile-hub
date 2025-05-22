@@ -58,7 +58,7 @@ export const usePointsAdjustment = () => {
           if (customerData[0]?.usuario_id) {
             setSelectedCustomerId(customerData[0].usuario_id);
             setRelationId(customerData[0].id);
-            toast.success('Cliente selecionado com sucesso');
+            toast.success(`Cliente ${customerData[0].nome} selecionado com sucesso`);
           } else {
             toast.error('Cliente não encontrado ou sem ID de usuário');
           }
@@ -110,7 +110,9 @@ export const usePointsAdjustment = () => {
       console.log('Fetching adjustments for customer ID:', selectedCustomerId);
       if (!selectedCustomerId) return [];
       try {
-        return await getPointAdjustments(selectedCustomerId);
+        const result = await getPointAdjustments(selectedCustomerId);
+        console.log(`Found ${result.length} adjustments for customer:`, selectedCustomerId);
+        return result;
       } catch (error) {
         console.error('Error fetching point adjustments:', error);
         toast.error('Erro ao buscar histórico de ajustes');
@@ -126,9 +128,17 @@ export const usePointsAdjustment = () => {
   const handleRefreshData = () => {
     if (selectedCustomerId) {
       console.log('Manually refreshing data for customer:', selectedCustomerId);
-      refetchPoints();
-      refetchAdjustments();
-      toast.success('Dados atualizados');
+      toast.loading('Atualizando dados...');
+      
+      Promise.all([refetchPoints(), refetchAdjustments()])
+        .then(() => {
+          toast.success('Dados atualizados com sucesso');
+          console.log('Data refreshed successfully');
+        })
+        .catch((error) => {
+          console.error('Error refreshing data:', error);
+          toast.error('Erro ao atualizar dados');
+        });
     }
   };
 
@@ -158,6 +168,7 @@ export const usePointsAdjustment = () => {
       refetchPoints();
       refetchAdjustments();
       setActiveTab('history');
+      toast.success('Ajuste de pontos registrado com sucesso');
     }, 500);
   };
 

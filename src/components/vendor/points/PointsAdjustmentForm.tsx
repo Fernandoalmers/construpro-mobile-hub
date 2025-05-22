@@ -108,6 +108,12 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
     }
 
     try {
+      toast.loading(
+        isPositiveAdjustment 
+          ? 'Adicionando pontos...' 
+          : 'Removendo pontos...'
+      );
+      
       await createAdjustmentMutation.mutateAsync({
         userId: customerId,
         tipo: isPositiveAdjustment ? 'adicao' : 'remocao',

@@ -7,7 +7,6 @@ import Avatar from '../../common/Avatar';
 import CustomInput from '../../common/CustomInput';
 import { searchCustomers } from '@/services/vendorCustomersService';
 import { searchCustomerProfiles } from '@/services/vendor/points/customerManager';
-import { VendorCustomer } from '@/services/vendorCustomersService';
 
 export interface CustomerData {
   id: string;
@@ -30,6 +29,24 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
   const [searchResults, setSearchResults] = useState<CustomerData[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [noResultsFound, setNoResultsFound] = useState(false);
+
+  // Format CPF with dots and dash
+  const formatCPF = (cpf: string | undefined) => {
+    if (!cpf || cpf.length !== 11) return cpf;
+    return `${cpf.slice(0, 3)}.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-${cpf.slice(9)}`;
+  };
+
+  // Format phone number with Brazilian style
+  const formatPhone = (phone: string | undefined) => {
+    if (!phone) return phone;
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length === 11) {
+      return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+    } else if (digits.length === 10) {
+      return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+    }
+    return phone;
+  };
 
   // Handle search for customers with debounce
   useEffect(() => {
@@ -61,7 +78,7 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
             nome: profile.nome || 'Usuário',
             telefone: profile.telefone,
             email: profile.email,
-            cpf: profile.cpf, // This should now be valid with the updated interface
+            cpf: profile.cpf,
             vendedor_id: '', // Empty string for now
             total_gasto: 0 // Default to 0
           }));
@@ -213,11 +230,22 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
                     className="mr-3 flex-shrink-0"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-sm text-gray-900 truncate">{customer.nome || 'Usuário'}</p>
+                    <p className="font-medium text-sm text-gray-900 truncate">
+                      {customer.nome || 'Usuário'}
+                      {customer.vendedor_id ? (
+                        <span className="ml-2 text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full">
+                          Cliente frequente
+                        </span>
+                      ) : (
+                        <span className="ml-2 text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full">
+                          Novo cliente
+                        </span>
+                      )}
+                    </p>
                     <div className="text-xs text-gray-500 flex flex-wrap gap-x-2">
-                      {customer.cpf && <span className="truncate">CPF: {customer.cpf}</span>}
+                      {customer.cpf && <span className="truncate">CPF: {formatCPF(customer.cpf)}</span>}
                       {customer.email && <span className="truncate">{customer.email}</span>}
-                      {customer.telefone && <span className="truncate">{customer.telefone}</span>}
+                      {customer.telefone && <span className="truncate">{formatPhone(customer.telefone)}</span>}
                     </div>
                   </div>
                   <Button size="sm" variant="ghost" className="ml-2 flex-shrink-0">
