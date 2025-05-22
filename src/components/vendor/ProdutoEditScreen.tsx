@@ -6,6 +6,7 @@ import ProductFormScreen from './ProductFormScreen';
 import { getVendorProduct } from '@/services/vendorProductsService';
 import LoadingState from '../common/LoadingState';
 import { ArrowLeft } from 'lucide-react';
+import { Collapsible } from '@/components/ui/collapsible';
 
 const ProdutoEditScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -113,7 +114,7 @@ const ProdutoEditScreen: React.FC = () => {
     );
   }
   
-  return <ProductFormScreen isEditing productId={id} initialData={product} />;
+  return <ProductFormScreen isEditing={true} productId={id} initialData={product} />;
 };
 
 export default ProdutoEditScreen;

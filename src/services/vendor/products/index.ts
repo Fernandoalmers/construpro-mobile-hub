@@ -1,28 +1,24 @@
 
-// Re-export types
-export type { VendorProduct, VendorProductInput } from './types';
-export type { ProductImage } from './productImages';
-
-// Re-export product operations
-export {
+export { 
   getVendorProducts,
   getVendorProduct,
   saveVendorProduct,
   deleteVendorProduct,
-  updateProductStatus
-} from './productOperations';
+  updateProductStatus,
+  fetchProductDetails
+} from './productFetcher';
 
-// Re-export realtime functionality
-export {
-  subscribeToVendorProducts,
-  subscribeToAllProducts
-} from './productRealtime';
-
-// Re-export image functionality
-export {
+export { 
   uploadProductImage,
   updateProductImages,
   getProductImages,
   updateProductImage,
   deleteProductImage
 } from './productImages';
+
+export { 
+  subscribeToVendorProducts,
+  subscribeToAllProducts
+} from './productRealtime';
+
+export * from './types';

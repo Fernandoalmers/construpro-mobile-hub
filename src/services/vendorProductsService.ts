@@ -3,9 +3,6 @@
 import {
   getVendorProducts,
   getVendorProduct,
-  saveVendorProduct,
-  deleteVendorProduct,
-  updateProductStatus,
   uploadProductImage,
   updateProductImages,
   getProductImages,
@@ -14,6 +11,13 @@ import {
   subscribeToVendorProducts,
   subscribeToAllProducts
 } from './vendor/products';
+
+// Import these from the operations file
+import {
+  saveVendorProduct,
+  deleteVendorProduct,
+  updateProductStatus
+} from './vendor/products/productOperations';
 
 // Import types separately to use 'export type'
 import type { VendorProduct, VendorProductInput } from './vendor/products/types';

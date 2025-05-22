@@ -1,222 +1,135 @@
+
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/sonner';
-import { getVendorProfile } from '@/services/vendorProfileService';
 import { VendorProduct, VendorProductInput } from './types';
 
-// Vendor Products Fetching with improved logging
-export const getVendorProducts = async (): Promise<VendorProduct[]> => {
+/**
+ * Save a vendor product (create new or update existing)
+ */
+export const saveVendorProduct = async (productData: VendorProductInput): Promise<VendorProduct | null> => {
   try {
-    console.log('[VendorProducts] Getting vendor profile');
-    // Get vendor id
-    const vendorProfile = await getVendorProfile();
-    if (!vendorProfile) {
-      console.error('[VendorProducts] Vendor profile not found');
-      toast.error('Perfil de vendedor não encontrado');
-      return [];
+    console.log('[productOperations] Saving product data:', productData);
+    
+    // Get the current authenticated user
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      console.error('[productOperations] No authenticated user found');
+      return null;
     }
     
-    console.log('[VendorProducts] Fetching products for vendor:', vendorProfile.id);
-    const { data, error } = await supabase
-      .from('produtos')
-      .select('*')
-      .eq('vendedor_id', vendorProfile.id)
-      .order('created_at', { ascending: false });
-    
-    if (error) {
-      console.error('[VendorProducts] Error fetching vendor products:', error);
-      toast.error('Erro ao buscar produtos');
-      return [];
-    }
-    
-    console.log('[VendorProducts] fetched:', data?.length || 0, 'products');
-    
-    // Ensure we parse imagens correctly if it's a JSON string
-    const processedData = data?.map(product => {
-      let images = product.imagens;
-      
-      if (typeof images === 'string') {
-        try {
-          images = JSON.parse(images);
-        } catch (e) {
-          console.error('[VendorProducts] Error parsing imagens:', e);
-          images = [];
-        }
-      }
-      
-      return {
-        ...product,
-        imagens: images
-      };
-    }) || [];
-    
-    return processedData as VendorProduct[];
-  } catch (error) {
-    console.error('[VendorProducts] Error in getVendorProducts:', error);
-    return [];
-  }
-};
-
-export const getVendorProduct = async (id: string): Promise<VendorProduct | null> => {
-  try {
-    const { data, error } = await supabase
-      .from('produtos')
-      .select('*')
-      .eq('id', id)
+    // Get the vendor profile
+    const { data: vendor, error: vendorError } = await supabase
+      .from('vendedores')
+      .select('id')
+      .eq('usuario_id', user.id)
       .single();
     
-    if (error) {
-      console.error('Error fetching product:', error);
+    if (vendorError || !vendor) {
+      console.error('[productOperations] Error getting vendor ID:', vendorError);
       return null;
     }
     
-    console.log('[VendorProducts] getVendorProduct:', data);
-    return data as VendorProduct;
-  } catch (error) {
-    console.error('Error in getVendorProduct:', error);
-    return null;
-  }
-};
-
-export const saveVendorProduct = async (product: VendorProductInput): Promise<VendorProduct | null> => {
-  try {
-    // Get vendor profile
-    const vendorProfile = await getVendorProfile();
-    if (!vendorProfile) {
-      toast.error('Perfil de vendedor não encontrado');
-      return null;
-    }
+    const isUpdate = !!productData.id;
+    console.log(`[productOperations] ${isUpdate ? 'Updating' : 'Creating'} product for vendor ID:`, vendor.id);
     
-    // Set vendor_id
-    const vendorProduct = {
-      ...product,
-      vendedor_id: vendorProfile.id
+    // Prepare data for insert/update
+    const dbData = {
+      ...productData,
+      vendedor_id: vendor.id,
+      // When updating, set status to 'pendente' to require re-approval
+      status: isUpdate ? 'pendente' as const : 'pendente' as const,
+      updated_at: new Date().toISOString()
     };
     
-    console.log('[VendorProducts] saving product:', vendorProduct);
-    
-    let result;
-    
-    if (product.id) {
-      // Verify ownership before update
-      const { data: existingProduct, error: fetchError } = await supabase
-        .from('produtos')
-        .select('vendedor_id, segmento, categoria')
-        .eq('id', product.id)
-        .single();
-      
-      if (fetchError) {
-        console.error('Error fetching existing product:', fetchError);
-        toast.error('Erro ao verificar produto existente');
-        return null;
-      }
-      
-      if (!existingProduct || existingProduct.vendedor_id !== vendorProfile.id) {
-        toast.error('Você não tem permissão para editar este produto');
-        return null;
-      }
-      
-      // Prepare data for update
-      const dataToUpdate = {
-        ...vendorProduct,
-        // Keep the existing values if not provided in the update
-        segmento: vendorProduct.segmento !== undefined ? vendorProduct.segmento : existingProduct.segmento,
-        categoria: vendorProduct.categoria !== undefined ? vendorProduct.categoria : existingProduct.categoria,
-        // Handle segmento_id with default fallback to null if not provided
-        segmento_id: vendorProduct.segmento_id !== undefined ? vendorProduct.segmento_id : null,
-        status: 'pendente' // Always set to pending when edited
-      };
-      
-      console.log('[VendorProducts] updating product:', product.id, dataToUpdate);
-      
-      // Update existing product
-      const { data, error } = await supabase
-        .from('produtos')
-        .update(dataToUpdate)
-        .eq('id', product.id)
-        .select()
-        .single();
-      
-      console.log('[VendorProducts] update result:', data, error);
-      
-      if (error) throw error;
-      result = data;
-    } else {
-      // Create new product - make sure required fields are provided
-      if (!product.nome || !product.descricao || !product.categoria) {
-        throw new Error('Nome, descrição e categoria são obrigatórios');
-      }
-      
-      const newProduct = {
-        ...vendorProduct,
-        nome: product.nome,
-        descricao: product.descricao,
-        categoria: product.categoria,
-        segmento: product.segmento || null,
-        segmento_id: product.segmento_id || null,
-        preco_normal: product.preco_normal || 0,
-        status: 'pendente' as const
-      };
-      
-      console.log('[VendorProducts] inserting new product:', newProduct);
-      
-      const { data, error } = await supabase
-        .from('produtos')
-        .insert(newProduct)
-        .select()
-        .single();
-      
-      console.log('[VendorProducts] insert result:', data, error);
-      
-      if (error) throw error;
-      result = data;
+    // Remove id when creating a new product
+    if (!isUpdate) {
+      delete dbData.id;
     }
     
-    toast.success(product.id ? 'Produto atualizado e enviado para aprovação' : 'Produto cadastrado com sucesso');
+    // Insert new or update existing product
+    let result;
+    if (isUpdate) {
+      console.log('[productOperations] Updating product with ID:', productData.id);
+      result = await supabase
+        .from('produtos')
+        .update(dbData)
+        .eq('id', productData.id)
+        .select()
+        .single();
+    } else {
+      console.log('[productOperations] Creating new product');
+      result = await supabase
+        .from('produtos')
+        .insert(dbData)
+        .select()
+        .single();
+    }
     
-    return result as VendorProduct;
+    const { data, error } = result;
+    
+    if (error) {
+      console.error('[productOperations] Error saving product:', error);
+      return null;
+    }
+    
+    console.log(`[productOperations] Product ${isUpdate ? 'updated' : 'created'} successfully:`, data);
+    return data as VendorProduct;
+    
   } catch (error) {
-    console.error('Error saving product:', error);
-    toast.error('Erro ao salvar produto');
+    console.error('[productOperations] Error in saveVendorProduct:', error);
     return null;
   }
 };
 
-export const deleteVendorProduct = async (id: string): Promise<boolean> => {
+/**
+ * Delete a vendor product
+ */
+export const deleteVendorProduct = async (productId: string): Promise<boolean> => {
   try {
-    console.log('[VendorProducts] deleting product:', id);
+    console.log('[productOperations] Deleting product with ID:', productId);
     
     const { error } = await supabase
       .from('produtos')
       .delete()
-      .eq('id', id);
+      .eq('id', productId);
     
-    console.log('[VendorProducts] delete result:', error ? error : 'success');
+    if (error) {
+      console.error('[productOperations] Error deleting product:', error);
+      return false;
+    }
     
-    if (error) throw error;
+    console.log('[productOperations] Product deleted successfully');
     return true;
   } catch (error) {
-    console.error('Error deleting product:', error);
-    toast.error('Erro ao excluir produto');
+    console.error('[productOperations] Error in deleteVendorProduct:', error);
     return false;
   }
 };
 
-export const updateProductStatus = async (id: string, status: 'pendente' | 'aprovado' | 'inativo'): Promise<boolean> => {
+/**
+ * Update a product's status
+ */
+export const updateProductStatus = async (
+  productId: string, 
+  status: 'pendente' | 'aprovado' | 'rejeitado'
+): Promise<boolean> => {
   try {
-    console.log('[VendorProducts] updating status:', id, status);
+    console.log(`[productOperations] Updating product ${productId} status to: ${status}`);
     
     const { error } = await supabase
       .from('produtos')
-      .update({ status })
-      .eq('id', id);
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq('id', productId);
     
-    console.log('[VendorProducts] status update result:', error ? error : 'success');
+    if (error) {
+      console.error('[productOperations] Error updating product status:', error);
+      return false;
+    }
     
-    if (error) throw error;
+    console.log('[productOperations] Product status updated successfully');
     return true;
   } catch (error) {
-    console.error('Error updating product status:', error);
-    toast.error('Erro ao atualizar status do produto');
+    console.error('[productOperations] Error in updateProductStatus:', error);
     return false;
   }
 };
