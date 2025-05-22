@@ -36,14 +36,16 @@ export const getProductSegments = async (): Promise<ProductSegment[]> => {
       return fallbackData || [];
     }
     
-    // Handle the case where the RPC function returns only id and nome (without status and image_url)
+    // The current function might only return id and nome fields
     if (data && data.length > 0) {
       console.log('[ProductSegmentsService] RPC returned data:', data);
       
-      // Check if data lacks the required status field
-      if (!('status' in data[0]) || !('image_url' in data[0])) {
-        console.log('[ProductSegmentsService] RPC data missing fields, fetching complete data');
+      // Check if data might be missing required fields (image_url or status)
+      if (!('image_url' in data[0]) || !('status' in data[0])) {
+        // We need to fetch the complete records from the table
         const segmentIds = data.map(s => s.id);
+        
+        console.log('[ProductSegmentsService] RPC missing fields, fetching complete data for IDs:', segmentIds);
         
         const { data: completeData, error: completeError } = await supabase
           .from('product_segments')
@@ -53,11 +55,12 @@ export const getProductSegments = async (): Promise<ProductSegment[]> => {
           
         if (completeError) {
           console.error('[ProductSegmentsService] Error fetching complete segment data:', completeError);
-          // If we can't get complete data, provide default status for each item
+          
+          // If we can't get complete data, provide default values for missing fields
           return data.map(item => ({
             ...item,
-            status: 'ativo', // Default status
-            image_url: null  // Default image_url
+            image_url: item.image_url || null,
+            status: item.status || 'ativo' // Default status
           }));
         }
         
@@ -66,20 +69,10 @@ export const getProductSegments = async (): Promise<ProductSegment[]> => {
       }
     }
     
-    // Ensure any data returned has the required status property
+    // If we get here, we assume the data has all required fields
     if (data) {
-      console.log('[ProductSegmentsService] Returning normalized segments data');
-      // Since TypeScript doesn't know the exact shape of data here,
-      // we need to type-check each item or cast it appropriately
-      return data.map(item => {
-        const segment = item as Partial<ProductSegment>;
-        return {
-          id: segment.id!,
-          nome: segment.nome!,
-          image_url: segment.image_url || null,
-          status: segment.status || 'ativo' // Set default status if missing
-        };
-      });
+      console.log('[ProductSegmentsService] Returning segments data directly from RPC');
+      return data;
     }
     
     console.log('[ProductSegmentsService] No segments data returned');

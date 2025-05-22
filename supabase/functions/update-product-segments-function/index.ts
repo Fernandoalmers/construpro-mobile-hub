@@ -23,15 +23,30 @@ serve(async (req) => {
     // Create a Supabase client with the Admin key
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      }
+    });
 
-    // SQL to update the get_product_segments function
+    // First, drop the existing function
+    const { error: dropError } = await supabase.rpc("admin_query", {
+      query: `DROP FUNCTION IF EXISTS public.get_product_segments();`
+    });
+
+    if (dropError) {
+      throw dropError;
+    }
+
+    // Now create the updated function
     const { error } = await supabase.rpc("admin_query", {
       query: `
         CREATE OR REPLACE FUNCTION public.get_product_segments()
         RETURNS TABLE(id uuid, nome text, image_url text, status text)
         LANGUAGE sql
         SECURITY DEFINER
+        SET search_path = public
         AS $function$
           SELECT id, nome, image_url, status FROM public.product_segments ORDER BY nome;
         $function$;
