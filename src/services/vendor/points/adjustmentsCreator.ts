@@ -216,86 +216,58 @@ export const createPointAdjustment = async (
       // We'll continue anyway but log the warning
     }
     
-    // Start a transaction to ensure data consistency
-    const { error: beginError } = await supabase.rpc('begin_transaction');
-    if (beginError) {
-      console.error('Error beginning transaction:', beginError);
-      toast.error('Erro ao iniciar transação de ajuste de pontos');
+    // Insert the point adjustment record - Remove transaction-related code
+    const { data: insertData, error: insertError } = await supabase
+      .from('pontos_ajustados')
+      .insert({
+        vendedor_id: vendorProfile.id,
+        usuario_id: userId,
+        tipo: tipo,
+        valor: adjustmentValue,
+        motivo: motivo
+      })
+      .select('*')
+      .single();
+    
+    if (insertError) {
+      console.error('Error creating point adjustment:', insertError);
+      toast.error('Erro ao ajustar pontos: ' + insertError.message);
       return false;
     }
     
-    try {
-      // Insert the point adjustment record
-      const { data: insertData, error: insertError } = await supabase
-        .from('pontos_ajustados')
-        .insert({
-          vendedor_id: vendorProfile.id,
-          usuario_id: userId,
-          tipo: tipo,
-          valor: adjustmentValue,
-          motivo: motivo
-        })
-        .select('*')
-        .single();
-      
-      if (insertError) {
-        console.error('Error creating point adjustment:', insertError);
-        toast.error('Erro ao ajustar pontos: ' + insertError.message);
-        await supabase.rpc('rollback_transaction');
-        return false;
-      }
-      
-      console.log('Point adjustment created successfully:', insertData);
-      
-      // Manually update the user's points balance instead of relying on triggers
-      const { error: pointsError } = await supabase.rpc(
-        'update_user_points',
-        { user_id: userId, points_to_add: adjustmentValue }
-      );
-      
-      if (pointsError) {
-        console.error('Error updating user points:', pointsError);
-        toast.error('Erro ao atualizar pontos do usuário: ' + pointsError.message);
-        await supabase.rpc('rollback_transaction');
-        return false;
-      }
-      
-      // Manually create a transaction record instead of relying on triggers
-      const { error: transactionError } = await supabase
-        .from('points_transactions')
-        .insert({
-          user_id: userId,
-          pontos: adjustmentValue,
-          tipo: tipo === 'adicao' ? 'servico' : 'resgate',
-          descricao: 'Ajuste de pontos: ' + motivo,
-          referencia_id: insertData.id
-        });
-        
-      if (transactionError) {
-        console.error('Error creating points transaction:', transactionError);
-        toast.error('Erro ao registrar transação de pontos: ' + transactionError.message);
-        await supabase.rpc('rollback_transaction');
-        return false;
-      }
-      
-      // Commit the transaction
-      const { error: commitError } = await supabase.rpc('commit_transaction');
-      if (commitError) {
-        console.error('Error committing transaction:', commitError);
-        await supabase.rpc('rollback_transaction');
-        toast.error('Erro ao finalizar transação de ajuste de pontos');
-        return false;
-      }
-      
-      toast.success('Ajuste de pontos realizado com sucesso!');
-      return true;
-    } catch (error: any) {
-      // Rollback transaction on any error
-      await supabase.rpc('rollback_transaction');
-      console.error('Error in point adjustment transaction:', error);
-      toast.error(`Erro ao ajustar pontos: ${error?.message || 'Verifique o console para detalhes'}`);
+    console.log('Point adjustment created successfully:', insertData);
+    
+    // Manually update the user's points balance instead of relying on triggers
+    const { error: pointsError } = await supabase.rpc(
+      'update_user_points',
+      { user_id: userId, points_to_add: adjustmentValue }
+    );
+    
+    if (pointsError) {
+      console.error('Error updating user points:', pointsError);
+      toast.error('Erro ao atualizar pontos do usuário: ' + pointsError.message);
       return false;
     }
+    
+    // Manually create a transaction record instead of relying on triggers
+    const { error: transactionError } = await supabase
+      .from('points_transactions')
+      .insert({
+        user_id: userId,
+        pontos: adjustmentValue,
+        tipo: tipo === 'adicao' ? 'servico' : 'resgate',
+        descricao: 'Ajuste de pontos: ' + motivo,
+        referencia_id: insertData.id
+      });
+      
+    if (transactionError) {
+      console.error('Error creating points transaction:', transactionError);
+      toast.error('Erro ao registrar transação de pontos: ' + transactionError.message);
+      return false;
+    }
+    
+    toast.success('Ajuste de pontos realizado com sucesso!');
+    return true;
   } catch (error: any) {
     console.error('Error creating point adjustment:', error);
     toast.error(`Erro ao ajustar pontos: ${error?.message || 'Verifique o console para detalhes'}`);

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useCallback } from 'react';
 import { Plus, Minus, Loader2 } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
@@ -82,6 +81,9 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
       
       // Notify parent component
       onSuccess();
+      
+      // Show success message
+      toast.success('Ajuste de pontos realizado com sucesso!');
     },
     onError: (error: Error) => {
       setSubmitting(false);
@@ -135,17 +137,23 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
       toast.loading(
         isPositiveAdjustment 
           ? 'Adicionando pontos...' 
-          : 'Removendo pontos...'
+          : 'Removendo pontos...',
+        { id: 'adjustment-toast' }  
       );
       
       await createAdjustmentMutation.mutateAsync({
         userId: customerId,
         tipo: isPositiveAdjustment ? 'adicao' : 'remocao',
-        valor: isPositiveAdjustment ? pontosValue : pontosValue,
+        valor: pontosValue,
         motivo,
         transactionId: transactionIdRef.current
       });
+      
+      // Close loading toast on success
+      toast.dismiss('adjustment-toast');
+      
     } catch (error) {
+      toast.dismiss('adjustment-toast');
       console.error('Error submitting points adjustment:', error);
       // Error is handled by mutation's onError
     }
