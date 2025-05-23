@@ -35,10 +35,8 @@ export const useDuplicateProtection = () => {
     
     setIsChecking(true);
     try {
-      // Chamar a função SQL get_duplicate_transactions diretamente
-      const { data, error } = await supabase
-        .from('get_duplicate_transactions')
-        .select('*');
+      // Chamar a função SQL get_duplicate_transactions diretamente com rpc
+      const { data, error } = await supabase.rpc('get_duplicate_transactions');
       
       if (error) {
         console.error('Erro ao verificar duplicatas:', error);
@@ -48,7 +46,8 @@ export const useDuplicateProtection = () => {
         return { duplicates: [], count: 0 };
       }
       
-      const duplicateGroups = data as DuplicateGroup[];
+      // Converter o tipo de dados para DuplicateGroup[]
+      const duplicateGroups = data as unknown as DuplicateGroup[];
       const totalDuplicates = duplicateGroups.reduce((total, group) => 
         total + Math.max(0, group.transaction_count - 1), 0);
       
