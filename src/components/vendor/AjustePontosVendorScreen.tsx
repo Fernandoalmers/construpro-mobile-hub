@@ -13,9 +13,12 @@ import PointsAdjustmentHistory from './points/PointsAdjustmentHistory';
 import EmptyCustomerState from './points/EmptyCustomerState';
 import { usePointsAdjustment } from './points/usePointsAdjustment';
 import { deployPointsRpcFunctions } from '@/services/vendor/points/deployRpcFunctions';
+import { supabase } from '@/integrations/supabase/client';
+import { useIsAdmin } from '@/hooks/useIsAdmin';
 
 const AjustePontosVendorScreen: React.FC = () => {
   const navigate = useNavigate();
+  const { isAdmin } = useIsAdmin();
   const {
     selectedCustomerId,
     selectedCustomer,
@@ -38,6 +41,45 @@ const AjustePontosVendorScreen: React.FC = () => {
     
     setupRpcFunctions().catch(console.error);
   }, []);
+  
+  // For admins, check for duplicate transactions on mount
+  useEffect(() => {
+    const checkForDuplicates = async () => {
+      if (!isAdmin) return;
+      
+      try {
+        // Check for duplicate transactions
+        const { data, error } = await supabase.functions.invoke('clean-duplicate-transactions', {
+          method: 'POST',
+          body: { dryRun: true }
+        });
+        
+        if (error) {
+          console.error('Error checking for duplicates:', error);
+          return;
+        }
+        
+        if (data?.duplicates?.length > 0) {
+          toast.info(
+            `Foram encontradas ${data.duplicates.length} transações duplicadas que podem ser removidas.`, 
+            { 
+              duration: 8000,
+              action: {
+                label: "Saiba mais",
+                onClick: () => toast.info(
+                  "Use os controles de administração no formulário de ajuste para verificar e remover duplicações."
+                )
+              }
+            }
+          );
+        }
+      } catch (err) {
+        console.error('Error in checkForDuplicates:', err);
+      }
+    };
+    
+    checkForDuplicates();
+  }, [isAdmin]);
 
   // Display a toast message once when the component mounts
   useEffect(() => {

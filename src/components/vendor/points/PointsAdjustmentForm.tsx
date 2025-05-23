@@ -1,5 +1,6 @@
+
 import React, { useState, useRef, useCallback } from 'react';
-import { Plus, Minus, Loader2 } from 'lucide-react';
+import { Plus, Minus, Loader2, Trash2 } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,6 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createPointAdjustment } from '@/services/vendor/points/adjustmentsCreator';
 import { v4 as uuidv4 } from 'uuid';
+import { useIsAdmin } from '@/hooks/useIsAdmin';
+import { supabase } from '@/integrations/supabase/client';
 
 interface PointsAdjustmentFormProps {
   customerId: string;
@@ -23,12 +26,14 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
   const [motivo, setMotivo] = useState('');
   const [isPositiveAdjustment, setIsPositiveAdjustment] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [cleaningDuplicates, setCleaningDuplicates] = useState(false);
   // Track if we've already processed a submission to avoid duplicates
   const processingRef = useRef(false);
   // Create a unique transaction ID for this form session with timestamp to ensure uniqueness
   const transactionIdRef = useRef(`${uuidv4()}-${Date.now()}`);
   
   const queryClient = useQueryClient();
+  const { isAdmin } = useIsAdmin();
 
   // Create point adjustment mutation
   const createAdjustmentMutation = useMutation({
@@ -106,6 +111,56 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
       toast.error('Erro ao ajustar pontos: ' + error.message);
     }
   });
+  
+  // Mutation for cleaning duplicate transactions (admin only)
+  const cleanDuplicatesMutation = useMutation({
+    mutationFn: async (options: { dryRun?: boolean; forceCleanup?: boolean }) => {
+      setCleaningDuplicates(true);
+      
+      try {
+        const { data, error } = await supabase.functions.invoke('clean-duplicate-transactions', {
+          method: 'POST',
+          body: options
+        });
+        
+        if (error) throw new Error(error.message);
+        return data;
+      } catch (error) {
+        console.error('Error cleaning duplicates:', error);
+        throw error;
+      } finally {
+        setCleaningDuplicates(false);
+      }
+    },
+    onSuccess: (data) => {
+      if (data.dryRun) {
+        const duplicateCount = data.duplicates?.length || 0;
+        toast.info(`Encontrados ${duplicateCount} grupos de transações duplicadas.`);
+      } else {
+        toast.success(`Removidas ${data.deletedCount || 0} transações duplicadas.`);
+        if (data.triggersRemoved > 0) {
+          toast.success(`Removidos ${data.triggersRemoved} triggers redundantes.`);
+        }
+      }
+      
+      // Refresh data
+      queryClient.invalidateQueries({
+        queryKey: ['pointsHistory']
+      });
+      
+      queryClient.invalidateQueries({
+        queryKey: ['pointAdjustments']
+      });
+      
+      queryClient.invalidateQueries({
+        queryKey: ['customerPoints']
+      });
+    },
+    onError: (error: Error) => {
+      console.error('Error in clean duplicates mutation:', error);
+      toast.error('Erro ao limpar duplicações: ' + error.message);
+    }
+  });
 
   const handlePontosChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Only allow numbers
@@ -173,6 +228,23 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
       // Error is handled by mutation's onError
     }
   }, [customerId, pontos, motivo, isPositiveAdjustment, customerPoints, submitting, createAdjustmentMutation]);
+  
+  // Handler for cleaning duplicates (admin only)
+  const handleCleanDuplicates = useCallback(async (dryRun: boolean = true) => {
+    if (!isAdmin) {
+      toast.error('Apenas administradores podem limpar duplicações');
+      return;
+    }
+    
+    try {
+      await cleanDuplicatesMutation.mutateAsync({ 
+        dryRun,
+        forceCleanup: !dryRun // Only force trigger cleanup if not a dry run
+      });
+    } catch (error) {
+      // Error handled by mutation onError
+    }
+  }, [isAdmin, cleanDuplicatesMutation]);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 p-4 pt-2">
@@ -248,6 +320,50 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
           </>
         )}
       </Button>
+      
+      {/* Admin-only section for cleaning duplicates */}
+      {isAdmin && (
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <div className="text-sm font-medium mb-2 text-gray-700">Administração</div>
+          
+          <div className="flex gap-2">
+            <Button 
+              type="button" 
+              variant="outline" 
+              size="sm"
+              onClick={() => handleCleanDuplicates(true)}
+              disabled={cleaningDuplicates}
+              className="flex-1"
+            >
+              {cleaningDuplicates && cleanDuplicatesMutation.variables?.dryRun ? (
+                <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+              ) : (
+                <Trash2 className="mr-2 h-3 w-3" />
+              )}
+              Verificar Duplicações
+            </Button>
+            
+            <Button 
+              type="button" 
+              variant="destructive" 
+              size="sm"
+              onClick={() => handleCleanDuplicates(false)}
+              disabled={cleaningDuplicates}
+              className="flex-1"
+            >
+              {cleaningDuplicates && !cleanDuplicatesMutation.variables?.dryRun ? (
+                <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+              ) : (
+                <Trash2 className="mr-2 h-3 w-3" />
+              )}
+              Remover Duplicações
+            </Button>
+          </div>
+          <p className="text-xs text-gray-500 mt-1">
+            Estas ações ajudam a corrigir problemas com transações duplicadas de pontos.
+          </p>
+        </div>
+      )}
     </form>
   );
 };

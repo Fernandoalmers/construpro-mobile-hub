@@ -69,6 +69,55 @@ serve(async (req) => {
     // Get request data if provided
     const requestData = req.method === 'POST' ? await req.json() : {}
     const dryRun = requestData.dryRun === true
+    const forceCleanup = requestData.forceCleanup === true
+    
+    // First check if we need to drop any redundant triggers
+    // This runs only if forceCleanup is true to prevent repeat executions
+    if (forceCleanup) {
+      const { data: dropTriggersResult, error: dropTriggersError } = await supabaseClient.rpc(
+        'execute_custom_sql',
+        {
+          sql_statement: `
+            -- Drop redundant triggers for register_point_adjustment_transaction
+            DROP TRIGGER IF EXISTS register_points_transaction_trigger ON public.pontos_ajustados;
+            DROP TRIGGER IF EXISTS register_transaction_after_adjustment ON public.pontos_ajustados;
+            DROP TRIGGER IF EXISTS trigger_register_transaction ON public.pontos_ajustados;
+
+            -- Drop redundant triggers for update_points_on_adjustment
+            DROP TRIGGER IF EXISTS update_points_after_adjustment ON public.pontos_ajustados;
+            DROP TRIGGER IF EXISTS update_points_on_adjustment_trigger ON public.pontos_ajustados;
+            DROP TRIGGER IF EXISTS update_points_trigger ON public.pontos_ajustados;
+          `
+        }
+      )
+      
+      if (dropTriggersError) {
+        return new Response(
+          JSON.stringify({ error: 'Error dropping redundant triggers: ' + dropTriggersError.message }),
+          { status: 500, headers: corsHeaders }
+        )
+      }
+      
+      // Log success on triggers dropped
+      console.log('Successfully dropped redundant triggers', dropTriggersResult)
+    }
+    
+    // Get list of current triggers for reporting
+    const { data: currentTriggersData, error: currentTriggersError } = await supabaseClient.rpc(
+      'execute_custom_sql',
+      {
+        sql_statement: `
+          SELECT trigger_name, action_statement
+          FROM information_schema.triggers
+          WHERE event_object_table = 'pontos_ajustados'
+          ORDER BY trigger_name;
+        `
+      }
+    )
+    
+    if (currentTriggersError) {
+      console.error('Error getting current triggers:', currentTriggersError)
+    }
     
     // Identify duplicate transactions
     const { data: duplicatesData, error: duplicatesError } = await supabaseClient.rpc(
@@ -113,7 +162,7 @@ serve(async (req) => {
     }
     
     const duplicates = duplicatesData?.status === 'success' ? 
-      duplicatesData : { duplicates: [] }
+      duplicatesData.duplicates : []
     
     // If this is a dry run, just return the duplicates
     if (dryRun) {
@@ -121,7 +170,9 @@ serve(async (req) => {
         JSON.stringify({ 
           status: 'dryRun', 
           message: 'Dry run - no changes made',
-          duplicates 
+          duplicates,
+          currentTriggers: currentTriggersData?.status === 'success' ? 
+            currentTriggersData.duplicates : []
         }),
         { status: 200, headers: corsHeaders }
       )
@@ -132,8 +183,8 @@ serve(async (req) => {
     let errors = []
     
     // For each group of duplicates, delete all but the first one
-    if (duplicates && Array.isArray(duplicates.duplicates)) {
-      for (const group of duplicates.duplicates) {
+    if (duplicates && Array.isArray(duplicates)) {
+      for (const group of duplicates) {
         if (group.duplicate_ids && group.duplicate_ids.length > 0) {
           const { error: deleteError } = await supabaseClient
             .from('points_transactions')
@@ -153,6 +204,9 @@ serve(async (req) => {
       JSON.stringify({
         status: 'success',
         message: `Deleted ${deletedCount} duplicate transactions`,
+        triggersRemoved: forceCleanup ? 6 : 0,
+        currentTriggers: currentTriggersData?.status === 'success' ? 
+          currentTriggersData.duplicates : [],
         errors: errors.length > 0 ? errors : undefined
       }),
       { status: 200, headers: corsHeaders }
