@@ -1,3 +1,4 @@
+
 import React from 'react';
 import Card from '../../common/Card';
 import { CircleDollarSign, ShoppingBag, Gift, Users, Receipt, Briefcase } from 'lucide-react';
@@ -34,32 +35,39 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, isLoadi
 
   // Format transaction description with reference id if available
   const formatDescription = (transaction: Transaction) => {
-    let shortDescription;
+    let description = transaction.descricao || '';
     
-    // For purchases, format the description more concisely
+    // Remover qualquer ID de transação do formato [uuid-timestamp]
+    // que possa ter sido adicionado ao final da descrição
+    description = description.replace(/\s*\[.*?\]$/, '');
+    
+    // Para compras, format a descrição de forma mais concisa
     if (transaction.tipo === 'compra') {
-      shortDescription = 'Pontos por compra';
+      const shortDescription = 'Pontos por compra';
       
-      // If we have a reference ID, show only the first 8 chars
+      // Se temos um ID de referência, mostrar apenas os primeiros 8 caracteres
       if (transaction.referencia_id) {
-        const shortId = transaction.referencia_id.substring(0, 8);
+        const shortId = typeof transaction.referencia_id === 'string' 
+          ? transaction.referencia_id.substring(0, 8)
+          : '';
+          
         return (
           <div>
             {shortDescription}
-            <div className="text-xs text-gray-500">#{shortId}</div>
+            {shortId && <div className="text-xs text-gray-500">#{shortId}</div>}
           </div>
         );
       }
       return shortDescription;
     }
     
-    // For redemptions, keep description brief
+    // Para resgates, manter a descrição breve
     if (transaction.tipo === 'resgate') {
-      return transaction.descricao;
+      return description;
     }
     
-    // For all other types, keep it simple with basic type info
-    return transaction.descricao || `Transação de ${transaction.tipo}`;
+    // Para todos os outros tipos, manter simples com informações básicas do tipo
+    return description || `Transação de ${transaction.tipo}`;
   };
 
   if (isLoading) {

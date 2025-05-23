@@ -452,6 +452,7 @@ export type Database = {
           descricao: string
           id: string
           pontos: number
+          reference_code: string | null
           referencia_id: string | null
           tipo: string
           user_id: string
@@ -462,6 +463,7 @@ export type Database = {
           descricao: string
           id?: string
           pontos: number
+          reference_code?: string | null
           referencia_id?: string | null
           tipo: string
           user_id: string
@@ -472,6 +474,7 @@ export type Database = {
           descricao?: string
           id?: string
           pontos?: number
+          reference_code?: string | null
           referencia_id?: string | null
           tipo?: string
           user_id?: string
@@ -1655,6 +1658,20 @@ export type Database = {
         Args: { sql_statement: string }
         Returns: Json
       }
+      get_duplicate_transactions: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          group_id: number
+          transaction_count: number
+          user_id: string
+          tipo: string
+          pontos: number
+          descricao: string
+          transaction_ids: string[]
+          data: string
+          time_frame: string
+        }[]
+      }
       get_order_by_id: {
         Args: { order_id: string }
         Returns: Json
@@ -1722,6 +1739,15 @@ export type Database = {
       order_exists_in_pedidos: {
         Args: { order_uuid: string }
         Returns: boolean
+      }
+      reconcile_user_points: {
+        Args: { target_user_id?: string }
+        Returns: {
+          user_id: string
+          old_balance: number
+          new_balance: number
+          difference: number
+        }[]
       }
       rollback_transaction: {
         Args: Record<PropertyKey, never>

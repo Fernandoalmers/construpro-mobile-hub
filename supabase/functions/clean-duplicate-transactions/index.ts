@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -7,6 +6,11 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, content-type, x-client-info, apikey',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Content-Type': 'application/json'
+}
+
+interface CleanDuplicatesOptions {
+  dryRun?: boolean;
+  forceCleanup?: boolean;
 }
 
 serve(async (req) => {
@@ -43,7 +47,7 @@ serve(async (req) => {
       },
     })
     
-    // Verify admin status before allowing this action
+    // Verify user token and get user ID
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
     if (authError || !user) {
       return new Response(
@@ -52,168 +56,157 @@ serve(async (req) => {
       )
     }
     
-    // Check if user is admin
+    // Check if the user is an admin
     const { data: profile, error: profileError } = await supabaseClient
       .from('profiles')
       .select('is_admin')
       .eq('id', user.id)
       .single()
     
-    if (profileError || !profile || !profile.is_admin) {
+    if (profileError) {
       return new Response(
-        JSON.stringify({ error: 'Admin access required' }),
-        { status: 403, headers: corsHeaders }
-      )
-    }
-    
-    // Get request data if provided
-    const requestData = req.method === 'POST' ? await req.json() : {}
-    const dryRun = requestData.dryRun === true
-    const forceCleanup = requestData.forceCleanup === true
-    
-    // First check if we need to drop any redundant triggers
-    // This runs only if forceCleanup is true to prevent repeat executions
-    if (forceCleanup) {
-      const { data: dropTriggersResult, error: dropTriggersError } = await supabaseClient.rpc(
-        'execute_custom_sql',
-        {
-          sql_statement: `
-            -- Drop redundant triggers for register_point_adjustment_transaction
-            DROP TRIGGER IF EXISTS register_points_transaction_trigger ON public.pontos_ajustados;
-            DROP TRIGGER IF EXISTS register_transaction_after_adjustment ON public.pontos_ajustados;
-            DROP TRIGGER IF EXISTS trigger_register_transaction ON public.pontos_ajustados;
-
-            -- Drop redundant triggers for update_points_on_adjustment
-            DROP TRIGGER IF EXISTS update_points_after_adjustment ON public.pontos_ajustados;
-            DROP TRIGGER IF EXISTS update_points_on_adjustment_trigger ON public.pontos_ajustados;
-            DROP TRIGGER IF EXISTS update_points_trigger ON public.pontos_ajustados;
-          `
-        }
-      )
-      
-      if (dropTriggersError) {
-        return new Response(
-          JSON.stringify({ error: 'Error dropping redundant triggers: ' + dropTriggersError.message }),
-          { status: 500, headers: corsHeaders }
-        )
-      }
-      
-      // Log success on triggers dropped
-      console.log('Successfully dropped redundant triggers', dropTriggersResult)
-    }
-    
-    // Get list of current triggers for reporting
-    const { data: currentTriggersData, error: currentTriggersError } = await supabaseClient.rpc(
-      'execute_custom_sql',
-      {
-        sql_statement: `
-          SELECT trigger_name, action_statement
-          FROM information_schema.triggers
-          WHERE event_object_table = 'pontos_ajustados'
-          ORDER BY trigger_name;
-        `
-      }
-    )
-    
-    if (currentTriggersError) {
-      console.error('Error getting current triggers:', currentTriggersError)
-    }
-    
-    // Identify duplicate transactions
-    const { data: duplicatesData, error: duplicatesError } = await supabaseClient.rpc(
-      'execute_custom_sql',
-      {
-        sql_statement: `
-          WITH grouped_transactions AS (
-            SELECT 
-              user_id, 
-              tipo,
-              pontos, 
-              substring(descricao from 'Ajuste de pontos: (.+)') as motivo_base,
-              referencia_id,
-              MIN(data) as first_date,
-              COUNT(*) as count
-            FROM points_transactions
-            WHERE descricao LIKE 'Ajuste de pontos:%'
-            GROUP BY user_id, tipo, pontos, substring(descricao from 'Ajuste de pontos: (.+)'), referencia_id
-            HAVING COUNT(*) > 1
-          )
-          SELECT 
-            *,
-            (SELECT json_agg(id) FROM points_transactions pt 
-              WHERE pt.user_id = grouped_transactions.user_id
-              AND pt.tipo = grouped_transactions.tipo
-              AND pt.pontos = grouped_transactions.pontos
-              AND pt.referencia_id = grouped_transactions.referencia_id
-              AND substring(pt.descricao from 'Ajuste de pontos: (.+)') = grouped_transactions.motivo_base
-              AND pt.data > grouped_transactions.first_date
-            ) as duplicate_ids
-          FROM grouped_transactions
-          ORDER BY count DESC;
-        `
-      }
-    )
-    
-    if (duplicatesError) {
-      return new Response(
-        JSON.stringify({ error: 'Error finding duplicates: ' + duplicatesError.message }),
+        JSON.stringify({ error: profileError.message }),
         { status: 500, headers: corsHeaders }
       )
     }
     
-    const duplicates = duplicatesData?.status === 'success' ? 
-      duplicatesData.duplicates : []
+    const isAdmin = profile?.is_admin === true
+    if (!isAdmin) {
+      return new Response(
+        JSON.stringify({ error: 'Only administrators can clean duplicate transactions' }),
+        { status: 403, headers: corsHeaders }
+      )
+    }
     
-    // If this is a dry run, just return the duplicates
-    if (dryRun) {
+    // Get options from request body
+    let options: CleanDuplicatesOptions = { dryRun: true }
+    try {
+      if (req.method === 'POST') {
+        const body = await req.json()
+        options = {
+          dryRun: body.dryRun !== false, // Default to dry run if not explicitly set to false
+          forceCleanup: !!body.forceCleanup // Optional force cleanup parameter
+        }
+      }
+    } catch (err) {
+      console.error('Error parsing request body:', err)
+      // Continue with default options
+    }
+
+    // Get duplicate transactions using our SQL function
+    const { data: duplicateGroups, error: duplicatesError } = await supabaseClient
+      .from('get_duplicate_transactions')
+      .select('*')
+    
+    if (duplicatesError) {
+      return new Response(
+        JSON.stringify({ error: 'Error fetching duplicate transactions', details: duplicatesError.message }),
+        { status: 500, headers: corsHeaders }
+      )
+    }
+
+    // If no duplicates found, return empty result
+    if (!duplicateGroups || duplicateGroups.length === 0) {
       return new Response(
         JSON.stringify({ 
-          status: 'dryRun', 
-          message: 'Dry run - no changes made',
-          duplicates,
-          currentTriggers: currentTriggersData?.status === 'success' ? 
-            currentTriggersData.duplicates : []
+          dryRun: options.dryRun,
+          duplicates: [],
+          duplicateGroups: [],
+          message: 'No duplicate transactions found' 
         }),
         { status: 200, headers: corsHeaders }
       )
     }
     
-    // Actually delete the duplicate transactions if not a dry run
-    let deletedCount = 0
-    let errors = []
+    // Calculate total duplicate transactions
+    const totalDuplicates = duplicateGroups.reduce((total, group) => 
+      total + Math.max(0, group.transaction_count - 1), 0)
     
-    // For each group of duplicates, delete all but the first one
-    if (duplicates && Array.isArray(duplicates)) {
-      for (const group of duplicates) {
-        if (group.duplicate_ids && group.duplicate_ids.length > 0) {
-          const { error: deleteError } = await supabaseClient
-            .from('points_transactions')
-            .delete()
-            .in('id', group.duplicate_ids)
-          
-          if (deleteError) {
-            errors.push(`Error deleting duplicates for group ${group.referencia_id}: ${deleteError.message}`)
-          } else {
-            deletedCount += group.duplicate_ids.length
-          }
+    // Log what we found
+    console.log(`Found ${duplicateGroups.length} duplicate groups with ${totalDuplicates} total duplicate transactions`)
+    
+    // If this is a dry run, just return the duplicates without deleting
+    if (options.dryRun) {
+      return new Response(
+        JSON.stringify({ 
+          dryRun: true,
+          duplicateGroups,
+          duplicates: duplicateGroups,
+          message: `Found ${duplicateGroups.length} duplicate groups with ${totalDuplicates} total duplicate transactions` 
+        }),
+        { status: 200, headers: corsHeaders }
+      )
+    }
+    
+    // If not a dry run, delete the duplicates
+    let deletedCount = 0
+    let triggersRemoved = 0
+    const affectedUserIds = new Set<string>()
+    
+    for (const group of duplicateGroups) {
+      // Keep the first transaction (index 0) and delete the rest
+      const transactionsToDelete = group.transaction_ids.slice(1)
+      
+      if (transactionsToDelete.length > 0) {
+        // Delete the duplicates
+        const { error } = await supabaseClient
+          .from('points_transactions')
+          .delete()
+          .in('id', transactionsToDelete)
+        
+        if (error) {
+          console.error(`Error deleting duplicates for group ${group.group_id}:`, error)
+          continue
+        }
+        
+        deletedCount += transactionsToDelete.length
+        affectedUserIds.add(group.user_id)
+      }
+    }
+    
+    // After cleanup, reconcile points for affected users
+    let reconciliationCount = 0
+    const reconciliationResults = []
+    
+    for (const userId of affectedUserIds) {
+      const { data: reconcileData, error: reconcileError } = await supabaseClient.rpc(
+        'reconcile_user_points',
+        { target_user_id: userId }
+      )
+      
+      if (reconcileError) {
+        console.error(`Error reconciling points for user ${userId}:`, reconcileError)
+        continue
+      }
+      
+      if (reconcileData && reconcileData.length > 0) {
+        const result = reconcileData[0]
+        if (result.difference !== 0) {
+          reconciliationCount++
+          reconciliationResults.push(result)
         }
       }
     }
     
+    // Return results
     return new Response(
       JSON.stringify({
-        status: 'success',
-        message: `Deleted ${deletedCount} duplicate transactions`,
-        triggersRemoved: forceCleanup ? 6 : 0,
-        currentTriggers: currentTriggersData?.status === 'success' ? 
-          currentTriggersData.duplicates : [],
-        errors: errors.length > 0 ? errors : undefined
+        dryRun: false,
+        success: true,
+        deletedCount,
+        triggersRemoved,
+        reconciliationCount,
+        affectedUsers: Array.from(affectedUserIds),
+        reconciliationResults,
+        message: `Successfully deleted ${deletedCount} duplicate transactions and reconciled ${reconciliationCount} user balances`
       }),
       { status: 200, headers: corsHeaders }
     )
+    
   } catch (error) {
+    console.error('Unexpected error:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message || 'An unexpected error occurred' }),
       { status: 500, headers: corsHeaders }
     )
   }

@@ -1,10 +1,11 @@
 
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, RefreshCcw } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from '@/components/ui/sonner';
+import { Button } from '@/components/ui/button';
 
 import CustomerSearch from './points/CustomerSearch';
 import CustomerInfo from './points/CustomerInfo';
@@ -34,7 +35,10 @@ const AjustePontosVendorScreen: React.FC = () => {
     // Duplicate protection features
     duplicateCount,
     checkForDuplicates,
-    cleanDuplicates
+    cleanDuplicates,
+    // Reconciliation feature
+    reconcileCustomerPoints,
+    isReconciling
   } = usePointsAdjustment();
 
   // Deploy RPC functions when component mounts
@@ -114,17 +118,30 @@ const AjustePontosVendorScreen: React.FC = () => {
         </button>
         <h1 className="text-xl font-bold">Ajuste de Pontos</h1>
         
-        {/* Show admin notification if there are duplicates */}
-        {isAdmin && duplicateCount > 0 && (
-          <div className="ml-auto">
+        {/* Show admin tools if there are duplicates or user is selected */}
+        <div className="ml-auto flex gap-2">
+          {isAdmin && selectedCustomerId && (
+            <Button 
+              size="sm"
+              variant="outline"
+              onClick={reconcileCustomerPoints}
+              disabled={isReconciling}
+              className="flex items-center gap-1 text-xs"
+            >
+              <RefreshCcw className="h-3.5 w-3.5" /> 
+              {isReconciling ? 'Reconciliando...' : 'Reconciliar Saldo'}
+            </Button>
+          )}
+          
+          {isAdmin && duplicateCount > 0 && (
             <span 
               onClick={() => cleanDuplicates()} 
               className="text-xs bg-amber-100 text-amber-800 py-1 px-2 rounded-full cursor-pointer"
             >
               {duplicateCount} duplicatas encontradas
             </span>
-          </div>
-        )}
+          )}
+        </div>
       </div>
       
       <div className="max-w-3xl mx-auto p-4 space-y-4">
