@@ -25,6 +25,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
   animated = false,
   customColorClass,
 }) => {
+  // Ensure percentage is always between 0 and 100
   const percentage = Math.min(100, Math.max(0, (value / max) * 100));
 
   const sizeClassMap = {
@@ -51,7 +52,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
       <div className={cn("w-full bg-gray-200 rounded-full overflow-hidden", sizeClassMap[size], className)}>
         <div
           className={cn(
-            "rounded-full transition-all duration-1000 ease-out", 
+            "h-full rounded-full transition-all duration-1000 ease-out", 
             customColorClass || colorClassMap[color],
             animated && "animate-pulse-subtle"
           )}
