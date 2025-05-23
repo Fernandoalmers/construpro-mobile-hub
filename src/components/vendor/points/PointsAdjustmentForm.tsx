@@ -141,7 +141,7 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
       await createAdjustmentMutation.mutateAsync({
         userId: customerId,
         tipo: isPositiveAdjustment ? 'adicao' : 'remocao',
-        valor: isPositiveAdjustment ? pontosValue : -pontosValue,
+        valor: isPositiveAdjustment ? pontosValue : pontosValue,
         motivo,
         transactionId: transactionIdRef.current
       });
