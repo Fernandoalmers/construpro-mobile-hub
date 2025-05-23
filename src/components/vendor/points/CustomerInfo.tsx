@@ -73,7 +73,7 @@ const CustomerInfo: React.FC<CustomerInfoProps> = ({
               {customer.telefone && (
                 <span className="flex items-center">
                   <span className="text-gray-400 mr-1 hidden sm:inline">•</span>
-                  {customer.telefone}
+                  {formatPhone(customer.telefone)}
                 </span>
               )}
               {customer.cpf && (

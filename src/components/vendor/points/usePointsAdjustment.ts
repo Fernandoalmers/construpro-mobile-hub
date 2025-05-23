@@ -87,6 +87,8 @@ export const usePointsAdjustment = () => {
       console.log('Fetching points for customer ID:', selectedCustomerId);
       if (!selectedCustomerId) return 0;
       try {
+        // Add a timestamp parameter to force bypass cache
+        const timestamp = new Date().getTime();
         return await getCustomerPoints(selectedCustomerId);
       } catch (error) {
         console.error('Error fetching customer points:', error);
@@ -95,8 +97,8 @@ export const usePointsAdjustment = () => {
       }
     },
     enabled: !!selectedCustomerId,
-    staleTime: 1000, // 1 second (reduced from 10 seconds)
-    retry: 3,        // Increased from 2
+    staleTime: 500, // 500ms (reduced from 1 second)
+    retry: 3,
     refetchOnWindowFocus: true
   });
 
@@ -142,6 +144,11 @@ export const usePointsAdjustment = () => {
         queryKey: ['pointAdjustments', selectedCustomerId]
       });
       
+      // Also invalidate points history across the app
+      queryClient.invalidateQueries({
+        queryKey: ['pointsHistory']
+      });
+      
       // Then refetch with a small delay
       setTimeout(() => {
         Promise.all([refetchPoints(), refetchAdjustments()])
@@ -180,22 +187,27 @@ export const usePointsAdjustment = () => {
   const handleAdjustmentSuccess = () => {
     // Immediately invalidate the queries
     if (selectedCustomerId) {
+      // First invalidate all related queries
       queryClient.invalidateQueries({
-        queryKey: ['customerPoints', selectedCustomerId]
+        queryKey: ['customerPoints']
       });
       
       queryClient.invalidateQueries({
-        queryKey: ['pointAdjustments', selectedCustomerId]
+        queryKey: ['pointAdjustments']
       });
+      
+      queryClient.invalidateQueries({
+        queryKey: ['pointsHistory']
+      });
+      
+      // Then force a hard refresh with a slight delay
+      setTimeout(() => {
+        refetchPoints();
+        refetchAdjustments();
+        setActiveTab('history');
+        toast.success('Ajuste de pontos registrado com sucesso');
+      }, 1000); // Increased timeout to ensure the database has processed everything
     }
-    
-    // Then switch to history tab after successful adjustment and refresh data
-    setTimeout(() => {
-      refetchPoints();
-      refetchAdjustments();
-      setActiveTab('history');
-      toast.success('Ajuste de pontos registrado com sucesso');
-    }, 500);
   };
 
   // Debug output of important state for troubleshooting

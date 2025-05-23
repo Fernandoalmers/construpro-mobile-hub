@@ -22,6 +22,7 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
   const [pontos, setPontos] = useState('');
   const [motivo, setMotivo] = useState('');
   const [isPositiveAdjustment, setIsPositiveAdjustment] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const queryClient = useQueryClient();
 
   // Create point adjustment mutation
@@ -39,14 +40,15 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
       // Clear form fields
       setPontos('');
       setMotivo('');
+      setSubmitting(false);
 
       // Invalidate queries to update data immediately
       queryClient.invalidateQueries({
-        queryKey: ['customerPoints', customerId]
+        queryKey: ['customerPoints']
       });
       
       queryClient.invalidateQueries({
-        queryKey: ['pointAdjustments', customerId]
+        queryKey: ['pointAdjustments']
       });
 
       // Also invalidate user's points transactions data
@@ -54,21 +56,11 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
         queryKey: ['pointsHistory']
       });
       
-      // Force a refetch of the customer's points with a short delay
-      setTimeout(() => {
-        queryClient.refetchQueries({
-          queryKey: ['customerPoints', customerId]
-        });
-        
-        queryClient.refetchQueries({
-          queryKey: ['pointAdjustments', customerId]
-        });
-      }, 1000); // Increased timeout to ensure the database has time to process
-
       // Notify parent component
       onSuccess();
     },
     onError: (error: Error) => {
+      setSubmitting(false);
       console.error('Error in points adjustment mutation:', error);
       toast.error('Erro ao ajustar pontos: ' + error.message);
     }
@@ -82,6 +74,11 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (submitting) {
+      toast.error('Solicitação já está em andamento, aguarde...');
+      return;
+    }
 
     if (!customerId || !pontos || !motivo) {
       toast.error('Preencha todos os campos obrigatórios.');
@@ -108,6 +105,7 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
     }
 
     try {
+      setSubmitting(true);
       toast.loading(
         isPositiveAdjustment 
           ? 'Adicionando pontos...' 
@@ -122,6 +120,7 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
       });
     } catch (error) {
       console.error('Error submitting points adjustment:', error);
+      setSubmitting(false);
       // Error is already handled by mutation's onError
     }
   };
@@ -183,9 +182,9 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
       <Button 
         type="submit" 
         className="w-full"
-        disabled={createAdjustmentMutation.isPending || !pontos || !motivo}
+        disabled={submitting || !pontos || !motivo}
       >
-        {createAdjustmentMutation.isPending ? (
+        {submitting || createAdjustmentMutation.isPending ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             Processando...
