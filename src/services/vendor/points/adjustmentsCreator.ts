@@ -4,6 +4,19 @@ import { toast } from '@/components/ui/sonner';
 import { getVendorProfile } from '../../vendorProfileService';
 import { ensureCustomerExists } from './customerManager';
 
+// Store recent transactions to prevent duplicates
+const recentTransactions = new Map<string, number>();
+
+// Clear old transactions from memory (5 minutes threshold)
+setInterval(() => {
+  const now = Date.now();
+  for (const [transactionId, timestamp] of recentTransactions.entries()) {
+    if (now - timestamp > 5 * 60 * 1000) {
+      recentTransactions.delete(transactionId);
+    }
+  }
+}, 60000); // Clean up every minute
+
 /**
  * Creates a point adjustment for a user and updates their balance
  */
@@ -11,10 +24,23 @@ export const createPointAdjustment = async (
   userId: string,
   tipo: string,
   valor: number,
-  motivo: string
+  motivo: string,
+  transactionId?: string
 ): Promise<boolean> => {
   try {
-    console.log('Creating point adjustment with params:', { userId, tipo, valor, motivo });
+    console.log('Creating point adjustment with params:', { userId, tipo, valor, motivo, transactionId });
+    
+    // Check for duplicate transaction if an ID is provided
+    if (transactionId && recentTransactions.has(transactionId)) {
+      console.warn('Duplicate transaction detected, ignoring:', transactionId);
+      toast.error('Operação já está sendo processada. Aguarde ou tente novamente em alguns instantes.');
+      return false;
+    }
+    
+    // Register this transaction attempt
+    if (transactionId) {
+      recentTransactions.set(transactionId, Date.now());
+    }
     
     // Get vendor profile - using stored ID first if available
     const storedVendorId = localStorage.getItem('vendor_profile_id');

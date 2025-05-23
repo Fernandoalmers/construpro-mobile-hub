@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
 import { getCustomerPoints, searchCustomers } from '@/services/vendor/customers';
@@ -16,6 +16,9 @@ export const usePointsAdjustment = () => {
   const [activeTab, setActiveTab] = useState('form');
   const [searchResults, setSearchResults] = useState<CustomerData[]>([]);
   const queryClient = useQueryClient();
+  
+  // Ref to track if a refresh is already in progress
+  const isRefreshing = useRef(false);
 
   // Check vendor role on component mount
   useEffect(() => {
@@ -87,8 +90,6 @@ export const usePointsAdjustment = () => {
       console.log('Fetching points for customer ID:', selectedCustomerId);
       if (!selectedCustomerId) return 0;
       try {
-        // Add a timestamp parameter to force bypass cache
-        const timestamp = new Date().getTime();
         return await getCustomerPoints(selectedCustomerId);
       } catch (error) {
         console.error('Error fetching customer points:', error);
@@ -129,42 +130,48 @@ export const usePointsAdjustment = () => {
     retry: 2
   });
 
-  // Handle manual refresh of data with more debugging
-  const handleRefreshData = () => {
-    if (selectedCustomerId) {
-      console.log('Manually refreshing data for customer:', selectedCustomerId);
-      toast.loading('Atualizando dados...');
-      
-      // Force invalidate the queries first
-      queryClient.invalidateQueries({
-        queryKey: ['customerPoints', selectedCustomerId]
-      });
-      
-      queryClient.invalidateQueries({
-        queryKey: ['pointAdjustments', selectedCustomerId]
-      });
-      
-      // Also invalidate points history across the app
-      queryClient.invalidateQueries({
-        queryKey: ['pointsHistory']
-      });
-      
-      // Then refetch with a small delay
-      setTimeout(() => {
-        Promise.all([refetchPoints(), refetchAdjustments()])
-          .then(() => {
-            toast.success('Dados atualizados com sucesso');
-            console.log('Data refreshed successfully');
-          })
-          .catch((error) => {
-            console.error('Error refreshing data:', error);
-            toast.error('Erro ao atualizar dados');
-          });
-      }, 300);
-    }
-  };
+  // Handle manual refresh of data with debouncing
+  const handleRefreshData = useCallback(() => {
+    // Prevent multiple simultaneous refreshes
+    if (isRefreshing.current || !selectedCustomerId) return;
+    
+    isRefreshing.current = true;
+    console.log('Manually refreshing data for customer:', selectedCustomerId);
+    toast.loading('Atualizando dados...');
+    
+    // Force invalidate the queries first
+    queryClient.invalidateQueries({
+      queryKey: ['customerPoints', selectedCustomerId]
+    });
+    
+    queryClient.invalidateQueries({
+      queryKey: ['pointAdjustments', selectedCustomerId]
+    });
+    
+    // Also invalidate points history across the app
+    queryClient.invalidateQueries({
+      queryKey: ['pointsHistory']
+    });
+    
+    // Then refetch with a small delay
+    setTimeout(() => {
+      Promise.all([refetchPoints(), refetchAdjustments()])
+        .then(() => {
+          toast.success('Dados atualizados com sucesso');
+          console.log('Data refreshed successfully');
+        })
+        .catch((error) => {
+          console.error('Error refreshing data:', error);
+          toast.error('Erro ao atualizar dados');
+        })
+        .finally(() => {
+          // Reset the refresh flag
+          isRefreshing.current = false;
+        });
+    }, 300);
+  }, [selectedCustomerId, refetchPoints, refetchAdjustments, queryClient]);
 
-  const handleSelectCustomer = (customer: CustomerData) => {
+  const handleSelectCustomer = useCallback((customer: CustomerData) => {
     console.log('Selected customer in hook:', customer);
     
     // Validate and use the usuario_id (profile ID) for operations, not the relation ID
@@ -182,9 +189,9 @@ export const usePointsAdjustment = () => {
     // Switch to form tab when a customer is selected
     setActiveTab('form');
     toast.success(`Cliente ${customer.nome} selecionado`);
-  };
+  }, []);
 
-  const handleAdjustmentSuccess = () => {
+  const handleAdjustmentSuccess = useCallback(() => {
     // Immediately invalidate the queries
     if (selectedCustomerId) {
       // First invalidate all related queries
@@ -206,9 +213,9 @@ export const usePointsAdjustment = () => {
         refetchAdjustments();
         setActiveTab('history');
         toast.success('Ajuste de pontos registrado com sucesso');
-      }, 1000); // Increased timeout to ensure the database has processed everything
+      }, 1000); // Give time for database to process
     }
-  };
+  }, [selectedCustomerId, refetchPoints, refetchAdjustments, queryClient]);
 
   // Debug output of important state for troubleshooting
   useEffect(() => {

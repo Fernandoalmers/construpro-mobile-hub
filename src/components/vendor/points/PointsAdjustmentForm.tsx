@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { Plus, Minus, Loader2 } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createPointAdjustment } from '@/services/vendor/points/adjustmentsCreator';
+import { v4 as uuidv4 } from 'uuid';
 
 interface PointsAdjustmentFormProps {
   customerId: string;
@@ -23,13 +24,31 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
   const [motivo, setMotivo] = useState('');
   const [isPositiveAdjustment, setIsPositiveAdjustment] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  // Track if we've already processed a submission to avoid duplicates
+  const processingRef = useRef(false);
+  // Create a unique transaction ID for this form session
+  const transactionIdRef = useRef(uuidv4());
+  
   const queryClient = useQueryClient();
 
   // Create point adjustment mutation
   const createAdjustmentMutation = useMutation({
-    mutationFn: async (data: { userId: string; tipo: string; valor: number; motivo: string }) => {
+    mutationFn: async (data: { 
+      userId: string; 
+      tipo: string; 
+      valor: number; 
+      motivo: string;
+      transactionId: string;
+    }) => {
       console.log('Mutation function called with data:', data);
-      const result = await createPointAdjustment(data.userId, data.tipo, data.valor, data.motivo);
+      const result = await createPointAdjustment(
+        data.userId, 
+        data.tipo, 
+        data.valor, 
+        data.motivo,
+        data.transactionId
+      );
+      
       if (!result) {
         throw new Error('Falha ao ajustar pontos');
       }
@@ -40,7 +59,12 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
       // Clear form fields
       setPontos('');
       setMotivo('');
+      
+      // Reset submission state
       setSubmitting(false);
+      processingRef.current = false;
+      // Generate a new transaction ID for the next submission
+      transactionIdRef.current = uuidv4();
 
       // Invalidate queries to update data immediately
       queryClient.invalidateQueries({
@@ -61,6 +85,7 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
     },
     onError: (error: Error) => {
       setSubmitting(false);
+      processingRef.current = false;
       console.error('Error in points adjustment mutation:', error);
       toast.error('Erro ao ajustar pontos: ' + error.message);
     }
@@ -72,25 +97,23 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
     setPontos(value);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Use useCallback to debounce the submit function
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (submitting) {
+    // Prevent duplicate submissions
+    if (submitting || processingRef.current) {
       toast.error('Solicitação já está em andamento, aguarde...');
       return;
     }
 
+    // Form validation
     if (!customerId || !pontos || !motivo) {
       toast.error('Preencha todos os campos obrigatórios.');
       return;
     }
 
     console.log('Submitting form with customer ID:', customerId);
-    console.log('DEBUG - Customer ID details:', { 
-      id: customerId, 
-      length: customerId.length,
-      isUUID: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(customerId)
-    });
     
     const pontosValue = parseInt(pontos);
     if (isNaN(pontosValue) || pontosValue <= 0) {
@@ -104,8 +127,11 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
       return;
     }
 
+    // Set the processing flags immediately
+    setSubmitting(true);
+    processingRef.current = true;
+
     try {
-      setSubmitting(true);
       toast.loading(
         isPositiveAdjustment 
           ? 'Adicionando pontos...' 
@@ -116,14 +142,14 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
         userId: customerId,
         tipo: isPositiveAdjustment ? 'adicao' : 'remocao',
         valor: isPositiveAdjustment ? pontosValue : -pontosValue,
-        motivo
+        motivo,
+        transactionId: transactionIdRef.current
       });
     } catch (error) {
       console.error('Error submitting points adjustment:', error);
-      setSubmitting(false);
-      // Error is already handled by mutation's onError
+      // Error is handled by mutation's onError
     }
-  };
+  }, [customerId, pontos, motivo, isPositiveAdjustment, customerPoints, submitting, createAdjustmentMutation]);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 p-4 pt-2">
@@ -134,6 +160,7 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
             variant={isPositiveAdjustment ? "default" : "outline"}
             onClick={() => setIsPositiveAdjustment(true)}
             className="flex items-center justify-center gap-2"
+            disabled={submitting}
           >
             <Plus className="h-4 w-4" />
             <span>Adicionar</span>
@@ -144,6 +171,7 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
             variant={!isPositiveAdjustment ? "default" : "outline"}
             onClick={() => setIsPositiveAdjustment(false)}
             className="flex items-center justify-center gap-2"
+            disabled={submitting}
           >
             <Minus className="h-4 w-4" />
             <span>Remover</span>
@@ -161,6 +189,7 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
             placeholder="Ex: 100"
             className="w-full"
             required
+            disabled={submitting}
           />
         </div>
         
@@ -175,6 +204,7 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
             placeholder="Descreva o motivo do ajuste..."
             className="min-h-[100px]"
             required
+            disabled={submitting}
           />
         </div>
       </div>
@@ -182,7 +212,7 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
       <Button 
         type="submit" 
         className="w-full"
-        disabled={submitting || !pontos || !motivo}
+        disabled={submitting || !pontos || !motivo || createAdjustmentMutation.isPending}
       >
         {submitting || createAdjustmentMutation.isPending ? (
           <>
