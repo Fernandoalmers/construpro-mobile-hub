@@ -30,7 +30,11 @@ const AjustePontosVendorScreen: React.FC = () => {
     setActiveTab,
     handleRefreshData,
     handleSelectCustomer,
-    handleAdjustmentSuccess
+    handleAdjustmentSuccess,
+    // Duplicate protection features
+    duplicateCount,
+    checkForDuplicates,
+    cleanDuplicates
   } = usePointsAdjustment();
 
   // Deploy RPC functions when component mounts
@@ -44,7 +48,7 @@ const AjustePontosVendorScreen: React.FC = () => {
   
   // For admins, check for duplicate transactions on mount
   useEffect(() => {
-    const checkForDuplicates = async () => {
+    const checkForDuplicatesOnMount = async () => {
       if (!isAdmin) return;
       
       try {
@@ -65,21 +69,24 @@ const AjustePontosVendorScreen: React.FC = () => {
             { 
               duration: 8000,
               action: {
-                label: "Saiba mais",
-                onClick: () => toast.info(
-                  "Use os controles de administração no formulário de ajuste para verificar e remover duplicações."
-                )
+                label: "Limpar agora",
+                onClick: () => cleanDuplicates()
               }
             }
           );
         }
       } catch (err) {
-        console.error('Error in checkForDuplicates:', err);
+        console.error('Error in checkForDuplicatesOnMount:', err);
       }
     };
     
-    checkForDuplicates();
-  }, [isAdmin]);
+    // Add a small delay to prevent overwhelming the user with notifications
+    const timer = setTimeout(() => {
+      checkForDuplicatesOnMount();
+    }, 3000);
+    
+    return () => clearTimeout(timer);
+  }, [isAdmin, cleanDuplicates]);
 
   // Display a toast message once when the component mounts
   useEffect(() => {
@@ -106,6 +113,18 @@ const AjustePontosVendorScreen: React.FC = () => {
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-xl font-bold">Ajuste de Pontos</h1>
+        
+        {/* Show admin notification if there are duplicates */}
+        {isAdmin && duplicateCount > 0 && (
+          <div className="ml-auto">
+            <span 
+              onClick={() => cleanDuplicates()} 
+              className="text-xs bg-amber-100 text-amber-800 py-1 px-2 rounded-full cursor-pointer"
+            >
+              {duplicateCount} duplicatas encontradas
+            </span>
+          </div>
+        )}
       </div>
       
       <div className="max-w-3xl mx-auto p-4 space-y-4">

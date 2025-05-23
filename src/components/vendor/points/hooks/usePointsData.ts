@@ -1,13 +1,15 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { getCustomerPoints } from '@/services/vendor/customers';
 import { getPointAdjustments } from '@/services/vendor/points/adjustmentsFetcher';
 import { toast } from '@/components/ui/sonner';
+import { useDuplicateProtection } from './useDuplicateProtection';
 
 export const usePointsData = (selectedCustomerId: string | null) => {
   const [activeTab, setActiveTab] = useState('form');
   const queryClient = useQueryClient();
+  const { checkForDuplicates } = useDuplicateProtection();
   
   // Ref to track if a refresh is already in progress
   const isRefreshing = useRef(false);
@@ -88,6 +90,9 @@ export const usePointsData = (selectedCustomerId: string | null) => {
       queryKey: ['pointsHistory']
     });
     
+    // Check for duplicates (silently) during refresh
+    checkForDuplicates(true);
+    
     // Then refetch with a small delay
     setTimeout(() => {
       Promise.all([refetchPoints(), refetchAdjustments()])
@@ -104,7 +109,7 @@ export const usePointsData = (selectedCustomerId: string | null) => {
           isRefreshing.current = false;
         });
     }, 300);
-  }, [selectedCustomerId, refetchPoints, refetchAdjustments, queryClient]);
+  }, [selectedCustomerId, refetchPoints, refetchAdjustments, queryClient, checkForDuplicates]);
 
   const handleAdjustmentSuccess = useCallback(() => {
     // Immediately invalidate the queries
@@ -122,6 +127,11 @@ export const usePointsData = (selectedCustomerId: string | null) => {
         queryKey: ['pointsHistory']
       });
       
+      // Check for duplicates after adjustment (silently)
+      setTimeout(() => {
+        checkForDuplicates(true);
+      }, 1500);
+      
       // Then force a hard refresh with a slight delay
       setTimeout(() => {
         refetchPoints();
@@ -130,7 +140,7 @@ export const usePointsData = (selectedCustomerId: string | null) => {
         toast.success('Ajuste de pontos registrado com sucesso');
       }, 1000); // Give time for database to process
     }
-  }, [selectedCustomerId, refetchPoints, refetchAdjustments, queryClient]);
+  }, [selectedCustomerId, refetchPoints, refetchAdjustments, queryClient, checkForDuplicates]);
 
   return {
     customerPoints,

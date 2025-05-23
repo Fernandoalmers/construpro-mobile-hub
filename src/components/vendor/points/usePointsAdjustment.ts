@@ -1,6 +1,6 @@
 
 import { useEffect } from 'react';
-import { useCustomerSelection, usePointsData, useVendorVerification } from './hooks';
+import { useCustomerSelection, usePointsData, useVendorVerification, useDuplicateProtection } from './hooks';
 
 export const usePointsAdjustment = () => {
   // Use vendor verification hook
@@ -28,6 +28,14 @@ export const usePointsAdjustment = () => {
     isAdjustmentsError,
     adjustmentsError
   } = usePointsData(selectedCustomerId);
+  
+  // Use duplicate protection hook
+  const { 
+    isChecking,
+    duplicateCount,
+    checkForDuplicates,
+    cleanDuplicates
+  } = useDuplicateProtection();
 
   // Debug output of important state for troubleshooting
   useEffect(() => {
@@ -38,11 +46,16 @@ export const usePointsAdjustment = () => {
         adjustmentsCount: adjustments.length,
         isLoadingPoints,
         isLoadingAdjustments,
+        duplicateCount,
         isPointsError: isPointsError ? pointsError : null,
         isAdjustmentsError: isAdjustmentsError ? adjustmentsError : null
       });
     }
-  }, [selectedCustomerId, customerPoints, adjustments, isLoadingPoints, isLoadingAdjustments, isPointsError, isAdjustmentsError, pointsError, adjustmentsError]);
+  }, [
+    selectedCustomerId, customerPoints, adjustments, isLoadingPoints, 
+    isLoadingAdjustments, isPointsError, isAdjustmentsError, 
+    pointsError, adjustmentsError, duplicateCount
+  ]);
 
   return {
     selectedCustomerId,
@@ -55,6 +68,11 @@ export const usePointsAdjustment = () => {
     setActiveTab,
     handleRefreshData,
     handleSelectCustomer,
-    handleAdjustmentSuccess
+    handleAdjustmentSuccess,
+    // Expose duplicate protection methods
+    isChecking,
+    duplicateCount,
+    checkForDuplicates,
+    cleanDuplicates
   };
 };
