@@ -25,8 +25,8 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
   const [submitting, setSubmitting] = useState(false);
   // Track if we've already processed a submission to avoid duplicates
   const processingRef = useRef(false);
-  // Create a unique transaction ID for this form session
-  const transactionIdRef = useRef(uuidv4());
+  // Create a unique transaction ID for this form session with timestamp to ensure uniqueness
+  const transactionIdRef = useRef(`${uuidv4()}-${Date.now()}`);
   
   const queryClient = useQueryClient();
 
@@ -40,18 +40,32 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
       transactionId: string;
     }) => {
       console.log('Mutation function called with data:', data);
-      const result = await createPointAdjustment(
-        data.userId, 
-        data.tipo, 
-        data.valor, 
-        data.motivo,
-        data.transactionId
-      );
       
-      if (!result) {
-        throw new Error('Falha ao ajustar pontos');
+      // Add an additional debounce here to prevent multiple rapid clicks
+      if (processingRef.current) {
+        console.log('Already processing, ignoring duplicate request');
+        return null;
       }
-      return result;
+      
+      processingRef.current = true;
+      
+      try {
+        const result = await createPointAdjustment(
+          data.userId, 
+          data.tipo, 
+          data.valor, 
+          data.motivo,
+          data.transactionId
+        );
+        
+        if (!result) {
+          throw new Error('Falha ao ajustar pontos');
+        }
+        return result;
+      } catch (error) {
+        processingRef.current = false;
+        throw error;
+      }
     },
     onSuccess: () => {
       console.log('Points adjustment successful for customer ID:', customerId);
@@ -62,8 +76,8 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
       // Reset submission state
       setSubmitting(false);
       processingRef.current = false;
-      // Generate a new transaction ID for the next submission
-      transactionIdRef.current = uuidv4();
+      // Generate a new transaction ID for the next submission with timestamp
+      transactionIdRef.current = `${uuidv4()}-${Date.now()}`;
 
       // Invalidate queries to update data immediately
       queryClient.invalidateQueries({
@@ -105,6 +119,7 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
 
     // Prevent duplicate submissions
     if (submitting || processingRef.current) {
+      console.log('Form is already submitting, ignoring duplicate submission');
       toast.error('Solicitação já está em andamento, aguarde...');
       return;
     }
@@ -131,14 +146,14 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
 
     // Set the processing flags immediately
     setSubmitting(true);
-    processingRef.current = true;
 
     try {
+      const toastId = 'adjustment-toast';
       toast.loading(
         isPositiveAdjustment 
           ? 'Adicionando pontos...' 
           : 'Removendo pontos...',
-        { id: 'adjustment-toast' }  
+        { id: toastId }  
       );
       
       await createAdjustmentMutation.mutateAsync({
@@ -150,10 +165,10 @@ const PointsAdjustmentForm: React.FC<PointsAdjustmentFormProps> = ({
       });
       
       // Close loading toast on success
-      toast.dismiss('adjustment-toast');
+      toast.dismiss(toastId);
       
     } catch (error) {
-      toast.dismiss('adjustment-toast');
+      setSubmitting(false);
       console.error('Error submitting points adjustment:', error);
       // Error is handled by mutation's onError
     }

@@ -212,11 +212,34 @@ export const createPointAdjustment = async (
     }
     
     if (recentAdjustment && recentAdjustment.length > 0) {
-      console.warn('Possible duplicate transaction detected, but continuing as requested:', recentAdjustment[0]);
-      // We'll continue anyway but log the warning
+      console.warn('Possible duplicate transaction detected within last minute:', recentAdjustment[0]);
+      toast.warning('Uma transação similar já foi realizada no último minuto. Aguarde ou use um valor diferente.');
+      return false;  // Prevent the duplicate
     }
     
-    // Insert the point adjustment record - Remove transaction-related code
+    // Check if a transaction with this exact ID already exists
+    if (transactionId) {
+      const { data: existingTransactionCheck, error: transactionCheckError } = await supabase
+        .from('pontos_ajustados')
+        .select('id')
+        .eq('motivo', `${motivo} [${transactionId}]`) // Check if this exact transaction ID is in the motivo field
+        .maybeSingle();
+        
+      if (transactionCheckError) {
+        console.warn('Error checking for existing transaction:', transactionCheckError);
+      }
+      
+      if (existingTransactionCheck) {
+        console.warn('Transaction with this ID already exists:', existingTransactionCheck.id);
+        toast.warning('Esta transação já foi processada. Evitando duplicação.');
+        return false;
+      }
+    }
+    
+    // Insert the point adjustment record - with transaction ID embedded in motivo to track
+    const adjustmentMotivo = transactionId ? `${motivo} [${transactionId}]` : motivo;
+    
+    // Insert the point adjustment record
     const { data: insertData, error: insertError } = await supabase
       .from('pontos_ajustados')
       .insert({
@@ -224,7 +247,7 @@ export const createPointAdjustment = async (
         usuario_id: userId,
         tipo: tipo,
         valor: adjustmentValue,
-        motivo: motivo
+        motivo: adjustmentMotivo  // Include transaction ID in motivo for traceability
       })
       .select('*')
       .single();
@@ -249,22 +272,9 @@ export const createPointAdjustment = async (
       return false;
     }
     
-    // Manually create a transaction record instead of relying on triggers
-    const { error: transactionError } = await supabase
-      .from('points_transactions')
-      .insert({
-        user_id: userId,
-        pontos: adjustmentValue,
-        tipo: tipo === 'adicao' ? 'servico' : 'resgate',
-        descricao: 'Ajuste de pontos: ' + motivo,
-        referencia_id: insertData.id
-      });
-      
-    if (transactionError) {
-      console.error('Error creating points transaction:', transactionError);
-      toast.error('Erro ao registrar transação de pontos: ' + transactionError.message);
-      return false;
-    }
+    // Instead of creating a transaction record directly,
+    // we'll rely on the database trigger to create it once
+    // which helps prevent duplicate entries
     
     toast.success('Ajuste de pontos realizado com sucesso!');
     return true;
