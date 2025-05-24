@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
@@ -8,7 +9,7 @@ import {
   HomeScreen, ProfileScreen, RewardsScreen,
   RewardDetailScreen, StoreDetailScreen, 
   CartScreen, CheckoutScreen, OrdersScreen, OrderDetailScreen,
-  FavoritesScreen, ChatDetailScreen, SettingsScreen,
+  FavoritesScreen, ChatScreen, ChatDetailScreen, SettingsScreen,
   NotFoundScreen, VendorDashboardScreen, VendorProductsScreen,
   VendorCustomersScreen, AuthProvider, ProtectedRoute,
   MarketplaceScreenWrapper, AdminSettingsScreen, AdminRewardsScreen, 
