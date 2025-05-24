@@ -1,4 +1,9 @@
 
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/sonner';
+import { OrderData, OrderItem, ProductData } from './types';
+import { getProductImageUrl } from './getOrderById';
+
 export async function getOrders(): Promise<OrderData[]> {
   try {
     console.log("🔍 [orderService.getOrders] Fetching orders for current user");
