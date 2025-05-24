@@ -40,11 +40,15 @@ export const fetchVendorOrders = async (
     // Get all order IDs that contain products from this vendor
     const { data: vendorOrderIds, error: orderIdsError } = await supabase
       .from('order_items')
-      .select(`
-        order_id,
-        produtos!inner(vendedor_id)
-      `)
-      .eq('produtos.vendedor_id', vendorId);
+      .select('order_id, produto_id')
+      .in('produto_id', 
+        // First get all product IDs for this vendor
+        await supabase
+          .from('produtos')
+          .select('id')
+          .eq('vendedor_id', vendorId)
+          .then(({ data }) => data?.map(p => p.id) || [])
+      );
     
     if (orderIdsError) {
       console.error('❌ [fetchVendorOrders] Error fetching vendor order IDs:', orderIdsError);
@@ -118,6 +122,14 @@ export const fetchVendorOrders = async (
         // Get customer info using cliente_id
         const customerInfo = await fetchCustomerInfo(order.cliente_id, vendorId);
         
+        // Get vendor product IDs first
+        const { data: vendorProducts } = await supabase
+          .from('produtos')
+          .select('id')
+          .eq('vendedor_id', vendorId);
+        
+        const vendorProductIds = vendorProducts?.map(p => p.id) || [];
+        
         // Get order items for this vendor only
         const { data: itemsData, error: itemsError } = await supabase
           .from('order_items')
@@ -126,33 +138,44 @@ export const fetchVendorOrders = async (
             produto_id,
             quantidade,
             preco_unitario,
-            subtotal,
-            produtos!inner(vendedor_id, nome, imagens, descricao, preco_normal, categoria)
+            subtotal
           `)
           .eq('order_id', order.id)
-          .eq('produtos.vendedor_id', vendorId);
+          .in('produto_id', vendorProductIds);
         
         if (itemsError) {
           console.error('❌ [fetchVendorOrders] Error fetching items for order', order.id, ':', itemsError);
           continue;
         }
         
-        // Process items
-        const items: OrderItem[] = itemsData?.map(item => ({
-          id: item.id,
-          produto_id: item.produto_id,
-          quantidade: item.quantidade,
-          preco_unitario: item.preco_unitario,
-          subtotal: item.subtotal,
-          produto: item.produtos ? {
-            id: item.produto_id,
-            nome: item.produtos.nome || 'Produto',
-            imagens: item.produtos.imagens || [],
-            descricao: item.produtos.descricao || '',
-            preco_normal: item.produtos.preco_normal || item.preco_unitario,
-            categoria: item.produtos.categoria || ''
-          } : undefined
-        })) || [];
+        // Get product details for each item
+        const items: OrderItem[] = [];
+        if (itemsData) {
+          for (const item of itemsData) {
+            const { data: productData } = await supabase
+              .from('produtos')
+              .select('nome, imagens, descricao, preco_normal, categoria')
+              .eq('id', item.produto_id)
+              .single();
+            
+            items.push({
+              id: item.id,
+              produto_id: item.produto_id,
+              quantidade: item.quantidade,
+              preco_unitario: item.preco_unitario,
+              subtotal: item.subtotal,
+              total: item.subtotal, // Map subtotal to total for type compatibility
+              produto: productData ? {
+                id: item.produto_id,
+                nome: productData.nome || 'Produto',
+                imagens: productData.imagens || [],
+                descricao: productData.descricao || '',
+                preco_normal: productData.preco_normal || item.preco_unitario,
+                categoria: productData.categoria || ''
+              } : undefined
+            });
+          }
+        }
         
         // Calculate vendor-specific total
         const vendorTotal = items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
@@ -244,12 +267,20 @@ export const getOrderDetails = async (orderId: string): Promise<VendorOrder | nu
       return null;
     }
     
+    // Get vendor product IDs
+    const { data: vendorProducts } = await supabase
+      .from('produtos')
+      .select('id')
+      .eq('vendedor_id', vendorId);
+    
+    const vendorProductIds = vendorProducts?.map(p => p.id) || [];
+    
     // Verify this vendor has items in this order
     const { data: vendorCheck, error: vendorCheckError } = await supabase
       .from('order_items')
-      .select('id, produtos!inner(vendedor_id)')
+      .select('id')
       .eq('order_id', orderId)
-      .eq('produtos.vendedor_id', vendorId)
+      .in('produto_id', vendorProductIds)
       .limit(1);
     
     if (vendorCheckError || !vendorCheck || vendorCheck.length === 0) {
@@ -268,33 +299,44 @@ export const getOrderDetails = async (orderId: string): Promise<VendorOrder | nu
         produto_id,
         quantidade,
         preco_unitario,
-        subtotal,
-        produtos!inner(vendedor_id, nome, imagens, descricao, preco_normal, categoria)
+        subtotal
       `)
       .eq('order_id', orderId)
-      .eq('produtos.vendedor_id', vendorId);
+      .in('produto_id', vendorProductIds);
     
     if (itemsError) {
       console.error('❌ [getOrderDetails] Error fetching order items:', itemsError);
       return null;
     }
     
-    // Process items
-    const items: OrderItem[] = itemsData?.map(item => ({
-      id: item.id,
-      produto_id: item.produto_id,
-      quantidade: item.quantidade,
-      preco_unitario: item.preco_unitario,
-      subtotal: item.subtotal,
-      produto: item.produtos ? {
-        id: item.produto_id,
-        nome: item.produtos.nome || 'Produto',
-        imagens: item.produtos.imagens || [],
-        descricao: item.produtos.descricao || '',
-        preco_normal: item.produtos.preco_normal || item.preco_unitario,
-        categoria: item.produtos.categoria || ''
-      } : undefined
-    })) || [];
+    // Get product details for each item
+    const items: OrderItem[] = [];
+    if (itemsData) {
+      for (const item of itemsData) {
+        const { data: productData } = await supabase
+          .from('produtos')
+          .select('nome, imagens, descricao, preco_normal, categoria')
+          .eq('id', item.produto_id)
+          .single();
+        
+        items.push({
+          id: item.id,
+          produto_id: item.produto_id,
+          quantidade: item.quantidade,
+          preco_unitario: item.preco_unitario,
+          subtotal: item.subtotal,
+          total: item.subtotal, // Map subtotal to total for type compatibility
+          produto: productData ? {
+            id: item.produto_id,
+            nome: productData.nome || 'Produto',
+            imagens: productData.imagens || [],
+            descricao: productData.descricao || '',
+            preco_normal: productData.preco_normal || item.preco_unitario,
+            categoria: productData.categoria || ''
+          } : undefined
+        });
+      }
+    }
     
     // Calculate vendor-specific total
     const vendorTotal = items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
@@ -357,15 +399,20 @@ export const fetchDirectVendorOrdersWithDebug = async (
       resolvedVendorId = vendorIdResult.data;
     }
     
-    // Get vendor order IDs from order_items + produtos
+    // Get vendor product IDs
+    const { data: vendorProducts } = await supabase
+      .from('produtos')
+      .select('id')
+      .eq('vendedor_id', resolvedVendorId);
+    
+    const vendorProductIds = vendorProducts?.map(p => p.id) || [];
+    
+    // Get vendor order IDs from order_items
     const vendorOrdersStart = performance.now();
     const { data: vendorOrderIds, error: orderIdsError } = await supabase
       .from('order_items')
-      .select(`
-        order_id,
-        produtos!inner(vendedor_id)
-      `)
-      .eq('produtos.vendedor_id', resolvedVendorId);
+      .select('order_id')
+      .in('produto_id', vendorProductIds);
       
     metrics.add('fetch_vendor_order_ids', performance.now() - vendorOrdersStart);
     
@@ -429,7 +476,7 @@ export const fetchDirectVendorOrdersWithDebug = async (
       debug: includeDebug ? {
         vendorId: resolvedVendorId,
         timestamp: new Date().toISOString(),
-        vendorProductsCount: 0, // Would need additional query
+        vendorProductsCount: vendorProductIds.length,
         orderItemsCount: vendorOrderIds?.length || 0
       } : undefined
     };
@@ -459,6 +506,14 @@ export const fetchDirectVendorOrders = async (
         // Get customer info
         const customerInfo = await fetchCustomerInfo(order.cliente_id, vendorId);
         
+        // Get vendor product IDs
+        const { data: vendorProducts } = await supabase
+          .from('produtos')
+          .select('id')
+          .eq('vendedor_id', vendorId);
+        
+        const vendorProductIds = vendorProducts?.map(p => p.id) || [];
+        
         // Get order items for this vendor
         const { data: itemsData } = await supabase
           .from('order_items')
@@ -467,27 +522,39 @@ export const fetchDirectVendorOrders = async (
             produto_id,
             quantidade,
             preco_unitario,
-            subtotal,
-            produtos!inner(vendedor_id, nome, imagens)
+            subtotal
           `)
           .eq('order_id', order.id)
-          .eq('produtos.vendedor_id', vendorId);
+          .in('produto_id', vendorProductIds);
         
-        const items: OrderItem[] = itemsData?.map(item => ({
-          id: item.id,
-          produto_id: item.produto_id,
-          quantidade: item.quantidade,
-          preco_unitario: item.preco_unitario,
-          subtotal: item.subtotal,
-          produto: item.produtos ? {
-            id: item.produto_id,
-            nome: item.produtos.nome || 'Produto',
-            imagens: item.produtos.imagens || [],
-            descricao: '',
-            preco_normal: item.preco_unitario,
-            categoria: ''
-          } : undefined
-        })) || [];
+        // Get product details for each item
+        const items: OrderItem[] = [];
+        if (itemsData) {
+          for (const item of itemsData) {
+            const { data: productData } = await supabase
+              .from('produtos')
+              .select('nome, imagens')
+              .eq('id', item.produto_id)
+              .single();
+            
+            items.push({
+              id: item.id,
+              produto_id: item.produto_id,
+              quantidade: item.quantidade,
+              preco_unitario: item.preco_unitario,
+              subtotal: item.subtotal,
+              total: item.subtotal, // Map subtotal to total for type compatibility
+              produto: productData ? {
+                id: item.produto_id,
+                nome: productData.nome || 'Produto',
+                imagens: productData.imagens || [],
+                descricao: '',
+                preco_normal: item.preco_unitario,
+                categoria: ''
+              } : undefined
+            });
+          }
+        }
         
         // Calculate vendor total
         const vendorTotal = items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
