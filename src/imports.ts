@@ -54,8 +54,9 @@ export { default as OrderConfirmationScreen } from './components/marketplace/Ord
 // Favorites
 export { default as FavoritesScreen } from './components/profile/FavoritesScreen';
 
-// Chat
+// Chat components
 export { default as ChatScreen } from './components/chat/ChatScreen';
+export { default as ChatDetailScreen } from './components/chat/ChatDetailScreen';
 
 // Settings
 export { default as SettingsScreen } from './components/profile/SettingsScreen';

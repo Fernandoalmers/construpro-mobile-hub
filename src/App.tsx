@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
@@ -9,7 +8,7 @@ import {
   HomeScreen, ProfileScreen, RewardsScreen,
   RewardDetailScreen, StoreDetailScreen, 
   CartScreen, CheckoutScreen, OrdersScreen, OrderDetailScreen,
-  FavoritesScreen, ChatScreen, SettingsScreen,
+  FavoritesScreen, ChatDetailScreen, SettingsScreen,
   NotFoundScreen, VendorDashboardScreen, VendorProductsScreen,
   VendorCustomersScreen, AuthProvider, ProtectedRoute,
   MarketplaceScreenWrapper, AdminSettingsScreen, AdminRewardsScreen, 
@@ -137,7 +136,7 @@ function App() {
         
         {/* Other user routes */}
         <Route path="/favorites" element={<ProtectedRoute><FavoritesScreen /></ProtectedRoute>} />
-        <Route path="/chat/:chatId" element={<ProtectedRoute><ChatScreen /></ProtectedRoute>} />
+        <Route path="/chat/:chatId" element={<ProtectedRoute><ChatDetailScreen /></ProtectedRoute>} />
         <Route path="/chat" element={<ProtectedRoute><ChatScreen /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><SettingsScreen /></ProtectedRoute>} />
         
