@@ -117,7 +117,7 @@ const ProfileScreen: React.FC = () => {
       <div className="bg-construPro-blue p-6 pt-12">
         <div className="flex items-center space-x-4">
           <Avatar className="h-16 w-16">
-            <AvatarImage src={profile?.avatar_url} />
+            <AvatarImage src={profile?.avatar} />
             <AvatarFallback className="bg-white text-construPro-blue text-lg font-semibold">
               {profile?.nome?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
             </AvatarFallback>
