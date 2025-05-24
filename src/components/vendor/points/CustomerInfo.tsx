@@ -4,7 +4,6 @@ import { RefreshCw, Loader2, Award, AlertTriangle, CheckCircle, Wrench } from 'l
 import { Button } from '@/components/ui/button';
 import Avatar from '../../common/Avatar';
 import { CustomerData } from './CustomerSearch';
-import { usePointsAudit } from './hooks/usePointsAudit';
 
 interface CustomerInfoProps {
   customer: CustomerData;
@@ -53,7 +52,7 @@ const CustomerInfo: React.FC<CustomerInfoProps> = ({
   
   return (
     <div className="p-4 bg-blue-50 border-b border-blue-100">
-      {/* Alert de discrepâncias */}
+      {/* Alert de discrepâncias melhorado */}
       {hasDiscrepancies && (
         <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
           <div className="flex items-center justify-between">
@@ -63,11 +62,14 @@ const CustomerInfo: React.FC<CustomerInfoProps> = ({
                 <div className="font-medium text-amber-800">Problemas detectados no saldo</div>
                 <div className="text-sm text-amber-700">
                   {auditResults.difference !== 0 && (
-                    <span>Diferença de {auditResults.difference} pontos. </span>
+                    <span>Diferença: {auditResults.difference} pontos. </span>
                   )}
                   {auditResults.duplicateTransactions > 0 && (
                     <span>{auditResults.duplicateTransactions} transações duplicadas. </span>
                   )}
+                  <div className="text-xs text-amber-600 mt-1">
+                    Perfil: {auditResults.profileBalance} | Calculado: {auditResults.transactionBalance}
+                  </div>
                 </div>
               </div>
             </div>

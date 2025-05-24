@@ -1628,6 +1628,18 @@ export type Database = {
         Args: { product_id: string }
         Returns: undefined
       }
+      audit_user_points_comprehensive: {
+        Args: { target_user_id: string }
+        Returns: {
+          issue_type: string
+          current_balance: number
+          calculated_balance: number
+          difference: number
+          duplicate_count: number
+          corrected: boolean
+          details: Json
+        }[]
+      }
       begin_transaction: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -1639,6 +1651,13 @@ export type Database = {
       can_vendor_access_order: {
         Args: { order_id: string; vendor_id: string }
         Returns: boolean
+      }
+      clean_duplicate_transactions_safely: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          deleted_count: number
+          error_message: string
+        }[]
       }
       commit_transaction: {
         Args: Record<PropertyKey, never>

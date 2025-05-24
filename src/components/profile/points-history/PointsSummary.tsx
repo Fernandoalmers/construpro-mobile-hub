@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import Card from '../../common/Card';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import { CircleDollarSign, RefreshCw, AlertTriangle, CheckCircle } from 'lucide-react';
+import { CircleDollarSign, RefreshCw, AlertTriangle, CheckCircle, Wrench } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { usePointsAudit } from '@/components/vendor/points/hooks/usePointsAudit';
 import { supabase } from '@/integrations/supabase/client';
@@ -55,7 +55,7 @@ const PointsSummary: React.FC<PointsSummaryProps> = ({
       const summary = await calculateTransactionSummary(currentUserId);
       setTransactionSummary(summary);
     }
-    toast.success('Dados atualizados');
+    toast.success('Dados atualizados e verificados');
   };
 
   const handleAutoFix = async () => {
@@ -79,9 +79,9 @@ const PointsSummary: React.FC<PointsSummaryProps> = ({
   );
 
   // Usar dados das transações calculados se disponíveis, senão usar os props
-  const displayTotalEarned = transactionSummary?.totalEarned ?? totalEarned;
-  const displayTotalRedeemed = transactionSummary?.totalRedeemed ?? totalRedeemed;
-  const calculatedBalance = transactionSummary?.netBalance ?? totalPoints;
+  const displayTotalEarned = transactionSummary?.totalEarned ?? auditResults?.details?.totalEarned ?? totalEarned;
+  const displayTotalRedeemed = transactionSummary?.totalRedeemed ?? auditResults?.details?.totalRedeemed ?? totalRedeemed;
+  const calculatedBalance = transactionSummary?.netBalance ?? auditResults?.transactionBalance ?? totalPoints;
 
   return (
     <Card className="p-4">
@@ -97,7 +97,7 @@ const PointsSummary: React.FC<PointsSummaryProps> = ({
             ) : (
               <div className="flex items-center text-green-600">
                 <CheckCircle size={16} className="mr-1" />
-                <span className="text-xs">Saldo correto</span>
+                <span className="text-xs">Saldo verificado</span>
               </div>
             )}
           </div>
@@ -110,7 +110,7 @@ const PointsSummary: React.FC<PointsSummaryProps> = ({
         <span className="ml-1 text-gray-600">pontos</span>
         {auditResults && auditResults.difference !== 0 && (
           <span className="ml-2 text-xs text-amber-600">
-            (Diff: {auditResults.difference > 0 ? '+' : ''}{auditResults.difference})
+            (Calculado: {auditResults.transactionBalance})
           </span>
         )}
       </div>
@@ -129,11 +129,9 @@ const PointsSummary: React.FC<PointsSummaryProps> = ({
               • {auditResults.duplicateTransactions} transações duplicadas
             </div>
           )}
-          {calculatedBalance !== totalPoints && (
-            <div className="text-amber-700">
-              • Saldo calculado: {calculatedBalance} pontos
-            </div>
-          )}
+          <div className="text-amber-600 mt-1">
+            Saldo do perfil: {auditResults.profileBalance} | Calculado: {auditResults.transactionBalance}
+          </div>
         </div>
       )}
       
@@ -170,7 +168,7 @@ const PointsSummary: React.FC<PointsSummaryProps> = ({
             disabled={isAuditing}
             className="flex-1 flex items-center justify-center bg-amber-600 hover:bg-amber-700"
           >
-            <AlertTriangle size={14} className="mr-2" />
+            <Wrench size={14} className="mr-2" />
             Corrigir automaticamente
           </Button>
         )}

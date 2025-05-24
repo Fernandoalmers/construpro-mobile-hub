@@ -10,6 +10,11 @@ interface PointsAuditResult {
   difference: number;
   duplicateTransactions: number;
   status: 'ok' | 'discrepancy' | 'error';
+  details: {
+    totalEarned: number;
+    totalRedeemed: number;
+    auditTimestamp: string;
+  };
 }
 
 interface TransactionSummary {
@@ -22,7 +27,7 @@ export const usePointsAudit = () => {
   const [isAuditing, setIsAuditing] = useState(false);
   const [auditResults, setAuditResults] = useState<PointsAuditResult | null>(null);
 
-  // Função para calcular o resumo das transações
+  // Função para calcular o resumo das transações corretamente
   const calculateTransactionSummary = useCallback(async (userId: string): Promise<TransactionSummary> => {
     try {
       const { data: transactions, error } = await supabase
@@ -32,14 +37,17 @@ export const usePointsAudit = () => {
 
       if (error) throw error;
 
+      // Total ganho: apenas pontos positivos
       const totalEarned = transactions
         ?.filter(t => t.pontos > 0)
         .reduce((sum, t) => sum + t.pontos, 0) || 0;
 
+      // Total resgatado: valor absoluto dos pontos negativos
       const totalRedeemed = Math.abs(transactions
         ?.filter(t => t.pontos < 0)
         .reduce((sum, t) => sum + t.pontos, 0) || 0);
 
+      // Saldo líquido: soma de todas as transações
       const netBalance = transactions
         ?.reduce((sum, t) => sum + t.pontos, 0) || 0;
 
@@ -54,42 +62,63 @@ export const usePointsAudit = () => {
     }
   }, []);
 
-  // Função principal de auditoria
+  // Função principal de auditoria usando a nova função SQL
   const auditUserPoints = useCallback(async (userId: string): Promise<PointsAuditResult> => {
     setIsAuditing(true);
     
     try {
-      // Buscar saldo do perfil
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('saldo_pontos')
-        .eq('id', userId)
-        .single();
+      // Usar a nova função de auditoria abrangente
+      const { data: auditData, error: auditError } = await supabase.rpc('audit_user_points_comprehensive', {
+        target_user_id: userId
+      });
 
-      if (profileError) throw profileError;
+      if (auditError) throw auditError;
 
-      // Calcular saldo das transações
-      const transactionSummary = await calculateTransactionSummary(userId);
+      let result: PointsAuditResult;
 
-      // Verificar duplicatas
-      const { data: duplicates, error: duplicatesError } = await supabase.rpc('get_duplicate_transactions');
-      
-      const userDuplicates = duplicatesError ? 0 : 
-        (duplicates as any[])?.filter((group: any) => group.user_id === userId)
-        .reduce((total: number, group: any) => total + Math.max(0, group.transaction_count - 1), 0) || 0;
+      if (auditData && auditData.length > 0) {
+        const audit = auditData[0];
+        result = {
+          userId,
+          profileBalance: audit.current_balance || 0,
+          transactionBalance: audit.calculated_balance || 0,
+          difference: audit.difference || 0,
+          duplicateTransactions: audit.duplicate_count || 0,
+          status: audit.issue_type === 'all_good' ? 'ok' : 'discrepancy',
+          details: {
+            totalEarned: audit.details?.total_earned || 0,
+            totalRedeemed: audit.details?.total_redeemed || 0,
+            auditTimestamp: audit.details?.audit_timestamp || new Date().toISOString()
+          }
+        };
+      } else {
+        // Fallback para auditoria manual se a função não retornar dados
+        const transactionSummary = await calculateTransactionSummary(userId);
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('saldo_pontos')
+          .eq('id', userId)
+          .single();
 
-      const profileBalance = profile?.saldo_pontos || 0;
-      const transactionBalance = transactionSummary.netBalance;
-      const difference = profileBalance - transactionBalance;
+        if (profileError) throw profileError;
 
-      const result: PointsAuditResult = {
-        userId,
-        profileBalance,
-        transactionBalance,
-        difference,
-        duplicateTransactions: userDuplicates,
-        status: difference === 0 && userDuplicates === 0 ? 'ok' : 'discrepancy'
-      };
+        const profileBalance = profile?.saldo_pontos || 0;
+        const difference = profileBalance - transactionSummary.netBalance;
+
+        result = {
+          userId,
+          profileBalance,
+          transactionBalance: transactionSummary.netBalance,
+          difference,
+          duplicateTransactions: 0,
+          status: difference === 0 ? 'ok' : 'discrepancy',
+          details: {
+            totalEarned: transactionSummary.totalEarned,
+            totalRedeemed: transactionSummary.totalRedeemed,
+            auditTimestamp: new Date().toISOString()
+          }
+        };
+      }
 
       setAuditResults(result);
       return result;
@@ -102,7 +131,12 @@ export const usePointsAudit = () => {
         transactionBalance: 0,
         difference: 0,
         duplicateTransactions: 0,
-        status: 'error'
+        status: 'error',
+        details: {
+          totalEarned: 0,
+          totalRedeemed: 0,
+          auditTimestamp: new Date().toISOString()
+        }
       };
       setAuditResults(errorResult);
       return errorResult;
@@ -118,20 +152,15 @@ export const usePointsAudit = () => {
     try {
       toast.loading('Corrigindo discrepâncias...', { id: 'auto-fix' });
 
-      // 1. Primeiro, limpar duplicatas se existirem
-      const { data: duplicates } = await supabase.rpc('get_duplicate_transactions');
-      const userDuplicates = (duplicates as any[])?.filter((group: any) => group.user_id === userId) || [];
+      // 1. Primeiro, limpar duplicatas se existirem usando a nova função segura
+      const { data: cleanResult, error: cleanError } = await supabase.rpc('clean_duplicate_transactions_safely');
       
-      if (userDuplicates.length > 0) {
-        // Remover duplicatas para este usuário
-        for (const group of userDuplicates) {
-          const transactionsToDelete = group.transaction_ids.slice(1);
-          if (transactionsToDelete.length > 0) {
-            await supabase
-              .from('points_transactions')
-              .delete()
-              .in('id', transactionsToDelete);
-          }
+      if (cleanError) {
+        console.error('Erro ao limpar duplicatas:', cleanError);
+      } else if (cleanResult && cleanResult.length > 0) {
+        const deletedCount = cleanResult[0]?.deleted_count || 0;
+        if (deletedCount > 0) {
+          console.log(`Removidas ${deletedCount} transações duplicadas`);
         }
       }
 
@@ -145,10 +174,21 @@ export const usePointsAudit = () => {
       // 3. Fazer nova auditoria para verificar se foi corrigido
       const newAudit = await auditUserPoints(userId);
 
-      toast.success(
-        `Correção concluída! ${userDuplicates.length > 0 ? `Removidas ${userDuplicates.reduce((sum: number, g: any) => sum + Math.max(0, g.transaction_count - 1), 0)} duplicatas. ` : ''}${reconcileResult?.[0]?.difference !== 0 ? `Saldo ajustado em ${reconcileResult[0].difference} pontos.` : 'Saldo já estava correto.'}`,
-        { id: 'auto-fix', duration: 8000 }
-      );
+      const cleanedDuplicates = cleanResult?.[0]?.deleted_count || 0;
+      const balanceAdjustment = reconcileResult?.[0]?.difference || 0;
+
+      let successMessage = 'Correção concluída!';
+      if (cleanedDuplicates > 0) {
+        successMessage += ` Removidas ${cleanedDuplicates} transações duplicadas.`;
+      }
+      if (balanceAdjustment !== 0) {
+        successMessage += ` Saldo ajustado em ${Math.abs(balanceAdjustment)} pontos.`;
+      }
+      if (cleanedDuplicates === 0 && balanceAdjustment === 0) {
+        successMessage = 'Nenhuma correção necessária - dados já estão consistentes.';
+      }
+
+      toast.success(successMessage, { id: 'auto-fix', duration: 8000 });
 
       return newAudit;
 
