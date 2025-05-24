@@ -260,21 +260,13 @@ export const createPointAdjustment = async (
     
     console.log('Point adjustment created successfully:', insertData);
     
-    // Manually update the user's points balance instead of relying on triggers
-    const { error: pointsError } = await supabase.rpc(
-      'update_user_points',
-      { user_id: userId, points_to_add: adjustmentValue }
-    );
+    // REMOVED: Manual update of user points - this is now handled by the database trigger
+    // The trigger 'register_point_adjustment_transaction' will:
+    // 1. Create a points_transactions record
+    // 2. Update the user's points balance automatically
+    // This prevents the duplicate point updates that were happening before
     
-    if (pointsError) {
-      console.error('Error updating user points:', pointsError);
-      toast.error('Erro ao atualizar pontos do usuário: ' + pointsError.message);
-      return false;
-    }
-    
-    // Instead of creating a transaction record directly,
-    // we'll rely on the database trigger to create it once
-    // which helps prevent duplicate entries
+    console.log('Point adjustment completed - trigger will handle points update automatically');
     
     toast.success('Ajuste de pontos realizado com sucesso!');
     return true;

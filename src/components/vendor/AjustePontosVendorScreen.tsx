@@ -12,6 +12,7 @@ import CustomerInfo from './points/CustomerInfo';
 import PointsAdjustmentForm from './points/PointsAdjustmentForm';
 import PointsAdjustmentHistory from './points/PointsAdjustmentHistory';
 import EmptyCustomerState from './points/EmptyCustomerState';
+import ConsistencyChecker from './points/ConsistencyChecker';
 import { usePointsAdjustment } from './points/usePointsAdjustment';
 import { deployPointsRpcFunctions } from '@/services/vendor/points/deployRpcFunctions';
 import { supabase } from '@/integrations/supabase/client';
@@ -168,6 +169,11 @@ const AjustePontosVendorScreen: React.FC = () => {
       </div>
       
       <div className="max-w-3xl mx-auto p-4 space-y-4">
+        {/* Admin Consistency Checker */}
+        {isAdmin && (
+          <ConsistencyChecker />
+        )}
+
         {/* Client Search Card */}
         <Card className="overflow-visible">
           <div className="p-4 border-b">
