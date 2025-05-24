@@ -1,31 +1,12 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, MessageSquare, Phone, Mail, Clock, Send } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Phone, Mail, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { toast } from '@/components/ui/sonner';
 
 const SuporteScreen: React.FC = () => {
   const navigate = useNavigate();
-  const [message, setMessage] = useState('');
-  const [email, setEmail] = useState('');
-  const [subject, setSubject] = useState('');
-
-  const handleSendMessage = () => {
-    if (!message.trim() || !email.trim() || !subject.trim()) {
-      toast.error('Por favor, preencha todos os campos');
-      return;
-    }
-
-    // Simulate sending message
-    toast.success('Mensagem enviada com sucesso! Entraremos em contato em breve.');
-    setMessage('');
-    setEmail('');
-    setSubject('');
-  };
 
   const supportOptions = [
     {
@@ -115,49 +96,6 @@ const SuporteScreen: React.FC = () => {
               </Card>
             ))}
           </div>
-        </div>
-
-        {/* Contact Form */}
-        <div>
-          <h2 className="font-bold text-lg mb-3">Envie uma mensagem</h2>
-          <Card className="p-4 space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">E-mail</label>
-              <Input
-                type="email"
-                placeholder="Seu e-mail"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-1">Assunto</label>
-              <Input
-                placeholder="Assunto da mensagem"
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-1">Mensagem</label>
-              <Textarea
-                placeholder="Descreva sua dúvida ou problema..."
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                rows={4}
-              />
-            </div>
-            
-            <Button 
-              onClick={handleSendMessage}
-              className="w-full bg-construPro-blue hover:bg-construPro-blue/90"
-            >
-              <Send size={18} className="mr-2" />
-              Enviar mensagem
-            </Button>
-          </Card>
         </div>
 
         {/* Business Hours */}
