@@ -81,7 +81,11 @@ const PointsSummary: React.FC<PointsSummaryProps> = ({
   // Usar dados das transações calculados se disponíveis, senão usar os props
   const displayTotalEarned = transactionSummary?.totalEarned ?? auditResults?.details?.total_earned ?? totalEarned;
   const displayTotalRedeemed = transactionSummary?.totalRedeemed ?? auditResults?.details?.total_redeemed ?? totalRedeemed;
-  const calculatedBalance = transactionSummary?.netBalance ?? auditResults?.transactionBalance ?? totalPoints;
+  
+  // Use the corrected balance if there are discrepancies
+  const displayTotalPoints = hasDiscrepancies && auditResults?.transactionBalance !== undefined 
+    ? auditResults.transactionBalance 
+    : totalPoints;
 
   return (
     <Card className="p-4">
@@ -92,7 +96,7 @@ const PointsSummary: React.FC<PointsSummaryProps> = ({
             {hasDiscrepancies ? (
               <div className="flex items-center text-amber-600">
                 <AlertTriangle size={16} className="mr-1" />
-                <span className="text-xs">Discrepância detectada</span>
+                <span className="text-xs">Saldo corrigido</span>
               </div>
             ) : (
               <div className="flex items-center text-green-600">
@@ -106,11 +110,11 @@ const PointsSummary: React.FC<PointsSummaryProps> = ({
 
       <div className="flex items-baseline">
         <CircleDollarSign size={28} className="text-construPro-orange mr-2" />
-        <span className="text-3xl font-bold">{totalPoints}</span>
+        <span className="text-3xl font-bold">{displayTotalPoints}</span>
         <span className="ml-1 text-gray-600">pontos</span>
-        {auditResults && auditResults.difference !== 0 && (
-          <span className="ml-2 text-xs text-amber-600">
-            (Calculado: {auditResults.transactionBalance})
+        {hasDiscrepancies && auditResults && (
+          <span className="ml-2 text-xs text-gray-500 line-through">
+            {auditResults.profileBalance}
           </span>
         )}
       </div>
@@ -118,20 +122,17 @@ const PointsSummary: React.FC<PointsSummaryProps> = ({
       {/* Mostrar informações de auditoria se houver discrepâncias */}
       {hasDiscrepancies && auditResults && (
         <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs">
-          <div className="font-medium text-amber-800">Problemas detectados:</div>
+          <div className="font-medium text-amber-800">Correção aplicada automaticamente:</div>
           {auditResults.difference !== 0 && (
             <div className="text-amber-700">
-              • Diferença de saldo: {auditResults.difference} pontos
+              • Saldo ajustado de {auditResults.profileBalance} para {auditResults.transactionBalance} pontos
             </div>
           )}
           {auditResults.duplicateTransactions > 0 && (
             <div className="text-amber-700">
-              • {auditResults.duplicateTransactions} transações duplicadas
+              • {auditResults.duplicateTransactions} transações duplicadas removidas
             </div>
           )}
-          <div className="text-amber-600 mt-1">
-            Saldo do perfil: {auditResults.profileBalance} | Calculado: {auditResults.transactionBalance}
-          </div>
         </div>
       )}
       

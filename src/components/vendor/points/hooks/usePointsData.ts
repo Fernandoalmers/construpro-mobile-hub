@@ -76,6 +76,29 @@ export const usePointsData = (selectedCustomerId: string | null) => {
     }
   }, [selectedCustomerId, auditUserPoints]);
 
+  // Auto-fix discrepancies when detected
+  useEffect(() => {
+    if (auditResults && selectedCustomerId) {
+      const hasDiscrepancies = auditResults.difference !== 0 || 
+                             auditResults.duplicateTransactions > 0 ||
+                             auditResults.status === 'discrepancy';
+      
+      if (hasDiscrepancies) {
+        console.log('Discrepancies detected, auto-fixing...', auditResults);
+        // Auto-fix silently in the background
+        autoFixDiscrepancies(selectedCustomerId).then(() => {
+          // Refresh data after auto-fix
+          setTimeout(() => {
+            refetchPoints();
+            refetchAdjustments();
+          }, 1000);
+        }).catch(error => {
+          console.error('Auto-fix failed:', error);
+        });
+      }
+    }
+  }, [auditResults, selectedCustomerId, autoFixDiscrepancies, refetchPoints, refetchAdjustments]);
+
   // Handle manual refresh of data with audit
   const handleRefreshData = useCallback(() => {
     // Prevent multiple simultaneous refreshes
@@ -163,7 +186,9 @@ export const usePointsData = (selectedCustomerId: string | null) => {
     try {
       await autoFixDiscrepancies(selectedCustomerId);
       // Refresh data after auto-fix
-      handleRefreshData();
+      setTimeout(() => {
+        handleRefreshData();
+      }, 1000);
     } catch (error) {
       console.error('Error in auto-fix:', error);
     }

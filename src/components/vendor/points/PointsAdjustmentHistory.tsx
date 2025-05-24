@@ -28,6 +28,12 @@ const PointsAdjustmentHistory: React.FC<PointsAdjustmentHistoryProps> = ({
     }
   };
 
+  // Function to clean transaction IDs from motivo field
+  const cleanMotivo = (motivo: string) => {
+    // Remove transaction IDs in format [uuid-timestamp] from the end of the string
+    return motivo.replace(/\s*\[[a-f0-9-]+\]$/i, '').trim();
+  };
+
   // Group adjustments by date (YYYY-MM-DD)
   const groupedAdjustments = React.useMemo(() => {
     const groups: { [key: string]: PointAdjustment[] } = {};
@@ -102,7 +108,7 @@ const PointsAdjustmentHistory: React.FC<PointsAdjustmentHistoryProps> = ({
                           <p className={`font-medium ${adjustment.valor > 0 ? 'text-green-600' : 'text-red-600'}`}>
                             {adjustment.valor > 0 ? '+' : ''}{adjustment.valor} pontos
                           </p>
-                          <p className="text-sm text-gray-600 mt-1">{adjustment.motivo}</p>
+                          <p className="text-sm text-gray-600 mt-1">{cleanMotivo(adjustment.motivo)}</p>
                         </div>
                       </div>
                       <div className="text-xs text-gray-500 whitespace-nowrap ml-2">

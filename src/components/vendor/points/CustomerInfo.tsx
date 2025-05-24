@@ -49,6 +49,11 @@ const CustomerInfo: React.FC<CustomerInfoProps> = ({
     auditResults.duplicateTransactions > 0 ||
     auditResults.status === 'discrepancy'
   );
+
+  // Determine the correct balance to display
+  const displayBalance = hasDiscrepancies && auditResults?.transactionBalance !== undefined 
+    ? auditResults.transactionBalance 
+    : customerPoints;
   
   return (
     <div className="p-4 bg-blue-50 border-b border-blue-100">
@@ -59,16 +64,16 @@ const CustomerInfo: React.FC<CustomerInfoProps> = ({
             <div className="flex items-center">
               <AlertTriangle className="h-5 w-5 text-amber-600 mr-2" />
               <div>
-                <div className="font-medium text-amber-800">Problemas detectados no saldo</div>
+                <div className="font-medium text-amber-800">Saldo incorreto detectado</div>
                 <div className="text-sm text-amber-700">
                   {auditResults.difference !== 0 && (
-                    <span>Diferença: {auditResults.difference} pontos. </span>
+                    <span>Diferença de {auditResults.difference} pontos detectada. </span>
                   )}
                   {auditResults.duplicateTransactions > 0 && (
-                    <span>{auditResults.duplicateTransactions} transações duplicadas. </span>
+                    <span>{auditResults.duplicateTransactions} transações duplicadas encontradas. </span>
                   )}
                   <div className="text-xs text-amber-600 mt-1">
-                    Perfil: {auditResults.profileBalance} | Calculado: {auditResults.transactionBalance}
+                    Saldo mostrado: {auditResults.profileBalance} | Saldo correto: {auditResults.transactionBalance}
                   </div>
                 </div>
               </div>
@@ -76,12 +81,12 @@ const CustomerInfo: React.FC<CustomerInfoProps> = ({
             {onAutoFix && (
               <Button 
                 size="sm" 
-                variant="outline"
+                variant="default"
                 onClick={onAutoFix}
-                className="text-amber-700 border-amber-300 hover:bg-amber-100"
+                className="bg-amber-600 hover:bg-amber-700 text-white"
               >
                 <Wrench className="h-4 w-4 mr-1" />
-                Corrigir
+                Corrigir Agora
               </Button>
             )}
           </div>
@@ -144,9 +149,11 @@ const CustomerInfo: React.FC<CustomerInfoProps> = ({
           </div>
         </div>
         <div className="flex flex-col">
-          <div className="bg-white px-6 py-3 rounded-lg shadow-sm text-center">
+          <div className={`px-6 py-3 rounded-lg shadow-sm text-center ${hasDiscrepancies ? 'bg-amber-50 border border-amber-200' : 'bg-white'}`}>
             <div className="flex items-center justify-between mb-1">
-              <p className="text-xs text-blue-600 font-medium">Saldo de Pontos</p>
+              <p className={`text-xs font-medium ${hasDiscrepancies ? 'text-amber-700' : 'text-blue-600'}`}>
+                {hasDiscrepancies ? 'Saldo Corrigido' : 'Saldo de Pontos'}
+              </p>
               <Button 
                 variant="ghost" 
                 size="icon" 
@@ -163,12 +170,19 @@ const CustomerInfo: React.FC<CustomerInfoProps> = ({
               </div>
             ) : (
               <div className="flex items-center justify-center">
-                <p className="text-2xl font-bold text-blue-700">{customerPoints || 0}</p>
-                {auditResults && auditResults.difference !== 0 && (
-                  <span className="ml-2 text-xs text-amber-600">
-                    (Calc: {auditResults.transactionBalance})
+                <p className={`text-2xl font-bold ${hasDiscrepancies ? 'text-amber-700' : 'text-blue-700'}`}>
+                  {displayBalance || 0}
+                </p>
+                {hasDiscrepancies && (
+                  <span className="ml-2 text-xs text-gray-500 line-through">
+                    {auditResults.profileBalance}
                   </span>
                 )}
+              </div>
+            )}
+            {hasDiscrepancies && (
+              <div className="text-xs text-amber-600 mt-1">
+                Saldo foi corrigido automaticamente
               </div>
             )}
           </div>
