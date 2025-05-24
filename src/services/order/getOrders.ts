@@ -1,9 +1,4 @@
 
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/sonner';
-import { OrderData, OrderItem, ProductData } from './types';
-import { getProductImageUrl } from './getOrderById';
-
 export async function getOrders(): Promise<OrderData[]> {
   try {
     console.log("🔍 [orderService.getOrders] Fetching orders for current user");
@@ -38,10 +33,12 @@ export async function getOrders(): Promise<OrderData[]> {
       return [];
     }
     
+    console.log(`📦 [orderService.getOrders] Found ${ordersData.length} orders, now fetching items...`);
+    
     // Get a list of order IDs to fetch items for
     const orderIds = ordersData.map(order => order.id);
     
-    // Fetch the first item for each order (for display in list)
+    // Fetch ALL items for each order (not just first item)
     const { data: itemsData, error: itemsError } = await supabase
       .from('order_items')
       .select(`
@@ -67,6 +64,8 @@ export async function getOrders(): Promise<OrderData[]> {
       console.error("❌ [orderService.getOrders] Error fetching order items:", itemsError);
       // Continue with orders, but they won't have items
     }
+    
+    console.log(`📋 [orderService.getOrders] Fetched ${itemsData?.length || 0} order items`);
     
     // Group items by order ID
     const itemsByOrderId: Record<string, OrderItem[]> = {};
@@ -126,10 +125,15 @@ export async function getOrders(): Promise<OrderData[]> {
     }
     
     // Combine orders with their items
-    const orders: OrderData[] = ordersData.map(order => ({
-      ...order,
-      items: itemsByOrderId[order.id] || []
-    }));
+    const orders: OrderData[] = ordersData.map(order => {
+      const orderItems = itemsByOrderId[order.id] || [];
+      console.log(`📦 [orderService.getOrders] Order ${order.id} has ${orderItems.length} items`);
+      
+      return {
+        ...order,
+        items: orderItems
+      };
+    });
     
     console.log(`✅ [orderService.getOrders] Retrieved ${orders.length} orders with items`);
     

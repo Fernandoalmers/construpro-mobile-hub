@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Filter, Calendar, Package } from 'lucide-react';
@@ -178,11 +177,11 @@ const ComprasScreen: React.FC = () => {
               <div className="flex justify-between items-center">
                 <div>
                   <p className="text-sm text-gray-600">
-                    {order.items?.length || 0} {order.items?.length === 1 ? 'item' : 'itens'}
+                    {(order.items && order.items.length > 0) ? order.items.length : 0} {((order.items && order.items.length === 1) ? 'item' : 'itens')}
                   </p>
-                  {order.items?.[0] && (
+                  {order.items && order.items.length > 0 && order.items[0] && (
                     <p className="text-sm text-gray-800 font-medium">
-                      {order.items[0].produto?.nome}
+                      {order.items[0].produto?.nome || 'Produto'}
                       {order.items.length > 1 && ` +${order.items.length - 1} mais`}
                     </p>
                   )}

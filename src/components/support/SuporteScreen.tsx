@@ -1,7 +1,6 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, MessageSquare, Phone, Mail, Clock } from 'lucide-react';
+import { ArrowLeft, Phone, Mail, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 
@@ -9,14 +8,6 @@ const SuporteScreen: React.FC = () => {
   const navigate = useNavigate();
 
   const supportOptions = [
-    {
-      id: 'chat',
-      title: 'Chat ao vivo',
-      description: 'Fale conosco agora mesmo',
-      icon: <MessageSquare size={24} />,
-      available: true,
-      action: () => navigate('/chat')
-    },
     {
       id: 'phone',
       title: 'WhatsApp',
