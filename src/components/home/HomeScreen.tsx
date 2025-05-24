@@ -8,13 +8,13 @@ import ErrorState from '../common/ErrorState';
 import Card from '../common/Card';
 import Avatar from '../common/Avatar';
 import CustomButton from '../common/CustomButton';
-import { Receipt, Gift, QrCode, MessageSquare, Award, ChevronRight } from 'lucide-react';
+import { Receipt, Gift, MessageSquare, Award, ChevronRight } from 'lucide-react';
 import { calculateMonthlyPoints, calculateLevelInfo, getCurrentMonthName } from '@/utils/pointsCalculations';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import MonthlyLevelProgress from '../profile/points-history/MonthlyLevelProgress';
 
-// Define the shortcuts array for the quick access section
+// Define the shortcuts array for the quick access section (removed Escanear)
 const shortcuts = [
   {
     id: 'receipt',
@@ -27,12 +27,6 @@ const shortcuts = [
     label: 'Resgates',
     route: '/resgates',
     icon: <Gift size={24} />
-  },
-  {
-    id: 'scan',
-    label: 'Escanear',
-    route: '/escanear',
-    icon: <QrCode size={24} />
   },
   {
     id: 'chat',
@@ -193,7 +187,7 @@ const HomeScreen: React.FC = () => {
       {/* Shortcuts */}
       <div className="p-6">
         <h2 className="font-bold text-lg text-gray-800 mb-4">Acesso rápido</h2>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           {shortcuts.map((shortcut) => (
             <button 
               key={shortcut.id} 

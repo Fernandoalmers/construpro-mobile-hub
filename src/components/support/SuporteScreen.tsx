@@ -38,19 +38,19 @@ const SuporteScreen: React.FC = () => {
     },
     {
       id: 'phone',
-      title: 'Telefone',
-      description: '(11) 9999-9999',
+      title: 'WhatsApp',
+      description: '(33) 99959-9191',
       icon: <Phone size={24} />,
       available: true,
-      action: () => window.open('tel:+5511999999999')
+      action: () => window.open('https://wa.me/5533999599191')
     },
     {
       id: 'email',
       title: 'E-mail',
-      description: 'suporte@construpro.com',
+      description: 'loja@matershop.com.br',
       icon: <Mail size={24} />,
       available: true,
-      action: () => window.open('mailto:suporte@construpro.com')
+      action: () => window.open('mailto:loja@matershop.com.br')
     }
   ];
 

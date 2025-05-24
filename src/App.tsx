@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
@@ -38,6 +39,7 @@ import HistoricoResgatesScreen from './components/resgates/HistoricoResgatesScre
 import ComprasScreen from './components/profile/ComprasScreen';
 import SuporteScreen from './components/support/SuporteScreen';
 import EscanearScreen from './components/scan/EscanearScreen';
+import ReviewsScreen from './components/profile/ReviewsScreen';
 
 function App() {
   const location = useLocation();
@@ -106,6 +108,7 @@ function App() {
         <Route path="/profile/favorites" element={<ProtectedRoute><FavoritesScreen /></ProtectedRoute>} />
         <Route path="/profile/settings" element={<ProtectedRoute><SettingsScreen /></ProtectedRoute>} />
         <Route path="/profile/user-data" element={<ProtectedRoute><UserDataScreen /></ProtectedRoute>} />
+        <Route path="/profile/reviews" element={<ProtectedRoute><ReviewsScreen /></ProtectedRoute>} />
         
         {/* Rewards related routes */}
         <Route path="/rewards" element={<ProtectedRoute><RewardsScreen /></ProtectedRoute>} />
