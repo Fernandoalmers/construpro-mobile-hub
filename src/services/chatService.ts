@@ -57,7 +57,11 @@ export const chatService = {
       throw error;
     }
 
-    return data || [];
+    // Garantir que os tipos estão corretos ao fazer cast
+    return (data || []).map(message => ({
+      ...message,
+      sender_type: message.sender_type as 'user' | 'store' | 'support'
+    }));
   },
 
   // Enviar mensagem
@@ -84,7 +88,11 @@ export const chatService = {
       throw error;
     }
 
-    return data;
+    // Garantir que o tipo está correto
+    return {
+      ...data,
+      sender_type: data.sender_type as 'user' | 'store' | 'support'
+    };
   },
 
   // Criar ou buscar conversa de suporte

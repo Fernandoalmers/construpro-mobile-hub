@@ -1,3 +1,4 @@
+
 // Common
 export { default as LoadingState } from './components/common/LoadingState';
 
@@ -54,7 +55,7 @@ export { default as OrderConfirmationScreen } from './components/marketplace/Ord
 // Favorites
 export { default as FavoritesScreen } from './components/profile/FavoritesScreen';
 
-// Chat components
+// Chat components - Adicionando o export correto do ChatScreen
 export { default as ChatScreen } from './components/chat/ChatScreen';
 export { default as ChatDetailScreen } from './components/chat/ChatDetailScreen';
 
