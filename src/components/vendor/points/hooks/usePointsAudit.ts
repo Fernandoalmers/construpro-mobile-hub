@@ -3,6 +3,12 @@ import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 
+interface AuditDetails {
+  total_earned: number;
+  total_redeemed: number;
+  audit_timestamp: string;
+}
+
 interface PointsAuditResult {
   userId: string;
   profileBalance: number;
@@ -10,17 +16,23 @@ interface PointsAuditResult {
   difference: number;
   duplicateTransactions: number;
   status: 'ok' | 'discrepancy' | 'error';
-  details: {
-    totalEarned: number;
-    totalRedeemed: number;
-    auditTimestamp: string;
-  };
+  details: AuditDetails;
 }
 
 interface TransactionSummary {
   totalEarned: number;
   totalRedeemed: number;
   netBalance: number;
+}
+
+interface AuditData {
+  issue_type: string;
+  current_balance: number;
+  calculated_balance: number;
+  difference: number;
+  duplicate_count: number;
+  corrected: boolean;
+  details: AuditDetails | any; // Allow for Json type from Supabase
 }
 
 export const usePointsAudit = () => {
@@ -62,6 +74,27 @@ export const usePointsAudit = () => {
     }
   }, []);
 
+  // Helper function to safely extract audit details
+  const extractAuditDetails = (details: any): AuditDetails => {
+    // Handle if details is a string (JSON) or already an object
+    let parsedDetails: any = details;
+    
+    if (typeof details === 'string') {
+      try {
+        parsedDetails = JSON.parse(details);
+      } catch (e) {
+        console.error('Error parsing audit details:', e);
+        parsedDetails = {};
+      }
+    }
+
+    return {
+      total_earned: parsedDetails?.total_earned || 0,
+      total_redeemed: parsedDetails?.total_redeemed || 0,
+      audit_timestamp: parsedDetails?.audit_timestamp || new Date().toISOString()
+    };
+  };
+
   // Função principal de auditoria usando a nova função SQL
   const auditUserPoints = useCallback(async (userId: string): Promise<PointsAuditResult> => {
     setIsAuditing(true);
@@ -77,7 +110,9 @@ export const usePointsAudit = () => {
       let result: PointsAuditResult;
 
       if (auditData && auditData.length > 0) {
-        const audit = auditData[0];
+        const audit: AuditData = auditData[0];
+        const auditDetails = extractAuditDetails(audit.details);
+        
         result = {
           userId,
           profileBalance: audit.current_balance || 0,
@@ -85,11 +120,7 @@ export const usePointsAudit = () => {
           difference: audit.difference || 0,
           duplicateTransactions: audit.duplicate_count || 0,
           status: audit.issue_type === 'all_good' ? 'ok' : 'discrepancy',
-          details: {
-            totalEarned: audit.details?.total_earned || 0,
-            totalRedeemed: audit.details?.total_redeemed || 0,
-            auditTimestamp: audit.details?.audit_timestamp || new Date().toISOString()
-          }
+          details: auditDetails
         };
       } else {
         // Fallback para auditoria manual se a função não retornar dados
@@ -113,9 +144,9 @@ export const usePointsAudit = () => {
           duplicateTransactions: 0,
           status: difference === 0 ? 'ok' : 'discrepancy',
           details: {
-            totalEarned: transactionSummary.totalEarned,
-            totalRedeemed: transactionSummary.totalRedeemed,
-            auditTimestamp: new Date().toISOString()
+            total_earned: transactionSummary.totalEarned,
+            total_redeemed: transactionSummary.totalRedeemed,
+            audit_timestamp: new Date().toISOString()
           }
         };
       }
@@ -133,9 +164,9 @@ export const usePointsAudit = () => {
         duplicateTransactions: 0,
         status: 'error',
         details: {
-          totalEarned: 0,
-          totalRedeemed: 0,
-          auditTimestamp: new Date().toISOString()
+          total_earned: 0,
+          total_redeemed: 0,
+          audit_timestamp: new Date().toISOString()
         }
       };
       setAuditResults(errorResult);
