@@ -2,8 +2,10 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { ShoppingCart, Star, Store } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import BenefitsPillars from './BenefitsPillars';
+import HowItWorks from './HowItWorks';
+import DynamicHighlights from './DynamicHighlights';
 
 const WelcomeScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -20,126 +22,225 @@ const WelcomeScreen: React.FC = () => {
     navigate('/vendor-signup');
   };
 
-  const benefits = [
-    {
-      icon: <ShoppingCart className="w-8 h-8 text-yellow-500" />,
-      title: "Marketplace Completo",
-      description: "Variedade de produtos para sua obra e casa."
-    },
-    {
-      icon: <Star className="w-8 h-8 text-yellow-500" />,
-      title: "Programa de Pontos",
-      description: "Suas compras viram pontos para trocar por recompensas."
-    },
-    {
-      icon: <Store className="w-8 h-8 text-yellow-500" />,
-      title: "Facilidade para Lojistas",
-      description: "Venda mais e fidelize clientes em nossa plataforma."
-    }
-  ];
+  const handleProfessionalSignup = () => {
+    navigate('/professional-signup');
+  };
 
   return (
-    <div className="min-h-screen bg-gray-900 relative overflow-hidden">
-      {/* Background Image with Overlay */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage: `url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800"><defs><linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:%23374151;stop-opacity:1" /><stop offset="100%" style="stop-color:%23111827;stop-opacity:1" /></linearGradient></defs><rect width="1200" height="800" fill="url(%23grad)"/><g opacity="0.1"><circle cx="200" cy="150" r="3" fill="%23FACC15"/><circle cx="800" cy="200" r="2" fill="%23FACC15"/><circle cx="1000" cy="400" r="4" fill="%23FACC15"/><circle cx="300" cy="600" r="2" fill="%23FACC15"/><circle cx="600" cy="700" r="3" fill="%23FACC15"/></g></svg>')`
-        }}
-      />
-      
-      {/* Dark Overlay */}
-      <div className="absolute inset-0 bg-black bg-opacity-60" />
-      
-      {/* Content */}
-      <div className="relative z-10 flex flex-col min-h-screen">
-        {/* Hero Section */}
-        <div className="flex-1 flex items-center justify-center px-6 py-12">
-          <div className="text-center max-w-4xl mx-auto">
-            {/* Logo/Brand */}
-            <div className="mb-8">
-              <h1 className="text-6xl md:text-8xl font-bold text-white tracking-tight">
-                MATERSHOP
-              </h1>
-              <div className="w-24 h-1 bg-yellow-500 mx-auto mt-4"></div>
-            </div>
-            
-            {/* Main Headline */}
-            <h2 className="text-2xl md:text-4xl font-semibold text-white mb-6 leading-tight">
-              Construa Seus Sonhos, Ganhe Recompensas
+    <div className="min-h-screen bg-white font-inter">
+      {/* Hero Section */}
+      <section className="relative min-h-screen flex items-center justify-center">
+        {/* Background Image with Overlay */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{
+            backgroundImage: `url('https://images.unsplash.com/photo-1487958449943-2429e8be8625?q=80&w=2070&auto=format&fit=crop')`,
+          }}
+        />
+        
+        {/* Dark Overlay */}
+        <div className="absolute inset-0 bg-matershop-dark bg-opacity-60" />
+        
+        {/* Content */}
+        <div className="relative z-10 text-center max-w-6xl mx-auto px-6">
+          {/* Logo/Brand */}
+          <div className="mb-12 animate-fade-in">
+            <h1 className="text-6xl md:text-8xl font-extrabold text-white tracking-tight mb-4">
+              MATERSHOP
+            </h1>
+            <div className="w-32 h-1 bg-matershop-primary mx-auto"></div>
+          </div>
+          
+          {/* Headlines */}
+          <div className="mb-12 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 leading-tight">
+              Tudo para sua obra, com recompensas que constroem valor.
             </h2>
             
-            {/* Subtitle */}
-            <p className="text-lg md:text-xl text-gray-300 mb-12 max-w-2xl mx-auto leading-relaxed">
-              O marketplace completo para seus projetos, onde cada compra te aproxima de vantagens incríveis.
+            <p className="text-xl md:text-2xl text-gray-200 font-medium max-w-4xl mx-auto leading-relaxed">
+              Compre de múltiplas lojas, acumule pontos e troque por vantagens exclusivas.
             </p>
+          </div>
+          
+          {/* CTAs */}
+          <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16 animate-fade-in" style={{ animationDelay: '0.4s' }}>
+            <Button 
+              onClick={handleCreateAccount}
+              style={{ backgroundColor: '#0051FF' }}
+              className="hover:opacity-90 text-white font-semibold text-lg px-8 py-4 rounded-lg transition-all duration-300 transform hover:scale-105"
+              size="lg"
+            >
+              Criar conta grátis
+            </Button>
             
-            {/* CTAs */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Button 
-                onClick={handleCreateAccount}
-                className="bg-yellow-500 hover:bg-yellow-600 text-black font-semibold text-lg px-8 py-4 rounded-lg transition-all duration-300 transform hover:scale-105"
-                size="lg"
-              >
-                Criar Conta
-              </Button>
-              
-              <Button 
-                onClick={handleLogin}
-                variant="outline"
-                className="border-2 border-yellow-500 text-yellow-500 hover:bg-yellow-500 hover:text-black font-semibold text-lg px-8 py-4 rounded-lg transition-all duration-300"
-                size="lg"
-              >
-                Entrar
-              </Button>
-              
-              <Button 
-                onClick={handleVendorSignup}
-                variant="ghost"
-                className="text-gray-300 hover:text-yellow-500 font-medium text-lg px-8 py-4 transition-colors duration-300"
-                size="lg"
-              >
-                Sou Lojista
-              </Button>
+            <Button 
+              onClick={handleLogin}
+              variant="link"
+              className="text-white hover:text-matershop-primary font-semibold text-lg px-4 py-2 transition-colors duration-300"
+            >
+              Já sou cadastrado
+            </Button>
+            
+            <Button 
+              onClick={handleVendorSignup}
+              variant="outline"
+              style={{ borderColor: '#0051FF', color: '#0051FF' }}
+              className="hover:bg-matershop-primary hover:text-white font-semibold text-lg px-8 py-4 rounded-lg transition-all duration-300"
+              size="lg"
+            >
+              Sou lojista
+            </Button>
+            
+            <Button 
+              onClick={handleProfessionalSignup}
+              variant="link"
+              className="text-white hover:text-matershop-primary font-semibold text-lg px-4 py-2 transition-colors duration-300"
+            >
+              Sou profissional
+            </Button>
+          </div>
+          
+          {/* Social Proof */}
+          <div className="animate-fade-in" style={{ animationDelay: '0.6s' }}>
+            <div className="flex flex-wrap justify-center items-center gap-8 mb-8">
+              <div className="flex items-center space-x-4 text-white">
+                <div className="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                  <span className="font-bold text-sm">L1</span>
+                </div>
+                <div className="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                  <span className="font-bold text-sm">L2</span>
+                </div>
+                <div className="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                  <span className="font-bold text-sm">L3</span>
+                </div>
+                <div className="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                  <span className="font-bold text-sm">L4</span>
+                </div>
+              </div>
             </div>
+            
+            <p className="text-white text-lg font-medium">
+              Mais de <span className="text-matershop-primary font-bold">12.000</span> pedidos entregues
+            </p>
           </div>
         </div>
-        
-        {/* Benefits Section */}
-        <div className="px-6 py-16 bg-black bg-opacity-40">
-          <div className="max-w-6xl mx-auto">
-            <h3 className="text-3xl md:text-4xl font-bold text-white text-center mb-4">
-              Descubra a Matershop
-            </h3>
-            <p className="text-gray-300 text-center mb-12 text-lg">
-              Por que escolher nossa plataforma?
-            </p>
-            
-            <div className="grid md:grid-cols-3 gap-8">
-              {benefits.map((benefit, index) => (
-                <Card key={index} className="bg-gray-800 bg-opacity-80 border-gray-700 p-8 text-center hover:bg-opacity-90 transition-all duration-300 transform hover:scale-105">
-                  <div className="flex justify-center mb-6">
-                    {benefit.icon}
-                  </div>
-                  <h4 className="text-xl font-semibold text-white mb-4">
-                    {benefit.title}
-                  </h4>
-                  <p className="text-gray-300 leading-relaxed">
-                    {benefit.description}
-                  </p>
-                </Card>
-              ))}
-            </div>
-          </div>
-        </div>
-        
-        {/* Footer */}
-        <div className="text-center py-8 px-6">
-          <p className="text-gray-400 text-sm">
-            © 2024 Matershop. Todos os direitos reservados.
+      </section>
+
+      {/* Three Pillars Section */}
+      <BenefitsPillars />
+
+      {/* How It Works Section */}
+      <HowItWorks />
+
+      {/* Dynamic Highlights Section */}
+      <DynamicHighlights />
+
+      {/* For Vendors Section */}
+      <section className="py-24 bg-gradient-to-r from-matershop-warning to-orange-600">
+        <div className="max-w-6xl mx-auto px-6 text-center">
+          <h2 className="text-4xl font-bold text-white mb-6">
+            Venda mais, fidelize melhor.
+          </h2>
+          
+          <p className="text-xl text-orange-100 mb-8 max-w-3xl mx-auto leading-relaxed">
+            Onboarding em 48 horas, suporte comercial dedicado e pague apenas comissão sobre vendas. 
+            Expanda seu negócio com nossa plataforma nacional.
           </p>
+          
+          <Button 
+            onClick={handleVendorSignup}
+            className="bg-white text-matershop-warning hover:bg-gray-100 font-semibold text-lg px-8 py-4 rounded-lg transition-all duration-300 transform hover:scale-105"
+            size="lg"
+          >
+            Cadastre sua loja
+          </Button>
         </div>
-      </div>
+      </section>
+
+      {/* App Section */}
+      <section className="py-24 bg-white">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div>
+              <h2 className="text-4xl font-bold text-gray-900 mb-6">
+                Leve a Matershop com você
+              </h2>
+              
+              <p className="text-xl text-gray-600 mb-8 leading-relaxed">
+                Acompanhe seus pontos, gerencie pedidos e aproveite ofertas exclusivas 
+                diretamente do seu smartphone.
+              </p>
+              
+              <Button 
+                style={{ backgroundColor: '#0051FF' }}
+                className="hover:opacity-90 text-white font-semibold text-lg px-8 py-4"
+                size="lg"
+              >
+                Baixar App
+              </Button>
+            </div>
+            
+            <div className="flex justify-center">
+              <div className="w-64 h-96 bg-gray-200 rounded-3xl shadow-2xl flex items-center justify-center">
+                <span className="text-gray-500 font-medium">PointsHistoryScreen</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-matershop-dark text-white py-16">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="grid md:grid-cols-4 gap-8 mb-12">
+            <div>
+              <h3 className="text-2xl font-bold mb-4">MATERSHOP</h3>
+              <p className="text-gray-400">
+                O marketplace que recompensa sua obra
+              </p>
+            </div>
+            
+            <div>
+              <h4 className="text-lg font-semibold mb-4">Links</h4>
+              <ul className="space-y-2 text-gray-400">
+                <li><a href="#" className="hover:text-white transition-colors">Sobre</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Blog</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Termos</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Política</a></li>
+              </ul>
+            </div>
+            
+            <div>
+              <h4 className="text-lg font-semibold mb-4">Suporte</h4>
+              <ul className="space-y-2 text-gray-400">
+                <li><a href="#" className="hover:text-white transition-colors">Ajuda</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Trabalhe Conosco</a></li>
+              </ul>
+            </div>
+            
+            <div>
+              <h4 className="text-lg font-semibold mb-4">Newsletter</h4>
+              <div className="flex gap-2">
+                <input 
+                  type="email" 
+                  placeholder="Seu e-mail" 
+                  className="flex-1 px-3 py-2 bg-gray-800 text-white rounded border border-gray-700 focus:border-matershop-primary focus:outline-none"
+                />
+                <Button 
+                  style={{ backgroundColor: '#0051FF' }}
+                  className="px-4 py-2 text-sm hover:opacity-90"
+                >
+                  Enviar
+                </Button>
+              </div>
+            </div>
+          </div>
+          
+          <div className="border-t border-gray-800 pt-8 text-center text-gray-400">
+            <p>&copy; 2024 Matershop. Todos os direitos reservados.</p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };

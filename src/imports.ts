@@ -27,6 +27,9 @@ export { default as ProfileSelectionScreen } from './components/auth/ProfileSele
 
 // Welcome
 export { default as WelcomeScreen } from './components/welcome/WelcomeScreen';
+export { default as BenefitsPillars } from './components/welcome/BenefitsPillars';
+export { default as HowItWorks } from './components/welcome/HowItWorks';
+export { default as DynamicHighlights } from './components/welcome/DynamicHighlights';
 
 // Home
 export { default as HomeScreen } from './components/home/HomeScreen';
