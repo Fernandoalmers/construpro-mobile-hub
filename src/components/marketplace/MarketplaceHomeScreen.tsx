@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -198,11 +199,11 @@ const MarketplaceHomeScreen: React.FC = () => {
         />
       </div>
       
-      {/* Segment blocks - redesigned for more elegance */}
+      {/* Segment blocks - changed from grid-cols-2 to grid-cols-1 */}
       <div className="p-4">
         <h2 className="font-bold text-lg mb-3">Segmentos</h2>
         
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4">
           {segmentBlocks.map((segment) => (
             <div 
               key={segment.id}
