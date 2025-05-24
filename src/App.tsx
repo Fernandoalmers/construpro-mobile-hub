@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
@@ -36,6 +35,9 @@ import ReferralsScreen from './components/profile/ReferralsScreen';
 import VendorOrderDetailScreen from './components/vendor/VendorOrderDetailScreen';
 import ResgateDetailScreen from './components/resgates/ResgateDetailScreen';
 import HistoricoResgatesScreen from './components/resgates/HistoricoResgatesScreen';
+import ComprasScreen from './components/profile/ComprasScreen';
+import SuporteScreen from './components/support/SuporteScreen';
+import EscanearScreen from './components/scan/EscanearScreen';
 
 function App() {
   const location = useLocation();
@@ -88,6 +90,12 @@ function App() {
         <Route path="/home" element={<ProtectedRoute><HomeScreen /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><ProfileScreen /></ProtectedRoute>} />
         
+        {/* New Quick Access Routes */}
+        <Route path="/compras" element={<ProtectedRoute><ComprasScreen /></ProtectedRoute>} />
+        <Route path="/escanear" element={<ProtectedRoute><EscanearScreen /></ProtectedRoute>} />
+        <Route path="/scan" element={<ProtectedRoute><EscanearScreen /></ProtectedRoute>} />
+        <Route path="/suporte" element={<ProtectedRoute><SuporteScreen /></ProtectedRoute>} />
+        
         {/* Profile related routes */}
         <Route path="/profile/orders" element={<ProtectedRoute><OrdersScreen /></ProtectedRoute>} />
         <Route path="/profile/orders/:id" element={<ProtectedRoute><OrderDetailScreen /></ProtectedRoute>} />
@@ -105,6 +113,7 @@ function App() {
         
         {/* New Rewards Redemption Routes */}
         <Route path="/resgate/:id" element={<ProtectedRoute><ResgateDetailScreen /></ProtectedRoute>} />
+        <Route path="/resgates" element={<ProtectedRoute><HistoricoResgatesScreen /></ProtectedRoute>} />
         <Route path="/historico-resgates" element={<ProtectedRoute><HistoricoResgatesScreen /></ProtectedRoute>} />
         
         {/* Store and Product routes */}

@@ -19,7 +19,7 @@ const shortcuts = [
   {
     id: 'receipt',
     label: 'Compras',
-    route: '/profile/purchases',
+    route: '/compras',
     icon: <Receipt size={24} />
   },
   {
@@ -31,13 +31,13 @@ const shortcuts = [
   {
     id: 'scan',
     label: 'Escanear',
-    route: '/scan',
+    route: '/escanear',
     icon: <QrCode size={24} />
   },
   {
     id: 'chat',
     label: 'Suporte',
-    route: '/chat',
+    route: '/suporte',
     icon: <MessageSquare size={24} />
   }
 ];
