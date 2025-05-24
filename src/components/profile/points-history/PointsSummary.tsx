@@ -79,8 +79,8 @@ const PointsSummary: React.FC<PointsSummaryProps> = ({
   );
 
   // Usar dados das transações calculados se disponíveis, senão usar os props
-  const displayTotalEarned = transactionSummary?.totalEarned ?? auditResults?.details?.totalEarned ?? totalEarned;
-  const displayTotalRedeemed = transactionSummary?.totalRedeemed ?? auditResults?.details?.totalRedeemed ?? totalRedeemed;
+  const displayTotalEarned = transactionSummary?.totalEarned ?? auditResults?.details?.total_earned ?? totalEarned;
+  const displayTotalRedeemed = transactionSummary?.totalRedeemed ?? auditResults?.details?.total_redeemed ?? totalRedeemed;
   const calculatedBalance = transactionSummary?.netBalance ?? auditResults?.transactionBalance ?? totalPoints;
 
   return (
