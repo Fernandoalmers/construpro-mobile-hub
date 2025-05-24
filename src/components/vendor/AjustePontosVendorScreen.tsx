@@ -1,7 +1,7 @@
 
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, RefreshCcw } from 'lucide-react';
+import { ArrowLeft, RefreshCcw, AlertTriangle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from '@/components/ui/sonner';
@@ -38,7 +38,10 @@ const AjustePontosVendorScreen: React.FC = () => {
     cleanDuplicates,
     // Reconciliation feature
     reconcileCustomerPoints,
-    isReconciling
+    isReconciling,
+    // Audit features
+    auditResults,
+    handleAutoFixDiscrepancies
   } = usePointsAdjustment();
 
   // Deploy RPC functions when component mounts
@@ -105,6 +108,13 @@ const AjustePontosVendorScreen: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
+  // Check if there are audit issues
+  const hasAuditIssues = auditResults && (
+    auditResults.difference !== 0 || 
+    auditResults.duplicateTransactions > 0 ||
+    auditResults.status === 'discrepancy'
+  );
+
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       {/* Header */}
@@ -118,8 +128,21 @@ const AjustePontosVendorScreen: React.FC = () => {
         </button>
         <h1 className="text-xl font-bold">Ajuste de Pontos</h1>
         
-        {/* Show admin tools if there are duplicates or user is selected */}
-        <div className="ml-auto flex gap-2">
+        {/* Show admin tools and audit alerts */}
+        <div className="ml-auto flex gap-2 items-center">
+          {/* Alert for audit issues */}
+          {hasAuditIssues && (
+            <Button 
+              size="sm"
+              variant="outline"
+              onClick={handleAutoFixDiscrepancies}
+              className="flex items-center gap-1 text-xs text-amber-700 border-amber-300 hover:bg-amber-50"
+            >
+              <AlertTriangle className="h-3.5 w-3.5" /> 
+              Corrigir discrepâncias
+            </Button>
+          )}
+
           {isAdmin && selectedCustomerId && (
             <Button 
               size="sm"
@@ -161,6 +184,8 @@ const AjustePontosVendorScreen: React.FC = () => {
               customerPoints={customerPoints}
               isLoadingPoints={isLoadingPoints}
               onRefreshData={handleRefreshData}
+              auditResults={auditResults}
+              onAutoFix={handleAutoFixDiscrepancies}
             />
   
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

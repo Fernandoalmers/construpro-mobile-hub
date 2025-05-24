@@ -5,11 +5,13 @@ import { getCustomerPoints } from '@/services/vendor/customers';
 import { getPointAdjustments } from '@/services/vendor/points/adjustmentsFetcher';
 import { toast } from '@/components/ui/sonner';
 import { useDuplicateProtection } from './useDuplicateProtection';
+import { usePointsAudit } from './usePointsAudit';
 
 export const usePointsData = (selectedCustomerId: string | null) => {
   const [activeTab, setActiveTab] = useState('form');
   const queryClient = useQueryClient();
   const { checkForDuplicates } = useDuplicateProtection();
+  const { auditUserPoints, autoFixDiscrepancies, auditResults } = usePointsAudit();
   
   // Ref to track if a refresh is already in progress
   const isRefreshing = useRef(false);
@@ -67,7 +69,14 @@ export const usePointsData = (selectedCustomerId: string | null) => {
     retry: 2
   });
 
-  // Handle manual refresh of data with debouncing
+  // Fazer auditoria automática quando o cliente é selecionado
+  useEffect(() => {
+    if (selectedCustomerId) {
+      auditUserPoints(selectedCustomerId);
+    }
+  }, [selectedCustomerId, auditUserPoints]);
+
+  // Handle manual refresh of data with audit
   const handleRefreshData = useCallback(() => {
     // Prevent multiple simultaneous refreshes
     if (isRefreshing.current || !selectedCustomerId) return;
@@ -90,12 +99,16 @@ export const usePointsData = (selectedCustomerId: string | null) => {
       queryKey: ['pointsHistory']
     });
     
-    // Check for duplicates (silently) during refresh
+    // Check for duplicates and do audit
     checkForDuplicates(true);
     
     // Then refetch with a small delay
     setTimeout(() => {
-      Promise.all([refetchPoints(), refetchAdjustments()])
+      Promise.all([
+        refetchPoints(), 
+        refetchAdjustments(),
+        auditUserPoints(selectedCustomerId)
+      ])
         .then(() => {
           toast.success('Dados atualizados com sucesso');
           console.log('Data refreshed successfully');
@@ -109,7 +122,7 @@ export const usePointsData = (selectedCustomerId: string | null) => {
           isRefreshing.current = false;
         });
     }, 300);
-  }, [selectedCustomerId, refetchPoints, refetchAdjustments, queryClient, checkForDuplicates]);
+  }, [selectedCustomerId, refetchPoints, refetchAdjustments, queryClient, checkForDuplicates, auditUserPoints]);
 
   const handleAdjustmentSuccess = useCallback(() => {
     // Immediately invalidate the queries
@@ -132,15 +145,29 @@ export const usePointsData = (selectedCustomerId: string | null) => {
         checkForDuplicates(true);
       }, 1500);
       
-      // Then force a hard refresh with a slight delay
+      // Then force a hard refresh with audit
       setTimeout(() => {
         refetchPoints();
         refetchAdjustments();
+        auditUserPoints(selectedCustomerId);
         setActiveTab('history');
         toast.success('Ajuste de pontos registrado com sucesso');
       }, 1000); // Give time for database to process
     }
-  }, [selectedCustomerId, refetchPoints, refetchAdjustments, queryClient, checkForDuplicates]);
+  }, [selectedCustomerId, refetchPoints, refetchAdjustments, queryClient, checkForDuplicates, auditUserPoints]);
+
+  // Função para corrigir discrepâncias automaticamente
+  const handleAutoFixDiscrepancies = useCallback(async () => {
+    if (!selectedCustomerId) return;
+    
+    try {
+      await autoFixDiscrepancies(selectedCustomerId);
+      // Refresh data after auto-fix
+      handleRefreshData();
+    } catch (error) {
+      console.error('Error in auto-fix:', error);
+    }
+  }, [selectedCustomerId, autoFixDiscrepancies, handleRefreshData]);
 
   return {
     customerPoints,
@@ -154,6 +181,9 @@ export const usePointsData = (selectedCustomerId: string | null) => {
     isPointsError,
     pointsError,
     isAdjustmentsError,
-    adjustmentsError
+    adjustmentsError,
+    // Audit-related functionality
+    auditResults,
+    handleAutoFixDiscrepancies
   };
 };

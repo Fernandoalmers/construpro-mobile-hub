@@ -1,22 +1,27 @@
 
 import React from 'react';
-import { RefreshCw, Loader2, Award } from 'lucide-react';
+import { RefreshCw, Loader2, Award, AlertTriangle, CheckCircle, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Avatar from '../../common/Avatar';
 import { CustomerData } from './CustomerSearch';
+import { usePointsAudit } from './hooks/usePointsAudit';
 
 interface CustomerInfoProps {
   customer: CustomerData;
   customerPoints: number;
   isLoadingPoints: boolean;
   onRefreshData: () => void;
+  auditResults?: any;
+  onAutoFix?: () => void;
 }
 
 const CustomerInfo: React.FC<CustomerInfoProps> = ({ 
   customer, 
   customerPoints, 
   isLoadingPoints,
-  onRefreshData
+  onRefreshData,
+  auditResults,
+  onAutoFix
 }) => {
   // Format CPF with dots and dash
   const formatCPF = (cpf: string | undefined) => {
@@ -39,8 +44,48 @@ const CustomerInfo: React.FC<CustomerInfoProps> = ({
   // Determine if customer is a regular customer or new
   const isRegularCustomer = !!customer.vendedor_id && customer.vendedor_id.length > 0;
   
+  // Check if there are discrepancies
+  const hasDiscrepancies = auditResults && (
+    auditResults.difference !== 0 || 
+    auditResults.duplicateTransactions > 0 ||
+    auditResults.status === 'discrepancy'
+  );
+  
   return (
     <div className="p-4 bg-blue-50 border-b border-blue-100">
+      {/* Alert de discrepâncias */}
+      {hasDiscrepancies && (
+        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <AlertTriangle className="h-5 w-5 text-amber-600 mr-2" />
+              <div>
+                <div className="font-medium text-amber-800">Problemas detectados no saldo</div>
+                <div className="text-sm text-amber-700">
+                  {auditResults.difference !== 0 && (
+                    <span>Diferença de {auditResults.difference} pontos. </span>
+                  )}
+                  {auditResults.duplicateTransactions > 0 && (
+                    <span>{auditResults.duplicateTransactions} transações duplicadas. </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            {onAutoFix && (
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={onAutoFix}
+                className="text-amber-700 border-amber-300 hover:bg-amber-100"
+              >
+                <Wrench className="h-4 w-4 mr-1" />
+                Corrigir
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center">
           <Avatar
@@ -60,6 +105,12 @@ const CustomerInfo: React.FC<CustomerInfoProps> = ({
               ) : (
                 <span className="ml-2 text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
                   Novo cliente
+                </span>
+              )}
+              {auditResults && !hasDiscrepancies && (
+                <span className="ml-2 text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full flex items-center">
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Saldo verificado
                 </span>
               )}
             </div>
@@ -109,7 +160,14 @@ const CustomerInfo: React.FC<CustomerInfoProps> = ({
                 <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
               </div>
             ) : (
-              <p className="text-2xl font-bold text-blue-700">{customerPoints || 0}</p>
+              <div className="flex items-center justify-center">
+                <p className="text-2xl font-bold text-blue-700">{customerPoints || 0}</p>
+                {auditResults && auditResults.difference !== 0 && (
+                  <span className="ml-2 text-xs text-amber-600">
+                    (Calc: {auditResults.transactionBalance})
+                  </span>
+                )}
+              </div>
             )}
           </div>
         </div>

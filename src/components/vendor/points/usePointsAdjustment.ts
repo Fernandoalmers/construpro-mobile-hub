@@ -26,7 +26,7 @@ export const usePointsAdjustment = () => {
     handleSelectCustomer 
   } = useCustomerSelection();
   
-  // Use points data hook with the selected customer ID
+  // Use points data hook with the selected customer ID (includes audit functionality)
   const { 
     customerPoints,
     isLoadingPoints,
@@ -39,7 +39,9 @@ export const usePointsAdjustment = () => {
     isPointsError,
     pointsError,
     isAdjustmentsError,
-    adjustmentsError
+    adjustmentsError,
+    auditResults,
+    handleAutoFixDiscrepancies
   } = usePointsData(selectedCustomerId);
   
   // Use duplicate protection hook
@@ -103,6 +105,7 @@ export const usePointsAdjustment = () => {
         isLoadingAdjustments,
         duplicateCount,
         isReconciling,
+        auditResults,
         isPointsError: isPointsError ? pointsError : null,
         isAdjustmentsError: isAdjustmentsError ? adjustmentsError : null
       });
@@ -110,7 +113,7 @@ export const usePointsAdjustment = () => {
   }, [
     selectedCustomerId, customerPoints, adjustments, isLoadingPoints, 
     isLoadingAdjustments, isPointsError, isAdjustmentsError, isReconciling,
-    pointsError, adjustmentsError, duplicateCount
+    pointsError, adjustmentsError, duplicateCount, auditResults
   ]);
 
   return {
@@ -132,6 +135,9 @@ export const usePointsAdjustment = () => {
     cleanDuplicates,
     // Expose reconciliation method
     reconcileCustomerPoints,
-    isReconciling
+    isReconciling,
+    // Expose audit functionality
+    auditResults,
+    handleAutoFixDiscrepancies
   };
 };
