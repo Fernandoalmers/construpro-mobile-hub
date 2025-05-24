@@ -43,7 +43,7 @@ export async function getOrders(): Promise<OrderData[]> {
     // Get a list of order IDs to fetch items for
     const orderIds = ordersData.map(order => order.id);
     
-    // Fetch ALL items for each order (not just first item)
+    // Fetch order items
     const { data: itemsData, error: itemsError } = await supabase
       .from('order_items')
       .select(`
@@ -52,16 +52,7 @@ export async function getOrders(): Promise<OrderData[]> {
         produto_id,
         quantidade,
         preco_unitario,
-        subtotal,
-        produto:produto_id (
-          id,
-          nome,
-          imagens,
-          descricao,
-          preco_normal,
-          preco_promocional,
-          categoria
-        )
+        subtotal
       `)
       .in('order_id', orderIds);
     
@@ -72,21 +63,54 @@ export async function getOrders(): Promise<OrderData[]> {
     
     console.log(`📋 [orderService.getOrders] Fetched ${itemsData?.length || 0} order items`);
     
+    // Get unique product IDs from items
+    const productIds = itemsData ? [...new Set(itemsData.map(item => item.produto_id))] : [];
+    
+    // Fetch product data if we have product IDs
+    let productsData: any[] = [];
+    if (productIds.length > 0) {
+      const { data: products, error: productsError } = await supabase
+        .from('produtos')
+        .select(`
+          id,
+          nome,
+          imagens,
+          descricao,
+          preco_normal,
+          preco_promocional,
+          categoria
+        `)
+        .in('id', productIds);
+      
+      if (productsError) {
+        console.error("❌ [orderService.getOrders] Error fetching products:", productsError);
+      } else {
+        productsData = products || [];
+      }
+    }
+    
+    console.log(`🛍️ [orderService.getOrders] Fetched ${productsData.length} products`);
+    
+    // Create a map of products by ID for quick lookup
+    const productsMap = new Map(productsData.map(product => [product.id, product]));
+    
     // Group items by order ID
     const itemsByOrderId: Record<string, OrderItem[]> = {};
     
     if (itemsData && Array.isArray(itemsData)) {
-      // Process items and group them by order_id
       itemsData.forEach(item => {
         if (!itemsByOrderId[item.order_id]) {
           itemsByOrderId[item.order_id] = [];
         }
         
+        // Get product data from the map
+        const productFromMap = productsMap.get(item.produto_id);
+        
         // Create default product as fallback
         const defaultProduct: ProductData = {
           id: item.produto_id,
           nome: 'Produto indisponível',
-          imagens: [] as any[],
+          imagens: [],
           descricao: '',
           preco_normal: item.preco_unitario,
           categoria: '',
@@ -94,26 +118,19 @@ export async function getOrders(): Promise<OrderData[]> {
           imagem_url: null
         };
         
-        // Process product data safely
         let productData: ProductData = defaultProduct;
         
-        if (item.produto !== null && typeof item.produto === 'object') {
-          // Safely access produto properties
-          const safeProduto = item.produto as Record<string, any>;
-          
-          if ('id' in safeProduto && 'nome' in safeProduto) {
-            // Create a valid product object ensuring all required fields are present
-            productData = {
-              id: safeProduto.id,
-              nome: safeProduto.nome,
-              imagens: Array.isArray(safeProduto.imagens) ? safeProduto.imagens : [],
-              descricao: safeProduto.descricao || '',
-              preco_normal: Number(safeProduto.preco_normal) || item.preco_unitario,
-              categoria: safeProduto.categoria || '',
-              preco_promocional: safeProduto.preco_promocional,
-              imagem_url: getProductImageUrl(safeProduto)
-            };
-          }
+        if (productFromMap) {
+          productData = {
+            id: productFromMap.id,
+            nome: productFromMap.nome,
+            imagens: Array.isArray(productFromMap.imagens) ? productFromMap.imagens : [],
+            descricao: productFromMap.descricao || '',
+            preco_normal: Number(productFromMap.preco_normal) || item.preco_unitario,
+            categoria: productFromMap.categoria || '',
+            preco_promocional: productFromMap.preco_promocional,
+            imagem_url: getProductImageUrl(productFromMap)
+          };
         }
         
         const orderItem: OrderItem = {
