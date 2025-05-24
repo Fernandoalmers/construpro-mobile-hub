@@ -6,7 +6,7 @@ import { fetchProductsForItems } from './utils/productFetcher';
 import { fetchVendorOrders, fetchDirectVendorOrders, fetchDirectVendorOrdersWithDebug } from './utils/ordersFetcher';
 import { logDiagnosticInfo } from './utils/diagnosticUtils';
 
-// Main function to get all vendor orders
+// Main function to get all vendor orders - now uses the corrected implementation
 export const getVendorOrders = async (): Promise<VendorOrder[]> => {
   try {
     console.log("🔍 [getVendorOrders] Starting order fetch process");
@@ -45,11 +45,11 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
       console.warn('⚠️ [getVendorOrders] Vendor status is "pendente", which may affect order visibility');
     }
     
-    // Use direct approach to fetch vendor orders
-    console.log(`🔍 [getVendorOrders] Fetching orders directly for vendor: ${vendorId}`);
-    const vendorOrders = await fetchDirectVendorOrders(vendorId);
+    // Use the corrected fetch function that queries the orders table
+    console.log(`🔍 [getVendorOrders] Fetching orders from orders table for vendor: ${vendorId}`);
+    const vendorOrders = await fetchVendorOrders({});
     
-    console.log(`📦 [getVendorOrders] Processed ${vendorOrders.length} vendor orders`);
+    console.log(`📦 [getVendorOrders] Processed ${vendorOrders.length} vendor orders from orders table`);
     
     if (vendorOrders.length > 0) {
       console.log('📦 [getVendorOrders] Sample first order:', {
@@ -57,7 +57,8 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
         status: vendorOrders[0].status,
         items_count: vendorOrders[0].itens?.length || 0,
         customer: vendorOrders[0].cliente ? 
-          { name: vendorOrders[0].cliente.nome, id: vendorOrders[0].cliente.id } : 'No customer info'
+          { name: vendorOrders[0].cliente.nome, id: vendorOrders[0].cliente.id } : 'No customer info',
+        total: vendorOrders[0].valor_total
       });
     }
     

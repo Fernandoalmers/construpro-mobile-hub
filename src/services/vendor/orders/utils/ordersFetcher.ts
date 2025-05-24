@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { VendorOrder, OrderFilters, OrderItem } from "../types";
 import { fetchCustomerInfo } from "./clientInfoFetcher";
@@ -17,26 +18,51 @@ const createDiagnosticMetrics = () => {
 };
 
 /**
- * Fetches orders for the current vendor with proper error handling
+ * Fetches orders for the current vendor from the orders table
  */
 export const fetchVendorOrders = async (
   filters: OrderFilters = {}
 ): Promise<VendorOrder[]> => {
   try {
-    console.log('Fetching vendor orders with filters:', filters);
+    console.log('🔍 [fetchVendorOrders] Fetching vendor orders with filters:', filters);
     
     // Get the vendor ID for the current user
     const { data: vendorData, error: vendorError } = await supabase.rpc('get_vendor_id');
     
     if (vendorError || !vendorData) {
-      console.error('Error fetching vendor ID:', vendorError);
+      console.error('❌ [fetchVendorOrders] Error fetching vendor ID:', vendorError);
       return [];
     }
     
     const vendorId = vendorData;
+    console.log('👤 [fetchVendorOrders] Found vendor ID:', vendorId);
     
+    // Get all order IDs that contain products from this vendor
+    const { data: vendorOrderIds, error: orderIdsError } = await supabase
+      .from('order_items')
+      .select(`
+        order_id,
+        produtos!inner(vendedor_id)
+      `)
+      .eq('produtos.vendedor_id', vendorId);
+    
+    if (orderIdsError) {
+      console.error('❌ [fetchVendorOrders] Error fetching vendor order IDs:', orderIdsError);
+      return [];
+    }
+    
+    if (!vendorOrderIds || vendorOrderIds.length === 0) {
+      console.log('⚠️ [fetchVendorOrders] No orders found for this vendor');
+      return [];
+    }
+    
+    // Extract unique order IDs
+    const orderIds = [...new Set(vendorOrderIds.map(item => item.order_id))];
+    console.log('📦 [fetchVendorOrders] Found', orderIds.length, 'orders for vendor');
+    
+    // Build query for orders
     let query = supabase
-      .from('pedidos')
+      .from('orders')
       .select(`
         id,
         status,
@@ -44,9 +70,11 @@ export const fetchVendorOrders = async (
         valor_total,
         endereco_entrega,
         created_at,
-        usuario_id
+        cliente_id,
+        pontos_ganhos,
+        rastreio
       `)
-      .eq('vendedor_id', vendorId)
+      .in('id', orderIds)
       .order('created_at', { ascending: false });
     
     // Apply filters
@@ -63,58 +91,96 @@ export const fetchVendorOrders = async (
     }
     
     if (filters.endDate) {
-      // Add one day to include the end date fully
       const endDate = new Date(filters.endDate);
       endDate.setDate(endDate.getDate() + 1);
       query = query.lt('created_at', endDate.toISOString());
     }
     
-    // Handle search filter if it exists in filters
-    if ((filters.search && typeof filters.search === 'string') || 
-        (filters.searchTerm && typeof filters.searchTerm === 'string')) {
-      // Since pedidos doesn't have customer name, we can't filter by it directly
-      // We'll need to fetch all and filter in memory, or implement a more complex query
-    }
-    
     const { data: ordersData, error: ordersError } = await query;
     
     if (ordersError) {
-      console.error('Error fetching vendor orders:', ordersError);
+      console.error('❌ [fetchVendorOrders] Error fetching orders:', ordersError);
       return [];
     }
     
-    // Process the orders with customer info
+    if (!ordersData || ordersData.length === 0) {
+      console.log('⚠️ [fetchVendorOrders] No orders found after filtering');
+      return [];
+    }
+    
+    console.log('✅ [fetchVendorOrders] Found', ordersData.length, 'orders after filtering');
+    
+    // Process orders and get customer info
     const orders: VendorOrder[] = [];
     
     for (const order of ordersData) {
       try {
-        // Get customer info - this now uses the clientes_vendedor table when available
-        const customerInfo = await fetchCustomerInfo(order.usuario_id, vendorId);
+        // Get customer info using cliente_id
+        const customerInfo = await fetchCustomerInfo(order.cliente_id, vendorId);
+        
+        // Get order items for this vendor only
+        const { data: itemsData, error: itemsError } = await supabase
+          .from('order_items')
+          .select(`
+            id,
+            produto_id,
+            quantidade,
+            preco_unitario,
+            subtotal,
+            produtos!inner(vendedor_id, nome, imagens, descricao, preco_normal, categoria)
+          `)
+          .eq('order_id', order.id)
+          .eq('produtos.vendedor_id', vendorId);
+        
+        if (itemsError) {
+          console.error('❌ [fetchVendorOrders] Error fetching items for order', order.id, ':', itemsError);
+          continue;
+        }
+        
+        // Process items
+        const items: OrderItem[] = itemsData?.map(item => ({
+          id: item.id,
+          produto_id: item.produto_id,
+          quantidade: item.quantidade,
+          preco_unitario: item.preco_unitario,
+          subtotal: item.subtotal,
+          produto: item.produtos ? {
+            id: item.produto_id,
+            nome: item.produtos.nome || 'Produto',
+            imagens: item.produtos.imagens || [],
+            descricao: item.produtos.descricao || '',
+            preco_normal: item.produtos.preco_normal || item.preco_unitario,
+            categoria: item.produtos.categoria || ''
+          } : undefined
+        })) || [];
+        
+        // Calculate vendor-specific total
+        const vendorTotal = items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
         
         // Build full order object
         const fullOrder: VendorOrder = {
           id: order.id,
           status: order.status,
           forma_pagamento: order.forma_pagamento,
-          valor_total: order.valor_total,
+          valor_total: vendorTotal, // Use vendor-specific total
           endereco_entrega: order.endereco_entrega,
           created_at: order.created_at,
           data_criacao: order.created_at,
           cliente: {
-            id: order.usuario_id,
+            id: order.cliente_id,
             nome: customerInfo?.nome || 'Cliente',
             email: customerInfo?.email || '',
             telefone: customerInfo?.telefone || '',
-            usuario_id: order.usuario_id,
+            usuario_id: order.cliente_id,
             vendedor_id: vendorId,
             total_gasto: customerInfo?.total_gasto || 0
           },
-          itens: [] // Items will be filled by getOrderDetails if/when needed
+          itens: items
         };
         
         orders.push(fullOrder);
       } catch (error) {
-        console.error(`Error processing order ${order.id}:`, error);
+        console.error(`❌ [fetchVendorOrders] Error processing order ${order.id}:`, error);
       }
     }
     
@@ -122,17 +188,21 @@ export const fetchVendorOrders = async (
     const searchTerm = filters.search || filters.searchTerm;
     if (searchTerm && typeof searchTerm === 'string' && searchTerm.trim() !== '') {
       const searchTermLower = searchTerm.toLowerCase();
-      return orders.filter(order => 
+      const filteredOrders = orders.filter(order => 
         order.cliente?.nome?.toLowerCase().includes(searchTermLower) ||
         order.cliente?.email?.toLowerCase().includes(searchTermLower) ||
         order.id.toLowerCase().includes(searchTermLower)
       );
+      
+      console.log('🔍 [fetchVendorOrders] Applied search filter, found', filteredOrders.length, 'matching orders');
+      return filteredOrders;
     }
     
+    console.log('✅ [fetchVendorOrders] Returning', orders.length, 'processed orders');
     return orders;
     
   } catch (error) {
-    console.error('Error in fetchVendorOrders:', error);
+    console.error('❌ [fetchVendorOrders] Unexpected error:', error);
     return [];
   }
 };
@@ -146,7 +216,7 @@ export const getOrderDetails = async (orderId: string): Promise<VendorOrder | nu
     const { data: vendorData, error: vendorError } = await supabase.rpc('get_vendor_id');
     
     if (vendorError || !vendorData) {
-      console.error('Error fetching vendor ID:', vendorError);
+      console.error('❌ [getOrderDetails] Error fetching vendor ID:', vendorError);
       return null;
     }
     
@@ -154,7 +224,7 @@ export const getOrderDetails = async (orderId: string): Promise<VendorOrder | nu
     
     // Get order data
     const { data: orderData, error: orderError } = await supabase
-      .from('pedidos')
+      .from('orders')
       .select(`
         id,
         status,
@@ -162,68 +232,88 @@ export const getOrderDetails = async (orderId: string): Promise<VendorOrder | nu
         valor_total,
         endereco_entrega,
         created_at,
-        usuario_id
+        cliente_id,
+        pontos_ganhos,
+        rastreio
       `)
       .eq('id', orderId)
-      .eq('vendedor_id', vendorId)
       .single();
     
     if (orderError || !orderData) {
-      console.error('Error fetching order details:', orderError);
+      console.error('❌ [getOrderDetails] Error fetching order details:', orderError);
       return null;
     }
     
-    // Get customer info - this now uses the clientes_vendedor table when available
-    const customerInfo = await fetchCustomerInfo(orderData.usuario_id, vendorId);
+    // Verify this vendor has items in this order
+    const { data: vendorCheck, error: vendorCheckError } = await supabase
+      .from('order_items')
+      .select('id, produtos!inner(vendedor_id)')
+      .eq('order_id', orderId)
+      .eq('produtos.vendedor_id', vendorId)
+      .limit(1);
     
-    // Get order items
+    if (vendorCheckError || !vendorCheck || vendorCheck.length === 0) {
+      console.error('❌ [getOrderDetails] Vendor does not have access to this order');
+      return null;
+    }
+    
+    // Get customer info
+    const customerInfo = await fetchCustomerInfo(orderData.cliente_id, vendorId);
+    
+    // Get order items for this vendor only
     const { data: itemsData, error: itemsError } = await supabase
-      .from('itens_pedido')
+      .from('order_items')
       .select(`
         id,
         produto_id,
         quantidade,
         preco_unitario,
-        total
+        subtotal,
+        produtos!inner(vendedor_id, nome, imagens, descricao, preco_normal, categoria)
       `)
-      .eq('pedido_id', orderId);
+      .eq('order_id', orderId)
+      .eq('produtos.vendedor_id', vendorId);
     
     if (itemsError) {
-      console.error('Error fetching order items:', itemsError);
+      console.error('❌ [getOrderDetails] Error fetching order items:', itemsError);
       return null;
     }
     
-    // Process items with product details
-    const items = [];
+    // Process items
+    const items: OrderItem[] = itemsData?.map(item => ({
+      id: item.id,
+      produto_id: item.produto_id,
+      quantidade: item.quantidade,
+      preco_unitario: item.preco_unitario,
+      subtotal: item.subtotal,
+      produto: item.produtos ? {
+        id: item.produto_id,
+        nome: item.produtos.nome || 'Produto',
+        imagens: item.produtos.imagens || [],
+        descricao: item.produtos.descricao || '',
+        preco_normal: item.produtos.preco_normal || item.preco_unitario,
+        categoria: item.produtos.categoria || ''
+      } : undefined
+    })) || [];
     
-    for (const item of itemsData || []) {
-      const productDetails = await fetchProductDetails(item.produto_id);
-      
-      items.push({
-        id: item.id,
-        produto_id: item.produto_id,
-        quantidade: item.quantidade,
-        preco_unitario: item.preco_unitario,
-        subtotal: item.total,
-        produto: productDetails
-      });
-    }
+    // Calculate vendor-specific total
+    const vendorTotal = items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
     
     // Build full order object
     const fullOrder: VendorOrder = {
       id: orderData.id,
       status: orderData.status,
       forma_pagamento: orderData.forma_pagamento,
-      valor_total: orderData.valor_total,
+      valor_total: vendorTotal,
       endereco_entrega: orderData.endereco_entrega,
       created_at: orderData.created_at,
       data_criacao: orderData.created_at,
       cliente: {
-        id: orderData.usuario_id,
+        id: orderData.cliente_id,
         nome: customerInfo?.nome || 'Cliente',
         email: customerInfo?.email || '',
         telefone: customerInfo?.telefone || '',
-        usuario_id: orderData.usuario_id,
+        usuario_id: orderData.cliente_id,
         vendedor_id: vendorId,
         total_gasto: customerInfo?.total_gasto || 0
       },
@@ -233,7 +323,7 @@ export const getOrderDetails = async (orderId: string): Promise<VendorOrder | nu
     return fullOrder;
     
   } catch (error) {
-    console.error('Error in getOrderDetails:', error);
+    console.error('❌ [getOrderDetails] Unexpected error:', error);
     return null;
   }
 };
@@ -267,10 +357,31 @@ export const fetchDirectVendorOrdersWithDebug = async (
       resolvedVendorId = vendorIdResult.data;
     }
     
+    // Get vendor order IDs from order_items + produtos
+    const vendorOrdersStart = performance.now();
+    const { data: vendorOrderIds, error: orderIdsError } = await supabase
+      .from('order_items')
+      .select(`
+        order_id,
+        produtos!inner(vendedor_id)
+      `)
+      .eq('produtos.vendedor_id', resolvedVendorId);
+      
+    metrics.add('fetch_vendor_order_ids', performance.now() - vendorOrdersStart);
+    
+    if (orderIdsError) {
+      return { 
+        error: orderIdsError,
+        metrics: metrics.get()
+      };
+    }
+    
+    const orderIds = [...new Set(vendorOrderIds?.map(item => item.order_id) || [])];
+    
     // Fetch orders
     const ordersStart = performance.now();
     const ordersResult = await supabase
-      .from('pedidos')
+      .from('orders')
       .select(`
         id,
         status,
@@ -278,9 +389,9 @@ export const fetchDirectVendorOrdersWithDebug = async (
         valor_total,
         endereco_entrega,
         created_at,
-        usuario_id
+        cliente_id
       `)
-      .eq('vendedor_id', resolvedVendorId)
+      .in('id', orderIds)
       .order('created_at', { ascending: false })
       .limit(10);
       
@@ -309,6 +420,7 @@ export const fetchDirectVendorOrdersWithDebug = async (
       success: true,
       orders: ordersResult.data,
       ordersCount: ordersResult.data?.length || 0,
+      vendorOrderIds: orderIds.length,
       vendorCustomers: {
         count: vendorCustomers && vendorCustomers[0] ? vendorCustomers[0].count : 0,
         error: vendorCustomersError
@@ -318,12 +430,12 @@ export const fetchDirectVendorOrdersWithDebug = async (
         vendorId: resolvedVendorId,
         timestamp: new Date().toISOString(),
         vendorProductsCount: 0, // Would need additional query
-        orderItemsCount: 0 // Would need additional query
+        orderItemsCount: vendorOrderIds?.length || 0
       } : undefined
     };
     
   } catch (error) {
-    console.error('Error in fetchDirectVendorOrdersWithDebug:', error);
+    console.error('❌ [fetchDirectVendorOrdersWithDebug] Unexpected error:', error);
     return { 
       error,
       message: error instanceof Error ? error.message : 'Unknown error'
@@ -345,32 +457,65 @@ export const fetchDirectVendorOrders = async (
     for (const order of result.orders) {
       try {
         // Get customer info
-        const customerInfo = await fetchCustomerInfo(order.usuario_id, vendorId);
+        const customerInfo = await fetchCustomerInfo(order.cliente_id, vendorId);
+        
+        // Get order items for this vendor
+        const { data: itemsData } = await supabase
+          .from('order_items')
+          .select(`
+            id,
+            produto_id,
+            quantidade,
+            preco_unitario,
+            subtotal,
+            produtos!inner(vendedor_id, nome, imagens)
+          `)
+          .eq('order_id', order.id)
+          .eq('produtos.vendedor_id', vendorId);
+        
+        const items: OrderItem[] = itemsData?.map(item => ({
+          id: item.id,
+          produto_id: item.produto_id,
+          quantidade: item.quantidade,
+          preco_unitario: item.preco_unitario,
+          subtotal: item.subtotal,
+          produto: item.produtos ? {
+            id: item.produto_id,
+            nome: item.produtos.nome || 'Produto',
+            imagens: item.produtos.imagens || [],
+            descricao: '',
+            preco_normal: item.preco_unitario,
+            categoria: ''
+          } : undefined
+        })) || [];
+        
+        // Calculate vendor total
+        const vendorTotal = items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
         
         // Build full order object
         const fullOrder: VendorOrder = {
           id: order.id,
           status: order.status,
           forma_pagamento: order.forma_pagamento,
-          valor_total: order.valor_total,
+          valor_total: vendorTotal,
           endereco_entrega: order.endereco_entrega,
           created_at: order.created_at,
           data_criacao: order.created_at,
           cliente: {
-            id: order.usuario_id,
+            id: order.cliente_id,
             nome: customerInfo?.nome || 'Cliente',
             email: customerInfo?.email || '',
             telefone: customerInfo?.telefone || '',
-            usuario_id: order.usuario_id,
+            usuario_id: order.cliente_id,
             vendedor_id: vendorId,
             total_gasto: customerInfo?.total_gasto || 0
           },
-          itens: []
+          itens: items
         };
         
         orders.push(fullOrder);
       } catch (error) {
-        console.error(`Error processing direct order ${order.id}:`, error);
+        console.error(`❌ [fetchDirectVendorOrders] Error processing order ${order.id}:`, error);
       }
     }
     
