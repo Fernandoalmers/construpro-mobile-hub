@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Users, Share2, Copy, UserCheck, Award } from 'lucide-react';
@@ -7,6 +8,7 @@ import { toast } from "@/components/ui/sonner";
 import { useAuth } from '../../context/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { referralService, ReferralInfo } from '@/services/pointsService';
+
 const ReferralsScreen: React.FC = () => {
   const navigate = useNavigate();
 
@@ -24,12 +26,14 @@ const ReferralsScreen: React.FC = () => {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
+
   const handleCopyCode = () => {
     if (referralData?.codigo) {
       navigator.clipboard.writeText(referralData.codigo);
       toast.success("Código copiado para a área de transferência");
     }
   };
+
   const handleShareWhatsApp = () => {
     if (referralData?.codigo) {
       const message = `Venha para a ConstruPro! Use meu código ${referralData.codigo} e ganhe 50 pontos na primeira compra. https://construpro.com/convite`;
@@ -37,10 +41,13 @@ const ReferralsScreen: React.FC = () => {
       window.open(whatsappUrl, '_blank');
     }
   };
+
   if (error) {
     toast.error(`Erro ao carregar dados de referência: ${(error as Error).message}`);
   }
-  return <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
+
+  return (
+    <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
       {/* Header */}
       <div className="bg-construPro-blue p-6 pt-12">
         <div className="flex items-center mb-4">
@@ -54,9 +61,12 @@ const ReferralsScreen: React.FC = () => {
       {/* Referral Code Card */}
       <div className="px-6 -mt-6">
         <Card className="p-4">
-          {isLoading ? <div className="flex justify-center py-4">
+          {isLoading ? (
+            <div className="flex justify-center py-4">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-construPro-blue"></div>
-            </div> : <>
+            </div>
+          ) : (
+            <>
               <h3 className="font-medium mb-1">Seu código de indicação</h3>
               <div className="bg-gray-50 rounded-md p-3 flex items-center justify-between mb-4">
                 <span className="text-xl font-bold tracking-wider">
@@ -68,15 +78,26 @@ const ReferralsScreen: React.FC = () => {
               </div>
               
               <div className="space-y-3">
-                <CustomButton variant="primary" fullWidth onClick={handleShareWhatsApp} icon={<Share2 size={18} />}>
+                <CustomButton 
+                  variant="primary" 
+                  fullWidth 
+                  onClick={handleShareWhatsApp} 
+                  icon={<Share2 size={18} />}
+                >
                   Compartilhar via WhatsApp
                 </CustomButton>
                 
-                <CustomButton variant="outline" fullWidth onClick={handleCopyCode} icon={<Copy size={18} />}>
+                <CustomButton 
+                  variant="outline" 
+                  fullWidth 
+                  onClick={handleCopyCode} 
+                  icon={<Copy size={18} />}
+                >
                   Copiar link de convite
                 </CustomButton>
               </div>
-            </>}
+            </>
+          )}
         </Card>
       </div>
       
@@ -131,38 +152,59 @@ const ReferralsScreen: React.FC = () => {
         </Card>
         
         <h2 className="font-medium mb-3">Amigos indicados</h2>
-        {isLoading ? <div className="flex justify-center py-8">
+        {isLoading ? (
+          <div className="flex justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-construPro-blue"></div>
-          </div> : referralData?.referrals.length === 0 ? <Card className="p-4">
+          </div>
+        ) : referralData?.referrals.length === 0 ? (
+          <Card className="p-4">
             <div className="text-center py-6">
               <Users className="mx-auto text-gray-400 mb-3" size={40} />
               <h3 className="text-lg font-medium text-gray-700">Nenhum amigo indicado</h3>
               <p className="text-gray-500 mt-1">Comece a compartilhar seu código agora!</p>
             </div>
-          </Card> : <Card className="overflow-hidden">
+          </Card>
+        ) : (
+          <Card className="overflow-hidden">
             <div className="divide-y divide-gray-100">
-              {referralData?.referrals.map(friend => <div key={friend.id} className="p-4">
+              {referralData?.referrals.map((friend) => (
+                <div key={friend.id} className="p-4">
                   <div className="flex justify-between items-start">
                     <div className="flex">
-                      <UserCheck size={20} className={friend.status === 'aprovado' ? 'text-green-600' : 'text-yellow-600'} />
+                      <UserCheck 
+                        size={20} 
+                        className={friend.status === 'aprovado' ? 'text-green-600' : 'text-yellow-600'} 
+                      />
                       <div className="ml-3">
                         <p className="font-medium">{friend.profiles.nome}</p>
                         <p className="text-xs text-gray-500">Indicado em {formatDate(friend.data)}</p>
                       </div>
                     </div>
                     <div className="flex flex-col items-end">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${friend.status === 'aprovado' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                      <span 
+                        className={`text-xs px-2 py-0.5 rounded-full ${
+                          friend.status === 'aprovado' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}
+                      >
                         {friend.status === 'aprovado' ? 'Aprovado' : 'Pendente'}
                       </span>
-                      {friend.pontos > 0 && <span className="text-sm font-medium text-green-600 mt-1">
+                      {friend.pontos > 0 && (
+                        <span className="text-sm font-medium text-green-600 mt-1">
                           +{friend.pontos} pts
-                        </span>}
+                        </span>
+                      )}
                     </div>
                   </div>
-                </div>)}
+                </div>
+              ))}
             </div>
-          </Card>}
+          </Card>
+        )}
       </div>
-    </div>;
+    </div>
+  );
 };
+
 export default ReferralsScreen;
