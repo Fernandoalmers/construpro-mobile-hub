@@ -28,35 +28,6 @@ interface SearchAndFilterSectionProps {
   handleSearchChange: (term: string) => void;
 }
 
-// Separate hook for search functionality
-export const useProductSearch = (initialTerm = '', onSearch: (term: string) => void) => {
-  const [searchTerm, setSearchTerm] = useState(initialTerm);
-  const [debouncedTerm, setDebouncedTerm] = useState(initialTerm);
-  
-  // Debounce search term changes
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedTerm(searchTerm);
-    }, 300);
-    
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
-  
-  // Trigger search when debounced term changes - FIXED: also handle empty search
-  useEffect(() => {
-    if (debouncedTerm.trim().length >= 2) {
-      console.log('[useProductSearch] Searching for:', debouncedTerm);
-      onSearch(debouncedTerm);
-    } else if (debouncedTerm.trim().length === 0) {
-      // When search is cleared, reset to show all products
-      console.log('[useProductSearch] Search cleared, showing all products');
-      onSearch('');
-    }
-  }, [debouncedTerm, onSearch]);
-  
-  return { searchTerm, setSearchTerm, debouncedTerm };
-};
-
 const SearchAndFilterSection: React.FC<SearchAndFilterSectionProps> = ({
   hideHeader,
   searchTerm,
@@ -84,28 +55,27 @@ const SearchAndFilterSection: React.FC<SearchAndFilterSectionProps> = ({
   const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
 
-  // Use our custom search hook
-  const { debouncedTerm } = useProductSearch(searchTerm, handleSearchChange);
-
   // Update URL when search term changes
   useEffect(() => {
     const newSearchParams = new URLSearchParams(searchParams);
-    if (debouncedTerm && debouncedTerm.trim().length >= 2) {
-      newSearchParams.set('search', debouncedTerm);
+    if (searchTerm && searchTerm.trim().length >= 2) {
+      newSearchParams.set('search', searchTerm);
     } else {
       // Remove search parameter when term is cleared or too short
       newSearchParams.delete('search');
     }
     navigate(`${location.pathname}?${newSearchParams.toString()}`, { replace: true });
-  }, [debouncedTerm, location.pathname, navigate]);
+  }, [searchTerm, location.pathname, navigate]);
 
   // Adapter function to convert the event to string
   const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('[SearchAndFilterSection] Input change event:', e.target.value);
     setSearchTerm(e.target.value);
   };
 
   // Explicit search functionality
   const handleExplicitSearch = () => {
+    console.log('[SearchAndFilterSection] Explicit search with term:', searchTerm);
     if (searchTerm.trim().length >= 2) {
       onSearch(searchTerm);
     } else if (searchTerm.trim().length === 0) {
@@ -138,6 +108,35 @@ const SearchAndFilterSection: React.FC<SearchAndFilterSectionProps> = ({
       stores={stores}
     />
   );
+};
+
+// Separate hook for search functionality - moved to its own file to avoid conflicts
+export const useProductSearch = (initialTerm = '', onSearch: (term: string) => void) => {
+  const [searchTerm, setSearchTerm] = useState(initialTerm);
+  const [debouncedTerm, setDebouncedTerm] = useState(initialTerm);
+  
+  // Debounce search term changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedTerm(searchTerm);
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+  
+  // Trigger search when debounced term changes - FIXED: also handle empty search
+  useEffect(() => {
+    if (debouncedTerm.trim().length >= 2) {
+      console.log('[useProductSearch] Searching for:', debouncedTerm);
+      onSearch(debouncedTerm);
+    } else if (debouncedTerm.trim().length === 0) {
+      // When search is cleared, reset to show all products
+      console.log('[useProductSearch] Search cleared, showing all products');
+      onSearch('');
+    }
+  }, [debouncedTerm, onSearch]);
+  
+  return { searchTerm, setSearchTerm, debouncedTerm };
 };
 
 export default SearchAndFilterSection;
