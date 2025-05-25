@@ -53,7 +53,6 @@ const SegmentForm: React.FC<SegmentFormProps> = ({
   });
 
   const handleSubmit = form.handleSubmit(async (data) => {
-    // Ensure status is always defined
     const formData = {
       ...data,
       status: data.status || 'ativo',
@@ -203,25 +202,25 @@ const SegmentForm: React.FC<SegmentFormProps> = ({
                   </p>
                 )}
                 <div className="mt-4">
-                  <label htmlFor="segment-image" className="cursor-pointer">
-                    <input
-                      id="segment-image"
-                      name="segment-image"
-                      type="file"
-                      accept="image/*"
-                      className="sr-only"
-                      onChange={handleImageChange}
-                      disabled={imageLoading}
-                    />
-                    <CustomButton
-                      type="button"
-                      variant="outline"
-                      icon={<Upload className="h-4 w-4" />}
-                      disabled={imageLoading}
-                    >
-                      {imageLoading ? 'Carregando...' : 'Selecionar arquivo'}
-                    </CustomButton>
-                  </label>
+                  <input
+                    id="segment-image"
+                    name="segment-image"
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    onChange={handleImageChange}
+                    disabled={imageLoading}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex items-center gap-2"
+                    disabled={imageLoading}
+                    onClick={() => document.getElementById('segment-image')?.click()}
+                  >
+                    <Upload className="h-4 w-4" />
+                    {imageLoading ? 'Carregando...' : 'Selecionar arquivo'}
+                  </Button>
                 </div>
               </div>
             ) : null}
