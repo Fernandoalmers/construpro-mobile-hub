@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Construction, Zap, GlassWater, Square, Truck, Wrench, ShoppingBag } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -23,13 +22,11 @@ const SegmentCard: React.FC<SegmentCardProps> = ({
   isSelected = false
 }) => {
   const [imageError, setImageError] = useState(false);
-  const [imageLoaded, setImageLoaded] = useState(false);
   
   useEffect(() => {
     if (imageUrl) {
       console.log(`[SegmentCard] ${title} - Image URL:`, imageUrl);
       setImageError(false);
-      setImageLoaded(false);
     }
   }, [imageUrl, title]);
 
@@ -40,7 +37,6 @@ const SegmentCard: React.FC<SegmentCardProps> = ({
 
   const handleImageLoad = () => {
     console.log(`[SegmentCard] ${title} - Image loaded successfully:`, imageUrl);
-    setImageLoaded(true);
   };
   
   return (
@@ -62,10 +58,8 @@ const SegmentCard: React.FC<SegmentCardProps> = ({
             className="w-full h-full object-cover" 
             onError={handleImageError}
             onLoad={handleImageLoad}
-            style={{ display: imageLoaded ? 'block' : 'none' }}
           />
-        ) : null}
-        {(!imageUrl || imageError || !imageLoaded) && (
+        ) : (
           <div className="flex items-center justify-center w-full h-full">
             {icon}
           </div>
