@@ -9,7 +9,6 @@ import {
   Plug, 
   GlassWater, 
   Hammer, 
-  UserPlus, 
   ShoppingBag,
   Construction
 } from 'lucide-react';
@@ -85,8 +84,6 @@ const MarketplaceHomeScreen: React.FC = () => {
       return 'https://images.unsplash.com/photo-1466442929976-97f336a657be?auto=format&fit=crop&w=300';
     } else if (nameToLower.includes('aluguel') || nameToLower.includes('equipamento')) {
       return 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&w=300';
-    } else if (nameToLower.includes('profissional') || nameToLower.includes('serviço')) {
-      return 'https://images.unsplash.com/photo-1521791055366-0d553872125f?auto=format&fit=crop&w=300';
     }
     return 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=300'; // Default fallback
   };
@@ -104,8 +101,6 @@ const MarketplaceHomeScreen: React.FC = () => {
       return <Box size={24} />;
     } else if (nameToLower.includes('aluguel') || nameToLower.includes('equipamento')) {
       return <Hammer size={24} />;
-    } else if (nameToLower.includes('profissional') || nameToLower.includes('serviço')) {
-      return <UserPlus size={24} />;
     } else {
       return <ShoppingBag size={24} />;
     }
@@ -113,7 +108,7 @@ const MarketplaceHomeScreen: React.FC = () => {
 
   const handleCategoryClick = (segmentId?: string) => {
     if (!segmentId) {
-      navigate('/services');
+      navigate('/marketplace/products');
       return;
     }
     
@@ -188,34 +183,6 @@ const MarketplaceHomeScreen: React.FC = () => {
               </div>
             );
           })}
-          
-          {/* Profissionais segment - special case */}
-          <div 
-            className="cursor-pointer"
-            onClick={() => handleCategoryClick()}
-          >
-            <div 
-              className="relative h-40 rounded-lg overflow-hidden shadow-md"
-              style={{ 
-                backgroundImage: `url(${getFallbackImage('profissionais')})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center'
-              }}
-            >
-              {/* Gradient overlay for better text visibility */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
-              
-              {/* Content positioned at bottom */}
-              <div className="absolute bottom-0 left-0 right-0 p-3 flex flex-col items-start">
-                <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center mb-2 shadow-md">
-                  <span className="text-construPro-blue">
-                    <UserPlus size={24} />
-                  </span>
-                </div>
-                <span className="text-white font-medium">Profissionais</span>
-              </div>
-            </div>
-          </div>
           
           {/* Ver todos segment */}
           <div 
