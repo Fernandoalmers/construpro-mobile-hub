@@ -188,54 +188,89 @@ const ProfileScreen: React.FC = () => {
     navigate('/login');
   };
 
-  // Function to handle avatar upload
+  // Improved avatar upload function with better error handling
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
+      // Validation checks
+      if (!authUser) {
+        toast.error("Você precisa estar logado para atualizar o avatar");
+        return;
+      }
+
       if (!event.target.files || event.target.files.length === 0) {
         return;
       }
       
       const file = event.target.files[0];
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${authUser?.id}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-      const filePath = `${fileName}`;
       
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast.error("Por favor, selecione apenas arquivos de imagem");
+        return;
+      }
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("A imagem deve ter no máximo 5MB");
+        return;
+      }
+      
+      console.log("Starting avatar upload for user:", authUser.id);
       setUploading(true);
       
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${authUser.id}/${Date.now()}.${fileExt}`;
+      
+      console.log("Uploading file to path:", fileName);
+      
       // Upload the file to Supabase Storage
-      const { data, error } = await supabase.storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, file, {
+        .upload(fileName, file, {
           cacheControl: '3600',
           upsert: true
         });
       
-      if (error) {
-        console.error("Upload error:", error);
-        throw error;
+      if (uploadError) {
+        console.error("Upload error:", uploadError);
+        throw new Error(`Erro no upload: ${uploadError.message}`);
       }
+      
+      console.log("File uploaded successfully:", uploadData);
       
       // Get the public URL for the uploaded file
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
-        .getPublicUrl(filePath);
+        .getPublicUrl(fileName);
       
       console.log("Avatar URL:", publicUrl);
       
+      if (!publicUrl) {
+        throw new Error("Não foi possível obter a URL da imagem");
+      }
+      
       // Update the user's profile with the new avatar URL
+      console.log("Updating profile with new avatar URL");
       const updateResult = await updateProfile({ avatar: publicUrl });
       
       if (!updateResult) {
-        throw new Error("Failed to update profile with new avatar");
+        // If profile update fails, try to clean up the uploaded file
+        console.warn("Profile update failed, attempting to clean up uploaded file");
+        await supabase.storage.from('avatars').remove([fileName]);
+        throw new Error("Falha ao atualizar o perfil com o novo avatar");
       }
+      
+      console.log("Profile updated successfully");
       
       // Refresh the profile to get the updated avatar
       await refreshProfile();
       
       toast.success("Avatar atualizado com sucesso!");
+      
     } catch (error: any) {
       console.error("Error uploading avatar:", error);
-      toast.error("Erro ao atualizar avatar. Tente novamente.");
+      const errorMessage = error?.message || "Erro desconhecido ao atualizar avatar";
+      toast.error(`Erro ao atualizar avatar: ${errorMessage}`);
     } finally {
       setUploading(false);
       // Clear the file input
@@ -246,6 +281,7 @@ const ProfileScreen: React.FC = () => {
   };
 
   const handleAvatarClick = () => {
+    if (uploading) return;
     fileInputRef.current?.click();
   };
 
@@ -302,6 +338,7 @@ const ProfileScreen: React.FC = () => {
         onChange={handleAvatarUpload}
         accept="image/*"
         className="hidden"
+        disabled={uploading}
       />
       
       {/* Header */}
@@ -316,9 +353,12 @@ const ProfileScreen: React.FC = () => {
               className="border-4 border-white mb-3"
             />
             <button 
-              className="absolute bottom-2 right-0 bg-white p-1 rounded-full shadow-md"
+              className={`absolute bottom-2 right-0 bg-white p-1 rounded-full shadow-md transition-opacity ${
+                uploading ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg'
+              }`}
               onClick={handleAvatarClick}
               disabled={uploading}
+              title={uploading ? "Fazendo upload..." : "Alterar foto"}
             >
               {uploading ? (
                 <Loader2 size={16} className="text-construPro-blue animate-spin" />
