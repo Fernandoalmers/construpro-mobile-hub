@@ -85,9 +85,12 @@ export async function processCartItems(cartId: string, userId: string): Promise<
       
       // Extract the first image URL from the imagens array if available
       let imagemUrl = '';
+      let imagensArray: string[] = [];
+      
       if (produto.imagens && Array.isArray(produto.imagens) && produto.imagens.length > 0) {
+        imagensArray = produto.imagens;
         imagemUrl = produto.imagens[0];
-        console.log('[processCartItems] Found image for product:', produto.id, 'URL:', imagemUrl);
+        console.log('[processCartItems] Found images for product:', produto.id, 'Count:', produto.imagens.length, 'First URL:', imagemUrl);
       } else {
         console.log('[processCartItems] No images found for product:', produto.id);
       }
@@ -113,6 +116,7 @@ export async function processCartItems(cartId: string, userId: string): Promise<
           preco: produto.preco_normal,
           preco_promocional: produto.preco_promocional,
           imagem_url: imagemUrl,
+          imagens: imagensArray, // Preservando o array completo de imagens
           categoria: produto.categoria || '',
           estoque: produto.estoque,
           pontos: pontos,

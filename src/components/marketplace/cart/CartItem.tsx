@@ -26,6 +26,8 @@ const CartItem: React.FC<CartItemProps> = ({ item, onUpdateQuantity, onRemoveIte
     productName: item.produto?.nome,
     hasImageUrl: !!item.produto?.imagem_url,
     imageUrl: item.produto?.imagem_url,
+    hasImagens: item.produto?.imagens && Array.isArray(item.produto?.imagens) && item.produto?.imagens.length > 0,
+    imagensCount: item.produto?.imagens?.length || 0,
     productData: item.produto
   });
 
@@ -53,6 +55,7 @@ const CartItem: React.FC<CartItemProps> = ({ item, onUpdateQuantity, onRemoveIte
       <div className="w-14 h-14 flex-shrink-0">
         <ProductImage 
           imagemUrl={item.produto?.imagem_url}
+          imagens={item.produto?.imagens}
           productName={item.produto?.nome || 'Produto'}
           size="sm"
         />

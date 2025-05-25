@@ -10,6 +10,7 @@ export interface CartItem {
     nome: string;
     preco: number;
     imagem_url: string;
+    imagens?: string[]; // Adicionando o array de imagens
     estoque: number;
     loja_id: string;
     pontos: number;
