@@ -80,11 +80,12 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
         {/* Header Top with Back Button and Cart */}
         <MarketplaceHeaderTop cartCount={cartCount} />
         
-        {/* Search Bar */}
+        {/* Search Bar - sem mostrar sugestões nesta tela */}
         <SearchBar
           searchTerm={searchTerm}
           onSearchChange={onSearchChange}
           onSearch={onSearch}
+          showSuggestions={false}
         />
 
         {/* Filter Dialogs */}

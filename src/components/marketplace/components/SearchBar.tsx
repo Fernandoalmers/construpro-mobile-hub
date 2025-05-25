@@ -10,12 +10,14 @@ interface SearchBarProps {
   searchTerm: string;
   onSearchChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSearch?: (term: string) => void;
+  showSuggestions?: boolean; // Nova prop para controlar as sugestões
 }
 
 const SearchBar: React.FC<SearchBarProps> = ({
   searchTerm,
   onSearchChange,
-  onSearch
+  onSearch,
+  showSuggestions = false // Por padrão, não mostra sugestões
 }) => {
   const navigate = useNavigate();
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -33,8 +35,8 @@ const SearchBar: React.FC<SearchBarProps> = ({
       clearTimeout(searchTimeoutRef.current);
     }
     
-    // Set a new timeout for the search
-    if (query.trim().length >= 2) {
+    // Only show suggestions if enabled and query is long enough
+    if (showSuggestions && query.trim().length >= 2) {
       searchTimeoutRef.current = window.setTimeout(() => {
         fetchSearchResults(query);
       }, 300);
@@ -189,12 +191,14 @@ const SearchBar: React.FC<SearchBarProps> = ({
         Buscar
       </Button>
       
-      {/* Search results dropdown */}
-      <SearchResults 
-        searchResults={searchResults}
-        showResults={showResults}
-        onResultClick={handleResultClick}
-      />
+      {/* Search results dropdown - só mostra se showSuggestions for true */}
+      {showSuggestions && (
+        <SearchResults 
+          searchResults={searchResults}
+          showResults={showResults}
+          onResultClick={handleResultClick}
+        />
+      )}
     </form>
   );
 };

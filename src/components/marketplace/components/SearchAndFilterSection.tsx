@@ -55,6 +55,22 @@ const SearchAndFilterSection: React.FC<SearchAndFilterSectionProps> = ({
   const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
 
+  // Debounce effect for automatic search and reset
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchTerm.trim().length >= 2) {
+        console.log('[SearchAndFilterSection] Auto-searching for:', searchTerm);
+        onSearch(searchTerm);
+      } else if (searchTerm.trim().length === 0) {
+        // When search is cleared, reset to show all products
+        console.log('[SearchAndFilterSection] Search cleared, showing all products');
+        onSearch('');
+      }
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [searchTerm, onSearch]);
+
   // Update URL when search term changes
   useEffect(() => {
     const newSearchParams = new URLSearchParams(searchParams);

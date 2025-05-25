@@ -50,6 +50,7 @@ const SearchHeader: React.FC<SearchHeaderProps> = ({ onGoBack }) => {
             searchTerm={searchTerm} 
             onSearchChange={handleSearchChange}
             onSearch={handleSearch}
+            showSuggestions={true}
           />
         </div>
         
