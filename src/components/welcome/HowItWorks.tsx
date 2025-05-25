@@ -68,6 +68,9 @@ const HowItWorks: React.FC = () => {
             </div>
           ))}
         </div>
+        
+        {/* Increased spacing before next section */}
+        <div className="mt-16 sm:mt-20 md:mt-24"></div>
       </div>
     </section>
   );

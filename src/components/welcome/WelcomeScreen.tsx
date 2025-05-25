@@ -115,7 +115,6 @@ const WelcomeScreen: React.FC = () => {
               <div className="w-40 h-56 sm:w-48 sm:h-64 md:w-56 md:h-80 bg-gray-200 rounded-3xl shadow-xl flex items-center justify-center">
                 <div className="text-gray-400 text-center">
                   <div className="w-16 h-16 bg-gray-300 rounded-lg mx-auto mb-2"></div>
-                  <div className="text-xs">App Matershop</div>
                 </div>
               </div>
             </div>
