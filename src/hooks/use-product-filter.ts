@@ -73,13 +73,11 @@ export const useProductFilter = ({
       const matchesCategory = selectedCategories.length === 0 || 
         selectedCategories.includes(produto.categoria);
       
-      // Filter by store - improved logic
+      // Filter by store - FIXED: check vendedor_id which is the correct field
       const matchesLoja = selectedLojas.length === 0 || 
         selectedLojas.some(lojaId => {
-          const storeId = produto.loja_id || 
-                         produto.vendedor_id || 
-                         produto.stores?.id ||
-                         (produto.vendedores && produto.vendedores.id);
+          // Use vendedor_id as the primary field to match with stores
+          const storeId = produto.vendedor_id;
           
           const isMatch = storeId === lojaId;
           if (selectedLojas.length > 0) {

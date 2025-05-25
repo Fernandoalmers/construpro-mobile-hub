@@ -9,13 +9,13 @@ export interface Store {
 }
 
 /**
- * Fetches approved stores from the database
+ * Fetches approved AND active stores from the database
  */
 export async function getStores(): Promise<Store[]> {
   const { data, error } = await supabase
     .from('vendedores')
     .select('id,nome_loja,logo,status')
-    .eq('status', 'aprovado')
+    .in('status', ['aprovado', 'ativo']) // Accept both approved and active stores
     .order('nome_loja', { ascending: true });
 
   if (error) {
