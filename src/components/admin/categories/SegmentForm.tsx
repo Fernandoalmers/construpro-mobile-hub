@@ -15,6 +15,8 @@ import CustomButton from '@/components/common/CustomButton';
 import { Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Image } from 'lucide-react';
+import { uploadSegmentImage, deleteSegmentImage } from '@/services/admin/productSegmentsService';
+import { toast } from '@/components/ui/sonner';
 
 interface SegmentFormProps {
   initialData?: {
@@ -40,6 +42,7 @@ const SegmentForm: React.FC<SegmentFormProps> = ({
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imageLoading, setImageLoading] = useState<boolean>(false);
   const [imageError, setImageError] = useState<boolean>(false);
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
 
   const form = useForm({
     defaultValues: {
@@ -49,16 +52,19 @@ const SegmentForm: React.FC<SegmentFormProps> = ({
     }
   });
 
-  const handleSubmit = form.handleSubmit((data) => {
+  const handleSubmit = form.handleSubmit(async (data) => {
     // Ensure status is always defined
     const formData = {
       ...data,
-      status: data.status || 'ativo'
+      status: data.status || 'ativo',
+      image_url: uploadedImageUrl || previewImage || data.image_url
     };
-    onSubmit(formData, imageFile || undefined);
+    
+    console.log('[SegmentForm] Submitting form with data:', formData);
+    onSubmit(formData);
   });
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     
     if (file) {
@@ -68,6 +74,7 @@ const SegmentForm: React.FC<SegmentFormProps> = ({
       if (!file.type.startsWith('image/')) {
         console.error(`[SegmentForm] Invalid file type: ${file.type}`);
         setImageError(true);
+        toast.error('Por favor, selecione apenas arquivos de imagem');
         return;
       }
       
@@ -75,6 +82,7 @@ const SegmentForm: React.FC<SegmentFormProps> = ({
       if (file.size > 5 * 1024 * 1024) {
         console.error(`[SegmentForm] File too large: ${file.size} bytes`);
         setImageError(true);
+        toast.error('A imagem deve ter no máximo 5MB');
         return;
       }
       
@@ -82,18 +90,26 @@ const SegmentForm: React.FC<SegmentFormProps> = ({
       setImageFile(file);
       setImageLoading(true);
       
-      // Create preview URL
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewImage(reader.result as string);
-        setImageLoading(false);
-      };
-      reader.onerror = () => {
-        console.error('[SegmentForm] Error reading file');
+      try {
+        // Upload image immediately
+        const uploadedUrl = await uploadSegmentImage(file);
+        
+        if (uploadedUrl) {
+          setUploadedImageUrl(uploadedUrl);
+          setPreviewImage(uploadedUrl);
+          form.setValue('image_url', uploadedUrl);
+          toast.success('Imagem carregada com sucesso!');
+        } else {
+          setImageError(true);
+          toast.error('Erro ao carregar imagem');
+        }
+      } catch (error) {
+        console.error('[SegmentForm] Error uploading image:', error);
         setImageError(true);
+        toast.error('Erro ao carregar imagem');
+      } finally {
         setImageLoading(false);
-      };
-      reader.readAsDataURL(file);
+      }
     }
   };
 
@@ -106,10 +122,19 @@ const SegmentForm: React.FC<SegmentFormProps> = ({
     setImageError(true);
   };
 
-  const removeImage = () => {
+  const removeImage = async () => {
+    // If there's an uploaded image, try to delete it
+    if (uploadedImageUrl) {
+      const deleted = await deleteSegmentImage(uploadedImageUrl);
+      if (deleted) {
+        toast.success('Imagem removida com sucesso!');
+      }
+    }
+    
     setImageFile(null);
     setPreviewImage(null);
     setImageError(false);
+    setUploadedImageUrl(null);
     form.setValue('image_url', null);
     console.log('[SegmentForm] Image removed');
   };
@@ -186,13 +211,15 @@ const SegmentForm: React.FC<SegmentFormProps> = ({
                       accept="image/*"
                       className="sr-only"
                       onChange={handleImageChange}
+                      disabled={imageLoading}
                     />
                     <CustomButton
                       type="button"
                       variant="outline"
                       icon={<Upload className="h-4 w-4" />}
+                      disabled={imageLoading}
                     >
-                      Selecionar arquivo
+                      {imageLoading ? 'Carregando...' : 'Selecionar arquivo'}
                     </CustomButton>
                   </label>
                 </div>

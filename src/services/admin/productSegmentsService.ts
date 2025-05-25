@@ -95,6 +95,74 @@ export const getProductSegments = async (): Promise<ProductSegment[]> => {
   }
 };
 
+// Upload image to segment-images bucket
+export const uploadSegmentImage = async (file: File): Promise<string | null> => {
+  try {
+    console.log('[ProductSegmentsService] Starting image upload:', file.name);
+    
+    // Generate unique filename
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+    
+    console.log('[ProductSegmentsService] Uploading to:', fileName);
+    
+    const { data, error } = await supabase.storage
+      .from('segment-images')
+      .upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+    
+    if (error) {
+      console.error('[ProductSegmentsService] Upload error:', error);
+      toast.error('Erro ao fazer upload da imagem');
+      return null;
+    }
+    
+    console.log('[ProductSegmentsService] Upload successful:', data);
+    
+    // Get public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('segment-images')
+      .getPublicUrl(fileName);
+    
+    console.log('[ProductSegmentsService] Public URL:', publicUrl);
+    return publicUrl;
+  } catch (error) {
+    console.error('[ProductSegmentsService] Error in uploadSegmentImage:', error);
+    toast.error('Erro ao fazer upload da imagem');
+    return null;
+  }
+};
+
+// Delete image from segment-images bucket
+export const deleteSegmentImage = async (imageUrl: string): Promise<boolean> => {
+  try {
+    if (!imageUrl) return true;
+    
+    // Extract filename from URL
+    const urlParts = imageUrl.split('/');
+    const fileName = urlParts[urlParts.length - 1];
+    
+    console.log('[ProductSegmentsService] Deleting image:', fileName);
+    
+    const { error } = await supabase.storage
+      .from('segment-images')
+      .remove([fileName]);
+    
+    if (error) {
+      console.error('[ProductSegmentsService] Delete error:', error);
+      return false;
+    }
+    
+    console.log('[ProductSegmentsService] Image deleted successfully');
+    return true;
+  } catch (error) {
+    console.error('[ProductSegmentsService] Error in deleteSegmentImage:', error);
+    return false;
+  }
+};
+
 // Add a function to check if the storage bucket exists
 export const checkSegmentImageBucket = async (): Promise<boolean> => {
   try {
