@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Construction, Zap, GlassWater, Square, Truck, Wrench, ShoppingBag } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -24,12 +23,24 @@ const SegmentCard: React.FC<SegmentCardProps> = ({
 }) => {
   const [imageError, setImageError] = useState(false);
   
-  useEffect(() => {
-    if (imageUrl) {
-      console.log(`[SegmentCard] ${title} - Image URL:`, imageUrl);
-      setImageError(false);
+  // Fallback images para segmentos sem imagem no banco
+  const getFallbackImage = (segmentName: string) => {
+    const nameToLower = segmentName.toLowerCase();
+    if (nameToLower.includes('material') && nameToLower.includes('constru')) {
+      return '/lovable-uploads/1b629f74-0778-46a1-bb6a-4c30301e733e.png';
+    } else if (nameToLower.includes('elétri') || nameToLower.includes('eletri')) {
+      return 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=300';
+    } else if (nameToLower.includes('vidro') || nameToLower.includes('vidraç')) {
+      return 'https://images.unsplash.com/photo-1496307653780-42ee777d4833?auto=format&fit=crop&w=300';
+    } else if (nameToLower.includes('marmor')) {
+      return 'https://images.unsplash.com/photo-1466442929976-97f336a657be?auto=format&fit=crop&w=300';
+    } else if (nameToLower.includes('aluguel') || nameToLower.includes('equipamento')) {
+      return 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&w=300';
+    } else if (nameToLower.includes('profissional') || nameToLower.includes('serviço')) {
+      return 'https://images.unsplash.com/photo-1521791055366-0d553872125f?auto=format&fit=crop&w=300';
     }
-  }, [imageUrl, title]);
+    return null;
+  };
 
   const handleImageError = () => {
     console.error(`[SegmentCard] ${title} - Image failed to load:`, imageUrl);
@@ -37,13 +48,14 @@ const SegmentCard: React.FC<SegmentCardProps> = ({
   };
 
   const handleImageLoad = () => {
-    console.log(`[SegmentCard] ${title} - Image loaded successfully:`, imageUrl);
+    console.log(`[SegmentCard] ${title} - Image loaded successfully`);
   };
 
-  // Simplificar a lógica - mostrar imagem se tiver URL válida
-  const hasValidImageUrl = imageUrl && imageUrl.trim() !== '' && !imageError;
+  // Usar imagem do banco ou fallback
+  const finalImageUrl = imageUrl || getFallbackImage(title);
+  const shouldShowImage = finalImageUrl && !imageError;
   
-  console.log(`[SegmentCard] ${title} - hasValidImageUrl:`, hasValidImageUrl, 'imageUrl:', imageUrl, 'imageError:', imageError);
+  console.log(`[SegmentCard] ${title} - Using image:`, finalImageUrl);
   
   return (
     <div 
@@ -57,19 +69,13 @@ const SegmentCard: React.FC<SegmentCardProps> = ({
         "w-12 h-12 rounded-full flex items-center justify-center mb-2 overflow-hidden", 
         isSelected ? "bg-white text-construPro-blue" : "bg-construPro-blue/10 text-construPro-blue"
       )}>
-        {hasValidImageUrl ? (
+        {shouldShowImage ? (
           <img 
-            src={imageUrl} 
+            src={finalImageUrl} 
             alt={`Imagem do segmento ${title}`} 
             className="w-full h-full object-cover rounded-full" 
             onError={handleImageError}
             onLoad={handleImageLoad}
-            style={{ 
-              display: 'block',
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover'
-            }}
           />
         ) : (
           <div className="flex items-center justify-center w-full h-full">
