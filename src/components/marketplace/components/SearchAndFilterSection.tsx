@@ -55,14 +55,14 @@ const SearchAndFilterSection: React.FC<SearchAndFilterSectionProps> = ({
   const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
 
-  // Debounce effect for automatic search and reset
+  // Debounce effect for automatic search and reset - FIXED
   useEffect(() => {
     const timer = setTimeout(() => {
       if (searchTerm.trim().length >= 2) {
         console.log('[SearchAndFilterSection] Auto-searching for:', searchTerm);
         onSearch(searchTerm);
       } else if (searchTerm.trim().length === 0) {
-        // When search is cleared, reset to show all products
+        // When search is cleared, reset to show all products - CRUCIAL FIX
         console.log('[SearchAndFilterSection] Search cleared, showing all products');
         onSearch('');
       }
@@ -124,35 +124,6 @@ const SearchAndFilterSection: React.FC<SearchAndFilterSectionProps> = ({
       stores={stores}
     />
   );
-};
-
-// Separate hook for search functionality - moved to its own file to avoid conflicts
-export const useProductSearch = (initialTerm = '', onSearch: (term: string) => void) => {
-  const [searchTerm, setSearchTerm] = useState(initialTerm);
-  const [debouncedTerm, setDebouncedTerm] = useState(initialTerm);
-  
-  // Debounce search term changes
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedTerm(searchTerm);
-    }, 300);
-    
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
-  
-  // Trigger search when debounced term changes - FIXED: also handle empty search
-  useEffect(() => {
-    if (debouncedTerm.trim().length >= 2) {
-      console.log('[useProductSearch] Searching for:', debouncedTerm);
-      onSearch(debouncedTerm);
-    } else if (debouncedTerm.trim().length === 0) {
-      // When search is cleared, reset to show all products
-      console.log('[useProductSearch] Search cleared, showing all products');
-      onSearch('');
-    }
-  }, [debouncedTerm, onSearch]);
-  
-  return { searchTerm, setSearchTerm, debouncedTerm };
 };
 
 export default SearchAndFilterSection;

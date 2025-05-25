@@ -173,13 +173,14 @@ const MarketplaceScreen: React.FC = () => {
     navigate(`${location.pathname}?${newSearchParams.toString()}`, { replace: true });
   };
 
-  // Enhanced search functionality
+  // Enhanced search functionality - FIXED to handle empty search properly
   const fetchProducts = (term: string) => {
     console.log('[MarketplaceScreen] Searching for:', term);
+    // CRUCIAL: Always call handleSearchChange, even with empty string
     handleSearchChange(term);
     
     const newSearchParams = new URLSearchParams(searchParams);
-    if (term) {
+    if (term && term.trim().length >= 2) {
       newSearchParams.set('search', term);
     } else {
       newSearchParams.delete('search');
