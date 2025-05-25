@@ -20,7 +20,7 @@ const WelcomeScreen: React.FC = () => {
   return (
     <div className="min-h-screen bg-white font-inter">
       {/* Hero Section */}
-      <section className="relative min-h-[70vh] sm:min-h-[75vh] flex items-center justify-center">
+      <section className="relative min-h-[60vh] sm:min-h-[65vh] flex items-center justify-center">
         {/* Background Image with Overlay */}
         <div 
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
@@ -53,7 +53,7 @@ const WelcomeScreen: React.FC = () => {
             </p>
           </div>
           
-          {/* CTAs - Simplificados */}
+          {/* CTAs */}
           <div className="mb-6 sm:mb-8 animate-fade-in" style={{ animationDelay: '0.4s' }}>
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center">
               <Button 
@@ -68,7 +68,7 @@ const WelcomeScreen: React.FC = () => {
               <Button 
                 onClick={handleLogin}
                 variant="outline"
-                className="w-full sm:w-auto border-white text-white hover:bg-white hover:text-matershop-dark font-semibold text-sm sm:text-base px-6 sm:px-8 py-3 rounded-lg transition-all duration-300"
+                className="w-full sm:w-auto border-2 border-white bg-transparent text-white hover:bg-white hover:text-matershop-dark font-semibold text-sm sm:text-base px-6 sm:px-8 py-3 rounded-lg transition-all duration-300"
                 size="lg"
               >
                 Entrar
@@ -87,28 +87,6 @@ const WelcomeScreen: React.FC = () => {
       {/* Dynamic Highlights Section */}
       <DynamicHighlights />
 
-      {/* For Vendors Section */}
-      <section className="py-10 sm:py-12 md:py-16 bg-gradient-to-r from-matershop-warning to-orange-600">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-3 sm:mb-4">
-            Venda mais, fidelize melhor.
-          </h2>
-          
-          <p className="text-sm sm:text-base md:text-lg text-orange-100 mb-4 sm:mb-6 max-w-xl mx-auto leading-relaxed">
-            Onboarding em 48 horas, suporte comercial dedicado e pague apenas comissão sobre vendas. 
-            Expanda seu negócio com nossa plataforma nacional.
-          </p>
-          
-          <Button 
-            onClick={() => navigate('/vendor-signup')}
-            className="w-full sm:w-auto bg-white text-matershop-warning hover:bg-gray-100 font-semibold text-sm sm:text-base px-6 sm:px-8 py-3 rounded-lg transition-all duration-300 transform hover:scale-105"
-            size="lg"
-          >
-            Cadastre sua loja
-          </Button>
-        </div>
-      </section>
-
       {/* App Section */}
       <section className="py-10 sm:py-12 md:py-16 bg-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6">
@@ -124,17 +102,21 @@ const WelcomeScreen: React.FC = () => {
               </p>
               
               <Button 
+                onClick={handleCreateAccount}
                 style={{ backgroundColor: '#0051FF' }}
                 className="w-full sm:w-auto hover:opacity-90 text-white font-semibold text-sm sm:text-base px-6 sm:px-8 py-3"
                 size="lg"
               >
-                Baixar App
+                Criar conta grátis
               </Button>
             </div>
             
             <div className="flex justify-center">
               <div className="w-40 h-56 sm:w-48 sm:h-64 md:w-56 md:h-80 bg-gray-200 rounded-3xl shadow-xl flex items-center justify-center">
-                <span className="text-gray-500 font-medium text-xs sm:text-sm">PointsHistoryScreen</span>
+                <div className="text-gray-400 text-center">
+                  <div className="w-16 h-16 bg-gray-300 rounded-lg mx-auto mb-2"></div>
+                  <div className="text-xs">App Matershop</div>
+                </div>
               </div>
             </div>
           </div>
@@ -142,54 +124,10 @@ const WelcomeScreen: React.FC = () => {
       </section>
 
       {/* Footer */}
-      <footer className="bg-matershop-dark text-white py-8 sm:py-10 md:py-12">
+      <footer className="bg-matershop-dark text-white py-8">
         <div className="max-w-4xl mx-auto px-4 sm:px-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
-            <div className="col-span-1 sm:col-span-2 md:col-span-1">
-              <h3 className="text-lg sm:text-xl font-bold mb-2 sm:mb-3">MATERSHOP</h3>
-              <p className="text-gray-400 text-xs sm:text-sm">
-                O marketplace que recompensa sua obra
-              </p>
-            </div>
-            
-            <div>
-              <h4 className="text-sm sm:text-base font-semibold mb-2 sm:mb-3">Links</h4>
-              <ul className="space-y-1 text-gray-400 text-xs sm:text-sm">
-                <li><a href="#" className="hover:text-white transition-colors">Sobre</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Blog</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Termos</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Política</a></li>
-              </ul>
-            </div>
-            
-            <div>
-              <h4 className="text-sm sm:text-base font-semibold mb-2 sm:mb-3">Suporte</h4>
-              <ul className="space-y-1 text-gray-400 text-xs sm:text-sm">
-                <li><a href="#" className="hover:text-white transition-colors">Ajuda</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Trabalhe Conosco</a></li>
-              </ul>
-            </div>
-            
-            <div>
-              <h4 className="text-sm sm:text-base font-semibold mb-2 sm:mb-3">Newsletter</h4>
-              <div className="flex flex-col gap-2">
-                <input 
-                  type="email" 
-                  placeholder="Seu e-mail" 
-                  className="px-3 py-2 bg-gray-800 text-white rounded border border-gray-700 focus:border-matershop-primary focus:outline-none text-xs sm:text-sm"
-                />
-                <Button 
-                  style={{ backgroundColor: '#0051FF' }}
-                  className="px-4 py-2 text-xs sm:text-sm hover:opacity-90"
-                >
-                  Enviar
-                </Button>
-              </div>
-            </div>
-          </div>
-          
-          <div className="border-t border-gray-800 pt-4 sm:pt-6 text-center text-gray-400 text-xs sm:text-sm">
-            <p>&copy; 2024 Matershop. Todos os direitos reservados.</p>
+          <div className="text-center text-gray-400 text-sm">
+            <p>&copy; 2025 Matershop. Todos os direitos reservados.</p>
           </div>
         </div>
       </footer>
