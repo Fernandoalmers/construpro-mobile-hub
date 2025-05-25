@@ -106,32 +106,19 @@ export async function getOrders(): Promise<OrderData[]> {
         // Get product data from the map
         const productFromMap = productsMap.get(item.produto_id);
         
-        // Create default product as fallback
-        const defaultProduct: ProductData = {
+        // Create product data with proper image processing
+        const productData: ProductData = {
           id: item.produto_id,
-          nome: 'Produto indisponível',
-          imagens: [],
-          descricao: '',
-          preco_normal: item.preco_unitario,
-          categoria: '',
-          preco_promocional: undefined,
-          imagem_url: null
+          nome: productFromMap?.nome || 'Produto indisponível',
+          imagens: productFromMap?.imagens || [],
+          imagem_url: getProductImageUrl(productFromMap),
+          descricao: productFromMap?.descricao || '',
+          preco_normal: Number(productFromMap?.preco_normal) || item.preco_unitario,
+          categoria: productFromMap?.categoria || '',
+          preco_promocional: productFromMap?.preco_promocional
         };
         
-        let productData: ProductData = defaultProduct;
-        
-        if (productFromMap) {
-          productData = {
-            id: productFromMap.id,
-            nome: productFromMap.nome,
-            imagens: Array.isArray(productFromMap.imagens) ? productFromMap.imagens : [],
-            descricao: productFromMap.descricao || '',
-            preco_normal: Number(productFromMap.preco_normal) || item.preco_unitario,
-            categoria: productFromMap.categoria || '',
-            preco_promocional: productFromMap.preco_promocional,
-            imagem_url: getProductImageUrl(productFromMap)
-          };
-        }
+        console.log(`[orderService.getOrders] Product ${productData.nome} image URL: ${productData.imagem_url}`);
         
         const orderItem: OrderItem = {
           id: item.id,
@@ -157,7 +144,7 @@ export async function getOrders(): Promise<OrderData[]> {
       };
     });
     
-    console.log(`✅ [orderService.getOrders] Retrieved ${orders.length} orders with items`);
+    console.log(`✅ [orderService.getOrders] Retrieved ${orders.length} orders with items and images`);
     
     return orders;
   } catch (error: any) {

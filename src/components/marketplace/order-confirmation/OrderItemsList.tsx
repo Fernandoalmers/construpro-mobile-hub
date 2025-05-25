@@ -22,11 +22,12 @@ const OrderItemsList: React.FC<OrderItemsListProps> = ({ items }) => {
           produto: firstItem.produto ? {
             id: firstItem.produto.id,
             nome: firstItem.produto.nome,
-            hasImagem: !!firstItem.produto.imagem_url,
+            hasImageUrl: !!firstItem.produto.imagem_url,
+            imageUrl: firstItem.produto.imagem_url,
             hasImagens: firstItem.produto.imagens && 
                        Array.isArray(firstItem.produto.imagens) && 
                        firstItem.produto.imagens.length > 0,
-            imageUrl: firstItem.produto.imagem_url?.substring(0, 50) || 'none'
+            imagensData: firstItem.produto.imagens
           } : 'No product data'
         });
       } else {
@@ -52,7 +53,9 @@ const OrderItemsList: React.FC<OrderItemsListProps> = ({ items }) => {
               id: item.id || 'no-id',
               productName: item.produto?.nome || 'Produto',
               hasImageUrl: !!item.produto?.imagem_url,
-              hasImagens: item.produto?.imagens && Array.isArray(item.produto?.imagens) && item.produto?.imagens.length > 0
+              imageUrl: item.produto?.imagem_url,
+              hasImagens: item.produto?.imagens && Array.isArray(item.produto?.imagens) && item.produto?.imagens.length > 0,
+              imagensData: item.produto?.imagens
             });
             
             return (
