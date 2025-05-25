@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -38,6 +37,7 @@ const FilterDialogs: React.FC<FilterDialogsProps> = ({
 }) => {
   console.log('[FilterDialogs] Rendering with lojas options:', lojasOptions);
   console.log('[FilterDialogs] Selected lojas:', selectedLojas);
+  console.log('[FilterDialogs] Lojas options length:', lojasOptions.length);
 
   return (
     <div className="flex space-x-2 overflow-x-auto pb-4">
@@ -57,20 +57,29 @@ const FilterDialogs: React.FC<FilterDialogsProps> = ({
             <DialogTitle>Filtrar por Loja</DialogTitle>
           </DialogHeader>
           <div className="grid grid-cols-1 gap-2 mt-4 max-h-[60vh] overflow-y-auto">
-            {lojasOptions.map(loja => (
-              <label key={loja.id} className="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50">
-                <input 
-                  type="checkbox" 
-                  className="mr-2" 
-                  checked={selectedLojas.includes(loja.id)} 
-                  onChange={() => {
-                    console.log('[FilterDialogs] Loja checkbox clicked:', loja.id);
-                    onLojaClick(loja.id);
-                  }} 
-                />
-                {loja.label}
-              </label>
-            ))}
+            {lojasOptions.length === 0 ? (
+              <div className="p-4 text-center text-gray-500">
+                Nenhuma loja disponível
+              </div>
+            ) : (
+              lojasOptions.map(loja => {
+                console.log('[FilterDialogs] Rendering loja:', loja);
+                return (
+                  <label key={loja.id} className="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50">
+                    <input 
+                      type="checkbox" 
+                      className="mr-2" 
+                      checked={selectedLojas.includes(loja.id)} 
+                      onChange={() => {
+                        console.log('[FilterDialogs] Loja checkbox clicked:', loja.id, loja.label);
+                        onLojaClick(loja.id);
+                      }} 
+                    />
+                    {loja.label}
+                  </label>
+                );
+              })
+            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -106,7 +115,6 @@ const FilterDialogs: React.FC<FilterDialogsProps> = ({
         </DialogContent>
       </Dialog>
       
-      {/* Price filter - NOW FUNCTIONAL */}
       <Dialog>
         <DialogTrigger asChild>
           <button className="flex items-center gap-1 bg-white text-gray-800 px-3 py-1.5 rounded-full text-sm whitespace-nowrap">
@@ -141,7 +149,6 @@ const FilterDialogs: React.FC<FilterDialogsProps> = ({
         </DialogContent>
       </Dialog>
 
-      {/* Segment filter */}
       <Dialog>
         <DialogTrigger asChild>
           <button className="flex items-center gap-1 bg-white text-gray-800 px-3 py-1.5 rounded-full text-sm whitespace-nowrap">

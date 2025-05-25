@@ -57,12 +57,15 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
 }) => {
   const { cartCount } = useCart();
 
+  // Fix the store mapping to ensure proper format
   const lojasOptions = stores.map(store => ({
     id: store.id,
-    label: store.nome || store.nome_loja
+    label: store.nome_loja || store.nome || 'Loja sem nome'
   }));
 
-  console.log('[MarketplaceHeader] Lojas options:', lojasOptions);
+  console.log('[MarketplaceHeader] Raw stores data:', stores);
+  console.log('[MarketplaceHeader] Mapped lojas options:', lojasOptions);
+  console.log('[MarketplaceHeader] Selected lojas:', selectedLojas);
 
   return (
     <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
