@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
@@ -40,7 +39,6 @@ import ComprasScreen from './components/profile/ComprasScreen';
 import SuporteScreen from './components/support/SuporteScreen';
 import EscanearScreen from './components/scan/EscanearScreen';
 import ReviewsScreen from './components/profile/ReviewsScreen';
-import WelcomeScreen from './components/welcome/WelcomeScreen';
 
 function App() {
   const location = useLocation();
@@ -67,23 +65,19 @@ function App() {
 
   // Helper function to determine if bottom navigation should be shown
   const shouldShowBottomNav = () => {
-    // Don't show on admin routes, auth routes, welcome screen, or specific pages
+    // Don't show on admin routes, auth routes, or specific pages
     return !location.pathname.startsWith('/admin') && 
            !location.pathname.includes('/auth/') &&
            location.pathname !== '/login' &&
            location.pathname !== '/signup' &&
            location.pathname !== '/welcome' &&
            location.pathname !== '/onboarding' &&
-           location.pathname !== '/splash' &&
-           location.pathname !== '/';
+           location.pathname !== '/splash';
   };
 
   return (
     <CartProvider>
       <Routes>
-        {/* Welcome/Landing page for non-authenticated users */}
-        <Route path="/welcome" element={<WelcomeScreen />} />
-        
         {/* Public routes */}
         <Route path="/login" element={<LoginScreen />} />
         <Route path="/signup" element={<SignUpScreen />} />
@@ -93,11 +87,7 @@ function App() {
         <Route path="/auth/profile-selection" element={<ProtectedRoute><ProfileSelectionScreen /></ProtectedRoute>} />
 
         {/* Protected routes */}
-        <Route path="/" element={
-          isAuthenticated ? 
-            <ProtectedRoute><HomeScreen /></ProtectedRoute> : 
-            <WelcomeScreen />
-        } />
+        <Route path="/" element={<ProtectedRoute><HomeScreen /></ProtectedRoute>} />
         <Route path="/home" element={<ProtectedRoute><HomeScreen /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><ProfileScreen /></ProtectedRoute>} />
         
