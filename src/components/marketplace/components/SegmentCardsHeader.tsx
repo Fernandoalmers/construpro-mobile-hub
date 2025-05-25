@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Construction, Zap, GlassWater, Square, Truck, Wrench, ShoppingBag } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -39,8 +40,10 @@ const SegmentCard: React.FC<SegmentCardProps> = ({
     console.log(`[SegmentCard] ${title} - Image loaded successfully:`, imageUrl);
   };
 
-  // Determinar se deve mostrar a imagem ou o ícone
-  const shouldShowImage = imageUrl && !imageError;
+  // Simplificar a lógica - mostrar imagem se tiver URL válida
+  const hasValidImageUrl = imageUrl && imageUrl.trim() !== '' && !imageError;
+  
+  console.log(`[SegmentCard] ${title} - hasValidImageUrl:`, hasValidImageUrl, 'imageUrl:', imageUrl, 'imageError:', imageError);
   
   return (
     <div 
@@ -54,13 +57,19 @@ const SegmentCard: React.FC<SegmentCardProps> = ({
         "w-12 h-12 rounded-full flex items-center justify-center mb-2 overflow-hidden", 
         isSelected ? "bg-white text-construPro-blue" : "bg-construPro-blue/10 text-construPro-blue"
       )}>
-        {shouldShowImage ? (
+        {hasValidImageUrl ? (
           <img 
             src={imageUrl} 
-            alt={title} 
-            className="w-full h-full object-cover" 
+            alt={`Imagem do segmento ${title}`} 
+            className="w-full h-full object-cover rounded-full" 
             onError={handleImageError}
             onLoad={handleImageLoad}
+            style={{ 
+              display: 'block',
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover'
+            }}
           />
         ) : (
           <div className="flex items-center justify-center w-full h-full">
