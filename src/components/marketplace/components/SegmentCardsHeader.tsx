@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { Construction, Zap, GlassWater, Square, Truck, Wrench, ShoppingBag } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getProductSegments, ProductSegment, listSegmentImages } from '@/services/admin/productSegmentsService';
+import { getProductSegments, ProductSegment } from '@/services/admin/productSegmentsService';
 import { toast } from '@/components/ui/sonner';
 
 interface SegmentCardProps {
@@ -23,43 +23,57 @@ const SegmentCard: React.FC<SegmentCardProps> = ({
   isSelected = false
 }) => {
   const [imageError, setImageError] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
   
   useEffect(() => {
     if (imageUrl) {
-      // Reset error state when image URL changes
+      console.log(`[SegmentCard] ${title} - Image URL:`, imageUrl);
       setImageError(false);
+      setImageLoaded(false);
     }
-  }, [imageUrl]);
+  }, [imageUrl, title]);
 
   const handleImageError = () => {
-    console.error(`[SegmentCard] Image failed to load: ${imageUrl}`);
+    console.error(`[SegmentCard] ${title} - Image failed to load:`, imageUrl);
     setImageError(true);
   };
+
+  const handleImageLoad = () => {
+    console.log(`[SegmentCard] ${title} - Image loaded successfully:`, imageUrl);
+    setImageLoaded(true);
+  };
   
-  return <div 
-    className={cn(
-      "flex flex-col items-center p-3 rounded-lg cursor-pointer transition-all", 
-      isSelected ? "bg-construPro-blue text-white" : "bg-white hover:bg-gray-50"
-    )} 
-    onClick={() => onClick(id)}
-  >
-    <div className={cn(
-      "w-12 h-12 rounded-full flex items-center justify-center mb-2 overflow-hidden", 
-      isSelected ? "bg-white text-construPro-blue" : "bg-construPro-blue/10 text-construPro-blue"
-    )}>
-      {imageUrl && !imageError ? (
-        <img 
-          src={imageUrl} 
-          alt={title} 
-          className="w-full h-full object-cover" 
-          onError={handleImageError}
-        />
-      ) : (
-        icon
-      )}
+  return (
+    <div 
+      className={cn(
+        "flex flex-col items-center p-3 rounded-lg cursor-pointer transition-all", 
+        isSelected ? "bg-construPro-blue text-white" : "bg-white hover:bg-gray-50"
+      )} 
+      onClick={() => onClick(id)}
+    >
+      <div className={cn(
+        "w-12 h-12 rounded-full flex items-center justify-center mb-2 overflow-hidden", 
+        isSelected ? "bg-white text-construPro-blue" : "bg-construPro-blue/10 text-construPro-blue"
+      )}>
+        {imageUrl && !imageError ? (
+          <img 
+            src={imageUrl} 
+            alt={title} 
+            className="w-full h-full object-cover" 
+            onError={handleImageError}
+            onLoad={handleImageLoad}
+            style={{ display: imageLoaded ? 'block' : 'none' }}
+          />
+        ) : null}
+        {(!imageUrl || imageError || !imageLoaded) && (
+          <div className="flex items-center justify-center w-full h-full">
+            {icon}
+          </div>
+        )}
+      </div>
+      <span className="text-xs font-medium text-center">{title}</span>
     </div>
-    <span className="text-xs font-medium text-center">{title}</span>
-  </div>;
+  );
 };
 
 interface SegmentCardsHeaderProps {
@@ -77,14 +91,19 @@ const SegmentCardsHeader: React.FC<SegmentCardsHeaderProps> = ({
   useEffect(() => {
     const fetchSegments = async () => {
       try {
+        console.log('[SegmentCardsHeader] Fetching segments...');
         const segmentsData = await getProductSegments();
-        console.log('[SegmentCardsHeader] Fetched segments:', segmentsData);
+        console.log('[SegmentCardsHeader] Raw segments data:', segmentsData);
         
-        // Debug: List files in segment-images bucket to help diagnose issues
-        const imageFiles = await listSegmentImages();
-        console.log('[SegmentCardsHeader] Available segment images:', imageFiles);
+        // Filter active segments and log image info
+        const activeSegments = segmentsData.filter(segment => {
+          const isActive = segment.status === 'ativo';
+          console.log(`[SegmentCardsHeader] Segment ${segment.nome}: active=${isActive}, image_url=${segment.image_url}`);
+          return isActive;
+        });
         
-        setSegments(segmentsData.filter(segment => segment.status === 'ativo'));
+        console.log('[SegmentCardsHeader] Active segments:', activeSegments);
+        setSegments(activeSegments);
       } catch (error) {
         console.error('[SegmentCardsHeader] Error fetching segments:', error);
         toast.error('Erro ao carregar segmentos');
@@ -92,6 +111,7 @@ const SegmentCardsHeader: React.FC<SegmentCardsHeaderProps> = ({
         setLoading(false);
       }
     };
+    
     fetchSegments();
   }, []);
 
@@ -111,47 +131,53 @@ const SegmentCardsHeader: React.FC<SegmentCardsHeaderProps> = ({
     } else if (nameToLower.includes('profissional') || nameToLower.includes('serviço')) {
       return <Wrench size={24} />;
     } else {
-      return <ShoppingBag size={24} />; // Default icon
+      return <ShoppingBag size={24} />;
     }
   };
 
   if (loading) {
-    return <div className="w-full overflow-x-auto pb-2">
-      <div className="flex space-x-4 px-4">
-        {[1, 2, 3, 4].map(i => <div key={i} className="animate-pulse flex flex-col items-center">
-          <div className="w-12 h-12 rounded-full bg-gray-200 mb-2"></div>
-          <div className="w-16 h-3 bg-gray-200 rounded"></div>
-        </div>)}
+    return (
+      <div className="w-full overflow-x-auto pb-2">
+        <div className="flex space-x-4 px-4">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="animate-pulse flex flex-col items-center">
+              <div className="w-12 h-12 rounded-full bg-gray-200 mb-2"></div>
+              <div className="w-16 h-3 bg-gray-200 rounded"></div>
+            </div>
+          ))}
+        </div>
       </div>
-    </div>;
+    );
   }
 
-  return <div className="w-full overflow-x-auto pb-2">
-    <div className="flex space-x-4 px-4 py-3">
-      {/* "Todos" segment card */}
-      <SegmentCard
-        key="all"
-        id="all"
-        title="Todos"
-        icon={<ShoppingBag size={24} />}
-        onClick={onSegmentClick}
-        isSelected={selectedSegment === null || selectedSegment === "all"}
-      />
-      
-      {/* Render all segments from the database */}
-      {segments.map(segment => (
+  return (
+    <div className="w-full overflow-x-auto pb-2">
+      <div className="flex space-x-4 px-4 py-3">
+        {/* "Todos" segment card */}
         <SegmentCard
-          key={segment.id}
-          id={segment.id}
-          title={segment.nome}
-          imageUrl={segment.image_url}
-          icon={getIconForSegment(segment.nome)}
+          key="all"
+          id="all"
+          title="Todos"
+          icon={<ShoppingBag size={24} />}
           onClick={onSegmentClick}
-          isSelected={selectedSegment === segment.id}
+          isSelected={selectedSegment === null || selectedSegment === "all"}
         />
-      ))}
+        
+        {/* Render all segments from the database */}
+        {segments.map(segment => (
+          <SegmentCard
+            key={segment.id}
+            id={segment.id}
+            title={segment.nome}
+            imageUrl={segment.image_url}
+            icon={getIconForSegment(segment.nome)}
+            onClick={onSegmentClick}
+            isSelected={selectedSegment === segment.id}
+          />
+        ))}
+      </div>
     </div>
-  </div>;
+  );
 };
 
 export default SegmentCardsHeader;

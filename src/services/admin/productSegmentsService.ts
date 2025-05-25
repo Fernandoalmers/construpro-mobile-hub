@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 
@@ -11,86 +10,36 @@ export interface ProductSegment {
 
 export const getProductSegments = async (): Promise<ProductSegment[]> => {
   try {
-    console.log('[ProductSegmentsService] Fetching product segments');
+    console.log('[ProductSegmentsService] Fetching product segments with RPC');
     
-    // Using the database function is more reliable than directly querying
     const { data, error } = await supabase.rpc('get_product_segments');
     
     if (error) {
       console.error('[ProductSegmentsService] Error fetching product segments with RPC:', error);
       toast.error('Erro ao carregar segmentos de produtos');
-      
-      // Fallback to direct query if the RPC function fails
-      console.log('[ProductSegmentsService] Trying direct query fallback');
-      const { data: fallbackData, error: fallbackError } = await supabase
-        .from('product_segments')
-        .select('id, nome, image_url, status')
-        .order('nome');
-        
-      if (fallbackError) {
-        console.error('[ProductSegmentsService] Fallback error fetching product segments:', fallbackError);
-        return [];
-      }
-      
-      console.log('[ProductSegmentsService] Fallback query successful, segments:', fallbackData);
-      return fallbackData || [];
+      return [];
     }
     
-    // Handle the response data - it could be missing some fields depending on when the DB function was updated
-    if (data && data.length > 0) {
-      console.log('[ProductSegmentsService] RPC returned data:', data);
-      
-      // Check if data might be missing required fields (image_url or status)
-      if (!data[0].hasOwnProperty('image_url') || !data[0].hasOwnProperty('status')) {
-        // We need to fetch the complete records from the table
-        const segmentIds = data.map(s => s.id);
-        
-        console.log('[ProductSegmentsService] RPC missing fields, fetching complete data for IDs:', segmentIds);
-        
-        const { data: completeData, error: completeError } = await supabase
-          .from('product_segments')
-          .select('id, nome, image_url, status')
-          .in('id', segmentIds)
-          .order('nome');
-          
-        if (completeError) {
-          console.error('[ProductSegmentsService] Error fetching complete segment data:', completeError);
-          
-          // If we can't get complete data, provide default values for missing fields
-          // Use explicit type assertion to make TypeScript happy
-          return data.map(item => ({
-            id: item.id,
-            nome: item.nome,
-            image_url: null,
-            status: 'ativo' // Default status
-          }));
-        }
-        
-        console.log('[ProductSegmentsService] Complete data fetched successfully:', completeData);
-        return completeData || [];
-      }
+    if (!data) {
+      console.log('[ProductSegmentsService] No segments data returned');
+      return [];
     }
     
-    // If we get here, we assume the data has all required fields
-    if (data) {
-      console.log('[ProductSegmentsService] Returning segments data directly from RPC');
-      // Ensure all data has the required fields with proper types using type assertion
-      return data.map(item => {
-        // Use type assertion to tell TypeScript this object has the properties we expect
-        const typedItem = item as { id: string; nome: string; image_url?: string | null; status?: string };
-        return {
-          id: typedItem.id,
-          nome: typedItem.nome,
-          image_url: typedItem.image_url || null,
-          status: typedItem.status || 'ativo'
-        };
-      });
-    }
+    console.log('[ProductSegmentsService] RPC returned data:', data);
     
-    console.log('[ProductSegmentsService] No segments data returned');
-    return [];
+    // The RPC function now returns all required fields directly
+    const segments = data.map(item => ({
+      id: item.id,
+      nome: item.nome,
+      image_url: item.image_url || null,
+      status: item.status || 'ativo'
+    }));
+    
+    console.log('[ProductSegmentsService] Processed segments:', segments);
+    return segments;
   } catch (error) {
     console.error('[ProductSegmentsService] Error in getProductSegments:', error);
+    toast.error('Erro ao carregar segmentos');
     return [];
   }
 };

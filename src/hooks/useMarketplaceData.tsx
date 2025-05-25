@@ -11,6 +11,7 @@ export interface MarketplaceData {
   stores: Store[];
   isLoading: boolean;
   storesError: string | null;
+  refreshSegments: () => Promise<void>;
 }
 
 /**
@@ -30,19 +31,26 @@ export function useMarketplaceData(selectedSegmentId: string | null): Marketplac
   }, [selectedSegmentId]);
   
   // Fetch segments on initial load
+  const loadSegments = async () => {
+    try {
+      console.log('[useMarketplaceData] Loading segments...');
+      const segmentsData = await getProductSegments();
+      console.log('[useMarketplaceData] Loaded segments:', segmentsData);
+      setSegments(segmentsData);
+    } catch (error) {
+      console.error('[useMarketplaceData] Error loading segments:', error);
+    }
+  };
+  
   useEffect(() => {
-    const loadSegments = async () => {
-      try {
-        const segmentsData = await getProductSegments();
-        console.log('[useMarketplaceData] Loaded segments:', segmentsData);
-        setSegments(segmentsData);
-      } catch (error) {
-        console.error('[useMarketplaceData] Error loading segments:', error);
-      }
-    };
-    
     loadSegments();
   }, []);
+  
+  // Function to refresh segments (can be called manually)
+  const refreshSegments = async () => {
+    console.log('[useMarketplaceData] Refreshing segments...');
+    await loadSegments();
+  };
   
   useEffect(() => {
     const fetchData = async () => {
@@ -188,6 +196,7 @@ export function useMarketplaceData(selectedSegmentId: string | null): Marketplac
     products: filteredProducts,
     stores,
     isLoading,
-    storesError
+    storesError,
+    refreshSegments
   };
 }

@@ -1785,6 +1785,8 @@ export type Database = {
         Returns: {
           id: string
           nome: string
+          image_url: string
+          status: string
         }[]
       }
       get_user_admin_status: {
