@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
@@ -64,19 +63,6 @@ function App() {
   if (!appReady) {
     return <LoadingState text="Carregando aplicativo..." />;
   }
-
-  // Helper function to determine if bottom navigation should be shown
-  const shouldShowBottomNav = () => {
-    // Don't show on admin routes, auth routes, welcome screen, or specific pages
-    return !location.pathname.startsWith('/admin') && 
-           !location.pathname.includes('/auth/') &&
-           location.pathname !== '/login' &&
-           location.pathname !== '/signup' &&
-           location.pathname !== '/welcome' &&
-           location.pathname !== '/onboarding' &&
-           location.pathname !== '/splash' &&
-           location.pathname !== '/';
-  };
 
   return (
     <CartProvider>
@@ -195,7 +181,8 @@ function App() {
         <Route path="*" element={<NotFoundScreen />} />
       </Routes>
       
-      {shouldShowBottomNav() && <BottomTabNavigator />}
+      {/* Use only BottomTabNavigator - it has its own logic for when to show/hide */}
+      <BottomTabNavigator />
     </CartProvider>
   );
 }

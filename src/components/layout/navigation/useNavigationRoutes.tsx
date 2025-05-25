@@ -25,6 +25,8 @@ export const useNavigationRoutes = () => {
   // Check if navigation should be hidden on certain paths
   const shouldHideNavigation = () => {
     return !location.pathname || 
+      location.pathname === '/' ||           // Hide on welcome/landing page
+      location.pathname === '/welcome' ||    // Hide on welcome page
       location.pathname === '/login' || 
       location.pathname === '/signup' || 
       location.pathname === '/onboarding' || 
