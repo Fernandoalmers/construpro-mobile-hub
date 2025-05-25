@@ -3,6 +3,7 @@ import React from 'react';
 import { Trash2, Minus, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CartItem as CartItemType } from '@/types/cart';
+import ProductImage from '../../admin/products/components/ProductImage';
 
 interface CartItemProps {
   item: CartItemType;
@@ -14,11 +15,19 @@ interface CartItemProps {
 const CartItem: React.FC<CartItemProps> = ({ item, onUpdateQuantity, onRemoveItem, processingItem }) => {
   if (!item) return null;
 
-  const imageUrl = item.produto?.imagem_url || '';
   const maxStock = item.produto?.estoque || 0;
   const productPrice = item.preco || 0;
   const quantity = item.quantidade || 1;
   const isProcessing = processingItem === item.id;
+
+  // Log para debug das imagens no carrinho
+  console.log(`[CartItem] Rendering item:`, {
+    productId: item.produto?.id,
+    productName: item.produto?.nome,
+    hasImageUrl: !!item.produto?.imagem_url,
+    imageUrl: item.produto?.imagem_url,
+    productData: item.produto
+  });
 
   const handleDecrease = () => {
     if (quantity > 1 && !isProcessing) {
@@ -40,22 +49,13 @@ const CartItem: React.FC<CartItemProps> = ({ item, onUpdateQuantity, onRemoveIte
 
   return (
     <div className={`flex items-center p-3 bg-white rounded-lg shadow-sm border border-gray-100 gap-2 ${isProcessing ? 'opacity-70' : ''}`}>
-      {/* Product image */}
-      <div className="w-14 h-14 bg-gray-100 rounded overflow-hidden flex-shrink-0">
-        {imageUrl ? (
-          <img 
-            src={imageUrl} 
-            alt={item.produto?.nome || 'Produto'} 
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = 'https://via.placeholder.com/160x160?text=Sem+Imagem';
-            }}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400 text-xs">
-            Imagem
-          </div>
-        )}
+      {/* Product image usando o componente ProductImage */}
+      <div className="w-14 h-14 flex-shrink-0">
+        <ProductImage 
+          imagemUrl={item.produto?.imagem_url}
+          productName={item.produto?.nome || 'Produto'}
+          size="sm"
+        />
       </div>
 
       {/* Product details */}
