@@ -25,12 +25,10 @@ const MarketplaceScreen: React.FC = () => {
   const segmentIdParam = searchParams.get('segmento_id');
   
   // Only initialize categories from URL if we have a categoria param
-  // This change prevents initializing with category when we only have segmento_id
   const initialCategories = categoryParam ? [categoryParam] : [];
   
-  // State for segment selection - properly initialize with segmentIdParam
+  // State for segment selection
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(segmentIdParam);
-  // Important: Initialize selectedSegments with segmentIdParam if it exists
   const [selectedSegments, setSelectedSegments] = useState<string[]>(
     segmentIdParam ? [segmentIdParam] : []
   );
@@ -49,7 +47,7 @@ const MarketplaceScreen: React.FC = () => {
     }));
   }, [products]);
   
-  // Log the incoming navigation parameters
+  // Log debug info
   useEffect(() => {
     console.log('[MarketplaceScreen] URL parameters:', {
       categoria: categoryParam,
@@ -81,12 +79,14 @@ const MarketplaceScreen: React.FC = () => {
     fetchSegments();
   }, []);
   
-  // Filter products based on segment as well
+  // Enhanced product filter with price range support
   const {
     selectedCategories,
     selectedLojas,
     selectedRatings,
+    selectedPriceRanges,
     ratingOptions,
+    priceRangeOptions,
     filteredProdutos,
     displayedProducts,
     hasMore,
@@ -94,6 +94,7 @@ const MarketplaceScreen: React.FC = () => {
     handleLojaClick,
     handleCategoryClick,
     handleRatingClick,
+    handlePriceRangeClick,
     loadMoreProducts,
     clearFilters: originalClearFilters,
     setSelectedLojas,
@@ -104,20 +105,37 @@ const MarketplaceScreen: React.FC = () => {
     initialSearch: searchQuery || '' 
   });
 
+  // Log filter debug info
+  useEffect(() => {
+    if (products.length > 0) {
+      console.log('[MarketplaceScreen] Products loaded:', products.length);
+      console.log('[MarketplaceScreen] Sample product for store debugging:', products[0]);
+      
+      // Debug store IDs in products
+      const storeIds = products.map(p => ({
+        name: p.nome,
+        vendedor_id: p.vendedor_id,
+        loja_id: p.loja_id,
+        stores: p.stores?.id
+      }));
+      console.log('[MarketplaceScreen] Store IDs in products:', storeIds.slice(0, 5));
+    }
+    
+    if (stores.length > 0) {
+      console.log('[MarketplaceScreen] Stores loaded:', stores.length);
+      console.log('[MarketplaceScreen] Store IDs:', stores.map(s => s.id));
+    }
+  }, [products, stores]);
+
   // Modified clearFilters function that preserves segment selection
   const clearFilters = () => {
-    // Call the original clearFilters but we'll keep the segment selection
     originalClearFilters();
-    
-    // Log what we're keeping
     console.log('[MarketplaceScreen] Clearing filters but preserving segment:', selectedSegmentId);
     
-    // Make sure URL is updated to reflect we're keeping the segment
     if (selectedSegmentId && selectedSegmentId !== "all") {
       updateSegmentURL(selectedSegmentId);
     }
     
-    // Reset page
     setPage(1);
   };
   
@@ -125,7 +143,6 @@ const MarketplaceScreen: React.FC = () => {
   const handleSegmentClick = (segmentId: string) => {
     console.log('[MarketplaceScreen] Segment clicked:', segmentId);
     
-    // Special handling for "all" segment
     if (segmentId === "all") {
       setSelectedSegmentId(null);
       setSelectedSegments([]);
@@ -133,16 +150,9 @@ const MarketplaceScreen: React.FC = () => {
       return;
     }
     
-    // For single segment selection, replace the array
     setSelectedSegments([segmentId]);
-    
-    // Update the selectedSegmentId for the data fetching
     setSelectedSegmentId(segmentId);
-    
-    // Update URL with segment ID
     updateSegmentURL(segmentId);
-    
-    // Reset page
     setPage(1);
   };
   
@@ -150,8 +160,6 @@ const MarketplaceScreen: React.FC = () => {
   const updateSegmentURL = (segmentId: string | null) => {
     const newSearchParams = new URLSearchParams(searchParams);
     
-    // Clear the categoria parameter if segmentId is changing
-    // This ensures we don't have both category and segment filters
     if (categoryParam) {
       newSearchParams.delete('categoria');
     }
@@ -165,12 +173,11 @@ const MarketplaceScreen: React.FC = () => {
     navigate(`${location.pathname}?${newSearchParams.toString()}`, { replace: true });
   };
 
-  // Enhanced search functionality with our custom hook
+  // Enhanced search functionality
   const fetchProducts = (term: string) => {
     console.log('[MarketplaceScreen] Searching for:', term);
     handleSearchChange(term);
     
-    // Update URL with search term
     const newSearchParams = new URLSearchParams(searchParams);
     if (term) {
       newSearchParams.set('search', term);
@@ -182,26 +189,26 @@ const MarketplaceScreen: React.FC = () => {
   
   const { term, setTerm, handleSubmit } = useProductSearch(fetchProducts);
 
-  // Modified: Handle loja click from product card - this function is now disabled
-  // to prevent accidental filtering when clicking on store names
+  // Re-enabled loja click functionality with improved logging
   const handleLojaCardClick = (lojaId: string) => {
-    // Removed functionality to prevent filtering by store when clicking on store cards
-    console.log('[MarketplaceScreen] Store card click detected but filtering disabled');
-    // No longer setting the selected store filter:
-    // setSelectedLojas([lojaId]);
-    // setPage(1);
+    console.log('[MarketplaceScreen] Store card clicked:', lojaId);
+    console.log('[MarketplaceScreen] Current selected lojas:', selectedLojas);
+    
+    // Re-enable store filtering
+    setSelectedLojas([lojaId]);
+    setPage(1);
+    
+    console.log('[MarketplaceScreen] Store filter applied for:', lojaId);
   };
 
-  // Quick search for products with improved logging
+  // Quick search functionality
   const handleQuickSearch = async (term: string) => {
     console.log('[MarketplaceScreen] Quick search for:', term);
     if (!term || term.trim().length < 2) {
-      console.log('[MarketplaceScreen] Search term too short, ignoring');
       return;
     }
     
     try {
-      console.log('[MarketplaceScreen] Running quick search Supabase query');
       const { data, error } = await supabase
         .from('products')
         .select('id')
@@ -210,12 +217,10 @@ const MarketplaceScreen: React.FC = () => {
         .single();
       
       if (error || !data) {
-        console.error('[MarketplaceScreen] Quick search error or no results:', error);
+        console.error('[MarketplaceScreen] Quick search error:', error);
         return;
       }
       
-      // Navigate to first product that matches the search
-      console.log('[MarketplaceScreen] Quick search found product, navigating to:', data.id);
       navigate(`/produto/${data.id}`);
     } catch (error) {
       console.error('[MarketplaceScreen] Error in quick search:', error);
@@ -225,20 +230,18 @@ const MarketplaceScreen: React.FC = () => {
   // Initialize search term from URL
   useEffect(() => {
     if (searchQuery) {
-      console.log('[MarketplaceScreen] Setting search term from URL:', searchQuery);
       setTerm(searchQuery);
     }
   }, [searchQuery]);
 
-  // Add debug logging when products array changes
+  // Debug logging when products change
   useEffect(() => {
     if (selectedSegmentId) {
       console.log(`[MarketplaceScreen] Products with segmento_id=${selectedSegmentId}:`, 
                  products.filter(p => p.segmento_id === selectedSegmentId).length);
       console.log('[MarketplaceScreen] Filtered products count:', filteredProdutos.length);
-      console.log('[MarketplaceScreen] Selected segments:', selectedSegments);
     }
-  }, [products, selectedSegmentId, filteredProdutos, selectedSegments]);
+  }, [products, selectedSegmentId, filteredProdutos]);
 
   // Current category name for display
   const getCurrentDisplayName = () => {
@@ -267,12 +270,15 @@ const MarketplaceScreen: React.FC = () => {
         selectedLojas={selectedLojas}
         selectedRatings={selectedRatings}
         selectedSegments={selectedSegments}
+        selectedPriceRanges={selectedPriceRanges}
         allCategories={categories}
         ratingOptions={ratingOptions}
+        priceRangeOptions={priceRangeOptions}
         segmentOptions={segmentOptions}
         onLojaClick={handleLojaClick}
         onCategoryClick={handleCategoryClick}
         onRatingClick={handleRatingClick}
+        onPriceRangeClick={handlePriceRangeClick}
         onSegmentClick={handleSegmentClick}
         onSearch={handleSubmit}
         clearFilters={clearFilters}
@@ -289,7 +295,7 @@ const MarketplaceScreen: React.FC = () => {
       {/* Stores Section */}
       <StoresSection 
         stores={stores}
-        onLojaClick={handleLojaClick}
+        onLojaClick={handleLojaCardClick}
         storesError={storesError}
       />
       
@@ -312,7 +318,7 @@ const MarketplaceScreen: React.FC = () => {
             clearFilters={clearFilters}
             onLojaClick={handleLojaCardClick}
             isLoading={isLoading}
-            viewType="list" // Default to list view to match Mercado Livre style
+            viewType="list"
             showActions={true}
           />
         )}

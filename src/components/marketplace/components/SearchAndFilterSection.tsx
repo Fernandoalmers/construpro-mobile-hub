@@ -12,13 +12,16 @@ interface SearchAndFilterSectionProps {
   selectedLojas: string[];
   selectedRatings: string[];
   selectedSegments?: string[];
+  selectedPriceRanges?: string[];
   allCategories: FilterOption[];
   ratingOptions: FilterOption[];
+  priceRangeOptions?: FilterOption[];
   segmentOptions?: FilterOption[];
   onLojaClick: (lojaId: string) => void;
   onCategoryClick: (categoryId: string) => void;
   onRatingClick: (rating: string) => void;
   onSegmentClick?: (segmentId: string) => void;
+  onPriceRangeClick?: (rangeId: string) => void;
   onSearch: (term: string) => void;
   clearFilters: () => void;
   stores: any[];
@@ -57,13 +60,16 @@ const SearchAndFilterSection: React.FC<SearchAndFilterSectionProps> = ({
   selectedLojas,
   selectedRatings,
   selectedSegments = [],
+  selectedPriceRanges = [],
   allCategories,
   ratingOptions,
+  priceRangeOptions = [],
   segmentOptions = [],
   onLojaClick,
   onCategoryClick,
   onRatingClick,
   onSegmentClick = () => {},
+  onPriceRangeClick = () => {},
   onSearch,
   clearFilters,
   stores,
@@ -79,7 +85,6 @@ const SearchAndFilterSection: React.FC<SearchAndFilterSectionProps> = ({
   // Update URL when search term changes
   useEffect(() => {
     if (debouncedTerm && debouncedTerm.trim().length >= 2) {
-      // Update URL with search parameter
       const newSearchParams = new URLSearchParams(searchParams);
       if (debouncedTerm) {
         newSearchParams.set('search', debouncedTerm);
@@ -95,7 +100,7 @@ const SearchAndFilterSection: React.FC<SearchAndFilterSectionProps> = ({
     setSearchTerm(e.target.value);
   };
 
-  // Implementar a funcionalidade de pesquisa explícita (quando o usuário pressiona enter ou clica no botão)
+  // Explicit search functionality
   const handleExplicitSearch = () => {
     if (searchTerm.trim().length >= 2) {
       onSearch(searchTerm);
@@ -110,8 +115,10 @@ const SearchAndFilterSection: React.FC<SearchAndFilterSectionProps> = ({
       selectedLojas={selectedLojas}
       selectedRatings={selectedRatings}
       selectedSegments={selectedSegments}
+      selectedPriceRanges={selectedPriceRanges}
       allCategories={allCategories}
       ratingOptions={ratingOptions}
+      priceRangeOptions={priceRangeOptions}
       segmentOptions={segmentOptions}
       onSearchChange={handleSearchInputChange}
       onSearch={handleExplicitSearch}
@@ -119,6 +126,7 @@ const SearchAndFilterSection: React.FC<SearchAndFilterSectionProps> = ({
       onCategoryClick={onCategoryClick}
       onRatingClick={onRatingClick}
       onSegmentClick={onSegmentClick}
+      onPriceRangeClick={onPriceRangeClick}
       clearFilters={clearFilters}
       stores={stores}
     />

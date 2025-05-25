@@ -17,8 +17,10 @@ interface MarketplaceHeaderProps {
   selectedLojas: string[];
   selectedRatings: string[];
   selectedSegments?: string[];
+  selectedPriceRanges?: string[];
   allCategories: FilterOption[];
   ratingOptions: FilterOption[];
+  priceRangeOptions?: FilterOption[];
   segmentOptions?: FilterOption[];
   stores?: any[];
   onSearchChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -27,6 +29,7 @@ interface MarketplaceHeaderProps {
   onCategoryClick: (categoryId: string) => void;
   onRatingClick: (ratingId: string) => void;
   onSegmentClick?: (segmentId: string) => void;
+  onPriceRangeClick?: (rangeId: string) => void;
   clearFilters: () => void;
 }
 
@@ -37,8 +40,10 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
   selectedLojas,
   selectedRatings,
   selectedSegments = [],
+  selectedPriceRanges = [],
   allCategories,
   ratingOptions,
+  priceRangeOptions = [],
   segmentOptions = [],
   stores = [],
   onSearchChange,
@@ -47,14 +52,17 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
   onCategoryClick,
   onRatingClick,
   onSegmentClick = () => {},
+  onPriceRangeClick = () => {},
   clearFilters
 }) => {
   const { cartCount } = useCart();
 
   const lojasOptions = stores.map(store => ({
     id: store.id,
-    label: store.nome_loja
+    label: store.nome || store.nome_loja
   }));
+
+  console.log('[MarketplaceHeader] Lojas options:', lojasOptions);
 
   return (
     <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
@@ -63,7 +71,6 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
         initial={{ opacity: 1 }}
         animate={{ 
           opacity: hideHeader ? 0.95 : 1,
-          // Removemos a transformação translateY que estava causando problemas visuais
         }}
         transition={{ duration: 0.3 }}
       >
@@ -82,12 +89,15 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
           lojasOptions={lojasOptions}
           allCategories={allCategories}
           segmentOptions={segmentOptions}
+          priceRangeOptions={priceRangeOptions}
           selectedLojas={selectedLojas}
           selectedCategories={selectedCategories}
           selectedSegments={selectedSegments}
+          selectedPriceRanges={selectedPriceRanges}
           onLojaClick={onLojaClick}
           onCategoryClick={onCategoryClick}
           onSegmentClick={onSegmentClick}
+          onPriceRangeClick={onPriceRangeClick}
         />
         
         {/* Selected Filter Chips */}
@@ -96,14 +106,17 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
           selectedLojas={selectedLojas}
           selectedRatings={selectedRatings}
           selectedSegments={selectedSegments}
+          selectedPriceRanges={selectedPriceRanges}
           allCategories={allCategories}
           lojasOptions={lojasOptions}
           ratingOptions={ratingOptions}
+          priceRangeOptions={priceRangeOptions}
           segmentOptions={segmentOptions}
           onCategoryClick={onCategoryClick}
           onLojaClick={onLojaClick}
           onRatingClick={onRatingClick}
           onSegmentClick={onSegmentClick}
+          onPriceRangeClick={onPriceRangeClick}
           clearFilters={clearFilters}
         />
       </motion.div>

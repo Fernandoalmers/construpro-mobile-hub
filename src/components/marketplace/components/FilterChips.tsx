@@ -1,21 +1,25 @@
 
 import React from 'react';
-import { Badge } from '@/components/ui/badge';
+import { motion } from 'framer-motion';
+import { X } from 'lucide-react';
 import { FilterOption } from '@/hooks/use-product-filter';
 
 interface FilterChipsProps {
   selectedCategories: string[];
   selectedLojas: string[];
   selectedRatings: string[];
-  selectedSegments?: string[];
+  selectedSegments: string[];
+  selectedPriceRanges?: string[];
   allCategories: FilterOption[];
   lojasOptions: FilterOption[];
   ratingOptions: FilterOption[];
-  segmentOptions?: FilterOption[];
+  priceRangeOptions?: FilterOption[];
+  segmentOptions: FilterOption[];
   onCategoryClick: (categoryId: string) => void;
   onLojaClick: (lojaId: string) => void;
   onRatingClick: (ratingId: string) => void;
-  onSegmentClick?: (segmentId: string) => void;
+  onSegmentClick: (segmentId: string) => void;
+  onPriceRangeClick?: (rangeId: string) => void;
   clearFilters: () => void;
 }
 
@@ -23,148 +27,156 @@ const FilterChips: React.FC<FilterChipsProps> = ({
   selectedCategories,
   selectedLojas,
   selectedRatings,
-  selectedSegments = [],
+  selectedSegments,
+  selectedPriceRanges = [],
   allCategories,
   lojasOptions,
   ratingOptions,
-  segmentOptions = [],
+  priceRangeOptions = [],
+  segmentOptions,
   onCategoryClick,
   onLojaClick,
   onRatingClick,
-  onSegmentClick = () => {},
+  onSegmentClick,
+  onPriceRangeClick = () => {},
   clearFilters
 }) => {
-  // Only show the clear filters button if ANY filter is applied
-  const hasAnyFilter = selectedCategories.length > 0 || 
-                       selectedLojas.length > 0 || 
-                       selectedRatings.length > 0 || 
-                       selectedSegments.length > 0;
-                       
-  if (!hasAnyFilter) {
-    return null;
-  }
-  
-  // Debug logs to help track selected segments and their options
-  console.log('[FilterChips] Rendering with selected segments:', selectedSegments);
-  console.log('[FilterChips] Segment options:', segmentOptions);
-  
-  // Create a Set of displayed filter names to avoid duplicates
-  const displayedFilterNames = new Set<string>();
-  
+  const hasFilters = selectedCategories.length > 0 || 
+                   selectedLojas.length > 0 || 
+                   selectedRatings.length > 0 || 
+                   selectedSegments.length > 0 ||
+                   selectedPriceRanges.length > 0;
+
+  if (!hasFilters) return null;
+
   return (
-    <div className="flex flex-wrap gap-2 mb-2">
+    <motion.div 
+      className="flex flex-wrap gap-2 mt-3"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+    >
+      {/* Category chips */}
       {selectedCategories.map(categoryId => {
-        const category = allCategories.find(c => c.id === categoryId);
-        const categoryLabel = category?.label || categoryId;
-        
-        // Skip if we already have a segment with the same name
-        if (displayedFilterNames.has(categoryLabel)) {
-          return null;
-        }
-        
-        displayedFilterNames.add(categoryLabel);
-        
+        const category = allCategories.find(cat => cat.id === categoryId);
         return (
-          <Badge key={`category-${categoryId}`} variant="secondary" className="bg-white text-gray-800 flex items-center gap-1">
-            {categoryLabel}
-            <button 
+          <motion.div
+            key={`category-${categoryId}`}
+            className="flex items-center bg-white/20 text-white px-2 py-1 rounded-full text-xs"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            exit={{ scale: 0 }}
+          >
+            <span>Cat: {category?.label}</span>
+            <button
               onClick={() => onCategoryClick(categoryId)}
-              className="ml-1 text-gray-500 hover:text-gray-800"
+              className="ml-1 hover:bg-white/30 rounded-full p-0.5"
             >
-              ×
+              <X size={12} />
             </button>
-          </Badge>
+          </motion.div>
         );
       })}
-      
+
+      {/* Store chips */}
       {selectedLojas.map(lojaId => {
-        const loja = lojasOptions.find(l => l.id === lojaId);
-        const lojaLabel = loja?.label || lojaId;
-        
-        // Skip if we already have a filter with the same name
-        if (displayedFilterNames.has(lojaLabel)) {
-          return null;
-        }
-        
-        displayedFilterNames.add(lojaLabel);
-        
+        const loja = lojasOptions.find(loja => loja.id === lojaId);
         return (
-          <Badge key={`loja-${lojaId}`} variant="secondary" className="bg-white text-gray-800 flex items-center gap-1">
-            {lojaLabel}
-            <button 
+          <motion.div
+            key={`loja-${lojaId}`}
+            className="flex items-center bg-white/20 text-white px-2 py-1 rounded-full text-xs"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            exit={{ scale: 0 }}
+          >
+            <span>Loja: {loja?.label}</span>
+            <button
               onClick={() => onLojaClick(lojaId)}
-              className="ml-1 text-gray-500 hover:text-gray-800"
+              className="ml-1 hover:bg-white/30 rounded-full p-0.5"
             >
-              ×
+              <X size={12} />
             </button>
-          </Badge>
+          </motion.div>
         );
       })}
-      
+
+      {/* Price range chips */}
+      {selectedPriceRanges.map(rangeId => {
+        const range = priceRangeOptions.find(range => range.id === rangeId);
+        return (
+          <motion.div
+            key={`price-${rangeId}`}
+            className="flex items-center bg-white/20 text-white px-2 py-1 rounded-full text-xs"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            exit={{ scale: 0 }}
+          >
+            <span>Preço: {range?.label}</span>
+            <button
+              onClick={() => onPriceRangeClick(rangeId)}
+              className="ml-1 hover:bg-white/30 rounded-full p-0.5"
+            >
+              <X size={12} />
+            </button>
+          </motion.div>
+        );
+      })}
+
+      {/* Rating chips */}
       {selectedRatings.map(ratingId => {
         const rating = ratingOptions.find(r => r.id === ratingId);
-        const ratingLabel = rating?.label || ratingId;
-        
-        // Skip if we already have a filter with the same name
-        if (displayedFilterNames.has(ratingLabel)) {
-          return null;
-        }
-        
-        displayedFilterNames.add(ratingLabel);
-        
         return (
-          <Badge key={`rating-${ratingId}`} variant="secondary" className="bg-white text-gray-800 flex items-center gap-1">
-            {ratingLabel}
-            <button 
+          <motion.div
+            key={`rating-${ratingId}`}
+            className="flex items-center bg-white/20 text-white px-2 py-1 rounded-full text-xs"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            exit={{ scale: 0 }}
+          >
+            <span>Nota: {rating?.label}</span>
+            <button
               onClick={() => onRatingClick(ratingId)}
-              className="ml-1 text-gray-500 hover:text-gray-800"
+              className="ml-1 hover:bg-white/30 rounded-full p-0.5"
             >
-              ×
+              <X size={12} />
             </button>
-          </Badge>
+          </motion.div>
         );
       })}
-      
+
+      {/* Segment chips */}
       {selectedSegments.map(segmentId => {
-        if (segmentId === "all") return null; // Skip the "all" segment filter chip
-        
-        // Find the corresponding segment option for this ID
-        const segment = segmentOptions.find(s => s.id === segmentId);
-        if (!segment) return null;
-        
-        const segmentLabel = segment.label;
-        
-        // Skip if we already have a filter with the same name displayed
-        if (displayedFilterNames.has(segmentLabel)) {
-          return null;
-        }
-        
-        displayedFilterNames.add(segmentLabel);
-        
-        console.log('[FilterChips] Rendering segment chip:', segmentId, segment);
-        
+        const segment = segmentOptions.find(seg => seg.id === segmentId);
         return (
-          <Badge key={`segment-${segmentId}`} variant="secondary" className="bg-white text-gray-800 flex items-center gap-1">
-            {segmentLabel}
-            <button 
+          <motion.div
+            key={`segment-${segmentId}`}
+            className="flex items-center bg-white/20 text-white px-2 py-1 rounded-full text-xs"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            exit={{ scale: 0 }}
+          >
+            <span>Seg: {segment?.label}</span>
+            <button
               onClick={() => onSegmentClick(segmentId)}
-              className="ml-1 text-gray-500 hover:text-gray-800"
+              className="ml-1 hover:bg-white/30 rounded-full p-0.5"
             >
-              ×
+              <X size={12} />
             </button>
-          </Badge>
+          </motion.div>
         );
       })}
-      
-      {hasAnyFilter && (
-        <button 
-          onClick={clearFilters}
-          className="text-white text-sm underline"
-        >
-          Limpar filtros
-        </button>
-      )}
-    </div>
+
+      {/* Clear all filters button */}
+      <motion.button
+        onClick={clearFilters}
+        className="flex items-center bg-construPro-orange text-white px-2 py-1 rounded-full text-xs hover:bg-construPro-orange/80"
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        exit={{ scale: 0 }}
+      >
+        Limpar tudo <X size={12} className="ml-1" />
+      </motion.button>
+    </motion.div>
   );
 };
 
