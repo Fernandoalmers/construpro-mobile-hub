@@ -42,10 +42,15 @@ export const useProductSearch = (initialTerm = '', onSearch: (term: string) => v
     return () => clearTimeout(timer);
   }, [searchTerm]);
   
-  // Trigger search when debounced term changes
+  // Trigger search when debounced term changes - FIXED: also handle empty search
   useEffect(() => {
     if (debouncedTerm.trim().length >= 2) {
+      console.log('[useProductSearch] Searching for:', debouncedTerm);
       onSearch(debouncedTerm);
+    } else if (debouncedTerm.trim().length === 0) {
+      // When search is cleared, reset to show all products
+      console.log('[useProductSearch] Search cleared, showing all products');
+      onSearch('');
     }
   }, [debouncedTerm, onSearch]);
   
@@ -84,16 +89,15 @@ const SearchAndFilterSection: React.FC<SearchAndFilterSectionProps> = ({
 
   // Update URL when search term changes
   useEffect(() => {
+    const newSearchParams = new URLSearchParams(searchParams);
     if (debouncedTerm && debouncedTerm.trim().length >= 2) {
-      const newSearchParams = new URLSearchParams(searchParams);
-      if (debouncedTerm) {
-        newSearchParams.set('search', debouncedTerm);
-      } else {
-        newSearchParams.delete('search');
-      }
-      navigate(`${location.pathname}?${newSearchParams.toString()}`, { replace: true });
+      newSearchParams.set('search', debouncedTerm);
+    } else {
+      // Remove search parameter when term is cleared or too short
+      newSearchParams.delete('search');
     }
-  }, [debouncedTerm, location.pathname, navigate, searchParams]);
+    navigate(`${location.pathname}?${newSearchParams.toString()}`, { replace: true });
+  }, [debouncedTerm, location.pathname, navigate]);
 
   // Adapter function to convert the event to string
   const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -104,6 +108,9 @@ const SearchAndFilterSection: React.FC<SearchAndFilterSectionProps> = ({
   const handleExplicitSearch = () => {
     if (searchTerm.trim().length >= 2) {
       onSearch(searchTerm);
+    } else if (searchTerm.trim().length === 0) {
+      // Handle explicit search with empty term
+      onSearch('');
     }
   };
 
