@@ -6,8 +6,16 @@ import { OrderData, OrderItem, ProductData } from './types';
 export function getProductImageUrl(product: any): string | null {
   if (!product) return null;
   
+  console.log(`[getProductImageUrl] Processing product:`, {
+    hasImageUrl: !!product.imagem_url,
+    hasImagens: !!product.imagens,
+    imagensType: typeof product.imagens,
+    imagensValue: product.imagens
+  });
+  
   // First, check if there's a direct imagem_url field
   if (product.imagem_url && typeof product.imagem_url === 'string') {
+    console.log(`[getProductImageUrl] Using direct imagem_url:`, product.imagem_url);
     return product.imagem_url;
   }
   
@@ -16,15 +24,19 @@ export function getProductImageUrl(product: any): string | null {
     // Handle case where imagens is already an array
     if (Array.isArray(product.imagens) && product.imagens.length > 0) {
       const firstImage = product.imagens[0];
+      console.log(`[getProductImageUrl] Processing first image from array:`, firstImage);
       
       // If it's a string URL, return it
       if (typeof firstImage === 'string') {
+        console.log(`[getProductImageUrl] Using string URL from array:`, firstImage);
         return firstImage;
       }
       
       // If it's an object with URL properties
       if (typeof firstImage === 'object' && firstImage !== null) {
-        return firstImage.url || firstImage.path || firstImage.src || null;
+        const imageUrl = firstImage.url || firstImage.path || firstImage.src || null;
+        console.log(`[getProductImageUrl] Extracted URL from object:`, imageUrl);
+        return imageUrl;
       }
     }
     
@@ -32,13 +44,17 @@ export function getProductImageUrl(product: any): string | null {
     if (typeof product.imagens === 'string') {
       try {
         const parsed = JSON.parse(product.imagens);
+        console.log(`[getProductImageUrl] Parsed JSON imagens:`, parsed);
         if (Array.isArray(parsed) && parsed.length > 0) {
           const firstImage = parsed[0];
           if (typeof firstImage === 'string') {
+            console.log(`[getProductImageUrl] Using parsed string URL:`, firstImage);
             return firstImage;
           }
           if (typeof firstImage === 'object' && firstImage !== null) {
-            return firstImage.url || firstImage.path || firstImage.src || null;
+            const imageUrl = firstImage.url || firstImage.path || firstImage.src || null;
+            console.log(`[getProductImageUrl] Using parsed object URL:`, imageUrl);
+            return imageUrl;
           }
         }
       } catch (e) {
@@ -47,6 +63,7 @@ export function getProductImageUrl(product: any): string | null {
     }
   }
   
+  console.log(`[getProductImageUrl] No valid image URL found for product`);
   return null;
 }
 
@@ -146,9 +163,25 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
       return getOrderById(orderId); // Fallback to regular method
     }
     
-    const orderData = result.data;
+    // Type guard to ensure we have the right data structure
+    const rawOrderData = result.data;
     
-    // Process items if they exist
+    // Validate that the returned data is an object with the expected structure
+    if (typeof rawOrderData !== 'object' || rawOrderData === null) {
+      console.error('❌ [getOrderByIdDirect] Invalid data type returned:', typeof rawOrderData);
+      return getOrderById(orderId); // Fallback to regular method
+    }
+    
+    // Type assertion with runtime validation
+    const orderData = rawOrderData as any;
+    
+    // Ensure we have a valid order structure
+    if (!orderData.id) {
+      console.error('❌ [getOrderByIdDirect] Missing order ID in response');
+      return getOrderById(orderId); // Fallback to regular method
+    }
+    
+    // Process items if they exist and are in the correct format
     if (orderData.items && Array.isArray(orderData.items)) {
       // Get product details for items
       const productIds = orderData.items.map((item: any) => item.produto_id);
@@ -178,9 +211,13 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
           };
         });
       }
+    } else {
+      // If items don't exist or aren't an array, set empty array
+      orderData.items = [];
     }
     
-    return orderData;
+    console.log(`✅ [getOrderByIdDirect] Successfully processed order with ${orderData.items.length} items`);
+    return orderData as OrderData;
     
   } catch (error) {
     console.error('❌ [getOrderByIdDirect] Error:', error);
