@@ -38,6 +38,9 @@ const SegmentCard: React.FC<SegmentCardProps> = ({
   const handleImageLoad = () => {
     console.log(`[SegmentCard] ${title} - Image loaded successfully:`, imageUrl);
   };
+
+  // Determinar se deve mostrar a imagem ou o ícone
+  const shouldShowImage = imageUrl && !imageError;
   
   return (
     <div 
@@ -51,7 +54,7 @@ const SegmentCard: React.FC<SegmentCardProps> = ({
         "w-12 h-12 rounded-full flex items-center justify-center mb-2 overflow-hidden", 
         isSelected ? "bg-white text-construPro-blue" : "bg-construPro-blue/10 text-construPro-blue"
       )}>
-        {imageUrl && !imageError ? (
+        {shouldShowImage ? (
           <img 
             src={imageUrl} 
             alt={title} 
