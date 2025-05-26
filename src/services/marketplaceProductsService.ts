@@ -27,15 +27,20 @@ export interface MarketplaceProduct {
 const extractImageUrls = (imagensData: any): string[] => {
   const urls: string[] = [];
   
-  console.log('[extractImageUrls] Processing:', imagensData);
+  console.log('[extractImageUrls] Processing:', imagensData, 'Type:', typeof imagensData);
   
-  if (!imagensData) return urls;
+  if (!imagensData) {
+    console.log('[extractImageUrls] No image data provided');
+    return urls;
+  }
   
   // If it's a string, try to parse it as JSON
   if (typeof imagensData === 'string') {
+    console.log('[extractImageUrls] Processing string data:', imagensData.substring(0, 100));
     try {
       const parsed = JSON.parse(imagensData);
       if (Array.isArray(parsed)) {
+        console.log('[extractImageUrls] Parsed as array:', parsed);
         return parsed
           .map(img => {
             if (typeof img === 'string') return img;
@@ -46,9 +51,11 @@ const extractImageUrls = (imagensData: any): string[] => {
       }
       // If parsed is not an array but a valid URL string
       if (typeof parsed === 'string' && parsed.trim() !== '') {
+        console.log('[extractImageUrls] Parsed as single URL:', parsed);
         return [parsed];
       }
     } catch (e) {
+      console.log('[extractImageUrls] JSON parse failed, treating as direct URL');
       // If it's not valid JSON, treat it as a direct URL
       if (imagensData.trim() !== '') {
         return [imagensData];
@@ -58,7 +65,9 @@ const extractImageUrls = (imagensData: any): string[] => {
   
   // If it's already an array
   if (Array.isArray(imagensData)) {
-    imagensData.forEach(img => {
+    console.log('[extractImageUrls] Processing array:', imagensData);
+    imagensData.forEach((img, index) => {
+      console.log(`[extractImageUrls] Array item ${index}:`, img, 'Type:', typeof img);
       if (typeof img === 'string' && img.trim() !== '') {
         urls.push(img);
       } else if (img && typeof img === 'object') {
@@ -68,17 +77,21 @@ const extractImageUrls = (imagensData: any): string[] => {
         }
       }
     });
+    console.log('[extractImageUrls] Extracted from array:', urls);
     return urls;
   }
   
   // If it's an object with url/path/src property
   if (imagensData && typeof imagensData === 'object') {
+    console.log('[extractImageUrls] Processing object:', imagensData);
     const url = imagensData.url || imagensData.path || imagensData.src;
     if (url && typeof url === 'string' && url.trim() !== '') {
+      console.log('[extractImageUrls] Extracted from object:', url);
       return [url];
     }
   }
   
+  console.log('[extractImageUrls] No valid URLs found, returning empty array');
   return urls;
 };
 
@@ -151,16 +164,25 @@ export const getMarketplaceProducts = async (categoria?: string): Promise<Market
     
     // Transform to marketplace product format
     const products = (data || []).map(item => {
-      // FIXED: Better image extraction with validation and blob URL detection
+      console.log(`[getMarketplaceProducts] Processing product ${item.id} - ${item.nome}`);
+      console.log(`[getMarketplaceProducts] Raw imagens for ${item.nome}:`, item.imagens);
+      
+      // Extract images with detailed logging
       const imagens = extractImageUrls(item.imagens);
       const imagemPrincipal = imagens.length > 0 ? imagens[0] : null;
       
       // Log blob URL detection
       if (imagemPrincipal && imagemPrincipal.startsWith('blob:')) {
-        console.warn(`[getMarketplaceProducts] Blob URL detected for product ${item.id}: ${imagemPrincipal.substring(0, 50)}...`);
+        console.warn(`[getMarketplaceProducts] ⚠️  BLOB URL detected for product ${item.nome}: ${imagemPrincipal.substring(0, 50)}...`);
+        console.warn(`[getMarketplaceProducts] This image will not work after browser refresh!`);
+      } else if (imagemPrincipal) {
+        console.log(`[getMarketplaceProducts] ✅ Valid image URL for ${item.nome}: ${imagemPrincipal.substring(0, 50)}...`);
+      } else {
+        console.warn(`[getMarketplaceProducts] ❌ No image found for product ${item.nome}`);
+        console.log(`[getMarketplaceProducts] Original imagens data:`, item.imagens);
       }
       
-      console.log(`[getMarketplaceProducts] Product ${item.id} final images:`, { 
+      console.log(`[getMarketplaceProducts] Final images for ${item.nome}:`, { 
         imagens, 
         imagemPrincipal,
         originalImagens: item.imagens 
@@ -210,7 +232,8 @@ export const getMarketplaceProducts = async (categoria?: string): Promise<Market
             lowerName.includes('tijolo') ||
             lowerName.includes('cimento') ||
             lowerName.includes('areia') ||
-            lowerName.includes('argamassa')
+            lowerName.includes('argamassa') ||
+            lowerName.includes('malha') // Add malha keyword
         ) {
           const materiaisSegment = segments.find(s => 
             s.nome.toLowerCase().includes('materiais') && 
@@ -236,8 +259,8 @@ export const getMarketplaceProducts = async (categoria?: string): Promise<Market
         segmento_id: segmento_id,
         imagens,
         imagemPrincipal,
-        imagemUrl: imagemPrincipal, // FIXED: Always set this for compatibility
-        imagem_url: imagemPrincipal, // FIXED: Always set this for compatibility
+        imagemUrl: imagemPrincipal, // Always set this for compatibility
+        imagem_url: imagemPrincipal, // Always set this for compatibility
         estoque: item.estoque,
         vendedor_id: item.vendedor_id,
         vendedor_nome: item.vendedores?.nome_loja || 'Loja não identificada',
@@ -259,6 +282,15 @@ export const getMarketplaceProducts = async (categoria?: string): Promise<Market
       const segmentName = segments.find(s => s.id === segmentId)?.nome || 'Unknown';
       return `${segmentName} (${segmentId}): ${count} products`;
     }));
+    
+    // Log products without images
+    const productsWithoutImages = products.filter(p => !p.imagemUrl);
+    if (productsWithoutImages.length > 0) {
+      console.warn(`[getMarketplaceProducts] ⚠️  ${productsWithoutImages.length} products don't have images:`);
+      productsWithoutImages.forEach(p => {
+        console.warn(`- ${p.nome} (ID: ${p.id})`);
+      });
+    }
     
     // Log products without segment
     const productsWithoutSegment = products.filter(p => !p.segmento_id);

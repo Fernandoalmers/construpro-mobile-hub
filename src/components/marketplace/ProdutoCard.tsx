@@ -34,6 +34,17 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
 }) => {
   const { handleAddToCart, handleBuyNow, isAddingToCart: cartLoading, isBuyingNow } = useCartActions();
   
+  // Log product data for debugging
+  console.log(`[ProdutoCard] Rendering card for ${produto.nome}:`, {
+    id: produto.id,
+    imagemUrl: produto.imagemUrl,
+    imagem_url: produto.imagem_url,
+    imagens: produto.imagens,
+    hasImagemUrl: !!produto.imagemUrl,
+    hasImagem_url: !!produto.imagem_url,
+    hasImagens: !!produto.imagens && produto.imagens.length > 0
+  });
+  
   // Utilizar os dados reais do produto de forma consistente
   const precoRegular = produto.preco_normal || produto.precoNormal || produto.preco || 0;
   const precoPromocional = produto.preco_promocional || produto.precoPromocional || null;
@@ -99,6 +110,25 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
     );
   };
   
+  // Get the image URL with priority order and error handling
+  const getImageUrl = () => {
+    // Priority order: imagemUrl > imagem_url > first item in imagens array
+    const imageUrl = produto.imagemUrl || produto.imagem_url || (produto.imagens && produto.imagens.length > 0 ? produto.imagens[0] : '');
+    
+    if (!imageUrl) {
+      console.warn(`[ProdutoCard] No image found for product ${produto.nome} (ID: ${produto.id})`);
+      return null;
+    }
+    
+    if (imageUrl.startsWith('blob:')) {
+      console.warn(`[ProdutoCard] Blob URL detected for ${produto.nome}: ${imageUrl.substring(0, 50)}... (may not work)`);
+    }
+    
+    return imageUrl;
+  };
+  
+  const imageUrl = getImageUrl();
+  
   return (
     <div 
       onClick={onClick}
@@ -106,11 +136,24 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({
     >
       {/* Product Image - positioned on the top */}
       <div className="relative w-full h-40 overflow-hidden bg-gray-50">
-        <img 
-          src={produto.imagemUrl || produto.imagem_url || (produto.imagens && produto.imagens.length > 0 ? produto.imagens[0] : '')} 
-          alt={produto.nome}
-          className="w-full h-full object-contain hover:scale-105 transition-transform duration-300"
-        />
+        {imageUrl ? (
+          <img 
+            src={imageUrl}
+            alt={produto.nome}
+            className="w-full h-full object-contain hover:scale-105 transition-transform duration-300"
+            onError={(e) => {
+              console.error(`[ProdutoCard] Error loading image for ${produto.nome}:`, imageUrl);
+              e.currentTarget.src = 'https://via.placeholder.com/300x200?text=Imagem+Indisponível';
+            }}
+            onLoad={() => {
+              console.log(`[ProdutoCard] Successfully loaded image for ${produto.nome}`);
+            }}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400 text-sm">
+            Sem imagem
+          </div>
+        )}
       </div>
       
       <div className="p-3 flex flex-col flex-grow">
