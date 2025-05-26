@@ -930,7 +930,7 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
                 variant="outline"
                 fullWidth
                 type="button"
-                onClick={() => navigate('/vendor/produtos')}
+                onClick={() => navigate('/vendor/products')}
               >
                 Cancelar
               </CustomButton>

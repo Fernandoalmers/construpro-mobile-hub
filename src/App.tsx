@@ -24,6 +24,7 @@ import VendorModeScreen from './components/vendor/VendorModeScreen';
 import ProductManagementScreen from './components/vendor/ProductManagementScreen';
 import ProdutoEditScreen from './components/vendor/ProdutoEditScreen';
 import ProductFormScreen from './components/vendor/ProductFormScreen';
+import ProdutoFormScreen from './components/vendor/ProdutoFormScreen';
 import ClientesVendorScreen from './components/vendor/ClientesVendorScreen';
 import ConfiguracoesVendorScreen from './components/vendor/ConfiguracoesVendorScreen';
 import AjustePontosVendorScreen from './components/vendor/AjustePontosVendorScreen';
@@ -141,7 +142,8 @@ function App() {
         {/* Vendor routes */}
         <Route path="/vendor" element={<ProtectedRoute><VendorModeScreen /></ProtectedRoute>} />
         <Route path="/vendor/products" element={<ProtectedRoute><ProductManagementScreen /></ProtectedRoute>} />
-        <Route path="/vendor/product-new" element={<ProtectedRoute><ProductFormScreen /></ProtectedRoute>} />
+        <Route path="/vendor/products/new" element={<ProtectedRoute><ProdutoFormScreen /></ProtectedRoute>} />
+        <Route path="/vendor/product-new" element={<ProtectedRoute><ProdutoFormScreen /></ProtectedRoute>} />
         
         {/* Adicionando a nova rota para a edição de produtos */}
         <Route path="/vendor/product-edit/:id" element={<ProtectedRoute><ProdutoEditScreen /></ProtectedRoute>} />

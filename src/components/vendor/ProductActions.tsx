@@ -10,7 +10,7 @@ const ProductActions: React.FC = () => {
   return (
     <div className="flex justify-between items-center mb-4">
       <Button 
-        onClick={() => navigate('/vendor/product-new')}
+        onClick={() => navigate('/vendor/products/new')}
         className="flex items-center gap-2"
       >
         <Plus size={16} />
