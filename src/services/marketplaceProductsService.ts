@@ -23,6 +23,65 @@ export interface MarketplaceProduct {
   segmento_id?: string;
 }
 
+// Helper function to extract and validate image URLs
+const extractImageUrls = (imagensData: any): string[] => {
+  const urls: string[] = [];
+  
+  console.log('[extractImageUrls] Processing:', imagensData);
+  
+  if (!imagensData) return urls;
+  
+  // If it's a string, try to parse it as JSON
+  if (typeof imagensData === 'string') {
+    try {
+      const parsed = JSON.parse(imagensData);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map(img => {
+            if (typeof img === 'string') return img;
+            if (img && typeof img === 'object') return img.url || img.path || img.src || '';
+            return '';
+          })
+          .filter(url => url && typeof url === 'string' && url.trim() !== '');
+      }
+      // If parsed is not an array but a valid URL string
+      if (typeof parsed === 'string' && parsed.trim() !== '') {
+        return [parsed];
+      }
+    } catch (e) {
+      // If it's not valid JSON, treat it as a direct URL
+      if (imagensData.trim() !== '') {
+        return [imagensData];
+      }
+    }
+  }
+  
+  // If it's already an array
+  if (Array.isArray(imagensData)) {
+    imagensData.forEach(img => {
+      if (typeof img === 'string' && img.trim() !== '') {
+        urls.push(img);
+      } else if (img && typeof img === 'object') {
+        const url = img.url || img.path || img.src;
+        if (url && typeof url === 'string' && url.trim() !== '') {
+          urls.push(url);
+        }
+      }
+    });
+    return urls;
+  }
+  
+  // If it's an object with url/path/src property
+  if (imagensData && typeof imagensData === 'object') {
+    const url = imagensData.url || imagensData.path || imagensData.src;
+    if (url && typeof url === 'string' && url.trim() !== '') {
+      return [url];
+    }
+  }
+  
+  return urls;
+};
+
 /**
  * Get approved products for marketplace display
  */
@@ -92,31 +151,14 @@ export const getMarketplaceProducts = async (categoria?: string): Promise<Market
     
     // Transform to marketplace product format
     const products = (data || []).map(item => {
-      // Parse and ensure imagens is an array of strings - FIXED APPROACH
-      let imagens: string[] = [];
-      
-      console.log(`[getMarketplaceProducts] Processing images for product ${item.id}:`, item.imagens);
-      
-      if (item.imagens) {
-        if (typeof item.imagens === 'string') {
-          try {
-            const parsedImages = JSON.parse(item.imagens);
-            imagens = Array.isArray(parsedImages) 
-              ? parsedImages.filter(img => typeof img === 'string' && img.trim() !== '')
-              : [];
-          } catch (e) {
-            console.error(`[getMarketplaceProducts] Error parsing imagens for product ${item.id}:`, e);
-            imagens = [];
-          }
-        } else if (Array.isArray(item.imagens)) {
-          imagens = item.imagens
-            .filter(img => img && typeof img === 'string' && img.trim() !== '')
-            .map(img => String(img));
-        }
-      }
-      
-      // Find the primary image or first available - FIXED: Better logic
+      // FIXED: Better image extraction with validation and blob URL detection
+      const imagens = extractImageUrls(item.imagens);
       const imagemPrincipal = imagens.length > 0 ? imagens[0] : null;
+      
+      // Log blob URL detection
+      if (imagemPrincipal && imagemPrincipal.startsWith('blob:')) {
+        console.warn(`[getMarketplaceProducts] Blob URL detected for product ${item.id}: ${imagemPrincipal.substring(0, 50)}...`);
+      }
       
       console.log(`[getMarketplaceProducts] Product ${item.id} final images:`, { 
         imagens, 
@@ -194,8 +236,8 @@ export const getMarketplaceProducts = async (categoria?: string): Promise<Market
         segmento_id: segmento_id,
         imagens,
         imagemPrincipal,
-        imagemUrl: imagemPrincipal, // FIXED: Add compatibility property
-        imagem_url: imagemPrincipal, // FIXED: Add compatibility property
+        imagemUrl: imagemPrincipal, // FIXED: Always set this for compatibility
+        imagem_url: imagemPrincipal, // FIXED: Always set this for compatibility
         estoque: item.estoque,
         vendedor_id: item.vendedor_id,
         vendedor_nome: item.vendedores?.nome_loja || 'Loja não identificada',
@@ -264,31 +306,14 @@ export const getMarketplaceProductById = async (id: string): Promise<Marketplace
     
     if (!data) return null;
     
-    // Parse and ensure imagens is an array of strings - FIXED APPROACH
-    let imagens: string[] = [];
-    
-    console.log(`[getMarketplaceProductById] Processing images for product ${data.id}:`, data.imagens);
-    
-    if (data.imagens) {
-      if (typeof data.imagens === 'string') {
-        try {
-          const parsedImages = JSON.parse(data.imagens);
-          imagens = Array.isArray(parsedImages) 
-            ? parsedImages.filter(img => typeof img === 'string' && img.trim() !== '')
-            : [];
-        } catch (e) {
-          console.error(`[getMarketplaceProductById] Error parsing imagens:`, e);
-          imagens = [];
-        }
-      } else if (Array.isArray(data.imagens)) {
-        imagens = data.imagens
-          .filter(img => img && typeof img === 'string' && img.trim() !== '')
-          .map(img => String(img));
-      }
-    }
-    
-    // Find the primary image or first available
+    // FIXED: Better image extraction with validation and blob URL detection
+    const imagens = extractImageUrls(data.imagens);
     const imagemPrincipal = imagens.length > 0 ? imagens[0] : null;
+    
+    // Log blob URL detection
+    if (imagemPrincipal && imagemPrincipal.startsWith('blob:')) {
+      console.warn(`[getMarketplaceProductById] Blob URL detected for product ${data.id}: ${imagemPrincipal.substring(0, 50)}...`);
+    }
     
     console.log(`[getMarketplaceProductById] Product ${data.id} final images:`, { 
       imagens, 
@@ -334,8 +359,8 @@ export const getMarketplaceProductById = async (id: string): Promise<Marketplace
       segmento_id: segmento_id,
       imagens,
       imagemPrincipal,
-      imagemUrl: imagemPrincipal, // FIXED: Add compatibility property
-      imagem_url: imagemPrincipal, // FIXED: Add compatibility property
+      imagemUrl: imagemPrincipal, // FIXED: Always set this for compatibility
+      imagem_url: imagemPrincipal, // FIXED: Always set this for compatibility
       estoque: data.estoque,
       vendedor_id: data.vendedor_id,
       vendedor_nome: data.vendedores?.nome_loja || 'Loja não identificada',

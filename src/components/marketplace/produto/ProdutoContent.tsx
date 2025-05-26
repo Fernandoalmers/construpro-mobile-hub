@@ -50,12 +50,21 @@ const ProdutoContent: React.FC<ProdutoContentProps> = ({
     ? Math.round(((produto.preco_anterior - produto.preco) / produto.preco_anterior) * 100)
     : 0;
 
+  // FIXED: Ensure proper image props are passed to ProductImageGallery
+  const mainImage = produto.imagem_url || (produto.imagens && produto.imagens.length > 0 ? produto.imagens[0] : '');
+  
+  console.log('[ProdutoContent] Passing images to gallery:', {
+    mainImage,
+    images: produto.imagens,
+    productName: produto.nome
+  });
+
   return (
     <main className="container mx-auto mt-4 px-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Product Image Section */}
         <ProductImageGallery
-          mainImage={produto.imagem_url || ''}
+          mainImage={mainImage}
           images={produto.imagens}
           productName={produto.nome}
           hasDiscount={hasDiscount}

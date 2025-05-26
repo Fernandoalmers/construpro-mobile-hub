@@ -2,6 +2,56 @@
 import { supabase } from '@/integrations/supabase/client';
 import { OrderData, OrderItem, ProductData } from './types';
 
+// Helper function to extract and validate image URLs
+const extractImageUrls = (imagensData: any): string[] => {
+  if (!imagensData) return [];
+  
+  // If it's a string, try to parse it as JSON
+  if (typeof imagensData === 'string') {
+    try {
+      const parsed = JSON.parse(imagensData);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map(img => {
+            if (typeof img === 'string') return img;
+            if (img && typeof img === 'object') return img.url || img.path || img.src || '';
+            return '';
+          })
+          .filter(url => url && typeof url === 'string' && url.trim() !== '');
+      }
+      if (typeof parsed === 'string' && parsed.trim() !== '') {
+        return [parsed];
+      }
+    } catch (e) {
+      // If it's not valid JSON, treat it as a direct URL
+      if (imagensData.trim() !== '') {
+        return [imagensData];
+      }
+    }
+  }
+  
+  // If it's already an array
+  if (Array.isArray(imagensData)) {
+    return imagensData
+      .map(img => {
+        if (typeof img === 'string') return img;
+        if (img && typeof img === 'object') return img.url || img.path || img.src || '';
+        return '';
+      })
+      .filter(url => url && typeof url === 'string' && url.trim() !== '');
+  }
+  
+  // If it's an object with url/path/src property
+  if (imagensData && typeof imagensData === 'object') {
+    const url = imagensData.url || imagensData.path || imagensData.src;
+    if (url && typeof url === 'string' && url.trim() !== '') {
+      return [url];
+    }
+  }
+  
+  return [];
+};
+
 // Helper function to extract image URL from product data
 export function getProductImageUrl(product: any): string | null {
   if (!product) return null;
@@ -19,48 +69,18 @@ export function getProductImageUrl(product: any): string | null {
     return product.imagem_url;
   }
   
-  // Then check the imagens field (which is an array)
-  if (product.imagens) {
-    // Handle case where imagens is already an array
-    if (Array.isArray(product.imagens) && product.imagens.length > 0) {
-      const firstImage = product.imagens[0];
-      console.log(`[getProductImageUrl] Processing first image from array:`, firstImage);
-      
-      // If it's a string URL, return it
-      if (typeof firstImage === 'string') {
-        console.log(`[getProductImageUrl] Using string URL from array:`, firstImage);
-        return firstImage;
-      }
-      
-      // If it's an object with URL properties
-      if (typeof firstImage === 'object' && firstImage !== null) {
-        const imageUrl = firstImage.url || firstImage.path || firstImage.src || null;
-        console.log(`[getProductImageUrl] Extracted URL from object:`, imageUrl);
-        return imageUrl;
-      }
+  // FIXED: Use the new extractImageUrls helper function
+  const extractedUrls = extractImageUrls(product.imagens);
+  if (extractedUrls.length > 0) {
+    const imageUrl = extractedUrls[0];
+    
+    // Log blob URL detection
+    if (imageUrl.startsWith('blob:')) {
+      console.warn(`[getProductImageUrl] Blob URL detected: ${imageUrl.substring(0, 50)}... (this may not work)`);
     }
     
-    // Handle case where imagens might be a JSON string
-    if (typeof product.imagens === 'string') {
-      try {
-        const parsed = JSON.parse(product.imagens);
-        console.log(`[getProductImageUrl] Parsed JSON imagens:`, parsed);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const firstImage = parsed[0];
-          if (typeof firstImage === 'string') {
-            console.log(`[getProductImageUrl] Using parsed string URL:`, firstImage);
-            return firstImage;
-          }
-          if (typeof firstImage === 'object' && firstImage !== null) {
-            const imageUrl = firstImage.url || firstImage.path || firstImage.src || null;
-            console.log(`[getProductImageUrl] Using parsed object URL:`, imageUrl);
-            return imageUrl;
-          }
-        }
-      } catch (e) {
-        console.warn('Failed to parse imagens JSON:', e);
-      }
-    }
+    console.log(`[getProductImageUrl] Using extracted URL:`, imageUrl);
+    return imageUrl;
   }
   
   console.log(`[getProductImageUrl] No valid image URL found for product`);
@@ -118,15 +138,30 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
     const orderItems: OrderItem[] = (itemsData || []).map(item => {
       const productData = productsMap.get(item.produto_id);
       
+      // FIXED: Use extractImageUrls for consistent image processing
+      const imagens = extractImageUrls(productData?.imagens);
+      const imageUrl = imagens.length > 0 ? imagens[0] : null;
+      
+      // Log blob URL detection
+      if (imageUrl && imageUrl.startsWith('blob:')) {
+        console.warn(`[getOrderById] Blob URL detected for product ${item.produto_id}: ${imageUrl.substring(0, 50)}...`);
+      }
+      
       const produto: ProductData = {
         id: item.produto_id,
         nome: productData?.nome || 'Produto indisponível',
-        imagens: productData?.imagens || [],
-        imagem_url: getProductImageUrl(productData),
+        imagens: imagens,
+        imagem_url: imageUrl,
         descricao: productData?.descricao || '',
         preco_normal: productData?.preco_normal || item.preco_unitario,
         categoria: productData?.categoria || ''
       };
+      
+      console.log(`[getOrderById] Processed product ${item.produto_id}:`, {
+        hasImageUrl: !!produto.imagem_url,
+        imageUrl: produto.imagem_url,
+        imagensCount: produto.imagens.length
+      });
       
       return {
         id: item.id,
@@ -197,13 +232,22 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
         orderData.items = orderData.items.map((item: any) => {
           const productData = productsMap.get(item.produto_id);
           
+          // FIXED: Use extractImageUrls for consistent image processing
+          const imagens = extractImageUrls(productData?.imagens);
+          const imageUrl = imagens.length > 0 ? imagens[0] : null;
+          
+          // Log blob URL detection
+          if (imageUrl && imageUrl.startsWith('blob:')) {
+            console.warn(`[getOrderByIdDirect] Blob URL detected for product ${item.produto_id}: ${imageUrl.substring(0, 50)}...`);
+          }
+          
           return {
             ...item,
             produto: {
               id: item.produto_id,
               nome: productData?.nome || 'Produto indisponível',
-              imagens: productData?.imagens || [],
-              imagem_url: getProductImageUrl(productData),
+              imagens: imagens,
+              imagem_url: imageUrl,
               descricao: productData?.descricao || '',
               preco_normal: productData?.preco_normal || item.preco_unitario,
               categoria: productData?.categoria || ''

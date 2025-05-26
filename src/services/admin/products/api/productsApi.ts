@@ -3,6 +3,56 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { AdminProduct } from '@/types/admin';
 
+// Helper function to extract and validate image URLs
+const extractImageUrls = (imagensData: any): string[] => {
+  if (!imagensData) return [];
+  
+  // If it's a string, try to parse it as JSON
+  if (typeof imagensData === 'string') {
+    try {
+      const parsed = JSON.parse(imagensData);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map(img => {
+            if (typeof img === 'string') return img;
+            if (img && typeof img === 'object') return img.url || img.path || img.src || '';
+            return '';
+          })
+          .filter(url => url && typeof url === 'string' && url.trim() !== '');
+      }
+      if (typeof parsed === 'string' && parsed.trim() !== '') {
+        return [parsed];
+      }
+    } catch (e) {
+      // If it's not valid JSON, treat it as a direct URL
+      if (imagensData.trim() !== '') {
+        return [imagensData];
+      }
+    }
+  }
+  
+  // If it's already an array
+  if (Array.isArray(imagensData)) {
+    return imagensData
+      .map(img => {
+        if (typeof img === 'string') return img;
+        if (img && typeof img === 'object') return img.url || img.path || img.src || '';
+        return '';
+      })
+      .filter(url => url && typeof url === 'string' && url.trim() !== '');
+  }
+  
+  // If it's an object with url/path/src property
+  if (imagensData && typeof imagensData === 'object') {
+    const url = imagensData.url || imagensData.path || imagensData.src;
+    if (url && typeof url === 'string' && url.trim() !== '') {
+      return [url];
+    }
+  }
+  
+  return [];
+};
+
 /**
  * Fetch all products for admin management
  */
@@ -50,33 +100,13 @@ export const getAdminProducts = async (status?: string): Promise<AdminProduct[]>
     
     // Transform data to AdminProduct format
     const productsWithVendorInfo = (data || []).map(item => {
-      // FIXED: Better image URL extraction with validation
-      let imageUrl = null;
-      let imagens: string[] = [];
+      // FIXED: Better image URL extraction with validation and blob URL detection
+      const imagens = extractImageUrls(item.imagens);
+      const imageUrl = imagens.length > 0 ? imagens[0] : null;
       
-      console.log(`[getAdminProducts] Processing images for product ${item.id}:`, item.imagens);
-      
-      if (item.imagens) {
-        if (typeof item.imagens === 'string') {
-          try {
-            const parsedImages = JSON.parse(item.imagens);
-            if (Array.isArray(parsedImages)) {
-              imagens = parsedImages
-                .filter(img => img && typeof img === 'string' && img.trim() !== '')
-                .map(img => String(img));
-              imageUrl = imagens.length > 0 ? imagens[0] : null;
-            }
-          } catch (e) {
-            console.error(`[getAdminProducts] Error parsing imagens for product ${item.id}:`, e);
-            imagens = [];
-            imageUrl = null;
-          }
-        } else if (Array.isArray(item.imagens)) {
-          imagens = item.imagens
-            .filter(img => img && typeof img === 'string' && img.trim() !== '')
-            .map(img => String(img));
-          imageUrl = imagens.length > 0 ? imagens[0] : null;
-        }
+      // Log blob URL detection
+      if (imageUrl && imageUrl.startsWith('blob:')) {
+        console.warn(`[getAdminProducts] Blob URL detected for product ${item.id}: ${imageUrl.substring(0, 50)}...`);
       }
       
       console.log(`[getAdminProducts] Product ${item.id} final images:`, { 
@@ -97,7 +127,7 @@ export const getAdminProducts = async (status?: string): Promise<AdminProduct[]>
         nome: item.nome,
         descricao: item.descricao,
         categoria: item.categoria,
-        imagemUrl: imageUrl, // FIXED: Use extracted image URL
+        imagemUrl: imageUrl, // FIXED: Always set this for compatibility
         preco: item.preco_normal,
         preco_normal: item.preco_normal,
         preco_promocional: item.preco_promocional,
@@ -111,7 +141,7 @@ export const getAdminProducts = async (status?: string): Promise<AdminProduct[]>
         status: item.status as 'pendente' | 'aprovado' | 'inativo',
         created_at: item.created_at,
         updated_at: item.updated_at,
-        imagens: imagens, // FIXED: Pass the filtered array of images
+        imagens: imagens, // FIXED: Always pass the full array of images
         vendedores: item.vendedores
       };
     });
