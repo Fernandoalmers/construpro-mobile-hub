@@ -37,6 +37,17 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
       productData.categoria = 'Geral'; // Default category if none provided
     }
     
+    // Properly handle images array
+    let imagensJson = '[]';
+    if (productData.imagens && Array.isArray(productData.imagens)) {
+      // Filter out empty strings and blob URLs
+      const validImages = productData.imagens.filter(img => 
+        img && typeof img === 'string' && img.trim() !== '' && !img.startsWith('blob:')
+      );
+      imagensJson = JSON.stringify(validImages);
+      console.log('[productOperations] Processing images:', validImages);
+    }
+    
     // Prepare data for insert/update
     const dbData = {
       ...productData,
@@ -44,9 +55,14 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
       // When updating, set status to 'pendente' to require re-approval
       status: isUpdate ? 'pendente' as const : 'pendente' as const,
       updated_at: new Date().toISOString(),
-      // Ensure imagens is stored as JSON
-      imagens: productData.imagens ? JSON.stringify(productData.imagens) : '[]'
+      // Ensure imagens is stored as proper JSON string
+      imagens: imagensJson
     };
+    
+    console.log('[productOperations] Database data to save:', {
+      ...dbData,
+      imagens: `JSON string with ${JSON.parse(imagensJson).length} images`
+    });
     
     // Remove id when creating a new product
     if (!isUpdate) {
@@ -80,7 +96,22 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
     }
     
     console.log(`[productOperations] Product ${isUpdate ? 'updated' : 'created'} successfully:`, data);
-    return data as VendorProduct;
+    
+    // Parse images back to array for return
+    let returnedImages = [];
+    if (data.imagens) {
+      try {
+        returnedImages = JSON.parse(data.imagens);
+      } catch (e) {
+        console.warn('[productOperations] Error parsing returned images:', e);
+        returnedImages = [];
+      }
+    }
+    
+    return {
+      ...data,
+      imagens: returnedImages
+    } as VendorProduct;
     
   } catch (error) {
     console.error('[productOperations] Error in saveVendorProduct:', error);
