@@ -22,11 +22,16 @@ const ProductImage: React.FC<ProductImageProps> = ({
       hasImageUrl: !!imagemUrl, 
       hasImagens: !!imagens,
       imagensType: typeof imagens,
-      imagensLength: Array.isArray(imagens) ? imagens.length : 'not array'
+      imagensLength: Array.isArray(imagens) ? imagens.length : 'not array',
+      imagemUrl: imagemUrl ? imagemUrl.substring(0, 50) + '...' : null
     });
     
-    // First priority: direct imagemUrl if available
+    // First priority: direct imagemUrl if available and valid
     if (imagemUrl && typeof imagemUrl === 'string' && imagemUrl.trim() !== '') {
+      // FIXED: Check if it's a blob URL and warn
+      if (imagemUrl.startsWith('blob:')) {
+        console.warn(`[ProductImage] Blob URL detected for ${productName}: ${imagemUrl.substring(0, 50)}... (this may not work)`);
+      }
       console.log(`[ProductImage] Using direct imagemUrl for ${productName}: ${imagemUrl.substring(0, 50)}...`);
       return imagemUrl;
     }
@@ -35,6 +40,9 @@ const ProductImage: React.FC<ProductImageProps> = ({
     if (imagens) {
       // Handle case where imagens is a string directly
       if (typeof imagens === 'string' && imagens.trim() !== '') {
+        if (imagens.startsWith('blob:')) {
+          console.warn(`[ProductImage] Blob URL detected in string imagens for ${productName}: ${imagens.substring(0, 50)}... (this may not work)`);
+        }
         console.log(`[ProductImage] Using string imagens for ${productName}: ${imagens.substring(0, 50)}...`);
         return imagens;
       }
@@ -45,6 +53,9 @@ const ProductImage: React.FC<ProductImageProps> = ({
         
         // Handle different image formats
         if (typeof firstImage === 'string' && firstImage.trim() !== '') {
+          if (firstImage.startsWith('blob:')) {
+            console.warn(`[ProductImage] Blob URL detected in array for ${productName}: ${firstImage.substring(0, 50)}... (this may not work)`);
+          }
           console.log(`[ProductImage] Using first array image for ${productName}: ${firstImage.substring(0, 50)}...`);
           return firstImage;
         }
@@ -52,6 +63,9 @@ const ProductImage: React.FC<ProductImageProps> = ({
         if (typeof firstImage === 'object' && firstImage !== null) {
           const imageUrl = firstImage.url || firstImage.path || firstImage.src;
           if (imageUrl && typeof imageUrl === 'string' && imageUrl.trim() !== '') {
+            if (imageUrl.startsWith('blob:')) {
+              console.warn(`[ProductImage] Blob URL detected in object for ${productName}: ${imageUrl.substring(0, 50)}... (this may not work)`);
+            }
             console.log(`[ProductImage] Using object URL for ${productName}: ${imageUrl.substring(0, 50)}...`);
             return imageUrl;
           }

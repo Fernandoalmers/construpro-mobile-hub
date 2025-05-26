@@ -13,6 +13,8 @@ export interface MarketplaceProduct {
   categoria: string;
   imagens: string[];
   imagemPrincipal?: string;
+  imagemUrl?: string; // Adding this for compatibility
+  imagem_url?: string; // Adding this for compatibility
   estoque: number;
   vendedor_id: string;
   vendedor_nome: string;
@@ -90,27 +92,37 @@ export const getMarketplaceProducts = async (categoria?: string): Promise<Market
     
     // Transform to marketplace product format
     const products = (data || []).map(item => {
-      // Parse and ensure imagens is an array of strings
+      // Parse and ensure imagens is an array of strings - FIXED APPROACH
       let imagens: string[] = [];
+      
+      console.log(`[getMarketplaceProducts] Processing images for product ${item.id}:`, item.imagens);
       
       if (item.imagens) {
         if (typeof item.imagens === 'string') {
           try {
             const parsedImages = JSON.parse(item.imagens);
             imagens = Array.isArray(parsedImages) 
-              ? parsedImages.map(img => String(img))
+              ? parsedImages.filter(img => typeof img === 'string' && img.trim() !== '')
               : [];
           } catch (e) {
             console.error(`[getMarketplaceProducts] Error parsing imagens for product ${item.id}:`, e);
             imagens = [];
           }
         } else if (Array.isArray(item.imagens)) {
-          imagens = item.imagens.map(img => String(img));
+          imagens = item.imagens
+            .filter(img => img && typeof img === 'string' && img.trim() !== '')
+            .map(img => String(img));
         }
       }
       
-      // Find the primary image or first available
+      // Find the primary image or first available - FIXED: Better logic
       const imagemPrincipal = imagens.length > 0 ? imagens[0] : null;
+      
+      console.log(`[getMarketplaceProducts] Product ${item.id} final images:`, { 
+        imagens, 
+        imagemPrincipal,
+        originalImagens: item.imagens 
+      });
       
       // Determine the segmento_id - enhanced approach
       let segmento_id = item.segmento_id;
@@ -182,6 +194,8 @@ export const getMarketplaceProducts = async (categoria?: string): Promise<Market
         segmento_id: segmento_id,
         imagens,
         imagemPrincipal,
+        imagemUrl: imagemPrincipal, // FIXED: Add compatibility property
+        imagem_url: imagemPrincipal, // FIXED: Add compatibility property
         estoque: item.estoque,
         vendedor_id: item.vendedor_id,
         vendedor_nome: item.vendedores?.nome_loja || 'Loja não identificada',
@@ -250,27 +264,37 @@ export const getMarketplaceProductById = async (id: string): Promise<Marketplace
     
     if (!data) return null;
     
-    // Parse and ensure imagens is an array of strings
+    // Parse and ensure imagens is an array of strings - FIXED APPROACH
     let imagens: string[] = [];
+    
+    console.log(`[getMarketplaceProductById] Processing images for product ${data.id}:`, data.imagens);
     
     if (data.imagens) {
       if (typeof data.imagens === 'string') {
         try {
           const parsedImages = JSON.parse(data.imagens);
           imagens = Array.isArray(parsedImages) 
-            ? parsedImages.map(img => String(img))
+            ? parsedImages.filter(img => typeof img === 'string' && img.trim() !== '')
             : [];
         } catch (e) {
           console.error(`[getMarketplaceProductById] Error parsing imagens:`, e);
           imagens = [];
         }
       } else if (Array.isArray(data.imagens)) {
-        imagens = data.imagens.map(img => String(img));
+        imagens = data.imagens
+          .filter(img => img && typeof img === 'string' && img.trim() !== '')
+          .map(img => String(img));
       }
     }
     
     // Find the primary image or first available
     const imagemPrincipal = imagens.length > 0 ? imagens[0] : null;
+    
+    console.log(`[getMarketplaceProductById] Product ${data.id} final images:`, { 
+      imagens, 
+      imagemPrincipal,
+      originalImagens: data.imagens 
+    });
     
     // If segmento_id is null but segmento name exists, try to find matching segment ID
     let segmento_id = data.segmento_id;
@@ -310,6 +334,8 @@ export const getMarketplaceProductById = async (id: string): Promise<Marketplace
       segmento_id: segmento_id,
       imagens,
       imagemPrincipal,
+      imagemUrl: imagemPrincipal, // FIXED: Add compatibility property
+      imagem_url: imagemPrincipal, // FIXED: Add compatibility property
       estoque: data.estoque,
       vendedor_id: data.vendedor_id,
       vendedor_nome: data.vendedores?.nome_loja || 'Loja não identificada',

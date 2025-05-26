@@ -50,11 +50,40 @@ export const getAdminProducts = async (status?: string): Promise<AdminProduct[]>
     
     // Transform data to AdminProduct format
     const productsWithVendorInfo = (data || []).map(item => {
-      // Get the first image URL from the images array if available
+      // FIXED: Better image URL extraction with validation
       let imageUrl = null;
-      if (item.imagens && Array.isArray(item.imagens) && item.imagens.length > 0) {
-        imageUrl = item.imagens[0];
+      let imagens: string[] = [];
+      
+      console.log(`[getAdminProducts] Processing images for product ${item.id}:`, item.imagens);
+      
+      if (item.imagens) {
+        if (typeof item.imagens === 'string') {
+          try {
+            const parsedImages = JSON.parse(item.imagens);
+            if (Array.isArray(parsedImages)) {
+              imagens = parsedImages
+                .filter(img => img && typeof img === 'string' && img.trim() !== '')
+                .map(img => String(img));
+              imageUrl = imagens.length > 0 ? imagens[0] : null;
+            }
+          } catch (e) {
+            console.error(`[getAdminProducts] Error parsing imagens for product ${item.id}:`, e);
+            imagens = [];
+            imageUrl = null;
+          }
+        } else if (Array.isArray(item.imagens)) {
+          imagens = item.imagens
+            .filter(img => img && typeof img === 'string' && img.trim() !== '')
+            .map(img => String(img));
+          imageUrl = imagens.length > 0 ? imagens[0] : null;
+        }
       }
+      
+      console.log(`[getAdminProducts] Product ${item.id} final images:`, { 
+        imageUrl, 
+        imagens,
+        originalImagens: item.imagens 
+      });
       
       // Use vendedor name from join with vendedores table
       // Use a type assertion to tell TypeScript about the structure
@@ -68,7 +97,7 @@ export const getAdminProducts = async (status?: string): Promise<AdminProduct[]>
         nome: item.nome,
         descricao: item.descricao,
         categoria: item.categoria,
-        imagemUrl: imageUrl,
+        imagemUrl: imageUrl, // FIXED: Use extracted image URL
         preco: item.preco_normal,
         preco_normal: item.preco_normal,
         preco_promocional: item.preco_promocional,
@@ -82,7 +111,7 @@ export const getAdminProducts = async (status?: string): Promise<AdminProduct[]>
         status: item.status as 'pendente' | 'aprovado' | 'inativo',
         created_at: item.created_at,
         updated_at: item.updated_at,
-        imagens: Array.isArray(item.imagens) ? item.imagens.filter(img => typeof img === 'string') : [],
+        imagens: imagens, // FIXED: Pass the filtered array of images
         vendedores: item.vendedores
       };
     });
