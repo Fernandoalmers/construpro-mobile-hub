@@ -17,14 +17,13 @@ export { default as AdminSettingsScreen } from './components/admin/settings/Admi
 export { default as AdminRewardsScreen } from './components/admin/rewards/AdminRewardsScreen';
 export { default as AdminCategoriesScreen } from './components/admin/categories/AdminCategoriesScreen';
 
-// Auth components
+// Auth
 export { AuthProvider } from './context/AuthContext';
 export { default as ProtectedRoute } from './components/auth/ProtectedRoute';
 export { default as LoginScreen } from './components/LoginScreen';
 export { default as SignUpScreen } from './components/SignupScreen';
 export { default as OnboardingScreen } from './components/OnboardingScreen';
 export { default as ProfileSelectionScreen } from './components/auth/ProfileSelectionScreen';
-export { default as ProfessionalProfileScreen } from './components/auth/ProfessionalProfileScreen';
 
 // Home
 export { default as HomeScreen } from './components/home/HomeScreen';
@@ -32,12 +31,6 @@ export { default as HomeScreen } from './components/home/HomeScreen';
 // Profile
 export { default as ProfileScreen } from './components/profile/ProfileScreen';
 export { default as UserDataScreen } from './components/profile/UserDataScreen';
-export { default as ComprasScreen } from './components/profile/ComprasScreen';
-export { default as ReviewsScreen } from './components/profile/ReviewsScreen';
-
-// Support and Scan
-export { default as SuporteScreen } from './components/support/SuporteScreen';
-export { default as EscanearScreen } from './components/scan/EscanearScreen';
 
 // Rewards
 export { default as RewardsScreen } from './components/resgates/ResgatesScreen';
@@ -76,7 +69,6 @@ export { default as NotFoundScreen } from './pages/NotFound';
 export { default as VendorDashboardScreen } from './components/vendor/VendorModeScreen';
 export { default as VendorProductsScreen } from './components/vendor/ProdutosVendorScreen';
 export { default as VendorCustomersScreen } from './components/vendor/ClientesVendorScreen';
-export { default as VendorOrderDetailScreen } from './components/vendor/VendorOrderDetailScreen';
 export { getProductSegments } from './services/admin/productSegmentsService';
 export { default as ProductSegmentSelect } from './components/vendor/ProductSegmentSelect';
 

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
@@ -13,7 +12,7 @@ import {
   NotFoundScreen, VendorDashboardScreen, VendorProductsScreen,
   VendorCustomersScreen, AuthProvider, ProtectedRoute,
   MarketplaceScreenWrapper, AdminSettingsScreen, AdminRewardsScreen, 
-  AdminCategoriesScreen, CartProvider, UserDataScreen, HistoricoResgatesScreen
+  AdminCategoriesScreen, CartProvider, UserDataScreen
 } from './imports';
 import { useAuth } from './context/AuthContext';
 import BottomTabNavigator from './components/layout/BottomTabNavigator';
@@ -33,13 +32,14 @@ import ProdutosVendorScreen from './components/vendor/ProdutosVendorScreen';
 import ProdutoScreen from './components/marketplace/ProdutoScreen';
 import OrderConfirmationScreen from './components/marketplace/OrderConfirmationScreen';
 import ProfileSelectionScreen from './components/auth/ProfileSelectionScreen';
-import ProfessionalProfileScreen from './components/auth/ProfessionalProfileScreen';
 import ReferralsScreen from './components/profile/ReferralsScreen';
-import ComprasScreen from './components/profile/ComprasScreen';
-import EscanearScreen from './components/scan/EscanearScreen';
-import SuporteScreen from './components/support/SuporteScreen';
-import ReviewsScreen from './components/profile/ReviewsScreen';
 import VendorOrderDetailScreen from './components/vendor/VendorOrderDetailScreen';
+import ResgateDetailScreen from './components/resgates/ResgateDetailScreen';
+import HistoricoResgatesScreen from './components/resgates/HistoricoResgatesScreen';
+import ComprasScreen from './components/profile/ComprasScreen';
+import SuporteScreen from './components/support/SuporteScreen';
+import EscanearScreen from './components/scan/EscanearScreen';
+import ReviewsScreen from './components/profile/ReviewsScreen';
 
 function App() {
   const location = useLocation();
@@ -86,7 +86,6 @@ function App() {
 
         {/* Authentication flow routes */}
         <Route path="/auth/profile-selection" element={<ProtectedRoute><ProfileSelectionScreen /></ProtectedRoute>} />
-        <Route path="/auth/professional-profile" element={<ProtectedRoute><ProfessionalProfileScreen /></ProtectedRoute>} />
 
         {/* Protected routes */}
         <Route path="/" element={<ProtectedRoute><HomeScreen /></ProtectedRoute>} />
@@ -116,7 +115,7 @@ function App() {
         <Route path="/rewards/detail/:id" element={<ProtectedRoute><RewardDetailScreen /></ProtectedRoute>} />
         
         {/* New Rewards Redemption Routes */}
-        <Route path="/resgate/:id" element={<ProtectedRoute><RewardDetailScreen /></ProtectedRoute>} />
+        <Route path="/resgate/:id" element={<ProtectedRoute><ResgateDetailScreen /></ProtectedRoute>} />
         <Route path="/resgates" element={<ProtectedRoute><HistoricoResgatesScreen /></ProtectedRoute>} />
         <Route path="/historico-resgates" element={<ProtectedRoute><HistoricoResgatesScreen /></ProtectedRoute>} />
         
