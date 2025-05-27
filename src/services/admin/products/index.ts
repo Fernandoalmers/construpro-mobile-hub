@@ -1,4 +1,3 @@
-
 // Re-export all admin product functions with explicit naming to avoid collisions
 
 // From API layer
@@ -21,3 +20,6 @@ export * from './adminProductRealtime';
 
 // From productApproval - these are the ones to use
 export * from './productApproval';
+
+// From updateProductStatus
+export { updateProductStatus } from './updateProductStatus';

@@ -16,7 +16,7 @@ import OrderDetailScreen from './components/profile/OrderDetailScreen';
 import RewardsScreen from './components/resgates/ResgatesScreen';
 import ReferralsScreen from './components/profile/ReferralsScreen';
 import MarketplaceScreen from './components/marketplace/MarketplaceScreen';
-import { ProductDetails } from './components/marketplace/components/ProductDetails';
+import ProductDetails from './components/marketplace/components/ProductDetails';
 import CartScreen from './components/marketplace/CartScreen';
 import CheckoutScreen from './components/marketplace/CheckoutScreen';
 import AdminDashboard from './components/admin/dashboard/AdminDashboard';
