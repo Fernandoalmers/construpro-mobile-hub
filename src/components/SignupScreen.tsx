@@ -268,7 +268,7 @@ const SignupScreen: React.FC = () => {
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="profissional" id="profissional" />
-                  <label htmlFor="profissional" className="text-sm">Profissional - Cadastre-se como profissional e acumule pontos e benefícios.</label>
+                  <label htmlFor="profissional" className="text-sm">Profissional - Acumule pontos e benefícios</label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="vendedor" id="vendedor" />
