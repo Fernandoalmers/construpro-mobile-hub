@@ -9,6 +9,7 @@ export interface UserProfile {
   telefone?: string;
   papel?: string;
   tipo_perfil?: string;
+  especialidade_profissional?: string;
   avatar?: string;
   codigo?: string;
   saldo_pontos?: number;

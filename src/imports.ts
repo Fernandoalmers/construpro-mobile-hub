@@ -23,8 +23,6 @@ export { default as ProtectedRoute } from './components/auth/ProtectedRoute';
 export { default as LoginScreen } from './components/LoginScreen';
 export { default as SignUpScreen } from './components/SignupScreen';
 export { default as OnboardingScreen } from './components/OnboardingScreen';
-export { default as ProfileSelectionScreen } from './components/auth/ProfileSelectionScreen';
-export { default as ProfessionalProfileScreen } from './components/auth/ProfessionalProfileScreen';
 
 // Home
 export { default as HomeScreen } from './components/home/HomeScreen';
@@ -38,6 +36,9 @@ export { default as ReviewsScreen } from './components/profile/ReviewsScreen';
 // Support and Scan
 export { default as SuporteScreen } from './components/support/SuporteScreen';
 export { default as EscanearScreen } from './components/scan/EscanearScreen';
+
+// Services
+export { default as ServicesScreen } from './components/services/ServicesScreen';
 
 // Rewards
 export { default as RewardsScreen } from './components/resgates/ResgatesScreen';

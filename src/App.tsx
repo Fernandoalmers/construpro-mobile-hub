@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
@@ -40,6 +39,7 @@ import EscanearScreen from './components/scan/EscanearScreen';
 import SuporteScreen from './components/support/SuporteScreen';
 import ReviewsScreen from './components/profile/ReviewsScreen';
 import VendorOrderDetailScreen from './components/vendor/VendorOrderDetailScreen';
+import ServicesScreen from './components/services/ServicesScreen';
 
 function App() {
   const location = useLocation();
@@ -73,7 +73,9 @@ function App() {
            location.pathname !== '/signup' &&
            location.pathname !== '/welcome' &&
            location.pathname !== '/onboarding' &&
-           location.pathname !== '/splash';
+           location.pathname !== '/splash' &&
+           location.pathname !== '/services' &&
+           !location.pathname.startsWith('/vendor');
   };
 
   return (
@@ -92,6 +94,9 @@ function App() {
         <Route path="/" element={<ProtectedRoute><HomeScreen /></ProtectedRoute>} />
         <Route path="/home" element={<ProtectedRoute><HomeScreen /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><ProfileScreen /></ProtectedRoute>} />
+        
+        {/* Services screen for professionals */}
+        <Route path="/services" element={<ProtectedRoute><ServicesScreen /></ProtectedRoute>} />
         
         {/* New Quick Access Routes */}
         <Route path="/compras" element={<ProtectedRoute><ComprasScreen /></ProtectedRoute>} />
