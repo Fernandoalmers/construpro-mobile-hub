@@ -52,9 +52,9 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
     if (!profiles || profiles.length === 0) {
       console.warn("⚠️ [getUserProfile] No profile found for user, creating default profile");
       
-      // Create a basic profile if none exists
-      const defaultProfile: Partial<UserProfile> = {
-        id: userData.user.id,
+      // Create a basic profile without the 'id' field (it will be set automatically)
+      const defaultProfileData = {
+        id: userData.user.id, // Explicitly set the id for profiles table
         nome: userData.user.email?.split('@')[0] || 'Usuário',
         email: userData.user.email || '',
         papel: 'consumidor',
@@ -66,13 +66,22 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
       // Try to create the profile
       const { data: newProfile, error: createError } = await supabase
         .from('profiles')
-        .insert(defaultProfile)
+        .insert(defaultProfileData)
         .select()
         .single();
 
       if (createError) {
         console.error("❌ [getUserProfile] Error creating default profile:", createError.message);
-        return defaultProfile as UserProfile;
+        // Return the default profile data even if insertion failed
+        return {
+          id: userData.user.id,
+          nome: userData.user.email?.split('@')[0] || 'Usuário',
+          email: userData.user.email || '',
+          papel: 'consumidor',
+          tipo_perfil: 'consumidor',
+          status: 'ativo',
+          saldo_pontos: 0
+        } as UserProfile;
       }
 
       console.log("✅ [getUserProfile] Created default profile for user:", userData.user.id);
