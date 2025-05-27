@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
@@ -12,7 +13,7 @@ import {
   NotFoundScreen, VendorDashboardScreen, VendorProductsScreen,
   VendorCustomersScreen, AuthProvider, ProtectedRoute,
   MarketplaceScreenWrapper, AdminSettingsScreen, AdminRewardsScreen, 
-  AdminCategoriesScreen, CartProvider, UserDataScreen
+  AdminCategoriesScreen, CartProvider, UserDataScreen, HistoricoResgatesScreen
 } from './imports';
 import { useAuth } from './context/AuthContext';
 import BottomTabNavigator from './components/layout/BottomTabNavigator';
@@ -34,6 +35,11 @@ import OrderConfirmationScreen from './components/marketplace/OrderConfirmationS
 import ProfileSelectionScreen from './components/auth/ProfileSelectionScreen';
 import ProfessionalProfileScreen from './components/auth/ProfessionalProfileScreen';
 import ReferralsScreen from './components/profile/ReferralsScreen';
+import ComprasScreen from './components/profile/ComprasScreen';
+import EscanearScreen from './components/scan/EscanearScreen';
+import SuporteScreen from './components/support/SuporteScreen';
+import ReviewsScreen from './components/profile/ReviewsScreen';
+import VendorOrderDetailScreen from './components/vendor/VendorOrderDetailScreen';
 
 function App() {
   const location = useLocation();
@@ -110,7 +116,7 @@ function App() {
         <Route path="/rewards/detail/:id" element={<ProtectedRoute><RewardDetailScreen /></ProtectedRoute>} />
         
         {/* New Rewards Redemption Routes */}
-        <Route path="/resgate/:id" element={<ProtectedRoute><ResgateDetailScreen /></ProtectedRoute>} />
+        <Route path="/resgate/:id" element={<ProtectedRoute><RewardDetailScreen /></ProtectedRoute>} />
         <Route path="/resgates" element={<ProtectedRoute><HistoricoResgatesScreen /></ProtectedRoute>} />
         <Route path="/historico-resgates" element={<ProtectedRoute><HistoricoResgatesScreen /></ProtectedRoute>} />
         
