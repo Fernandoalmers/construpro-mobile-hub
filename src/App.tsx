@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
@@ -33,6 +34,7 @@ import ProdutoScreen from './components/marketplace/ProdutoScreen';
 import OrderConfirmationScreen from './components/marketplace/OrderConfirmationScreen';
 import ProfileSelectionScreen from './components/auth/ProfileSelectionScreen';
 import ProfessionalProfileScreen from './components/auth/ProfessionalProfileScreen';
+import ForgotPasswordScreen from './components/auth/ForgotPasswordScreen';
 import ReferralsScreen from './components/profile/ReferralsScreen';
 import ComprasScreen from './components/profile/ComprasScreen';
 import EscanearScreen from './components/scan/EscanearScreen';
@@ -71,6 +73,7 @@ function App() {
            !location.pathname.includes('/auth/') &&
            location.pathname !== '/login' &&
            location.pathname !== '/signup' &&
+           location.pathname !== '/recuperar-senha' &&
            location.pathname !== '/welcome' &&
            location.pathname !== '/onboarding' &&
            location.pathname !== '/splash' &&
@@ -84,6 +87,7 @@ function App() {
         {/* Public routes */}
         <Route path="/login" element={<LoginScreen />} />
         <Route path="/signup" element={<SignUpScreen />} />
+        <Route path="/recuperar-senha" element={<ForgotPasswordScreen />} />
         <Route path="/onboarding" element={<OnboardingScreen />} />
 
         {/* Authentication flow routes */}
