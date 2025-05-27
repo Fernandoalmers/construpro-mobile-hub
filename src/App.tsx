@@ -1,3 +1,4 @@
+
 import React from 'react';
 import {
   createBrowserRouter,
@@ -5,67 +6,65 @@ import {
 } from "react-router-dom";
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './hooks/use-cart';
-import { Home } from './pages/Home';
-import { Login } from './pages/Login';
-import { Register } from './pages/Register';
-import { Profile } from './pages/Profile';
-import { EditAddress } from './components/profile/EditAddress';
-import { AddAddress } from './components/profile/AddAddress';
-import { AddressList } from './components/profile/AddressList';
-import { OrdersScreen } from './components/profile/OrdersScreen';
-import { OrderDetailsScreen } from './components/profile/OrderDetailsScreen';
-import { RewardsScreen } from './components/profile/RewardsScreen';
-import { ReferralsScreen } from './components/profile/ReferralsScreen';
-import { MarketplaceScreen } from './components/marketplace/MarketplaceScreen';
-import { ProductDetails } from './components/marketplace/ProductDetails';
-import { CartScreen } from './components/marketplace/CartScreen';
-import { CheckoutScreen } from './components/marketplace/CheckoutScreen';
-import { AdminDashboard } from './components/admin/AdminDashboard';
+import { HomeScreen } from './components/home/HomeScreen';
+import LoginScreen from './components/LoginScreen';
+import SignUpScreen from './components/SignupScreen';
+import ProfileScreen from './components/profile/ProfileScreen';
+import AddressScreen from './components/profile/AddressScreen';
+import OrdersScreen from './components/profile/OrdersScreen';
+import OrderDetailScreen from './components/profile/OrderDetailScreen';
+import RewardsScreen from './components/resgates/ResgatesScreen';
+import ReferralsScreen from './components/profile/ReferralsScreen';
+import MarketplaceScreen from './components/marketplace/MarketplaceScreen';
+import { ProductDetails } from './components/marketplace/components/ProductDetails';
+import CartScreen from './components/marketplace/CartScreen';
+import CheckoutScreen from './components/marketplace/CheckoutScreen';
+import { AdminDashboard } from './components/admin/dashboard/AdminDashboard';
 import { AdminProductsScreen } from './components/admin/products/AdminProductsScreen';
-import { AdminUsersScreen } from './components/admin/AdminUsersScreen';
-import { AdminStoresScreen } from './components/admin/AdminStoresScreen';
-import { AdminRedemptionsScreen } from './components/admin/AdminRedemptionsScreen';
-import { AdminRewardsScreen } from './components/admin/AdminRewardsScreen';
-import { AdminCategoriesScreen } from './components/admin/AdminCategoriesScreen';
-import { AdminOrdersScreen } from './components/admin/orders/AdminOrdersScreen';
-import { AdminLogsScreen } from './components/admin/AdminLogsScreen';
-import { AdminSettingsScreen } from './components/admin/AdminSettingsScreen';
-import { ProfessionalProfileScreen } from './components/auth/ProfessionalProfileScreen';
-import { ServicesScreen } from './components/services/ServicesScreen';
-import { AdminCouponsScreen } from './components/admin/coupons/AdminCouponsScreen';
+import { AdminUsersScreen } from './components/admin/users/UserManagementScreen';
+import { AdminStoresScreen } from './components/admin/stores/StoresManagementScreen';
+import { AdminRedemptionsScreen } from './components/admin/redemptions/RedemptionsManagementScreen';
+import { AdminRewardsScreen } from './components/admin/rewards/AdminRewardsScreen';
+import { AdminCategoriesScreen } from './components/admin/categories/AdminCategoriesScreen';
+import { AdminOrdersScreen } from './components/admin/orders/OrdersManagementScreen';
+import AdminLogsScreen from './components/admin/AdminLogs';
+import { AdminSettingsScreen } from './components/admin/settings/AdminSettingsScreen';
+import ProfessionalProfileScreen from './components/auth/ProfessionalProfileScreen';
+import ServicesScreen from './components/services/ServicesScreen';
+import AdminCouponsScreen from './components/admin/coupons/AdminCouponsScreen';
 
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <Home />,
+    element: <HomeScreen />,
   },
   {
     path: "/home",
-    element: <Home />,
+    element: <HomeScreen />,
   },
   {
     path: "/login",
-    element: <Login />,
+    element: <LoginScreen />,
   },
   {
     path: "/register",
-    element: <Register />,
+    element: <SignUpScreen />,
   },
   {
     path: "/profile",
-    element: <Profile />,
+    element: <ProfileScreen />,
   },
   {
     path: "/profile/address",
-    element: <AddressList />,
+    element: <AddressScreen />,
   },
   {
     path: "/profile/address/add",
-    element: <AddAddress />,
+    element: <AddressScreen />,
   },
   {
     path: "/profile/address/:id",
-    element: <EditAddress />,
+    element: <AddressScreen />,
   },
   {
     path: "/profile/orders",
@@ -73,7 +72,7 @@ const router = createBrowserRouter([
   },
    {
     path: "/profile/orders/:id",
-    element: <OrderDetailsScreen />,
+    element: <OrderDetailScreen />,
   },
   {
     path: "/profile/rewards",

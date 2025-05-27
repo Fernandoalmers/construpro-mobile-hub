@@ -42,7 +42,10 @@ export const couponsService = {
       .order('created_at', { ascending: false });
     
     if (error) throw error;
-    return data || [];
+    return (data || []).map(coupon => ({
+      ...coupon,
+      discount_type: coupon.discount_type as 'percentage' | 'fixed'
+    }));
   },
 
   async createCoupon(coupon: Omit<Coupon, 'id' | 'used_count' | 'created_at' | 'updated_at'>): Promise<Coupon> {
@@ -53,7 +56,10 @@ export const couponsService = {
       .single();
     
     if (error) throw error;
-    return data;
+    return {
+      ...data,
+      discount_type: data.discount_type as 'percentage' | 'fixed'
+    };
   },
 
   async updateCoupon(id: string, updates: Partial<Coupon>): Promise<Coupon> {
@@ -65,7 +71,10 @@ export const couponsService = {
       .single();
     
     if (error) throw error;
-    return data;
+    return {
+      ...data,
+      discount_type: data.discount_type as 'percentage' | 'fixed'
+    };
   },
 
   async deleteCoupon(id: string): Promise<void> {
