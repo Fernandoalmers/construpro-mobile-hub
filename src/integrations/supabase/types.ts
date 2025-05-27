@@ -1086,6 +1086,7 @@ export type Database = {
           created_at: string
           email: string | null
           endereco_principal: Json | null
+          especialidade_profissional: string | null
           favoritos: string[] | null
           historico_navegacao: string[] | null
           id: string
@@ -1105,6 +1106,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           endereco_principal?: Json | null
+          especialidade_profissional?: string | null
           favoritos?: string[] | null
           historico_navegacao?: string[] | null
           id: string
@@ -1124,6 +1126,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           endereco_principal?: Json | null
+          especialidade_profissional?: string | null
           favoritos?: string[] | null
           historico_navegacao?: string[] | null
           id?: string

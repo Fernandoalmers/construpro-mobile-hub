@@ -264,15 +264,15 @@ const SignupScreen: React.FC = () => {
               >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="consumidor" id="consumidor" />
-                  <label htmlFor="consumidor">Consumidor</label>
+                  <label htmlFor="consumidor" className="text-sm">Consumidor - Comprar produtos e acumular pontos</label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="profissional" id="profissional" />
-                  <label htmlFor="profissional">Profissional</label>
+                  <label htmlFor="profissional" className="text-sm">Profissional - Oferecer serviços especializados</label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="vendedor" id="vendedor" />
-                  <label htmlFor="vendedor">Vendedor</label>
+                  <label htmlFor="vendedor" className="text-sm">Vendedor - Vender produtos no marketplace</label>
                 </div>
               </RadioGroup>
             </div>
