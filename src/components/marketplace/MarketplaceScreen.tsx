@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useProductFilter } from '@/hooks/use-product-filter';
@@ -60,7 +61,16 @@ const MarketplaceScreen: React.FC = () => {
     
     // Log products availability for debugging
     console.log('[MarketplaceScreen] Products loaded for ALL users:', products.length);
-  }, [categoryParam, segmentIdParam, searchQuery, products.length]);
+    
+    // If no products are showing, add additional debugging
+    if (products.length === 0 && !isLoading) {
+      console.warn('[MarketplaceScreen] NO PRODUCTS FOUND! This could indicate:');
+      console.warn('1. No approved products in database');
+      console.warn('2. Segment filter is too restrictive');
+      console.warn('3. Database connection issue');
+      console.warn('4. RLS policy blocking access');
+    }
+  }, [categoryParam, segmentIdParam, searchQuery, products.length, isLoading]);
   
   // Fetch segments for filter options
   useEffect(() => {
@@ -111,21 +121,11 @@ const MarketplaceScreen: React.FC = () => {
   useEffect(() => {
     if (products.length > 0) {
       console.log('[MarketplaceScreen] Products loaded and accessible to ALL users:', products.length);
-      console.log('[MarketplaceScreen] Sample product for store debugging:', products[0]);
-      
-      // Debug store IDs in products
-      const storeIds = products.map(p => ({
-        name: p.nome,
-        vendedor_id: p.vendedor_id,
-        loja_id: p.loja_id,
-        stores: p.stores?.id
-      }));
-      console.log('[MarketplaceScreen] Store IDs in products:', storeIds.slice(0, 5));
+      console.log('[MarketplaceScreen] Sample product for debugging:', products[0]);
     }
     
     if (stores.length > 0) {
       console.log('[MarketplaceScreen] Stores loaded:', stores.length);
-      console.log('[MarketplaceScreen] Store IDs:', stores.map(s => s.id));
     }
   }, [products, stores]);
 
@@ -213,10 +213,10 @@ const MarketplaceScreen: React.FC = () => {
     
     try {
       const { data, error } = await supabase
-        .from('produtos') // Changed from 'products' to 'produtos'
+        .from('produtos')
         .select('id')
         .ilike('nome', `%${term}%`)
-        .eq('status', 'aprovado') // Only search approved products
+        .eq('status', 'aprovado')
         .limit(1)
         .single();
       
@@ -312,7 +312,7 @@ const MarketplaceScreen: React.FC = () => {
       {/* Product List */}
       <div className="px-2 py-2 flex-1">
         {isLoading ? (
-          <LoadingState type="spinner" text="Carregando produtos para todos os usuários..." count={3} />
+          <LoadingState type="spinner" text="Carregando produtos..." count={3} />
         ) : (
           <ProductListSection 
             displayedProducts={displayedProducts}

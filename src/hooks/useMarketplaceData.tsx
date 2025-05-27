@@ -1,6 +1,5 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { getProducts } from '@/services/productService';
 import { getStores, Store } from '@/services/marketplace/marketplaceService';
 import { toast } from '@/components/ui/sonner';
 import { getProductSegments } from '@/services/admin/productSegmentsService';
@@ -61,6 +60,17 @@ export function useMarketplaceData(selectedSegmentId: string | null): Marketplac
         // Fetch products using improved marketplace service - NO user restrictions
         const productsData = await getMarketplaceProducts();
         console.log('[useMarketplaceData] Fetched products:', productsData.length);
+        
+        // Add debug logging for each product
+        if (productsData.length > 0) {
+          console.log('[useMarketplaceData] Sample products:', productsData.slice(0, 3).map(p => ({
+            id: p.id,
+            nome: p.nome,
+            status: p.status,
+            segmento_id: p.segmento_id
+          })));
+        }
+        
         setProducts(productsData);
         
         // Fetch stores
@@ -68,14 +78,16 @@ export function useMarketplaceData(selectedSegmentId: string | null): Marketplac
           const storesData = await getStores();
           console.log('[useMarketplaceData] Fetched stores:', storesData.length);
           setStores(storesData);
+          setStoresError(null);
         } catch (storeError) {
           console.error('[useMarketplaceData] Error fetching stores:', storeError);
           setStoresError((storeError as Error).message || 'Erro ao carregar lojas');
-          toast.error('Erro ao carregar lojas');
+          // Don't show toast error for stores as it's not critical
         }
       } catch (error) {
         console.error('[useMarketplaceData] Error fetching data:', error);
-        toast.error('Erro ao carregar dados');
+        toast.error('Erro ao carregar dados do marketplace');
+        setProducts([]); // Ensure we have an empty array on error
       } finally {
         setIsLoading(false);
       }
@@ -84,7 +96,7 @@ export function useMarketplaceData(selectedSegmentId: string | null): Marketplac
     fetchData();
   }, []);
   
-  // Enhanced and more aggressive product filtering for segments
+  // Enhanced product filtering for segments
   const filteredProducts = useMemo(() => {
     if (!selectedSegmentId || selectedSegmentId === 'all') {
       console.log('[useMarketplaceData] No segment filter applied, returning all products:', products.length);
@@ -96,26 +108,7 @@ export function useMarketplaceData(selectedSegmentId: string | null): Marketplac
     
     console.log(`[useMarketplaceData] Filtering by segment: ID=${selectedSegmentId}, Name=${selectedSegmentName}`);
     
-    // Keywords that could indicate a product belongs to a segment (for fuzzy matching)
-    const segmentKeywords: Record<string, string[]> = {
-      'Materiais de Construção': ['material', 'construção', 'construcao', 'cimento', 'tijolo', 'areia', 'brita'],
-      'Elétrica': ['eletrica', 'elétrica', 'eletrico', 'elétrico', 'luz', 'lampada', 'lâmpada', 'fio', 'tomada', 'interruptor', 'disjuntor'],
-      'Hidráulica': ['hidraulica', 'hidráulica', 'agua', 'água', 'cano', 'tubo', 'torneira', 'pia', 'encanamento'],
-      'Marmoraria': ['marmor', 'mármore', 'granito', 'pedra', 'bancada'],
-      'Equipamentos': ['equipamento', 'máquina', 'maquina', 'ferramenta', 'aluguel'],
-      'Profissionais': ['profissional', 'serviço', 'servico', 'mão de obra', 'mao de obra']
-    };
-    
-    // Define keywords for the selected segment
-    const currentSegmentKeywords = Object.entries(segmentKeywords).find(([name]) => 
-      selectedSegmentName && name.toLowerCase().includes(selectedSegmentName.toLowerCase())
-    )?.[1] || [];
-    
-    if (currentSegmentKeywords.length > 0) {
-      console.log('[useMarketplaceData] Using keywords for fuzzy matching:', currentSegmentKeywords);
-    }
-
-    return products.filter(product => {
+    const filtered = products.filter(product => {
       // Direct match by segment ID (primary way)
       if (product.segmento_id === selectedSegmentId) {
         return true;
@@ -127,43 +120,11 @@ export function useMarketplaceData(selectedSegmentId: string | null): Marketplac
         return true;
       }
       
-      // Category match (more relaxed)
-      const productCategoryLower = (product.categoria || '').toLowerCase();
-      
-      // If we have the selected segment name, check for category match with segment name
-      if (selectedSegmentName && productCategoryLower.includes(selectedSegmentName.toLowerCase())) {
-        console.log(`[useMarketplaceData] Product ${product.id} matched by category: ${product.categoria}`);
-        return true;
-      }
-      
-      // Keyword-based matching (fuzzy match)
-      if (productCategoryLower && currentSegmentKeywords.length > 0) {
-        for (const keyword of currentSegmentKeywords) {
-          if (productCategoryLower.includes(keyword)) {
-            console.log(`[useMarketplaceData] Product ${product.id} matched by keyword '${keyword}' in category: ${product.categoria}`);
-            return true;
-          }
-          
-          // Also check in product name and description for more aggressive matching
-          const productNameLower = (product.nome || '').toLowerCase();
-          const productDescLower = (product.descricao || '').toLowerCase();
-          
-          if (productNameLower.includes(keyword) || productDescLower.includes(keyword)) {
-            console.log(`[useMarketplaceData] Product ${product.id} matched by keyword '${keyword}' in name/description`);
-            return true;
-          }
-        }
-      }
-      
-      // Special case handling for common categories
-      if (selectedSegmentName === "Materiais de Construção" && 
-          (productCategoryLower.includes("material") || productCategoryLower.includes("construção") || 
-           productCategoryLower.includes("construcao"))) {
-        return true;
-      }
-      
       return false;
     });
+    
+    console.log(`[useMarketplaceData] Filtered ${filtered.length} products from ${products.length} total`);
+    return filtered;
   }, [products, selectedSegmentId, segments]);
   
   // Add detailed logging to help debug filtering
@@ -177,10 +138,10 @@ export function useMarketplaceData(selectedSegmentId: string | null): Marketplac
         `Selected segment: ${selectedSegment?.nome || 'Unknown'} (${selectedSegmentId})`
       );
       
-      if (filteredProducts.length === 0) {
+      if (filteredProducts.length === 0 && products.length > 0) {
         console.log('[useMarketplaceData] WARNING: No products matched the segment filter!');
         console.log('[useMarketplaceData] Sample of available products:', 
-          products.slice(0, 5).map(p => ({
+          products.slice(0, 3).map(p => ({
             id: p.id,
             nome: p.nome, 
             segmento_id: p.segmento_id,
