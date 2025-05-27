@@ -4,7 +4,6 @@ import { ArrowLeft, Upload, X, Save, Eye } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { saveVendorProduct } from '@/services/vendor/products/productOperations';
 import { uploadProductImage } from '@/services/products/images/imageUpload';
-import { getProductSegments } from '@/services/admin/productSegmentsService';
 import ProductSegmentSelect from './ProductSegmentSelect';
 
 interface ProductFormScreenProps {
@@ -21,7 +20,6 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
-  const [segments, setSegments] = useState<any[]>([]);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -42,20 +40,6 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
   // Separate state for image files and previews
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
-
-  // Load segments
-  useEffect(() => {
-    const loadSegments = async () => {
-      try {
-        const segmentsData = await getProductSegments();
-        setSegments(segmentsData);
-      } catch (error) {
-        console.error('Error loading segments:', error);
-        toast.error('Erro ao carregar segmentos');
-      }
-    };
-    loadSegments();
-  }, []);
 
   // Initialize form data
   useEffect(() => {
@@ -354,16 +338,10 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
           <div className="mt-4">
             <label className="block text-sm font-medium mb-2">Segmento</label>
             <ProductSegmentSelect
-              segments={segments}
-              value={formData.segmento_id}
-              onChange={(segmentId) => {
-                handleInputChange('segmento_id', segmentId);
-                // Find the segment name based on the ID
-                const selectedSegment = segments.find(s => s.id === segmentId);
-                if (selectedSegment) {
-                  handleInputChange('segmento', selectedSegment.nome);
-                }
-              }}
+              value={formData.segmento}
+              onChange={(segmentName) => handleInputChange('segmento', segmentName)}
+              onSegmentIdChange={(segmentId) => handleInputChange('segmento_id', segmentId)}
+              initialSegmentId={formData.segmento_id}
             />
           </div>
         </div>
