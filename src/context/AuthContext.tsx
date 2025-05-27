@@ -51,7 +51,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log("🔄 [AuthProvider] Auth state changed:", event, "User:", newSession?.user?.id);
         
         if (newSession?.user) {
-          console.log("👤 [AuthProvider] User metadata:", newSession.user.raw_user_meta_data);
+          console.log("👤 [AuthProvider] User metadata:", newSession.user.user_metadata);
         }
         
         setSession(newSession);

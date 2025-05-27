@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export interface UserProfile {
@@ -37,7 +36,7 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
     }
 
     console.log(`🔍 [getUserProfile] Fetching profile for user: ${userData.user.id}`);
-    console.log(`📋 [getUserProfile] User metadata:`, userData.user.raw_user_meta_data);
+    console.log(`📋 [getUserProfile] User metadata:`, userData.user.user_metadata);
 
     const { data: profiles, error } = await supabase
       .from('profiles')
@@ -54,7 +53,7 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
       console.warn("⚠️ [getUserProfile] No profile found for user, creating profile based on auth data");
       
       // Get metadata from the authenticated user
-      const metadata = userData.user.raw_user_meta_data || {};
+      const metadata = userData.user.user_metadata || {};
       
       // Create profile data based on the user's signup metadata
       const profileData = {
