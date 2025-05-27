@@ -200,7 +200,7 @@ const SignupScreen: React.FC = () => {
                 </div>
               </div>
               <p className="text-sm text-gray-600">
-                Concordo com os Termos de Uso e Política de Privacidade do ConstruPro+
+                Concordo com os Termos de Uso e Política de Privacidade da Matershop
               </p>
             </div>
 
