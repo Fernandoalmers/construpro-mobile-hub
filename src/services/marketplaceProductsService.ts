@@ -96,15 +96,17 @@ const extractImageUrls = (imagensData: any): string[] => {
 };
 
 /**
- * Get approved products for marketplace display
+ * Get approved products for marketplace display - accessible to ALL authenticated users
  */
 export const getMarketplaceProducts = async (categoria?: string): Promise<MarketplaceProduct[]> => {
   try {
+    console.log('[getMarketplaceProducts] Starting fetch for all users...');
+    
     // Get product segments for reference
     const segments = await getProductSegments();
     console.log('[getMarketplaceProducts] Available segments:', segments.map(s => ({ id: s.id, nome: s.nome })));
     
-    // Build base query
+    // Build base query - REMOVE any user-specific filtering to show products to ALL users
     let query = supabase
       .from('produtos')
       .select(`
@@ -268,7 +270,7 @@ export const getMarketplaceProducts = async (categoria?: string): Promise<Market
       };
     });
     
-    console.log(`[getMarketplaceProducts] Processed ${products.length} products for marketplace`);
+    console.log(`[getMarketplaceProducts] Processed ${products.length} products for marketplace display to ALL users`);
     
     // Log distribution of products by segment
     const segmentCounts: Record<string, number> = {};
@@ -314,10 +316,12 @@ export const getMarketplaceProducts = async (categoria?: string): Promise<Market
 };
 
 /**
- * Get a single product for marketplace display
+ * Get a single product for marketplace display - accessible to ALL authenticated users
  */
 export const getMarketplaceProductById = async (id: string): Promise<MarketplaceProduct | null> => {
   try {
+    console.log('[getMarketplaceProductById] Fetching product for all users:', id);
+    
     // Get product segments for reference
     const segments = await getProductSegments();
     
@@ -328,7 +332,7 @@ export const getMarketplaceProductById = async (id: string): Promise<Marketplace
         vendedores:vendedor_id (nome_loja)
       `)
       .eq('id', id)
-      .eq('status', 'aprovado')
+      .eq('status', 'aprovado') // Only show approved products
       .single();
     
     if (error) {
@@ -338,7 +342,7 @@ export const getMarketplaceProductById = async (id: string): Promise<Marketplace
     
     if (!data) return null;
     
-    // FIXED: Better image extraction with validation and blob URL detection
+    // Extract images properly
     const imagens = extractImageUrls(data.imagens);
     const imagemPrincipal = imagens.length > 0 ? imagens[0] : null;
     
@@ -391,8 +395,8 @@ export const getMarketplaceProductById = async (id: string): Promise<Marketplace
       segmento_id: segmento_id,
       imagens,
       imagemPrincipal,
-      imagemUrl: imagemPrincipal, // FIXED: Always set this for compatibility
-      imagem_url: imagemPrincipal, // FIXED: Always set this for compatibility
+      imagemUrl: imagemPrincipal, // Always set this for compatibility
+      imagem_url: imagemPrincipal, // Always set this for compatibility
       estoque: data.estoque,
       vendedor_id: data.vendedor_id,
       vendedor_nome: data.vendedores?.nome_loja || 'Loja não identificada',

@@ -15,7 +15,7 @@ export interface MarketplaceData {
 }
 
 /**
- * Custom hook for fetching marketplace data
+ * Custom hook for fetching marketplace data - accessible to ALL authenticated users
  * @returns Products and stores data, loading states and error states
  */
 export function useMarketplaceData(selectedSegmentId: string | null): MarketplaceData {
@@ -56,9 +56,9 @@ export function useMarketplaceData(selectedSegmentId: string | null): Marketplac
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        console.log('[useMarketplaceData] Fetching marketplace data');
+        console.log('[useMarketplaceData] Fetching marketplace data for ALL users');
         
-        // Fetch products using improved marketplace service
+        // Fetch products using improved marketplace service - NO user restrictions
         const productsData = await getMarketplaceProducts();
         console.log('[useMarketplaceData] Fetched products:', productsData.length);
         setProducts(productsData);

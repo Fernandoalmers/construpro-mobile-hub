@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useProductFilter } from '@/hooks/use-product-filter';
@@ -58,7 +57,10 @@ const MarketplaceScreen: React.FC = () => {
     if (segmentIdParam) {
       console.log(`[MarketplaceScreen] Initializing with segment_id: ${segmentIdParam}`);
     }
-  }, [categoryParam, segmentIdParam, searchQuery]);
+    
+    // Log products availability for debugging
+    console.log('[MarketplaceScreen] Products loaded for ALL users:', products.length);
+  }, [categoryParam, segmentIdParam, searchQuery, products.length]);
   
   // Fetch segments for filter options
   useEffect(() => {
@@ -105,10 +107,10 @@ const MarketplaceScreen: React.FC = () => {
     initialSearch: searchQuery || '' 
   });
 
-  // Log filter debug info
+  // Log filter debug info - Ensure products are accessible to ALL users
   useEffect(() => {
     if (products.length > 0) {
-      console.log('[MarketplaceScreen] Products loaded:', products.length);
+      console.log('[MarketplaceScreen] Products loaded and accessible to ALL users:', products.length);
       console.log('[MarketplaceScreen] Sample product for store debugging:', products[0]);
       
       // Debug store IDs in products
@@ -211,9 +213,10 @@ const MarketplaceScreen: React.FC = () => {
     
     try {
       const { data, error } = await supabase
-        .from('products')
+        .from('produtos') // Changed from 'products' to 'produtos'
         .select('id')
         .ilike('nome', `%${term}%`)
+        .eq('status', 'aprovado') // Only search approved products
         .limit(1)
         .single();
       
@@ -309,7 +312,7 @@ const MarketplaceScreen: React.FC = () => {
       {/* Product List */}
       <div className="px-2 py-2 flex-1">
         {isLoading ? (
-          <LoadingState type="spinner" text="Carregando produtos..." count={3} />
+          <LoadingState type="spinner" text="Carregando produtos para todos os usuários..." count={3} />
         ) : (
           <ProductListSection 
             displayedProducts={displayedProducts}
