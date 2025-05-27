@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Package, TruckIcon, ShoppingBag, ArrowRight, Search } from 'lucide-react';
+import { ChevronLeft, Package, TruckIcon, ShoppingBag, ArrowRight, Search, AlertTriangle } from 'lucide-react';
 import Card from '../common/Card';
 import CustomButton from '../common/CustomButton';
 import { toast } from "@/components/ui/sonner";
@@ -17,8 +17,18 @@ import ProductImage from '../admin/products/components/ProductImage';
 
 const OrdersScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [statusFilter, setStatusFilter] = useState<string>("todos");
+  
+  // Security check - redirect if not authenticated
+  React.useEffect(() => {
+    if (!isAuthenticated) {
+      console.warn("🚫 [OrdersScreen] User not authenticated, redirecting to login");
+      toast.error("Você precisa estar logado para ver seus pedidos");
+      navigate('/login');
+      return;
+    }
+  }, [isAuthenticated, navigate]);
   
   // Fetch orders from Supabase using orderService
   const { 
@@ -27,13 +37,26 @@ const OrdersScreen: React.FC = () => {
     error,
     refetch 
   } = useQuery({
-    queryKey: ['userOrders'],
+    queryKey: ['userOrders', user?.id],
     queryFn: orderService.getOrders,
     staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: isAuthenticated && !!user?.id, // Only fetch if authenticated
   });
   
+  // Log security info
+  React.useEffect(() => {
+    if (user?.id) {
+      console.log(`🔐 [OrdersScreen] Loading orders for authenticated user: ${user.id}`);
+    }
+  }, [user?.id]);
+  
   if (error) {
-    console.error('Error fetching orders:', error);
+    console.error('❌ [OrdersScreen] Error fetching orders:', error);
+  }
+  
+  // Don't render anything if not authenticated
+  if (!isAuthenticated) {
+    return <LoadingState text="Verificando autenticação..." />;
   }
   
   // Filter orders by status if not "todos"
@@ -116,6 +139,11 @@ const OrdersScreen: React.FC = () => {
             <ChevronLeft size={24} />
           </button>
           <h1 className="text-xl font-bold text-white ml-2">Meus Pedidos</h1>
+          {user?.id && (
+            <div className="ml-auto text-xs text-white opacity-75">
+              User: {user.id.substring(0, 8)}
+            </div>
+          )}
         </div>
         
         {/* Tabs - Improved for mobile view */}
@@ -147,13 +175,32 @@ const OrdersScreen: React.FC = () => {
         </div>
       </div>
       
+      {/* Security Alert for Errors */}
+      {error && (
+        <div className="p-4">
+          <Card className="p-4 border-red-200 bg-red-50">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="h-5 w-5 text-red-500" />
+              <div>
+                <h3 className="font-medium text-red-800">Erro ao carregar pedidos</h3>
+                <p className="text-sm text-red-700 mt-1">
+                  Verifique sua conexão ou tente novamente
+                </p>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+      
       {/* Orders List - Improved card design for mobile */}
       <div className="p-4 space-y-3 pb-24">
         {filteredOrders.length === 0 ? (
           <div className="text-center py-10">
             <ShoppingBag className="mx-auto text-gray-400 mb-3" size={40} />
             <h3 className="text-lg font-medium text-gray-700">Nenhum pedido encontrado</h3>
-            <p className="text-gray-500 mt-1">Você ainda não tem pedidos com este status</p>
+            <p className="text-gray-500 mt-1">
+              {error ? "Erro ao carregar pedidos" : "Você ainda não tem pedidos com este status"}
+            </p>
             {error ? (
               <CustomButton 
                 variant="primary" 

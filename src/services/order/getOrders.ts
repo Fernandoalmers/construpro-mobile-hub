@@ -8,7 +8,19 @@ export async function getOrders(): Promise<OrderData[]> {
   try {
     console.log("🔍 [orderService.getOrders] Fetching orders for current user");
     
-    // First fetch the orders
+    // Get current authenticated user
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !userData.user) {
+      console.error("❌ [orderService.getOrders] User not authenticated:", userError);
+      toast.error("Você precisa estar logado para ver seus pedidos");
+      return [];
+    }
+    
+    const userId = userData.user.id;
+    console.log(`👤 [orderService.getOrders] Fetching orders for user: ${userId}`);
+    
+    // Fetch orders ONLY for the authenticated user
     const { data: ordersData, error: ordersError } = await supabase
       .from('orders')
       .select(`
@@ -23,6 +35,7 @@ export async function getOrders(): Promise<OrderData[]> {
         updated_at,
         rastreio
       `)
+      .eq('cliente_id', userId) // CRITICAL: Filter by authenticated user ID
       .order('created_at', { ascending: false });
     
     if (ordersError) {
@@ -34,7 +47,7 @@ export async function getOrders(): Promise<OrderData[]> {
     }
     
     if (!ordersData || ordersData.length === 0) {
-      console.log("ℹ️ [orderService.getOrders] No orders found or empty result");
+      console.log("ℹ️ [orderService.getOrders] No orders found for user");
       return [];
     }
     
@@ -43,7 +56,7 @@ export async function getOrders(): Promise<OrderData[]> {
     // Get a list of order IDs to fetch items for
     const orderIds = ordersData.map(order => order.id);
     
-    // Fetch order items
+    // Fetch order items with additional security check
     const { data: itemsData, error: itemsError } = await supabase
       .from('order_items')
       .select(`
@@ -78,7 +91,8 @@ export async function getOrders(): Promise<OrderData[]> {
           descricao,
           preco_normal,
           preco_promocional,
-          categoria
+          categoria,
+          vendedor_id
         `)
         .in('id', productIds);
       
@@ -144,7 +158,7 @@ export async function getOrders(): Promise<OrderData[]> {
       };
     });
     
-    console.log(`✅ [orderService.getOrders] Retrieved ${orders.length} orders with items and images`);
+    console.log(`✅ [orderService.getOrders] Retrieved ${orders.length} orders with items and images for user ${userId}`);
     
     return orders;
   } catch (error: any) {
