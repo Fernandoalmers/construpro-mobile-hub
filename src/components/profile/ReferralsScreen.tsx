@@ -36,7 +36,7 @@ const ReferralsScreen: React.FC = () => {
 
   const handleShareWhatsApp = () => {
     if (referralData?.codigo) {
-      const message = `Venha para a ConstruPro! Use meu código ${referralData.codigo} e ganhe 50 pontos na primeira compra. https://construpro.com/convite`;
+      const message = `Venha para a Matershop! Use meu código ${referralData.codigo} e ganhe 50 pontos na primeira compra. https://matershop.com.br/convite`;
       const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
       window.open(whatsappUrl, '_blank');
     }
