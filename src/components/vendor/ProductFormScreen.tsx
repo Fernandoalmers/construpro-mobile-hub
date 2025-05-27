@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Upload, X, Save, Eye } from 'lucide-react';
@@ -357,9 +356,13 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
             <ProductSegmentSelect
               segments={segments}
               value={formData.segmento_id}
-              onChange={(segmentId, segmentName) => {
+              onChange={(segmentId) => {
                 handleInputChange('segmento_id', segmentId);
-                handleInputChange('segmento', segmentName);
+                // Find the segment name based on the ID
+                const selectedSegment = segments.find(s => s.id === segmentId);
+                if (selectedSegment) {
+                  handleInputChange('segmento', selectedSegment.nome);
+                }
               }}
             />
           </div>
