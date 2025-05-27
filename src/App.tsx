@@ -32,14 +32,8 @@ import ProdutosVendorScreen from './components/vendor/ProdutosVendorScreen';
 import ProdutoScreen from './components/marketplace/ProdutoScreen';
 import OrderConfirmationScreen from './components/marketplace/OrderConfirmationScreen';
 import ProfileSelectionScreen from './components/auth/ProfileSelectionScreen';
+import ProfessionalProfileScreen from './components/auth/ProfessionalProfileScreen';
 import ReferralsScreen from './components/profile/ReferralsScreen';
-import VendorOrderDetailScreen from './components/vendor/VendorOrderDetailScreen';
-import ResgateDetailScreen from './components/resgates/ResgateDetailScreen';
-import HistoricoResgatesScreen from './components/resgates/HistoricoResgatesScreen';
-import ComprasScreen from './components/profile/ComprasScreen';
-import SuporteScreen from './components/support/SuporteScreen';
-import EscanearScreen from './components/scan/EscanearScreen';
-import ReviewsScreen from './components/profile/ReviewsScreen';
 
 function App() {
   const location = useLocation();
@@ -86,6 +80,7 @@ function App() {
 
         {/* Authentication flow routes */}
         <Route path="/auth/profile-selection" element={<ProtectedRoute><ProfileSelectionScreen /></ProtectedRoute>} />
+        <Route path="/auth/professional-profile" element={<ProtectedRoute><ProfessionalProfileScreen /></ProtectedRoute>} />
 
         {/* Protected routes */}
         <Route path="/" element={<ProtectedRoute><HomeScreen /></ProtectedRoute>} />

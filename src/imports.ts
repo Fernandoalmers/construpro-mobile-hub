@@ -1,4 +1,3 @@
-
 // Common
 export { default as LoadingState } from './components/common/LoadingState';
 
@@ -17,13 +16,14 @@ export { default as AdminSettingsScreen } from './components/admin/settings/Admi
 export { default as AdminRewardsScreen } from './components/admin/rewards/AdminRewardsScreen';
 export { default as AdminCategoriesScreen } from './components/admin/categories/AdminCategoriesScreen';
 
-// Auth
+// Auth components
 export { AuthProvider } from './context/AuthContext';
 export { default as ProtectedRoute } from './components/auth/ProtectedRoute';
 export { default as LoginScreen } from './components/LoginScreen';
 export { default as SignUpScreen } from './components/SignupScreen';
 export { default as OnboardingScreen } from './components/OnboardingScreen';
 export { default as ProfileSelectionScreen } from './components/auth/ProfileSelectionScreen';
+export { default as ProfessionalProfileScreen } from './components/auth/ProfessionalProfileScreen';
 
 // Home
 export { default as HomeScreen } from './components/home/HomeScreen';
