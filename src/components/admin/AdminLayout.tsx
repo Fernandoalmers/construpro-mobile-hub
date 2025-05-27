@@ -6,7 +6,7 @@ import LoadingState from '@/components/common/LoadingState';
 import { 
   Users, Store, ShoppingBag, Gift, 
   Tag, FileText, LogOut, Home, 
-  BarChart3, Settings, Clock
+  BarChart3, Settings, Clock, Ticket
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
@@ -42,6 +42,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentSection }) =
     { label: 'Usuários', icon: <Users size={20} />, path: '/admin/users' },
     { label: 'Produtos', icon: <ShoppingBag size={20} />, path: '/admin/products' },
     { label: 'Lojas', icon: <Store size={20} />, path: '/admin/stores' },
+    { label: 'Cupons', icon: <Ticket size={20} />, path: '/admin/coupons' },
     { label: 'Resgates', icon: <Gift size={20} />, path: '/admin/redemptions' },
     { label: 'Recompensas', icon: <Gift size={20} />, path: '/admin/rewards' },
     { label: 'Categorias', icon: <Tag size={20} />, path: '/admin/categories' },

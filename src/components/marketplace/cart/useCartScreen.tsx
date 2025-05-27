@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -31,7 +32,7 @@ export function useCartScreen() {
 
   // Use our custom hooks
   const { storeInfo } = useStoreInfo(storeIds);
-  const { couponCode, setCouponCode, appliedCoupon, applyCoupon, removeCoupon } = useCoupon();
+  const { couponCode, setCouponCode, appliedCoupon, isValidating, applyCoupon, removeCoupon } = useCoupon();
   
   // Fix: Convert storeInfo to array if it's an object
   const storeInfoArray = Array.isArray(storeInfo) ? storeInfo : Object.values(storeInfo || {});
@@ -45,6 +46,11 @@ export function useCartScreen() {
     appliedCoupon?.discount || 0,
     cart?.summary.totalPoints
   );
+
+  // Enhanced applyCoupon function that passes order value
+  const handleApplyCoupon = useCallback((code: string) => {
+    applyCoupon(code, subtotal);
+  }, [applyCoupon, subtotal]);
 
   // Memoize the refresh cart function with a ref to avoid recreating it on every render
   const memoizedRefreshCart = useCallback(async () => {
@@ -184,6 +190,7 @@ export function useCartScreen() {
     couponCode,
     setCouponCode,
     appliedCoupon,
+    isValidating,
     subtotal,
     discount,
     shipping,
@@ -192,7 +199,7 @@ export function useCartScreen() {
     refreshCart: memoizedRefreshCart,
     handleUpdateQuantity,
     handleRemoveItem,
-    applyCoupon,
+    applyCoupon: handleApplyCoupon,
     removeCoupon
   };
 }

@@ -14,6 +14,8 @@ interface CartContentProps {
   onRemoveItem: (itemId: string) => Promise<void>;
   onApplyCoupon: (code: string) => void;
   onRemoveCoupon: () => void;
+  orderValue?: number;
+  isValidating?: boolean;
 }
 
 const CartContent: React.FC<CartContentProps> = ({
@@ -24,7 +26,9 @@ const CartContent: React.FC<CartContentProps> = ({
   onUpdateQuantity,
   onRemoveItem,
   onApplyCoupon,
-  onRemoveCoupon
+  onRemoveCoupon,
+  orderValue = 0,
+  isValidating = false
 }) => {
   // Check cart has items
   const hasItems = cart?.items && cart.items.length > 0;
@@ -98,6 +102,8 @@ const CartContent: React.FC<CartContentProps> = ({
           appliedCoupon={appliedCoupon}
           onApplyCoupon={onApplyCoupon}
           onRemoveCoupon={onRemoveCoupon}
+          orderValue={orderValue}
+          isValidating={isValidating}
         />
       )}
     </div>

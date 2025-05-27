@@ -19,6 +19,7 @@ const CartScreen: React.FC = () => {
     itemsByStore,
     processingItem,
     appliedCoupon,
+    isValidating,
     subtotal,
     discount,
     shipping,
@@ -117,6 +118,8 @@ const CartScreen: React.FC = () => {
               onRemoveItem={handleRemoveItem}
               onApplyCoupon={applyCoupon}
               onRemoveCoupon={removeCoupon}
+              orderValue={subtotal}
+              isValidating={isValidating}
             />
             
             {/* Detailed cart summary rendered at bottom of page */}
