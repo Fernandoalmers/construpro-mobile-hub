@@ -140,30 +140,52 @@ export const getProductsBySegment = async (segmentId: string): Promise<Marketpla
     
     console.log(`[marketplaceProductsService] Found ${data?.length || 0} products for segment ${segmentId}`);
     
-    return (data || []).map(product => ({
-      id: product.id,
-      nome: product.nome,
-      descricao: product.descricao,
-      categoria: product.categoria,
-      preco_normal: product.preco_normal,
-      preco_promocional: product.preco_promocional,
-      estoque: product.estoque,
-      imagens: Array.isArray(product.imagens) ? product.imagens : [],
-      status: product.status as 'pendente' | 'aprovado' | 'rejeitado',
-      pontos_consumidor: product.pontos_consumidor || 0,
-      pontos_profissional: product.pontos_profissional || 0,
-      vendedor_id: product.vendedor_id,
-      segmento_id: product.segmento_id,
-      segmento: product.segmento,
-      stores: product.vendedores ? {
-        id: product.vendedor_id,
-        nome: product.vendedores.nome_loja || '',
-        nome_loja: product.vendedores.nome_loja || '',
-        logo_url: product.vendedores.logo || ''
-      } : undefined,
-      created_at: product.created_at,
-      updated_at: product.updated_at
-    }));
+    // Apply the same data transformation as getMarketplaceProducts
+    const products: MarketplaceProduct[] = (data || []).map(product => {
+      // Process images properly
+      let processedImages: string[] = [];
+      if (product.imagens) {
+        if (Array.isArray(product.imagens)) {
+          processedImages = product.imagens.filter(img => typeof img === 'string');
+        } else if (typeof product.imagens === 'string') {
+          try {
+            const parsed = JSON.parse(product.imagens);
+            if (Array.isArray(parsed)) {
+              processedImages = parsed.filter(img => typeof img === 'string');
+            }
+          } catch (e) {
+            processedImages = [product.imagens];
+          }
+        }
+      }
+      
+      return {
+        id: product.id,
+        nome: product.nome,
+        descricao: product.descricao,
+        categoria: product.categoria,
+        preco_normal: product.preco_normal,
+        preco_promocional: product.preco_promocional,
+        estoque: product.estoque,
+        imagens: processedImages,
+        status: product.status as 'pendente' | 'aprovado' | 'rejeitado',
+        pontos_consumidor: product.pontos_consumidor || 0,
+        pontos_profissional: product.pontos_profissional || 0,
+        vendedor_id: product.vendedor_id,
+        segmento_id: product.segmento_id,
+        segmento: product.segmento,
+        stores: product.vendedores ? {
+          id: product.vendedor_id,
+          nome: product.vendedores.nome_loja || '',
+          nome_loja: product.vendedores.nome_loja || '',
+          logo_url: product.vendedores.logo || ''
+        } : undefined,
+        created_at: product.created_at,
+        updated_at: product.updated_at
+      };
+    });
+    
+    return products;
     
   } catch (error) {
     console.error('[marketplaceProductsService] Error in getProductsBySegment:', error);
