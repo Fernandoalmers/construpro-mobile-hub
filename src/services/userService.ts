@@ -37,6 +37,7 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
     }
 
     console.log(`🔍 [getUserProfile] Fetching profile for user: ${userData.user.id}`);
+    console.log(`📋 [getUserProfile] User metadata:`, userData.user.raw_user_meta_data);
 
     const { data: profiles, error } = await supabase
       .from('profiles')
@@ -50,41 +51,43 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
 
     // Handle multiple or no profiles
     if (!profiles || profiles.length === 0) {
-      console.warn("⚠️ [getUserProfile] No profile found for user, creating default profile");
+      console.warn("⚠️ [getUserProfile] No profile found for user, creating profile based on auth data");
       
-      // Create a basic profile without the 'id' field (it will be set automatically)
-      const defaultProfileData = {
-        id: userData.user.id, // Explicitly set the id for profiles table
-        nome: userData.user.email?.split('@')[0] || 'Usuário',
+      // Get metadata from the authenticated user
+      const metadata = userData.user.raw_user_meta_data || {};
+      
+      // Create profile data based on the user's signup metadata
+      const profileData = {
+        id: userData.user.id,
+        nome: metadata.nome || userData.user.email?.split('@')[0] || 'Usuário',
         email: userData.user.email || '',
-        papel: 'consumidor',
-        tipo_perfil: 'consumidor',
-        status: 'ativo',
-        saldo_pontos: 0
+        cpf: metadata.cpf || null,
+        telefone: metadata.telefone || null,
+        papel: metadata.papel || metadata.tipo_perfil || 'consumidor',
+        tipo_perfil: metadata.tipo_perfil || metadata.papel || 'consumidor',
+        especialidade_profissional: metadata.especialidade_profissional || null,
+        status: metadata.status || 'ativo',
+        saldo_pontos: parseInt(metadata.saldo_pontos) || 0
       };
+
+      console.log(`📝 [getUserProfile] Creating profile with data:`, profileData);
 
       // Try to create the profile
       const { data: newProfile, error: createError } = await supabase
         .from('profiles')
-        .insert(defaultProfileData)
+        .insert(profileData)
         .select()
         .single();
 
       if (createError) {
-        console.error("❌ [getUserProfile] Error creating default profile:", createError.message);
-        // Return the default profile data even if insertion failed
-        return {
-          id: userData.user.id,
-          nome: userData.user.email?.split('@')[0] || 'Usuário',
-          email: userData.user.email || '',
-          papel: 'consumidor',
-          tipo_perfil: 'consumidor',
-          status: 'ativo',
-          saldo_pontos: 0
-        } as UserProfile;
+        console.error("❌ [getUserProfile] Error creating profile:", createError.message);
+        console.error("📊 [getUserProfile] Error details:", createError);
+        
+        // Return the profile data even if insertion failed (fallback)
+        return profileData as UserProfile;
       }
 
-      console.log("✅ [getUserProfile] Created default profile for user:", userData.user.id);
+      console.log("✅ [getUserProfile] Successfully created profile for user:", userData.user.id);
       return newProfile as UserProfile;
     }
 
@@ -94,6 +97,8 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
 
     const profile = profiles[0];
     console.log(`✅ [getUserProfile] Retrieved profile for user: ${userData.user.id}`);
+    console.log(`👤 [getUserProfile] Profile type: ${profile.tipo_perfil}, Status: ${profile.status}`);
+    
     return profile as UserProfile;
     
   } catch (error) {

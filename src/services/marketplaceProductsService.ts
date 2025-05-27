@@ -33,7 +33,11 @@ export interface MarketplaceProduct {
  */
 export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> => {
   try {
-    console.log('[marketplaceProductsService] Fetching ALL approved products for marketplace');
+    console.log('[marketplaceProductsService] 🔍 Fetching ALL approved products for marketplace');
+    
+    // Check user authentication status for debugging
+    const { data: authData } = await supabase.auth.getUser();
+    console.log('[marketplaceProductsService] 👤 Current user:', authData.user?.id || 'anonymous');
     
     // Enhanced query to get products with store information
     const { data, error } = await supabase
@@ -50,12 +54,29 @@ export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> =>
       .order('created_at', { ascending: false });
     
     if (error) {
-      console.error('[marketplaceProductsService] Error fetching products:', error);
+      console.error('[marketplaceProductsService] ❌ Error fetching products:', error);
+      console.error('[marketplaceProductsService] 📊 Error details:', error.details);
+      console.error('[marketplaceProductsService] 💡 Error hint:', error.hint);
       toast.error('Erro ao carregar produtos');
       return [];
     }
     
-    console.log(`[marketplaceProductsService] Successfully fetched ${data?.length || 0} approved products`);
+    console.log(`[marketplaceProductsService] ✅ Successfully fetched ${data?.length || 0} approved products`);
+    
+    if (data && data.length > 0) {
+      console.log('[marketplaceProductsService] 📋 Sample products:', data.slice(0, 2).map(p => ({
+        id: p.id,
+        nome: p.nome,
+        status: p.status,
+        vendedor_id: p.vendedor_id,
+        segmento_id: p.segmento_id
+      })));
+    } else {
+      console.warn('[marketplaceProductsService] ⚠️ No products found! Possible causes:');
+      console.warn('1. No approved products in database');
+      console.warn('2. RLS policy blocking access');
+      console.warn('3. Database connection issue');
+    }
     
     // Transform data to match interface
     const products: MarketplaceProduct[] = (data || []).map(product => {
@@ -102,11 +123,11 @@ export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> =>
       };
     });
     
-    console.log(`[marketplaceProductsService] Processed ${products.length} products for marketplace display`);
+    console.log(`[marketplaceProductsService] 🔄 Processed ${products.length} products for marketplace display`);
     return products;
     
   } catch (error) {
-    console.error('[marketplaceProductsService] Unexpected error:', error);
+    console.error('[marketplaceProductsService] 💥 Unexpected error:', error);
     toast.error('Erro inesperado ao carregar produtos');
     return [];
   }
