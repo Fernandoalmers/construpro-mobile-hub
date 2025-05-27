@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,28 +5,32 @@ import { CheckCircle, Loader2, Ticket } from 'lucide-react';
 
 interface CouponSectionProps {
   appliedCoupon: {code: string, discount: number} | null;
-  onApplyCoupon: (code: string, orderValue?: number) => void;
+  onApplyCoupon: (code: string) => void;
   onRemoveCoupon: () => void;
-  orderValue?: number;
-  isValidating?: boolean;
 }
 
+// Apenas ajustando espaçamentos e tamanhos para melhor usabilidade
 const CouponSection: React.FC<CouponSectionProps> = ({ 
   appliedCoupon, 
   onApplyCoupon, 
-  onRemoveCoupon,
-  orderValue = 0,
-  isValidating = false
+  onRemoveCoupon 
 }) => {
   const [couponCode, setCouponCode] = useState('');
+  const [isApplying, setIsApplying] = useState(false);
 
   const handleApplyCoupon = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!couponCode.trim()) return;
     
-    onApplyCoupon(couponCode, orderValue);
-    setCouponCode('');
+    setIsApplying(true);
+    onApplyCoupon(couponCode);
+    
+    // Simulate network delay for better UX
+    setTimeout(() => {
+      setIsApplying(false);
+      setCouponCode('');
+    }, 600);
   };
 
   return (
@@ -62,22 +65,21 @@ const CouponSection: React.FC<CouponSectionProps> = ({
         <form onSubmit={handleApplyCoupon} className="flex gap-2">
           <Input
             value={couponCode}
-            onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+            onChange={(e) => setCouponCode(e.target.value)}
             placeholder="Digite seu cupom"
             className="h-9 text-sm"
-            disabled={isValidating}
           />
           <Button 
             type="submit" 
             variant="secondary"
             size="sm"
             className="h-9 bg-blue-100 hover:bg-blue-200 text-blue-800 whitespace-nowrap"
-            disabled={!couponCode.trim() || isValidating}
+            disabled={!couponCode.trim() || isApplying}
           >
-            {isValidating ? (
+            {isApplying ? (
               <span className="flex items-center">
                 <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                Validando...
+                Aplicando...
               </span>
             ) : (
               'Aplicar'
