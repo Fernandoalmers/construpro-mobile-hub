@@ -36,19 +36,57 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
       return null;
     }
 
-    const { data: profile, error } = await supabase
+    console.log(`🔍 [getUserProfile] Fetching profile for user: ${userData.user.id}`);
+
+    const { data: profiles, error } = await supabase
       .from('profiles')
       .select('*')
-      .eq('id', userData.user.id)
-      .single();
+      .eq('id', userData.user.id);
 
     if (error) {
       console.error("❌ [getUserProfile] Error fetching user profile:", error.message);
       return null;
     }
 
+    // Handle multiple or no profiles
+    if (!profiles || profiles.length === 0) {
+      console.warn("⚠️ [getUserProfile] No profile found for user, creating default profile");
+      
+      // Create a basic profile if none exists
+      const defaultProfile: Partial<UserProfile> = {
+        id: userData.user.id,
+        nome: userData.user.email?.split('@')[0] || 'Usuário',
+        email: userData.user.email || '',
+        papel: 'consumidor',
+        tipo_perfil: 'consumidor',
+        status: 'ativo',
+        saldo_pontos: 0
+      };
+
+      // Try to create the profile
+      const { data: newProfile, error: createError } = await supabase
+        .from('profiles')
+        .insert(defaultProfile)
+        .select()
+        .single();
+
+      if (createError) {
+        console.error("❌ [getUserProfile] Error creating default profile:", createError.message);
+        return defaultProfile as UserProfile;
+      }
+
+      console.log("✅ [getUserProfile] Created default profile for user:", userData.user.id);
+      return newProfile as UserProfile;
+    }
+
+    if (profiles.length > 1) {
+      console.warn(`⚠️ [getUserProfile] Multiple profiles found (${profiles.length}), using the first one`);
+    }
+
+    const profile = profiles[0];
     console.log(`✅ [getUserProfile] Retrieved profile for user: ${userData.user.id}`);
     return profile as UserProfile;
+    
   } catch (error) {
     console.error("❌ [getUserProfile] Exception:", error);
     return null;

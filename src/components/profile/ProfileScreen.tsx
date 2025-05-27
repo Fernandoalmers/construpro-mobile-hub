@@ -20,22 +20,24 @@ import {
   CreditCard,
   Users,
   Package,
-  MessageCircle
+  MessageCircle,
+  RefreshCw
 } from 'lucide-react';
 
 const ProfileScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { profile, logout } = useAuth();
+  const { profile, logout, refreshProfile, isLoading } = useAuth();
 
-  if (!profile) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h2 className="text-lg font-semibold">Carregando perfil...</h2>
-        </div>
-      </div>
-    );
-  }
+  console.log("ProfileScreen: Rendering with state:", { 
+    hasProfile: !!profile, 
+    isLoading,
+    profileId: profile?.id 
+  });
+
+  const handleRefreshProfile = async () => {
+    console.log("ProfileScreen: Refreshing profile...");
+    await refreshProfile();
+  };
 
   const handleLogout = async () => {
     try {
@@ -45,6 +47,46 @@ const ProfileScreen: React.FC = () => {
       console.error('Erro ao fazer logout:', error);
     }
   };
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4" />
+          <h2 className="text-lg font-semibold">Carregando perfil...</h2>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state if no profile after loading
+  if (!profile) {
+    return (
+      <div className="flex items-center justify-center min-h-screen p-4">
+        <div className="text-center max-w-md">
+          <User className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+          <h2 className="text-xl font-semibold mb-2">Erro ao carregar perfil</h2>
+          <p className="text-gray-600 mb-6">
+            Não foi possível carregar suas informações. Tente novamente.
+          </p>
+          <div className="space-y-3">
+            <Button onClick={handleRefreshProfile} className="w-full">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Tentar Novamente
+            </Button>
+            <Button 
+              onClick={handleLogout} 
+              variant="outline" 
+              className="w-full"
+            >
+              Sair da Conta
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const menuItems = [
     {
