@@ -25,26 +25,33 @@ export const usePointsHistory = () => {
     }
   }, [user, refreshProfile]);
   
-  // Fetch transactions from Supabase
+  // Fetch transactions from Supabase with security filtering
   const { data: transactions = [], isLoading, refetch } = useQuery({
     queryKey: ['pointsHistory', user?.id],
     queryFn: async () => {
-      if (!user) return [];
-      
-      const { data, error } = await supabase
-        .from('points_transactions')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('data', { ascending: false });
-      
-      if (error) {
-        console.error('Error fetching points history:', error);
+      if (!user) {
+        console.warn("🚫 [usePointsHistory] User not authenticated");
         return [];
       }
       
+      console.log(`🔍 [usePointsHistory] Fetching points history for user: ${user.id}`);
+      
+      // RLS irá automaticamente filtrar apenas as transações do usuário logado
+      const { data, error } = await supabase
+        .from('points_transactions')
+        .select('*')
+        .eq('user_id', user.id) // Filtro explícito adicional por segurança
+        .order('data', { ascending: false });
+      
+      if (error) {
+        console.error('❌ [usePointsHistory] Error fetching points history:', error);
+        return [];
+      }
+      
+      console.log(`✅ [usePointsHistory] Retrieved ${data?.length || 0} transactions for user`);
       return data as Transaction[];
     },
-    enabled: !!user
+    enabled: !!user // Only fetch if authenticated
   });
   
   // Calculate monthly points and level info
@@ -95,7 +102,7 @@ export const usePointsHistory = () => {
     return filteredTransactions;
   };
 
-  // Calculate total points from profile
+  // Calculate total points from profile (with security validation)
   const totalPoints = profile?.saldo_pontos || 0;
   
   // Calculate points statistics

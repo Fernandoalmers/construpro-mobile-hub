@@ -31,6 +31,7 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
   try {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {
+      console.warn("🚫 [getUserProfile] User not authenticated");
       return null;
     }
 
@@ -41,14 +42,14 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
       .single();
 
     if (error) {
-      console.error("Error fetching user profile:", error.message);
+      console.error("❌ [getUserProfile] Error fetching user profile:", error.message);
       return null;
     }
 
-    console.log("Retrieved user profile:", profile);
+    console.log(`✅ [getUserProfile] Retrieved profile for user: ${userData.user.id}`);
     return profile as UserProfile;
   } catch (error) {
-    console.error("Error in getUserProfile:", error);
+    console.error("❌ [getUserProfile] Exception:", error);
     return null;
   }
 };
@@ -57,11 +58,18 @@ export const updateUserProfile = async (profileData: Partial<UserProfile>): Prom
   try {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {
-      console.error("User not authenticated");
+      console.error("🚫 [updateUserProfile] User not authenticated");
       throw new Error("Usuário não autenticado");
     }
 
-    console.log("Updating profile with data:", profileData);
+    console.log(`🔧 [updateUserProfile] Updating profile for user: ${userData.user.id}`, profileData);
+
+    // CRÍTICO: Remover qualquer tentativa de alterar is_admin
+    if ('is_admin' in profileData) {
+      console.error("🚫 [updateUserProfile] Unauthorized attempt to change admin status");
+      delete profileData.is_admin;
+      throw new Error("Alteração de privilégios administrativos não permitida");
+    }
 
     // Get current session for auth token
     const { data: sessionData } = await supabase.auth.getSession();
@@ -82,15 +90,15 @@ export const updateUserProfile = async (profileData: Partial<UserProfile>): Prom
 
       if (response.ok) {
         const result = await response.json();
-        console.log("Profile updated via edge function:", result);
+        console.log("✅ [updateUserProfile] Profile updated via edge function:", result);
         return result.data as UserProfile;
       } else {
         const errorText = await response.text();
-        console.warn("Edge function failed:", response.status, errorText);
+        console.warn("⚠️ [updateUserProfile] Edge function failed:", response.status, errorText);
         throw new Error(`Edge function failed: ${response.status}`);
       }
     } catch (edgeFunctionError) {
-      console.warn("Edge function error, falling back to direct update:", edgeFunctionError);
+      console.warn("⚠️ [updateUserProfile] Edge function error, falling back to direct update:", edgeFunctionError);
       
       // Fallback to direct update with retry mechanism
       let retryCount = 0;
@@ -106,7 +114,7 @@ export const updateUserProfile = async (profileData: Partial<UserProfile>): Prom
             .single();
 
           if (error) {
-            console.error(`Direct update error (attempt ${retryCount + 1}):`, error);
+            console.error(`❌ [updateUserProfile] Direct update error (attempt ${retryCount + 1}):`, error);
             if (retryCount === maxRetries - 1) {
               throw new Error(`Falha ao atualizar perfil: ${error.message}`);
             }
@@ -116,10 +124,10 @@ export const updateUserProfile = async (profileData: Partial<UserProfile>): Prom
             continue;
           }
 
-          console.log("Profile updated successfully via direct update:", data);
+          console.log("✅ [updateUserProfile] Profile updated successfully via direct update:", data);
           return data as UserProfile;
         } catch (directError) {
-          console.error(`Direct update attempt ${retryCount + 1} failed:`, directError);
+          console.error(`❌ [updateUserProfile] Direct update attempt ${retryCount + 1} failed:`, directError);
           if (retryCount === maxRetries - 1) {
             throw directError;
           }
@@ -131,7 +139,7 @@ export const updateUserProfile = async (profileData: Partial<UserProfile>): Prom
 
     throw new Error("Todas as tentativas de atualização falharam");
   } catch (error) {
-    console.error("Error in updateUserProfile:", error);
+    console.error("❌ [updateUserProfile] Error:", error);
     throw error; // Re-throw to allow proper error handling in the calling component
   }
 };

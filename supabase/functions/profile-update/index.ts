@@ -27,6 +27,7 @@ interface Profile {
     estado?: string;
     cep?: string;
   };
+  // NOTA: is_admin foi removido para segurança
 }
 
 serve(async (req) => {
@@ -47,7 +48,7 @@ serve(async (req) => {
     // Get authorization token
     const authHeader = req.headers.get('authorization')
     if (!authHeader) {
-      console.error("Missing authorization header");
+      console.error("🚫 [profile-update] Missing authorization header");
       return new Response(
         JSON.stringify({ error: 'No authorization header' }),
         { status: 401, headers }
@@ -82,19 +83,19 @@ serve(async (req) => {
       },
     })
     
-    console.log("Verifying user token");
+    console.log("🔐 [profile-update] Verifying user token");
     
     // Verify user token and get user ID
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
     if (authError || !user) {
-      console.error("Auth error:", authError);
+      console.error("❌ [profile-update] Auth error:", authError);
       return new Response(
         JSON.stringify({ error: authError?.message || 'Unauthorized' }),
         { status: 401, headers }
       )
     }
     
-    console.log("User authenticated:", user.id);
+    console.log(`✅ [profile-update] User authenticated: ${user.id}`);
     
     // Handle GET request - fetch profile
     if (req.method === 'GET') {
@@ -105,14 +106,14 @@ serve(async (req) => {
         .single();
         
       if (getError) {
-        console.error("Error fetching profile:", getError);
+        console.error("❌ [profile-update] Error fetching profile:", getError);
         return new Response(
           JSON.stringify({ error: getError.message }),
           { status: 500, headers }
         )
       }
       
-      console.log("Profile fetched successfully:", profile);
+      console.log("✅ [profile-update] Profile fetched successfully");
       
       // Return profile
       return new Response(
@@ -130,19 +131,42 @@ serve(async (req) => {
       let requestData: Profile;
       try {
         requestData = await req.json();
-        console.log("Received update request:", requestData);
+        console.log("📝 [profile-update] Received update request for fields:", Object.keys(requestData));
       } catch (parseError) {
-        console.error("Error parsing request body:", parseError);
+        console.error("❌ [profile-update] Error parsing request body:", parseError);
         return new Response(
           JSON.stringify({ error: 'Invalid JSON in request body' }),
           { status: 400, headers }
         );
       }
       
+      // SEGURANÇA CRÍTICA: Verificar tentativas de alterar is_admin
+      if ('is_admin' in requestData) {
+        console.error("🚫 [profile-update] SECURITY VIOLATION: Attempt to modify admin status");
+        
+        // Log da violação de segurança
+        await adminClient.rpc('log_admin_action', {
+          action: 'security_violation',
+          entity_type: 'profile_update',
+          entity_id: user.id,
+          details: {
+            violation: 'attempted_admin_elevation',
+            user_id: user.id,
+            timestamp: new Date().toISOString(),
+            request_data: requestData
+          }
+        });
+        
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized: Cannot modify admin privileges' }),
+          { status: 403, headers }
+        );
+      }
+      
       // Create a clean update object (preventing unauthorized updates)
       const updateData: Record<string, any> = {}
       
-      // Only allow certain fields to be updated
+      // Only allow certain fields to be updated (EXCLUINDO is_admin)
       const allowedFields = [
         'nome', 'cpf', 'telefone', 'papel', 'tipo_perfil', 'avatar', 'status', 'codigo'
       ]
@@ -156,7 +180,7 @@ serve(async (req) => {
       // Special handling for avatar field
       if ('avatar' in requestData) {
         updateData.avatar = requestData.avatar;
-        console.log("Updating avatar to:", updateData.avatar);
+        console.log("📷 [profile-update] Updating avatar");
       }
       
       // Handle nested endereco_principal
@@ -181,7 +205,7 @@ serve(async (req) => {
         )
       }
       
-      console.log("Updating profile with data:", updateData);
+      console.log(`🔧 [profile-update] Updating profile with ${Object.keys(updateData).length} fields`);
       
       // Update profile using admin client to bypass RLS
       const { data: profile, error: updateError } = await adminClient
@@ -192,14 +216,14 @@ serve(async (req) => {
         .single();
         
       if (updateError) {
-        console.error("Error updating profile:", updateError);
+        console.error("❌ [profile-update] Error updating profile:", updateError);
         return new Response(
           JSON.stringify({ error: updateError.message }),
           { status: 500, headers }
         )
       }
       
-      console.log("Profile updated successfully:", profile);
+      console.log("✅ [profile-update] Profile updated successfully");
       
       // Return updated profile
       return new Response(
@@ -218,7 +242,7 @@ serve(async (req) => {
     );
     
   } catch (error) {
-    console.error("Unexpected error in profile-update:", error);
+    console.error("❌ [profile-update] Unexpected error:", error);
     return new Response(
       JSON.stringify({ error: error.message || "Erro interno do servidor" }),
       { 

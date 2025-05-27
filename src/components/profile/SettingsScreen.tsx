@@ -5,7 +5,6 @@ import { useNavigate } from 'react-router-dom';
 import { Settings, ChevronLeft, LogOut, AlertTriangle, Smartphone, Bell, Eye, Shield, HelpCircle } from 'lucide-react';
 import { toast } from "@/components/ui/sonner";
 import { Switch } from "@/components/ui/switch";
-import AdminActivation from './AdminActivation'; // Import the new component
 
 const SettingsScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -96,12 +95,6 @@ const SettingsScreen: React.FC = () => {
               <Switch checked={darkMode} onCheckedChange={toggleDarkMode} />
             </div>
           </div>
-        </div>
-
-        {/* Admin Activation Component - NEW */}
-        <div>
-          <h3 className="text-gray-500 uppercase text-xs font-semibold mb-2 px-1">Suporte</h3>
-          <AdminActivation />
         </div>
 
         <div>
