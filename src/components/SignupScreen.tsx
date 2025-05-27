@@ -145,7 +145,7 @@ const SignupScreen: React.FC = () => {
                 <Users size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                Ganhe 100 pontos ao se cadastrar com um código de indicação
+                Ganhe 50 pontos ao se cadastrar com um código de indicação
               </p>
             </div>
 
