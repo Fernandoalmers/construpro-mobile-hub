@@ -15,7 +15,16 @@ class AdminSecurityService {
   // Verificar se o usuário atual é admin de forma segura
   async isCurrentUserAdmin(): Promise<boolean> {
     try {
-      const { data, error } = await supabase.rpc('get_current_user_admin_status');
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
+        console.error('❌ [AdminSecurity] No authenticated user');
+        return false;
+      }
+
+      const { data, error } = await supabase.rpc('get_user_admin_status', {
+        user_id: userData.user.id
+      });
+      
       if (error) {
         console.error('❌ [AdminSecurity] Error checking admin status:', error);
         return false;
