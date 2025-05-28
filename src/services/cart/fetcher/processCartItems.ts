@@ -64,17 +64,35 @@ export async function processCartItems(
 
     // Transform the data to match our CartItem interface
     const cartItems: CartItem[] = items.map(item => {
-      // Extract first image from imagens array if available
+      // Safely handle imagens field with proper type checking
       let imageUrl = null;
-      if (item.produtos?.imagens && Array.isArray(item.produtos.imagens) && item.produtos.imagens.length > 0) {
-        imageUrl = item.produtos.imagens[0];
+      let imagensArray: string[] = [];
+      
+      if (item.produtos?.imagens) {
+        // Handle the Json type properly
+        if (Array.isArray(item.produtos.imagens)) {
+          imagensArray = item.produtos.imagens as string[];
+          imageUrl = imagensArray.length > 0 ? imagensArray[0] : null;
+        } else if (typeof item.produtos.imagens === 'string') {
+          try {
+            const parsed = JSON.parse(item.produtos.imagens);
+            if (Array.isArray(parsed)) {
+              imagensArray = parsed;
+              imageUrl = imagensArray.length > 0 ? imagensArray[0] : null;
+            }
+          } catch (e) {
+            console.warn('[processCartItems] Failed to parse imagens JSON:', e);
+            imagensArray = [];
+            imageUrl = null;
+          }
+        }
       }
 
       console.log('[processCartItems] Processing item:', {
         productId: item.produtos?.id,
         productName: item.produtos?.nome,
         hasImagens: !!item.produtos?.imagens,
-        imagensCount: item.produtos?.imagens?.length || 0,
+        imagensCount: imagensArray.length,
         extractedImageUrl: imageUrl,
         pontos_profissional: item.produtos?.pontos_profissional,
         pontos_consumidor: item.produtos?.pontos_consumidor
@@ -98,8 +116,8 @@ export async function processCartItems(
           preco: item.produtos.preco_promocional || item.produtos.preco_normal,
           preco_normal: item.produtos.preco_normal,
           preco_promocional: item.produtos.preco_promocional,
-          imagem_url: imageUrl,
-          imagens: item.produtos.imagens, // Add imagens array to the produto object
+          imagem_url: imageUrl || '',
+          imagens: imagensArray, // Now properly typed as string[]
           pontos: pointsForUserType, // Use calculated points for user type
           pontos_profissional: item.produtos.pontos_profissional,
           pontos_consumidor: item.produtos.pontos_consumidor,
