@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
@@ -30,7 +29,6 @@ import ProdutoFormScreen from './components/vendor/ProdutoFormScreen';
 import ClientesVendorScreen from './components/vendor/ClientesVendorScreen';
 import ConfiguracoesVendorScreen from './components/vendor/ConfiguracoesVendorScreen';
 import AjustePontosVendorScreen from './components/vendor/AjustePontosVendorScreen';
-import VendorOrdersScreen from './components/vendor/VendorOrdersScreen';
 import ProdutoScreen from './components/marketplace/ProdutoScreen';
 import OrderConfirmationScreen from './components/marketplace/OrderConfirmationScreen';
 import ProfileSelectionScreen from './components/auth/ProfileSelectionScreen';
