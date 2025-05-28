@@ -10,11 +10,21 @@ export interface CartItem {
     nome: string;
     preco: number;
     imagem_url: string;
-    imagens?: string[]; // Adicionando o array de imagens
+    imagens?: string[]; // Array de imagens do produto
     estoque: number;
     loja_id: string;
     pontos: number;
+    preco_normal?: number;
+    preco_promocional?: number;
+    pontos_profissional?: number;
+    pontos_consumidor?: number;
+    categoria?: string;
+    segmento?: string;
+    status?: string;
   };
+  cart_id?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Cart {

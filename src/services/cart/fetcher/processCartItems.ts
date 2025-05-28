@@ -2,6 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Cart, CartItem } from '@/types/cart';
 import { calculateCartSummary } from './calculateCartSummary';
+import { getProductPoints } from '@/utils/pointsCalculations';
 
 /**
  * Process cart items and calculate summary
@@ -69,6 +70,19 @@ export async function processCartItems(
         imageUrl = item.produtos.imagens[0];
       }
 
+      console.log('[processCartItems] Processing item:', {
+        productId: item.produtos?.id,
+        productName: item.produtos?.nome,
+        hasImagens: !!item.produtos?.imagens,
+        imagensCount: item.produtos?.imagens?.length || 0,
+        extractedImageUrl: imageUrl,
+        pontos_profissional: item.produtos?.pontos_profissional,
+        pontos_consumidor: item.produtos?.pontos_consumidor
+      });
+
+      // Calculate correct points for this user type
+      const pointsForUserType = getProductPoints(item.produtos, userType);
+
       return {
         id: item.id,
         cart_id: cartId,
@@ -85,7 +99,8 @@ export async function processCartItems(
           preco_normal: item.produtos.preco_normal,
           preco_promocional: item.produtos.preco_promocional,
           imagem_url: imageUrl,
-          pontos: item.produtos.pontos_consumidor || 0,
+          imagens: item.produtos.imagens, // Add imagens array to the produto object
+          pontos: pointsForUserType, // Use calculated points for user type
           pontos_profissional: item.produtos.pontos_profissional,
           pontos_consumidor: item.produtos.pontos_consumidor,
           estoque: item.produtos.estoque,
@@ -110,7 +125,9 @@ export async function processCartItems(
     console.log('[processCartItems] Cart processed successfully:', {
       itemCount: cartItems.length,
       totalPoints: summary.totalPoints,
-      userType
+      userType,
+      firstItemImageUrl: cartItems[0]?.produto?.imagem_url,
+      firstItemPoints: cartItems[0]?.produto?.pontos
     });
 
     return cart;

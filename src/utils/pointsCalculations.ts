@@ -121,24 +121,51 @@ export function calculateLevelInfo(monthlyPoints: number): LevelInfo {
  * Get correct points for a product based on user type
  */
 export function getProductPoints(product: any, userType: 'consumidor' | 'profissional' | 'lojista' | 'vendedor' = 'consumidor'): number {
-  if (!product) return 0;
-  
-  // For professional users, use pontos_profissional if available, otherwise fall back to pontos
-  if (userType === 'profissional') {
-    return product.pontos_profissional || product.pontos || 0;
+  if (!product) {
+    console.log('[getProductPoints] No product provided');
+    return 0;
   }
   
-  // For consumers and other types, use standard pontos
-  return product.pontos || 0;
+  console.log('[getProductPoints] Calculating points for product:', {
+    productId: product.id,
+    productName: product.nome,
+    userType,
+    pontos_profissional: product.pontos_profissional,
+    pontos_consumidor: product.pontos_consumidor,
+    pontos: product.pontos
+  });
+  
+  // For professional users, use pontos_profissional if available, otherwise fall back to pontos_consumidor
+  if (userType === 'profissional') {
+    const professionalPoints = product.pontos_profissional || product.pontos_consumidor || 0;
+    console.log('[getProductPoints] Professional user gets:', professionalPoints, 'points');
+    return professionalPoints;
+  }
+  
+  // For consumers and other types, use pontos_consumidor (the base points)
+  const consumerPoints = product.pontos_consumidor || product.pontos || 0;
+  console.log('[getProductPoints] Consumer/other user gets:', consumerPoints, 'points');
+  return consumerPoints;
 }
 
 /**
  * Calculate total points for cart items based on user type
  */
 export function calculateCartPoints(cartItems: any[], userType: 'consumidor' | 'profissional' | 'lojista' | 'vendedor' = 'consumidor'): number {
+  console.log('[calculateCartPoints] Calculating points for', cartItems.length, 'items, user type:', userType);
+  
   return cartItems.reduce((total, item) => {
     const product = item.produto || item;
     const pointsPerUnit = getProductPoints(product, userType);
-    return total + (pointsPerUnit * (item.quantidade || 1));
+    const itemTotal = pointsPerUnit * (item.quantidade || 1);
+    
+    console.log('[calculateCartPoints] Item:', {
+      productName: product.nome,
+      pointsPerUnit,
+      quantity: item.quantidade || 1,
+      itemTotal
+    });
+    
+    return total + itemTotal;
   }, 0);
 }
