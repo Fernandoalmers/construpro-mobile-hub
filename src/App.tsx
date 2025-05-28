@@ -76,8 +76,7 @@ function App() {
            location.pathname !== '/welcome' &&
            location.pathname !== '/onboarding' &&
            location.pathname !== '/splash' &&
-           location.pathname !== '/services' &&
-           !location.pathname.startsWith('/vendor');
+           location.pathname !== '/services';
   };
 
   return (
