@@ -37,7 +37,7 @@ const convertPedidoToVendorOrder = (pedido: Pedido): VendorOrder => {
     created_at: pedido.created_at,
     data_criacao: pedido.created_at,
     data_entrega_estimada: pedido.data_entrega_estimada,
-    rastreio: undefined, // Set to undefined since it doesn't exist in pedidos table
+    rastreio: undefined,
     cliente: pedido.cliente,
     itens: pedido.itens?.map(item => ({
       id: item.id,
