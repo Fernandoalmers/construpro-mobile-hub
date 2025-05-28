@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 
@@ -8,6 +7,15 @@ interface StoreInfo {
   nome: string;
   nome_loja: string;
   logo_url?: string;
+}
+
+// Define a separate interface for vendor information
+interface VendorInfo {
+  id: string;
+  nome_loja: string;
+  logo?: string;
+  telefone?: string;
+  email?: string;
 }
 
 // Define the Product interface
@@ -37,6 +45,7 @@ export interface Product {
   avaliacao?: number;
   num_avaliacoes?: number;
   stores?: StoreInfo;
+  vendedores?: VendorInfo;
 }
 
 // Simple database record interface to ensure type safety
