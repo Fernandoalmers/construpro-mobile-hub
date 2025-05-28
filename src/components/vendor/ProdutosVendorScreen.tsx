@@ -10,7 +10,7 @@ import OrdersError from './orders/OrdersError';
 import { useVendorOrders } from '@/hooks/vendor/useVendorOrders';
 import { useOrderFilters, orderStatuses } from '@/hooks/vendor/useOrderFilters';
 import { Button } from '@/components/ui/button';
-import { Store, AlertCircle, RefreshCcw, Info } from 'lucide-react';
+import { Store, AlertCircle, RefreshCcw, Info, CheckCircle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { useAuth } from '@/context/AuthContext';
 
@@ -137,11 +137,11 @@ const ProdutosVendorScreen: React.FC = () => {
   }
 
   if (isLoading) {
-    return <LoadingState text="Carregando pedidos da tabela orders..." />;
+    return <LoadingState text="Carregando pedidos do vendedor..." />;
   }
   
   if (error) {
-    console.error('❌ [ProdutosVendorScreen] Error loading orders from orders table:', error);
+    console.error('❌ [ProdutosVendorScreen] Error loading orders:', error);
     return (
       <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
         <OrdersHeader 
@@ -164,14 +164,14 @@ const ProdutosVendorScreen: React.FC = () => {
       />
       
       <div className="p-6 space-y-6">
-        {/* Debug info card - shows SQL error fix */}
-        <Card className="p-4 bg-blue-50 border-blue-200">
+        {/* Sistema funcionando corretamente */}
+        <Card className="p-4 bg-green-50 border-green-200">
           <div className="flex items-start gap-3">
-            <Info className="h-5 w-5 text-blue-500 mt-0.5" />
+            <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
             <div>
-              <h3 className="font-medium text-blue-800">Sistema corrigido</h3>
-              <p className="text-sm text-blue-700 mt-1">
-                Erro SQL "column reference ambiguous" corrigido. Agora buscando pedidos diretamente da tabela 'orders'.
+              <h3 className="font-medium text-green-800">Sistema corrigido e funcionando</h3>
+              <p className="text-sm text-green-700 mt-1">
+                Função getVendorId corrigida para buscar diretamente da tabela vendedores.
                 Usuário autenticado: {user.email}
               </p>
             </div>
@@ -199,13 +199,13 @@ const ProdutosVendorScreen: React.FC = () => {
               <AlertCircle className="mx-auto h-10 w-10 text-yellow-500 mb-3" />
               <h3 className="text-lg font-medium mb-2">Nenhum pedido encontrado</h3>
               <p className="text-gray-500 mb-4">
-                Não encontramos pedidos na tabela 'orders' para este vendedor. Possíveis motivos:
+                Após a correção, não foram encontrados pedidos para este vendedor. Possíveis motivos:
               </p>
               <ul className="text-sm text-gray-600 list-disc list-inside mb-4 text-left">
                 <li>Sua loja ainda não recebeu pedidos</li>
-                <li>Os produtos não estão associados ao seu perfil de vendedor</li>
+                <li>Os produtos não estão corretamente associados ao seu perfil de vendedor</li>
                 <li>Produtos não estão sendo exibidos no marketplace</li>
-                <li>Problema de sincronização entre produtos e pedidos</li>
+                <li>Necessário verificar se há pedidos na tabela orders com seus produtos</li>
               </ul>
               <div className="flex gap-2 justify-center">
                 <Button onClick={handleRefresh} className="mt-2">

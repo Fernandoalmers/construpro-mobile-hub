@@ -2,27 +2,47 @@
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Get vendor ID for the current user
+ * Get vendor ID for the current user - FIXED: Direct query instead of RPC
  */
 export const getVendorId = async (): Promise<string | null> => {
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (!user) {
-    console.error('❌ [getVendorId] No authenticated user found');
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      console.error('❌ [getVendorId] No authenticated user found');
+      return null;
+    }
+    
+    console.log('👤 [getVendorId] User authenticated:', user.id);
+    
+    // Query vendedores table directly instead of using RPC
+    const { data: vendorData, error: vendorError } = await supabase
+      .from('vendedores')
+      .select('id, status, nome_loja')
+      .eq('usuario_id', user.id)
+      .single();
+    
+    if (vendorError) {
+      console.error('❌ [getVendorId] Error fetching vendor:', vendorError);
+      return null;
+    }
+    
+    if (!vendorData) {
+      console.error('❌ [getVendorId] No vendor found for user:', user.id);
+      return null;
+    }
+    
+    console.log('🏪 [getVendorId] Vendor found:', {
+      id: vendorData.id,
+      nome_loja: vendorData.nome_loja,
+      status: vendorData.status
+    });
+    
+    return vendorData.id;
+  } catch (error) {
+    console.error('❌ [getVendorId] Unexpected error:', error);
     return null;
   }
-  
-  console.log('👤 [getVendorId] User authenticated:', user.id);
-  
-  const { data: vendorData, error: vendorError } = await supabase.rpc('get_vendor_id');
-  
-  if (vendorError || !vendorData) {
-    console.error('❌ [getVendorId] Error fetching vendor ID:', vendorError);
-    return null;
-  }
-  
-  console.log('🏪 [getVendorId] Vendor ID found:', vendorData);
-  return vendorData;
 };
 
 /**
@@ -49,7 +69,10 @@ export const getVendorProductIds = async (vendorId: string): Promise<string[]> =
  * Get order IDs that contain products from this vendor
  */
 export const getVendorOrderIds = async (vendorProductIds: string[]): Promise<string[]> => {
-  if (vendorProductIds.length === 0) return [];
+  if (vendorProductIds.length === 0) {
+    console.log('⚠️ [getVendorOrderIds] No products found for vendor, skipping order search');
+    return [];
+  }
   
   const { data: vendorOrderIds, error: orderIdsError } = await supabase
     .from('order_items')
@@ -64,6 +87,10 @@ export const getVendorOrderIds = async (vendorProductIds: string[]): Promise<str
   const uniqueOrderIds = [...new Set(vendorOrderIds?.map(item => item.order_id) || [])];
   console.log(`📦 [getVendorOrderIds] Found ${uniqueOrderIds.length} orders for vendor`);
   
+  if (uniqueOrderIds.length > 0) {
+    console.log('📋 [getVendorOrderIds] Sample order IDs:', uniqueOrderIds.slice(0, 3));
+  }
+  
   return uniqueOrderIds;
 };
 
@@ -71,9 +98,13 @@ export const getVendorOrderIds = async (vendorProductIds: string[]): Promise<str
  * Fetch orders by IDs directly from orders table - FIXED: removed ambiguous column references
  */
 export const fetchOrdersByIds = async (orderIds: string[], filters: any = {}) => {
-  if (orderIds.length === 0) return [];
+  if (orderIds.length === 0) {
+    console.log('⚠️ [fetchOrdersByIds] No order IDs provided');
+    return [];
+  }
   
   console.log(`🔍 [fetchOrdersByIds] Fetching ${orderIds.length} orders from orders table`);
+  console.log('📋 [fetchOrdersByIds] Order IDs to fetch:', orderIds.slice(0, 5));
   
   // Fixed query - removed ambiguous column references by being explicit about table
   let query = supabase
@@ -120,6 +151,17 @@ export const fetchOrdersByIds = async (orderIds: string[], filters: any = {}) =>
   }
   
   console.log(`✅ [fetchOrdersByIds] Successfully fetched ${ordersData?.length || 0} orders`);
+  
+  if (ordersData && ordersData.length > 0) {
+    console.log('📋 [fetchOrdersByIds] Sample order:', {
+      id: ordersData[0].id,
+      status: ordersData[0].status,
+      cliente_id: ordersData[0].cliente_id,
+      valor_total: ordersData[0].valor_total,
+      created_at: ordersData[0].created_at
+    });
+  }
+  
   return ordersData || [];
 };
 

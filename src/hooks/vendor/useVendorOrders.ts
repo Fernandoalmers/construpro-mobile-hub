@@ -59,7 +59,7 @@ export const useVendorOrders = () => {
   } = useQuery({
     queryKey: ['vendorOrders'],
     queryFn: async () => {
-      console.log("🔍 [useVendorOrders] Fetching vendor orders...");
+      console.log("🔍 [useVendorOrders] Starting order fetch process...");
       
       try {
         // Verify authentication before proceeding
@@ -72,8 +72,12 @@ export const useVendorOrders = () => {
         
         console.log("👤 [useVendorOrders] User verified for orders fetch:", user.id);
         
+        // Log the start of order fetching
+        console.log("📞 [useVendorOrders] Calling getVendorOrders...");
+        
         const results = await getVendorOrders();
-        console.log(`📊 [useVendorOrders] Fetched ${results.length} vendor orders`);
+        
+        console.log(`📊 [useVendorOrders] getVendorOrders returned ${results.length} results`);
         
         if (results.length > 0) {
           console.log("✅ [useVendorOrders] Sample first order:", {
@@ -81,15 +85,22 @@ export const useVendorOrders = () => {
             status: results[0]?.status,
             items_count: results[0]?.itens?.length || 0,
             customer: results[0]?.cliente?.nome,
-            total: results[0]?.valor_total
+            total: results[0]?.valor_total,
+            created_at: results[0]?.created_at
           });
+          
+          console.log("📋 [useVendorOrders] All order IDs:", results.map(o => o.id));
         } else {
-          console.log("⚠️ [useVendorOrders] No orders found - checking vendor status");
+          console.log("⚠️ [useVendorOrders] No orders found - this might indicate:");
+          console.log("   1. Vendor has no orders");
+          console.log("   2. Vendor ID lookup failed");
+          console.log("   3. Products not associated with vendor");
+          console.log("   4. Database query issue");
         }
         
         return results;
       } catch (error) {
-        console.error("🚫 [useVendorOrders] Error fetching orders:", error);
+        console.error("🚫 [useVendorOrders] Error in queryFn:", error);
         
         // Check if it's an authentication error
         if (error instanceof Error && error.message.includes('autenticado')) {
