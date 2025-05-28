@@ -62,6 +62,7 @@ const VendorOrdersScreen: React.FC = () => {
   
   // Convert pedidos to VendorOrder format for compatibility
   const orders: VendorOrder[] = React.useMemo(() => {
+    console.log('🔄 [VendorOrdersScreen] Converting pedidos to orders format:', pedidos.length);
     return pedidos.map(convertPedidoToVendorOrder);
   }, [pedidos]);
   
@@ -75,6 +76,7 @@ const VendorOrdersScreen: React.FC = () => {
   
   console.log('📊 [VendorOrdersScreen] Estado atual:', {
     pedidosCount: pedidos?.length || 0,
+    ordersCount: orders?.length || 0,
     isLoading,
     error: !!error,
     vendorProfileStatus,
@@ -200,15 +202,15 @@ const VendorOrdersScreen: React.FC = () => {
       />
       
       <div className="p-6 space-y-6">
-        {/* Sincronização implementada com sucesso */}
+        {/* Status da migração */}
         <Card className="p-4 bg-green-50 border-green-200">
           <div className="flex items-start gap-3">
             <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
             <div>
-              <h3 className="font-medium text-green-800">Sincronização Automática Implementada</h3>
+              <h3 className="font-medium text-green-800">Sistema Atualizado</h3>
               <p className="text-sm text-green-700 mt-1">
-                Sistema agora usa a tabela pedidos dedicada para vendedores. Os dados são sincronizados automaticamente 
-                da tabela orders. Usuário autenticado: {user.email}
+                Agora usando a tabela pedidos dedicada para vendedores. 
+                Usuário: {user.email} | Pedidos: {pedidos.length}
               </p>
             </div>
           </div>
@@ -222,8 +224,8 @@ const VendorOrdersScreen: React.FC = () => {
               <div className="flex-1">
                 <h3 className="font-medium text-blue-800">Migração de Dados</h3>
                 <p className="text-sm text-blue-700 mt-1">
-                  Se você não está vendo seus pedidos, pode ser necessário migrar os dados existentes 
-                  da tabela orders para a nova tabela pedidos.
+                  Se você não está vendo seus pedidos, execute a migração para transferir 
+                  os dados da tabela orders para a nova tabela pedidos.
                 </p>
                 <Button 
                   onClick={handleMigration}
@@ -262,21 +264,15 @@ const VendorOrdersScreen: React.FC = () => {
         
         {/* Orders List */}
         <div className="space-y-4">
-          <h2 className="font-bold text-lg">Lista de pedidos</h2>
+          <h2 className="font-bold text-lg">Lista de pedidos ({orders.length})</h2>
           
-          {pedidos.length === 0 && !isRefetching ? (
+          {orders.length === 0 && !isRefetching ? (
             <div className="rounded-lg border p-8 text-center">
               <AlertCircle className="mx-auto h-10 w-10 text-yellow-500 mb-3" />
               <h3 className="text-lg font-medium mb-2">Nenhum pedido encontrado</h3>
               <p className="text-gray-500 mb-4">
-                Não foram encontrados pedidos na tabela pedidos. Possíveis motivos:
+                Não foram encontrados pedidos na tabela pedidos.
               </p>
-              <ul className="text-sm text-gray-600 list-disc list-inside mb-4 text-left">
-                <li>Sua loja ainda não recebeu pedidos</li>
-                <li>Os dados ainda não foram migrados da tabela orders</li>
-                <li>É necessário executar a migração de dados</li>
-                <li>Produtos não estão associados ao seu perfil de vendedor</li>
-              </ul>
               <div className="flex gap-2 justify-center">
                 <Button 
                   onClick={handleMigration}
@@ -297,14 +293,7 @@ const VendorOrdersScreen: React.FC = () => {
                 </Button>
                 <Button onClick={handleRefresh} variant="outline" className="mt-2">
                   <RefreshCcw size={16} className="mr-1" />
-                  Atualizar pedidos
-                </Button>
-                <Button 
-                  variant="outline"
-                  onClick={() => navigate('/vendor/customers')}
-                  className="mt-2"
-                >
-                  Ver clientes
+                  Atualizar
                 </Button>
               </div>
             </div>

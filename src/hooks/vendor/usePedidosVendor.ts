@@ -60,7 +60,7 @@ export const usePedidosVendor = () => {
   } = useQuery({
     queryKey: ['vendorPedidos'],
     queryFn: async () => {
-      console.log("🔍 [usePedidosVendor] Iniciando busca de pedidos...");
+      console.log("🔍 [usePedidosVendor] Iniciando busca de pedidos da tabela pedidos...");
       
       try {
         // Verify authentication before proceeding
@@ -78,10 +78,10 @@ export const usePedidosVendor = () => {
         
         const results = await getVendorPedidos();
         
-        console.log(`📊 [usePedidosVendor] getVendorPedidos retornou ${results.length} resultados`);
+        console.log(`📊 [usePedidosVendor] getVendorPedidos retornou ${results.length} resultados da tabela pedidos`);
         
         if (results.length > 0) {
-          console.log("✅ [usePedidosVendor] Exemplo do primeiro pedido:", {
+          console.log("✅ [usePedidosVendor] Exemplo do primeiro pedido da tabela pedidos:", {
             id: results[0]?.id,
             status: results[0]?.status,
             items_count: results[0]?.itens?.length || 0,
@@ -90,9 +90,9 @@ export const usePedidosVendor = () => {
             created_at: results[0]?.created_at
           });
           
-          console.log("📋 [usePedidosVendor] Todos os IDs dos pedidos:", results.map(p => p.id));
+          console.log("📋 [usePedidosVendor] Todos os IDs dos pedidos da tabela pedidos:", results.map(p => p.id));
         } else {
-          console.log("⚠️ [usePedidosVendor] Nenhum pedido encontrado - isto pode indicar:");
+          console.log("⚠️ [usePedidosVendor] Nenhum pedido encontrado na tabela pedidos - isto pode indicar:");
           console.log("   1. Vendedor não tem pedidos na tabela pedidos");
           console.log("   2. Dados ainda não foram migrados da tabela orders");
           console.log("   3. Problema na busca do vendedor ID");
@@ -107,7 +107,7 @@ export const usePedidosVendor = () => {
         if (error instanceof Error && error.message.includes('autenticado')) {
           toast.error('Sessão expirada. Faça login novamente.');
         } else {
-          toast.error('Erro ao carregar pedidos. Tente novamente.');
+          toast.error('Erro ao carregar pedidos da tabela pedidos. Tente novamente.');
         }
         
         throw error;
@@ -136,8 +136,8 @@ export const usePedidosVendor = () => {
         return;
       }
       
-      toast.info('Atualizando lista de pedidos...');
-      console.log("🔄 [usePedidosVendor] Atualizando pedidos do vendedor manualmente");
+      toast.info('Atualizando lista de pedidos da tabela pedidos...');
+      console.log("🔄 [usePedidosVendor] Atualizando pedidos do vendedor manualmente da tabela pedidos");
       
       // Clear cache and refetch
       queryClient.invalidateQueries({ queryKey: ['vendorPedidos'] });
@@ -155,7 +155,7 @@ export const usePedidosVendor = () => {
       const result = await migrateOrdersToPedidos();
       
       if (result.success) {
-        toast.success(result.message);
+        toast.success(`Migração executada com sucesso! ${result.count} pedidos migrados.`);
         // Refresh data after migration
         setTimeout(() => {
           queryClient.invalidateQueries({ queryKey: ['vendorPedidos'] });
