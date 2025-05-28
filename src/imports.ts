@@ -1,4 +1,5 @@
 
+
 // Common
 export { default as LoadingState } from './components/common/LoadingState';
 
@@ -75,7 +76,6 @@ export { default as NotFoundScreen } from './pages/NotFound';
 
 // Vendor
 export { default as VendorDashboardScreen } from './components/vendor/VendorModeScreen';
-export { default as VendorProductsScreen } from './components/vendor/ProdutosVendorScreen';
 export { default as VendorCustomersScreen } from './components/vendor/ClientesVendorScreen';
 export { default as VendorOrderDetailScreen } from './components/vendor/VendorOrderDetailScreen';
 export { default as VendorOrdersScreen } from './components/vendor/VendorOrdersScreen';
@@ -84,3 +84,4 @@ export { default as ProductSegmentSelect } from './components/vendor/ProductSegm
 
 // Marketplace
 export { default as MarketplaceScreenWrapper } from './components/marketplace/MarketplaceScreenWrapper';
+
