@@ -18,6 +18,14 @@ import type { Pedido } from '@/services/vendor/orders/pedidosService';
 
 // Função para converter Pedido para VendorOrder
 const convertPedidoToVendorOrder = (pedido: Pedido): VendorOrder => {
+  console.log('🔄 [convertPedidoToVendorOrder] Converting pedido:', {
+    id: pedido.id,
+    valor_total: pedido.valor_total,
+    status: pedido.status,
+    cliente: pedido.cliente?.nome,
+    itens_count: pedido.itens?.length || 0
+  });
+  
   return {
     id: pedido.id,
     vendedor_id: pedido.vendedor_id,
@@ -47,7 +55,9 @@ const VendorOrdersScreen: React.FC = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   
-  // Use the pedidos hook (fixed version)
+  console.log('🚀 [VendorOrdersScreen] Component mounting/updating');
+  
+  // Use the pedidos hook (FIXED VERSION)
   const { 
     pedidos, 
     isLoading, 
@@ -60,10 +70,37 @@ const VendorOrdersScreen: React.FC = () => {
     handleMigration
   } = usePedidosVendor();
   
+  console.log('📊 [VendorOrdersScreen] Hook data:', {
+    pedidosCount: pedidos.length,
+    isLoading,
+    error: !!error,
+    vendorProfileStatus,
+    isMigrating,
+    isAuthenticated,
+    userId: user?.id
+  });
+  
   // Convert pedidos to VendorOrder format for compatibility
   const orders: VendorOrder[] = React.useMemo(() => {
-    console.log('🔄 [VendorOrdersScreen] Converting pedidos to orders format:', pedidos.length);
-    return pedidos.map(convertPedidoToVendorOrder);
+    console.log('🔄 [VendorOrdersScreen] Converting pedidos to orders format. Input pedidos:', pedidos.length);
+    
+    if (!pedidos || pedidos.length === 0) {
+      console.log('⚠️ [VendorOrdersScreen] No pedidos to convert');
+      return [];
+    }
+    
+    const convertedOrders = pedidos.map(convertPedidoToVendorOrder);
+    console.log('✅ [VendorOrdersScreen] Converted orders:', {
+      input: pedidos.length,
+      output: convertedOrders.length,
+      firstOrder: convertedOrders[0] ? {
+        id: convertedOrders[0].id,
+        valor_total: convertedOrders[0].valor_total,
+        status: convertedOrders[0].status
+      } : null
+    });
+    
+    return convertedOrders;
   }, [pedidos]);
   
   const {
@@ -74,13 +111,13 @@ const VendorOrdersScreen: React.FC = () => {
     filteredOrders
   } = useOrderFilters(orders);
   
-  console.log('📊 [VendorOrdersScreen] Estado atual:', {
+  console.log('📊 [VendorOrdersScreen] Current state after conversion:', {
     pedidosCount: pedidos?.length || 0,
     ordersCount: orders?.length || 0,
+    filteredOrdersCount: filteredOrders?.length || 0,
     isLoading,
     error: !!error,
     vendorProfileStatus,
-    filteredOrdersCount: filteredOrders?.length || 0,
     errorMessage: error?.message,
     isAuthenticated,
     userId: user?.id
@@ -95,15 +132,27 @@ const VendorOrdersScreen: React.FC = () => {
         firstPedidoStatus: pedidos[0]?.status,
         firstPedidoTotal: pedidos[0]?.valor_total,
         firstPedidoCustomer: pedidos[0]?.cliente?.nome,
-        firstPedidoItems: pedidos[0]?.itens?.length || 0
+        firstPedidoItems: pedidos[0]?.itens?.length || 0,
+        allPedidoIds: pedidos.map(p => p.id)
       });
     } else if (!isLoading && !error) {
       console.log('⚠️ [VendorOrdersScreen] Nenhum pedido encontrado na tabela pedidos mas sem erro');
     }
   }, [pedidos, isLoading, error]);
 
+  // Additional debug for orders conversion
+  React.useEffect(() => {
+    console.log('🔍 [VendorOrdersScreen] Orders effect triggered:', {
+      ordersLength: orders.length,
+      filteredOrdersLength: filteredOrders.length,
+      hasSearchTerm: !!searchTerm,
+      hasFilterStatus: !!filterStatus
+    });
+  }, [orders, filteredOrders, searchTerm, filterStatus]);
+
   // Check authentication first
   if (!isAuthenticated || !user) {
+    console.log('🚫 [VendorOrdersScreen] User not authenticated');
     return (
       <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
         <OrdersHeader 
@@ -140,6 +189,7 @@ const VendorOrdersScreen: React.FC = () => {
 
   // Show vendor profile setup message if profile is not found
   if (vendorProfileStatus === 'not_found') {
+    console.log('🚫 [VendorOrdersScreen] Vendor profile not found');
     return (
       <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
         <OrdersHeader 
@@ -175,6 +225,7 @@ const VendorOrdersScreen: React.FC = () => {
   }
 
   if (isLoading) {
+    console.log('⏳ [VendorOrdersScreen] Loading state');
     return <LoadingState text="Carregando pedidos do vendedor..." />;
   }
   
@@ -191,6 +242,8 @@ const VendorOrdersScreen: React.FC = () => {
       </div>
     );
   }
+
+  console.log('🎨 [VendorOrdersScreen] Rendering main interface with orders:', orders.length);
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
@@ -210,11 +263,31 @@ const VendorOrdersScreen: React.FC = () => {
               <h3 className="font-medium text-green-800">Sistema Atualizado</h3>
               <p className="text-sm text-green-700 mt-1">
                 Agora usando a tabela pedidos dedicada para vendedores. 
-                Usuário: {user.email} | Pedidos: {pedidos.length}
+                Usuário: {user.email} | Pedidos: {pedidos.length} | Orders convertidos: {orders.length}
               </p>
             </div>
           </div>
         </Card>
+
+        {/* Debug info */}
+        {process.env.NODE_ENV === 'development' && (
+          <Card className="p-4 bg-blue-50 border-blue-200">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-blue-500 mt-0.5" />
+              <div>
+                <h3 className="font-medium text-blue-800">Debug Info</h3>
+                <div className="text-sm text-blue-700 mt-1 font-mono">
+                  <p>Pedidos raw: {pedidos.length}</p>
+                  <p>Orders converted: {orders.length}</p>
+                  <p>Filtered orders: {filteredOrders.length}</p>
+                  <p>Vendor status: {vendorProfileStatus}</p>
+                  <p>Loading: {isLoading ? 'true' : 'false'}</p>
+                  <p>Error: {error ? 'true' : 'false'}</p>
+                </div>
+              </div>
+            </div>
+          </Card>
+        )}
 
         {/* Migração de dados se necessário */}
         {pedidos.length === 0 && (

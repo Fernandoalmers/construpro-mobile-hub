@@ -20,13 +20,22 @@ const OrdersList: React.FC<OrdersListProps> = ({
   onClearFilters,
   onRefresh
 }) => {
+  console.log("📋 [OrdersList] Component rendered with props:", {
+    ordersCount: orders?.length || 0,
+    hasFilters,
+    ordersData: orders?.slice(0, 3).map(o => ({ id: o.id, status: o.status, total: o.valor_total }))
+  });
+
   useEffect(() => {
-    console.log("📋 [OrdersList] Component rendered with", orders?.length || 0, "orders");
-    console.log("📋 [OrdersList] hasFilters:", hasFilters);
+    console.log("📋 [OrdersList] Component effect triggered - orders changed:", {
+      count: orders?.length || 0,
+      hasFilters,
+      isArray: Array.isArray(orders),
+      firstOrderId: orders?.[0]?.id
+    });
     
     if (!orders || orders.length === 0) {
       console.log("⚠️ [OrdersList] No orders received in props");
-      // Log more diagnostic info if we have no orders but should have some
       if (!hasFilters) {
         console.log("⚠️ [OrdersList] No filters active, but still no orders - might be a data issue");
       }
@@ -40,11 +49,25 @@ const OrdersList: React.FC<OrdersListProps> = ({
         total: orders[0]?.valor_total
       });
       
-      // Log all order IDs for easier debugging
       console.log("📋 [OrdersList] All order IDs:", orders.map(o => o.id));
+      
+      // Check if orders have the required properties
+      orders.forEach((order, index) => {
+        console.log(`📋 [OrdersList] Order ${index + 1} validation:`, {
+          id: order.id,
+          hasId: !!order.id,
+          hasStatus: !!order.status,
+          hasValorTotal: order.valor_total !== undefined,
+          hasCliente: !!order.cliente,
+          hasItens: Array.isArray(order.itens),
+          status: order.status,
+          valor_total: order.valor_total
+        });
+      });
     }
   }, [orders, hasFilters]);
 
+  // Early return for empty orders
   if (!orders || orders.length === 0) {
     console.log("⚠️ [OrdersList] Rendering empty state - no orders found");
     return (
@@ -54,7 +77,7 @@ const OrdersList: React.FC<OrdersListProps> = ({
         description={
           hasFilters
             ? "Tente ajustar os filtros de busca" 
-            : "Você ainda não recebeu nenhum pedido ou os dados estão sendo carregados. Tente ativar o modo de depuração."
+            : "Você ainda não recebeu nenhum pedido ou os dados estão sendo carregados."
         }
         action={
           hasFilters ? {
@@ -70,15 +93,36 @@ const OrdersList: React.FC<OrdersListProps> = ({
   }
 
   console.log("✅ [OrdersList] Rendering order list with", orders.length, "orders");
+  
   return (
     <div className="space-y-4">
-      {orders.map(order => (
-        <OrderItem 
-          key={order.id}
-          order={order}
-          onViewDetails={() => onViewDetails(order.id)}
-        />
-      ))}
+      {/* Debug info in development */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm">
+          <p className="font-mono text-blue-800">
+            [OrdersList Debug] Rendering {orders.length} orders
+          </p>
+        </div>
+      )}
+      
+      {orders.map((order, index) => {
+        console.log(`🎨 [OrdersList] Rendering order ${index + 1}:`, {
+          id: order.id,
+          status: order.status,
+          total: order.valor_total
+        });
+        
+        return (
+          <OrderItem 
+            key={order.id}
+            order={order}
+            onViewDetails={() => {
+              console.log('🔍 [OrdersList] Opening order details:', order.id);
+              onViewDetails(order.id);
+            }}
+          />
+        );
+      })}
     </div>
   );
 };

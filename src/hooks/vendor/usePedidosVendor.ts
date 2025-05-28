@@ -11,6 +11,8 @@ export const usePedidosVendor = () => {
   const [vendorProfileStatus, setVendorProfileStatus] = useState<'checking' | 'found' | 'not_found'>('checking');
   const [isMigrating, setIsMigrating] = useState(false);
   
+  console.log('🚀 [usePedidosVendor] Hook initialized');
+  
   // Check if the vendor profile exists
   useEffect(() => {
     const checkVendorProfile = async () => {
@@ -91,6 +93,19 @@ export const usePedidosVendor = () => {
           });
           
           console.log("📋 [usePedidosVendor] Todos os IDs dos pedidos da tabela pedidos:", results.map(p => p.id));
+          
+          // Detailed log of all pedidos
+          results.forEach((pedido, index) => {
+            console.log(`📋 [usePedidosVendor] Pedido ${index + 1}:`, {
+              id: pedido.id,
+              vendedor_id: pedido.vendedor_id,
+              usuario_id: pedido.usuario_id,
+              status: pedido.status,
+              valor_total: pedido.valor_total,
+              cliente_nome: pedido.cliente?.nome,
+              itens_count: pedido.itens?.length || 0
+            });
+          });
         } else {
           console.log("⚠️ [usePedidosVendor] Nenhum pedido encontrado na tabela pedidos - isto pode indicar:");
           console.log("   1. Vendedor não tem pedidos na tabela pedidos");
@@ -126,7 +141,20 @@ export const usePedidosVendor = () => {
     refetchInterval: 60000 // Auto refresh every 60 seconds
   });
   
+  // Debug effect to log changes in pedidos data
+  useEffect(() => {
+    console.log('🔄 [usePedidosVendor] Pedidos data changed:', {
+      count: pedidos?.length || 0,
+      isLoading,
+      hasError: !!error,
+      vendorProfileStatus,
+      firstPedidoId: pedidos?.[0]?.id
+    });
+  }, [pedidos, isLoading, error, vendorProfileStatus]);
+  
   const handleRefresh = useCallback(async () => {
+    console.log('🔄 [usePedidosVendor] Manual refresh triggered');
+    
     if (vendorProfileStatus === 'found') {
       // Check authentication before refresh
       const { data: { user } } = await supabase.auth.getUser();
@@ -148,6 +176,7 @@ export const usePedidosVendor = () => {
   }, [vendorProfileStatus, queryClient, refetch]);
 
   const handleMigration = useCallback(async () => {
+    console.log('🔄 [usePedidosVendor] Starting migration process');
     setIsMigrating(true);
     toast.loading('Migrando pedidos da tabela orders para pedidos...');
     
@@ -155,13 +184,16 @@ export const usePedidosVendor = () => {
       const result = await migrateOrdersToPedidos();
       
       if (result.success) {
+        console.log('✅ [usePedidosVendor] Migration successful:', result);
         toast.success(`Migração executada com sucesso! ${result.count} pedidos migrados.`);
         // Refresh data after migration
         setTimeout(() => {
+          console.log('🔄 [usePedidosVendor] Refreshing data after migration');
           queryClient.invalidateQueries({ queryKey: ['vendorPedidos'] });
           refetch();
         }, 1000);
       } else {
+        console.error('❌ [usePedidosVendor] Migration failed:', result);
         toast.error(result.message);
       }
     } catch (error) {
@@ -171,6 +203,14 @@ export const usePedidosVendor = () => {
       setIsMigrating(false);
     }
   }, [queryClient, refetch]);
+
+  console.log('📊 [usePedidosVendor] Hook returning data:', {
+    pedidosCount: pedidos?.length || 0,
+    isLoading,
+    hasError: !!error,
+    vendorProfileStatus,
+    isMigrating
+  });
 
   return {
     pedidos,

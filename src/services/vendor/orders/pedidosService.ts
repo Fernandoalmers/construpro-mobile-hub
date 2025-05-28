@@ -54,6 +54,8 @@ export const getVendorPedidos = async (): Promise<Pedido[]> => {
       return [];
     }
     
+    console.log("👤 [getVendorPedidos] Usuário autenticado:", user.id);
+    
     // Buscar o vendedor
     const { data: vendorData, error: vendorError } = await supabase
       .from('vendedores')
@@ -66,9 +68,15 @@ export const getVendorPedidos = async (): Promise<Pedido[]> => {
       return [];
     }
     
-    console.log("✅ [getVendorPedidos] Vendedor encontrado:", vendorData.id);
+    console.log("✅ [getVendorPedidos] Vendedor encontrado:", {
+      id: vendorData.id,
+      nome_loja: vendorData.nome_loja,
+      status: vendorData.status
+    });
     
-    // Buscar pedidos do vendedor na tabela pedidos (apenas campos que existem)
+    // Buscar pedidos do vendedor na tabela pedidos
+    console.log("🔍 [getVendorPedidos] Buscando pedidos para vendedor:", vendorData.id);
+    
     const { data: pedidos, error: pedidosError } = await supabase
       .from('pedidos')
       .select(`
@@ -90,17 +98,29 @@ export const getVendorPedidos = async (): Promise<Pedido[]> => {
       return [];
     }
     
-    console.log(`✅ [getVendorPedidos] Encontrados ${pedidos?.length || 0} pedidos`);
+    console.log(`✅ [getVendorPedidos] Query executada com sucesso. Encontrados ${pedidos?.length || 0} pedidos`);
     
     if (!pedidos || pedidos.length === 0) {
+      console.log("⚠️ [getVendorPedidos] Nenhum pedido encontrado na tabela pedidos para o vendedor:", vendorData.id);
       return [];
     }
+    
+    console.log("📋 [getVendorPedidos] Pedidos encontrados:", pedidos.map(p => ({
+      id: p.id,
+      status: p.status,
+      valor_total: p.valor_total,
+      created_at: p.created_at
+    })));
     
     // Para cada pedido, buscar os itens e informações do cliente
     const pedidosCompletos: Pedido[] = [];
     
+    console.log("🔍 [getVendorPedidos] Processando cada pedido para buscar itens e cliente...");
+    
     for (const pedido of pedidos) {
       try {
+        console.log(`🔍 [getVendorPedidos] Processando pedido ${pedido.id}`);
+        
         // Buscar itens do pedido
         const { data: itens, error: itensError } = await supabase
           .from('itens_pedido')
@@ -118,6 +138,8 @@ export const getVendorPedidos = async (): Promise<Pedido[]> => {
           console.error(`❌ [getVendorPedidos] Erro ao buscar itens do pedido ${pedido.id}:`, itensError);
           continue;
         }
+        
+        console.log(`📋 [getVendorPedidos] Pedido ${pedido.id} tem ${itens?.length || 0} itens`);
         
         // Buscar informações dos produtos
         const itensComProdutos: PedidoItem[] = [];
@@ -140,11 +162,15 @@ export const getVendorPedidos = async (): Promise<Pedido[]> => {
         }
         
         // Buscar informações do cliente
+        console.log(`🔍 [getVendorPedidos] Buscando cliente para pedido ${pedido.id}, usuario_id: ${pedido.usuario_id}`);
+        
         const { data: clienteData } = await supabase
           .from('profiles')
           .select('nome, email, telefone')
           .eq('id', pedido.usuario_id)
           .single();
+        
+        console.log(`📋 [getVendorPedidos] Cliente encontrado para pedido ${pedido.id}:`, clienteData?.nome || 'Não encontrado');
         
         // Buscar dados do cliente na tabela clientes_vendedor
         const { data: clienteVendorData } = await supabase
@@ -154,7 +180,7 @@ export const getVendorPedidos = async (): Promise<Pedido[]> => {
           .eq('usuario_id', pedido.usuario_id)
           .single();
         
-        pedidosCompletos.push({
+        const pedidoCompleto: Pedido = {
           ...pedido,
           itens: itensComProdutos,
           cliente: clienteData ? {
@@ -166,14 +192,39 @@ export const getVendorPedidos = async (): Promise<Pedido[]> => {
             telefone: clienteData.telefone,
             total_gasto: clienteVendorData?.total_gasto || 0
           } : undefined
+        };
+        
+        console.log(`✅ [getVendorPedidos] Pedido ${pedido.id} processado com sucesso:`, {
+          id: pedidoCompleto.id,
+          status: pedidoCompleto.status,
+          valor_total: pedidoCompleto.valor_total,
+          cliente_nome: pedidoCompleto.cliente?.nome,
+          itens_count: pedidoCompleto.itens?.length || 0
         });
+        
+        pedidosCompletos.push(pedidoCompleto);
         
       } catch (error) {
         console.error(`❌ [getVendorPedidos] Erro ao processar pedido ${pedido.id}:`, error);
       }
     }
     
-    console.log(`✅ [getVendorPedidos] Retornando ${pedidosCompletos.length} pedidos completos`);
+    console.log(`✅ [getVendorPedidos] Processamento concluído. Retornando ${pedidosCompletos.length} pedidos completos`);
+    
+    // Final validation
+    pedidosCompletos.forEach((pedido, index) => {
+      console.log(`📋 [getVendorPedidos] Pedido final ${index + 1}:`, {
+        id: pedido.id,
+        vendedor_id: pedido.vendedor_id,
+        usuario_id: pedido.usuario_id,
+        status: pedido.status,
+        valor_total: pedido.valor_total,
+        cliente_nome: pedido.cliente?.nome,
+        itens_count: pedido.itens?.length || 0,
+        created_at: pedido.created_at
+      });
+    });
+    
     return pedidosCompletos;
     
   } catch (error) {
