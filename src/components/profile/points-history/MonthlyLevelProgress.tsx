@@ -2,7 +2,7 @@
 import React from 'react';
 import Card from '../../common/Card';
 import ProgressBar from '../../common/ProgressBar';
-import { LevelInfo } from '@/utils/pointsCalculations';
+import { LevelInfo, LEVEL_MAP } from '@/utils/pointsCalculations';
 
 interface MonthlyLevelProgressProps {
   currentMonth: string;
@@ -15,6 +15,11 @@ const MonthlyLevelProgress: React.FC<MonthlyLevelProgressProps> = ({
 }) => {
   // Calculate the percentage for display
   const percentage = Math.round((levelInfo.currentProgress / levelInfo.maxProgress) * 100);
+  
+  // Get the next level name in Portuguese
+  const nextLevelName = levelInfo.nextLevel 
+    ? LEVEL_MAP[levelInfo.nextLevel as keyof typeof LEVEL_MAP]?.name 
+    : '';
   
   return (
     <Card className="p-4">
@@ -45,9 +50,7 @@ const MonthlyLevelProgress: React.FC<MonthlyLevelProgressProps> = ({
       
       <p className="text-xs text-gray-500 mt-1 text-center">
         {levelInfo.nextLevel 
-          ? `Faltam ${levelInfo.pointsToNextLevel} pontos para o nível ${
-              levelInfo.nextLevel.charAt(0).toUpperCase() + levelInfo.nextLevel.slice(1)
-            }` 
+          ? `Faltam ${levelInfo.pointsToNextLevel} pontos para o nível ${nextLevelName}` 
           : 'Nível máximo do mês atingido!'}
       </p>
     </Card>
