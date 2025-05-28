@@ -14,7 +14,7 @@ export async function processCartItems(
   console.log('[processCartItems] Processing cart items for cart:', cartId, 'user type:', userType);
   
   try {
-    // Fetch cart items with product data
+    // Fetch cart items with product data from the correct table (produtos)
     const { data: items, error: itemsError } = await supabase
       .from('cart_items')
       .select(`
@@ -24,21 +24,19 @@ export async function processCartItems(
         price_at_add,
         created_at,
         updated_at,
-        products!cart_items_product_id_fkey (
+        produtos!cart_items_product_id_fkey (
           id,
           nome,
-          preco,
           preco_normal,
           preco_promocional,
           imagem_url,
-          pontos,
           pontos_profissional,
           pontos_consumidor,
           estoque,
           categoria,
           segmento,
-          loja_id,
-          status
+          status,
+          vendedor_id
         )
       `)
       .eq('cart_id', cartId);
@@ -73,21 +71,21 @@ export async function processCartItems(
       subtotal: item.price_at_add * item.quantity,
       created_at: item.created_at,
       updated_at: item.updated_at,
-      produto: item.products ? {
-        id: item.products.id,
-        nome: item.products.nome,
-        preco: item.products.preco,
-        preco_normal: item.products.preco_normal,
-        preco_promocional: item.products.preco_promocional,
-        imagem_url: item.products.imagem_url,
-        pontos: item.products.pontos,
-        pontos_profissional: item.products.pontos_profissional,
-        pontos_consumidor: item.products.pontos_consumidor,
-        estoque: item.products.estoque,
-        categoria: item.products.categoria,
-        segmento: item.products.segmento,
-        loja_id: item.products.loja_id,
-        status: item.products.status
+      produto: item.produtos ? {
+        id: item.produtos.id,
+        nome: item.produtos.nome,
+        preco: item.produtos.preco_promocional || item.produtos.preco_normal,
+        preco_normal: item.produtos.preco_normal,
+        preco_promocional: item.produtos.preco_promocional,
+        imagem_url: item.produtos.imagem_url,
+        pontos: item.produtos.pontos_consumidor || 0,
+        pontos_profissional: item.produtos.pontos_profissional,
+        pontos_consumidor: item.produtos.pontos_consumidor,
+        estoque: item.produtos.estoque,
+        categoria: item.produtos.categoria,
+        segmento: item.produtos.segmento,
+        loja_id: item.produtos.vendedor_id,
+        status: item.produtos.status
       } : null
     }));
 
