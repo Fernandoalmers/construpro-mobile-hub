@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Heart, ShoppingCart, Star, Store } from 'lucide-react';
@@ -33,6 +32,12 @@ interface Product {
     nome_loja: string;
     logo_url?: string;
   };
+  vendedores?: {
+    id: string;
+    nome: string;
+    nome_loja: string;
+    logo_url?: string;
+  };
   vendedor_id?: string;
 }
 
@@ -56,6 +61,7 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
     id: produto.id,
     nome: produto.nome,
     stores: produto.stores,
+    vendedores: produto.vendedores,
     vendedor_id: produto.vendedor_id
   });
 
@@ -66,8 +72,12 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
     : 'consumidor';
   const displayPoints = getProductPoints(produto, validUserType);
 
-  // Get store name for display
-  const storeName = produto.stores?.nome_loja || produto.stores?.nome || 'Loja';
+  // Enhanced store name logic with better fallback handling
+  const storeName = produto.stores?.nome_loja || 
+                   produto.stores?.nome || 
+                   produto.vendedores?.nome_loja ||
+                   produto.vendedores?.nome ||
+                   'Loja';
 
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -209,8 +219,8 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
           </div>
         </div>
 
-        {/* Store Name */}
-        {produto.stores && (
+        {/* Store Name - ENHANCED */}
+        {(produto.stores || produto.vendedores) && (
           <div className="mb-2 flex items-center gap-1">
             <Store size={12} className="text-gray-500" />
             <span className="text-xs text-gray-600">

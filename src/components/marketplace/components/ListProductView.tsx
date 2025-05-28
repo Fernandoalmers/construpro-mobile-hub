@@ -23,7 +23,8 @@ const ListProductView: React.FC<ListProductViewProps> = ({
           id: produto.id,
           nome: produto.nome,
           stores: produto.stores,
-          vendedor_nome: produto.vendedor_nome
+          vendedor_nome: produto.vendedor_nome,
+          vendedores: produto.vendedores
         });
 
         // Determine prices logic
@@ -39,16 +40,29 @@ const ListProductView: React.FC<ListProductViewProps> = ({
                          produto.imagem_url || 
                          'https://via.placeholder.com/150?text=Sem+Imagem';
 
-        // Get store name for display - with better fallback logic
+        // Enhanced store name logic with better fallback handling
         const storeName = produto.stores?.nome_loja || 
                          produto.stores?.nome || 
+                         produto.vendedores?.nome_loja ||
+                         produto.vendedores?.nome ||
                          produto.vendedor_nome || 
                          'Loja';
+
+        // Get store ID for click handling
+        const storeId = produto.stores?.id || 
+                       produto.vendedores?.id ||
+                       produto.vendedor_id;
+
+        console.log('[ListProductView] Store info processed:', {
+          storeName,
+          storeId,
+          hasStoreData: !!produto.stores || !!produto.vendedores
+        });
 
         return (
           <div 
             key={produto.id} 
-            className="bg-white rounded-md shadow-sm p-3 flex border border-gray-100 relative"
+            className="bg-white rounded-md shadow-sm p-3 flex border border-gray-100 relative cursor-pointer hover:shadow-md transition-shadow"
             onClick={() => navigateToProduct(produto.id)}
           >
             {/* Product Image - positioned on the left side */}
@@ -69,12 +83,12 @@ const ListProductView: React.FC<ListProductViewProps> = ({
               <h3 className="text-sm font-medium line-clamp-2 mb-1">{produto.nome}</h3>
               
               {/* Type/Category */}
-              <div className="text-xs text-gray-500 mb-1">
+              <div className="text-xs text-gray-500 mb-2">
                 {produto.categoria || "Categoria não especificada"}
               </div>
               
               {/* Price section with conditional promotional display */}
-              <div className="font-bold text-lg mb-1">
+              <div className="font-bold text-lg mb-2">
                 R$ {precoExibir.toFixed(2).replace('.', ',')}
                 {hasDiscount && (
                   <span className="text-sm text-gray-400 line-through ml-2">
@@ -83,17 +97,15 @@ const ListProductView: React.FC<ListProductViewProps> = ({
                 )}
               </div>
 
-              {/* Store name with icon */}
-              <div className="flex items-center gap-1 mb-1">
-                <Store size={12} className="text-gray-500" />
+              {/* Store name with icon - ENHANCED VISIBILITY */}
+              <div className="flex items-center gap-1 mb-2">
+                <Store size={12} className="text-gray-500 flex-shrink-0" />
                 <div 
-                  className="text-xs text-gray-600 hover:underline cursor-pointer"
+                  className="text-xs text-gray-600 hover:underline cursor-pointer font-medium"
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (produto.stores && onLojaClick) {
-                      onLojaClick(produto.stores.id);
-                    } else if (produto.vendedor_id && onLojaClick) {
-                      onLojaClick(produto.vendedor_id);
+                    if (storeId && onLojaClick) {
+                      onLojaClick(storeId);
                     }
                   }}
                 >
@@ -102,7 +114,7 @@ const ListProductView: React.FC<ListProductViewProps> = ({
               </div>
               
               {/* Free shipping */}
-              <div className="text-xs text-green-600 mt-1">
+              <div className="text-xs text-green-600">
                 Entrega GRÁTIS
               </div>
             </div>
