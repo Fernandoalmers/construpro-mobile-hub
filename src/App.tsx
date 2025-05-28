@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
@@ -28,7 +29,7 @@ import ProdutoFormScreen from './components/vendor/ProdutoFormScreen';
 import ClientesVendorScreen from './components/vendor/ClientesVendorScreen';
 import ConfiguracoesVendorScreen from './components/vendor/ConfiguracoesVendorScreen';
 import AjustePontosVendorScreen from './components/vendor/AjustePontosVendorScreen';
-import ProdutosVendorScreen from './components/vendor/ProdutosVendorScreen';
+import VendorOrdersScreen from './components/vendor/VendorOrdersScreen';
 import ProdutoScreen from './components/marketplace/ProdutoScreen';
 import OrderConfirmationScreen from './components/marketplace/OrderConfirmationScreen';
 import ProfileSelectionScreen from './components/auth/ProfileSelectionScreen';
@@ -160,7 +161,7 @@ function App() {
         {/* Adicionando a rota alternativa que está sendo usada */}
         <Route path="/vendor/products/edit/:id" element={<ProtectedRoute><ProdutoEditScreen /></ProtectedRoute>} />
         
-        <Route path="/vendor/orders" element={<ProtectedRoute><ProdutosVendorScreen /></ProtectedRoute>} />
+        <Route path="/vendor/orders" element={<ProtectedRoute><VendorOrdersScreen /></ProtectedRoute>} />
         <Route path="/vendor/orders/:id" element={<ProtectedRoute><VendorOrderDetailScreen /></ProtectedRoute>} />
         <Route path="/vendor/customers" element={<ProtectedRoute><ClientesVendorScreen /></ProtectedRoute>} />
         <Route path="/vendor/adjust-points" element={<ProtectedRoute><AjustePontosVendorScreen /></ProtectedRoute>} />
