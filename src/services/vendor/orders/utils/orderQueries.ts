@@ -106,7 +106,7 @@ export const fetchOrdersByIds = async (orderIds: string[], filters: any = {}) =>
   console.log(`🔍 [fetchOrdersByIds] Fetching ${orderIds.length} orders from orders table`);
   console.log('📋 [fetchOrdersByIds] Order IDs to fetch:', orderIds.slice(0, 5));
   
-  // Fixed query - removed ambiguous column references by being explicit about table
+  // FIXED: Use explicit table reference to avoid ambiguous column references
   let query = supabase
     .from('orders')
     .select(`
@@ -124,7 +124,7 @@ export const fetchOrdersByIds = async (orderIds: string[], filters: any = {}) =>
     .in('id', orderIds)
     .order('created_at', { ascending: false });
   
-  // Apply filters safely
+  // Apply filters safely - always use explicit table references
   if (filters.status && filters.status !== 'all') {
     if (Array.isArray(filters.status)) {
       query = query.in('status', filters.status);
