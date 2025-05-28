@@ -40,13 +40,13 @@ const ListProductView: React.FC<ListProductViewProps> = ({
                          produto.imagem_url || 
                          'https://via.placeholder.com/150?text=Sem+Imagem';
 
-        // Enhanced store name logic with better fallback handling
+        // ENHANCED: Better store name logic with improved fallback handling
         const storeName = produto.stores?.nome_loja || 
                          produto.stores?.nome || 
                          produto.vendedores?.nome_loja ||
                          produto.vendedores?.nome ||
                          produto.vendedor_nome || 
-                         'Loja';
+                         null; // Use null instead of generic "Loja"
 
         // Get store ID for click handling
         const storeId = produto.stores?.id || 
@@ -54,9 +54,11 @@ const ListProductView: React.FC<ListProductViewProps> = ({
                        produto.vendedor_id;
 
         console.log('[ListProductView] Store info processed:', {
+          productName: produto.nome,
           storeName,
           storeId,
-          hasStoreData: !!produto.stores || !!produto.vendedores
+          hasStoreData: !!produto.stores || !!produto.vendedores,
+          fallbackUsed: !storeName
         });
 
         return (
@@ -97,21 +99,23 @@ const ListProductView: React.FC<ListProductViewProps> = ({
                 )}
               </div>
 
-              {/* Store name with icon - ENHANCED VISIBILITY */}
-              <div className="flex items-center gap-1 mb-2">
-                <Store size={12} className="text-gray-500 flex-shrink-0" />
-                <div 
-                  className="text-xs text-gray-600 hover:underline cursor-pointer font-medium"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (storeId && onLojaClick) {
-                      onLojaClick(storeId);
-                    }
-                  }}
-                >
-                  Vendido por {storeName}
+              {/* Store name with icon - ENHANCED VISIBILITY - Only show if we have a real store name */}
+              {storeName && (
+                <div className="flex items-center gap-1 mb-2">
+                  <Store size={12} className="text-gray-500 flex-shrink-0" />
+                  <div 
+                    className="text-xs text-gray-600 hover:underline cursor-pointer font-medium"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (storeId && onLojaClick) {
+                        onLojaClick(storeId);
+                      }
+                    }}
+                  >
+                    Vendido por {storeName}
+                  </div>
                 </div>
-              </div>
+              )}
               
               {/* Free shipping */}
               <div className="text-xs text-green-600">

@@ -14,12 +14,14 @@ interface VendorData {
   id?: string | number;
   nome_loja?: string;
   logo?: string;
+  telefone?: string;
+  email?: string;
   formas_entrega?: Array<{
     prazo_min?: number;
     prazo_max?: number;
     [key: string]: any;
   }>;
-  [key: string]: any; // Allow for other properties
+  [key: string]: any;
 }
 
 // Helper function to extract image URLs from different formats
@@ -82,32 +84,44 @@ export function useProductFetch(id: string | undefined) {
       try {
         setState(prev => ({ ...prev, loading: true, error: null }));
         
-        // Enhanced query to get all required product details in a single call
+        // ENHANCED: Query to get product with vendor information
         const { data, error } = await supabase
           .from('produtos')
           .select(`
             *,
-            vendedores (
+            vendedores:vendedor_id (
               id, 
               nome_loja, 
               logo,
+              telefone,
+              email,
               formas_entrega
             )
           `)
           .eq('id', id)
-          .single();
+          .maybeSingle();
         
-        if (error || !data) {
-          console.error('Error fetching product:', error);
+        if (error) {
+          console.error('[useProductFetch] Error fetching product:', error);
           setState(prev => ({ ...prev, error: 'Produto não encontrado', loading: false }));
           return;
         }
 
-        console.log("Produto data:", data);
+        if (!data) {
+          setState(prev => ({ ...prev, error: 'Produto não encontrado', loading: false }));
+          return;
+        }
+
+        console.log("[useProductFetch] Raw product data with vendor:", {
+          id: data.id,
+          nome: data.nome,
+          vendedor_id: data.vendedor_id,
+          vendedores: data.vendedores
+        });
         
         // Extract images properly
         const extractedImages = extractImageUrls(data.imagens);
-        console.log("Extracted images:", extractedImages);
+        console.log("[useProductFetch] Extracted images:", extractedImages);
         
         // Process product data safely with type checking
         const productData: Product = {
@@ -127,35 +141,44 @@ export function useProductFetch(id: string | undefined) {
           pontos_profissional: data.pontos_profissional || 0,
           loja_id: data.vendedor_id,
           status: data.status as "pendente" | "aprovado" | "rejeitado",
-          // Handle unidade_medida which might not exist in the data
           unidade_medida: 'unidade_medida' in data ? String(data.unidade_medida) : 'unidade',
           codigo_barras: data.codigo_barras,
           sku: data.sku,
         };
         
-        // Only add store info if vendedores data is available and not an error
-        // Using safe type checking with multiple validation checks
+        // ENHANCED: Process vendor information with better handling
         if (data.vendedores && 
             typeof data.vendedores === 'object' && 
             data.vendedores !== null) {
-          // Cast vendedorData to the explicit interface
           const vendedorData = data.vendedores as VendorData;
           
-          // Additional check to ensure nome_loja property exists
-          if ('nome_loja' in vendedorData) {
+          if ('nome_loja' in vendedorData && vendedorData.nome_loja) {
             productData.stores = {
               id: data.vendedor_id,
-              nome: String(vendedorData.nome_loja || ''),
-              nome_loja: String(vendedorData.nome_loja || ''),
+              nome: String(vendedorData.nome_loja),
+              nome_loja: String(vendedorData.nome_loja),
               logo_url: String(vendedorData.logo || '')
             };
+            
+            console.log("[useProductFetch] ✅ Successfully processed vendor info:", {
+              productName: productData.nome,
+              storeName: productData.stores.nome_loja,
+              storeId: productData.stores.id
+            });
+          } else {
+            console.warn("[useProductFetch] ⚠️ Vendor data exists but missing nome_loja:", vendedorData);
           }
+        } else {
+          console.warn("[useProductFetch] ⚠️ No vendor data found for product:", {
+            productId: data.id,
+            vendedor_id: data.vendedor_id
+          });
         }
         
         setState(prev => ({ ...prev, product: productData, loading: false }));
         
       } catch (err) {
-        console.error('Error in useProductFetch:', err);
+        console.error('[useProductFetch] Unexpected error:', err);
         setState(prev => ({ 
           ...prev, 
           error: 'Erro ao carregar detalhes do produto', 

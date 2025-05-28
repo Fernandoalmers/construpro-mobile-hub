@@ -44,7 +44,7 @@ export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> =>
     const { data: authData } = await supabase.auth.getUser();
     console.log('[marketplaceProductsService] 👤 Current user:', authData.user?.id || 'anonymous');
     
-    // Enhanced query to get products with store information - FIXED QUERY
+    // FIXED: Enhanced query to properly get vendor information
     const { data, error } = await supabase
       .from('produtos')
       .select(`
@@ -52,7 +52,9 @@ export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> =>
         vendedores:vendedor_id (
           id,
           nome_loja,
-          logo
+          logo,
+          telefone,
+          email
         )
       `)
       .eq('status', 'aprovado') // Only approved products
@@ -69,7 +71,13 @@ export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> =>
     console.log(`[marketplaceProductsService] ✅ Successfully fetched ${data?.length || 0} approved products`);
     
     if (data && data.length > 0) {
-      console.log('[marketplaceProductsService] 📋 Raw data sample:', data.slice(0, 2));
+      console.log('[marketplaceProductsService] 📋 Raw data sample with vendor info:', 
+                  data.slice(0, 2).map(p => ({
+                    id: p.id,
+                    nome: p.nome,
+                    vendedor_id: p.vendedor_id,
+                    vendedores: p.vendedores
+                  })));
     } else {
       console.warn('[marketplaceProductsService] ⚠️ No products found! Possible causes:');
       console.warn('1. No approved products in database');
@@ -79,12 +87,13 @@ export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> =>
     
     // Transform data to match interface - ENHANCED PROCESSING
     const products: MarketplaceProduct[] = (data || []).map(product => {
-      // Debug vendor data processing
+      // Debug vendor data processing with enhanced logging
       console.log('[marketplaceProductsService] Processing vendor data for product:', {
         productId: product.id,
         productName: product.nome,
         vendedor_id: product.vendedor_id,
-        vendedores: product.vendedores
+        vendedores: product.vendedores,
+        hasVendedorData: !!product.vendedores
       });
 
       // Process images properly
@@ -104,20 +113,30 @@ export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> =>
         }
       }
       
-      // Process vendor/store information with ENHANCED handling
+      // ENHANCED: Process vendor/store information with better error handling
       const vendedorData = product.vendedores;
-      const storeInfo = vendedorData ? {
-        id: product.vendedor_id,
-        nome: vendedorData.nome_loja || 'Loja sem nome',
-        nome_loja: vendedorData.nome_loja || 'Loja sem nome',
-        logo_url: vendedorData.logo || ''
-      } : undefined;
-
-      console.log('[marketplaceProductsService] Processed store info for', product.nome, ':', {
-        storeInfo,
-        vendedorData,
-        hasVendedorData: !!vendedorData
-      });
+      let storeInfo;
+      
+      if (vendedorData && typeof vendedorData === 'object') {
+        storeInfo = {
+          id: product.vendedor_id,
+          nome: vendedorData.nome_loja || 'Loja sem nome',
+          nome_loja: vendedorData.nome_loja || 'Loja sem nome',
+          logo_url: vendedorData.logo || ''
+        };
+        
+        console.log('[marketplaceProductsService] ✅ Successfully processed store info:', {
+          productName: product.nome,
+          storeName: storeInfo.nome_loja,
+          storeId: storeInfo.id
+        });
+      } else {
+        console.warn('[marketplaceProductsService] ⚠️ No vendor data found for product:', {
+          productId: product.id,
+          productName: product.nome,
+          vendedor_id: product.vendedor_id
+        });
+      }
       
       const processedProduct = {
         id: product.id,
@@ -144,7 +163,7 @@ export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> =>
     });
     
     console.log(`[marketplaceProductsService] 🔄 Processed ${products.length} products for marketplace display`);
-    console.log('[marketplaceProductsService] Sample processed products with vendor info:', 
+    console.log('[marketplaceProductsService] Final processed products with vendor info:', 
                 products.slice(0, 2).map(p => ({
                   id: p.id,
                   nome: p.nome,
