@@ -47,7 +47,7 @@ const VendorOrdersScreen: React.FC = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   
-  // Use the new pedidos hook
+  // Use the new pedidos hook instead of the old orders hook
   const { 
     pedidos, 
     isLoading, 
