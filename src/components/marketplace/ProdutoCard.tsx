@@ -32,9 +32,10 @@ interface Product {
 interface ProdutoCardProps {
   produto: Product;
   className?: string;
+  onClick?: () => void;
 }
 
-const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '' }) => {
+const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onClick }) => {
   const navigate = useNavigate();
   const { addToCart, isLoading } = useCart();
   const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
@@ -43,9 +44,12 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '' }) =>
   const [addingToCart, setAddingToCart] = useState(false);
   const [favorited, setFavorited] = useState(false);
 
-  // Get user type for correct points calculation
-  const userType = (profile?.tipo_perfil || 'consumidor') as UserRole;
-  const displayPoints = getProductPoints(produto, userType);
+  // Get user type for correct points calculation with type guard
+  const userType = profile?.tipo_perfil || 'consumidor';
+  const validUserType = (['consumidor', 'profissional', 'lojista', 'vendedor'].includes(userType)) 
+    ? userType as 'consumidor' | 'profissional' | 'lojista' | 'vendedor'
+    : 'consumidor';
+  const displayPoints = getProductPoints(produto, validUserType);
 
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -87,7 +91,11 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '' }) =>
   };
 
   const handleCardClick = () => {
-    navigate(`/produto/${produto.id}`);
+    if (onClick) {
+      onClick();
+    } else {
+      navigate(`/produto/${produto.id}`);
+    }
   };
 
   const formatPrice = (price: number) => {
@@ -187,7 +195,7 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '' }) =>
         {displayPoints > 0 && (
           <div className="mb-3">
             <span className="text-xs text-construPro-orange font-medium">
-              +{displayPoints} pontos {userType === 'profissional' ? '(profissional)' : ''}
+              +{displayPoints} pontos {validUserType === 'profissional' ? '(profissional)' : ''}
             </span>
           </div>
         )}

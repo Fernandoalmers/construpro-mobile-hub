@@ -51,11 +51,14 @@ const ProdutoContent: React.FC<ProdutoContentProps> = ({ produto }) => {
 
   console.log('Produto data:', produto);
 
-  // Get user type for correct points calculation
-  const userType = (profile?.tipo_perfil || 'consumidor') as UserRole;
-  const displayPoints = getProductPoints(produto, userType);
+  // Get user type for correct points calculation with type guard
+  const userType = profile?.tipo_perfil || 'consumidor';
+  const validUserType = (['consumidor', 'profissional', 'lojista', 'vendedor'].includes(userType)) 
+    ? userType as 'consumidor' | 'profissional' | 'lojista' | 'vendedor'
+    : 'consumidor';
+  const displayPoints = getProductPoints(produto, validUserType);
 
-  console.log('User type:', userType, 'Display points:', displayPoints);
+  console.log('User type:', validUserType, 'Display points:', displayPoints);
 
   const handleAddToCart = async () => {
     if (produto.estoque === 0) {
@@ -184,8 +187,11 @@ const ProdutoContent: React.FC<ProdutoContentProps> = ({ produto }) => {
 
       {/* Product Images */}
       <ProductImageGallery 
+        mainImage={mainImage}
         images={images}
         productName={produto.nome}
+        hasDiscount={hasPromotion}
+        discountPercentage={discountPercentage}
       />
 
       {/* Product Info */}
@@ -239,7 +245,7 @@ const ProdutoContent: React.FC<ProdutoContentProps> = ({ produto }) => {
             <div className="flex items-center gap-2">
               <Star size={16} className="text-construPro-orange" />
               <span className="text-sm font-medium text-construPro-orange">
-                +{displayPoints} pontos {userType === 'profissional' ? '(profissional)' : ''}
+                +{displayPoints} pontos {validUserType === 'profissional' ? '(profissional)' : ''}
               </span>
             </div>
             <p className="text-xs text-gray-600 mt-1">
@@ -271,10 +277,14 @@ const ProdutoContent: React.FC<ProdutoContentProps> = ({ produto }) => {
             <div className="flex items-center gap-4 mb-4">
               <span className="text-sm font-medium">Quantidade:</span>
               <QuantitySelector
-                value={quantity}
-                onChange={setQuantity}
-                min={1}
-                max={produto.estoque}
+                produto={produto}
+                quantidade={quantity}
+                onQuantityChange={(delta) => {
+                  const newQuantity = quantity + delta;
+                  if (newQuantity >= 1 && newQuantity <= (produto.estoque || 1)) {
+                    setQuantity(newQuantity);
+                  }
+                }}
               />
             </div>
 
