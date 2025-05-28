@@ -70,7 +70,7 @@ export const useVendorOrders = () => {
           throw new Error('Usuário não autenticado. Faça login novamente.');
         }
         
-        console.log("👤 [useVendorOrders] User verified:", user.id);
+        console.log("👤 [useVendorOrders] User verified for orders fetch:", user.id);
         
         const results = await getVendorOrders();
         console.log(`📊 [useVendorOrders] Fetched ${results.length} vendor orders`);
@@ -84,7 +84,7 @@ export const useVendorOrders = () => {
             total: results[0]?.valor_total
           });
         } else {
-          console.log("⚠️ [useVendorOrders] No orders found");
+          console.log("⚠️ [useVendorOrders] No orders found - checking vendor status");
         }
         
         return results;
@@ -94,6 +94,8 @@ export const useVendorOrders = () => {
         // Check if it's an authentication error
         if (error instanceof Error && error.message.includes('autenticado')) {
           toast.error('Sessão expirada. Faça login novamente.');
+        } else {
+          toast.error('Erro ao carregar pedidos. Tente novamente.');
         }
         
         throw error;
@@ -109,7 +111,7 @@ export const useVendorOrders = () => {
     },
     enabled: vendorProfileStatus === 'found',
     refetchOnWindowFocus: true,
-    refetchInterval: 30000 // Auto refresh every 30 seconds
+    refetchInterval: 60000 // Auto refresh every 60 seconds
   });
   
   const handleRefresh = useCallback(async () => {
@@ -141,11 +143,11 @@ export const useVendorOrders = () => {
     isRefetching,
     handleRefresh,
     vendorProfileStatus,
-    diagnosticResults: null, // Simplified - removed complex diagnostics
-    isFixingVendorStatus: false, // Simplified
-    debugMode: false, // Simplified
-    debugData: null, // Simplified
-    toggleDebugMode: () => {}, // Simplified
-    forceRefresh: handleRefresh // Use same as handleRefresh
+    diagnosticResults: null,
+    isFixingVendorStatus: false,
+    debugMode: false,
+    debugData: null,
+    toggleDebugMode: () => {},
+    forceRefresh: handleRefresh
   };
 };

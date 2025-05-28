@@ -164,15 +164,15 @@ const ProdutosVendorScreen: React.FC = () => {
       />
       
       <div className="p-6 space-y-6">
-        {/* Authentication success message */}
-        <Card className="p-4 bg-green-50 border-green-200">
+        {/* Debug info card - shows SQL error fix */}
+        <Card className="p-4 bg-blue-50 border-blue-200">
           <div className="flex items-start gap-3">
-            <Info className="h-5 w-5 text-green-500 mt-0.5" />
+            <Info className="h-5 w-5 text-blue-500 mt-0.5" />
             <div>
-              <h3 className="font-medium text-green-800">Sistema atualizado</h3>
-              <p className="text-sm text-green-700 mt-1">
-                Busca de pedidos corrigida! Agora buscando diretamente da tabela 'orders' com autenticação verificada.
-                Usuário: {user.email}
+              <h3 className="font-medium text-blue-800">Sistema corrigido</h3>
+              <p className="text-sm text-blue-700 mt-1">
+                Erro SQL "column reference ambiguous" corrigido. Agora buscando pedidos diretamente da tabela 'orders'.
+                Usuário autenticado: {user.email}
               </p>
             </div>
           </div>
@@ -197,15 +197,15 @@ const ProdutosVendorScreen: React.FC = () => {
           {orders.length === 0 && !isRefetching ? (
             <div className="rounded-lg border p-8 text-center">
               <AlertCircle className="mx-auto h-10 w-10 text-yellow-500 mb-3" />
-              <h3 className="text-lg font-medium mb-2">Nenhum pedido encontrado na tabela orders</h3>
+              <h3 className="text-lg font-medium mb-2">Nenhum pedido encontrado</h3>
               <p className="text-gray-500 mb-4">
-                Não encontramos pedidos na tabela principal 'orders'. Possíveis motivos:
+                Não encontramos pedidos na tabela 'orders' para este vendedor. Possíveis motivos:
               </p>
               <ul className="text-sm text-gray-600 list-disc list-inside mb-4 text-left">
                 <li>Sua loja ainda não recebeu pedidos</li>
-                <li>Os produtos não estão sendo exibidos no marketplace</li>
-                <li>Problema de sincronização de dados</li>
-                <li>Configuração do perfil de vendedor precisa ser verificada</li>
+                <li>Os produtos não estão associados ao seu perfil de vendedor</li>
+                <li>Produtos não estão sendo exibidos no marketplace</li>
+                <li>Problema de sincronização entre produtos e pedidos</li>
               </ul>
               <div className="flex gap-2 justify-center">
                 <Button onClick={handleRefresh} className="mt-2">

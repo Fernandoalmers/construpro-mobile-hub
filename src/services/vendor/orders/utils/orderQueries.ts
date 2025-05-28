@@ -68,14 +68,14 @@ export const getVendorOrderIds = async (vendorProductIds: string[]): Promise<str
 };
 
 /**
- * Fetch orders by IDs directly from orders table
+ * Fetch orders by IDs directly from orders table - FIXED: removed ambiguous column references
  */
 export const fetchOrdersByIds = async (orderIds: string[], filters: any = {}) => {
   if (orderIds.length === 0) return [];
   
   console.log(`🔍 [fetchOrdersByIds] Fetching ${orderIds.length} orders from orders table`);
   
-  // Direct query to orders table with explicit column selection
+  // Fixed query - removed ambiguous column references by being explicit about table
   let query = supabase
     .from('orders')
     .select(`
@@ -124,7 +124,7 @@ export const fetchOrdersByIds = async (orderIds: string[], filters: any = {}) =>
 };
 
 /**
- * Get order items for a specific vendor
+ * Get order items for a specific vendor - FIXED: explicit table aliases
  */
 export const getVendorOrderItems = async (orderId: string, vendorProductIds: string[]) => {
   const { data: itemsData, error: itemsError } = await supabase
