@@ -29,14 +29,14 @@ export async function processCartItems(
           nome,
           preco_normal,
           preco_promocional,
-          imagem_url,
           pontos_profissional,
           pontos_consumidor,
           estoque,
           categoria,
           segmento,
           status,
-          vendedor_id
+          vendedor_id,
+          imagens
         )
       `)
       .eq('cart_id', cartId);
@@ -62,32 +62,40 @@ export async function processCartItems(
     }
 
     // Transform the data to match our CartItem interface
-    const cartItems: CartItem[] = items.map(item => ({
-      id: item.id,
-      cart_id: cartId,
-      produto_id: item.product_id,
-      quantidade: item.quantity,
-      preco: item.price_at_add,
-      subtotal: item.price_at_add * item.quantity,
-      created_at: item.created_at,
-      updated_at: item.updated_at,
-      produto: item.produtos ? {
-        id: item.produtos.id,
-        nome: item.produtos.nome,
-        preco: item.produtos.preco_promocional || item.produtos.preco_normal,
-        preco_normal: item.produtos.preco_normal,
-        preco_promocional: item.produtos.preco_promocional,
-        imagem_url: item.produtos.imagem_url,
-        pontos: item.produtos.pontos_consumidor || 0,
-        pontos_profissional: item.produtos.pontos_profissional,
-        pontos_consumidor: item.produtos.pontos_consumidor,
-        estoque: item.produtos.estoque,
-        categoria: item.produtos.categoria,
-        segmento: item.produtos.segmento,
-        loja_id: item.produtos.vendedor_id,
-        status: item.produtos.status
-      } : null
-    }));
+    const cartItems: CartItem[] = items.map(item => {
+      // Extract first image from imagens array if available
+      let imageUrl = null;
+      if (item.produtos?.imagens && Array.isArray(item.produtos.imagens) && item.produtos.imagens.length > 0) {
+        imageUrl = item.produtos.imagens[0];
+      }
+
+      return {
+        id: item.id,
+        cart_id: cartId,
+        produto_id: item.product_id,
+        quantidade: item.quantity,
+        preco: item.price_at_add,
+        subtotal: item.price_at_add * item.quantity,
+        created_at: item.created_at,
+        updated_at: item.updated_at,
+        produto: item.produtos ? {
+          id: item.produtos.id,
+          nome: item.produtos.nome,
+          preco: item.produtos.preco_promocional || item.produtos.preco_normal,
+          preco_normal: item.produtos.preco_normal,
+          preco_promocional: item.produtos.preco_promocional,
+          imagem_url: imageUrl,
+          pontos: item.produtos.pontos_consumidor || 0,
+          pontos_profissional: item.produtos.pontos_profissional,
+          pontos_consumidor: item.produtos.pontos_consumidor,
+          estoque: item.produtos.estoque,
+          categoria: item.produtos.categoria,
+          segmento: item.produtos.segmento,
+          loja_id: item.produtos.vendedor_id,
+          status: item.produtos.status
+        } : null
+      };
+    });
 
     // Calculate summary with user type
     const summary = calculateCartSummary(cartItems, userType);
