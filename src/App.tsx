@@ -10,10 +10,11 @@ import {
   RewardDetailScreen, StoreDetailScreen, 
   CartScreen, CheckoutScreen, OrdersScreen, OrderDetailScreen,
   FavoritesScreen, ChatScreen, ChatDetailScreen, SettingsScreen,
-  NotFoundScreen, VendorDashboardScreen, VendorProductsScreen,
+  NotFoundScreen, VendorDashboardScreen,
   VendorCustomersScreen, AuthProvider, ProtectedRoute,
   MarketplaceScreenWrapper, AdminSettingsScreen, AdminRewardsScreen, 
-  AdminCategoriesScreen, CartProvider, UserDataScreen, HistoricoResgatesScreen
+  AdminCategoriesScreen, CartProvider, UserDataScreen, HistoricoResgatesScreen,
+  VendorOrdersScreen
 } from './imports';
 import { useAuth } from './context/AuthContext';
 import BottomTabNavigator from './components/layout/BottomTabNavigator';
