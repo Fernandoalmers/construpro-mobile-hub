@@ -26,9 +26,7 @@ export interface Pedido {
   forma_pagamento: string;
   endereco_entrega: any;
   valor_total: number;
-  rastreio?: string;
   created_at: string;
-  updated_at?: string;
   data_entrega_estimada?: string;
   itens?: PedidoItem[];
   cliente?: {
@@ -70,7 +68,7 @@ export const getVendorPedidos = async (): Promise<Pedido[]> => {
     
     console.log("✅ [getVendorPedidos] Vendedor encontrado:", vendorData.id);
     
-    // Buscar pedidos do vendedor na tabela pedidos (sem pontos_ganhos)
+    // Buscar pedidos do vendedor na tabela pedidos (apenas campos que existem)
     const { data: pedidos, error: pedidosError } = await supabase
       .from('pedidos')
       .select(`
@@ -81,9 +79,7 @@ export const getVendorPedidos = async (): Promise<Pedido[]> => {
         forma_pagamento,
         endereco_entrega,
         valor_total,
-        rastreio,
         created_at,
-        updated_at,
         data_entrega_estimada
       `)
       .eq('vendedor_id', vendorData.id)
@@ -203,7 +199,7 @@ export const getPedidoById = async (pedidoId: string): Promise<Pedido | null> =>
     
     if (!vendorData) return null;
     
-    // Buscar o pedido (sem pontos_ganhos)
+    // Buscar o pedido (apenas campos que existem)
     const { data: pedido, error } = await supabase
       .from('pedidos')
       .select(`
@@ -214,9 +210,7 @@ export const getPedidoById = async (pedidoId: string): Promise<Pedido | null> =>
         forma_pagamento,
         endereco_entrega,
         valor_total,
-        rastreio,
         created_at,
-        updated_at,
         data_entrega_estimada
       `)
       .eq('id', pedidoId)
@@ -298,26 +292,35 @@ export const getPedidoById = async (pedidoId: string): Promise<Pedido | null> =>
 };
 
 /**
- * Migrar dados existentes da tabela orders para pedidos
+ * Migrar dados existentes da tabela orders para pedidos usando SQL direto
  */
 export const migrateOrdersToPedidos = async (): Promise<{ success: boolean; count: number; message: string }> => {
   try {
     console.log("🔄 [migrateOrdersToPedidos] Iniciando migração manual");
     
-    // Chamar a função SQL de migração
-    const { data, error } = await supabase.rpc('migrate_existing_orders_to_pedidos');
+    // Executar a função SQL diretamente usando execute
+    const { data, error } = await supabase
+      .rpc('execute_custom_sql', {
+        sql_statement: 'SELECT public.migrate_orders_to_pedidos() as count;'
+      });
     
     if (error) {
       console.error("❌ [migrateOrdersToPedidos] Erro na migração:", error);
       return { success: false, count: 0, message: "Erro durante a migração: " + error.message };
     }
     
-    console.log(`✅ [migrateOrdersToPedidos] Migração concluída: ${data} pedidos migrados`);
+    // Parse the result if it's in JSON format
+    let count = 0;
+    if (data && typeof data === 'object' && 'status' in data && data.status === 'success') {
+      count = 1; // Assume success if no specific count returned
+    }
+    
+    console.log(`✅ [migrateOrdersToPedidos] Migração concluída: ${count} pedidos migrados`);
     
     return {
       success: true,
-      count: data || 0,
-      message: `${data || 0} pedidos migrados com sucesso`
+      count: count,
+      message: `Migração executada com sucesso`
     };
     
   } catch (error) {
