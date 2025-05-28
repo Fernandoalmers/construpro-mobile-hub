@@ -10,14 +10,17 @@ import { processCartItems } from '@/services/cart/fetcher';
  */
 export function useCartFetcher() {
   // Function to fetch cart data from the database
-  const fetchCartData = useCallback(async (userId: string | null): Promise<Cart | null> => {
+  const fetchCartData = useCallback(async (
+    userId: string | null, 
+    userType: 'consumidor' | 'profissional' | 'lojista' | 'vendedor' = 'consumidor'
+  ): Promise<Cart | null> => {
     try {
       if (!userId) {
         console.log('Skipping cart fetch - user not authenticated');
         return null;
       }
 
-      console.log('Fetching cart data for user:', userId);
+      console.log('Fetching cart data for user:', userId, 'type:', userType);
       
       try {
         // Ensure there is only one active cart for this user
@@ -41,8 +44,8 @@ export function useCartFetcher() {
           return createEmptyCart(userId);
         }
 
-        // Process cart items and return the complete cart
-        return await processCartItems(cart.id, userId);
+        // Process cart items and return the complete cart with user type
+        return await processCartItems(cart.id, userId, userType);
       } catch (innerErr: any) {
         console.error('Error in fetchCartData:', innerErr);
         // Return empty cart on error to avoid infinite loading

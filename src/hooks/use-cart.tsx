@@ -21,10 +21,16 @@ export async function addToCart(productId: string, quantity: number): Promise<vo
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, profile } = useAuth();
   
-  // Get cart data
-  const { cart, isLoading, refreshCart } = useCartData(isAuthenticated, user?.id || null);
+  // Get user type with proper type guard
+  const userType = profile?.tipo_perfil || 'consumidor';
+  const validUserType = (['consumidor', 'profissional', 'lojista', 'vendedor'].includes(userType)) 
+    ? userType as 'consumidor' | 'profissional' | 'lojista' | 'vendedor'
+    : 'consumidor';
+  
+  // Get cart data with user type
+  const { cart, isLoading, refreshCart } = useCartData(isAuthenticated, user?.id || null, validUserType);
   
   // Get cart operations
   const operations = useCartOperations(refreshCart);
@@ -33,7 +39,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const cartCount = cart?.items?.reduce((sum, item) => sum + item.quantidade, 0) || 0;
   const cartItems = cart?.items || [];
   
-  console.log('CartProvider: cartCount =', cartCount, 'isLoading =', isLoading);
+  console.log('CartProvider: cartCount =', cartCount, 'isLoading =', isLoading, 'userType =', validUserType);
 
   // Force refresh cart when authentication state changes
   useEffect(() => {

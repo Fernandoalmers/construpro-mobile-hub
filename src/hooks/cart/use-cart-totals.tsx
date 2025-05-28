@@ -1,12 +1,14 @@
 
 import { useState, useMemo } from 'react';
 import { CartItem } from '@/types/cart';
+import { getProductPoints } from '@/utils/pointsCalculations';
 
 export const useCartTotals = (
   cartItems: CartItem[],
   storeCount: number,
   discountAmount: number = 0,
-  totalCartPoints: number = 0
+  totalCartPoints: number = 0,
+  userType: 'consumidor' | 'profissional' | 'lojista' | 'vendedor' = 'consumidor'
 ) => {
   // Calculate subtotal from cart items
   const subtotal = useMemo(() => {
@@ -25,11 +27,13 @@ export const useCartTotals = (
   // Calculate total
   const total = subtotal + shipping - discount;
   
-  // Use provided totalPoints or calculate
-  const totalPoints = totalCartPoints || cartItems.reduce((sum, item) => {
-    const itemPoints = (item.produto?.pontos || 0) * item.quantidade;
-    return sum + itemPoints;
-  }, 0);
+  // Calculate points using getProductPoints for correct user type calculation
+  const totalPoints = useMemo(() => {
+    return cartItems.reduce((sum, item) => {
+      const itemPoints = getProductPoints(item.produto, userType) * item.quantidade;
+      return sum + itemPoints;
+    }, 0);
+  }, [cartItems, userType]);
   
   return {
     subtotal,

@@ -6,7 +6,11 @@ import { useCartFetcher } from './useCartFetcher';
 /**
  * Hook to manage cart state and refreshing
  */
-export function useCartState(isAuthenticated: boolean, userId: string | null) {
+export function useCartState(
+  isAuthenticated: boolean, 
+  userId: string | null,
+  userType: 'consumidor' | 'profissional' | 'lojista' | 'vendedor' = 'consumidor'
+) {
   const [cart, setCart] = useState<Cart | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
@@ -21,11 +25,11 @@ export function useCartState(isAuthenticated: boolean, userId: string | null) {
       return;
     }
     
-    console.log('[useCartState] Refreshing cart for user:', userId);
+    console.log('[useCartState] Refreshing cart for user:', userId, 'type:', userType);
     setIsLoading(true);
     
     try {
-      const cartData = await fetchCartData(userId);
+      const cartData = await fetchCartData(userId, userType);
       setCart(cartData);
       setError(null);
     } catch (err: any) {
@@ -47,12 +51,12 @@ export function useCartState(isAuthenticated: boolean, userId: string | null) {
       // Always ensure loading state is completed
       setIsLoading(false);
     }
-  }, [isAuthenticated, userId, fetchCartData]);
+  }, [isAuthenticated, userId, userType, fetchCartData]);
 
   // Load cart data on mount and when auth state changes
   useEffect(() => {
     refreshCart();
-  }, [refreshCart, isAuthenticated, userId]);
+  }, [refreshCart, isAuthenticated, userId, userType]);
 
   return {
     cart,
