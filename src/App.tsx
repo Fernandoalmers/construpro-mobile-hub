@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
@@ -112,6 +111,7 @@ function App() {
         <Route path="/profile/orders" element={<ProtectedRoute><OrdersScreen /></ProtectedRoute>} />
         <Route path="/profile/orders/:id" element={<ProtectedRoute><OrderDetailScreen /></ProtectedRoute>} />
         <Route path="/profile/addresses" element={<ProtectedRoute><AddressScreen /></ProtectedRoute>} />
+        <Route path="/profile/address/add" element={<ProtectedRoute><AddressScreen /></ProtectedRoute>} />
         <Route path="/profile/physical-purchases" element={<ProtectedRoute><PhysicalPurchasesScreen /></ProtectedRoute>} />
         <Route path="/profile/points-history" element={<ProtectedRoute><PointsHistoryScreen /></ProtectedRoute>} />
         <Route path="/profile/referrals" element={<ProtectedRoute><ReferralsScreen /></ProtectedRoute>} />
