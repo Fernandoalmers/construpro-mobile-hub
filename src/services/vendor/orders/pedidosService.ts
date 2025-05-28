@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 /**
@@ -44,16 +45,11 @@ export interface Pedido {
  */
 export const getVendorPedidos = async (): Promise<Pedido[]> => {
   try {
-    console.log("🔍 [getVendorPedidos] SERVICE - INICIANDO busca de pedidos na tabela pedidos");
-    
-    // Primeiro, obter o vendedor atual
+    // Obter o vendedor atual
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      console.error("❌ [getVendorPedidos] SERVICE - Usuário não autenticado");
-      return [];
+      throw new Error('Usuário não autenticado');
     }
-    
-    console.log("👤 [getVendorPedidos] SERVICE - Usuário autenticado:", user.id);
     
     // Buscar o vendedor
     const { data: vendorData, error: vendorError } = await supabase
@@ -63,19 +59,10 @@ export const getVendorPedidos = async (): Promise<Pedido[]> => {
       .single();
     
     if (vendorError || !vendorData) {
-      console.error("❌ [getVendorPedidos] SERVICE - Vendedor não encontrado:", vendorError);
-      return [];
+      throw new Error('Vendedor não encontrado');
     }
     
-    console.log("✅ [getVendorPedidos] SERVICE - Vendedor encontrado:", {
-      id: vendorData.id,
-      nome_loja: vendorData.nome_loja,
-      status: vendorData.status
-    });
-    
     // Buscar pedidos do vendedor na tabela pedidos
-    console.log("🔍 [getVendorPedidos] SERVICE - BUSCANDO pedidos para vendedor na TABELA PEDIDOS:", vendorData.id);
-    
     const { data: pedidos, error: pedidosError } = await supabase
       .from('pedidos')
       .select(`
@@ -93,36 +80,20 @@ export const getVendorPedidos = async (): Promise<Pedido[]> => {
       .order('created_at', { ascending: false });
     
     if (pedidosError) {
-      console.error("❌ [getVendorPedidos] SERVICE - Erro ao buscar pedidos:", pedidosError);
-      return [];
+      throw new Error('Erro ao buscar pedidos: ' + pedidosError.message);
     }
-    
-    console.log(`✅ [getVendorPedidos] SERVICE - QUERY EXECUTADA COM SUCESSO na tabela pedidos. Encontrados ${pedidos?.length || 0} pedidos`);
     
     if (!pedidos || pedidos.length === 0) {
-      console.log("⚠️ [getVendorPedidos] SERVICE - NENHUM PEDIDO ENCONTRADO na tabela pedidos para o vendedor:", vendorData.id);
-      console.log("💡 [getVendorPedidos] SERVICE - DICA: Execute a migração para transferir dados da tabela orders");
       return [];
     }
-    
-    console.log("📋 [getVendorPedidos] SERVICE - PEDIDOS ENCONTRADOS na tabela pedidos:", pedidos.map(p => ({
-      id: p.id,
-      status: p.status,
-      valor_total: p.valor_total,
-      created_at: p.created_at
-    })));
     
     // Para cada pedido, buscar os itens e informações do cliente
     const pedidosCompletos: Pedido[] = [];
     
-    console.log("🔍 [getVendorPedidos] SERVICE - PROCESSANDO cada pedido para buscar itens e cliente...");
-    
     for (const pedido of pedidos) {
       try {
-        console.log(`🔍 [getVendorPedidos] SERVICE - Processando pedido ${pedido.id}`);
-        
         // Buscar itens do pedido
-        const { data: itens, error: itensError } = await supabase
+        const { data: itens } = await supabase
           .from('itens_pedido')
           .select(`
             id,
@@ -133,13 +104,6 @@ export const getVendorPedidos = async (): Promise<Pedido[]> => {
             created_at
           `)
           .eq('pedido_id', pedido.id);
-        
-        if (itensError) {
-          console.error(`❌ [getVendorPedidos] SERVICE - Erro ao buscar itens do pedido ${pedido.id}:`, itensError);
-          continue;
-        }
-        
-        console.log(`📋 [getVendorPedidos] SERVICE - Pedido ${pedido.id} tem ${itens?.length || 0} itens`);
         
         // Buscar informações dos produtos
         const itensComProdutos: PedidoItem[] = [];
@@ -162,15 +126,11 @@ export const getVendorPedidos = async (): Promise<Pedido[]> => {
         }
         
         // Buscar informações do cliente
-        console.log(`🔍 [getVendorPedidos] SERVICE - Buscando cliente para pedido ${pedido.id}, usuario_id: ${pedido.usuario_id}`);
-        
         const { data: clienteData } = await supabase
           .from('profiles')
           .select('nome, email, telefone')
           .eq('id', pedido.usuario_id)
           .single();
-        
-        console.log(`📋 [getVendorPedidos] SERVICE - Cliente encontrado para pedido ${pedido.id}:`, clienteData?.nome || 'Não encontrado');
         
         // Buscar dados do cliente na tabela clientes_vendedor
         const { data: clienteVendorData } = await supabase
@@ -194,42 +154,19 @@ export const getVendorPedidos = async (): Promise<Pedido[]> => {
           } : undefined
         };
         
-        console.log(`✅ [getVendorPedidos] SERVICE - Pedido ${pedido.id} processado com sucesso:`, {
-          id: pedidoCompleto.id,
-          status: pedidoCompleto.status,
-          valor_total: pedidoCompleto.valor_total,
-          cliente_nome: pedidoCompleto.cliente?.nome,
-          itens_count: pedidoCompleto.itens?.length || 0
-        });
-        
         pedidosCompletos.push(pedidoCompleto);
         
       } catch (error) {
-        console.error(`❌ [getVendorPedidos] SERVICE - Erro ao processar pedido ${pedido.id}:`, error);
+        console.error(`Erro ao processar pedido ${pedido.id}:`, error);
+        // Continue processing other orders even if one fails
       }
     }
-    
-    console.log(`✅ [getVendorPedidos] SERVICE - PROCESSAMENTO CONCLUÍDO. Retornando ${pedidosCompletos.length} pedidos completos da tabela pedidos`);
-    
-    // Final validation
-    pedidosCompletos.forEach((pedido, index) => {
-      console.log(`📋 [getVendorPedidos] SERVICE - Pedido final ${index + 1}:`, {
-        id: pedido.id,
-        vendedor_id: pedido.vendedor_id,
-        usuario_id: pedido.usuario_id,
-        status: pedido.status,
-        valor_total: pedido.valor_total,
-        cliente_nome: pedido.cliente?.nome,
-        itens_count: pedido.itens?.length || 0,
-        created_at: pedido.created_at
-      });
-    });
     
     return pedidosCompletos;
     
   } catch (error) {
-    console.error("❌ [getVendorPedidos] SERVICE - Erro geral:", error);
-    return [];
+    console.error("Erro ao buscar pedidos:", error);
+    throw error;
   }
 };
 
@@ -238,9 +175,11 @@ export const getVendorPedidos = async (): Promise<Pedido[]> => {
  */
 export const getPedidoById = async (pedidoId: string): Promise<Pedido | null> => {
   try {
-    // Primeiro verificar se o usuário tem acesso a este pedido
+    // Verificar se o usuário tem acesso a este pedido
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
+    if (!user) {
+      throw new Error('Usuário não autenticado');
+    }
     
     const { data: vendorData } = await supabase
       .from('vendedores')
@@ -248,9 +187,11 @@ export const getPedidoById = async (pedidoId: string): Promise<Pedido | null> =>
       .eq('usuario_id', user.id)
       .single();
     
-    if (!vendorData) return null;
+    if (!vendorData) {
+      throw new Error('Vendedor não encontrado');
+    }
     
-    // Buscar o pedido (apenas campos que existem)
+    // Buscar o pedido
     const { data: pedido, error } = await supabase
       .from('pedidos')
       .select(`
@@ -269,7 +210,6 @@ export const getPedidoById = async (pedidoId: string): Promise<Pedido | null> =>
       .single();
     
     if (error || !pedido) {
-      console.error("❌ [getPedidoById] Pedido não encontrado:", error);
       return null;
     }
     
@@ -337,36 +277,24 @@ export const getPedidoById = async (pedidoId: string): Promise<Pedido | null> =>
     };
     
   } catch (error) {
-    console.error("❌ [getPedidoById] Erro:", error);
+    console.error("Erro ao buscar pedido:", error);
     return null;
   }
 };
 
 /**
- * Migrar dados existentes da tabela orders para pedidos usando SQL direto
+ * Migrar dados existentes da tabela orders para pedidos
  */
 export const migrateOrdersToPedidos = async (): Promise<{ success: boolean; count: number; message: string }> => {
   try {
-    console.log("🔄 [migrateOrdersToPedidos] Iniciando migração manual");
-    
-    // Executar a função SQL diretamente usando execute
-    const { data, error } = await supabase
-      .rpc('execute_custom_sql', {
-        sql_statement: 'SELECT public.migrate_orders_to_pedidos() as count;'
-      });
+    // Executar a função SQL de migração
+    const { data, error } = await supabase.rpc('migrate_orders_to_pedidos');
     
     if (error) {
-      console.error("❌ [migrateOrdersToPedidos] Erro na migração:", error);
       return { success: false, count: 0, message: "Erro durante a migração: " + error.message };
     }
     
-    // Parse the result if it's in JSON format
-    let count = 0;
-    if (data && typeof data === 'object' && 'status' in data && data.status === 'success') {
-      count = 1; // Assume success if no specific count returned
-    }
-    
-    console.log(`✅ [migrateOrdersToPedidos] Migração concluída: ${count} pedidos migrados`);
+    const count = data || 0;
     
     return {
       success: true,
@@ -375,7 +303,7 @@ export const migrateOrdersToPedidos = async (): Promise<{ success: boolean; coun
     };
     
   } catch (error) {
-    console.error("❌ [migrateOrdersToPedidos] Erro geral:", error);
+    console.error("Erro na migração:", error);
     return {
       success: false,
       count: 0,

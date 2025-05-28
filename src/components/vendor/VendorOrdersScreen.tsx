@@ -1,389 +1,252 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import LoadingState from '../common/LoadingState';
-import OrdersHeader from './orders/OrdersHeader';
-import OrderStats from './orders/OrderStats';
-import OrderFilters from './orders/OrderFilters';
-import OrdersList from './orders/OrdersList';
-import OrdersError from './orders/OrdersError';
-import { usePedidosVendor } from '@/hooks/vendor/usePedidosVendor';
-import { useOrderFilters, orderStatuses } from '@/hooks/vendor/useOrderFilters';
-import { Button } from '@/components/ui/button';
+import { ChevronLeft, Package, Search, Filter, RefreshCw, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
-import { Store, AlertCircle, RefreshCcw, CheckCircle, Database } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
-import type { VendorOrder } from '@/services/vendor/orders/types';
-import type { Pedido } from '@/services/vendor/orders/pedidosService';
-
-// Função para converter Pedido para VendorOrder
-const convertPedidoToVendorOrder = (pedido: Pedido): VendorOrder => {
-  console.log('🔄 [convertPedidoToVendorOrder] Converting pedido:', {
-    id: pedido.id,
-    valor_total: pedido.valor_total,
-    status: pedido.status,
-    cliente: pedido.cliente?.nome,
-    itens_count: pedido.itens?.length || 0
-  });
-  
-  return {
-    id: pedido.id,
-    vendedor_id: pedido.vendedor_id,
-    cliente_id: pedido.usuario_id,
-    valor_total: pedido.valor_total,
-    status: pedido.status,
-    forma_pagamento: pedido.forma_pagamento,
-    endereco_entrega: pedido.endereco_entrega,
-    created_at: pedido.created_at,
-    data_criacao: pedido.created_at,
-    data_entrega_estimada: pedido.data_entrega_estimada,
-    rastreio: undefined,
-    cliente: pedido.cliente,
-    itens: pedido.itens?.map(item => ({
-      id: item.id,
-      produto_id: item.produto_id,
-      quantidade: item.quantidade,
-      preco_unitario: item.preco_unitario,
-      total: item.total,
-      created_at: item.created_at,
-      produto: item.produto
-    }))
-  };
-};
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { usePedidosVendor } from '@/hooks/vendor/usePedidosVendor';
+import LoadingState from '../common/LoadingState';
+import { toast } from '@/components/ui/sonner';
 
 const VendorOrdersScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
-  
-  console.log('🚀 [VendorOrdersScreen] Component mounting/updating - USANDO PEDIDOS HOOK');
-  
-  // ✅ AGORA USANDO APENAS O HOOK CORRETO: usePedidosVendor
   const { 
     pedidos, 
     isLoading, 
     error, 
-    refetch, 
-    isRefetching, 
-    handleRefresh,
+    handleRefresh, 
     vendorProfileStatus,
     isMigrating,
     handleMigration
   } = usePedidosVendor();
   
-  console.log('📊 [VendorOrdersScreen] HOOK CORRETO - usePedidosVendor data:', {
-    pedidosCount: pedidos.length,
-    isLoading,
-    error: !!error,
-    vendorProfileStatus,
-    isMigrating,
-    isAuthenticated,
-    userId: user?.id
-  });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('todos');
   
-  // Convert pedidos to VendorOrder format for compatibility
-  const orders: VendorOrder[] = React.useMemo(() => {
-    console.log('🔄 [VendorOrdersScreen] CONVERSÃO DE DADOS - Converting pedidos to orders format. Input pedidos:', pedidos.length);
+  // Filter orders based on search and status
+  const filteredOrders = pedidos?.filter(order => {
+    const matchesSearch = !searchTerm || 
+      order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.cliente?.nome.toLowerCase().includes(searchTerm.toLowerCase());
     
-    if (!pedidos || pedidos.length === 0) {
-      console.log('⚠️ [VendorOrdersScreen] CONVERSÃO DE DADOS - No pedidos to convert');
-      return [];
-    }
+    const matchesStatus = statusFilter === 'todos' || order.status === statusFilter;
     
-    const convertedOrders = pedidos.map(convertPedidoToVendorOrder);
-    console.log('✅ [VendorOrdersScreen] CONVERSÃO DE DADOS - Converted orders:', {
-      input: pedidos.length,
-      output: convertedOrders.length,
-      firstOrder: convertedOrders[0] ? {
-        id: convertedOrders[0].id,
-        valor_total: convertedOrders[0].valor_total,
-        status: convertedOrders[0].status
-      } : null
+    return matchesSearch && matchesStatus;
+  }) || [];
+  
+  // Format date
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('pt-BR', {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric"
     });
-    
-    return convertedOrders;
-  }, [pedidos]);
+  };
   
-  const {
-    searchTerm,
-    setSearchTerm,
-    filterStatus,
-    setFilterStatus,
-    filteredOrders
-  } = useOrderFilters(orders);
-  
-  console.log('📊 [VendorOrdersScreen] ESTADO FINAL após conversão:', {
-    pedidosCount: pedidos?.length || 0,
-    ordersCount: orders?.length || 0,
-    filteredOrdersCount: filteredOrders?.length || 0,
-    isLoading,
-    error: !!error,
-    vendorProfileStatus,
-    errorMessage: error?.message,
-    isAuthenticated,
-    userId: user?.id
-  });
-
-  // Log detailed information about pedidos for debugging
-  React.useEffect(() => {
-    if (pedidos && pedidos.length > 0) {
-      console.log('📋 [VendorOrdersScreen] SUCESSO - Pedidos carregados da tabela pedidos:', {
-        totalPedidos: pedidos.length,
-        firstPedidoId: pedidos[0]?.id,
-        firstPedidoStatus: pedidos[0]?.status,
-        firstPedidoTotal: pedidos[0]?.valor_total,
-        firstPedidoCustomer: pedidos[0]?.cliente?.nome,
-        firstPedidoItems: pedidos[0]?.itens?.length || 0,
-        allPedidoIds: pedidos.map(p => p.id)
-      });
-    } else if (!isLoading && !error) {
-      console.log('⚠️ [VendorOrdersScreen] AVISO - Nenhum pedido encontrado na tabela pedidos mas sem erro');
+  // Get status badge
+  const getStatusBadge = (status: string) => {
+    switch(status.toLowerCase()) {
+      case "entregue":
+        return { color: "bg-green-100 text-green-800", icon: CheckCircle };
+      case "enviado":
+        return { color: "bg-blue-100 text-blue-800", icon: Package };
+      case "processando":
+        return { color: "bg-yellow-100 text-yellow-800", icon: Clock };
+      case "confirmado":
+        return { color: "bg-purple-100 text-purple-800", icon: CheckCircle };
+      case "pendente":
+        return { color: "bg-orange-100 text-orange-800", icon: Clock };
+      case "cancelado":
+        return { color: "bg-red-100 text-red-800", icon: XCircle };
+      default:
+        return { color: "bg-gray-100 text-gray-800", icon: Package };
     }
-  }, [pedidos, isLoading, error]);
+  };
 
-  // Additional debug for orders conversion
-  React.useEffect(() => {
-    console.log('🔍 [VendorOrdersScreen] ORDERS EFFECT - Orders effect triggered:', {
-      ordersLength: orders.length,
-      filteredOrdersLength: filteredOrders.length,
-      hasSearchTerm: !!searchTerm,
-      hasFilterStatus: !!filterStatus
-    });
-  }, [orders, filteredOrders, searchTerm, filterStatus]);
-
-  // Check authentication first
-  if (!isAuthenticated || !user) {
-    console.log('🚫 [VendorOrdersScreen] User not authenticated');
+  // Show loading state while checking vendor profile
+  if (vendorProfileStatus === 'checking') {
     return (
-      <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
-        <OrdersHeader 
-          onBack={() => navigate('/vendor')} 
-          onRefresh={() => {}} 
-          isRefetching={false} 
-        />
-        
-        <div className="p-6 flex flex-col items-center justify-center flex-grow">
-          <Card className="p-6 max-w-md w-full text-center">
-            <AlertCircle size={64} className="mx-auto text-red-400 mb-4" />
-            <h2 className="text-xl font-bold mb-2">Acesso não autorizado</h2>
-            <p className="text-gray-600 mb-6">
-              Você precisa estar logado para acessar esta página.
-            </p>
-            <Button 
-              onClick={() => navigate('/login')}
-              className="w-full bg-construPro-blue hover:bg-blue-700 mb-4"
-            >
-              Fazer Login
-            </Button>
-            <Button 
-              variant="outline"
-              className="w-full"
-              onClick={() => navigate('/vendor')}
-            >
-              Voltar para Portal do Vendedor
-            </Button>
-          </Card>
+      <div className="flex flex-col min-h-screen bg-gray-100">
+        <div className="bg-white p-4 flex items-center shadow-sm">
+          <button onClick={() => navigate('/vendor')} className="mr-4">
+            <ChevronLeft size={24} />
+          </button>
+          <h1 className="text-xl font-bold">Pedidos</h1>
+        </div>
+        <div className="p-6">
+          <LoadingState text="Verificando perfil do vendedor..." />
         </div>
       </div>
     );
   }
 
-  // Show vendor profile setup message if profile is not found
+  // Show error if no vendor profile
   if (vendorProfileStatus === 'not_found') {
-    console.log('🚫 [VendorOrdersScreen] Vendor profile not found');
     return (
-      <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
-        <OrdersHeader 
-          onBack={() => navigate('/vendor')} 
-          onRefresh={() => {}} 
-          isRefetching={false} 
-        />
-        
-        <div className="p-6 flex flex-col items-center justify-center flex-grow">
-          <Card className="p-6 max-w-md w-full text-center">
-            <Store size={64} className="mx-auto text-gray-400 mb-4" />
-            <h2 className="text-xl font-bold mb-2">Configure seu perfil de vendedor</h2>
-            <p className="text-gray-600 mb-6">
-              Você precisa configurar seu perfil de vendedor para poder acessar e gerenciar seus pedidos.
-            </p>
-            <Button 
-              onClick={() => navigate('/auth/vendor-profile')}
-              className="w-full bg-construPro-blue hover:bg-blue-700 mb-4"
-            >
-              Configurar Perfil
-            </Button>
-            <Button 
-              variant="outline"
-              className="w-full"
-              onClick={() => navigate('/vendor')}
-            >
-              Voltar para Portal do Vendedor
-            </Button>
-          </Card>
+      <div className="flex flex-col min-h-screen bg-gray-100">
+        <div className="bg-white p-4 flex items-center shadow-sm">
+          <button onClick={() => navigate('/vendor')} className="mr-4">
+            <ChevronLeft size={24} />
+          </button>
+          <h1 className="text-xl font-bold">Pedidos</h1>
+        </div>
+        <div className="text-center p-10">
+          <Package className="mx-auto text-gray-400 mb-3" size={40} />
+          <h3 className="text-lg font-medium text-gray-700">Configure seu perfil primeiro</h3>
+          <p className="text-gray-500 mt-1">Você precisa configurar seu perfil de vendedor para visualizar pedidos</p>
+          <Button 
+            variant="outline" 
+            className="mt-4"
+            onClick={() => navigate('/vendor')}
+          >
+            Voltar ao painel
+          </Button>
         </div>
       </div>
     );
   }
-
-  if (isLoading) {
-    console.log('⏳ [VendorOrdersScreen] Loading state');
-    return <LoadingState text="Carregando pedidos do vendedor da tabela pedidos..." />;
-  }
-  
-  if (error) {
-    console.error('❌ [VendorOrdersScreen] Erro ao carregar pedidos:', error);
-    return (
-      <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
-        <OrdersHeader 
-          onBack={() => navigate('/vendor')} 
-          onRefresh={refetch} 
-          isRefetching={isRefetching} 
-        />
-        <OrdersError onRetry={refetch} />
-      </div>
-    );
-  }
-
-  console.log('🎨 [VendorOrdersScreen] RENDERIZAÇÃO PRINCIPAL - Rendering main interface with orders:', orders.length);
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
       {/* Header */}
-      <OrdersHeader 
-        onBack={() => navigate('/vendor')} 
-        onRefresh={handleRefresh} 
-        isRefetching={isRefetching} 
-      />
+      <div className="bg-white p-4 flex items-center justify-between shadow-sm">
+        <div className="flex items-center">
+          <button onClick={() => navigate('/vendor')} className="mr-4">
+            <ChevronLeft size={24} />
+          </button>
+          <h1 className="text-xl font-bold">Meus Pedidos</h1>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isLoading}
+          >
+            <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
+          </Button>
+        </div>
+      </div>
       
-      <div className="p-6 space-y-6">
-        {/* Status da correção */}
-        <Card className="p-4 bg-green-50 border-green-200">
-          <div className="flex items-start gap-3">
-            <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
-            <div>
-              <h3 className="font-medium text-green-800">Sistema Corrigido - Usando usePedidosVendor</h3>
-              <p className="text-sm text-green-700 mt-1">
-                Agora usando exclusivamente a tabela pedidos com o hook correto. 
-                Usuário: {user.email} | Pedidos: {pedidos.length} | Orders convertidos: {orders.length}
-              </p>
-            </div>
+      {/* Filters */}
+      <div className="bg-white p-4 space-y-3 border-b">
+        <div className="flex gap-3">
+          <div className="flex-1 relative">
+            <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <Input
+              placeholder="Buscar por ID ou cliente..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
           </div>
-        </Card>
-
-        {/* Debug info */}
-        {process.env.NODE_ENV === 'development' && (
-          <Card className="p-4 bg-blue-50 border-blue-200">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-blue-500 mt-0.5" />
-              <div>
-                <h3 className="font-medium text-blue-800">Debug Info - Hook Correto Ativo</h3>
-                <div className="text-sm text-blue-700 mt-1 font-mono">
-                  <p>✅ Hook: usePedidosVendor (CORRETO)</p>
-                  <p>Pedidos raw: {pedidos.length}</p>
-                  <p>Orders converted: {orders.length}</p>
-                  <p>Filtered orders: {filteredOrders.length}</p>
-                  <p>Vendor status: {vendorProfileStatus}</p>
-                  <p>Loading: {isLoading ? 'true' : 'false'}</p>
-                  <p>Error: {error ? 'true' : 'false'}</p>
-                </div>
-              </div>
-            </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos</SelectItem>
+              <SelectItem value="pendente">Pendente</SelectItem>
+              <SelectItem value="confirmado">Confirmado</SelectItem>
+              <SelectItem value="processando">Processando</SelectItem>
+              <SelectItem value="enviado">Enviado</SelectItem>
+              <SelectItem value="entregue">Entregue</SelectItem>
+              <SelectItem value="cancelado">Cancelado</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      
+      <div className="p-6 space-y-4">
+        {/* Migration Button - only show if no orders found */}
+        {pedidos?.length === 0 && !isLoading && (
+          <Card className="p-4 text-center">
+            <h3 className="font-medium mb-2">Nenhum pedido encontrado</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Se você tinha pedidos no sistema antigo, execute a migração para vê-los aqui.
+            </p>
+            <Button 
+              onClick={handleMigration}
+              disabled={isMigrating}
+              variant="outline"
+              size="sm"
+            >
+              {isMigrating ? 'Migrando...' : 'Migrar pedidos antigos'}
+            </Button>
           </Card>
         )}
 
-        {/* Migração de dados se necessário */}
-        {pedidos.length === 0 && (
-          <Card className="p-4 bg-blue-50 border-blue-200">
-            <div className="flex items-start gap-3">
-              <Database className="h-5 w-5 text-blue-500 mt-0.5" />
-              <div className="flex-1">
-                <h3 className="font-medium text-blue-800">Migração de Dados</h3>
-                <p className="text-sm text-blue-700 mt-1">
-                  Se você não está vendo seus pedidos, execute a migração para transferir 
-                  os dados da tabela orders para a nova tabela pedidos.
-                </p>
-                <Button 
-                  onClick={handleMigration}
-                  disabled={isMigrating}
-                  className="mt-3 bg-blue-600 hover:bg-blue-700 text-white"
-                  size="sm"
-                >
-                  {isMigrating ? (
-                    <>
-                      <RefreshCcw size={16} className="mr-1 animate-spin" />
-                      Migrando dados...
-                    </>
-                  ) : (
-                    <>
-                      <Database size={16} className="mr-1" />
-                      Migrar dados existentes
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          </Card>
+        {/* Loading State */}
+        {isLoading && (
+          <LoadingState text="Carregando pedidos..." />
         )}
-
-        {/* Search and filters */}
-        <OrderFilters 
-          searchTerm={searchTerm}
-          onSearchChange={(e) => setSearchTerm(e.target.value)}
-          filterStatus={filterStatus}
-          setFilterStatus={setFilterStatus}
-          orderStatuses={orderStatuses}
-        />
         
-        {/* Order Stats */}
-        <OrderStats orders={orders} />
+        {/* Error State */}
+        {error && (
+          <Card className="p-6 text-center">
+            <Package className="mx-auto text-gray-400 mb-3" size={40} />
+            <h3 className="text-lg font-medium text-gray-700">Erro ao carregar pedidos</h3>
+            <p className="text-gray-500 mt-1">Tente novamente em alguns instantes</p>
+            <Button 
+              variant="outline" 
+              className="mt-4"
+              onClick={handleRefresh}
+            >
+              Tentar novamente
+            </Button>
+          </Card>
+        )}
         
         {/* Orders List */}
-        <div className="space-y-4">
-          <h2 className="font-bold text-lg">Lista de pedidos da tabela pedidos ({orders.length})</h2>
+        {!isLoading && !error && filteredOrders.length === 0 && pedidos?.length > 0 && (
+          <Card className="p-6 text-center">
+            <Package className="mx-auto text-gray-400 mb-3" size={40} />
+            <h3 className="text-lg font-medium text-gray-700">Nenhum pedido encontrado</h3>
+            <p className="text-gray-500 mt-1">Tente ajustar os filtros de busca</p>
+          </Card>
+        )}
+        
+        {filteredOrders.map((pedido) => {
+          const statusInfo = getStatusBadge(pedido.status);
+          const StatusIcon = statusInfo.icon;
           
-          {orders.length === 0 && !isRefetching ? (
-            <div className="rounded-lg border p-8 text-center">
-              <AlertCircle className="mx-auto h-10 w-10 text-yellow-500 mb-3" />
-              <h3 className="text-lg font-medium mb-2">Nenhum pedido encontrado</h3>
-              <p className="text-gray-500 mb-4">
-                Não foram encontrados pedidos na tabela pedidos para este vendedor.
-              </p>
-              <div className="flex gap-2 justify-center">
-                <Button 
-                  onClick={handleMigration}
-                  disabled={isMigrating}
-                  className="mt-2 bg-blue-600 hover:bg-blue-700"
-                >
-                  {isMigrating ? (
-                    <>
-                      <RefreshCcw size={16} className="mr-1 animate-spin" />
-                      Migrando...
-                    </>
-                  ) : (
-                    <>
-                      <Database size={16} className="mr-1" />
-                      Migrar dados
-                    </>
-                  )}
-                </Button>
-                <Button onClick={handleRefresh} variant="outline" className="mt-2">
-                  <RefreshCcw size={16} className="mr-1" />
-                  Atualizar
-                </Button>
+          return (
+            <Card 
+              key={pedido.id} 
+              className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+              onClick={() => navigate(`/vendor/orders/${pedido.id}`)}
+            >
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <h3 className="font-medium">Pedido #{pedido.id.substring(0, 8)}</h3>
+                  <p className="text-sm text-gray-500">
+                    {pedido.cliente?.nome || 'Cliente não identificado'}
+                  </p>
+                </div>
+                <Badge className={statusInfo.color}>
+                  <StatusIcon size={12} className="mr-1" />
+                  {pedido.status}
+                </Badge>
               </div>
-            </div>
-          ) : (
-            <OrdersList 
-              orders={filteredOrders}
-              onViewDetails={(orderId) => navigate(`/vendor/orders/${orderId}`)}
-              hasFilters={!!(searchTerm || filterStatus)}
-              onClearFilters={() => {
-                setSearchTerm('');
-                setFilterStatus(null);
-              }}
-              onRefresh={handleRefresh}
-            />
-          )}
-        </div>
+              
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-600">
+                  {formatDate(pedido.created_at)}
+                </span>
+                <span className="font-medium">
+                  R$ {Number(pedido.valor_total).toFixed(2)}
+                </span>
+              </div>
+              
+              <div className="mt-2 text-xs text-gray-500">
+                {pedido.itens?.length || 0} {pedido.itens?.length === 1 ? 'item' : 'itens'}
+              </div>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

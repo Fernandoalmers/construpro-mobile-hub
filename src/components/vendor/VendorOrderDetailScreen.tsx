@@ -6,10 +6,11 @@ import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getVendorOrders, updateOrderStatus, VendorOrder } from '@/services/vendor/orders';
+import { getPedidoById, type Pedido } from '@/services/vendor/orders/pedidosService';
 import LoadingState from '../common/LoadingState';
 import { toast } from '@/components/ui/sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { supabase } from '@/integrations/supabase/client';
 
 const VendorOrderDetailScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -17,28 +18,34 @@ const VendorOrderDetailScreen: React.FC = () => {
   const queryClient = useQueryClient();
   const [updatingStatus, setUpdatingStatus] = useState(false);
   
-  // Fetch all vendor orders
+  // Fetch specific order by ID using the pedidos service
   const { 
-    data: orders, 
+    data: pedido, 
     isLoading, 
     error 
   } = useQuery({
-    queryKey: ['vendorOrders'],
-    queryFn: () => getVendorOrders(),
+    queryKey: ['vendorPedido', id],
+    queryFn: () => getPedidoById(id!),
+    enabled: !!id,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
   
-  // Find the specific order
-  const order = orders?.find(order => order.id === id);
-  
   // Update order status mutation
   const updateStatusMutation = useMutation({
-    mutationFn: ({ orderId, status }: { orderId: string, status: string }) => {
+    mutationFn: async ({ pedidoId, status }: { pedidoId: string, status: string }) => {
       setUpdatingStatus(true);
-      return updateOrderStatus(orderId, status);
+      
+      const { error } = await supabase
+        .from('pedidos')
+        .update({ status })
+        .eq('id', pedidoId);
+      
+      if (error) throw error;
+      return { success: true };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['vendorOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['vendorPedido', id] });
+      queryClient.invalidateQueries({ queryKey: ['vendorPedidos'] });
       toast.success("Status do pedido atualizado com sucesso");
       setUpdatingStatus(false);
     },
@@ -51,7 +58,7 @@ const VendorOrderDetailScreen: React.FC = () => {
   
   const handleUpdateStatus = (newStatus: string) => {
     if (id) {
-      updateStatusMutation.mutate({ orderId: id, status: newStatus });
+      updateStatusMutation.mutate({ pedidoId: id, status: newStatus });
     }
   };
 
@@ -71,7 +78,7 @@ const VendorOrderDetailScreen: React.FC = () => {
     );
   }
   
-  if (error || !order) {
+  if (error || !pedido) {
     return (
       <div className="flex flex-col min-h-screen bg-gray-100">
         <div className="bg-white p-4 flex items-center shadow-sm">
@@ -96,7 +103,7 @@ const VendorOrderDetailScreen: React.FC = () => {
     );
   }
 
-  const orderItems = order.itens || [];
+  const orderItems = pedido.itens || [];
   
   // Status options
   const statusOptions = [
@@ -154,46 +161,46 @@ const VendorOrderDetailScreen: React.FC = () => {
         {/* Order Summary */}
         <Card className="p-4">
           <div className="flex justify-between items-center mb-3">
-            <h3 className="font-medium">Pedido #{order.id.substring(0, 8)}</h3>
-            <span className={`text-xs px-2 py-1 rounded-full ${getStatusBadge(order.status)}`}>
-              {order.status}
+            <h3 className="font-medium">Pedido #{pedido.id.substring(0, 8)}</h3>
+            <span className={`text-xs px-2 py-1 rounded-full ${getStatusBadge(pedido.status)}`}>
+              {pedido.status}
             </span>
           </div>
           
           <div className="flex flex-col gap-2 text-sm mb-4">
             <div className="flex items-center gap-2 text-gray-600">
               <Calendar size={16} />
-              <span>Realizado em {formatDate(order.created_at)}</span>
+              <span>Realizado em {formatDate(pedido.created_at)}</span>
             </div>
             
             <div className="flex items-center gap-2 text-gray-600">
               <CreditCard size={16} />
-              <span>Pagamento: {order.forma_pagamento}</span>
+              <span>Pagamento: {pedido.forma_pagamento}</span>
             </div>
             
-            {order.cliente && (
+            {pedido.cliente && (
               <div className="mt-2">
                 <h4 className="font-medium mb-1">Informações do Cliente</h4>
-                <p className="text-sm">Nome: {order.cliente.nome}</p>
-                {order.cliente.email && <p className="text-sm">Email: {order.cliente.email}</p>}
-                {order.cliente.telefone && <p className="text-sm">Telefone: {order.cliente.telefone}</p>}
+                <p className="text-sm">Nome: {pedido.cliente.nome}</p>
+                {pedido.cliente.email && <p className="text-sm">Email: {pedido.cliente.email}</p>}
+                {pedido.cliente.telefone && <p className="text-sm">Telefone: {pedido.cliente.telefone}</p>}
               </div>
             )}
           </div>
           
-          {order.endereco_entrega && (
+          {pedido.endereco_entrega && (
             <div className="bg-gray-50 p-3 rounded-md mb-4">
               <div className="flex items-start gap-2">
                 <MapPin size={16} className="text-gray-600 mt-0.5" />
                 <div>
                   <p className="font-medium">Endereço de entrega</p>
                   <p className="text-sm text-gray-600">
-                    {typeof order.endereco_entrega === 'string' 
-                      ? order.endereco_entrega
+                    {typeof pedido.endereco_entrega === 'string' 
+                      ? pedido.endereco_entrega
                       : (
-                        order.endereco_entrega.logradouro 
-                          ? `${order.endereco_entrega.logradouro}, ${order.endereco_entrega.numero}, ${order.endereco_entrega.cidade} - ${order.endereco_entrega.estado}`
-                          : JSON.stringify(order.endereco_entrega)
+                        pedido.endereco_entrega.logradouro 
+                          ? `${pedido.endereco_entrega.logradouro}, ${pedido.endereco_entrega.numero}, ${pedido.endereco_entrega.cidade} - ${pedido.endereco_entrega.estado}`
+                          : JSON.stringify(pedido.endereco_entrega)
                       )
                     }
                   </p>
@@ -207,7 +214,7 @@ const VendorOrderDetailScreen: React.FC = () => {
             <h4 className="font-medium mb-2">Atualizar status do pedido</h4>
             <div className="flex gap-2 items-center">
               <Select
-                value={order.status.toLowerCase()}
+                value={pedido.status.toLowerCase()}
                 onValueChange={(value) => handleUpdateStatus(value)}
                 disabled={updatingStatus}
               >
@@ -242,15 +249,15 @@ const VendorOrderDetailScreen: React.FC = () => {
                   <div 
                     className="w-16 h-16 bg-gray-200 rounded mr-3 bg-center bg-cover flex-shrink-0"
                     style={{ 
-                      backgroundImage: item.produtos?.imagens && item.produtos.imagens.length > 0
-                        ? `url(${typeof item.produtos.imagens[0] === 'string' 
-                            ? item.produtos.imagens[0] 
-                            : item.produtos.imagens[0].url || ''})`
+                      backgroundImage: item.produto?.imagens && item.produto.imagens.length > 0
+                        ? `url(${typeof item.produto.imagens[0] === 'string' 
+                            ? item.produto.imagens[0] 
+                            : item.produto.imagens[0].url || ''})`
                         : 'none'
                     }}
                   />
                   <div className="flex-1">
-                    <h4 className="font-medium">{item.produtos?.nome || 'Produto indisponível'}</h4>
+                    <h4 className="font-medium">{item.produto?.nome || 'Produto indisponível'}</h4>
                     <p className="text-sm text-gray-500">Qtd: {item.quantidade}</p>
                     <p className="text-sm font-medium mt-1">
                       R$ {Number(item.preco_unitario * item.quantidade).toFixed(2)}
@@ -266,7 +273,7 @@ const VendorOrderDetailScreen: React.FC = () => {
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span>Subtotal:</span>
-              <span>R$ {Number(order.valor_total).toFixed(2)}</span>
+              <span>R$ {Number(pedido.valor_total).toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span>Frete:</span>
@@ -274,7 +281,7 @@ const VendorOrderDetailScreen: React.FC = () => {
             </div>
             <div className="flex justify-between font-medium">
               <span>Total:</span>
-              <span>R$ {Number(order.valor_total).toFixed(2)}</span>
+              <span>R$ {Number(pedido.valor_total).toFixed(2)}</span>
             </div>
           </div>
         </Card>
