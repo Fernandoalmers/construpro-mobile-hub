@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getUserProfile, UserProfile, updateUserProfile } from '@/services/userService';
@@ -182,7 +183,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabase.supabaseKey}`
+            'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ycW5pYmtzaGxhcHdoamptc3poIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYyMjQxNDAsImV4cCI6MjA2MTgwMDE0MH0.JkNLF_MgpA4KamUZspxidu6wT4bCXEw8ej93xbp0JsI`
           },
           body: JSON.stringify(signupPayload)
         });

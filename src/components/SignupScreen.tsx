@@ -99,8 +99,16 @@ const SignupScreen: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      // Prepare user data with correct structure
-      const userData = {
+      // Prepare user data with correct structure - including all possible fields
+      const userData: {
+        nome: string;
+        cpf: string | null;
+        telefone: string | null;
+        tipo_perfil: UserRole;
+        codigo_indicacao: string | null;
+        especialidade_profissional?: string;
+        nome_loja?: string;
+      } = {
         nome: signupData.nome,
         cpf: signupData.cpf || null,
         telefone: signupData.telefone || null,
