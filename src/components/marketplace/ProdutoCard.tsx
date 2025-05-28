@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart, ShoppingCart, Star } from 'lucide-react';
+import { Heart, ShoppingCart, Star, Store } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +27,13 @@ interface Product {
   avaliacao?: number;
   loja_id?: string;
   status?: string;
+  stores?: {
+    id: string;
+    nome: string;
+    nome_loja: string;
+    logo_url?: string;
+  };
+  vendedor_id?: string;
 }
 
 interface ProdutoCardProps {
@@ -44,12 +51,23 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
   const [addingToCart, setAddingToCart] = useState(false);
   const [favorited, setFavorited] = useState(false);
 
+  // Debug log to check product data
+  console.log('[ProdutoCard] Product data:', {
+    id: produto.id,
+    nome: produto.nome,
+    stores: produto.stores,
+    vendedor_id: produto.vendedor_id
+  });
+
   // Get user type for correct points calculation with type guard
   const userType = profile?.tipo_perfil || 'consumidor';
   const validUserType = (['consumidor', 'profissional', 'lojista', 'vendedor'].includes(userType)) 
     ? userType as 'consumidor' | 'profissional' | 'lojista' | 'vendedor'
     : 'consumidor';
   const displayPoints = getProductPoints(produto, validUserType);
+
+  // Get store name for display
+  const storeName = produto.stores?.nome_loja || produto.stores?.nome || 'Loja';
 
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -190,6 +208,16 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
             )}
           </div>
         </div>
+
+        {/* Store Name */}
+        {produto.stores && (
+          <div className="mb-2 flex items-center gap-1">
+            <Store size={12} className="text-gray-500" />
+            <span className="text-xs text-gray-600">
+              Vendido por {storeName}
+            </span>
+          </div>
+        )}
 
         {/* Points */}
         {displayPoints > 0 && (

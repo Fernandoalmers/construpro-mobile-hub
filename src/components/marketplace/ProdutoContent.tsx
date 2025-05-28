@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Heart, ShoppingCart, Star, Share2, Info } from 'lucide-react';
+import { ArrowLeft, Heart, ShoppingCart, Star, Share2, Info, Store } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -36,6 +37,9 @@ const ProdutoContent: React.FC<ProdutoContentProps> = ({ produto }) => {
   const displayPoints = getProductPoints(produto, validUserType);
 
   console.log('User type:', validUserType, 'Display points:', displayPoints);
+
+  // Get store name for display
+  const storeName = produto.stores?.nome_loja || produto.stores?.nome || 'Loja';
 
   const handleAddToCart = async () => {
     if (produto.estoque === 0) {
@@ -187,6 +191,16 @@ const ProdutoContent: React.FC<ProdutoContentProps> = ({ produto }) => {
 
         {/* Product Name */}
         <h2 className="text-xl font-bold mb-2">{produto.nome}</h2>
+
+        {/* Store Name - NEW */}
+        {produto.stores && (
+          <div className="flex items-center gap-2 mb-3">
+            <Store size={16} className="text-gray-500" />
+            <span className="text-sm text-gray-600">
+              Vendido por <span className="font-medium text-construPro-blue">{storeName}</span>
+            </span>
+          </div>
+        )}
 
         {/* Price Section */}
         <div className="mb-4">

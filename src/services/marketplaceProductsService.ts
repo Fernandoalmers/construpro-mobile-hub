@@ -64,11 +64,12 @@ export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> =>
     console.log(`[marketplaceProductsService] ✅ Successfully fetched ${data?.length || 0} approved products`);
     
     if (data && data.length > 0) {
-      console.log('[marketplaceProductsService] 📋 Sample products:', data.slice(0, 2).map(p => ({
+      console.log('[marketplaceProductsService] 📋 Sample products with vendor data:', data.slice(0, 2).map(p => ({
         id: p.id,
         nome: p.nome,
         status: p.status,
         vendedor_id: p.vendedor_id,
+        vendedores: p.vendedores,
         segmento_id: p.segmento_id
       })));
     } else {
@@ -80,6 +81,13 @@ export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> =>
     
     // Transform data to match interface
     const products: MarketplaceProduct[] = (data || []).map(product => {
+      // Debug vendor data processing
+      console.log('[marketplaceProductsService] Processing vendor data for product:', {
+        productId: product.id,
+        vendedor_id: product.vendedor_id,
+        vendedores: product.vendedores
+      });
+
       // Process images properly
       let processedImages: string[] = [];
       if (product.imagens) {
@@ -97,6 +105,16 @@ export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> =>
         }
       }
       
+      // Process vendor/store information with better handling
+      const storeInfo = product.vendedores ? {
+        id: product.vendedor_id,
+        nome: product.vendedores.nome_loja || 'Loja sem nome',
+        nome_loja: product.vendedores.nome_loja || 'Loja sem nome',
+        logo_url: product.vendedores.logo || ''
+      } : undefined;
+
+      console.log('[marketplaceProductsService] Processed store info:', storeInfo);
+      
       return {
         id: product.id,
         nome: product.nome,
@@ -112,18 +130,19 @@ export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> =>
         vendedor_id: product.vendedor_id,
         segmento_id: product.segmento_id,
         segmento: product.segmento,
-        stores: product.vendedores ? {
-          id: product.vendedor_id,
-          nome: product.vendedores.nome_loja || '',
-          nome_loja: product.vendedores.nome_loja || '',
-          logo_url: product.vendedores.logo || ''
-        } : undefined,
+        stores: storeInfo,
         created_at: product.created_at,
         updated_at: product.updated_at
       };
     });
     
     console.log(`[marketplaceProductsService] 🔄 Processed ${products.length} products for marketplace display`);
+    console.log('[marketplaceProductsService] Sample processed products:', products.slice(0, 2).map(p => ({
+      id: p.id,
+      nome: p.nome,
+      stores: p.stores
+    })));
+    
     return products;
     
   } catch (error) {
@@ -163,6 +182,13 @@ export const getProductsBySegment = async (segmentId: string): Promise<Marketpla
     
     // Apply the same data transformation as getMarketplaceProducts
     const products: MarketplaceProduct[] = (data || []).map(product => {
+      // Debug vendor data processing for segment products
+      console.log('[marketplaceProductsService] Processing segment product vendor data:', {
+        productId: product.id,
+        vendedor_id: product.vendedor_id,
+        vendedores: product.vendedores
+      });
+
       // Process images properly
       let processedImages: string[] = [];
       if (product.imagens) {
@@ -180,6 +206,14 @@ export const getProductsBySegment = async (segmentId: string): Promise<Marketpla
         }
       }
       
+      // Process vendor/store information with better handling
+      const storeInfo = product.vendedores ? {
+        id: product.vendedor_id,
+        nome: product.vendedores.nome_loja || 'Loja sem nome',
+        nome_loja: product.vendedores.nome_loja || 'Loja sem nome',
+        logo_url: product.vendedores.logo || ''
+      } : undefined;
+      
       return {
         id: product.id,
         nome: product.nome,
@@ -195,12 +229,7 @@ export const getProductsBySegment = async (segmentId: string): Promise<Marketpla
         vendedor_id: product.vendedor_id,
         segmento_id: product.segmento_id,
         segmento: product.segmento,
-        stores: product.vendedores ? {
-          id: product.vendedor_id,
-          nome: product.vendedores.nome_loja || '',
-          nome_loja: product.vendedores.nome_loja || '',
-          logo_url: product.vendedores.logo || ''
-        } : undefined,
+        stores: storeInfo,
         created_at: product.created_at,
         updated_at: product.updated_at
       };
