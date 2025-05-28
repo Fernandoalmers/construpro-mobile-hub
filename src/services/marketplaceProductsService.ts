@@ -44,12 +44,12 @@ export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> =>
     const { data: authData } = await supabase.auth.getUser();
     console.log('[marketplaceProductsService] 👤 Current user:', authData.user?.id || 'anonymous');
     
-    // FIXED: Enhanced query to properly get vendor information
+    // ENHANCED: Query with ALWAYS INCLUDED vendor information - NO conditional logic
     const { data, error } = await supabase
       .from('produtos')
       .select(`
         *,
-        vendedores:vendedor_id (
+        vendedores:vendedor_id!inner (
           id,
           nome_loja,
           logo,
@@ -85,9 +85,9 @@ export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> =>
       console.warn('3. Database connection issue');
     }
     
-    // Transform data to match interface - ENHANCED PROCESSING
+    // Transform data to match interface - MANDATORY VENDOR INFO
     const products: MarketplaceProduct[] = (data || []).map(product => {
-      // Debug vendor data processing with enhanced logging
+      // FIXED: Mandatory vendor processing - no fallbacks
       console.log('[marketplaceProductsService] Processing vendor data for product:', {
         productId: product.id,
         productName: product.nome,
@@ -113,30 +113,32 @@ export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> =>
         }
       }
       
-      // ENHANCED: Process vendor/store information with better error handling
+      // MANDATORY: Process vendor/store information - ALWAYS REQUIRED
       const vendedorData = product.vendedores;
-      let storeInfo;
       
-      if (vendedorData && typeof vendedorData === 'object') {
-        storeInfo = {
-          id: product.vendedor_id,
-          nome: vendedorData.nome_loja || 'Loja sem nome',
-          nome_loja: vendedorData.nome_loja || 'Loja sem nome',
-          logo_url: vendedorData.logo || ''
-        };
-        
-        console.log('[marketplaceProductsService] ✅ Successfully processed store info:', {
-          productName: product.nome,
-          storeName: storeInfo.nome_loja,
-          storeId: storeInfo.id
-        });
-      } else {
-        console.warn('[marketplaceProductsService] ⚠️ No vendor data found for product:', {
+      // Since we use !inner join, vendedorData should ALWAYS exist
+      if (!vendedorData || !vendedorData.nome_loja) {
+        console.error('[marketplaceProductsService] ❌ CRITICAL: Product without vendor data found:', {
           productId: product.id,
           productName: product.nome,
           vendedor_id: product.vendedor_id
         });
+        // Skip products without vendor data instead of showing them without store info
+        return null;
       }
+      
+      const storeInfo = {
+        id: product.vendedor_id,
+        nome: vendedorData.nome_loja,
+        nome_loja: vendedorData.nome_loja,
+        logo_url: vendedorData.logo || ''
+      };
+      
+      console.log('[marketplaceProductsService] ✅ Successfully processed store info:', {
+        productName: product.nome,
+        storeName: storeInfo.nome_loja,
+        storeId: storeInfo.id
+      });
       
       const processedProduct = {
         id: product.id,
@@ -160,7 +162,7 @@ export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> =>
       };
 
       return processedProduct;
-    });
+    }).filter(product => product !== null); // Remove any null products
     
     console.log(`[marketplaceProductsService] 🔄 Processed ${products.length} products for marketplace display`);
     console.log('[marketplaceProductsService] Final processed products with vendor info:', 
@@ -187,11 +189,12 @@ export const getProductsBySegment = async (segmentId: string): Promise<Marketpla
   try {
     console.log(`[marketplaceProductsService] Fetching products for segment: ${segmentId}`);
     
+    // ENHANCED: Always include vendor information with !inner join
     const { data, error } = await supabase
       .from('produtos')
       .select(`
         *,
-        vendedores:vendedor_id (
+        vendedores:vendedor_id!inner (
           id,
           nome_loja,
           logo
@@ -234,13 +237,23 @@ export const getProductsBySegment = async (segmentId: string): Promise<Marketpla
         }
       }
       
-      // Process vendor/store information with better handling
-      const storeInfo = product.vendedores ? {
+      // MANDATORY: Process vendor/store information - no fallbacks
+      const vendedorData = product.vendedores;
+      
+      if (!vendedorData || !vendedorData.nome_loja) {
+        console.error('[marketplaceProductsService] ❌ CRITICAL: Segment product without vendor data found:', {
+          productId: product.id,
+          segmentId: segmentId
+        });
+        return null;
+      }
+      
+      const storeInfo = {
         id: product.vendedor_id,
-        nome: product.vendedores.nome_loja || 'Loja sem nome',
-        nome_loja: product.vendedores.nome_loja || 'Loja sem nome',
-        logo_url: product.vendedores.logo || ''
-      } : undefined;
+        nome: vendedorData.nome_loja,
+        nome_loja: vendedorData.nome_loja,
+        logo_url: vendedorData.logo || ''
+      };
       
       return {
         id: product.id,
@@ -261,7 +274,7 @@ export const getProductsBySegment = async (segmentId: string): Promise<Marketpla
         created_at: product.created_at,
         updated_at: product.updated_at
       };
-    });
+    }).filter(product => product !== null);
     
     return products;
     
