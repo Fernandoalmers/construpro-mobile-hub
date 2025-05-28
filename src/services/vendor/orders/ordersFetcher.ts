@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { OrderItem, VendorOrder } from './types';
 import { fetchCustomerInfo } from './utils/clientInfoFetcher';
