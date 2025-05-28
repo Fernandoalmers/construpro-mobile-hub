@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/components/ui/sonner';
-import { useCart } from '@/context/CartContext';
+import { useCart } from '@/hooks/use-cart';
 import { useFavorites } from '@/hooks/useFavorites';
 import { useAuth } from '@/context/AuthContext';
 import { getProductPoints } from '@/utils/pointsCalculations';
+import { UserRole } from '@/context/AuthContext';
 
 interface Product {
   id: string;
@@ -40,9 +41,10 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '' }) =>
   const { profile } = useAuth();
   const [imageError, setImageError] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
+  const [favorited, setFavorited] = useState(false);
 
   // Get user type for correct points calculation
-  const userType = profile?.tipo_perfil || 'consumidor';
+  const userType = (profile?.tipo_perfil || 'consumidor') as UserRole;
   const displayPoints = getProductPoints(produto, userType);
 
   const handleAddToCart = async (e: React.MouseEvent) => {
@@ -69,11 +71,13 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '' }) =>
     e.stopPropagation();
     
     try {
-      if (isFavorite(produto.id)) {
+      if (favorited) {
         await removeFromFavorites(produto.id);
+        setFavorited(false);
         toast.success('Removido dos favoritos');
       } else {
         await addToFavorites(produto.id);
+        setFavorited(true);
         toast.success('Adicionado aos favoritos');
       }
     } catch (error) {
@@ -129,7 +133,7 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '' }) =>
         >
           <Heart 
             size={16} 
-            className={`${isFavorite(produto.id) ? 'fill-red-500 text-red-500' : 'text-gray-600'}`}
+            className={`${favorited ? 'fill-red-500 text-red-500' : 'text-gray-600'}`}
           />
         </Button>
 

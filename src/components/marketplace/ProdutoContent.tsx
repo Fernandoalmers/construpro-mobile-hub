@@ -6,12 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { toast } from '@/components/ui/sonner';
-import { useCart } from '@/context/CartContext';
+import { useCart } from '@/hooks/use-cart';
 import { useFavorites } from '@/hooks/useFavorites';
 import { useAuth } from '@/context/AuthContext';
 import { getProductPoints } from '@/utils/pointsCalculations';
-import ProductImageGallery from './ProductImageGallery';
-import QuantitySelector from '../common/QuantitySelector';
+import ProductImageGallery from './components/ProductImageGallery';
+import QuantitySelector from './components/QuantitySelector';
+import { UserRole } from '@/context/AuthContext';
 
 interface Product {
   id: string;
@@ -46,11 +47,12 @@ const ProdutoContent: React.FC<ProdutoContentProps> = ({ produto }) => {
   const { profile } = useAuth();
   const [quantity, setQuantity] = useState(1);
   const [addingToCart, setAddingToCart] = useState(false);
+  const [favorited, setFavorited] = useState(false);
 
   console.log('Produto data:', produto);
 
   // Get user type for correct points calculation
-  const userType = profile?.tipo_perfil || 'consumidor';
+  const userType = (profile?.tipo_perfil || 'consumidor') as UserRole;
   const displayPoints = getProductPoints(produto, userType);
 
   console.log('User type:', userType, 'Display points:', displayPoints);
@@ -80,11 +82,13 @@ const ProdutoContent: React.FC<ProdutoContentProps> = ({ produto }) => {
 
   const handleToggleFavorite = async () => {
     try {
-      if (isFavorite(produto.id)) {
+      if (favorited) {
         await removeFromFavorites(produto.id);
+        setFavorited(false);
         toast.success('Removido dos favoritos');
       } else {
         await addToFavorites(produto.id);
+        setFavorited(true);
         toast.success('Adicionado aos favoritos');
       }
     } catch (error) {
@@ -162,7 +166,7 @@ const ProdutoContent: React.FC<ProdutoContentProps> = ({ produto }) => {
             >
               <Heart 
                 size={20} 
-                className={`${isFavorite(produto.id) ? 'fill-red-500 text-red-500' : 'text-gray-600'}`}
+                className={`${favorited ? 'fill-red-500 text-red-500' : 'text-gray-600'}`}
               />
             </Button>
             

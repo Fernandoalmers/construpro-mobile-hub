@@ -20,11 +20,7 @@ const GridProductView: React.FC<GridProductViewProps> = ({
         <ProdutoCard
           key={produto.id}
           produto={produto}
-          loja={produto.stores}
           onClick={() => navigateToProduct(produto.id)}
-          onLojaClick={onLojaClick}
-          hideRating={true}
-          hideActions={true}
         />
       ))}
     </div>
