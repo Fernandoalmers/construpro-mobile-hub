@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 
@@ -12,6 +13,7 @@ interface StoreInfo {
 // Define a separate interface for vendor information
 interface VendorInfo {
   id: string;
+  nome?: string;
   nome_loja: string;
   logo?: string;
   telefone?: string;
