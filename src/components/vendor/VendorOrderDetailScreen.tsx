@@ -20,15 +20,6 @@ const VendorOrderDetailScreen: React.FC = () => {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
   
-  // PDF Print handler
-  const handlePrint = useReactToPrint({
-    content: () => printRef.current,
-    documentTitle: `Pedido-${pedido?.id?.substring(0, 8) || 'unknown'}`,
-    onAfterPrint: () => {
-      toast.success("PDF gerado com sucesso!");
-    },
-  });
-  
   // Fetch specific order by ID using the pedidos service
   const { 
     data: pedido, 
@@ -39,6 +30,15 @@ const VendorOrderDetailScreen: React.FC = () => {
     queryFn: () => getPedidoById(id!),
     enabled: !!id,
     staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+  
+  // PDF Print handler - moved after pedido declaration
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: `Pedido-${pedido?.id?.substring(0, 8) || 'unknown'}`,
+    onAfterPrint: () => {
+      toast.success("PDF gerado com sucesso!");
+    },
   });
   
   // Update order status mutation
