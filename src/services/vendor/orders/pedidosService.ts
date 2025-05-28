@@ -44,6 +44,8 @@ export interface Pedido {
  */
 const fetchClientInfo = async (usuario_id: string, vendedor_id: string) => {
   try {
+    console.log(`🔍 [fetchClientInfo] Fetching client info for user: ${usuario_id}, vendor: ${vendedor_id}`);
+    
     // First try to get from profiles table
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
@@ -52,7 +54,9 @@ const fetchClientInfo = async (usuario_id: string, vendedor_id: string) => {
       .single();
 
     if (profileError) {
-      console.log('Could not fetch profile data:', profileError);
+      console.log('⚠️ [fetchClientInfo] Could not fetch profile data:', profileError);
+    } else {
+      console.log('✅ [fetchClientInfo] Profile data found:', profileData);
     }
 
     // Try to get vendor-specific customer data
@@ -64,11 +68,13 @@ const fetchClientInfo = async (usuario_id: string, vendedor_id: string) => {
       .maybeSingle();
 
     if (clienteError) {
-      console.log('Could not fetch client vendor data:', clienteError);
+      console.log('⚠️ [fetchClientInfo] Could not fetch client vendor data:', clienteError);
+    } else {
+      console.log('✅ [fetchClientInfo] Client vendor data found:', clienteVendorData);
     }
 
     // Combine data with profile taking precedence, but vendor data for totals
-    return {
+    const clientInfo = {
       id: clienteVendorData?.id || usuario_id,
       vendedor_id: vendedor_id,
       usuario_id: usuario_id,
@@ -77,8 +83,11 @@ const fetchClientInfo = async (usuario_id: string, vendedor_id: string) => {
       telefone: profileData?.telefone || clienteVendorData?.telefone || '',
       total_gasto: clienteVendorData?.total_gasto || 0
     };
+    
+    console.log('📋 [fetchClientInfo] Final client info:', clientInfo);
+    return clientInfo;
   } catch (error) {
-    console.error('Error fetching client info:', error);
+    console.error('❌ [fetchClientInfo] Error fetching client info:', error);
     return {
       id: usuario_id,
       vendedor_id: vendedor_id,
@@ -88,6 +97,70 @@ const fetchClientInfo = async (usuario_id: string, vendedor_id: string) => {
       telefone: '',
       total_gasto: 0
     };
+  }
+};
+
+/**
+ * Enhanced product data fetching with better image handling
+ */
+const fetchProductWithImages = async (produto_id: string) => {
+  try {
+    console.log(`🔍 [fetchProductWithImages] Fetching product: ${produto_id}`);
+    
+    const { data: produtoData, error: produtoError } = await supabase
+      .from('produtos')
+      .select('nome, imagens')
+      .eq('id', produto_id)
+      .single();
+    
+    if (produtoError) {
+      console.error(`❌ [fetchProductWithImages] Error fetching product ${produto_id}:`, produtoError);
+      return null;
+    }
+    
+    if (!produtoData) {
+      console.log(`⚠️ [fetchProductWithImages] No product data found for ${produto_id}`);
+      return null;
+    }
+    
+    console.log(`✅ [fetchProductWithImages] Product found:`, {
+      nome: produtoData.nome,
+      imagens: produtoData.imagens,
+      imagensType: typeof produtoData.imagens,
+      imagensLength: Array.isArray(produtoData.imagens) ? produtoData.imagens.length : 'not array'
+    });
+    
+    // Normalize images to always be an array
+    let normalizedImages = [];
+    
+    if (produtoData.imagens) {
+      if (typeof produtoData.imagens === 'string') {
+        try {
+          // Try to parse if it's a JSON string
+          normalizedImages = JSON.parse(produtoData.imagens);
+        } catch (e) {
+          // If it's a single URL string, wrap it in an array
+          normalizedImages = [produtoData.imagens];
+        }
+      } else if (Array.isArray(produtoData.imagens)) {
+        normalizedImages = produtoData.imagens;
+      } else {
+        // Handle other object types
+        normalizedImages = [produtoData.imagens];
+      }
+    }
+    
+    const result = {
+      nome: produtoData.nome,
+      imagens: normalizedImages
+    };
+    
+    console.log(`📋 [fetchProductWithImages] Final product result:`, result);
+    return result;
+    
+  } catch (error) {
+    console.error(`❌ [fetchProductWithImages] Unexpected error for product ${produto_id}:`, error);
+    return null;
   }
 };
 
@@ -156,22 +229,15 @@ export const getVendorPedidos = async (): Promise<Pedido[]> => {
           `)
           .eq('pedido_id', pedido.id);
         
-        // Buscar informações dos produtos
+        // Buscar informações dos produtos com imagens melhoradas
         const itensComProdutos: PedidoItem[] = [];
         if (itens && itens.length > 0) {
           for (const item of itens) {
-            const { data: produtoData } = await supabase
-              .from('produtos')
-              .select('nome, imagens')
-              .eq('id', item.produto_id)
-              .single();
+            const produtoData = await fetchProductWithImages(item.produto_id);
             
             itensComProdutos.push({
               ...item,
-              produto: produtoData ? {
-                nome: produtoData.nome,
-                imagens: Array.isArray(produtoData.imagens) ? produtoData.imagens : []
-              } : undefined
+              produto: produtoData || { nome: 'Produto não encontrado', imagens: [] }
             });
           }
         }
@@ -205,6 +271,8 @@ export const getVendorPedidos = async (): Promise<Pedido[]> => {
  */
 export const getPedidoById = async (pedidoId: string): Promise<Pedido | null> => {
   try {
+    console.log(`🔍 [getPedidoById] Fetching pedido: ${pedidoId}`);
+    
     // Verificar se o usuário tem acesso a este pedido
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -240,8 +308,11 @@ export const getPedidoById = async (pedidoId: string): Promise<Pedido | null> =>
       .single();
     
     if (error || !pedido) {
+      console.error(`❌ [getPedidoById] Error fetching pedido:`, error);
       return null;
     }
+    
+    console.log(`✅ [getPedidoById] Pedido found:`, pedido);
     
     // Buscar itens do pedido
     const { data: itens } = await supabase
@@ -256,22 +327,17 @@ export const getPedidoById = async (pedidoId: string): Promise<Pedido | null> =>
       `)
       .eq('pedido_id', pedido.id);
     
-    // Buscar informações dos produtos com imagens
+    console.log(`📋 [getPedidoById] Found ${itens?.length || 0} items for pedido`);
+    
+    // Buscar informações dos produtos com imagens melhoradas
     const itensComProdutos: PedidoItem[] = [];
     if (itens && itens.length > 0) {
       for (const item of itens) {
-        const { data: produtoData } = await supabase
-          .from('produtos')
-          .select('nome, imagens')
-          .eq('id', item.produto_id)
-          .single();
+        const produtoData = await fetchProductWithImages(item.produto_id);
         
         itensComProdutos.push({
           ...item,
-          produto: produtoData ? {
-            nome: produtoData.nome,
-            imagens: Array.isArray(produtoData.imagens) ? produtoData.imagens : []
-          } : undefined
+          produto: produtoData || { nome: 'Produto não encontrado', imagens: [] }
         });
       }
     }
@@ -279,14 +345,24 @@ export const getPedidoById = async (pedidoId: string): Promise<Pedido | null> =>
     // Use improved client fetching
     const clienteInfo = await fetchClientInfo(pedido.usuario_id, vendorData.id);
     
-    return {
+    const result = {
       ...pedido,
       itens: itensComProdutos,
       cliente: clienteInfo
     };
     
+    console.log(`✅ [getPedidoById] Final result:`, {
+      id: result.id,
+      itemsCount: result.itens?.length,
+      clientName: result.cliente?.nome,
+      firstItemProduct: result.itens?.[0]?.produto?.nome,
+      firstItemImages: result.itens?.[0]?.produto?.imagens
+    });
+    
+    return result;
+    
   } catch (error) {
-    console.error("Erro ao buscar pedido:", error);
+    console.error("❌ [getPedidoById] Error:", error);
     return null;
   }
 };

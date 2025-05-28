@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ChevronLeft, Package, MapPin, Calendar, CreditCard, Loader2, Check, Download, Mail, Phone } from 'lucide-react';
@@ -73,21 +74,83 @@ const VendorOrderDetailScreen: React.FC = () => {
     }
   };
 
-  // Helper function to get a valid image URL
+  // Improved helper function to get a valid image URL with better debugging
   const getProductImageUrl = (produto: any): string | null => {
-    if (!produto?.imagens || !Array.isArray(produto.imagens) || produto.imagens.length === 0) {
+    console.log('🔍 [getProductImageUrl] Processing product:', produto?.nome, produto?.imagens);
+    
+    if (!produto?.imagens) {
+      console.log('❌ [getProductImageUrl] No imagens property found');
       return null;
     }
     
-    const firstImage = produto.imagens[0];
+    // Handle different image formats
+    let imagens = produto.imagens;
+    
+    // If it's a string that looks like JSON, try to parse it
+    if (typeof imagens === 'string') {
+      try {
+        imagens = JSON.parse(imagens);
+        console.log('📋 [getProductImageUrl] Parsed string to:', imagens);
+      } catch (e) {
+        console.log('❌ [getProductImageUrl] Failed to parse string as JSON:', imagens);
+        // If it's a single URL string, use it directly
+        if (imagens.startsWith('http') || imagens.startsWith('/')) {
+          console.log('✅ [getProductImageUrl] Using string as direct URL:', imagens);
+          return imagens;
+        }
+        return null;
+      }
+    }
+    
+    // Ensure it's an array
+    if (!Array.isArray(imagens)) {
+      console.log('❌ [getProductImageUrl] imagens is not an array:', typeof imagens);
+      return null;
+    }
+    
+    if (imagens.length === 0) {
+      console.log('❌ [getProductImageUrl] Empty imagens array');
+      return null;
+    }
+    
+    const firstImage = imagens[0];
+    console.log('🖼️ [getProductImageUrl] First image:', firstImage, typeof firstImage);
+    
+    // Handle string URLs
     if (typeof firstImage === 'string') {
-      return firstImage;
+      // Validate URL format
+      if (firstImage.startsWith('http') || firstImage.startsWith('/')) {
+        console.log('✅ [getProductImageUrl] Valid string URL:', firstImage);
+        return firstImage;
+      } else {
+        console.log('❌ [getProductImageUrl] Invalid string URL format:', firstImage);
+        return null;
+      }
     }
     
-    if (typeof firstImage === 'object' && firstImage.url) {
-      return firstImage.url;
+    // Handle object format
+    if (typeof firstImage === 'object' && firstImage !== null) {
+      // Try common URL properties
+      const possibleUrls = [
+        firstImage.url,
+        firstImage.src,
+        firstImage.path,
+        firstImage.image_url,
+        firstImage.imageUrl
+      ];
+      
+      for (const urlCandidate of possibleUrls) {
+        if (urlCandidate && typeof urlCandidate === 'string' && 
+            (urlCandidate.startsWith('http') || urlCandidate.startsWith('/'))) {
+          console.log('✅ [getProductImageUrl] Found valid URL in object:', urlCandidate);
+          return urlCandidate;
+        }
+      }
+      
+      console.log('❌ [getProductImageUrl] No valid URL found in object:', firstImage);
     }
     
+    console.log('❌ [getProductImageUrl] Could not extract valid URL');
     return null;
   };
 
@@ -309,9 +372,11 @@ const VendorOrderDetailScreen: React.FC = () => {
                   return (
                     <div key={index} className="py-3 flex">
                       <div 
-                        className="w-16 h-16 bg-gray-200 rounded mr-3 bg-center bg-cover flex-shrink-0 flex items-center justify-center"
+                        className="w-16 h-16 bg-gray-200 rounded mr-3 bg-center bg-cover flex-shrink-0 flex items-center justify-center border"
                         style={imageUrl ? { 
-                          backgroundImage: `url(${imageUrl})`
+                          backgroundImage: `url(${imageUrl})`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center'
                         } : {}}
                       >
                         {!imageUrl && (
@@ -324,6 +389,13 @@ const VendorOrderDetailScreen: React.FC = () => {
                         <p className="text-sm font-medium mt-1">
                           R$ {Number(item.total).toFixed(2)}
                         </p>
+                        {/* Debug info - remove in production */}
+                        {process.env.NODE_ENV === 'development' && (
+                          <p className="text-xs text-red-500 mt-1">
+                            Debug: {imageUrl ? 'Image found' : 'No image'} | 
+                            Images: {JSON.stringify(item.produto?.imagens)}
+                          </p>
+                        )}
                       </div>
                     </div>
                   );
