@@ -2,7 +2,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { VendorOrder, OrderFilters } from "./types";
 import { fetchCustomerInfo } from "./utils/clientInfoFetcher";
-import { fetchProductsForItems } from "./utils/productFetcher";
 import { 
   getVendorId, 
   getVendorProductIds, 
@@ -11,10 +10,12 @@ import {
 } from "./utils/orderQueries";
 import { buildVendorOrder, applySearchFilter } from "./utils/orderProcessing";
 
-// Main function to get all vendor orders - using corrected queries
+/**
+ * Main function to get all vendor orders - using orders table directly
+ */
 export const getVendorOrders = async (): Promise<VendorOrder[]> => {
   try {
-    console.log("🔍 [getVendorOrders] Starting order fetch process");
+    console.log("🔍 [getVendorOrders] Starting order fetch process from orders table");
     
     // Get vendor profile
     const { data: userData } = await supabase.auth.getUser();
@@ -52,14 +53,14 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
     
     console.log(`📦 [getVendorOrders] Found ${orderIds.length} orders for vendor`);
     
-    // Fetch orders using the corrected function
+    // Fetch orders directly from orders table
     const ordersData = await fetchOrdersByIds(orderIds);
     if (ordersData.length === 0) {
-      console.log('⚠️ [getVendorOrders] No orders found after fetching');
+      console.log('⚠️ [getVendorOrders] No orders found after fetching from orders table');
       return [];
     }
     
-    console.log(`✅ [getVendorOrders] Successfully fetched ${ordersData.length} orders`);
+    console.log(`✅ [getVendorOrders] Successfully fetched ${ordersData.length} orders from orders table`);
     
     // Process orders and get customer info
     const orders: VendorOrder[] = [];
@@ -88,14 +89,16 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
  */
 export const getOrderDetails = async (orderId: string): Promise<VendorOrder | null> => {
   try {
+    console.log(`🔍 [getOrderDetails] Fetching order details for ${orderId} from orders table`);
+    
     // Get the vendor ID for the current user
     const vendorId = await getVendorId();
     if (!vendorId) return null;
     
-    // Get order data using corrected function
+    // Get order data directly from orders table
     const ordersData = await fetchOrdersByIds([orderId]);
     if (ordersData.length === 0) {
-      console.error('❌ [getOrderDetails] Order not found');
+      console.error('❌ [getOrderDetails] Order not found in orders table');
       return null;
     }
     
@@ -119,6 +122,8 @@ export const getOrderDetails = async (orderId: string): Promise<VendorOrder | nu
     
     // Build full order object
     const fullOrder = await buildVendorOrder(orderData, vendorId, vendorProductIds);
+    console.log(`✅ [getOrderDetails] Successfully built order details for ${orderId}`);
+    
     return fullOrder;
     
   } catch (error) {

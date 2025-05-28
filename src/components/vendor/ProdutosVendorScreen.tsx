@@ -10,7 +10,7 @@ import OrdersError from './orders/OrdersError';
 import { useVendorOrders } from '@/hooks/vendor/useVendorOrders';
 import { useOrderFilters, orderStatuses } from '@/hooks/vendor/useOrderFilters';
 import { Button } from '@/components/ui/button';
-import { Store, AlertCircle } from 'lucide-react';
+import { Store, AlertCircle, RefreshCcw, Info } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 
 const ProdutosVendorScreen: React.FC = () => {
@@ -47,7 +47,7 @@ const ProdutosVendorScreen: React.FC = () => {
   // Log detailed information about orders for debugging
   React.useEffect(() => {
     if (orders && orders.length > 0) {
-      console.log('📋 [ProdutosVendorScreen] Orders loaded successfully:', {
+      console.log('📋 [ProdutosVendorScreen] Orders loaded successfully from orders table:', {
         totalOrders: orders.length,
         firstOrderId: orders[0]?.id,
         firstOrderStatus: orders[0]?.status,
@@ -56,7 +56,7 @@ const ProdutosVendorScreen: React.FC = () => {
         firstOrderItems: orders[0]?.itens?.length || 0
       });
     } else if (!isLoading && !error) {
-      console.log('⚠️ [ProdutosVendorScreen] No orders found but no error occurred');
+      console.log('⚠️ [ProdutosVendorScreen] No orders found in orders table but no error occurred');
     }
   }, [orders, isLoading, error]);
 
@@ -97,11 +97,11 @@ const ProdutosVendorScreen: React.FC = () => {
   }
 
   if (isLoading) {
-    return <LoadingState text="Carregando pedidos..." />;
+    return <LoadingState text="Carregando pedidos da tabela orders..." />;
   }
   
   if (error) {
-    console.error('❌ [ProdutosVendorScreen] Error loading orders:', error);
+    console.error('❌ [ProdutosVendorScreen] Error loading orders from orders table:', error);
     return (
       <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
         <OrdersHeader 
@@ -124,6 +124,20 @@ const ProdutosVendorScreen: React.FC = () => {
       />
       
       <div className="p-6 space-y-6">
+        {/* Success message about using orders table */}
+        <Card className="p-4 bg-green-50 border-green-200">
+          <div className="flex items-start gap-3">
+            <Info className="h-5 w-5 text-green-500 mt-0.5" />
+            <div>
+              <h3 className="font-medium text-green-800">Sistema atualizado</h3>
+              <p className="text-sm text-green-700 mt-1">
+                Agora buscando pedidos diretamente da tabela principal 'orders'. 
+                Todos os pedidos dos seus clientes devem aparecer aqui.
+              </p>
+            </div>
+          </div>
+        </Card>
+
         {/* Search and filters */}
         <OrderFilters 
           searchTerm={searchTerm}
@@ -143,19 +157,29 @@ const ProdutosVendorScreen: React.FC = () => {
           {orders.length === 0 && !isRefetching ? (
             <div className="rounded-lg border p-8 text-center">
               <AlertCircle className="mx-auto h-10 w-10 text-yellow-500 mb-3" />
-              <h3 className="text-lg font-medium mb-2">Nenhum pedido encontrado</h3>
+              <h3 className="text-lg font-medium mb-2">Nenhum pedido encontrado na tabela orders</h3>
               <p className="text-gray-500 mb-4">
-                Não encontramos pedidos vinculados à sua loja. Possíveis motivos:
+                Não encontramos pedidos na tabela principal 'orders'. Possíveis motivos:
               </p>
               <ul className="text-sm text-gray-600 list-disc list-inside mb-4 text-left">
                 <li>Sua loja ainda não recebeu pedidos</li>
                 <li>Os produtos não estão sendo exibidos no marketplace</li>
-                <li>Os dados estão sendo carregados pela primeira vez</li>
-                <li>Erro na consulta SQL foi corrigido, tente atualizar</li>
+                <li>Pedidos podem estar em outra tabela (pedidos)</li>
+                <li>Problema de sincronização entre tabelas</li>
               </ul>
-              <Button onClick={handleRefresh} className="mt-2">
-                Atualizar pedidos
-              </Button>
+              <div className="flex gap-2 justify-center">
+                <Button onClick={handleRefresh} className="mt-2">
+                  <RefreshCcw size={16} className="mr-1" />
+                  Atualizar pedidos
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => navigate('/vendor/customers')}
+                  className="mt-2"
+                >
+                  Ver clientes
+                </Button>
+              </div>
             </div>
           ) : (
             <OrdersList 
