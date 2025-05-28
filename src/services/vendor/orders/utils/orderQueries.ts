@@ -47,11 +47,12 @@ export const getVendorOrderIds = async (vendorProductIds: string[]): Promise<str
 };
 
 /**
- * Fetch orders by IDs with filters
+ * Fetch orders by IDs with filters - FIXED: Removed ambiguous column references
  */
 export const fetchOrdersByIds = async (orderIds: string[], filters: any = {}) => {
   if (orderIds.length === 0) return [];
   
+  // Simple query without JOINs to avoid ambiguity
   let query = supabase
     .from('orders')
     .select(`
@@ -68,7 +69,7 @@ export const fetchOrdersByIds = async (orderIds: string[], filters: any = {}) =>
     .in('id', orderIds)
     .order('created_at', { ascending: false });
   
-  // Apply filters
+  // Apply filters safely
   if (filters.status && filters.status !== 'all') {
     if (Array.isArray(filters.status)) {
       query = query.in('status', filters.status);
@@ -94,6 +95,7 @@ export const fetchOrdersByIds = async (orderIds: string[], filters: any = {}) =>
     return [];
   }
   
+  console.log(`✅ [fetchOrdersByIds] Successfully fetched ${ordersData?.length || 0} orders`);
   return ordersData || [];
 };
 

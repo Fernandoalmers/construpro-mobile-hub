@@ -40,8 +40,25 @@ const ProdutosVendorScreen: React.FC = () => {
     isLoading,
     error: !!error,
     vendorProfileStatus,
-    filteredOrdersCount: filteredOrders?.length || 0
+    filteredOrdersCount: filteredOrders?.length || 0,
+    errorMessage: error?.message
   });
+
+  // Log detailed information about orders for debugging
+  React.useEffect(() => {
+    if (orders && orders.length > 0) {
+      console.log('📋 [ProdutosVendorScreen] Orders loaded successfully:', {
+        totalOrders: orders.length,
+        firstOrderId: orders[0]?.id,
+        firstOrderStatus: orders[0]?.status,
+        firstOrderTotal: orders[0]?.valor_total,
+        firstOrderCustomer: orders[0]?.cliente?.nome,
+        firstOrderItems: orders[0]?.itens?.length || 0
+      });
+    } else if (!isLoading && !error) {
+      console.log('⚠️ [ProdutosVendorScreen] No orders found but no error occurred');
+    }
+  }, [orders, isLoading, error]);
 
   // Show vendor profile setup message if profile is not found
   if (vendorProfileStatus === 'not_found') {
@@ -133,10 +150,11 @@ const ProdutosVendorScreen: React.FC = () => {
               <ul className="text-sm text-gray-600 list-disc list-inside mb-4 text-left">
                 <li>Sua loja ainda não recebeu pedidos</li>
                 <li>Os produtos não estão sendo exibidos no marketplace</li>
-                <li>Problema de sincronização dos dados</li>
+                <li>Os dados estão sendo carregados pela primeira vez</li>
+                <li>Erro na consulta SQL foi corrigido, tente atualizar</li>
               </ul>
               <Button onClick={handleRefresh} className="mt-2">
-                Tentar novamente
+                Atualizar pedidos
               </Button>
             </div>
           ) : (

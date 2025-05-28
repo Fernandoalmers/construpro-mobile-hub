@@ -1,11 +1,17 @@
-import { supabase } from '@/integrations/supabase/client';
-import { OrderItem, VendorOrder } from './types';
-import { fetchCustomerInfo } from './utils/clientInfoFetcher';
-import { fetchProductsForItems } from './utils/productFetcher';
-import { fetchVendorOrders, fetchDirectVendorOrders, fetchDirectVendorOrdersWithDebug } from './utils/ordersFetcher';
-import { logDiagnosticInfo } from './utils/diagnosticUtils';
 
-// Main function to get all vendor orders - now uses the corrected implementation
+import { supabase } from "@/integrations/supabase/client";
+import { VendorOrder, OrderFilters } from "./types";
+import { fetchCustomerInfo } from "./utils/clientInfoFetcher";
+import { fetchProductsForItems } from "./utils/productFetcher";
+import { 
+  getVendorId, 
+  getVendorProductIds, 
+  getVendorOrderIds, 
+  fetchOrdersByIds 
+} from "./utils/orderQueries";
+import { buildVendorOrder, applySearchFilter } from "./utils/orderProcessing";
+
+// Main function to get all vendor orders - using corrected queries
 export const getVendorOrders = async (): Promise<VendorOrder[]> => {
   try {
     console.log("🔍 [getVendorOrders] Starting order fetch process");
@@ -19,66 +25,107 @@ export const getVendorOrders = async (): Promise<VendorOrder[]> => {
     
     console.log(`👤 [getVendorOrders] User authenticated: ${userData.user.id}`);
     
-    // Get vendor id
-    const { data: vendorData, error: vendorError } = await supabase
-      .from('vendedores')
-      .select('id, nome_loja, usuario_id, status')
-      .eq('usuario_id', userData.user.id)
-      .single();
-      
-    if (vendorError || !vendorData) {
-      console.error('🚫 [getVendorOrders] Vendor profile not found:', vendorError);
+    // Get vendor id using RPC function
+    const vendorId = await getVendorId();
+    if (!vendorId) {
+      console.error('🚫 [getVendorOrders] Vendor profile not found');
       return [];
     }
     
-    const vendorId = vendorData.id;
+    console.log('🏪 [getVendorOrders] Vendor found:', vendorId);
     
-    console.log('🏪 [getVendorOrders] Vendor found:', {
-      id: vendorId,
-      nome_loja: vendorData.nome_loja,
-      status: vendorData.status || 'unknown'
-    });
-    
-    // Check vendor status
-    if (vendorData.status === 'pendente') {
-      console.warn('⚠️ [getVendorOrders] Vendor status is "pendente", which may affect order visibility');
+    // Get all product IDs for this vendor
+    const vendorProductIds = await getVendorProductIds(vendorId);
+    if (vendorProductIds.length === 0) {
+      console.log('⚠️ [getVendorOrders] No products found for this vendor');
+      return [];
     }
     
-    // Use the corrected fetch function that queries the orders table
-    console.log(`🔍 [getVendorOrders] Fetching orders from orders table for vendor: ${vendorId}`);
-    const vendorOrders = await fetchVendorOrders({});
+    console.log(`📦 [getVendorOrders] Found ${vendorProductIds.length} products for vendor`);
     
-    console.log(`📦 [getVendorOrders] Processed ${vendorOrders.length} vendor orders from orders table`);
-    
-    if (vendorOrders.length > 0) {
-      console.log('📦 [getVendorOrders] Sample first order:', {
-        id: vendorOrders[0].id,
-        status: vendorOrders[0].status,
-        items_count: vendorOrders[0].itens?.length || 0,
-        customer: vendorOrders[0].cliente ? 
-          { name: vendorOrders[0].cliente.nome, id: vendorOrders[0].cliente.id } : 'No customer info',
-        total: vendorOrders[0].valor_total
-      });
+    // Get order IDs that contain products from this vendor
+    const orderIds = await getVendorOrderIds(vendorProductIds);
+    if (orderIds.length === 0) {
+      console.log('⚠️ [getVendorOrders] No orders found for this vendor');
+      return [];
     }
     
-    // If no orders were found, log diagnostic information
-    if (vendorOrders.length === 0) {
-      console.log('⚠️ [getVendorOrders] No orders found for vendor. Running diagnostics...');
-      await logDiagnosticInfo(vendorId);
-      
-      // Check vendor status
-      if (vendorData.status === 'pendente') {
-        console.log('⚠️ [getVendorOrders] Warning: Vendor status is "pendente" which may prevent orders from being retrieved');
-        console.log('💡 [getVendorOrders] Consider updating vendor status to "ativo"');
+    console.log(`📦 [getVendorOrders] Found ${orderIds.length} orders for vendor`);
+    
+    // Fetch orders using the corrected function
+    const ordersData = await fetchOrdersByIds(orderIds);
+    if (ordersData.length === 0) {
+      console.log('⚠️ [getVendorOrders] No orders found after fetching');
+      return [];
+    }
+    
+    console.log(`✅ [getVendorOrders] Successfully fetched ${ordersData.length} orders`);
+    
+    // Process orders and get customer info
+    const orders: VendorOrder[] = [];
+    
+    for (const order of ordersData) {
+      try {
+        const fullOrder = await buildVendorOrder(order, vendorId, vendorProductIds);
+        orders.push(fullOrder);
+        console.log(`✅ [getVendorOrders] Processed order ${order.id}`);
+      } catch (error) {
+        console.error(`❌ [getVendorOrders] Error processing order ${order.id}:`, error);
       }
     }
     
-    return vendorOrders;
+    console.log(`✅ [getVendorOrders] Returning ${orders.length} processed orders`);
+    return orders;
+    
   } catch (error) {
-    console.error('🚫 [getVendorOrders] Error:', error);
+    console.error('🚫 [getVendorOrders] Unexpected error:', error);
     return [];
   }
 };
 
-// Re-export the direct fetching function for other components that might need it
+/**
+ * Fetches complete order details including items
+ */
+export const getOrderDetails = async (orderId: string): Promise<VendorOrder | null> => {
+  try {
+    // Get the vendor ID for the current user
+    const vendorId = await getVendorId();
+    if (!vendorId) return null;
+    
+    // Get order data using corrected function
+    const ordersData = await fetchOrdersByIds([orderId]);
+    if (ordersData.length === 0) {
+      console.error('❌ [getOrderDetails] Order not found');
+      return null;
+    }
+    
+    const orderData = ordersData[0];
+    
+    // Get vendor product IDs
+    const vendorProductIds = await getVendorProductIds(vendorId);
+    
+    // Verify this vendor has items in this order
+    const { data: vendorCheck, error: vendorCheckError } = await supabase
+      .from('order_items')
+      .select('id')
+      .eq('order_id', orderId)
+      .in('produto_id', vendorProductIds)
+      .limit(1);
+    
+    if (vendorCheckError || !vendorCheck || vendorCheck.length === 0) {
+      console.error('❌ [getOrderDetails] Vendor does not have access to this order');
+      return null;
+    }
+    
+    // Build full order object
+    const fullOrder = await buildVendorOrder(orderData, vendorId, vendorProductIds);
+    return fullOrder;
+    
+  } catch (error) {
+    console.error('❌ [getOrderDetails] Unexpected error:', error);
+    return null;
+  }
+};
+
+// Re-export for backward compatibility
 export { fetchDirectVendorOrders, fetchDirectVendorOrdersWithDebug } from './utils/ordersFetcher';
