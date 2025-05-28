@@ -40,25 +40,27 @@ const ListProductView: React.FC<ListProductViewProps> = ({
                          produto.imagem_url || 
                          'https://via.placeholder.com/150?text=Sem+Imagem';
 
-        // ENHANCED: Better store name logic with improved fallback handling
+        // FIXED: Standardized store name logic - always use real store name
         const storeName = produto.stores?.nome_loja || 
-                         produto.stores?.nome || 
                          produto.vendedores?.nome_loja ||
+                         produto.stores?.nome || 
                          produto.vendedores?.nome ||
-                         produto.vendedor_nome || 
-                         null; // Use null instead of generic "Loja"
+                         produto.vendedor_nome;
 
         // Get store ID for click handling
         const storeId = produto.stores?.id || 
                        produto.vendedores?.id ||
                        produto.vendedor_id;
 
+        // FIXED: Only show store info if we have a valid store name (not generic fallback)
+        const shouldShowStoreInfo = storeName && storeName.trim().length > 0;
+
         console.log('[ListProductView] Store info processed:', {
           productName: produto.nome,
           storeName,
           storeId,
-          hasStoreData: !!produto.stores || !!produto.vendedores,
-          fallbackUsed: !storeName
+          shouldShowStoreInfo,
+          storeData: produto.stores || produto.vendedores
         });
 
         return (
@@ -99,8 +101,8 @@ const ListProductView: React.FC<ListProductViewProps> = ({
                 )}
               </div>
 
-              {/* Store name with icon - ENHANCED VISIBILITY - Only show if we have a real store name */}
-              {storeName && (
+              {/* Store name with icon - STANDARDIZED - Always show when available */}
+              {shouldShowStoreInfo && (
                 <div className="flex items-center gap-1 mb-2">
                   <Store size={12} className="text-gray-500 flex-shrink-0" />
                   <div 

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Heart, ShoppingCart, Star, Store } from 'lucide-react';
@@ -72,12 +73,14 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
     : 'consumidor';
   const displayPoints = getProductPoints(produto, validUserType);
 
-  // Enhanced store name logic with better fallback handling
+  // FIXED: Standardized store name logic - always use real store name
   const storeName = produto.stores?.nome_loja || 
-                   produto.stores?.nome || 
                    produto.vendedores?.nome_loja ||
-                   produto.vendedores?.nome ||
-                   'Loja';
+                   produto.stores?.nome || 
+                   produto.vendedores?.nome;
+
+  // FIXED: Only show store info if we have a valid store name
+  const shouldShowStoreInfo = storeName && storeName.trim().length > 0;
 
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -219,8 +222,8 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
           </div>
         </div>
 
-        {/* Store Name - ENHANCED */}
-        {(produto.stores || produto.vendedores) && (
+        {/* Store Name - STANDARDIZED - Always show when available */}
+        {shouldShowStoreInfo && (
           <div className="mb-2 flex items-center gap-1">
             <Store size={12} className="text-gray-500" />
             <span className="text-xs text-gray-600">

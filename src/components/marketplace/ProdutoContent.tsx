@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Heart, ShoppingCart, Star, Share2, Info, Store } from 'lucide-react';
@@ -37,15 +38,20 @@ const ProdutoContent: React.FC<ProdutoContentProps> = ({ produto }) => {
 
   console.log('User type:', validUserType, 'Display points:', displayPoints);
 
-  // ENHANCED: Get store name for display with better fallback
-  const storeName = produto.stores?.nome_loja || produto.stores?.nome || null;
-  const hasStoreInfo = !!storeName;
+  // FIXED: Standardized store name logic - always use real store name
+  const storeName = produto.stores?.nome_loja || 
+                   produto.vendedores?.nome_loja ||
+                   produto.stores?.nome || 
+                   produto.vendedores?.nome;
+
+  // FIXED: Only show store info if we have a valid store name
+  const shouldShowStoreInfo = storeName && storeName.trim().length > 0;
 
   console.log('Store info for product page:', {
     productName: produto.nome,
     storeName,
-    hasStoreInfo,
-    storeData: produto.stores
+    shouldShowStoreInfo,
+    storeData: produto.stores || produto.vendedores
   });
 
   const handleAddToCart = async () => {
@@ -199,8 +205,8 @@ const ProdutoContent: React.FC<ProdutoContentProps> = ({ produto }) => {
         {/* Product Name */}
         <h2 className="text-xl font-bold mb-2">{produto.nome}</h2>
 
-        {/* Store Name - ENHANCED */}
-        {hasStoreInfo && (
+        {/* Store Name - STANDARDIZED - Always show when available */}
+        {shouldShowStoreInfo && (
           <div className="flex items-center gap-2 mb-3">
             <Store size={16} className="text-gray-500" />
             <span className="text-sm text-gray-600">
