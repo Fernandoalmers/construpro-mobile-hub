@@ -11,6 +11,8 @@ interface SignupData {
   cpf?: string;
   telefone?: string;
   tipo_perfil: UserRole;
+  especialidade_profissional?: string;
+  nome_loja?: string;
 }
 
 serve(async (req) => {
@@ -45,7 +47,9 @@ serve(async (req) => {
       console.log("Received signup data:", { 
         email: userData.email, 
         nome: userData.nome,
-        tipo_perfil: userData.tipo_perfil
+        tipo_perfil: userData.tipo_perfil,
+        especialidade_profissional: userData.especialidade_profissional,
+        nome_loja: userData.nome_loja
       });
     } catch (parseError) {
       console.error("Error parsing request body:", parseError);
@@ -68,7 +72,7 @@ serve(async (req) => {
       userData.tipo_perfil = 'consumidor';
     }
     
-    // Initialize Supabase client with service role - set search_path to avoid RLS recursion
+    // Initialize Supabase client with service role
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
@@ -89,25 +93,34 @@ serve(async (req) => {
       }
     });
 
-    console.log("Creating user with info:", {
-      email: userData.email,
+    // Prepare user metadata with all required fields
+    const userMetadata = {
       nome: userData.nome,
-      tipo_perfil: userData.tipo_perfil
-    });
+      cpf: userData.cpf || null,
+      telefone: userData.telefone || null,
+      tipo_perfil: userData.tipo_perfil,
+      papel: userData.tipo_perfil, // For backward compatibility
+      status: 'ativo',
+      saldo_pontos: 0
+    };
+
+    // Add specific fields based on profile type
+    if (userData.tipo_perfil === 'profissional' && userData.especialidade_profissional) {
+      userMetadata.especialidade_profissional = userData.especialidade_profissional;
+    }
+
+    if (userData.tipo_perfil === 'vendedor' && userData.nome_loja) {
+      userMetadata.nome_loja = userData.nome_loja;
+    }
+
+    console.log("Creating user with metadata:", userMetadata);
     
     // Create user with metadata
     const { data, error } = await supabaseAdmin.auth.admin.createUser({
       email: userData.email,
       password: userData.password,
       email_confirm: true,
-      user_metadata: {
-        nome: userData.nome,
-        cpf: userData.cpf || null,
-        telefone: userData.telefone || null,
-        tipo_perfil: userData.tipo_perfil,
-        papel: userData.tipo_perfil,
-        status: 'ativo'
-      }
+      user_metadata: userMetadata
     });
     
     if (error) {
@@ -128,6 +141,39 @@ serve(async (req) => {
     }
 
     console.log("User created successfully:", data.user?.id);
+
+    // Create profile directly to ensure it exists
+    if (data.user) {
+      try {
+        const profileData = {
+          id: data.user.id,
+          nome: userData.nome,
+          email: userData.email,
+          cpf: userData.cpf || null,
+          telefone: userData.telefone || null,
+          papel: userData.tipo_perfil,
+          tipo_perfil: userData.tipo_perfil,
+          especialidade_profissional: userData.especialidade_profissional || null,
+          status: 'ativo',
+          saldo_pontos: 0
+        };
+
+        console.log("Creating profile directly:", profileData);
+
+        const { error: profileError } = await supabaseAdmin
+          .from('profiles')
+          .insert(profileData);
+
+        if (profileError) {
+          console.error("Error creating profile:", profileError);
+          // Don't fail the signup if profile creation fails, the trigger should handle it
+        } else {
+          console.log("Profile created successfully");
+        }
+      } catch (profileCreateError) {
+        console.error("Exception creating profile:", profileCreateError);
+      }
+    }
     
     // Return success response
     return new Response(

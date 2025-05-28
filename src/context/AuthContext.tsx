@@ -158,28 +158,90 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signup = async ({ email, password, userData }: { email: string, password: string, userData: any }) => {
     try {
       setIsLoading(true);
+      console.log("📝 [AuthProvider] Starting signup process for:", email);
+      console.log("📋 [AuthProvider] User data:", userData);
 
       // Extract referral code if provided
       const referralCode = userData.codigo_indicacao;
-      delete userData.codigo_indicacao; // Remove from userData as it's not stored in auth.users
+      const cleanUserData = { ...userData };
+      delete cleanUserData.codigo_indicacao; // Remove from userData as it's not stored in auth.users
 
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: userData
+      // Try using the edge function first for better control
+      try {
+        console.log("🔧 [AuthProvider] Attempting signup via edge function");
+        
+        const signupPayload = {
+          email,
+          password,
+          ...cleanUserData
+        };
+
+        console.log("📤 [AuthProvider] Sending signup payload:", signupPayload);
+
+        const response = await fetch("https://orqnibkshlapwhjjmszh.supabase.co/functions/v1/auth-signup", {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabase.supabaseKey}`
+          },
+          body: JSON.stringify(signupPayload)
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          console.log("✅ [AuthProvider] Signup successful via edge function:", result);
+          
+          // If signup was successful and a referral code was provided
+          if (result.success && result.user && referralCode) {
+            console.log("🎁 [AuthProvider] Processing referral code:", referralCode);
+            try {
+              await referralService.processReferral(result.user.id, referralCode);
+            } catch (referralError) {
+              console.error("❌ [AuthProvider] Error processing referral:", referralError);
+              // Don't fail signup if referral processing fails
+            }
+          }
+          
+          return { error: null, data: result };
+        } else {
+          const errorResult = await response.json();
+          console.error("❌ [AuthProvider] Edge function signup failed:", errorResult);
+          throw new Error(errorResult.error || 'Signup failed');
         }
-      });
-      
-      // If signup was successful and a referral code was provided
-      if (!error && data.user && referralCode) {
-        // Process the referral code
-        await referralService.processReferral(data.user.id, referralCode);
+      } catch (edgeFunctionError) {
+        console.warn("⚠️ [AuthProvider] Edge function failed, falling back to Supabase signup:", edgeFunctionError);
+        
+        // Fallback to regular Supabase signup
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: cleanUserData
+          }
+        });
+        
+        if (error) {
+          console.error("❌ [AuthProvider] Supabase signup failed:", error);
+          return { error, data: null };
+        }
+
+        console.log("✅ [AuthProvider] Supabase signup successful:", data.user?.id);
+        
+        // If signup was successful and a referral code was provided
+        if (!error && data.user && referralCode) {
+          console.log("🎁 [AuthProvider] Processing referral code:", referralCode);
+          try {
+            await referralService.processReferral(data.user.id, referralCode);
+          } catch (referralError) {
+            console.error("❌ [AuthProvider] Error processing referral:", referralError);
+            // Don't fail signup if referral processing fails
+          }
+        }
+        
+        return { error, data };
       }
-      
-      return { error, data };
     } catch (error) {
-      console.error("Signup error:", error);
+      console.error("💥 [AuthProvider] Signup exception:", error);
       return { error };
     } finally {
       setIsLoading(false);

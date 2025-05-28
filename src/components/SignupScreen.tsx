@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -74,6 +73,14 @@ const SignupScreen: React.FC = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    console.log("🚀 [SignupScreen] Starting signup process with data:", {
+      nome: signupData.nome,
+      email: signupData.email,
+      tipo_perfil: signupData.tipo_perfil,
+      especialidade_profissional: signupData.especialidade_profissional,
+      nome_loja: signupData.nome_loja
+    });
+
     // Validation
     if (signupData.senha !== signupData.confirmaSenha) {
       toast.error("As senhas não conferem");
@@ -92,22 +99,25 @@ const SignupScreen: React.FC = () => {
 
     setIsSubmitting(true);
     try {
+      // Prepare user data with correct structure
       const userData = {
         nome: signupData.nome,
-        cpf: signupData.cpf,
-        telefone: signupData.telefone,
+        cpf: signupData.cpf || null,
+        telefone: signupData.telefone || null,
         tipo_perfil: signupData.tipo_perfil,
-        codigo_indicacao: signupData.codigoIndicacao
+        codigo_indicacao: signupData.codigoIndicacao || null
       };
 
       // Adicionar campos específicos baseado no tipo de perfil
-      if (signupData.tipo_perfil === 'profissional') {
-        (userData as any).especialidade_profissional = signupData.especialidade_profissional;
+      if (signupData.tipo_perfil === 'profissional' && signupData.especialidade_profissional) {
+        userData.especialidade_profissional = signupData.especialidade_profissional;
       }
       
       if (signupData.tipo_perfil === 'vendedor' && signupData.nome_loja) {
-        (userData as any).nome_loja = signupData.nome_loja;
+        userData.nome_loja = signupData.nome_loja;
       }
+
+      console.log("📤 [SignupScreen] Sending signup request with userData:", userData);
 
       const { error } = await signup({
         email: signupData.email,
@@ -116,27 +126,31 @@ const SignupScreen: React.FC = () => {
       });
 
       if (error) {
-        console.error("Signup error:", error);
+        console.error("❌ [SignupScreen] Signup error:", error);
         toast.error(error.message || "Erro ao criar conta");
         setIsSubmitting(false);
         return;
       }
 
+      console.log("✅ [SignupScreen] Signup successful!");
       toast.success("Cadastro realizado com sucesso!");
 
       // Redirecionar baseado no tipo de perfil
       switch (signupData.tipo_perfil) {
         case 'profissional':
+          console.log("🔄 [SignupScreen] Redirecting professional to services");
           navigate('/services');
           break;
         case 'vendedor':
+          console.log("🔄 [SignupScreen] Redirecting vendor to vendor dashboard");
           navigate('/vendor');
           break;
         default:
+          console.log("🔄 [SignupScreen] Redirecting consumer to home");
           navigate('/home');
       }
     } catch (err) {
-      console.error("Unexpected signup error:", err);
+      console.error("💥 [SignupScreen] Unexpected signup error:", err);
       const errorMsg = err instanceof Error ? err.message : 'Erro ao criar conta';
       toast.error(errorMsg);
     } finally {
