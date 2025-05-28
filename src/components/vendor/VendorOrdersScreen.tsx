@@ -13,6 +13,35 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Store, AlertCircle, RefreshCcw, CheckCircle, Database } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import type { VendorOrder } from '@/services/vendor/orders/types';
+import type { Pedido } from '@/services/vendor/orders/pedidosService';
+
+// Função para converter Pedido para VendorOrder
+const convertPedidoToVendorOrder = (pedido: Pedido): VendorOrder => {
+  return {
+    id: pedido.id,
+    vendedor_id: pedido.vendedor_id,
+    cliente_id: pedido.usuario_id,
+    valor_total: pedido.valor_total,
+    status: pedido.status,
+    forma_pagamento: pedido.forma_pagamento,
+    endereco_entrega: pedido.endereco_entrega,
+    created_at: pedido.created_at,
+    data_criacao: pedido.created_at,
+    data_entrega_estimada: pedido.data_entrega_estimada,
+    rastreio: pedido.rastreio,
+    cliente: pedido.cliente,
+    itens: pedido.itens?.map(item => ({
+      id: item.id,
+      produto_id: item.produto_id,
+      quantidade: item.quantidade,
+      preco_unitario: item.preco_unitario,
+      total: item.total,
+      created_at: item.created_at,
+      produto: item.produto
+    }))
+  };
+};
 
 const VendorOrdersScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -31,13 +60,18 @@ const VendorOrdersScreen: React.FC = () => {
     handleMigration
   } = usePedidosVendor();
   
+  // Convert pedidos to VendorOrder format for compatibility
+  const orders: VendorOrder[] = React.useMemo(() => {
+    return pedidos.map(convertPedidoToVendorOrder);
+  }, [pedidos]);
+  
   const {
     searchTerm,
     setSearchTerm,
     filterStatus,
     setFilterStatus,
     filteredOrders
-  } = useOrderFilters(pedidos || []);
+  } = useOrderFilters(orders);
   
   console.log('📊 [VendorOrdersScreen] Estado atual:', {
     pedidosCount: pedidos?.length || 0,
@@ -224,7 +258,7 @@ const VendorOrdersScreen: React.FC = () => {
         />
         
         {/* Order Stats */}
-        <OrderStats orders={pedidos} />
+        <OrderStats orders={orders} />
         
         {/* Orders List */}
         <div className="space-y-4">

@@ -26,16 +26,19 @@ export interface Pedido {
   forma_pagamento: string;
   endereco_entrega: any;
   valor_total: number;
-  pontos_ganhos?: number;
   rastreio?: string;
   created_at: string;
   updated_at?: string;
   data_entrega_estimada?: string;
   itens?: PedidoItem[];
   cliente?: {
+    id: string;
+    vendedor_id: string;
+    usuario_id: string;
     nome: string;
     email: string;
     telefone?: string;
+    total_gasto: number;
   };
 }
 
@@ -67,7 +70,7 @@ export const getVendorPedidos = async (): Promise<Pedido[]> => {
     
     console.log("✅ [getVendorPedidos] Vendedor encontrado:", vendorData.id);
     
-    // Buscar pedidos do vendedor na tabela pedidos
+    // Buscar pedidos do vendedor na tabela pedidos (sem pontos_ganhos)
     const { data: pedidos, error: pedidosError } = await supabase
       .from('pedidos')
       .select(`
@@ -78,7 +81,6 @@ export const getVendorPedidos = async (): Promise<Pedido[]> => {
         forma_pagamento,
         endereco_entrega,
         valor_total,
-        pontos_ganhos,
         rastreio,
         created_at,
         updated_at,
@@ -135,7 +137,7 @@ export const getVendorPedidos = async (): Promise<Pedido[]> => {
               ...item,
               produto: produtoData ? {
                 nome: produtoData.nome,
-                imagens: produtoData.imagens
+                imagens: Array.isArray(produtoData.imagens) ? produtoData.imagens : []
               } : undefined
             });
           }
@@ -148,13 +150,25 @@ export const getVendorPedidos = async (): Promise<Pedido[]> => {
           .eq('id', pedido.usuario_id)
           .single();
         
+        // Buscar dados do cliente na tabela clientes_vendedor
+        const { data: clienteVendorData } = await supabase
+          .from('clientes_vendedor')
+          .select('id, total_gasto')
+          .eq('vendedor_id', vendorData.id)
+          .eq('usuario_id', pedido.usuario_id)
+          .single();
+        
         pedidosCompletos.push({
           ...pedido,
           itens: itensComProdutos,
           cliente: clienteData ? {
+            id: clienteVendorData?.id || pedido.usuario_id,
+            vendedor_id: vendorData.id,
+            usuario_id: pedido.usuario_id,
             nome: clienteData.nome || 'Cliente',
             email: clienteData.email || '',
-            telefone: clienteData.telefone
+            telefone: clienteData.telefone,
+            total_gasto: clienteVendorData?.total_gasto || 0
           } : undefined
         });
         
@@ -189,7 +203,7 @@ export const getPedidoById = async (pedidoId: string): Promise<Pedido | null> =>
     
     if (!vendorData) return null;
     
-    // Buscar o pedido
+    // Buscar o pedido (sem pontos_ganhos)
     const { data: pedido, error } = await supabase
       .from('pedidos')
       .select(`
@@ -200,7 +214,6 @@ export const getPedidoById = async (pedidoId: string): Promise<Pedido | null> =>
         forma_pagamento,
         endereco_entrega,
         valor_total,
-        pontos_ganhos,
         rastreio,
         created_at,
         updated_at,
@@ -251,18 +264,30 @@ export const getPedidoById = async (pedidoId: string): Promise<Pedido | null> =>
         ...item,
         produto: produtoData ? {
           nome: produtoData.nome,
-          imagens: produtoData.imagens
+          imagens: Array.isArray(produtoData.imagens) ? produtoData.imagens : []
         } : undefined
       });
     }
+    
+    // Buscar dados do cliente na tabela clientes_vendedor
+    const { data: clienteVendorData } = await supabase
+      .from('clientes_vendedor')
+      .select('id, total_gasto')
+      .eq('vendedor_id', vendorData.id)
+      .eq('usuario_id', pedido.usuario_id)
+      .single();
     
     return {
       ...pedido,
       itens: itensComProdutos,
       cliente: cliente ? {
+        id: clienteVendorData?.id || pedido.usuario_id,
+        vendedor_id: vendorData.id,
+        usuario_id: pedido.usuario_id,
         nome: cliente.nome || 'Cliente',
         email: cliente.email || '',
-        telefone: cliente.telefone
+        telefone: cliente.telefone,
+        total_gasto: clienteVendorData?.total_gasto || 0
       } : undefined
     };
     
@@ -279,120 +304,20 @@ export const migrateOrdersToPedidos = async (): Promise<{ success: boolean; coun
   try {
     console.log("🔄 [migrateOrdersToPedidos] Iniciando migração manual");
     
-    // Primeiro, limpar dados existentes na tabela pedidos
-    await supabase.from('itens_pedido').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-    await supabase.from('pedidos').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    // Chamar a função SQL de migração
+    const { data, error } = await supabase.rpc('migrate_existing_orders_to_pedidos');
     
-    // Buscar todos os pedidos da tabela orders
-    const { data: orders, error: ordersError } = await supabase
-      .from('orders')
-      .select('*')
-      .order('created_at');
-    
-    if (ordersError || !orders) {
-      console.error("❌ [migrateOrdersToPedidos] Erro ao buscar orders:", ordersError);
-      return { success: false, count: 0, message: "Erro ao buscar pedidos originais" };
+    if (error) {
+      console.error("❌ [migrateOrdersToPedidos] Erro na migração:", error);
+      return { success: false, count: 0, message: "Erro durante a migração: " + error.message };
     }
     
-    console.log(`📦 [migrateOrdersToPedidos] Encontrados ${orders.length} pedidos para migrar`);
-    
-    let migratedCount = 0;
-    
-    for (const order of orders) {
-      try {
-        // Buscar itens do pedido
-        const { data: orderItems } = await supabase
-          .from('order_items')
-          .select('*')
-          .eq('order_id', order.id);
-        
-        if (!orderItems || orderItems.length === 0) {
-          console.log(`⚠️ [migrateOrdersToPedidos] Pedido ${order.id} sem itens, pulando`);
-          continue;
-        }
-        
-        // Agrupar itens por vendedor
-        const vendorGroups: { [vendorId: string]: any[] } = {};
-        
-        for (const item of orderItems) {
-          const { data: produto } = await supabase
-            .from('produtos')
-            .select('vendedor_id')
-            .eq('id', item.produto_id)
-            .single();
-          
-          if (produto?.vendedor_id) {
-            if (!vendorGroups[produto.vendedor_id]) {
-              vendorGroups[produto.vendedor_id] = [];
-            }
-            vendorGroups[produto.vendedor_id].push(item);
-          }
-        }
-        
-        // Criar um pedido para cada vendedor
-        for (const [vendorId, items] of Object.entries(vendorGroups)) {
-          const vendorTotal = items.reduce((sum, item) => sum + Number(item.subtotal), 0);
-          const vendorPoints = order.valor_total > 0 
-            ? Math.round((vendorTotal * order.pontos_ganhos) / order.valor_total)
-            : 0;
-          
-          // Inserir pedido
-          const { data: novoPedido, error: pedidoError } = await supabase
-            .from('pedidos')
-            .insert({
-              usuario_id: order.cliente_id,
-              vendedor_id: vendorId,
-              status: order.status,
-              forma_pagamento: order.forma_pagamento,
-              endereco_entrega: order.endereco_entrega,
-              valor_total: vendorTotal,
-              pontos_ganhos: vendorPoints,
-              rastreio: order.rastreio,
-              created_at: order.created_at,
-              updated_at: order.updated_at,
-              data_entrega_estimada: new Date(new Date(order.created_at).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()
-            })
-            .select()
-            .single();
-          
-          if (pedidoError || !novoPedido) {
-            console.error(`❌ [migrateOrdersToPedidos] Erro ao criar pedido para vendedor ${vendorId}:`, pedidoError);
-            continue;
-          }
-          
-          // Inserir itens do pedido
-          const itensParaInserir = items.map(item => ({
-            pedido_id: novoPedido.id,
-            produto_id: item.produto_id,
-            quantidade: item.quantidade,
-            preco_unitario: item.preco_unitario,
-            total: item.subtotal,
-            created_at: item.created_at
-          }));
-          
-          const { error: itensError } = await supabase
-            .from('itens_pedido')
-            .insert(itensParaInserir);
-          
-          if (itensError) {
-            console.error(`❌ [migrateOrdersToPedidos] Erro ao inserir itens:`, itensError);
-          } else {
-            console.log(`✅ [migrateOrdersToPedidos] Migrado pedido ${order.id} para vendedor ${vendorId}`);
-            migratedCount++;
-          }
-        }
-        
-      } catch (error) {
-        console.error(`❌ [migrateOrdersToPedidos] Erro ao processar pedido ${order.id}:`, error);
-      }
-    }
-    
-    console.log(`✅ [migrateOrdersToPedidos] Migração concluída: ${migratedCount} pedidos migrados`);
+    console.log(`✅ [migrateOrdersToPedidos] Migração concluída: ${data} pedidos migrados`);
     
     return {
       success: true,
-      count: migratedCount,
-      message: `${migratedCount} pedidos migrados com sucesso`
+      count: data || 0,
+      message: `${data || 0} pedidos migrados com sucesso`
     };
     
   } catch (error) {
