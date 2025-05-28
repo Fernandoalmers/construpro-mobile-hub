@@ -11,40 +11,40 @@ export const usePedidosVendor = () => {
   const [vendorProfileStatus, setVendorProfileStatus] = useState<'checking' | 'found' | 'not_found'>('checking');
   const [isMigrating, setIsMigrating] = useState(false);
   
-  console.log('🚀 [usePedidosVendor] Hook initialized');
+  console.log('🚀 [usePedidosVendor] HOOK CORRETO INICIALIZADO - Usando tabela pedidos');
   
   // Check if the vendor profile exists
   useEffect(() => {
     const checkVendorProfile = async () => {
       try {
-        console.log("🔍 [usePedidosVendor] Verificando perfil do vendedor...");
+        console.log("🔍 [usePedidosVendor] PROFILE CHECK - Verificando perfil do vendedor...");
         
         // First ensure user is authenticated
         const { data: { user }, error: userError } = await supabase.auth.getUser();
         
         if (userError || !user) {
-          console.error("🚫 [usePedidosVendor] Usuário não autenticado:", userError);
+          console.error("🚫 [usePedidosVendor] PROFILE CHECK - Usuário não autenticado:", userError);
           setVendorProfileStatus('not_found');
           return;
         }
         
-        console.log("👤 [usePedidosVendor] Usuário autenticado:", user.id);
+        console.log("👤 [usePedidosVendor] PROFILE CHECK - Usuário autenticado:", user.id);
         
         const profile = await getVendorProfile();
         
         if (profile) {
           setVendorProfileStatus('found');
-          console.log("✅ [usePedidosVendor] Perfil do vendedor encontrado:", {
+          console.log("✅ [usePedidosVendor] PROFILE CHECK - Perfil do vendedor encontrado:", {
             id: profile.id,
             nome_loja: profile.nome_loja,
             status: profile.status || 'unknown'
           });
         } else {
           setVendorProfileStatus('not_found');
-          console.error("🚫 [usePedidosVendor] Nenhum perfil de vendedor encontrado para o usuário atual");
+          console.error("🚫 [usePedidosVendor] PROFILE CHECK - Nenhum perfil de vendedor encontrado para o usuário atual");
         }
       } catch (error) {
-        console.error("🚫 [usePedidosVendor] Erro ao verificar perfil do vendedor:", error);
+        console.error("🚫 [usePedidosVendor] PROFILE CHECK - Erro ao verificar perfil do vendedor:", error);
         setVendorProfileStatus('not_found');
       }
     };
@@ -62,28 +62,28 @@ export const usePedidosVendor = () => {
   } = useQuery({
     queryKey: ['vendorPedidos'],
     queryFn: async () => {
-      console.log("🔍 [usePedidosVendor] Iniciando busca de pedidos da tabela pedidos...");
+      console.log("🔍 [usePedidosVendor] QUERY FUNCTION - Iniciando busca de pedidos da tabela pedidos...");
       
       try {
         // Verify authentication before proceeding
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         
         if (authError || !user) {
-          console.error("🚫 [usePedidosVendor] Falha na autenticação:", authError);
+          console.error("🚫 [usePedidosVendor] QUERY FUNCTION - Falha na autenticação:", authError);
           throw new Error('Usuário não autenticado. Faça login novamente.');
         }
         
-        console.log("👤 [usePedidosVendor] Usuário verificado para busca de pedidos:", user.id);
+        console.log("👤 [usePedidosVendor] QUERY FUNCTION - Usuário verificado para busca de pedidos:", user.id);
         
         // Log the start of pedidos fetching
-        console.log("📞 [usePedidosVendor] Chamando getVendorPedidos...");
+        console.log("📞 [usePedidosVendor] QUERY FUNCTION - Chamando getVendorPedidos da tabela pedidos...");
         
         const results = await getVendorPedidos();
         
-        console.log(`📊 [usePedidosVendor] getVendorPedidos retornou ${results.length} resultados da tabela pedidos`);
+        console.log(`📊 [usePedidosVendor] QUERY FUNCTION - getVendorPedidos retornou ${results.length} resultados da tabela pedidos`);
         
         if (results.length > 0) {
-          console.log("✅ [usePedidosVendor] Exemplo do primeiro pedido da tabela pedidos:", {
+          console.log("✅ [usePedidosVendor] QUERY FUNCTION - SUCESSO! Pedidos encontrados. Exemplo do primeiro pedido da tabela pedidos:", {
             id: results[0]?.id,
             status: results[0]?.status,
             items_count: results[0]?.itens?.length || 0,
@@ -92,11 +92,11 @@ export const usePedidosVendor = () => {
             created_at: results[0]?.created_at
           });
           
-          console.log("📋 [usePedidosVendor] Todos os IDs dos pedidos da tabela pedidos:", results.map(p => p.id));
+          console.log("📋 [usePedidosVendor] QUERY FUNCTION - Todos os IDs dos pedidos da tabela pedidos:", results.map(p => p.id));
           
           // Detailed log of all pedidos
           results.forEach((pedido, index) => {
-            console.log(`📋 [usePedidosVendor] Pedido ${index + 1}:`, {
+            console.log(`📋 [usePedidosVendor] QUERY FUNCTION - Pedido ${index + 1}:`, {
               id: pedido.id,
               vendedor_id: pedido.vendedor_id,
               usuario_id: pedido.usuario_id,
@@ -107,7 +107,7 @@ export const usePedidosVendor = () => {
             });
           });
         } else {
-          console.log("⚠️ [usePedidosVendor] Nenhum pedido encontrado na tabela pedidos - isto pode indicar:");
+          console.log("⚠️ [usePedidosVendor] QUERY FUNCTION - AVISO: Nenhum pedido encontrado na tabela pedidos - isto pode indicar:");
           console.log("   1. Vendedor não tem pedidos na tabela pedidos");
           console.log("   2. Dados ainda não foram migrados da tabela orders");
           console.log("   3. Problema na busca do vendedor ID");
@@ -116,7 +116,7 @@ export const usePedidosVendor = () => {
         
         return results;
       } catch (error) {
-        console.error("🚫 [usePedidosVendor] Erro na queryFn:", error);
+        console.error("🚫 [usePedidosVendor] QUERY FUNCTION - Erro na queryFn:", error);
         
         // Check if it's an authentication error
         if (error instanceof Error && error.message.includes('autenticado')) {
@@ -143,17 +143,21 @@ export const usePedidosVendor = () => {
   
   // Debug effect to log changes in pedidos data
   useEffect(() => {
-    console.log('🔄 [usePedidosVendor] Pedidos data changed:', {
+    console.log('🔄 [usePedidosVendor] DATA CHANGE - Pedidos data changed:', {
       count: pedidos?.length || 0,
       isLoading,
       hasError: !!error,
       vendorProfileStatus,
       firstPedidoId: pedidos?.[0]?.id
     });
+    
+    if (pedidos && pedidos.length > 0) {
+      console.log('🎉 [usePedidosVendor] DATA CHANGE - PEDIDOS ENCONTRADOS! Carregados com sucesso da tabela pedidos');
+    }
   }, [pedidos, isLoading, error, vendorProfileStatus]);
   
   const handleRefresh = useCallback(async () => {
-    console.log('🔄 [usePedidosVendor] Manual refresh triggered');
+    console.log('🔄 [usePedidosVendor] REFRESH - Manual refresh triggered');
     
     if (vendorProfileStatus === 'found') {
       // Check authentication before refresh
@@ -165,7 +169,7 @@ export const usePedidosVendor = () => {
       }
       
       toast.info('Atualizando lista de pedidos da tabela pedidos...');
-      console.log("🔄 [usePedidosVendor] Atualizando pedidos do vendedor manualmente da tabela pedidos");
+      console.log("🔄 [usePedidosVendor] REFRESH - Atualizando pedidos do vendedor manualmente da tabela pedidos");
       
       // Clear cache and refetch
       queryClient.invalidateQueries({ queryKey: ['vendorPedidos'] });
@@ -176,7 +180,7 @@ export const usePedidosVendor = () => {
   }, [vendorProfileStatus, queryClient, refetch]);
 
   const handleMigration = useCallback(async () => {
-    console.log('🔄 [usePedidosVendor] Starting migration process');
+    console.log('🔄 [usePedidosVendor] MIGRATION - Starting migration process');
     setIsMigrating(true);
     toast.loading('Migrando pedidos da tabela orders para pedidos...');
     
@@ -184,27 +188,27 @@ export const usePedidosVendor = () => {
       const result = await migrateOrdersToPedidos();
       
       if (result.success) {
-        console.log('✅ [usePedidosVendor] Migration successful:', result);
+        console.log('✅ [usePedidosVendor] MIGRATION - Migration successful:', result);
         toast.success(`Migração executada com sucesso! ${result.count} pedidos migrados.`);
         // Refresh data after migration
         setTimeout(() => {
-          console.log('🔄 [usePedidosVendor] Refreshing data after migration');
+          console.log('🔄 [usePedidosVendor] MIGRATION - Refreshing data after migration');
           queryClient.invalidateQueries({ queryKey: ['vendorPedidos'] });
           refetch();
         }, 1000);
       } else {
-        console.error('❌ [usePedidosVendor] Migration failed:', result);
+        console.error('❌ [usePedidosVendor] MIGRATION - Migration failed:', result);
         toast.error(result.message);
       }
     } catch (error) {
-      console.error('❌ [usePedidosVendor] Erro na migração:', error);
+      console.error('❌ [usePedidosVendor] MIGRATION - Erro na migração:', error);
       toast.error('Erro durante a migração de pedidos');
     } finally {
       setIsMigrating(false);
     }
   }, [queryClient, refetch]);
 
-  console.log('📊 [usePedidosVendor] Hook returning data:', {
+  console.log('📊 [usePedidosVendor] RETURN DATA - Hook returning data:', {
     pedidosCount: pedidos?.length || 0,
     isLoading,
     hasError: !!error,

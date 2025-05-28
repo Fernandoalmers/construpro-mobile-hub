@@ -55,9 +55,9 @@ const VendorOrdersScreen: React.FC = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   
-  console.log('🚀 [VendorOrdersScreen] Component mounting/updating');
+  console.log('🚀 [VendorOrdersScreen] Component mounting/updating - USANDO PEDIDOS HOOK');
   
-  // Use the pedidos hook (FIXED VERSION)
+  // ✅ AGORA USANDO APENAS O HOOK CORRETO: usePedidosVendor
   const { 
     pedidos, 
     isLoading, 
@@ -70,7 +70,7 @@ const VendorOrdersScreen: React.FC = () => {
     handleMigration
   } = usePedidosVendor();
   
-  console.log('📊 [VendorOrdersScreen] Hook data:', {
+  console.log('📊 [VendorOrdersScreen] HOOK CORRETO - usePedidosVendor data:', {
     pedidosCount: pedidos.length,
     isLoading,
     error: !!error,
@@ -82,15 +82,15 @@ const VendorOrdersScreen: React.FC = () => {
   
   // Convert pedidos to VendorOrder format for compatibility
   const orders: VendorOrder[] = React.useMemo(() => {
-    console.log('🔄 [VendorOrdersScreen] Converting pedidos to orders format. Input pedidos:', pedidos.length);
+    console.log('🔄 [VendorOrdersScreen] CONVERSÃO DE DADOS - Converting pedidos to orders format. Input pedidos:', pedidos.length);
     
     if (!pedidos || pedidos.length === 0) {
-      console.log('⚠️ [VendorOrdersScreen] No pedidos to convert');
+      console.log('⚠️ [VendorOrdersScreen] CONVERSÃO DE DADOS - No pedidos to convert');
       return [];
     }
     
     const convertedOrders = pedidos.map(convertPedidoToVendorOrder);
-    console.log('✅ [VendorOrdersScreen] Converted orders:', {
+    console.log('✅ [VendorOrdersScreen] CONVERSÃO DE DADOS - Converted orders:', {
       input: pedidos.length,
       output: convertedOrders.length,
       firstOrder: convertedOrders[0] ? {
@@ -111,7 +111,7 @@ const VendorOrdersScreen: React.FC = () => {
     filteredOrders
   } = useOrderFilters(orders);
   
-  console.log('📊 [VendorOrdersScreen] Current state after conversion:', {
+  console.log('📊 [VendorOrdersScreen] ESTADO FINAL após conversão:', {
     pedidosCount: pedidos?.length || 0,
     ordersCount: orders?.length || 0,
     filteredOrdersCount: filteredOrders?.length || 0,
@@ -126,7 +126,7 @@ const VendorOrdersScreen: React.FC = () => {
   // Log detailed information about pedidos for debugging
   React.useEffect(() => {
     if (pedidos && pedidos.length > 0) {
-      console.log('📋 [VendorOrdersScreen] Pedidos carregados com sucesso da tabela pedidos:', {
+      console.log('📋 [VendorOrdersScreen] SUCESSO - Pedidos carregados da tabela pedidos:', {
         totalPedidos: pedidos.length,
         firstPedidoId: pedidos[0]?.id,
         firstPedidoStatus: pedidos[0]?.status,
@@ -136,13 +136,13 @@ const VendorOrdersScreen: React.FC = () => {
         allPedidoIds: pedidos.map(p => p.id)
       });
     } else if (!isLoading && !error) {
-      console.log('⚠️ [VendorOrdersScreen] Nenhum pedido encontrado na tabela pedidos mas sem erro');
+      console.log('⚠️ [VendorOrdersScreen] AVISO - Nenhum pedido encontrado na tabela pedidos mas sem erro');
     }
   }, [pedidos, isLoading, error]);
 
   // Additional debug for orders conversion
   React.useEffect(() => {
-    console.log('🔍 [VendorOrdersScreen] Orders effect triggered:', {
+    console.log('🔍 [VendorOrdersScreen] ORDERS EFFECT - Orders effect triggered:', {
       ordersLength: orders.length,
       filteredOrdersLength: filteredOrders.length,
       hasSearchTerm: !!searchTerm,
@@ -226,7 +226,7 @@ const VendorOrdersScreen: React.FC = () => {
 
   if (isLoading) {
     console.log('⏳ [VendorOrdersScreen] Loading state');
-    return <LoadingState text="Carregando pedidos do vendedor..." />;
+    return <LoadingState text="Carregando pedidos do vendedor da tabela pedidos..." />;
   }
   
   if (error) {
@@ -243,7 +243,7 @@ const VendorOrdersScreen: React.FC = () => {
     );
   }
 
-  console.log('🎨 [VendorOrdersScreen] Rendering main interface with orders:', orders.length);
+  console.log('🎨 [VendorOrdersScreen] RENDERIZAÇÃO PRINCIPAL - Rendering main interface with orders:', orders.length);
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
@@ -255,14 +255,14 @@ const VendorOrdersScreen: React.FC = () => {
       />
       
       <div className="p-6 space-y-6">
-        {/* Status da migração */}
+        {/* Status da correção */}
         <Card className="p-4 bg-green-50 border-green-200">
           <div className="flex items-start gap-3">
             <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
             <div>
-              <h3 className="font-medium text-green-800">Sistema Atualizado</h3>
+              <h3 className="font-medium text-green-800">Sistema Corrigido - Usando usePedidosVendor</h3>
               <p className="text-sm text-green-700 mt-1">
-                Agora usando a tabela pedidos dedicada para vendedores. 
+                Agora usando exclusivamente a tabela pedidos com o hook correto. 
                 Usuário: {user.email} | Pedidos: {pedidos.length} | Orders convertidos: {orders.length}
               </p>
             </div>
@@ -275,8 +275,9 @@ const VendorOrdersScreen: React.FC = () => {
             <div className="flex items-start gap-3">
               <AlertCircle className="h-5 w-5 text-blue-500 mt-0.5" />
               <div>
-                <h3 className="font-medium text-blue-800">Debug Info</h3>
+                <h3 className="font-medium text-blue-800">Debug Info - Hook Correto Ativo</h3>
                 <div className="text-sm text-blue-700 mt-1 font-mono">
+                  <p>✅ Hook: usePedidosVendor (CORRETO)</p>
                   <p>Pedidos raw: {pedidos.length}</p>
                   <p>Orders converted: {orders.length}</p>
                   <p>Filtered orders: {filteredOrders.length}</p>
@@ -337,14 +338,14 @@ const VendorOrdersScreen: React.FC = () => {
         
         {/* Orders List */}
         <div className="space-y-4">
-          <h2 className="font-bold text-lg">Lista de pedidos ({orders.length})</h2>
+          <h2 className="font-bold text-lg">Lista de pedidos da tabela pedidos ({orders.length})</h2>
           
           {orders.length === 0 && !isRefetching ? (
             <div className="rounded-lg border p-8 text-center">
               <AlertCircle className="mx-auto h-10 w-10 text-yellow-500 mb-3" />
               <h3 className="text-lg font-medium mb-2">Nenhum pedido encontrado</h3>
               <p className="text-gray-500 mb-4">
-                Não foram encontrados pedidos na tabela pedidos.
+                Não foram encontrados pedidos na tabela pedidos para este vendedor.
               </p>
               <div className="flex gap-2 justify-center">
                 <Button 
