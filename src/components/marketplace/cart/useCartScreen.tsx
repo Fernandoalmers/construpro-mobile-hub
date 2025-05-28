@@ -11,11 +11,19 @@ import { useGroupItemsByStore, storeGroupsToArray } from '@/hooks/cart/use-group
 
 export function useCartScreen() {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, profile } = useAuth();
   const { cart, updateQuantity, removeItem, refreshCart } = useCart();
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [processingItem, setProcessingItem] = useState<string | null>(null);
+  
+  // Get user type properly
+  const userType = profile?.tipo_perfil || 'consumidor';
+  const validUserType = (['consumidor', 'profissional', 'lojista', 'vendedor'].includes(userType)) 
+    ? userType as 'consumidor' | 'profissional' | 'lojista' | 'vendedor'
+    : 'consumidor';
+  
+  console.log('[useCartScreen] User type detected:', validUserType);
   
   // Get cart items
   const cartItems = cart?.items || [];
@@ -37,14 +45,21 @@ export function useCartScreen() {
   const storeInfoArray = Array.isArray(storeInfo) ? storeInfo : Object.values(storeInfo || {});
   const storeGroupsRecord = useGroupItemsByStore(cartItems, storeInfoArray);
   
-  // Calculate totals
+  // Calculate totals with correct user type - NEVER use cart?.summary.totalPoints
   const storeCount = Object.keys(storeGroupsRecord).length;
   const { subtotal, discount, shipping, total, totalPoints } = useCartTotals(
     cartItems, 
     storeCount, 
     appliedCoupon?.discount || 0,
-    cart?.summary.totalPoints
+    0, // Always pass 0 to ignore backend totalPoints
+    validUserType // Pass the correct user type
   );
+
+  console.log('[useCartScreen] Cart totals calculated:', {
+    userType: validUserType,
+    totalPoints,
+    itemCount: cartItems.length
+  });
 
   // Memoize the refresh cart function with a ref to avoid recreating it on every render
   const memoizedRefreshCart = useCallback(async () => {
