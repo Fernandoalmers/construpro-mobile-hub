@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 /**
@@ -39,6 +38,58 @@ export interface Pedido {
     total_gasto: number;
   };
 }
+
+/**
+ * Fetch client information with better error handling and fallbacks
+ */
+const fetchClientInfo = async (usuario_id: string, vendedor_id: string) => {
+  try {
+    // First try to get from profiles table
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, nome, email, telefone')
+      .eq('id', usuario_id)
+      .single();
+
+    if (profileError) {
+      console.log('Could not fetch profile data:', profileError);
+    }
+
+    // Try to get vendor-specific customer data
+    const { data: clienteVendorData, error: clienteError } = await supabase
+      .from('clientes_vendedor')
+      .select('id, total_gasto, ultimo_pedido, nome, email, telefone')
+      .eq('vendedor_id', vendedor_id)
+      .eq('usuario_id', usuario_id)
+      .maybeSingle();
+
+    if (clienteError) {
+      console.log('Could not fetch client vendor data:', clienteError);
+    }
+
+    // Combine data with profile taking precedence, but vendor data for totals
+    return {
+      id: clienteVendorData?.id || usuario_id,
+      vendedor_id: vendedor_id,
+      usuario_id: usuario_id,
+      nome: profileData?.nome || clienteVendorData?.nome || 'Cliente',
+      email: profileData?.email || clienteVendorData?.email || '',
+      telefone: profileData?.telefone || clienteVendorData?.telefone || '',
+      total_gasto: clienteVendorData?.total_gasto || 0
+    };
+  } catch (error) {
+    console.error('Error fetching client info:', error);
+    return {
+      id: usuario_id,
+      vendedor_id: vendedor_id,
+      usuario_id: usuario_id,
+      nome: 'Cliente',
+      email: '',
+      telefone: '',
+      total_gasto: 0
+    };
+  }
+};
 
 /**
  * Buscar pedidos de um vendedor específico
@@ -125,40 +176,19 @@ export const getVendorPedidos = async (): Promise<Pedido[]> => {
           }
         }
         
-        // Buscar informações do cliente
-        const { data: clienteData } = await supabase
-          .from('profiles')
-          .select('nome, email, telefone')
-          .eq('id', pedido.usuario_id)
-          .single();
-        
-        // Buscar dados do cliente na tabela clientes_vendedor
-        const { data: clienteVendorData } = await supabase
-          .from('clientes_vendedor')
-          .select('id, total_gasto')
-          .eq('vendedor_id', vendorData.id)
-          .eq('usuario_id', pedido.usuario_id)
-          .single();
+        // Use improved client fetching
+        const clienteInfo = await fetchClientInfo(pedido.usuario_id, vendorData.id);
         
         const pedidoCompleto: Pedido = {
           ...pedido,
           itens: itensComProdutos,
-          cliente: clienteData ? {
-            id: clienteVendorData?.id || pedido.usuario_id,
-            vendedor_id: vendorData.id,
-            usuario_id: pedido.usuario_id,
-            nome: clienteData.nome || 'Cliente',
-            email: clienteData.email || '',
-            telefone: clienteData.telefone,
-            total_gasto: clienteVendorData?.total_gasto || 0
-          } : undefined
+          cliente: clienteInfo
         };
         
         pedidosCompletos.push(pedidoCompleto);
         
       } catch (error) {
         console.error(`Erro ao processar pedido ${pedido.id}:`, error);
-        // Continue processing other orders even if one fails
       }
     }
     
@@ -213,67 +243,46 @@ export const getPedidoById = async (pedidoId: string): Promise<Pedido | null> =>
       return null;
     }
     
-    // Buscar itens e cliente do pedido
-    const [itensResult, clienteResult] = await Promise.all([
-      supabase
-        .from('itens_pedido')
-        .select(`
-          id,
-          produto_id,
-          quantidade,
-          preco_unitario,
-          total,
-          created_at
-        `)
-        .eq('pedido_id', pedido.id),
-      supabase
-        .from('profiles')
-        .select('nome, email, telefone')
-        .eq('id', pedido.usuario_id)
-        .single()
-    ]);
+    // Buscar itens do pedido
+    const { data: itens } = await supabase
+      .from('itens_pedido')
+      .select(`
+        id,
+        produto_id,
+        quantidade,
+        preco_unitario,
+        total,
+        created_at
+      `)
+      .eq('pedido_id', pedido.id);
     
-    const itens = itensResult.data || [];
-    const cliente = clienteResult.data;
-    
-    // Buscar informações dos produtos
+    // Buscar informações dos produtos com imagens
     const itensComProdutos: PedidoItem[] = [];
-    for (const item of itens) {
-      const { data: produtoData } = await supabase
-        .from('produtos')
-        .select('nome, imagens')
-        .eq('id', item.produto_id)
-        .single();
-      
-      itensComProdutos.push({
-        ...item,
-        produto: produtoData ? {
-          nome: produtoData.nome,
-          imagens: Array.isArray(produtoData.imagens) ? produtoData.imagens : []
-        } : undefined
-      });
+    if (itens && itens.length > 0) {
+      for (const item of itens) {
+        const { data: produtoData } = await supabase
+          .from('produtos')
+          .select('nome, imagens')
+          .eq('id', item.produto_id)
+          .single();
+        
+        itensComProdutos.push({
+          ...item,
+          produto: produtoData ? {
+            nome: produtoData.nome,
+            imagens: Array.isArray(produtoData.imagens) ? produtoData.imagens : []
+          } : undefined
+        });
+      }
     }
     
-    // Buscar dados do cliente na tabela clientes_vendedor
-    const { data: clienteVendorData } = await supabase
-      .from('clientes_vendedor')
-      .select('id, total_gasto')
-      .eq('vendedor_id', vendorData.id)
-      .eq('usuario_id', pedido.usuario_id)
-      .single();
+    // Use improved client fetching
+    const clienteInfo = await fetchClientInfo(pedido.usuario_id, vendorData.id);
     
     return {
       ...pedido,
       itens: itensComProdutos,
-      cliente: cliente ? {
-        id: clienteVendorData?.id || pedido.usuario_id,
-        vendedor_id: vendorData.id,
-        usuario_id: pedido.usuario_id,
-        nome: cliente.nome || 'Cliente',
-        email: cliente.email || '',
-        telefone: cliente.telefone,
-        total_gasto: clienteVendorData?.total_gasto || 0
-      } : undefined
+      cliente: clienteInfo
     };
     
   } catch (error) {
