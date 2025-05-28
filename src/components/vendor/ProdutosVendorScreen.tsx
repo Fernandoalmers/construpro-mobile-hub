@@ -12,9 +12,11 @@ import { useOrderFilters, orderStatuses } from '@/hooks/vendor/useOrderFilters';
 import { Button } from '@/components/ui/button';
 import { Store, AlertCircle, RefreshCcw, Info } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { useAuth } from '@/context/AuthContext';
 
 const ProdutosVendorScreen: React.FC = () => {
   const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
   
   // Use the custom hooks for data and filtering
   const { 
@@ -41,7 +43,9 @@ const ProdutosVendorScreen: React.FC = () => {
     error: !!error,
     vendorProfileStatus,
     filteredOrdersCount: filteredOrders?.length || 0,
-    errorMessage: error?.message
+    errorMessage: error?.message,
+    isAuthenticated,
+    userId: user?.id
   });
 
   // Log detailed information about orders for debugging
@@ -59,6 +63,42 @@ const ProdutosVendorScreen: React.FC = () => {
       console.log('⚠️ [ProdutosVendorScreen] No orders found in orders table but no error occurred');
     }
   }, [orders, isLoading, error]);
+
+  // Check authentication first
+  if (!isAuthenticated || !user) {
+    return (
+      <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
+        <OrdersHeader 
+          onBack={() => navigate('/vendor')} 
+          onRefresh={() => {}} 
+          isRefetching={false} 
+        />
+        
+        <div className="p-6 flex flex-col items-center justify-center flex-grow">
+          <Card className="p-6 max-w-md w-full text-center">
+            <AlertCircle size={64} className="mx-auto text-red-400 mb-4" />
+            <h2 className="text-xl font-bold mb-2">Acesso não autorizado</h2>
+            <p className="text-gray-600 mb-6">
+              Você precisa estar logado para acessar esta página.
+            </p>
+            <Button 
+              onClick={() => navigate('/login')}
+              className="w-full bg-construPro-blue hover:bg-blue-700 mb-4"
+            >
+              Fazer Login
+            </Button>
+            <Button 
+              variant="outline"
+              className="w-full"
+              onClick={() => navigate('/vendor')}
+            >
+              Voltar para Portal do Vendedor
+            </Button>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   // Show vendor profile setup message if profile is not found
   if (vendorProfileStatus === 'not_found') {
@@ -124,15 +164,15 @@ const ProdutosVendorScreen: React.FC = () => {
       />
       
       <div className="p-6 space-y-6">
-        {/* Success message about using orders table */}
+        {/* Authentication success message */}
         <Card className="p-4 bg-green-50 border-green-200">
           <div className="flex items-start gap-3">
             <Info className="h-5 w-5 text-green-500 mt-0.5" />
             <div>
               <h3 className="font-medium text-green-800">Sistema atualizado</h3>
               <p className="text-sm text-green-700 mt-1">
-                Agora buscando pedidos diretamente da tabela principal 'orders'. 
-                Todos os pedidos dos seus clientes devem aparecer aqui.
+                Busca de pedidos corrigida! Agora buscando diretamente da tabela 'orders' com autenticação verificada.
+                Usuário: {user.email}
               </p>
             </div>
           </div>
@@ -164,8 +204,8 @@ const ProdutosVendorScreen: React.FC = () => {
               <ul className="text-sm text-gray-600 list-disc list-inside mb-4 text-left">
                 <li>Sua loja ainda não recebeu pedidos</li>
                 <li>Os produtos não estão sendo exibidos no marketplace</li>
-                <li>Pedidos podem estar em outra tabela (pedidos)</li>
-                <li>Problema de sincronização entre tabelas</li>
+                <li>Problema de sincronização de dados</li>
+                <li>Configuração do perfil de vendedor precisa ser verificada</li>
               </ul>
               <div className="flex gap-2 justify-center">
                 <Button onClick={handleRefresh} className="mt-2">

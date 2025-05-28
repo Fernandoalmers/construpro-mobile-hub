@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/components/ui/sonner';
 import { getVendorOrders, VendorOrder } from '@/services/vendorOrdersService';
 import { getVendorProfile } from '@/services/vendorProfileService';
+import { supabase } from '@/integrations/supabase/client';
 
 export const useVendorOrders = () => {
   const queryClient = useQueryClient();
@@ -14,6 +15,18 @@ export const useVendorOrders = () => {
     const checkVendorProfile = async () => {
       try {
         console.log("🔍 [useVendorOrders] Checking vendor profile...");
+        
+        // First ensure user is authenticated
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError || !user) {
+          console.error("🚫 [useVendorOrders] User not authenticated:", userError);
+          setVendorProfileStatus('not_found');
+          return;
+        }
+        
+        console.log("👤 [useVendorOrders] User authenticated:", user.id);
+        
         const profile = await getVendorProfile();
         
         if (profile) {
@@ -36,7 +49,7 @@ export const useVendorOrders = () => {
     checkVendorProfile();
   }, []);
   
-  // Fetch orders with simplified logic
+  // Fetch orders with improved error handling and authentication checks
   const { 
     data: orders = [], 
     isLoading,
@@ -49,6 +62,16 @@ export const useVendorOrders = () => {
       console.log("🔍 [useVendorOrders] Fetching vendor orders...");
       
       try {
+        // Verify authentication before proceeding
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        
+        if (authError || !user) {
+          console.error("🚫 [useVendorOrders] Authentication failed:", authError);
+          throw new Error('Usuário não autenticado. Faça login novamente.');
+        }
+        
+        console.log("👤 [useVendorOrders] User verified:", user.id);
+        
         const results = await getVendorOrders();
         console.log(`📊 [useVendorOrders] Fetched ${results.length} vendor orders`);
         
@@ -67,18 +90,38 @@ export const useVendorOrders = () => {
         return results;
       } catch (error) {
         console.error("🚫 [useVendorOrders] Error fetching orders:", error);
+        
+        // Check if it's an authentication error
+        if (error instanceof Error && error.message.includes('autenticado')) {
+          toast.error('Sessão expirada. Faça login novamente.');
+        }
+        
         throw error;
       }
     },
     staleTime: 30 * 1000, // 30 seconds
-    retry: 2,
+    retry: (failureCount, error) => {
+      // Don't retry authentication errors
+      if (error instanceof Error && error.message.includes('autenticado')) {
+        return false;
+      }
+      return failureCount < 2;
+    },
     enabled: vendorProfileStatus === 'found',
     refetchOnWindowFocus: true,
     refetchInterval: 30000 // Auto refresh every 30 seconds
   });
   
-  const handleRefresh = useCallback(() => {
+  const handleRefresh = useCallback(async () => {
     if (vendorProfileStatus === 'found') {
+      // Check authentication before refresh
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast.error('Sessão expirada. Faça login novamente.');
+        return;
+      }
+      
       toast.info('Atualizando lista de pedidos...');
       console.log("🔄 [useVendorOrders] Manually refreshing vendor orders");
       

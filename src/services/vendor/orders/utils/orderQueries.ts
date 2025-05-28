@@ -5,6 +5,15 @@ import { supabase } from "@/integrations/supabase/client";
  * Get vendor ID for the current user
  */
 export const getVendorId = async (): Promise<string | null> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    console.error('❌ [getVendorId] No authenticated user found');
+    return null;
+  }
+  
+  console.log('👤 [getVendorId] User authenticated:', user.id);
+  
   const { data: vendorData, error: vendorError } = await supabase.rpc('get_vendor_id');
   
   if (vendorError || !vendorData) {
@@ -12,6 +21,7 @@ export const getVendorId = async (): Promise<string | null> => {
     return null;
   }
   
+  console.log('🏪 [getVendorId] Vendor ID found:', vendorData);
   return vendorData;
 };
 
@@ -19,12 +29,20 @@ export const getVendorId = async (): Promise<string | null> => {
  * Get all product IDs for a vendor
  */
 export const getVendorProductIds = async (vendorId: string): Promise<string[]> => {
-  const { data: vendorProducts } = await supabase
+  const { data: vendorProducts, error: productsError } = await supabase
     .from('produtos')
     .select('id')
     .eq('vendedor_id', vendorId);
   
-  return vendorProducts?.map(p => p.id) || [];
+  if (productsError) {
+    console.error('❌ [getVendorProductIds] Error fetching vendor products:', productsError);
+    return [];
+  }
+  
+  const productIds = vendorProducts?.map(p => p.id) || [];
+  console.log(`📦 [getVendorProductIds] Found ${productIds.length} products for vendor`);
+  
+  return productIds;
 };
 
 /**
@@ -43,7 +61,10 @@ export const getVendorOrderIds = async (vendorProductIds: string[]): Promise<str
     return [];
   }
   
-  return [...new Set(vendorOrderIds?.map(item => item.order_id) || [])];
+  const uniqueOrderIds = [...new Set(vendorOrderIds?.map(item => item.order_id) || [])];
+  console.log(`📦 [getVendorOrderIds] Found ${uniqueOrderIds.length} orders for vendor`);
+  
+  return uniqueOrderIds;
 };
 
 /**
@@ -54,7 +75,7 @@ export const fetchOrdersByIds = async (orderIds: string[], filters: any = {}) =>
   
   console.log(`🔍 [fetchOrdersByIds] Fetching ${orderIds.length} orders from orders table`);
   
-  // Direct query to orders table without ambiguous JOINs
+  // Direct query to orders table with explicit column selection
   let query = supabase
     .from('orders')
     .select(`
