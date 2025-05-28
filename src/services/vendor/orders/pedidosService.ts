@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 /**
@@ -44,8 +45,6 @@ export interface Pedido {
  */
 const fetchClientInfo = async (usuario_id: string, vendedor_id: string) => {
   try {
-    console.log(`🔍 [fetchClientInfo] Fetching client info for user: ${usuario_id}, vendor: ${vendedor_id}`);
-    
     // First try to get from profiles table
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
@@ -54,9 +53,7 @@ const fetchClientInfo = async (usuario_id: string, vendedor_id: string) => {
       .single();
 
     if (profileError) {
-      console.log('⚠️ [fetchClientInfo] Could not fetch profile data:', profileError);
-    } else {
-      console.log('✅ [fetchClientInfo] Profile data found:', profileData);
+      console.log('Could not fetch profile data:', profileError);
     }
 
     // Try to get vendor-specific customer data
@@ -68,9 +65,7 @@ const fetchClientInfo = async (usuario_id: string, vendedor_id: string) => {
       .maybeSingle();
 
     if (clienteError) {
-      console.log('⚠️ [fetchClientInfo] Could not fetch client vendor data:', clienteError);
-    } else {
-      console.log('✅ [fetchClientInfo] Client vendor data found:', clienteVendorData);
+      console.log('Could not fetch client vendor data:', clienteError);
     }
 
     // Combine data with profile taking precedence, but vendor data for totals
@@ -84,10 +79,9 @@ const fetchClientInfo = async (usuario_id: string, vendedor_id: string) => {
       total_gasto: clienteVendorData?.total_gasto || 0
     };
     
-    console.log('📋 [fetchClientInfo] Final client info:', clientInfo);
     return clientInfo;
   } catch (error) {
-    console.error('❌ [fetchClientInfo] Error fetching client info:', error);
+    console.error('Error fetching client info:', error);
     return {
       id: usuario_id,
       vendedor_id: vendedor_id,
@@ -105,8 +99,6 @@ const fetchClientInfo = async (usuario_id: string, vendedor_id: string) => {
  */
 const fetchProductWithImages = async (produto_id: string) => {
   try {
-    console.log(`🔍 [fetchProductWithImages] Fetching product: ${produto_id}`);
-    
     const { data: produtoData, error: produtoError } = await supabase
       .from('produtos')
       .select('nome, imagens')
@@ -114,21 +106,13 @@ const fetchProductWithImages = async (produto_id: string) => {
       .single();
     
     if (produtoError) {
-      console.error(`❌ [fetchProductWithImages] Error fetching product ${produto_id}:`, produtoError);
+      console.error(`Error fetching product ${produto_id}:`, produtoError);
       return null;
     }
     
     if (!produtoData) {
-      console.log(`⚠️ [fetchProductWithImages] No product data found for ${produto_id}`);
       return null;
     }
-    
-    console.log(`✅ [fetchProductWithImages] Product found:`, {
-      nome: produtoData.nome,
-      imagens: produtoData.imagens,
-      imagensType: typeof produtoData.imagens,
-      imagensLength: Array.isArray(produtoData.imagens) ? produtoData.imagens.length : 'not array'
-    });
     
     // Normalize images to always be an array
     let normalizedImages = [];
@@ -155,11 +139,10 @@ const fetchProductWithImages = async (produto_id: string) => {
       imagens: normalizedImages
     };
     
-    console.log(`📋 [fetchProductWithImages] Final product result:`, result);
     return result;
     
   } catch (error) {
-    console.error(`❌ [fetchProductWithImages] Unexpected error for product ${produto_id}:`, error);
+    console.error(`Unexpected error for product ${produto_id}:`, error);
     return null;
   }
 };
@@ -271,8 +254,6 @@ export const getVendorPedidos = async (): Promise<Pedido[]> => {
  */
 export const getPedidoById = async (pedidoId: string): Promise<Pedido | null> => {
   try {
-    console.log(`🔍 [getPedidoById] Fetching pedido: ${pedidoId}`);
-    
     // Verificar se o usuário tem acesso a este pedido
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -308,11 +289,9 @@ export const getPedidoById = async (pedidoId: string): Promise<Pedido | null> =>
       .single();
     
     if (error || !pedido) {
-      console.error(`❌ [getPedidoById] Error fetching pedido:`, error);
+      console.error(`Error fetching pedido:`, error);
       return null;
     }
-    
-    console.log(`✅ [getPedidoById] Pedido found:`, pedido);
     
     // Buscar itens do pedido
     const { data: itens } = await supabase
@@ -326,8 +305,6 @@ export const getPedidoById = async (pedidoId: string): Promise<Pedido | null> =>
         created_at
       `)
       .eq('pedido_id', pedido.id);
-    
-    console.log(`📋 [getPedidoById] Found ${itens?.length || 0} items for pedido`);
     
     // Buscar informações dos produtos com imagens melhoradas
     const itensComProdutos: PedidoItem[] = [];
@@ -351,18 +328,10 @@ export const getPedidoById = async (pedidoId: string): Promise<Pedido | null> =>
       cliente: clienteInfo
     };
     
-    console.log(`✅ [getPedidoById] Final result:`, {
-      id: result.id,
-      itemsCount: result.itens?.length,
-      clientName: result.cliente?.nome,
-      firstItemProduct: result.itens?.[0]?.produto?.nome,
-      firstItemImages: result.itens?.[0]?.produto?.imagens
-    });
-    
     return result;
     
   } catch (error) {
-    console.error("❌ [getPedidoById] Error:", error);
+    console.error("Error:", error);
     return null;
   }
 };

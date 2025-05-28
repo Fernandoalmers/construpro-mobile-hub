@@ -74,28 +74,21 @@ const VendorOrderDetailScreen: React.FC = () => {
     }
   };
 
-  // Improved helper function to get a valid image URL with better debugging
+  // Improved helper function to get a valid image URL
   const getProductImageUrl = (produto: any): string | null => {
-    console.log('🔍 [getProductImageUrl] Processing product:', produto?.nome, produto?.imagens);
-    
     if (!produto?.imagens) {
-      console.log('❌ [getProductImageUrl] No imagens property found');
       return null;
     }
     
-    // Handle different image formats
     let imagens = produto.imagens;
     
     // If it's a string that looks like JSON, try to parse it
     if (typeof imagens === 'string') {
       try {
         imagens = JSON.parse(imagens);
-        console.log('📋 [getProductImageUrl] Parsed string to:', imagens);
       } catch (e) {
-        console.log('❌ [getProductImageUrl] Failed to parse string as JSON:', imagens);
         // If it's a single URL string, use it directly
         if (imagens.startsWith('http') || imagens.startsWith('/')) {
-          console.log('✅ [getProductImageUrl] Using string as direct URL:', imagens);
           return imagens;
         }
         return null;
@@ -104,26 +97,21 @@ const VendorOrderDetailScreen: React.FC = () => {
     
     // Ensure it's an array
     if (!Array.isArray(imagens)) {
-      console.log('❌ [getProductImageUrl] imagens is not an array:', typeof imagens);
       return null;
     }
     
     if (imagens.length === 0) {
-      console.log('❌ [getProductImageUrl] Empty imagens array');
       return null;
     }
     
     const firstImage = imagens[0];
-    console.log('🖼️ [getProductImageUrl] First image:', firstImage, typeof firstImage);
     
     // Handle string URLs
     if (typeof firstImage === 'string') {
       // Validate URL format
       if (firstImage.startsWith('http') || firstImage.startsWith('/')) {
-        console.log('✅ [getProductImageUrl] Valid string URL:', firstImage);
         return firstImage;
       } else {
-        console.log('❌ [getProductImageUrl] Invalid string URL format:', firstImage);
         return null;
       }
     }
@@ -142,15 +130,11 @@ const VendorOrderDetailScreen: React.FC = () => {
       for (const urlCandidate of possibleUrls) {
         if (urlCandidate && typeof urlCandidate === 'string' && 
             (urlCandidate.startsWith('http') || urlCandidate.startsWith('/'))) {
-          console.log('✅ [getProductImageUrl] Found valid URL in object:', urlCandidate);
           return urlCandidate;
         }
       }
-      
-      console.log('❌ [getProductImageUrl] No valid URL found in object:', firstImage);
     }
     
-    console.log('❌ [getProductImageUrl] Could not extract valid URL');
     return null;
   };
 
@@ -389,13 +373,6 @@ const VendorOrderDetailScreen: React.FC = () => {
                         <p className="text-sm font-medium mt-1">
                           R$ {Number(item.total).toFixed(2)}
                         </p>
-                        {/* Debug info - remove in production */}
-                        {process.env.NODE_ENV === 'development' && (
-                          <p className="text-xs text-red-500 mt-1">
-                            Debug: {imageUrl ? 'Image found' : 'No image'} | 
-                            Images: {JSON.stringify(item.produto?.imagens)}
-                          </p>
-                        )}
                       </div>
                     </div>
                   );
