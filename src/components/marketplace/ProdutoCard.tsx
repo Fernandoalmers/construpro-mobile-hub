@@ -1,221 +1,214 @@
 
-import React from 'react';
-import { Truck } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useCartActions } from '@/hooks/use-cart-actions';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Heart, ShoppingCart, Star } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { toast } from '@/components/ui/sonner';
+import { useCart } from '@/context/CartContext';
+import { useFavorites } from '@/hooks/useFavorites';
+import { useAuth } from '@/context/AuthContext';
+import { getProductPoints } from '@/utils/pointsCalculations';
 
-interface ProdutoCardProps {
-  produto: any;
-  loja?: any;
-  onClick: () => void;
-  onLojaClick?: (lojaId: string) => void;
-  onAddToFavorites?: (e: React.MouseEvent, produtoId: string) => void;
-  onAddToCart?: (e: React.MouseEvent) => void;
-  onBuyNow?: (e: React.MouseEvent) => void;
-  isFavorite?: boolean;
-  isAddingToCart?: boolean;
-  showActions?: boolean;
-  hideRating?: boolean;
-  hideActions?: boolean;
+interface Product {
+  id: string;
+  nome: string;
+  preco: number;
+  preco_normal?: number;
+  preco_promocional?: number;
+  categoria: string;
+  imagem_url?: string;
+  pontos?: number;
+  pontos_consumidor?: number;
+  pontos_profissional?: number;
+  estoque?: number;
+  avaliacao?: number;
+  loja_id?: string;
+  status?: string;
 }
 
-const ProdutoCard: React.FC<ProdutoCardProps> = ({ 
-  produto, 
-  loja,
-  onClick,
-  onLojaClick,
-  onAddToCart,
-  onBuyNow,
-  isFavorite = false,
-  isAddingToCart = false,
-  showActions = false,
-  hideRating = false,
-  hideActions = true
-}) => {
-  const { handleAddToCart, handleBuyNow, isAddingToCart: cartLoading, isBuyingNow } = useCartActions();
-  
-  // Log product data for debugging
-  console.log(`[ProdutoCard] Rendering card for ${produto.nome}:`, {
-    id: produto.id,
-    imagemUrl: produto.imagemUrl,
-    imagem_url: produto.imagem_url,
-    imagens: produto.imagens,
-    hasImagemUrl: !!produto.imagemUrl,
-    hasImagem_url: !!produto.imagem_url,
-    hasImagens: !!produto.imagens && produto.imagens.length > 0
-  });
-  
-  // Utilizar os dados reais do produto de forma consistente
-  const precoRegular = produto.preco_normal || produto.precoNormal || produto.preco || 0;
-  const precoPromocional = produto.preco_promocional || produto.precoPromocional || null;
-  
-  // Garantir que o preço promocional só seja considerado se for menor que o preço regular
-  const hasDiscount = precoPromocional && precoPromocional < precoRegular;
-  const precoExibir = hasDiscount ? precoPromocional : precoRegular;
-  
-  // Garantir a consistência das avaliações através da memoização dos valores
-  // para que não mudem durante a renderização ou rolagem
-  const avaliacao = React.useMemo(() => {
-    return typeof produto.avaliacao === 'number' ? produto.avaliacao : 0;
-  }, [produto.id, produto.avaliacao]);
-  
-  const avaliacoesCount = React.useMemo(() => {
-    return produto.avaliacoes_count || produto.num_avaliacoes || 0;
-  }, [produto.id, produto.avaliacoes_count, produto.num_avaliacoes]);
-  
-  // Free shipping threshold (products above R$ 100 qualify for free shipping)
-  const hasFreeShipping = precoExibir >= 100;
-  
-  // Handle cart actions with logging
-  const handleAddToCartClick = (e: React.MouseEvent) => {
+interface ProdutoCardProps {
+  produto: Product;
+  className?: string;
+}
+
+const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '' }) => {
+  const navigate = useNavigate();
+  const { addToCart, isLoading } = useCart();
+  const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
+  const { profile } = useAuth();
+  const [imageError, setImageError] = useState(false);
+  const [addingToCart, setAddingToCart] = useState(false);
+
+  // Get user type for correct points calculation
+  const userType = profile?.tipo_perfil || 'consumidor';
+  const displayPoints = getProductPoints(produto, userType);
+
+  const handleAddToCart = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    console.log('[ProdutoCard] Add to cart clicked for product:', produto.id);
     
-    if (produto && produto.id) {
-      handleAddToCart(produto.id, 1);
-    } else if (onAddToCart) {
-      onAddToCart(e);
+    if (produto.estoque === 0) {
+      toast.error('Produto fora de estoque');
+      return;
+    }
+
+    try {
+      setAddingToCart(true);
+      await addToCart(produto.id, 1);
+      toast.success('Produto adicionado ao carrinho!');
+    } catch (error) {
+      console.error('Erro ao adicionar ao carrinho:', error);
+      toast.error('Erro ao adicionar produto ao carrinho');
+    } finally {
+      setAddingToCart(false);
     }
   };
-  
-  const handleBuyNowClick = (e: React.MouseEvent) => {
+
+  const handleToggleFavorite = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    console.log('[ProdutoCard] Buy now clicked for product:', produto.id);
     
-    if (produto && produto.id) {
-      handleBuyNow(produto.id, 1);
-    } else if (onBuyNow) {
-      onBuyNow(e);
+    try {
+      if (isFavorite(produto.id)) {
+        await removeFromFavorites(produto.id);
+        toast.success('Removido dos favoritos');
+      } else {
+        await addToFavorites(produto.id);
+        toast.success('Adicionado aos favoritos');
+      }
+    } catch (error) {
+      console.error('Erro ao gerenciar favoritos:', error);
+      toast.error('Erro ao atualizar favoritos');
     }
   };
-  
-  // Função para renderizar as estrelas baseadas nas avaliações reais
-  const renderStars = () => {
-    // Garantir que avaliacao seja um número entre 0 e 5
-    const rating = Math.max(0, Math.min(5, Number(avaliacao) || 0));
-    
-    return (
-      <div className="flex items-center mb-1">
-        <div className="flex text-amber-400">
-          {[1, 2, 3, 4, 5].map((star) => (
-            <span key={star} className={star <= rating ? "text-amber-400 fill-amber-400" : "text-gray-300"}>
-              ★
-            </span>
-          ))}
-        </div>
-        <span className="text-xs ml-1">
-          ({avaliacoesCount})
-        </span>
-      </div>
-    );
+
+  const handleCardClick = () => {
+    navigate(`/produto/${produto.id}`);
   };
-  
-  // Get the image URL with priority order and error handling
-  const getImageUrl = () => {
-    // Priority order: imagemUrl > imagem_url > first item in imagens array
-    const imageUrl = produto.imagemUrl || produto.imagem_url || (produto.imagens && produto.imagens.length > 0 ? produto.imagens[0] : '');
-    
-    if (!imageUrl) {
-      console.warn(`[ProdutoCard] No image found for product ${produto.nome} (ID: ${produto.id})`);
-      return null;
-    }
-    
-    if (imageUrl.startsWith('blob:')) {
-      console.warn(`[ProdutoCard] Blob URL detected for ${produto.nome}: ${imageUrl.substring(0, 50)}... (may not work)`);
-    }
-    
-    return imageUrl;
+
+  const formatPrice = (price: number) => {
+    return price.toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    });
   };
-  
-  const imageUrl = getImageUrl();
-  
+
+  const hasPromotion = produto.preco_promocional && produto.preco_promocional < (produto.preco_normal || produto.preco);
+  const finalPrice = hasPromotion ? produto.preco_promocional : produto.preco;
+  const originalPrice = hasPromotion ? (produto.preco_normal || produto.preco) : null;
+
   return (
-    <div 
-      onClick={onClick}
-      className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 border border-gray-100 overflow-hidden flex flex-col relative"
+    <Card 
+      className={`cursor-pointer hover:shadow-lg transition-all duration-200 overflow-hidden ${className}`}
+      onClick={handleCardClick}
     >
-      {/* Product Image - positioned on the top */}
-      <div className="relative w-full h-40 overflow-hidden bg-gray-50">
-        {imageUrl ? (
-          <img 
-            src={imageUrl}
-            alt={produto.nome}
-            className="w-full h-full object-contain hover:scale-105 transition-transform duration-300"
-            onError={(e) => {
-              console.error(`[ProdutoCard] Error loading image for ${produto.nome}:`, imageUrl);
-              e.currentTarget.src = 'https://via.placeholder.com/300x200?text=Imagem+Indisponível';
-            }}
-            onLoad={() => {
-              console.log(`[ProdutoCard] Successfully loaded image for ${produto.nome}`);
-            }}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400 text-sm">
-            Sem imagem
-          </div>
-        )}
-      </div>
-      
-      <div className="p-3 flex flex-col flex-grow">
-        {/* Product name */}
-        <h3 className="text-sm text-gray-700 line-clamp-2 mb-1">{produto.nome}</h3>
-        
-        {/* Rating - Usando dados reais de avaliações */}
-        {!hideRating && renderStars()}
-        
-        {/* Price section - Mostrando preço promocional quando disponível */}
-        <div className="mb-1">
-          <span className="text-lg font-bold">R$ {precoExibir.toFixed(2)}</span>
-          {hasDiscount && (
-            <span className="text-xs text-gray-400 line-through ml-2">
-              R$ {precoRegular.toFixed(2)}
-            </span>
+      <div className="relative">
+        {/* Product Image */}
+        <div className="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">
+          {produto.imagem_url && !imageError ? (
+            <img
+              src={produto.imagem_url}
+              alt={produto.nome}
+              className="w-full h-full object-cover transition-transform duration-200 hover:scale-105"
+              onError={() => setImageError(true)}
+              loading="lazy"
+            />
+          ) : (
+            <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+              <span className="text-gray-400 text-sm">Sem imagem</span>
+            </div>
           )}
         </div>
 
-        {/* Free shipping badge */}
-        {hasFreeShipping && (
-          <span className="text-green-600 text-xs font-medium mb-1.5 flex items-center">
-            <Truck size={12} className="mr-1" /> Entrega GRÁTIS
-          </span>
+        {/* Favorite Button */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="absolute top-2 right-2 p-2 bg-white/80 hover:bg-white rounded-full shadow-sm"
+          onClick={handleToggleFavorite}
+        >
+          <Heart 
+            size={16} 
+            className={`${isFavorite(produto.id) ? 'fill-red-500 text-red-500' : 'text-gray-600'}`}
+          />
+        </Button>
+
+        {/* Promotion Badge */}
+        {hasPromotion && (
+          <Badge className="absolute top-2 left-2 bg-red-500 hover:bg-red-600">
+            Promoção
+          </Badge>
         )}
-        
-        {/* Store name */}
-        {loja && (
-          <div 
-            className="text-xs text-gray-500 hover:underline cursor-pointer"
-            onClick={(e) => {
-              e.stopPropagation();
-              console.log('[ProdutoCard] Store clicked:', loja.id);
-              onLojaClick && onLojaClick(loja.id);
-            }}
-          >
-            Vendido por {loja.nome}
-          </div>
-        )}
-        
-        {/* Custom action buttons */}
-        {!hideActions && showActions && (
-          <div className="mt-2 flex flex-col gap-1" onClick={e => e.stopPropagation()}>
-            <button 
-              onClick={handleAddToCartClick}
-              className="text-xs bg-blue-600 hover:bg-blue-700 text-white py-1 px-2 rounded"
-              disabled={cartLoading[produto.id] || !produto.id}
-            >
-              {cartLoading[produto.id] ? 'Adicionando...' : 'Adicionar ao Carrinho'}
-            </button>
-            
-            <button 
-              onClick={handleBuyNowClick}
-              className="text-xs bg-green-600 hover:bg-green-700 text-white py-1 px-2 rounded"
-              disabled={isBuyingNow[produto.id] || !produto.id}
-            >
-              {isBuyingNow[produto.id] ? 'Processando...' : 'Comprar Agora'}
-            </button>
-          </div>
+
+        {/* Out of Stock Badge */}
+        {produto.estoque === 0 && (
+          <Badge variant="secondary" className="absolute bottom-2 left-2">
+            Fora de estoque
+          </Badge>
         )}
       </div>
-    </div>
+
+      <div className="p-4">
+        {/* Product Name */}
+        <h3 className="font-medium text-sm mb-2 line-clamp-2 h-10">
+          {produto.nome}
+        </h3>
+
+        {/* Category */}
+        <p className="text-xs text-gray-500 mb-2">{produto.categoria}</p>
+
+        {/* Rating */}
+        {produto.avaliacao && produto.avaliacao > 0 && (
+          <div className="flex items-center gap-1 mb-2">
+            <Star size={12} className="fill-yellow-400 text-yellow-400" />
+            <span className="text-xs text-gray-600">{produto.avaliacao.toFixed(1)}</span>
+          </div>
+        )}
+
+        {/* Price */}
+        <div className="mb-3">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-construPro-blue">
+              {formatPrice(finalPrice)}
+            </span>
+            {originalPrice && (
+              <span className="text-xs text-gray-500 line-through">
+                {formatPrice(originalPrice)}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Points */}
+        {displayPoints > 0 && (
+          <div className="mb-3">
+            <span className="text-xs text-construPro-orange font-medium">
+              +{displayPoints} pontos {userType === 'profissional' ? '(profissional)' : ''}
+            </span>
+          </div>
+        )}
+
+        {/* Add to Cart Button */}
+        <Button
+          onClick={handleAddToCart}
+          disabled={produto.estoque === 0 || addingToCart || isLoading}
+          className="w-full bg-construPro-orange hover:bg-orange-600 text-white text-sm h-8"
+          size="sm"
+        >
+          {addingToCart ? (
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
+              <span>Adicionando...</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <ShoppingCart size={14} />
+              <span>Adicionar</span>
+            </div>
+          )}
+        </Button>
+      </div>
+    </Card>
   );
 };
 

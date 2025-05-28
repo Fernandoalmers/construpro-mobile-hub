@@ -116,3 +116,29 @@ export function calculateLevelInfo(monthlyPoints: number): LevelInfo {
     pointsToNextLevel
   };
 }
+
+/**
+ * Get correct points for a product based on user type
+ */
+export function getProductPoints(product: any, userType: 'consumidor' | 'profissional' | 'lojista' | 'vendedor' = 'consumidor'): number {
+  if (!product) return 0;
+  
+  // For professional users, use pontos_profissional if available, otherwise fall back to pontos
+  if (userType === 'profissional') {
+    return product.pontos_profissional || product.pontos || 0;
+  }
+  
+  // For consumers and other types, use standard pontos
+  return product.pontos || 0;
+}
+
+/**
+ * Calculate total points for cart items based on user type
+ */
+export function calculateCartPoints(cartItems: any[], userType: 'consumidor' | 'profissional' | 'lojista' | 'vendedor' = 'consumidor'): number {
+  return cartItems.reduce((total, item) => {
+    const product = item.produto || item;
+    const pointsPerUnit = getProductPoints(product, userType);
+    return total + (pointsPerUnit * (item.quantidade || 1));
+  }, 0);
+}
