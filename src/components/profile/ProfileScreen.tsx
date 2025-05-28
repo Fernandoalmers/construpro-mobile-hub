@@ -2,8 +2,9 @@
 import React, { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { useVendorProfile } from '@/hooks/useVendorProfile';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/components/ui/sonner';
@@ -24,18 +25,23 @@ import {
   Package,
   MessageCircle,
   RefreshCw,
-  Camera
+  Camera,
+  Store
 } from 'lucide-react';
 
 const ProfileScreen: React.FC = () => {
   const navigate = useNavigate();
   const { profile, logout, refreshProfile, isLoading, updateProfile } = useAuth();
+  const { vendorProfile } = useVendorProfile();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   console.log("ProfileScreen: Rendering with state:", { 
     hasProfile: !!profile, 
     isLoading,
-    profileId: profile?.id 
+    profileId: profile?.id,
+    userRole: profile?.tipo_perfil,
+    hasVendorProfile: !!vendorProfile,
+    vendorProfile: vendorProfile
   });
 
   const handleRefreshProfile = async () => {
@@ -151,6 +157,12 @@ const ProfileScreen: React.FC = () => {
     );
   }
 
+  // Determine if user is a vendor and get appropriate display info
+  const isVendor = profile.tipo_perfil === 'vendedor' || profile.tipo_perfil === 'lojista';
+  const displayName = isVendor && vendorProfile?.nome_loja ? vendorProfile.nome_loja : profile.nome || 'Usuário';
+  const displayEmail = isVendor && vendorProfile?.email ? vendorProfile.email : profile.email;
+  const displayAvatar = isVendor && vendorProfile?.logo ? vendorProfile.logo : profile.avatar;
+
   const menuItems = [
     {
       icon: User,
@@ -217,6 +229,17 @@ const ProfileScreen: React.FC = () => {
     }
   ];
 
+  // Add vendor-specific menu items
+  if (isVendor) {
+    menuItems.unshift({
+      icon: Store,
+      title: 'Painel do Vendedor',
+      description: 'Gerencie sua loja e produtos',
+      onClick: () => navigate('/vendor'),
+      color: 'text-construPro-orange'
+    });
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       {/* Header com informações do usuário */}
@@ -225,9 +248,9 @@ const ProfileScreen: React.FC = () => {
           <div className="flex items-center space-x-4">
             <div className="relative">
               <Avatar className="w-20 h-20 border-4 border-white cursor-pointer hover:opacity-80 transition-opacity" onClick={handleAvatarClick}>
-                <AvatarImage src={profile.avatar || ''} alt={profile.nome || 'Avatar'} />
+                <AvatarImage src={displayAvatar || ''} alt={displayName || 'Avatar'} />
                 <AvatarFallback className="bg-construPro-orange text-white text-lg font-bold">
-                  {profile.nome?.charAt(0)?.toUpperCase() || 'U'}
+                  {displayName?.charAt(0)?.toUpperCase() || 'U'}
                 </AvatarFallback>
               </Avatar>
               <div className="absolute -bottom-1 -right-1 bg-construPro-orange rounded-full p-1.5 cursor-pointer hover:bg-orange-600 transition-colors" onClick={handleAvatarClick}>
@@ -236,14 +259,16 @@ const ProfileScreen: React.FC = () => {
             </div>
             
             <div className="flex-1">
-              <h1 className="text-2xl font-bold">{profile.nome || 'Usuário'}</h1>
-              <p className="text-construPro-blue-light opacity-90">{profile.email}</p>
+              <h1 className="text-2xl font-bold">{displayName}</h1>
+              {displayEmail && (
+                <p className="text-construPro-blue-light opacity-90">{displayEmail}</p>
+              )}
               
               <div className="flex items-center space-x-4 mt-2">
                 <Badge variant="secondary" className="bg-construPro-orange text-white">
                   {profile.tipo_perfil === 'consumidor' && 'Consumidor'}
                   {profile.tipo_perfil === 'profissional' && 'Profissional'}
-                  {profile.tipo_perfil === 'vendedor' && 'Vendedor'}
+                  {(profile.tipo_perfil === 'vendedor' || profile.tipo_perfil === 'lojista') && 'Vendedor'}
                 </Badge>
                 
                 <div className="flex items-center space-x-1">
