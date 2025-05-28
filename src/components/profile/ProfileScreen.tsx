@@ -1,11 +1,13 @@
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { toast } from '@/components/ui/sonner';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   User, 
   MapPin, 
@@ -21,12 +23,14 @@ import {
   Users,
   Package,
   MessageCircle,
-  RefreshCw
+  RefreshCw,
+  Camera
 } from 'lucide-react';
 
 const ProfileScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { profile, logout, refreshProfile, isLoading } = useAuth();
+  const { profile, logout, refreshProfile, isLoading, updateProfile } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   console.log("ProfileScreen: Rendering with state:", { 
     hasProfile: !!profile, 
@@ -45,6 +49,65 @@ const ProfileScreen: React.FC = () => {
       navigate('/login');
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
+    }
+  };
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !profile?.id) return;
+
+    try {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast.error('Por favor, selecione um arquivo de imagem');
+        return;
+      }
+
+      // Validate file size (2MB limit)
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error('A imagem deve ter no máximo 2MB');
+        return;
+      }
+
+      console.log('Uploading avatar for user:', profile.id);
+
+      // Create unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `avatar-${Date.now()}.${fileExt}`;
+      const filePath = `${profile.id}/${fileName}`;
+
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        toast.error('Erro ao fazer upload da imagem');
+        return;
+      }
+
+      // Get public URL
+      const { data } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      if (!data?.publicUrl) {
+        toast.error('Erro ao obter URL da imagem');
+        return;
+      }
+
+      // Update profile with new avatar URL
+      await updateProfile({ avatar: data.publicUrl });
+      toast.success('Avatar atualizado com sucesso!');
+
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      toast.error('Erro ao atualizar avatar');
     }
   };
 
@@ -160,12 +223,17 @@ const ProfileScreen: React.FC = () => {
       <div className="bg-construPro-blue text-white">
         <div className="p-6">
           <div className="flex items-center space-x-4">
-            <Avatar className="w-20 h-20 border-4 border-white">
-              <AvatarImage src={profile.avatar || ''} alt={profile.nome || 'Avatar'} />
-              <AvatarFallback className="bg-construPro-orange text-white text-lg font-bold">
-                {profile.nome?.charAt(0)?.toUpperCase() || 'U'}
-              </AvatarFallback>
-            </Avatar>
+            <div className="relative">
+              <Avatar className="w-20 h-20 border-4 border-white cursor-pointer hover:opacity-80 transition-opacity" onClick={handleAvatarClick}>
+                <AvatarImage src={profile.avatar || ''} alt={profile.nome || 'Avatar'} />
+                <AvatarFallback className="bg-construPro-orange text-white text-lg font-bold">
+                  {profile.nome?.charAt(0)?.toUpperCase() || 'U'}
+                </AvatarFallback>
+              </Avatar>
+              <div className="absolute -bottom-1 -right-1 bg-construPro-orange rounded-full p-1.5 cursor-pointer hover:bg-orange-600 transition-colors" onClick={handleAvatarClick}>
+                <Camera className="w-3 h-3 text-white" />
+              </div>
+            </div>
             
             <div className="flex-1">
               <h1 className="text-2xl font-bold">{profile.nome || 'Usuário'}</h1>
@@ -187,6 +255,15 @@ const ProfileScreen: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileChange}
+        className="hidden"
+      />
 
       {/* Menu de opções */}
       <div className="p-4">

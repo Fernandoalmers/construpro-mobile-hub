@@ -10,7 +10,7 @@ interface AvatarProps {
   fallback?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
-  onClick?: () => void;  // Added onClick handler
+  onClick?: () => void;
 }
 
 const Avatar: React.FC<AvatarProps> = ({
@@ -34,7 +34,11 @@ const Avatar: React.FC<AvatarProps> = ({
 
   return (
     <ShadcnAvatar 
-      className={cn(sizeClassMap[size], className, onClick && 'cursor-pointer')} 
+      className={cn(
+        sizeClassMap[size], 
+        className, 
+        onClick && 'cursor-pointer hover:opacity-80 transition-opacity'
+      )} 
       onClick={onClick}
     >
       <AvatarImage src={src} alt={alt} />

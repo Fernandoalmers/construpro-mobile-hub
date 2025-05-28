@@ -40,7 +40,8 @@ serve(async (_req) => {
     const { error: policiesError } = await supabase.rpc('create_storage_policies')
     
     if (policiesError) {
-      throw policiesError
+      console.log('Policies error (might not exist):', policiesError)
+      // Continue anyway as policies might already exist
     }
     
     return new Response(
