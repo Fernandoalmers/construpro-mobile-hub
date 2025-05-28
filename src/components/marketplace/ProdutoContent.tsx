@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Heart, ShoppingCart, Star, Share2, Info } from 'lucide-react';
@@ -12,29 +11,7 @@ import { useAuth } from '@/context/AuthContext';
 import { getProductPoints } from '@/utils/pointsCalculations';
 import ProductImageGallery from './components/ProductImageGallery';
 import QuantitySelector from './components/QuantitySelector';
-import { UserRole } from '@/context/AuthContext';
-
-interface Product {
-  id: string;
-  nome: string;
-  descricao?: string;
-  preco: number;
-  preco_normal?: number;
-  preco_promocional?: number;
-  categoria: string;
-  segmento?: string;
-  imagem_url?: string;
-  imagens?: string[];
-  pontos?: number;
-  pontos_consumidor?: number;
-  pontos_profissional?: number;
-  estoque?: number;
-  unidade_medida?: string;
-  codigo_barras?: string;
-  sku?: string;
-  loja_id?: string;
-  status?: string;
-}
+import { Product } from '@/services/productService';
 
 interface ProdutoContentProps {
   produto: Product;
@@ -124,9 +101,9 @@ const ProdutoContent: React.FC<ProdutoContentProps> = ({ produto }) => {
     });
   };
 
-  const hasPromotion = produto.preco_promocional && produto.preco_promocional < (produto.preco_normal || produto.preco);
-  const finalPrice = hasPromotion ? produto.preco_promocional : produto.preco;
-  const originalPrice = hasPromotion ? (produto.preco_normal || produto.preco) : null;
+  const hasPromotion = produto.preco_promocional && produto.preco_promocional < produto.preco_normal;
+  const finalPrice = hasPromotion ? produto.preco_promocional : produto.preco_normal;
+  const originalPrice = hasPromotion ? produto.preco_normal : null;
   
   // Calculate discount percentage
   const discountPercentage = originalPrice && hasPromotion 
