@@ -24,3 +24,15 @@ export interface AdminOrder {
   pontos_ganhos: number;
   items?: AdminOrderItem[];
 }
+
+export interface FetchOrdersParams {
+  page?: number;
+  limit?: number;
+  status?: string;
+}
+
+export interface FetchOrdersResult {
+  orders: AdminOrder[];
+  totalCount: number;
+  hasMore: boolean;
+}
