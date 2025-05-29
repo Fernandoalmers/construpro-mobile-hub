@@ -60,6 +60,8 @@ export const useCouponUsage = (couponId?: string) => {
 
       // Para cada uso, buscar informações completas
       const enrichedUsage = await Promise.all(usage.map(async (use) => {
+        console.log('[useCouponUsage] Processing usage:', use.id, 'for order:', use.order_id);
+        
         // Buscar informações do usuário
         const { data: userProfile, error: userError } = await supabase
           .from('profiles')
@@ -85,6 +87,9 @@ export const useCouponUsage = (couponId?: string) => {
 
           if (!orderError && orderData) {
             orderTotal = orderData.valor_total;
+            console.log('[useCouponUsage] Found order total:', orderTotal);
+          } else {
+            console.log('[useCouponUsage] Order not found or error:', orderError);
           }
 
           // Buscar itens do pedido primeiro
@@ -101,15 +106,16 @@ export const useCouponUsage = (couponId?: string) => {
 
           if (itemsError) {
             console.error('[useCouponUsage] Error fetching order items:', itemsError);
-          } else if (items) {
+          } else if (items && items.length > 0) {
+            console.log('[useCouponUsage] Found', items.length, 'order items');
+            
             // Para cada item, buscar informações do produto e vendedor
             const enrichedItems = await Promise.all(items.map(async (item) => {
+              console.log('[useCouponUsage] Processing item for product:', item.produto_id);
+              
               const { data: produto, error: produtoError } = await supabase
                 .from('produtos')
-                .select(`
-                  nome,
-                  vendedor_id
-                `)
+                .select('nome, vendedor_id')
                 .eq('id', item.produto_id)
                 .single();
 
@@ -117,9 +123,15 @@ export const useCouponUsage = (couponId?: string) => {
                 console.error('[useCouponUsage] Error fetching product:', produtoError);
                 return {
                   ...item,
-                  produto: null
+                  produto: {
+                    nome: 'Produto não encontrado',
+                    vendedor_id: '',
+                    vendedores: null
+                  }
                 };
               }
+
+              console.log('[useCouponUsage] Found product:', produto?.nome, 'vendor_id:', produto?.vendedor_id);
 
               let vendedorInfo = null;
               if (produto?.vendedor_id) {
@@ -131,13 +143,17 @@ export const useCouponUsage = (couponId?: string) => {
 
                 if (!vendedorError && vendedor) {
                   vendedorInfo = { nome_loja: vendedor.nome_loja };
+                  console.log('[useCouponUsage] Found vendor:', vendedor.nome_loja);
+                } else {
+                  console.error('[useCouponUsage] Error fetching vendor or vendor not found:', vendedorError);
                 }
               }
 
               return {
                 ...item,
                 produto: {
-                  ...produto,
+                  nome: produto?.nome || 'Produto não encontrado',
+                  vendedor_id: produto?.vendedor_id || '',
                   vendedores: vendedorInfo
                 }
               };
@@ -153,18 +169,24 @@ export const useCouponUsage = (couponId?: string) => {
               }
             });
             vendorNames = Array.from(uniqueVendors);
+            console.log('[useCouponUsage] Found vendors:', vendorNames);
+          } else {
+            console.log('[useCouponUsage] No items found for order:', use.order_id);
           }
         }
 
-        return {
+        const result = {
           ...use,
           user_name: userProfile?.nome || 'Usuário não encontrado',
           user_email: userProfile?.email || '',
           order_total: orderTotal,
-          vendor_name: vendorNames.length > 0 ? vendorNames.join(', ') : 'Vendedor não encontrado',
-          store_name: vendorNames.length > 0 ? vendorNames.join(', ') : 'Loja não encontrada',
+          vendor_name: vendorNames.length > 0 ? vendorNames.join(', ') : 'Vendedor não identificado',
+          store_name: vendorNames.length > 0 ? vendorNames.join(', ') : 'Loja não identificada',
           order_items: orderItems
         };
+
+        console.log('[useCouponUsage] Final result for usage:', use.id, '- vendor:', result.vendor_name);
+        return result;
       }));
 
       setUsageData(enrichedUsage);
