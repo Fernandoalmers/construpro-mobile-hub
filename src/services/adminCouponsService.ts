@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { logAdminAction } from './adminService';
@@ -51,10 +52,12 @@ export const fetchAdminCoupons = async (): Promise<AdminCoupon[]> => {
   try {
     console.log('[AdminCoupons] Fetching coupons...');
     
+    // Buscar cupons com contagem real de usos através de JOIN
     const { data: coupons, error } = await supabase
       .from('coupons')
       .select(`
         *,
+        coupon_usage(count),
         specific_products:coupon_products(
           id,
           coupon_id,
@@ -78,10 +81,21 @@ export const fetchAdminCoupons = async (): Promise<AdminCoupon[]> => {
     
     console.log(`[AdminCoupons] Found ${coupons?.length || 0} coupons`);
     
-    return (coupons || []).map(coupon => ({
-      ...coupon,
-      discount_type: coupon.discount_type as 'percentage' | 'fixed'
-    })) as AdminCoupon[];
+    // Processar cupons com contagem real de usos
+    const processedCoupons = (coupons || []).map(coupon => {
+      // Calcular contagem real baseada nos registros de uso
+      const realUsedCount = coupon.coupon_usage?.length || 0;
+      
+      console.log(`[AdminCoupons] Coupon ${coupon.code}: DB used_count=${coupon.used_count}, Real count=${realUsedCount}`);
+      
+      return {
+        ...coupon,
+        discount_type: coupon.discount_type as 'percentage' | 'fixed',
+        used_count: realUsedCount // Usar contagem real em vez do campo desatualizado
+      };
+    }) as AdminCoupon[];
+    
+    return processedCoupons;
   } catch (error) {
     console.error('Error fetching admin coupons:', error);
     toast.error('Erro ao carregar cupons');
