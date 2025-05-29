@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { logAdminAction } from './adminService';
@@ -278,30 +279,15 @@ export const getOrderDetails = async (orderId: string): Promise<AdminOrder | nul
       console.error('Error fetching client name:', clienteError);
     }
 
-    // Buscar itens do pedido com JOIN diretamente
+    // Buscar itens do pedido separadamente
     console.log(`[OrderDetails] Fetching items for order ${orderId.substring(0, 8)}...`);
-    const { data: orderItemsWithProducts, error: itemsError } = await supabase
+    const { data: orderItems, error: itemsError } = await supabase
       .from('order_items')
-      .select(`
-        id,
-        produto_id,
-        quantidade,
-        preco_unitario,
-        subtotal,
-        produtos!inner (
-          id,
-          nome,
-          vendedor_id,
-          vendedores!inner (
-            id,
-            nome_loja
-          )
-        )
-      `)
+      .select('*')
       .eq('order_id', orderId);
         
     if (itemsError) {
-      console.error('[OrderDetails] Error fetching order items with products:', itemsError);
+      console.error('[OrderDetails] Error fetching order items:', itemsError);
       return {
         ...order,
         cliente_nome: cliente?.nome || 'Cliente Desconhecido',
@@ -310,7 +296,7 @@ export const getOrderDetails = async (orderId: string): Promise<AdminOrder | nul
       };
     }
 
-    if (!orderItemsWithProducts || orderItemsWithProducts.length === 0) {
+    if (!orderItems || orderItems.length === 0) {
       console.warn(`[OrderDetails] No items found for order ${orderId}`);
       return {
         ...order,
@@ -320,29 +306,63 @@ export const getOrderDetails = async (orderId: string): Promise<AdminOrder | nul
       };
     }
 
-    console.log(`[OrderDetails] Found ${orderItemsWithProducts.length} items`);
+    console.log(`[OrderDetails] Found ${orderItems.length} items`);
 
-    // Processar itens e extrair informações do vendedor
-    const items: AdminOrderItem[] = orderItemsWithProducts.map(item => ({
-      id: item.id,
-      produto_id: item.produto_id,
-      produto_nome: item.produtos.nome,
-      quantidade: item.quantidade,
-      preco_unitario: item.preco_unitario,
-      subtotal: item.subtotal
-    }));
+    // Buscar dados dos produtos separadamente
+    const productIds = orderItems.map(item => item.produto_id);
+    const { data: produtos, error: produtosError } = await supabase
+      .from('produtos')
+      .select('id, nome, vendedor_id')
+      .in('id', productIds);
 
-    // Pegar informações do vendedor do primeiro item
-    const firstItem = orderItemsWithProducts[0];
-    const vendorInfo = firstItem.produtos.vendedores;
+    if (produtosError) {
+      console.error('[OrderDetails] Error fetching products:', produtosError);
+      return {
+        ...order,
+        cliente_nome: cliente?.nome || 'Cliente Desconhecido',
+        loja_nome: 'Erro ao carregar produtos',
+        items: []
+      };
+    }
 
-    console.log(`[OrderDetails] Successfully processed order with ${items.length} items and vendor: ${vendorInfo.nome_loja}`);
+    // Buscar dados dos vendedores
+    const vendorIds = produtos?.map(p => p.vendedor_id).filter(Boolean) || [];
+    let vendorInfo = null;
+    
+    if (vendorIds.length > 0) {
+      const { data: vendedores, error: vendedoresError } = await supabase
+        .from('vendedores')
+        .select('id, nome_loja')
+        .in('id', vendorIds);
+
+      if (vendedoresError) {
+        console.error('[OrderDetails] Error fetching vendors:', vendedoresError);
+      } else if (vendedores && vendedores.length > 0) {
+        vendorInfo = vendedores[0]; // Pegar o primeiro vendedor
+      }
+    }
+
+    // Processar itens combinando com dados dos produtos
+    const items: AdminOrderItem[] = orderItems.map(item => {
+      const produto = produtos?.find(p => p.id === item.produto_id);
+      
+      return {
+        id: item.id,
+        produto_id: item.produto_id,
+        produto_nome: produto?.nome || 'Produto não encontrado',
+        quantidade: item.quantidade,
+        preco_unitario: item.preco_unitario,
+        subtotal: item.subtotal
+      };
+    });
+
+    console.log(`[OrderDetails] Successfully processed order with ${items.length} items and vendor: ${vendorInfo?.nome_loja || 'Não identificado'}`);
     
     return {
       ...order,
       cliente_nome: cliente?.nome || 'Cliente Desconhecido',
-      loja_id: vendorInfo.id,
-      loja_nome: vendorInfo.nome_loja || 'Loja não identificada',
+      loja_id: vendorInfo?.id,
+      loja_nome: vendorInfo?.nome_loja || 'Loja não identificada',
       items
     };
     
