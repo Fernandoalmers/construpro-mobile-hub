@@ -29,10 +29,15 @@ export const useCoupon = () => {
         const quantidade = item.quantidade || item.quantity;
         const preco = item.produto?.preco_normal || item.price_at_add || item.preco_unitario;
         
+        // Type guard to ensure we have valid values before conversion
+        const safeProdutoId = (typeof produtoId === 'string' || typeof produtoId === 'number') ? produtoId : '';
+        const safeQuantidade = (typeof quantidade === 'number') ? quantidade : (typeof quantidade === 'string' ? parseFloat(quantidade) : 0);
+        const safePreco = (typeof preco === 'number') ? preco : (typeof preco === 'string' ? parseFloat(preco) : 0);
+        
         return {
-          produto_id: String(produtoId || ''),
-          quantidade: Number(quantidade || 0),
-          preco: Number(preco || 0)
+          produto_id: String(safeProdutoId || ''),
+          quantidade: Number(safeQuantidade || 0),
+          preco: Number(safePreco || 0)
         };
       }) || [];
 
