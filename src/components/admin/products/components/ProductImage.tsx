@@ -28,7 +28,8 @@ const ProductImage: React.FC<ProductImageProps> = ({
     });
 
     // Priority 1: Use imagemUrl if available and valid
-    if (imagemUrl && typeof imagemUrl === 'string' && imagemUrl.trim() !== '' && !imagemUrl.startsWith('blob:')) {
+    if (imagemUrl && typeof imagemUrl === 'string' && imagemUrl.trim() !== '') {
+      // Don't filter out blob URLs here - they might be valid temporary URLs
       console.log(`[ProductImage] Using imagemUrl for ${productName}:`, imagemUrl);
       return imagemUrl;
     }
@@ -48,7 +49,7 @@ const ProductImage: React.FC<ProductImageProps> = ({
           }
         } catch (e) {
           // If not valid JSON, treat as single URL
-          if (imagens.trim() !== '' && !imagens.startsWith('blob:')) {
+          if (imagens.trim() !== '') {
             imageArray = [imagens];
           }
         }
@@ -63,7 +64,7 @@ const ProductImage: React.FC<ProductImageProps> = ({
             }
             return '';
           })
-          .filter(url => url && typeof url === 'string' && url.trim() !== '' && !url.startsWith('blob:'));
+          .filter(url => url && typeof url === 'string' && url.trim() !== '');
       }
 
       if (imageArray.length > 0) {
@@ -91,6 +92,17 @@ const ProductImage: React.FC<ProductImageProps> = ({
     xl: 32
   };
 
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    console.error(`[ProductImage] Error loading image for ${productName}:`, imageUrl);
+    const target = e.currentTarget;
+    // Try a more generic placeholder that's more likely to work
+    target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDE1MCAxNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxNTAiIGhlaWdodD0iMTUwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik03NSA0NUw5MCA2MEg2MEw3NSA0NVoiIGZpbGw9IiNEMUQ1REIiLz4KPHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHN2ZyB4PSI2MyIgeT0iNjMiIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cGF0aCBkPSJtMjEgMTYtNC0ydi0yaDRWOWMwLTEuMS0uOS0yLTItMkg1Yy0xLjEgMC0yIC45LTIgMnY2aDQudjJsLTQgMlMzIDE4IDMgMThjMCAuNi4yIDEgLjUgMS40TDEyIDI0bDguNS01LjZjLjMtLjQuNS0uOC41LTEuNCAwIDAgMC0uNi0xLTEuNXoiIGZpbGw9IiNEMUQ1REIiLz4KPC9zdmc+Cjwvc3ZnPgo=';
+  };
+
+  const handleImageLoad = () => {
+    console.log(`[ProductImage] Successfully loaded image for ${productName}`);
+  };
+
   return (
     <div className={`${sizeClasses[size]} flex-shrink-0 bg-gray-50 rounded overflow-hidden border border-gray-200 flex items-center justify-center ${className}`}>
       {imageUrl ? (
@@ -98,13 +110,8 @@ const ProductImage: React.FC<ProductImageProps> = ({
           src={imageUrl}
           alt={productName}
           className="w-full h-full object-contain"
-          onError={(e) => {
-            console.error(`[ProductImage] Error loading image for ${productName}:`, imageUrl);
-            e.currentTarget.src = 'https://via.placeholder.com/150x150?text=Sem+Imagem';
-          }}
-          onLoad={() => {
-            console.log(`[ProductImage] Successfully loaded image for ${productName}`);
-          }}
+          onError={handleImageError}
+          onLoad={handleImageLoad}
         />
       ) : (
         <div className="flex flex-col items-center justify-center text-gray-400">
