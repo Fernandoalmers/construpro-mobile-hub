@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { logAdminAction } from './adminService';
@@ -49,7 +48,12 @@ export const fetchAdminCoupons = async (): Promise<AdminCoupon[]> => {
     }
     
     console.log(`[AdminCoupons] Found ${coupons?.length || 0} coupons`);
-    return coupons || [];
+    
+    // Type assertion to ensure compatibility with AdminCoupon interface
+    return (coupons || []).map(coupon => ({
+      ...coupon,
+      discount_type: coupon.discount_type as 'percentage' | 'fixed'
+    })) as AdminCoupon[];
   } catch (error) {
     console.error('Error fetching admin coupons:', error);
     toast.error('Erro ao carregar cupons');
