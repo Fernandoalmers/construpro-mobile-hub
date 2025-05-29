@@ -12,21 +12,39 @@ export interface CreateOrderPayload {
   desconto?: number;
 }
 
+export interface ProductData {
+  id: string;
+  nome: string;
+  imagens: string[];
+  imagem_url: string | null;
+  descricao: string;
+  preco_normal: number;
+  categoria: string;
+  preco_promocional?: number;
+}
+
 export interface OrderItem {
+  id: string;
   produto_id: string;
   quantidade: number;
   preco_unitario: number;
   subtotal?: number;
   pontos?: number;
+  produto?: ProductData;
 }
 
 export interface OrderData {
+  id: string;
   cliente_id: string;
   status: string;
   forma_pagamento: string;
   endereco_entrega: any;
   valor_total: number;
   pontos_ganhos: number;
+  created_at: string;
+  updated_at?: string;
+  rastreio?: string;
+  items: OrderItem[];
 }
 
 export interface OrderResponse {
