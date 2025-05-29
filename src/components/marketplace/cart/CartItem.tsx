@@ -40,9 +40,9 @@ const CartItem: React.FC<CartItemProps> = ({ item, onUpdateQuantity, onRemoveIte
   };
 
   return (
-    <div className={`flex items-center p-4 bg-white rounded-lg shadow-sm border border-gray-200 gap-3 transition-all duration-200 ${isProcessing ? 'opacity-70 pointer-events-none' : 'hover:shadow-md'}`}>
-      {/* Product image */}
-      <div className="w-16 h-16 flex-shrink-0 bg-gray-50 rounded-lg overflow-hidden border border-gray-100">
+    <div className={`flex items-center p-3 bg-white rounded-lg shadow-sm border border-gray-200 gap-3 transition-all duration-200 ${isProcessing ? 'opacity-70 pointer-events-none' : 'hover:shadow-md'}`}>
+      {/* Product image - menor */}
+      <div className="w-12 h-12 flex-shrink-0 bg-gray-50 rounded-lg overflow-hidden border border-gray-100">
         <ProductImage 
           imagemUrl={item.produto?.imagem_url}
           imagens={item.produto?.imagens}
@@ -51,12 +51,12 @@ const CartItem: React.FC<CartItemProps> = ({ item, onUpdateQuantity, onRemoveIte
         />
       </div>
 
-      {/* Product details */}
+      {/* Product details - mais compacto */}
       <div className="flex-1 min-w-0">
         <h4 className="font-semibold text-sm text-gray-800 truncate mb-1">
           {item.produto?.nome || 'Produto sem nome'}
         </h4>
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center gap-2 mb-1">
           <span className="text-blue-600 text-sm font-bold">
             R$ {productPrice.toFixed(2)}
           </span>
@@ -67,7 +67,7 @@ const CartItem: React.FC<CartItemProps> = ({ item, onUpdateQuantity, onRemoveIte
           )}
         </div>
         
-        {/* Stock warning */}
+        {/* Stock warning - menor */}
         {maxStock > 0 && maxStock < 10 && (
           <div className="flex items-center gap-1 text-xs text-amber-600">
             <Package className="w-3 h-3" />
@@ -76,42 +76,42 @@ const CartItem: React.FC<CartItemProps> = ({ item, onUpdateQuantity, onRemoveIte
         )}
       </div>
 
-      {/* Quantity controls */}
+      {/* Quantity controls - mais compacto */}
       <div className="flex items-center gap-2">
         <div className="flex items-center border border-gray-300 rounded-lg bg-gray-50">
           <Button 
             variant="ghost"
             size="icon"
-            className="h-8 w-8 rounded-l-lg hover:bg-gray-200"
+            className="h-7 w-7 rounded-l-lg hover:bg-gray-200"
             onClick={handleDecrease}
             disabled={quantity <= 1 || isProcessing}
           >
-            <Minus size={14} />
+            <Minus size={12} />
           </Button>
           
-          <span className="w-8 text-center text-sm font-medium bg-white border-x border-gray-300 py-1">
+          <span className="w-7 text-center text-sm font-medium bg-white border-x border-gray-300 py-1">
             {quantity}
           </span>
           
           <Button 
             variant="ghost"
             size="icon"
-            className="h-8 w-8 rounded-r-lg hover:bg-gray-200"
+            className="h-7 w-7 rounded-r-lg hover:bg-gray-200"
             onClick={handleIncrease}
             disabled={quantity >= maxStock || isProcessing}
           >
-            <Plus size={14} />
+            <Plus size={12} />
           </Button>
         </div>
 
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+          className="h-7 w-7 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
           onClick={handleRemove}
           disabled={isProcessing}
         >
-          <Trash2 size={14} />
+          <Trash2 size={12} />
         </Button>
       </div>
     </div>

@@ -22,53 +22,37 @@ export const useCoupon = () => {
     setIsValidating(true);
     
     try {
-      console.log('[useCoupon] Starting coupon validation:', {
+      console.log('[useCoupon] Iniciando validação do cupom:', {
         code: code.toUpperCase(),
         orderValue,
         userId,
         cartItemsCount: cartItems?.length || 0
       });
 
-      // Preparar dados dos itens do carrinho de forma mais robusta
+      // Preparar dados dos itens do carrinho
       const cartItemsData = cartItems?.map(item => {
-        // Extrair produto_id de diferentes possíveis estruturas
-        let produtoId = item.produto?.id || item.product_id || item.produto_id;
-        
-        // Extrair quantidade de diferentes possíveis estruturas
-        let quantidade = item.quantidade || item.quantity || 1;
-        
-        // Extrair preço de diferentes possíveis estruturas
-        let preco = item.produto?.preco_normal || 
-                   item.produto?.preco_promocional || 
-                   item.price_at_add || 
-                   item.preco_unitario ||
-                   item.preco ||
-                   0;
-
-        // Garantir tipos corretos
-        const safeProdutoId = String(produtoId || '');
-        const safeQuantidade = Number(quantidade) || 1;
-        const safePreco = Number(preco) || 0;
-
-        console.log('[useCoupon] Processing cart item:', {
-          original: item,
-          processed: {
-            produto_id: safeProdutoId,
-            quantidade: safeQuantidade,
-            preco: safePreco
-          }
-        });
+        const produtoId = item.produto?.id || item.product_id || item.produto_id;
+        const quantidade = item.quantidade || item.quantity || 1;
+        const preco = item.produto?.preco_promocional || 
+                     item.produto?.preco_normal || 
+                     item.price_at_add || 
+                     item.preco_unitario ||
+                     item.preco ||
+                     0;
 
         return {
-          produto_id: safeProdutoId,
-          quantidade: safeQuantidade,
-          preco: safePreco
+          produto_id: String(produtoId || ''),
+          quantidade: Number(quantidade) || 1,
+          preco: Number(preco) || 0
         };
       }).filter(item => item.produto_id && item.preco > 0) || [];
 
-      console.log('[useCoupon] Final cart items for validation:', cartItemsData);
+      console.log('[useCoupon] Dados preparados para validação:', {
+        cartItemsProcessed: cartItemsData.length,
+        totalValue: cartItemsData.reduce((sum, item) => sum + (item.preco * item.quantidade), 0)
+      });
 
-      // Chamar a função validate_coupon corrigida
+      // Chamar a função validate_coupon
       const { data: validationResult, error: functionError } = await supabase.rpc('validate_coupon', {
         coupon_code: code.toUpperCase().trim(),
         user_id_param: userId,
@@ -77,22 +61,22 @@ export const useCoupon = () => {
       });
 
       if (functionError) {
-        console.error('[useCoupon] Supabase RPC error:', functionError);
+        console.error('[useCoupon] Erro na função RPC:', functionError);
         
         // Tratamento específico para erros conhecidos
         if (functionError.message?.includes('function "validate_coupon" does not exist')) {
           toast.error('Sistema de cupons em manutenção. Tente novamente mais tarde.');
         } else if (functionError.message?.includes('operator does not exist')) {
-          toast.error('Erro temporário no sistema. Nossa equipe já foi notificada.');
+          toast.error('Erro de configuração detectado. Recarregue a página e tente novamente.');
         } else if (functionError.message?.includes('time zone')) {
-          toast.error('Erro de configuração detectado. Aguarde alguns minutos e tente novamente.');
+          toast.error('Erro temporário detectado. Aguarde alguns instantes e tente novamente.');
         } else {
-          toast.error('Erro interno ao validar cupom: ' + functionError.message);
+          toast.error(`Erro ao validar cupom: ${functionError.message}`);
         }
         return;
       }
 
-      console.log('[useCoupon] Validation response:', validationResult);
+      console.log('[useCoupon] Resposta da validação:', validationResult);
 
       if (validationResult && validationResult.length > 0) {
         const result = validationResult[0];
@@ -105,7 +89,7 @@ export const useCoupon = () => {
             discount: discountAmount
           });
           
-          // Determinar mensagem de sucesso baseada nos produtos elegíveis
+          // Mensagem de sucesso baseada nos produtos elegíveis
           if (result.eligible_products && result.eligible_products !== null) {
             try {
               const eligibleProducts = typeof result.eligible_products === 'string' 
@@ -117,7 +101,7 @@ export const useCoupon = () => {
                 const totalItems = cartItemsData.length;
                 
                 if (eligibleCount < totalItems && totalItems > 0) {
-                  toast.success(`Cupom aplicado! Desconto válido para ${eligibleCount} de ${totalItems} produtos no carrinho.`);
+                  toast.success(`Cupom aplicado! Desconto válido para ${eligibleCount} de ${totalItems} produtos.`);
                 } else {
                   toast.success(`Cupom ${code.toUpperCase()} aplicado com sucesso!`);
                 }
@@ -125,40 +109,35 @@ export const useCoupon = () => {
                 toast.success(`Cupom ${code.toUpperCase()} aplicado com sucesso!`);
               }
             } catch (parseError) {
-              console.error('[useCoupon] Error parsing eligible_products:', parseError);
+              console.error('[useCoupon] Erro ao processar produtos elegíveis:', parseError);
               toast.success(`Cupom ${code.toUpperCase()} aplicado com sucesso!`);
             }
           } else {
-            toast.success(`Cupom ${code.toUpperCase()} aplicado com sucesso!`);
+            toast.success(`Cupom ${code.toUpperCase()} aplicado! Desconto de R$ ${discountAmount.toFixed(2)}`);
           }
           
-          console.log('[useCoupon] Coupon applied successfully:', {
+          console.log('[useCoupon] Cupom aplicado com sucesso:', {
             code: code.toUpperCase(),
             discount: discountAmount
           });
         } else {
           const errorMessage = result.message || "Cupom inválido";
-          console.log('[useCoupon] Coupon validation failed:', errorMessage);
+          console.log('[useCoupon] Cupom inválido:', errorMessage);
           toast.error(errorMessage);
         }
       } else {
-        console.log('[useCoupon] No validation result returned');
+        console.log('[useCoupon] Nenhum resultado retornado da validação');
         toast.error("Erro ao validar cupom. Tente novamente.");
       }
     } catch (error: any) {
-      console.error('[useCoupon] Unexpected error:', error);
+      console.error('[useCoupon] Erro inesperado:', error);
       
-      // Melhor tratamento de erros para debugging
-      if (error.message) {
-        if (error.message.includes('validate_coupon')) {
-          toast.error("Sistema de cupons temporariamente indisponível. Tente novamente em alguns minutos.");
-        } else if (error.message.includes('time zone') || error.message.includes('operator does not exist')) {
-          toast.error("Erro de configuração detectado. Nossa equipe já foi notificada.");
-        } else {
-          toast.error("Erro inesperado: " + error.message);
-        }
+      if (error.message?.includes('validate_coupon')) {
+        toast.error("Sistema de cupons temporariamente indisponível. Recarregue a página e tente novamente.");
+      } else if (error.message?.includes('time zone') || error.message?.includes('operator does not exist')) {
+        toast.error("Erro de configuração detectado. Recarregue a página e tente novamente.");
       } else {
-        toast.error("Erro inesperado ao aplicar cupom. Tente novamente.");
+        toast.error("Erro inesperado ao aplicar cupom. Recarregue a página e tente novamente.");
       }
     } finally {
       setIsValidating(false);
@@ -169,7 +148,7 @@ export const useCoupon = () => {
     setAppliedCoupon(null);
     setCouponCode('');
     toast.success("Cupom removido");
-    console.log('[useCoupon] Coupon removed');
+    console.log('[useCoupon] Cupom removido');
   }, []);
   
   return {

@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { useGroupItemsByStore } from '@/hooks/cart/use-group-items-by-store';
 import { useCartTotals } from '@/hooks/cart/use-cart-totals';
 import { useCartOperations } from '@/hooks/cart/use-cart-operations';
+import { useStoreInfo } from '@/hooks/cart/use-store-info';
 
 export const useCartScreen = () => {
   const { user, isAuthenticated } = useAuth();
@@ -19,7 +20,6 @@ export const useCartScreen = () => {
     refreshCart
   } = useCartData(isAuthenticated, user?.id || null, (user as any)?.tipo_perfil || 'consumidor');
 
-  // Get cart operations with refresh callback
   const {
     updateQuantity,
     removeItem,
@@ -41,13 +41,42 @@ export const useCartScreen = () => {
   const cartItems = cart?.items || [];
   const cartCount = cartItems.length;
 
-  // Group items by store
+  // Extract unique store IDs from cart items
+  const storeIds = useMemo(() => {
+    const ids = cartItems.map(item => item.produto?.loja_id || item.produto?.vendedor_id).filter(Boolean);
+    return [...new Set(ids)];
+  }, [cartItems]);
+
+  // Fetch store information
+  const { storeInfo, loading: storeLoading } = useStoreInfo(storeIds);
+
+  // Group items by store with store info
   const { groupedItems } = useGroupItemsByStore(cartItems);
+
+  // Enhance grouped items with store information
+  const enhancedGroupedItems = useMemo(() => {
+    const enhanced: Record<string, any> = {};
+    
+    Object.entries(groupedItems).forEach(([storeId, group]) => {
+      const storeData = storeInfo[storeId] || {
+        id: storeId,
+        nome: `Loja ${storeId.substring(0, 4)}`,
+        logo_url: null
+      };
+      
+      enhanced[storeId] = {
+        ...group,
+        loja: storeData
+      };
+    });
+    
+    return enhanced;
+  }, [groupedItems, storeInfo]);
 
   // Calculate totals
   const { subtotal, shipping, discount, total, totalPoints } = useCartTotals(
     cartItems,
-    Object.keys(groupedItems).length,
+    Object.keys(enhancedGroupedItems).length,
     appliedCoupon?.discount || 0,
     0,
     (user as any)?.tipo_perfil || 'consumidor'
@@ -76,7 +105,7 @@ export const useCartScreen = () => {
       return total + (price * quantity);
     }, 0);
 
-    console.log('[useCartScreen] Applying coupon with cart data:', {
+    console.log('[useCartScreen] Aplicando cupom com dados do carrinho:', {
       code,
       orderValue,
       userId: user.id,
@@ -154,7 +183,7 @@ export const useCartScreen = () => {
 
   return {
     // States
-    loading: isLoading || operationsLoading,
+    loading: isLoading || operationsLoading || storeLoading,
     error: error?.message || null,
     cartIsEmpty,
     
@@ -162,7 +191,7 @@ export const useCartScreen = () => {
     cart,
     cartItems,
     cartCount,
-    itemsByStore: groupedItems,
+    itemsByStore: enhancedGroupedItems,
     processingItem: operationInProgress,
     
     // Coupon data

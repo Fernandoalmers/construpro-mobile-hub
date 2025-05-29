@@ -19,7 +19,9 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // Criar a função corrigida validate_coupon
+    console.log('Fixing validate_coupon function...')
+
+    // Corrigir a função validate_coupon com tipos de data consistentes
     const { error } = await supabaseClient.rpc('execute_custom_sql', {
       sql_statement: `
         CREATE OR REPLACE FUNCTION public.validate_coupon(coupon_code text, user_id_param uuid, order_value numeric, cart_items jsonb DEFAULT NULL::jsonb)
@@ -161,11 +163,17 @@ serve(async (req) => {
     })
 
     if (error) {
+      console.error('Error fixing validate_coupon function:', error)
       throw error
     }
 
+    console.log('Successfully fixed validate_coupon function')
+
     return new Response(
-      JSON.stringify({ success: true, message: 'Função validate_coupon corrigida com sucesso' }),
+      JSON.stringify({ 
+        success: true, 
+        message: 'Função validate_coupon corrigida com sucesso - tipos de data consistentes' 
+      }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
@@ -173,8 +181,12 @@ serve(async (req) => {
     )
 
   } catch (error) {
+    console.error('Error in fix-coupon-validation:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        details: 'Erro ao corrigir função de validação de cupom'
+      }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
