@@ -68,7 +68,7 @@ export const useCoupon = () => {
 
       console.log('[useCoupon] Final cart items for validation:', cartItemsData);
 
-      // Chamar a função validate_coupon usando try/catch adequado
+      // Chamar a função validate_coupon corrigida
       const { data: validationResult, error: functionError } = await supabase.rpc('validate_coupon', {
         coupon_code: code.toUpperCase().trim(),
         user_id_param: userId,
@@ -79,10 +79,15 @@ export const useCoupon = () => {
       if (functionError) {
         console.error('[useCoupon] Supabase RPC error:', functionError);
         
+        // Tratamento específico para erros conhecidos
         if (functionError.message?.includes('function "validate_coupon" does not exist')) {
           toast.error('Sistema de cupons em manutenção. Tente novamente mais tarde.');
+        } else if (functionError.message?.includes('operator does not exist')) {
+          toast.error('Erro temporário no sistema. Nossa equipe já foi notificada.');
+        } else if (functionError.message?.includes('time zone')) {
+          toast.error('Erro de configuração detectado. Aguarde alguns minutos e tente novamente.');
         } else {
-          toast.error('Erro interno ao validar cupom. Detalhes: ' + functionError.message);
+          toast.error('Erro interno ao validar cupom: ' + functionError.message);
         }
         return;
       }
@@ -147,6 +152,8 @@ export const useCoupon = () => {
       if (error.message) {
         if (error.message.includes('validate_coupon')) {
           toast.error("Sistema de cupons temporariamente indisponível. Tente novamente em alguns minutos.");
+        } else if (error.message.includes('time zone') || error.message.includes('operator does not exist')) {
+          toast.error("Erro de configuração detectado. Nossa equipe já foi notificada.");
         } else {
           toast.error("Erro inesperado: " + error.message);
         }
