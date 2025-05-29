@@ -30,24 +30,31 @@ const ProductSearchList: React.FC<ProductSearchListProps> = ({
 }) => {
   if (loading) {
     return (
-      <div className="text-center py-8 text-gray-500">
-        <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-        Carregando produtos...
+      <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p className="text-sm">Carregando produtos...</p>
       </div>
     );
   }
 
   if (products.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500">
-        <Package className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-        Nenhum produto encontrado
+      <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+        <Package className="h-16 w-16 mb-4 text-gray-300" />
+        <p className="text-lg font-medium mb-2">Nenhum produto encontrado</p>
+        <p className="text-sm text-center max-w-sm">
+          Tente ajustar os termos da busca ou verifique se existem produtos aprovados.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="max-h-96 overflow-y-auto space-y-3">
+    <div className="space-y-3 max-h-full overflow-y-auto">
+      <div className="text-sm text-gray-600 mb-3">
+        {products.length} produto(s) encontrado(s)
+      </div>
+      
       {products.map((product) => (
         <ProductItem
           key={product.id}

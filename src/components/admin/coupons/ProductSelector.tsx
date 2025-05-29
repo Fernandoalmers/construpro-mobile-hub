@@ -1,8 +1,7 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { DialogTrigger } from '@/components/ui/dialog';
 import { Plus } from 'lucide-react';
 import { fetchProductsForCoupon } from '@/services/adminCouponsService';
 import SelectedProductsList from './components/SelectedProductsList';
@@ -26,6 +25,23 @@ interface ProductSelectorProps {
   disabled?: boolean;
 }
 
+// Hook personalizado para debounce
+const useDebounce = (value: string, delay: number) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+};
+
 const ProductSelector: React.FC<ProductSelectorProps> = ({
   selectedProductIds,
   onProductsChange,
@@ -36,23 +52,30 @@ const ProductSelector: React.FC<ProductSelectorProps> = ({
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Buscar produtos ao abrir o dialog ou mudar termo de busca
+  // Aplicar debounce no termo de busca
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+
+  // Buscar produtos quando o modal abre ou quando o termo de busca muda (com debounce)
   useEffect(() => {
     if (isOpen) {
-      loadProducts();
+      loadProducts(debouncedSearchTerm);
     }
-  }, [isOpen, searchTerm]);
+  }, [isOpen, debouncedSearchTerm]);
 
   // Carregar produtos selecionados ao inicializar
   useEffect(() => {
     if (selectedProductIds.length > 0) {
       loadSelectedProducts();
+    } else {
+      setSelectedProducts([]);
     }
   }, [selectedProductIds]);
 
-  const loadProducts = async () => {
+  const loadProducts = async (searchTerm = '') => {
     setLoading(true);
+    setError(null);
     try {
       const data = await fetchProductsForCoupon(searchTerm);
       
@@ -65,6 +88,7 @@ const ProductSelector: React.FC<ProductSelectorProps> = ({
       setProducts(transformedProducts);
     } catch (error) {
       console.error('Error loading products:', error);
+      setError('Erro ao carregar produtos. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -84,7 +108,7 @@ const ProductSelector: React.FC<ProductSelectorProps> = ({
     }
   };
 
-  const handleProductToggle = (product: Product) => {
+  const handleProductToggle = useCallback((product: Product) => {
     const isSelected = selectedProductIds.includes(product.id);
     
     if (isSelected) {
@@ -100,14 +124,14 @@ const ProductSelector: React.FC<ProductSelectorProps> = ({
       onProductsChange(newIds);
       setSelectedProducts(newSelected);
     }
-  };
+  }, [selectedProductIds, selectedProducts, onProductsChange]);
 
-  const handleRemoveProduct = (productId: string) => {
+  const handleRemoveProduct = useCallback((productId: string) => {
     const newIds = selectedProductIds.filter(id => id !== productId);
     const newSelected = selectedProducts.filter(p => p.id !== productId);
     onProductsChange(newIds);
     setSelectedProducts(newSelected);
-  };
+  }, [selectedProductIds, selectedProducts, onProductsChange]);
 
   return (
     <div className="space-y-3">
@@ -124,6 +148,18 @@ const ProductSelector: React.FC<ProductSelectorProps> = ({
       />
 
       {/* Botão para abrir seletor */}
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full"
+        disabled={disabled}
+        onClick={() => setIsOpen(true)}
+      >
+        <Plus className="h-4 w-4 mr-2" />
+        {selectedProducts.length > 0 ? 'Editar Produtos' : 'Selecionar Produtos'}
+      </Button>
+
+      {/* Dialog de seleção */}
       <ProductSelectorDialog
         isOpen={isOpen}
         onOpenChange={setIsOpen}
@@ -133,20 +169,8 @@ const ProductSelector: React.FC<ProductSelectorProps> = ({
         selectedProductIds={selectedProductIds}
         onProductToggle={handleProductToggle}
         loading={loading}
+        error={error}
       />
-      
-      <DialogTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full"
-          disabled={disabled}
-          onClick={() => setIsOpen(true)}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          {selectedProducts.length > 0 ? 'Editar Produtos' : 'Selecionar Produtos'}
-        </Button>
-      </DialogTrigger>
     </div>
   );
 };
