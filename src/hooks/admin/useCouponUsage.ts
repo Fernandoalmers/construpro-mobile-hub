@@ -40,10 +40,33 @@ export const useCouponUsage = (couponId?: string) => {
     try {
       console.log('[useCouponUsage] Fetching usage for coupon:', id);
       
-      // Buscar todos os usos do cupom
-      const { data: usage, error } = await supabase
+      // Buscar todos os usos do cupom com informações completas em uma única consulta
+      const { data: usageWithDetails, error } = await supabase
         .from('coupon_usage')
-        .select('*')
+        .select(`
+          *,
+          profiles:user_id (
+            nome,
+            email
+          ),
+          orders:order_id (
+            valor_total,
+            order_items (
+              id,
+              produto_id,
+              quantidade,
+              preco_unitario,
+              subtotal,
+              produtos (
+                nome,
+                vendedor_id,
+                vendedores (
+                  nome_loja
+                )
+              )
+            )
+          )
+        `)
         .eq('coupon_id', id)
         .order('used_at', { ascending: false });
 
@@ -53,130 +76,77 @@ export const useCouponUsage = (couponId?: string) => {
         return;
       }
 
-      if (!usage || usage.length === 0) {
+      if (!usageWithDetails || usageWithDetails.length === 0) {
+        console.log('[useCouponUsage] No usage found for coupon:', id);
         setUsageData([]);
         return;
       }
 
-      // Para cada uso, buscar informações completas
-      const enrichedUsage = await Promise.all(usage.map(async (use) => {
-        console.log('[useCouponUsage] Processing usage:', use.id, 'for order:', use.order_id);
+      console.log('[useCouponUsage] Raw data from query:', usageWithDetails);
+
+      // Processar os dados para o formato esperado
+      const enrichedUsage: CouponUsageDetail[] = usageWithDetails.map((usage: any) => {
+        console.log('[useCouponUsage] Processing usage:', usage.id);
         
-        // Buscar informações do usuário
-        const { data: userProfile, error: userError } = await supabase
-          .from('profiles')
-          .select('nome, email')
-          .eq('id', use.user_id)
-          .single();
-
-        if (userError) {
-          console.error('[useCouponUsage] Error fetching user profile:', userError);
-        }
-
-        let orderItems = [];
+        const userProfile = usage.profiles;
+        const orderData = usage.orders;
+        
+        let orderItems: any[] = [];
         let orderTotal = 0;
         let vendorNames: string[] = [];
-        
-        if (use.order_id) {
-          // Buscar informações do pedido
-          const { data: orderData, error: orderError } = await supabase
-            .from('orders')
-            .select('valor_total')
-            .eq('id', use.order_id)
-            .single();
 
-          if (!orderError && orderData) {
-            orderTotal = orderData.valor_total;
-            console.log('[useCouponUsage] Found order total:', orderTotal);
-          } else {
-            console.log('[useCouponUsage] Order not found or error:', orderError);
-          }
-
-          // Buscar itens do pedido primeiro
-          const { data: items, error: itemsError } = await supabase
-            .from('order_items')
-            .select(`
-              id,
-              produto_id,
-              quantidade,
-              preco_unitario,
-              subtotal
-            `)
-            .eq('order_id', use.order_id);
-
-          if (itemsError) {
-            console.error('[useCouponUsage] Error fetching order items:', itemsError);
-          } else if (items && items.length > 0) {
-            console.log('[useCouponUsage] Found', items.length, 'order items');
+        if (orderData) {
+          orderTotal = orderData.valor_total || 0;
+          console.log('[useCouponUsage] Order total:', orderTotal);
+          
+          if (orderData.order_items && orderData.order_items.length > 0) {
+            console.log('[useCouponUsage] Found', orderData.order_items.length, 'order items');
             
-            // Para cada item, buscar informações do produto e vendedor
-            const enrichedItems = await Promise.all(items.map(async (item) => {
-              console.log('[useCouponUsage] Processing item for product:', item.produto_id);
+            orderItems = orderData.order_items.map((item: any) => {
+              const produto = item.produtos;
+              console.log('[useCouponUsage] Processing item:', item.id, 'product:', produto?.nome);
               
-              const { data: produto, error: produtoError } = await supabase
-                .from('produtos')
-                .select('nome, vendedor_id')
-                .eq('id', item.produto_id)
-                .single();
-
-              if (produtoError) {
-                console.error('[useCouponUsage] Error fetching product:', produtoError);
-                return {
-                  ...item,
-                  produto: {
-                    nome: 'Produto não encontrado',
-                    vendedor_id: '',
-                    vendedores: null
-                  }
-                };
+              if (produto && produto.vendedores && produto.vendedores.nome_loja) {
+                vendorNames.push(produto.vendedores.nome_loja);
+                console.log('[useCouponUsage] Found vendor:', produto.vendedores.nome_loja);
               }
-
-              console.log('[useCouponUsage] Found product:', produto?.nome, 'vendor_id:', produto?.vendedor_id);
-
-              let vendedorInfo = null;
-              if (produto?.vendedor_id) {
-                const { data: vendedor, error: vendedorError } = await supabase
-                  .from('vendedores')
-                  .select('nome_loja')
-                  .eq('id', produto.vendedor_id)
-                  .single();
-
-                if (!vendedorError && vendedor) {
-                  vendedorInfo = { nome_loja: vendedor.nome_loja };
-                  console.log('[useCouponUsage] Found vendor:', vendedor.nome_loja);
-                } else {
-                  console.error('[useCouponUsage] Error fetching vendor or vendor not found:', vendedorError);
-                }
-              }
-
+              
               return {
-                ...item,
-                produto: {
-                  nome: produto?.nome || 'Produto não encontrado',
-                  vendedor_id: produto?.vendedor_id || '',
-                  vendedores: vendedorInfo
+                id: item.id,
+                produto_id: item.produto_id,
+                quantidade: item.quantidade,
+                preco_unitario: item.preco_unitario,
+                subtotal: item.subtotal,
+                produto: produto ? {
+                  nome: produto.nome || 'Produto não encontrado',
+                  vendedor_id: produto.vendedor_id || '',
+                  vendedores: produto.vendedores || null
+                } : {
+                  nome: 'Produto não encontrado',
+                  vendedor_id: '',
+                  vendedores: null
                 }
               };
-            }));
-
-            orderItems = enrichedItems;
+            });
             
             // Extrair nomes únicos dos vendedores
-            const uniqueVendors = new Set<string>();
-            enrichedItems.forEach(item => {
-              if (item.produto?.vendedores?.nome_loja) {
-                uniqueVendors.add(item.produto.vendedores.nome_loja);
-              }
-            });
+            const uniqueVendors = new Set(vendorNames);
             vendorNames = Array.from(uniqueVendors);
-            console.log('[useCouponUsage] Found vendors:', vendorNames);
+            console.log('[useCouponUsage] Unique vendors found:', vendorNames);
           } else {
-            console.log('[useCouponUsage] No items found for order:', use.order_id);
+            console.log('[useCouponUsage] No order items found for order:', usage.order_id);
           }
+        } else {
+          console.log('[useCouponUsage] No order data found for usage:', usage.id);
         }
 
         const result = {
-          ...use,
+          id: usage.id,
+          coupon_id: usage.coupon_id,
+          user_id: usage.user_id,
+          order_id: usage.order_id,
+          discount_amount: usage.discount_amount,
+          used_at: usage.used_at,
           user_name: userProfile?.nome || 'Usuário não encontrado',
           user_email: userProfile?.email || '',
           order_total: orderTotal,
@@ -185,10 +155,11 @@ export const useCouponUsage = (couponId?: string) => {
           order_items: orderItems
         };
 
-        console.log('[useCouponUsage] Final result for usage:', use.id, '- vendor:', result.vendor_name);
+        console.log('[useCouponUsage] Final result for usage:', usage.id, '- vendor:', result.vendor_name);
         return result;
-      }));
+      });
 
+      console.log('[useCouponUsage] Final enriched data:', enrichedUsage);
       setUsageData(enrichedUsage);
     } catch (error: any) {
       console.error('[useCouponUsage] Error:', error);
