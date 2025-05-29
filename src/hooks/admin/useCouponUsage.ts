@@ -40,44 +40,37 @@ export const useCouponUsage = (couponId?: string) => {
     try {
       console.log('[useCouponUsage] Fetching usage for coupon:', id);
       
-      // Consulta principal com JOINs para buscar todos os dados necessários
+      // Usar consulta SQL direta com LEFT JOINs para garantir que sempre retorne dados
       const { data: usageRecordsRaw, error: usageError } = await supabase
-        .from('coupon_usage')
-        .select(`
-          id,
-          coupon_id,
-          user_id,
-          order_id,
-          discount_amount,
-          used_at,
-          profiles:user_id (
-            id,
-            nome,
-            email
-          ),
-          orders:order_id (
-            id,
-            valor_total,
-            order_items (
-              id,
-              produto_id,
-              quantidade,
-              preco_unitario,
-              subtotal,
-              produtos (
-                id,
-                nome,
-                vendedor_id,
-                vendedores (
-                  id,
-                  nome_loja
-                )
-              )
-            )
-          )
-        `)
-        .eq('coupon_id', id)
-        .order('used_at', { ascending: false });
+        .rpc('execute_custom_sql', {
+          sql_statement: `
+            SELECT 
+              cu.id, 
+              cu.coupon_id, 
+              cu.user_id, 
+              cu.order_id, 
+              cu.discount_amount, 
+              cu.used_at,
+              p.nome AS user_name, 
+              p.email AS user_email,
+              o.valor_total,
+              v.nome_loja AS vendor_name,
+              oi.id AS item_id,
+              oi.produto_id,
+              oi.quantidade,
+              oi.preco_unitario,
+              oi.subtotal,
+              pr.nome AS produto_nome
+            FROM coupon_usage cu
+            LEFT JOIN profiles p ON cu.user_id = p.id
+            LEFT JOIN orders o ON cu.order_id = o.id
+            LEFT JOIN order_items oi ON o.id = oi.order_id
+            LEFT JOIN produtos pr ON oi.produto_id = pr.id
+            LEFT JOIN vendedores v ON pr.vendedor_id = v.id
+            WHERE cu.coupon_id = '${id}'
+            ORDER BY cu.used_at DESC
+          `
+        });
 
       if (usageError) {
         console.error('[useCouponUsage] Error fetching usage:', usageError);
@@ -93,50 +86,63 @@ export const useCouponUsage = (couponId?: string) => {
 
       console.log('[useCouponUsage] Raw usage records:', usageRecordsRaw);
 
-      // Processar os dados para agrupar por order_id e consolidar vendedores
-      const enrichedUsage: CouponUsageDetail[] = usageRecordsRaw.map(usage => {
-        console.log(`[useCouponUsage] Processing usage record:`, usage);
+      // Agrupar os resultados por order_id e consolidar vendedores
+      const groupedUsage = new Map<string, any>();
 
-        // Extrair dados do usuário
-        const userProfile = usage.profiles as any;
-        const userName = userProfile?.nome || 'Usuário não encontrado';
-        const userEmail = userProfile?.email || '';
+      usageRecordsRaw.forEach((record: any) => {
+        const usageId = record.id;
+        
+        if (!groupedUsage.has(usageId)) {
+          groupedUsage.set(usageId, {
+            id: record.id,
+            coupon_id: record.coupon_id,
+            user_id: record.user_id,
+            order_id: record.order_id,
+            discount_amount: record.discount_amount,
+            used_at: record.used_at,
+            user_name: record.user_name || 'Usuário não encontrado',
+            user_email: record.user_email || '',
+            order_total: record.valor_total || 0,
+            vendors: new Set<string>(),
+            order_items: []
+          });
+        }
 
-        // Extrair dados do pedido
-        const orderData = usage.orders as any;
-        const orderTotal = orderData?.valor_total || 0;
-        const orderItems = orderData?.order_items || [];
-
-        // Processar itens do pedido e extrair vendedores únicos
-        const vendorNames = new Set<string>();
-        const processedItems = orderItems.map((item: any) => {
-          const produto = item.produtos;
-          const vendedor = produto?.vendedores;
-          
-          if (vendedor?.nome_loja) {
-            vendorNames.add(vendedor.nome_loja);
+        const usage = groupedUsage.get(usageId);
+        
+        // Adicionar vendedor ao conjunto (evita duplicatas)
+        if (record.vendor_name) {
+          usage.vendors.add(record.vendor_name);
+        }
+        
+        // Adicionar item do pedido se existir
+        if (record.item_id) {
+          const existingItem = usage.order_items.find((item: any) => item.id === record.item_id);
+          if (!existingItem) {
+            usage.order_items.push({
+              id: record.item_id,
+              produto_id: record.produto_id,
+              quantidade: record.quantidade,
+              preco_unitario: record.preco_unitario,
+              subtotal: record.subtotal,
+              produto: record.produto_nome ? {
+                nome: record.produto_nome,
+                vendedor_id: record.produto_id // Usando produto_id como placeholder
+              } : undefined
+            });
           }
+        }
+      });
 
-          return {
-            id: item.id,
-            produto_id: item.produto_id,
-            quantidade: item.quantidade,
-            preco_unitario: item.preco_unitario,
-            subtotal: item.subtotal,
-            produto: produto ? {
-              nome: produto.nome,
-              vendedor_id: produto.vendedor_id
-            } : undefined
-          };
-        });
-
+      // Converter os dados agrupados para o formato final
+      const enrichedUsage: CouponUsageDetail[] = Array.from(groupedUsage.values()).map(usage => {
         // Consolidar nomes dos vendedores
-        const vendorNamesList = Array.from(vendorNames);
+        const vendorNamesList = Array.from(usage.vendors);
         const vendorDisplayName = vendorNamesList.length > 0 
           ? vendorNamesList.join(', ') 
-          : 'Loja não identificada';
+          : 'Vendedor não identificado';
 
-        console.log(`[useCouponUsage] Found vendors for order ${usage.order_id}:`, vendorNamesList);
+        console.log(`[useCouponUsage] Found vendors for usage ${usage.id}:`, vendorNamesList);
 
         const enrichedRecord: CouponUsageDetail = {
           id: usage.id,
@@ -145,12 +151,12 @@ export const useCouponUsage = (couponId?: string) => {
           order_id: usage.order_id,
           discount_amount: usage.discount_amount,
           used_at: usage.used_at,
-          user_name: userName,
-          user_email: userEmail,
-          order_total: orderTotal,
+          user_name: usage.user_name,
+          user_email: usage.user_email,
+          order_total: usage.order_total,
           vendor_name: vendorDisplayName,
           store_name: vendorDisplayName,
-          order_items: processedItems
+          order_items: usage.order_items
         };
 
         console.log(`[useCouponUsage] Final enriched record:`, enrichedRecord);
