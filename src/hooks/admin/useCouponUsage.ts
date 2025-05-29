@@ -12,6 +12,9 @@ export interface CouponUsageDetail {
   used_at: string;
   user_name?: string;
   user_email?: string;
+  order_total?: number;
+  vendor_name?: string;
+  store_name?: string;
   order_items?: {
     id: string;
     produto_id: string;
@@ -37,7 +40,7 @@ export const useCouponUsage = (couponId?: string) => {
     try {
       console.log('[useCouponUsage] Fetching usage for coupon:', id);
       
-      // Primeiro, buscar todos os usos do cupom
+      // Buscar todos os usos do cupom
       const { data: usage, error } = await supabase
         .from('coupon_usage')
         .select('*')
@@ -55,7 +58,7 @@ export const useCouponUsage = (couponId?: string) => {
         return;
       }
 
-      // Para cada uso, buscar informações do usuário e itens do pedido
+      // Para cada uso, buscar informações completas
       const enrichedUsage = await Promise.all(usage.map(async (use) => {
         // Buscar informações do usuário
         const { data: userProfile, error: userError } = await supabase
@@ -69,8 +72,21 @@ export const useCouponUsage = (couponId?: string) => {
         }
 
         let orderItems = [];
+        let orderTotal = 0;
+        let vendorNames: string[] = [];
         
         if (use.order_id) {
+          // Buscar informações do pedido
+          const { data: orderData, error: orderError } = await supabase
+            .from('orders')
+            .select('valor_total')
+            .eq('id', use.order_id)
+            .single();
+
+          if (!orderError && orderData) {
+            orderTotal = orderData.valor_total;
+          }
+
           // Buscar itens do pedido com informações do produto e vendedor
           const { data: items, error: itemsError } = await supabase
             .from('order_items')
@@ -94,6 +110,15 @@ export const useCouponUsage = (couponId?: string) => {
             console.error('[useCouponUsage] Error fetching order items:', itemsError);
           } else {
             orderItems = items || [];
+            
+            // Extrair nomes únicos dos vendedores
+            const uniqueVendors = new Set<string>();
+            items?.forEach(item => {
+              if (item.produtos?.vendedores?.nome_loja) {
+                uniqueVendors.add(item.produtos.vendedores.nome_loja);
+              }
+            });
+            vendorNames = Array.from(uniqueVendors);
           }
         }
 
@@ -101,6 +126,9 @@ export const useCouponUsage = (couponId?: string) => {
           ...use,
           user_name: userProfile?.nome || 'Usuário não encontrado',
           user_email: userProfile?.email || '',
+          order_total: orderTotal,
+          vendor_name: vendorNames.length > 0 ? vendorNames.join(', ') : 'Vendedor não encontrado',
+          store_name: vendorNames.length > 0 ? vendorNames.join(', ') : 'Loja não encontrada',
           order_items: orderItems
         };
       }));
