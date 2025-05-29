@@ -78,18 +78,21 @@ export const useCouponUsage = (couponId?: string) => {
         return;
       }
 
-      if (!usageRecordsRaw || usageRecordsRaw.length === 0) {
+      // Type cast the result to array and check if it exists
+      const usageRecords = Array.isArray(usageRecordsRaw) ? usageRecordsRaw : [];
+
+      if (usageRecords.length === 0) {
         console.log('[useCouponUsage] No usage found for coupon:', id);
         setUsageData([]);
         return;
       }
 
-      console.log('[useCouponUsage] Raw usage records:', usageRecordsRaw);
+      console.log('[useCouponUsage] Raw usage records:', usageRecords);
 
       // Agrupar os resultados por order_id e consolidar vendedores
       const groupedUsage = new Map<string, any>();
 
-      usageRecordsRaw.forEach((record: any) => {
+      usageRecords.forEach((record: any) => {
         const usageId = record.id;
         
         if (!groupedUsage.has(usageId)) {
