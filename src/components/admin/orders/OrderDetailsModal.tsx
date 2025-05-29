@@ -11,7 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AdminOrder, getOrderStatusBadgeColor } from '@/services/adminOrdersService';
-import { Package, MapPin, CreditCard, Calendar, Store, Award } from 'lucide-react';
+import { Package, MapPin, CreditCard, Calendar, Store, Award, AlertTriangle } from 'lucide-react';
 
 interface OrderDetailsModalProps {
   order: AdminOrder | null;
@@ -64,6 +64,10 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, open, onCl
     return JSON.stringify(endereco);
   };
 
+  // Calculate totals for verification
+  const itemsTotal = order.items ? order.items.reduce((sum, item) => sum + item.subtotal, 0) : 0;
+  const hasTotalMismatch = Math.abs(order.valor_total - itemsTotal) > 0.01;
+
   return (
     <Dialog open={open} onOpenChange={() => onClose()}>
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-hidden flex flex-col">
@@ -88,7 +92,7 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, open, onCl
                   <span>{order.forma_pagamento}</span>
                 </div>
                 
-                {/* Points earned - NEW */}
+                {/* Points earned */}
                 <div className="flex items-center gap-2 text-muted-foreground text-sm mt-1">
                   <Award size={16} />
                   <span>{order.pontos_ganhos || 0} pontos ganhos</span>
@@ -112,7 +116,7 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, open, onCl
                 )}
               </div>
               
-              {/* Vendor Information - FIXED */}
+              {/* Vendor Information */}
               <div>
                 <h3 className="font-medium text-sm mb-2 flex items-center gap-2">
                   <Store size={16} />
@@ -163,7 +167,10 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, open, onCl
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">Nenhum item encontrado</p>
+                <div className="flex items-center gap-2 text-amber-600 bg-amber-50 p-3 rounded-md">
+                  <AlertTriangle size={16} />
+                  <p className="text-sm">Nenhum item encontrado - pode indicar problema nos dados</p>
+                </div>
               )}
             </div>
             
@@ -173,9 +180,18 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, open, onCl
               
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span>Subtotal:</span>
-                  <span>{formatCurrency(order.valor_total)}</span>
+                  <span>Subtotal (itens):</span>
+                  <span>{formatCurrency(itemsTotal)}</span>
                 </div>
+                {hasTotalMismatch && (
+                  <div className="flex justify-between text-sm text-amber-600">
+                    <span className="flex items-center gap-1">
+                      <AlertTriangle size={12} />
+                      Total do sistema:
+                    </span>
+                    <span>{formatCurrency(order.valor_total)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm">
                   <span>Frete:</span>
                   <span>Grátis</span>
@@ -185,6 +201,11 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, open, onCl
                   <span>Total:</span>
                   <span>{formatCurrency(order.valor_total)}</span>
                 </div>
+                {hasTotalMismatch && (
+                  <p className="text-xs text-amber-600 mt-1">
+                    ⚠️ Diferença detectada entre o total do pedido e soma dos itens
+                  </p>
+                )}
               </div>
             </div>
             

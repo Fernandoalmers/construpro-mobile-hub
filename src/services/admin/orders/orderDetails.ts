@@ -4,91 +4,150 @@ import { AdminOrder, AdminOrderItem } from './types';
 
 export const getOrderDetails = async (orderId: string): Promise<AdminOrder | null> => {
   try {
-    console.log(`[OrderDetails] Fetching complete order details for ${orderId.substring(0, 8)} using JOIN query...`);
+    console.log(`[OrderDetails] Fetching order details for ${orderId.substring(0, 8)}...`);
     
-    // Query única com JOINs para buscar todos os dados necessários
+    // Step 1: Get the main order data
     const { data: orderData, error: orderError } = await supabase
       .from('orders')
-      .select(`
-        *,
-        cliente_nome:profiles!orders_cliente_id_fkey(nome),
-        order_items (
-          id,
-          produto_id,
-          quantidade,
-          preco_unitario,
-          subtotal,
-          produto:produtos!order_items_produto_id_fkey (
-            id,
-            nome,
-            vendedor:vendedores!produtos_vendedor_id_fkey (
-              id,
-              nome_loja
-            )
-          )
-        )
-      `)
+      .select('*')
       .eq('id', orderId)
       .single();
 
-    if (orderError) {
+    if (orderError || !orderData) {
       console.error(`[OrderDetails] Error fetching order:`, orderError);
       return null;
     }
 
-    if (!orderData) {
-      console.warn(`[OrderDetails] Order ${orderId} not found`);
-      return null;
+    console.log(`[OrderDetails] Order found:`, {
+      id: orderData.id.substring(0, 8),
+      status: orderData.status,
+      valor_total: orderData.valor_total,
+      cliente_id: orderData.cliente_id.substring(0, 8)
+    });
+
+    // Step 2: Get customer information
+    const { data: customerData, error: customerError } = await supabase
+      .from('profiles')
+      .select('nome')
+      .eq('id', orderData.cliente_id)
+      .single();
+
+    if (customerError) {
+      console.warn(`[OrderDetails] Customer not found:`, customerError);
     }
 
-    console.log(`[OrderDetails] Raw order data:`, JSON.stringify(orderData, null, 2));
+    // Step 3: Get order items
+    const { data: orderItems, error: itemsError } = await supabase
+      .from('order_items')
+      .select('*')
+      .eq('order_id', orderId);
 
-    // Processar os itens do pedido
+    if (itemsError) {
+      console.error(`[OrderDetails] Error fetching order items:`, itemsError);
+      return {
+        ...orderData,
+        cliente_nome: customerData?.nome || 'Cliente Desconhecido',
+        loja_nome: 'Loja não identificada',
+        items: []
+      };
+    }
+
+    console.log(`[OrderDetails] Found ${orderItems?.length || 0} order items`);
+
+    // Step 4: Get product details for each item
     const items: AdminOrderItem[] = [];
     let loja_nome = 'Loja não identificada';
     let loja_id: string | undefined;
 
-    if (orderData.order_items && Array.isArray(orderData.order_items)) {
-      console.log(`[OrderDetails] Processing ${orderData.order_items.length} order items`);
+    if (orderItems && orderItems.length > 0) {
+      // Get all product IDs
+      const productIds = orderItems.map(item => item.produto_id);
       
-      orderData.order_items.forEach((item: any) => {
-        console.log(`[OrderDetails] Processing item:`, JSON.stringify(item, null, 2));
+      // Fetch all products in one query
+      const { data: productsData, error: productsError } = await supabase
+        .from('produtos')
+        .select('id, nome, vendedor_id')
+        .in('id', productIds);
+
+      if (productsError) {
+        console.error(`[OrderDetails] Error fetching products:`, productsError);
+      }
+
+      // Create a map for quick product lookup
+      const productsMap = new Map(
+        (productsData || []).map(product => [product.id, product])
+      );
+
+      // Get unique vendor IDs
+      const vendorIds = [...new Set(
+        (productsData || []).map(product => product.vendedor_id).filter(Boolean)
+      )];
+
+      // Fetch vendor information
+      let vendorsMap = new Map();
+      if (vendorIds.length > 0) {
+        const { data: vendorsData, error: vendorsError } = await supabase
+          .from('vendedores')
+          .select('id, nome_loja')
+          .in('id', vendorIds);
+
+        if (vendorsError) {
+          console.error(`[OrderDetails] Error fetching vendors:`, vendorsError);
+        } else {
+          vendorsMap = new Map(
+            (vendorsData || []).map(vendor => [vendor.id, vendor])
+          );
+        }
+      }
+
+      // Process each order item
+      for (const item of orderItems) {
+        const product = productsMap.get(item.produto_id);
+        const vendor = product?.vendedor_id ? vendorsMap.get(product.vendedor_id) : null;
         
-        const produto = item.produto;
-        const vendedor = produto?.vendedor;
-        
-        // Usar o primeiro vendedor encontrado como referência principal
-        if (vendedor && !loja_id) {
-          loja_id = vendedor.id;
-          loja_nome = vendedor.nome_loja || 'Loja não identificada';
+        // Use the first vendor found as the main vendor for the order
+        if (vendor && !loja_id) {
+          loja_id = vendor.id;
+          loja_nome = vendor.nome_loja || 'Loja não identificada';
           console.log(`[OrderDetails] Setting main vendor: ${loja_nome} (${loja_id})`);
         }
 
         items.push({
           id: item.id,
           produto_id: item.produto_id,
-          produto_nome: produto?.nome || 'Produto não encontrado',
+          produto_nome: product?.nome || 'Produto não encontrado',
           quantidade: item.quantidade,
           preco_unitario: item.preco_unitario,
           subtotal: item.subtotal
         });
-      });
 
-      console.log(`[OrderDetails] Successfully processed ${items.length} items for vendor: ${loja_nome}`);
-    } else {
-      console.warn(`[OrderDetails] No order_items found or invalid format for order ${orderId}`);
+        console.log(`[OrderDetails] Processed item:`, {
+          produto_nome: product?.nome || 'Produto não encontrado',
+          quantidade: item.quantidade,
+          preco_unitario: item.preco_unitario,
+          subtotal: item.subtotal
+        });
+      }
     }
 
-    // Construir o objeto de retorno
+    // Step 5: Verify total calculation
+    const calculatedTotal = items.reduce((sum, item) => sum + item.subtotal, 0);
+    console.log(`[OrderDetails] Total verification:`, {
+      orderTotal: orderData.valor_total,
+      calculatedTotal,
+      difference: orderData.valor_total - calculatedTotal
+    });
+
+    // Build the final result
     const result: AdminOrder = {
       ...orderData,
-      cliente_nome: orderData.cliente_nome?.nome || 'Cliente Desconhecido',
+      cliente_nome: customerData?.nome || 'Cliente Desconhecido',
       loja_id,
       loja_nome,
       items
     };
 
-    console.log(`[OrderDetails] Final result for order ${orderId.substring(0, 8)}:`, {
+    console.log(`[OrderDetails] Final result:`, {
       orderId: result.id.substring(0, 8),
       clienteNome: result.cliente_nome,
       lojaNome: result.loja_nome,
