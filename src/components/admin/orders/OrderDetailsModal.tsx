@@ -112,13 +112,15 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, open, onCl
                 )}
               </div>
               
-              {/* Vendor Information - NEW */}
+              {/* Vendor Information - FIXED */}
               <div>
                 <h3 className="font-medium text-sm mb-2 flex items-center gap-2">
                   <Store size={16} />
                   Vendedor
                 </h3>
-                <p className="text-sm">{order.loja_nome || 'Venda direta'}</p>
+                <p className="text-sm">
+                  {order.loja_nome || 'Loja não identificada'}
+                </p>
                 {order.loja_id && (
                   <p className="text-xs text-muted-foreground mt-1">ID: {order.loja_id}</p>
                 )}
