@@ -68,21 +68,12 @@ export const useCoupon = () => {
 
       console.log('[useCoupon] Final cart items for validation:', cartItemsData);
 
-      // Debug: Verificar se a função validate_coupon existe
+      // Chamar a função validate_coupon
       const { data: functionExists, error: functionError } = await supabase.rpc('validate_coupon', {
         coupon_code: code.toUpperCase().trim(),
         user_id_param: userId,
         order_value: Number(orderValue) || 0,
         cart_items: cartItemsData.length > 0 ? cartItemsData : null
-      }).catch(err => {
-        console.error('[useCoupon] RPC call failed:', err);
-        
-        if (err.message?.includes('function "validate_coupon" does not exist')) {
-          console.error('[useCoupon] validate_coupon function does not exist in database');
-          return { data: null, error: { message: 'Função de validação de cupom não encontrada no banco de dados. Contate o suporte.' } };
-        }
-        
-        return { data: null, error: err };
       });
 
       if (functionError) {
