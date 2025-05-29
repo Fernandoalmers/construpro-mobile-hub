@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { logAdminAction } from './adminService';
@@ -52,46 +51,89 @@ export const fetchAdminCoupons = async (): Promise<AdminCoupon[]> => {
   try {
     console.log('[AdminCoupons] Fetching coupons...');
     
-    // Buscar cupons com contagem real de usos através de JOIN
-    const { data: coupons, error } = await supabase
+    // Primeira consulta: buscar todos os cupons
+    const { data: coupons, error: couponsError } = await supabase
       .from('coupons')
-      .select(`
-        *,
-        coupon_usage(count),
-        specific_products:coupon_products(
-          id,
-          coupon_id,
-          product_id,
-          created_at,
-          produto:produtos(
-            id,
-            nome,
-            preco_normal,
-            imagens
-          )
-        )
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
       
-    if (error) {
-      console.error('[AdminCoupons] Error fetching coupons:', error);
+    if (couponsError) {
+      console.error('[AdminCoupons] Error fetching coupons:', couponsError);
       toast.error('Erro ao carregar cupons');
-      throw error;
+      throw couponsError;
     }
     
-    console.log(`[AdminCoupons] Found ${coupons?.length || 0} coupons`);
+    if (!coupons || coupons.length === 0) {
+      console.log('[AdminCoupons] No coupons found');
+      return [];
+    }
     
-    // Processar cupons com contagem real de usos
-    const processedCoupons = (coupons || []).map(coupon => {
-      // Calcular contagem real baseada nos registros de uso
-      const realUsedCount = coupon.coupon_usage?.length || 0;
+    console.log(`[AdminCoupons] Found ${coupons.length} coupons`);
+    
+    // Segunda consulta: contar usos reais por cupom
+    const { data: usageCounts, error: usageError } = await supabase
+      .from('coupon_usage')
+      .select('coupon_id')
+      .in('coupon_id', coupons.map(c => c.id));
+    
+    if (usageError) {
+      console.error('[AdminCoupons] Error fetching usage counts:', usageError);
+      // Não falhar completamente, apenas usar contagem 0
+    }
+    
+    // Contar usos por cupom
+    const usageCountMap = new Map<string, number>();
+    if (usageCounts) {
+      usageCounts.forEach(usage => {
+        const currentCount = usageCountMap.get(usage.coupon_id) || 0;
+        usageCountMap.set(usage.coupon_id, currentCount + 1);
+      });
+    }
+    
+    // Terceira consulta: buscar produtos específicos para todos os cupons
+    const { data: couponProducts, error: productsError } = await supabase
+      .from('coupon_products')
+      .select(`
+        id,
+        coupon_id,
+        product_id,
+        created_at,
+        produto:produtos(
+          id,
+          nome,
+          preco_normal,
+          imagens
+        )
+      `)
+      .in('coupon_id', coupons.map(c => c.id));
+    
+    if (productsError) {
+      console.error('[AdminCoupons] Error fetching coupon products:', productsError);
+      // Não falhar completamente, apenas não incluir produtos específicos
+    }
+    
+    // Agrupar produtos por cupom
+    const productsMap = new Map<string, CouponProduct[]>();
+    if (couponProducts) {
+      couponProducts.forEach(cp => {
+        const existing = productsMap.get(cp.coupon_id) || [];
+        existing.push(cp as CouponProduct);
+        productsMap.set(cp.coupon_id, existing);
+      });
+    }
+    
+    // Processar cupons com contagens reais
+    const processedCoupons = coupons.map(coupon => {
+      const realUsedCount = usageCountMap.get(coupon.id) || 0;
+      const specificProducts = productsMap.get(coupon.id) || [];
       
       console.log(`[AdminCoupons] Coupon ${coupon.code}: DB used_count=${coupon.used_count}, Real count=${realUsedCount}`);
       
       return {
         ...coupon,
         discount_type: coupon.discount_type as 'percentage' | 'fixed',
-        used_count: realUsedCount // Usar contagem real em vez do campo desatualizado
+        used_count: realUsedCount, // Usar contagem real em vez do campo desatualizado
+        specific_products: specificProducts
       };
     }) as AdminCoupon[];
     
