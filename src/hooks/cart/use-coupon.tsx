@@ -29,15 +29,38 @@ export const useCoupon = () => {
         const quantidade = item.quantidade || item.quantity;
         const preco = item.produto?.preco_normal || item.price_at_add || item.preco_unitario;
         
-        // Type guard to ensure we have valid values before conversion
-        const safeProdutoId = (typeof produtoId === 'string' || typeof produtoId === 'number') ? produtoId : '';
-        const safeQuantidade = (typeof quantidade === 'number') ? quantidade : (typeof quantidade === 'string' ? parseFloat(quantidade) : 0);
-        const safePreco = (typeof preco === 'number') ? preco : (typeof preco === 'string' ? parseFloat(preco) : 0);
+        // Convert values directly to the correct types with proper type checking
+        let safeProdutoId: string;
+        if (typeof produtoId === 'string') {
+          safeProdutoId = produtoId;
+        } else if (typeof produtoId === 'number') {
+          safeProdutoId = produtoId.toString();
+        } else {
+          safeProdutoId = '';
+        }
+        
+        let safeQuantidade: number;
+        if (typeof quantidade === 'number') {
+          safeQuantidade = quantidade;
+        } else if (typeof quantidade === 'string') {
+          safeQuantidade = parseFloat(quantidade) || 0;
+        } else {
+          safeQuantidade = 0;
+        }
+        
+        let safePreco: number;
+        if (typeof preco === 'number') {
+          safePreco = preco;
+        } else if (typeof preco === 'string') {
+          safePreco = parseFloat(preco) || 0;
+        } else {
+          safePreco = 0;
+        }
         
         return {
-          produto_id: String(safeProdutoId || ''),
-          quantidade: Number(safeQuantidade || 0),
-          preco: Number(safePreco || 0)
+          produto_id: safeProdutoId,
+          quantidade: safeQuantidade,
+          preco: safePreco
         };
       }) || [];
 
