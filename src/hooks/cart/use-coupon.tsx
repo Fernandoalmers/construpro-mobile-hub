@@ -40,7 +40,7 @@ export const useCoupon = () => {
         coupon_code: code.toUpperCase(),
         user_id_param: userId,
         order_value: orderValue,
-        cart_items: cartItemsData.length > 0 ? JSON.stringify(cartItemsData) : null
+        cart_items: cartItemsData.length > 0 ? cartItemsData : null
       });
 
       if (error) {
