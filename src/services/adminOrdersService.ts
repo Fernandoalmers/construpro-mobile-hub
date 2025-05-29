@@ -244,15 +244,38 @@ export const getOrderDetails = async (orderId: string): Promise<AdminOrder | nul
         
       if (itemsError) throw itemsError;
 
-      // Buscar nomes dos produtos
+      // Buscar nomes dos produtos e informações do vendedor
       const produtoIds = items.map(item => item.produto_id);
       
-      const { data: produtos, error: produtosError } = await supabase
-        .from('produtos')
-        .select('id, nome')
-        .in('id', produtoIds);
+      let produtos = [];
+      let vendedorInfo = null;
+      
+      if (produtoIds.length > 0) {
+        const { data: produtosData, error: produtosError } = await supabase
+          .from('produtos')
+          .select('id, nome, vendedor_id')
+          .in('id', produtoIds);
+          
+        if (produtosError) throw produtosError;
+        produtos = produtosData || [];
+
+        // Buscar informações do vendedor (assumindo que todos os produtos são do mesmo vendedor)
+        const vendedorId = produtos.length > 0 ? produtos[0].vendedor_id : null;
         
-      if (produtosError) throw produtosError;
+        if (vendedorId) {
+          const { data: vendedor, error: vendedorError } = await supabase
+            .from('vendedores')
+            .select('id, nome_loja')
+            .eq('id', vendedorId)
+            .single();
+            
+          if (vendedorError) {
+            console.error('Error fetching vendor info:', vendedorError);
+          } else {
+            vendedorInfo = vendedor;
+          }
+        }
+      }
 
       // Criar mapa para associar IDs de produtos aos nomes
       const produtoMap = new Map();
@@ -264,10 +287,12 @@ export const getOrderDetails = async (orderId: string): Promise<AdminOrder | nul
         produto_nome: produtoMap.get(item.produto_id) || 'Produto Desconhecido'
       }));
 
-      // Retornar pedido completo com itens
+      // Retornar pedido completo com itens e informações do vendedor
       return {
         ...order,
         cliente_nome: cliente?.nome || 'Cliente Desconhecido',
+        loja_id: vendedorInfo?.id,
+        loja_nome: vendedorInfo?.nome_loja || undefined,
         items: itemsWithProductNames
       };
     } catch (error) {
