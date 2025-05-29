@@ -31,6 +31,26 @@ const CouponDetailsModal: React.FC<CouponDetailsModalProps> = ({
     return formatCurrency(value);
   };
 
+  // Log para validação dos dados
+  React.useEffect(() => {
+    if (usageData.length > 0) {
+      console.log('[CouponDetailsModal] Dados de uso do cupom para validação:', {
+        cupomCodigo: coupon.code,
+        totalUsos: usageData.length,
+        usosDetalhados: usageData.map(usage => ({
+          id: usage.id,
+          usuario: usage.user_name,
+          email: usage.user_email,
+          vendedor: usage.vendor_name || usage.store_name,
+          valorPedido: usage.order_total,
+          desconto: usage.discount_amount,
+          dataUso: usage.used_at,
+          possuiItens: usage.order_items?.length > 0
+        }))
+      });
+    }
+  }, [usageData, coupon.code]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
@@ -87,105 +107,116 @@ const CouponDetailsModal: React.FC<CouponDetailsModalProps> = ({
               </div>
             ) : (
               <div className="space-y-4">
-                {usageData.map((usage) => (
-                  <div key={usage.id} className="border rounded-lg p-4 bg-gray-50">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                      {/* Informações do usuário */}
-                      <div className="space-y-2">
-                        <h4 className="font-medium text-sm text-gray-700 flex items-center gap-1">
-                          <DollarSign className="h-3 w-3" />
-                          Cliente
-                        </h4>
-                        <div className="text-sm">
-                          <div className="font-medium">{usage.user_name}</div>
-                          <div className="text-gray-600">{usage.user_email}</div>
-                          <div className="text-gray-500">
-                            Usado em: {formatDate(usage.used_at)}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Informações da loja/vendedor */}
-                      <div className="space-y-2">
-                        <h4 className="font-medium text-sm text-gray-700 flex items-center gap-1">
-                          <Store className="h-3 w-3" />
-                          Loja/Vendedor
-                        </h4>
-                        <div className="text-sm">
-                          <div className="font-medium text-blue-600">
-                            {usage.store_name || usage.vendor_name || 'Loja não identificada'}
-                          </div>
-                          {usage.order_id && (
+                {usageData.map((usage) => {
+                  // Determinar o nome do vendedor/loja com fallbacks mais robustos
+                  const vendorDisplayName = usage.vendor_name || usage.store_name || 'Vendedor não identificado';
+                  const hasValidVendor = usage.vendor_name || usage.store_name;
+                  
+                  return (
+                    <div key={usage.id} className="border rounded-lg p-4 bg-gray-50">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        {/* Informações do usuário */}
+                        <div className="space-y-2">
+                          <h4 className="font-medium text-sm text-gray-700 flex items-center gap-1">
+                            <DollarSign className="h-3 w-3" />
+                            Cliente
+                          </h4>
+                          <div className="text-sm">
+                            <div className="font-medium">{usage.user_name}</div>
+                            <div className="text-gray-600">{usage.user_email}</div>
                             <div className="text-gray-500">
-                              Pedido: {usage.order_id.substring(0, 8)}...
+                              Usado em: {formatDate(usage.used_at)}
                             </div>
-                          )}
+                          </div>
                         </div>
-                      </div>
 
-                      {/* Informações financeiras */}
-                      <div className="space-y-2">
-                        <h4 className="font-medium text-sm text-gray-700 flex items-center gap-1">
-                          <Tag className="h-3 w-3" />
-                          Financeiro
-                        </h4>
-                        <div className="text-sm space-y-1">
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Valor da compra:</span>
-                            <span className="font-medium">
-                              {usage.order_total ? formatCurrency(usage.order_total) : 'N/A'}
-                            </span>
+                        {/* Informações da loja/vendedor */}
+                        <div className="space-y-2">
+                          <h4 className="font-medium text-sm text-gray-700 flex items-center gap-1">
+                            <Store className="h-3 w-3" />
+                            Loja/Vendedor
+                          </h4>
+                          <div className="text-sm">
+                            <div className={`font-medium ${hasValidVendor ? 'text-blue-600' : 'text-red-500'}`}>
+                              {vendorDisplayName}
+                            </div>
+                            {usage.order_id && (
+                              <div className="text-gray-500">
+                                Pedido: #{usage.order_id.substring(0, 8)}...
+                              </div>
+                            )}
+                            {!hasValidVendor && (
+                              <div className="text-xs text-red-400 mt-1">
+                                ⚠️ Dados do vendedor não encontrados
+                              </div>
+                            )}
                           </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Desconto aplicado:</span>
-                            <span className="font-medium text-green-600">
-                              {formatCurrency(usage.discount_amount)}
-                            </span>
-                          </div>
-                          {usage.order_total && (
+                        </div>
+
+                        {/* Informações financeiras */}
+                        <div className="space-y-2">
+                          <h4 className="font-medium text-sm text-gray-700 flex items-center gap-1">
+                            <Tag className="h-3 w-3" />
+                            Financeiro
+                          </h4>
+                          <div className="text-sm space-y-1">
                             <div className="flex justify-between">
-                              <span className="text-gray-600">% de desconto:</span>
-                              <span className="font-medium text-blue-600">
-                                {((usage.discount_amount / usage.order_total) * 100).toFixed(1)}%
+                              <span className="text-gray-600">Valor da compra:</span>
+                              <span className="font-medium">
+                                {usage.order_total ? formatCurrency(usage.order_total) : 'N/A'}
                               </span>
                             </div>
-                          )}
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Desconto aplicado:</span>
+                              <span className="font-medium text-green-600">
+                                {formatCurrency(usage.discount_amount)}
+                              </span>
+                            </div>
+                            {usage.order_total && (
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">% de desconto:</span>
+                                <span className="font-medium text-blue-600">
+                                  {((usage.discount_amount / usage.order_total) * 100).toFixed(1)}%
+                                </span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Lista de produtos (se disponível) */}
-                    {usage.order_items && usage.order_items.length > 0 && (
-                      <div className="border-t pt-3">
-                        <h5 className="text-sm font-medium mb-2 flex items-center gap-1">
-                          <ShoppingBag className="h-3 w-3" />
-                          Produtos da compra ({usage.order_items.length})
-                        </h5>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                          {usage.order_items.map((item) => (
-                            <div key={item.id} className="text-xs bg-white p-2 rounded border">
-                              <div className="flex justify-between items-start">
-                                <div className="flex-1 min-w-0">
-                                  <div className="font-medium truncate">
-                                    {item.produto?.nome || 'Produto não encontrado'}
+                      {/* Lista de produtos (se disponível) */}
+                      {usage.order_items && usage.order_items.length > 0 && (
+                        <div className="border-t pt-3">
+                          <h5 className="text-sm font-medium mb-2 flex items-center gap-1">
+                            <ShoppingBag className="h-3 w-3" />
+                            Produtos da compra ({usage.order_items.length})
+                          </h5>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {usage.order_items.map((item) => (
+                              <div key={item.id} className="text-xs bg-white p-2 rounded border">
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-medium truncate">
+                                      {item.produto?.nome || 'Produto não encontrado'}
+                                    </div>
+                                    <div className="text-gray-500">
+                                      Qtd: {item.quantidade} x {formatCurrency(item.preco_unitario)}
+                                    </div>
                                   </div>
-                                  <div className="text-gray-500">
-                                    Qtd: {item.quantidade} x {formatCurrency(item.preco_unitario)}
-                                  </div>
-                                </div>
-                                <div className="text-right">
-                                  <div className="font-medium">
-                                    {formatCurrency(item.subtotal)}
+                                  <div className="text-right">
+                                    <div className="font-medium">
+                                      {formatCurrency(item.subtotal)}
+                                    </div>
                                   </div>
                                 </div>
                               </div>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
