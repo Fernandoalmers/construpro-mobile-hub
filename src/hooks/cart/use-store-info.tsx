@@ -46,24 +46,58 @@ export const useStoreInfo = (storeIds: string[]) => {
     console.log("Fetching store info for:", validStoreIds);
     
     try {
-      // Create initial store map with consistent defaults
+      // Create initial store map with improved defaults
       const initialStoreMap = validStoreIds.reduce((acc, id) => {
-        if (!id) return acc; // Skip null/undefined ids
+        if (!id) return acc;
         
-        // Use default store name format for new stores
         acc[id] = {
           id: id,
-          nome: `Loja ${id.substring(0, 4)}`, // Shorter initial name
+          nome: `Loja ${id.substring(0, 4)}`,
           logo_url: null
         };
         return acc;
       }, {} as Record<string, any>);
       
-      // Using functional update to avoid stateInfo dependency
+      // Set initial state
       setStoreInfo(initialStoreMap); 
       
       try {
-        // Try to get data from vendedores table first (preferred)
+        // First try to get from 'lojas' table (primary source)
+        const { data: lojasData, error: lojasError } = await supabase
+          .from('lojas')
+          .select('id, nome, logo_url')
+          .in('id', validStoreIds);
+              
+        if (lojasError) {
+          console.error("Error fetching from lojas:", lojasError);
+        }
+        
+        // Update with data from 'lojas' table if available
+        if (lojasData && lojasData.length > 0) {
+          setStoreInfo(prevState => {
+            const updatedMap = {...prevState};
+            
+            lojasData.forEach(loja => {
+              if (loja.id) {
+                updatedMap[loja.id] = {
+                  id: loja.id,
+                  nome: loja.nome || updatedMap[loja.id]?.nome || `Loja ${loja.id.substring(0, 4)}`,
+                  logo_url: loja.logo_url || null
+                };
+              }
+            });
+            
+            return updatedMap;
+          });
+          
+          console.log("Store info updated with lojas data");
+        }
+      } catch (err) {
+        console.log("Failed to fetch lojas data, trying vendedores:", err);
+      }
+      
+      try {
+        // Try to get data from vendedores table as fallback
         const { data: vendedoresData, error: vendedoresError } = await supabase
           .from('vendedores')
           .select('id, nome_loja, logo')
@@ -71,22 +105,23 @@ export const useStoreInfo = (storeIds: string[]) => {
               
         if (vendedoresError) {
           console.error("Error fetching vendedores:", vendedoresError);
-          // Don't throw - continue with initialStoreMap and try stores table
         }
         
-        // If we got data from vendedores, use that to update our base map
+        // Update with vendedores data for any missing stores
         if (vendedoresData && vendedoresData.length > 0) {
-          // Using functional update to safely access previous state
           setStoreInfo(prevState => {
             const updatedMap = {...prevState};
             
-            vendedoresData.forEach(store => {
-              if (store.id) {
-                updatedMap[store.id] = {
-                  id: store.id,
-                  nome: store.nome_loja || updatedMap[store.id]?.nome || `Loja ${store.id.substring(0, 4)}`,
-                  logo_url: store.logo || null
-                };
+            vendedoresData.forEach(vendedor => {
+              if (vendedor.id) {
+                // Only update if we don't have better data already
+                if (!updatedMap[vendedor.id]?.nome || updatedMap[vendedor.id]?.nome.startsWith('Loja ')) {
+                  updatedMap[vendedor.id] = {
+                    ...updatedMap[vendedor.id],
+                    nome: vendedor.nome_loja || updatedMap[vendedor.id]?.nome || `Loja ${vendedor.id.substring(0, 4)}`,
+                    logo_url: vendedor.logo || updatedMap[vendedor.id]?.logo_url || null
+                  };
+                }
               }
             });
             
@@ -96,12 +131,11 @@ export const useStoreInfo = (storeIds: string[]) => {
           console.log("Store info updated with vendedores data");
         }
       } catch (err) {
-        console.log("Failed to fetch vendedores data, continuing with fallback:", err);
-        // Continue with stores table fallback
+        console.log("Failed to fetch vendedores data, trying stores table:", err);
       }
       
-      // Try stores table for any remaining stores without info
       try {
+        // Finally try stores table as last fallback
         const { data: storesData, error: storesError } = await supabase
           .from('stores')
           .select('id, nome, logo_url')
@@ -109,21 +143,22 @@ export const useStoreInfo = (storeIds: string[]) => {
             
         if (storesError) {
           console.error("Error fetching stores:", storesError);
-          // Continue with current state
         }
             
         if (storesData && storesData.length > 0) {
-          // Using functional update to safely access previous state
           setStoreInfo(prevState => {
             const updatedMap = {...prevState};
             
             storesData.forEach(store => {
               if (store.id) {
-                updatedMap[store.id] = {
-                  ...updatedMap[store.id],
-                  nome: store.nome || updatedMap[store.id]?.nome || `Loja ${store.id.substring(0, 4)}`,
-                  logo_url: store.logo_url || updatedMap[store.id]?.logo_url || null
-                };
+                // Only update if we don't have better data already
+                if (!updatedMap[store.id]?.nome || updatedMap[store.id]?.nome.startsWith('Loja ')) {
+                  updatedMap[store.id] = {
+                    ...updatedMap[store.id],
+                    nome: store.nome || updatedMap[store.id]?.nome || `Loja ${store.id.substring(0, 4)}`,
+                    logo_url: store.logo_url || updatedMap[store.id]?.logo_url || null
+                  };
+                }
               }
             });
             
@@ -142,7 +177,7 @@ export const useStoreInfo = (storeIds: string[]) => {
     } finally {
       setLoading(false);
     }
-  }, [storeIds]); // Remove storeInfo dependency
+  }, [storeIds]);
     
   // Call the fetch function when store IDs change
   useEffect(() => {

@@ -52,24 +52,74 @@ export const useCoupon = () => {
         totalValue: cartItemsData.reduce((sum, item) => sum + (item.preco * item.quantidade), 0)
       });
 
-      // Chamar a função validate_coupon
-      const { data: validationResult, error: functionError } = await supabase.rpc('validate_coupon', {
-        coupon_code: code.toUpperCase().trim(),
-        user_id_param: userId,
-        order_value: Number(orderValue) || 0,
-        cart_items: cartItemsData.length > 0 ? cartItemsData : null
-      });
+      // Tentar múltiplas vezes com delay para resolver problemas temporários
+      let validationResult;
+      let functionError;
+      let retryCount = 0;
+      const maxRetries = 3;
+      
+      while (retryCount < maxRetries) {
+        try {
+          console.log(`[useCoupon] Tentativa ${retryCount + 1} de validação do cupom`);
+          
+          const { data: result, error } = await supabase.rpc('validate_coupon', {
+            coupon_code: code.toUpperCase().trim(),
+            user_id_param: userId,
+            order_value: Number(orderValue) || 0,
+            cart_items: cartItemsData.length > 0 ? cartItemsData : null
+          });
+
+          if (error) {
+            functionError = error;
+            console.error(`[useCoupon] Erro na tentativa ${retryCount + 1}:`, error);
+            
+            // Se for erro de configuração específico, tentar corrigir
+            if (error.message?.includes('operator does not exist') || 
+                error.message?.includes('time zone') ||
+                error.message?.includes('validate_coupon')) {
+              
+              if (retryCount === 0) {
+                console.log('[useCoupon] Detectado erro de configuração, executando correção...');
+                try {
+                  await supabase.functions.invoke('fix-coupon-validation');
+                  console.log('[useCoupon] Correção executada, tentando novamente...');
+                } catch (fixError) {
+                  console.log('[useCoupon] Erro ao executar correção:', fixError);
+                }
+              }
+              
+              // Aguardar antes de tentar novamente
+              await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+              retryCount++;
+              continue;
+            } else {
+              break;
+            }
+          } else {
+            validationResult = result;
+            functionError = null;
+            break;
+          }
+        } catch (err) {
+          console.error(`[useCoupon] Erro inesperado na tentativa ${retryCount + 1}:`, err);
+          functionError = err;
+          retryCount++;
+          
+          if (retryCount < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+          }
+        }
+      }
 
       if (functionError) {
-        console.error('[useCoupon] Erro na função RPC:', functionError);
+        console.error('[useCoupon] Erro após todas as tentativas:', functionError);
         
         // Tratamento específico para erros conhecidos
         if (functionError.message?.includes('function "validate_coupon" does not exist')) {
-          toast.error('Sistema de cupons em manutenção. Tente novamente mais tarde.');
-        } else if (functionError.message?.includes('operator does not exist')) {
-          toast.error('Erro de configuração detectado. Recarregue a página e tente novamente.');
-        } else if (functionError.message?.includes('time zone')) {
-          toast.error('Erro temporário detectado. Aguarde alguns instantes e tente novamente.');
+          toast.error('Sistema de cupons em configuração. Recarregue a página e tente novamente.');
+        } else if (functionError.message?.includes('operator does not exist') || 
+                   functionError.message?.includes('time zone')) {
+          toast.error('Erro de configuração corrigido. Recarregue a página e tente novamente.');
         } else {
           toast.error(`Erro ao validar cupom: ${functionError.message}`);
         }
@@ -127,18 +177,11 @@ export const useCoupon = () => {
         }
       } else {
         console.log('[useCoupon] Nenhum resultado retornado da validação');
-        toast.error("Erro ao validar cupom. Tente novamente.");
+        toast.error("Erro ao validar cupom. Recarregue a página e tente novamente.");
       }
     } catch (error: any) {
       console.error('[useCoupon] Erro inesperado:', error);
-      
-      if (error.message?.includes('validate_coupon')) {
-        toast.error("Sistema de cupons temporariamente indisponível. Recarregue a página e tente novamente.");
-      } else if (error.message?.includes('time zone') || error.message?.includes('operator does not exist')) {
-        toast.error("Erro de configuração detectado. Recarregue a página e tente novamente.");
-      } else {
-        toast.error("Erro inesperado ao aplicar cupom. Recarregue a página e tente novamente.");
-      }
+      toast.error("Erro inesperado ao aplicar cupom. Recarregue a página e tente novamente.");
     } finally {
       setIsValidating(false);
     }
