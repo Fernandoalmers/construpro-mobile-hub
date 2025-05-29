@@ -40,10 +40,42 @@ export const useCouponUsage = (couponId?: string) => {
     try {
       console.log('[useCouponUsage] Fetching usage for coupon:', id);
       
-      // Step 1: Fetch coupon usage records - simplified query first
-      const { data: usageRecords, error: usageError } = await supabase
+      // Consulta principal com JOINs para buscar todos os dados necessários
+      const { data: usageRecordsRaw, error: usageError } = await supabase
         .from('coupon_usage')
-        .select('*')
+        .select(`
+          id,
+          coupon_id,
+          user_id,
+          order_id,
+          discount_amount,
+          used_at,
+          profiles:user_id (
+            id,
+            nome,
+            email
+          ),
+          orders:order_id (
+            id,
+            valor_total,
+            order_items (
+              id,
+              produto_id,
+              quantidade,
+              preco_unitario,
+              subtotal,
+              produtos (
+                id,
+                nome,
+                vendedor_id,
+                vendedores (
+                  id,
+                  nome_loja
+                )
+              )
+            )
+          )
+        `)
         .eq('coupon_id', id)
         .order('used_at', { ascending: false });
 
@@ -53,123 +85,77 @@ export const useCouponUsage = (couponId?: string) => {
         return;
       }
 
-      if (!usageRecords || usageRecords.length === 0) {
+      if (!usageRecordsRaw || usageRecordsRaw.length === 0) {
         console.log('[useCouponUsage] No usage found for coupon:', id);
         setUsageData([]);
         return;
       }
 
-      console.log('[useCouponUsage] Raw usage records:', usageRecords);
+      console.log('[useCouponUsage] Raw usage records:', usageRecordsRaw);
 
-      // Step 2: Process each usage record individually
-      const enrichedUsage: CouponUsageDetail[] = [];
-
-      for (const usage of usageRecords) {
+      // Processar os dados para agrupar por order_id e consolidar vendedores
+      const enrichedUsage: CouponUsageDetail[] = usageRecordsRaw.map(usage => {
         console.log(`[useCouponUsage] Processing usage record:`, usage);
 
-        // Get user data
-        const { data: userData } = await supabase
-          .from('profiles')
-          .select('id, nome, email')
-          .eq('id', usage.user_id)
-          .single();
+        // Extrair dados do usuário
+        const userProfile = usage.profiles as any;
+        const userName = userProfile?.nome || 'Usuário não encontrado';
+        const userEmail = userProfile?.email || '';
 
-        // Initialize the enriched usage record
-        let enrichedRecord: CouponUsageDetail = {
+        // Extrair dados do pedido
+        const orderData = usage.orders as any;
+        const orderTotal = orderData?.valor_total || 0;
+        const orderItems = orderData?.order_items || [];
+
+        // Processar itens do pedido e extrair vendedores únicos
+        const vendorNames = new Set<string>();
+        const processedItems = orderItems.map((item: any) => {
+          const produto = item.produtos;
+          const vendedor = produto?.vendedores;
+          
+          if (vendedor?.nome_loja) {
+            vendorNames.add(vendedor.nome_loja);
+          }
+
+          return {
+            id: item.id,
+            produto_id: item.produto_id,
+            quantidade: item.quantidade,
+            preco_unitario: item.preco_unitario,
+            subtotal: item.subtotal,
+            produto: produto ? {
+              nome: produto.nome,
+              vendedor_id: produto.vendedor_id
+            } : undefined
+          };
+        });
+
+        // Consolidar nomes dos vendedores
+        const vendorNamesList = Array.from(vendorNames);
+        const vendorDisplayName = vendorNamesList.length > 0 
+          ? vendorNamesList.join(', ') 
+          : 'Loja não identificada';
+
+        console.log(`[useCouponUsage] Found vendors for order ${usage.order_id}:`, vendorNamesList);
+
+        const enrichedRecord: CouponUsageDetail = {
           id: usage.id,
           coupon_id: usage.coupon_id,
           user_id: usage.user_id,
           order_id: usage.order_id,
           discount_amount: usage.discount_amount,
           used_at: usage.used_at,
-          user_name: userData?.nome || 'Usuário não encontrado',
-          user_email: userData?.email || '',
-          order_total: 0,
-          vendor_name: 'Não identificado',
-          store_name: 'Não identificado',
-          order_items: []
+          user_name: userName,
+          user_email: userEmail,
+          order_total: orderTotal,
+          vendor_name: vendorDisplayName,
+          store_name: vendorDisplayName,
+          order_items: processedItems
         };
 
-        // If there's an order_id, try to get order and vendor info
-        if (usage.order_id) {
-          console.log(`[useCouponUsage] Fetching order data for order_id:`, usage.order_id);
-
-          // Get order data
-          const { data: orderData } = await supabase
-            .from('orders')
-            .select('id, valor_total')
-            .eq('id', usage.order_id)
-            .single();
-
-          if (orderData) {
-            enrichedRecord.order_total = orderData.valor_total || 0;
-            console.log(`[useCouponUsage] Found order total:`, orderData.valor_total);
-          }
-
-          // Get order items
-          const { data: orderItems } = await supabase
-            .from('order_items')
-            .select('*')
-            .eq('order_id', usage.order_id);
-
-          if (orderItems && orderItems.length > 0) {
-            console.log(`[useCouponUsage] Found ${orderItems.length} order items`);
-
-            // Get the first product to determine vendor
-            const { data: firstProduct } = await supabase
-              .from('produtos')
-              .select('id, nome, vendedor_id')
-              .eq('id', orderItems[0].produto_id)
-              .single();
-
-            if (firstProduct) {
-              // Get vendor info
-              const { data: vendor } = await supabase
-                .from('vendedores')
-                .select('id, nome_loja')
-                .eq('id', firstProduct.vendedor_id)
-                .single();
-
-              if (vendor) {
-                enrichedRecord.vendor_name = vendor.nome_loja;
-                enrichedRecord.store_name = vendor.nome_loja;
-                console.log(`[useCouponUsage] Found vendor:`, vendor.nome_loja);
-              }
-            }
-
-            // Process all order items
-            const processedItems = [];
-            for (const item of orderItems) {
-              const { data: product } = await supabase
-                .from('produtos')
-                .select('id, nome, vendedor_id')
-                .eq('id', item.produto_id)
-                .single();
-
-              const processedItem = {
-                id: item.id,
-                produto_id: item.produto_id,
-                quantidade: item.quantidade,
-                preco_unitario: item.preco_unitario,
-                subtotal: item.subtotal,
-                produto: product ? {
-                  nome: product.nome,
-                  vendedor_id: product.vendedor_id
-                } : undefined
-              };
-
-              processedItems.push(processedItem);
-            }
-
-            enrichedRecord.order_items = processedItems;
-          }
-        } else {
-          console.log(`[useCouponUsage] No order_id for usage:`, usage.id);
-        }
-
         console.log(`[useCouponUsage] Final enriched record:`, enrichedRecord);
-        enrichedUsage.push(enrichedRecord);
-      }
+        return enrichedRecord;
+      });
 
       console.log('[useCouponUsage] All enriched usage data:', enrichedUsage);
       setUsageData(enrichedUsage);
