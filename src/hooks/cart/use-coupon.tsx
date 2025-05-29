@@ -70,11 +70,11 @@ export const useCoupon = () => {
         cartItemsCount: cartItemsData.length
       });
 
-      // Use the validate_coupon function from Supabase
+      // Use the validate_coupon function from Supabase with proper type conversions
       const { data, error } = await supabase.rpc('validate_coupon', {
         coupon_code: code.toUpperCase(),
         user_id_param: userId,
-        order_value: orderValue,
+        order_value: Number(orderValue), // Ensure it's a number
         cart_items: cartItemsData.length > 0 ? cartItemsData : null
       });
 
