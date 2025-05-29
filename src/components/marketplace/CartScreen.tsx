@@ -16,19 +16,22 @@ const CartScreen: React.FC = () => {
     error,
     cartIsEmpty,
     cart,
+    cartItems,
     itemsByStore,
     processingItem,
     appliedCoupon,
     subtotal,
     discount,
-    shipping,
     total,
     totalPoints,
     refreshCart,
     handleUpdateQuantity,
     handleRemoveItem,
+    clearCart,
     applyCoupon,
-    removeCoupon
+    removeCoupon,
+    handleCheckout,
+    isValidating
   } = useCartScreen();
 
   // Show authentication check first
@@ -95,7 +98,7 @@ const CartScreen: React.FC = () => {
   // Add some debug information to help troubleshoot cart issues
   console.log("CartScreen rendering with:", { 
     cartIsEmpty, 
-    itemCount: cart?.items?.length || 0,
+    itemCount: cartItems?.length || 0,
     storeCount: Object.keys(itemsByStore).length
   });
 
@@ -109,7 +112,7 @@ const CartScreen: React.FC = () => {
         ) : (
           <>
             <CartContent
-              cart={cart}
+              cartItems={cartItems}
               itemsByStore={itemsByStore}
               processingItem={processingItem}
               appliedCoupon={appliedCoupon}
@@ -117,15 +120,18 @@ const CartScreen: React.FC = () => {
               onRemoveItem={handleRemoveItem}
               onApplyCoupon={applyCoupon}
               onRemoveCoupon={removeCoupon}
+              isValidating={isValidating}
             />
             
             {/* Detailed cart summary rendered at bottom of page */}
             <CartSummary
               subtotal={subtotal}
-              shipping={shipping}
               discount={discount}
               total={total}
-              totalPoints={totalPoints}
+              onCheckout={handleCheckout}
+              onClearCart={clearCart}
+              itemCount={cartItems.length}
+              appliedCoupon={appliedCoupon}
             />
           </>
         )}

@@ -1,9 +1,11 @@
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useCartData } from '@/hooks/cart/use-cart-data';
 import { useAuth } from '@/context/AuthContext';
 import { useCoupon } from '@/hooks/cart/use-coupon';
 import { useNavigate } from 'react-router-dom';
+import { useGroupItemsByStore } from '@/hooks/cart/use-group-items-by-store';
+import { useCartTotals } from '@/hooks/cart/use-cart-totals';
 
 export const useCartScreen = () => {
   const { user, isAuthenticated } = useAuth();
@@ -28,6 +30,22 @@ export const useCartScreen = () => {
     removeCoupon,
     isValidating
   } = useCoupon();
+
+  // Group items by store
+  const { groupedItems, storeInfo } = useGroupItemsByStore(cartItems);
+
+  // Calculate totals
+  const { subtotal, shipping, discount, total, totalPoints } = useCartTotals(
+    cartItems,
+    Object.keys(groupedItems).length,
+    appliedCoupon?.discount || 0,
+    0,
+    user?.tipo_perfil || 'consumidor'
+  );
+
+  // Derived states
+  const cartIsEmpty = cartItems.length === 0;
+  const error = null; // Add error handling later if needed
 
   // Atualizar carrinho quando usuário faz login
   useEffect(() => {
@@ -64,7 +82,7 @@ export const useCartScreen = () => {
     await applyCoupon(code, orderValue, user.id, cartItems);
   };
 
-  const handleQuantityChange = async (cartItemId: string, newQuantity: number) => {
+  const handleUpdateQuantity = async (cartItemId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
       await removeItem(cartItemId);
     } else {
@@ -95,20 +113,6 @@ export const useCartScreen = () => {
     }
   };
 
-  const calculateSubtotal = () => {
-    return cartItems.reduce((total, item) => {
-      const price = item.produto?.preco_promocional || item.produto?.preco_normal || item.preco || 0;
-      const quantity = item.quantidade || 1;
-      return total + (price * quantity);
-    }, 0);
-  };
-
-  const calculateTotal = () => {
-    const subtotal = calculateSubtotal();
-    const discount = appliedCoupon?.discount || 0;
-    return Math.max(0, subtotal - discount);
-  };
-
   const handleCheckout = () => {
     if (cartItems.length === 0) {
       return;
@@ -117,40 +121,45 @@ export const useCartScreen = () => {
     console.log('[useCartScreen] Proceeding to checkout with:', {
       cartItems: cartItems.length,
       appliedCoupon,
-      total: calculateTotal()
+      total: total
     });
     
     navigate('/checkout');
   };
 
   return {
+    // States
+    loading: isLoading,
+    error,
+    cartIsEmpty,
+    
     // Cart data
     cart,
     cartItems,
     cartCount,
-    isLoading,
-    
-    // Cart operations
-    updateQuantity: handleQuantityChange,
-    removeItem: handleRemoveItem,
-    clearCart: handleClearCart,
-    refreshCart,
+    itemsByStore: groupedItems,
+    processingItem: null, // Add processing state later if needed
     
     // Coupon data
+    appliedCoupon,
     couponCode,
     setCouponCode,
-    appliedCoupon,
     isValidating,
     
-    // Coupon operations
+    // Totals
+    subtotal,
+    discount,
+    shipping,
+    total,
+    totalPoints,
+    
+    // Actions
+    refreshCart,
+    handleUpdateQuantity,
+    handleRemoveItem,
+    clearCart: handleClearCart,
     applyCoupon: handleApplyCoupon,
     removeCoupon,
-    
-    // Calculations
-    calculateSubtotal,
-    calculateTotal,
-    
-    // Navigation
     handleCheckout,
     
     // User info

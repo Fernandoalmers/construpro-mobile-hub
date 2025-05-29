@@ -1,4 +1,5 @@
 
+import { useMemo } from 'react';
 import { CartItem } from '@/types/cart';
 
 // We're defining a proper type for the returned store groups
@@ -10,7 +11,7 @@ export interface StoreGroup {
 // Export this function to fix the import issue in useCheckout
 export const groupItemsByStore = (
   cartItems: CartItem[],
-  storeInfo: any[]
+  storeInfo?: any[]
 ): Record<string, StoreGroup> => {
   // Group items by store with improved data handling
   const itemsByStore = cartItems.reduce((groups: Record<string, StoreGroup>, item) => {
@@ -31,7 +32,7 @@ export const groupItemsByStore = (
     // Create or update store group
     if (!groups[storeId]) {
       // Get store info from our fetched storeInfo array
-      const store = storeInfo.find(s => s.id === storeId) || { 
+      const store = storeInfo?.find(s => s.id === storeId) || { 
         id: storeId, 
         nome: `Loja ${storeId.substring(0, 4)}`,
         logo_url: null 
@@ -65,8 +66,16 @@ export const storeGroupsToArray = (
 };
 
 export const useGroupItemsByStore = (
-  cartItems: CartItem[],
-  storeInfo: any[]
-): Record<string, StoreGroup> => {
-  return groupItemsByStore(cartItems, storeInfo);
+  cartItems: CartItem[]
+): { groupedItems: Record<string, StoreGroup>, storeInfo: any[] } => {
+  const groupedItems = useMemo(() => {
+    return groupItemsByStore(cartItems);
+  }, [cartItems]);
+
+  // Extract unique store info from grouped items
+  const storeInfo = useMemo(() => {
+    return Object.values(groupedItems).map(group => group.loja);
+  }, [groupedItems]);
+
+  return { groupedItems, storeInfo };
 };

@@ -6,17 +6,14 @@ import CartSummary from './CartSummary';
 import CouponSection from './CouponSection';
 import EmptyCart from './EmptyCart';
 import StoreCartGroup from './StoreCartGroup';
-import { useGroupItemsByStore } from '@/hooks/cart/use-group-items-by-store';
 
 interface CartContentProps {
   cartItems: any[];
+  itemsByStore: Record<string, any>;
+  processingItem: string | null;
+  appliedCoupon: {code: string, discount: number} | null;
   onUpdateQuantity: (cartItemId: string, newQuantity: number) => void;
   onRemoveItem: (cartItemId: string) => void;
-  onClearCart: () => void;
-  subtotal: number;
-  total: number;
-  onCheckout: () => void;
-  appliedCoupon: {code: string, discount: number} | null;
   onApplyCoupon: (code: string) => void;
   onRemoveCoupon: () => void;
   isValidating?: boolean;
@@ -24,19 +21,15 @@ interface CartContentProps {
 
 const CartContent: React.FC<CartContentProps> = ({
   cartItems,
+  itemsByStore,
+  processingItem,
+  appliedCoupon,
   onUpdateQuantity,
   onRemoveItem,
-  onClearCart,
-  subtotal,
-  total,
-  onCheckout,
-  appliedCoupon,
   onApplyCoupon,
   onRemoveCoupon,
   isValidating = false
 }) => {
-  const { groupedItems, storeInfo } = useGroupItemsByStore(cartItems);
-
   if (cartItems.length === 0) {
     return <EmptyCart />;
   }
@@ -54,28 +47,21 @@ const CartContent: React.FC<CartContentProps> = ({
 
       {/* Itens do carrinho agrupados por loja */}
       <div className="space-y-4">
-        {Object.entries(groupedItems).map(([storeId, items]) => (
+        {Object.entries(itemsByStore).map(([storeId, storeGroup]) => (
           <StoreCartGroup
             key={storeId}
             storeId={storeId}
-            storeInfo={storeInfo[storeId]}
-            items={items}
-            onUpdateQuantity={onUpdateQuantity}
-            onRemoveItem={onRemoveItem}
+            storeInfo={storeGroup.loja}
+            items={storeGroup.items}
+            onUpdateQuantity={async (item, quantity) => {
+              onUpdateQuantity(item.id, quantity);
+            }}
+            onRemoveItem={async (itemId) => {
+              onRemoveItem(itemId);
+            }}
           />
         ))}
       </div>
-
-      {/* Resumo do carrinho */}
-      <CartSummary
-        subtotal={subtotal}
-        discount={appliedCoupon?.discount || 0}
-        total={total}
-        onCheckout={onCheckout}
-        onClearCart={onClearCart}
-        itemCount={cartItems.length}
-        appliedCoupon={appliedCoupon}
-      />
     </div>
   );
 };
