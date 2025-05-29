@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Trash2, Minus, Plus } from 'lucide-react';
+import { Trash2, Minus, Plus, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CartItem as CartItemType } from '@/types/cart';
 import ProductImage from '../../admin/products/components/ProductImage';
@@ -19,17 +19,7 @@ const CartItem: React.FC<CartItemProps> = ({ item, onUpdateQuantity, onRemoveIte
   const productPrice = item.preco || 0;
   const quantity = item.quantidade || 1;
   const isProcessing = processingItem === item.id;
-
-  // Log para debug das imagens no carrinho
-  console.log(`[CartItem] Rendering item:`, {
-    productId: item.produto?.id,
-    productName: item.produto?.nome,
-    hasImageUrl: !!item.produto?.imagem_url,
-    imageUrl: item.produto?.imagem_url,
-    hasImagens: item.produto?.imagens && Array.isArray(item.produto?.imagens) && item.produto?.imagens.length > 0,
-    imagensCount: item.produto?.imagens?.length || 0,
-    productData: item.produto
-  });
+  const subtotal = productPrice * quantity;
 
   const handleDecrease = () => {
     if (quantity > 1 && !isProcessing) {
@@ -50,9 +40,9 @@ const CartItem: React.FC<CartItemProps> = ({ item, onUpdateQuantity, onRemoveIte
   };
 
   return (
-    <div className={`flex items-center p-3 bg-white rounded-lg shadow-sm border border-gray-100 gap-2 ${isProcessing ? 'opacity-70' : ''}`}>
-      {/* Product image usando o componente ProductImage */}
-      <div className="w-14 h-14 flex-shrink-0">
+    <div className={`flex items-center p-4 bg-white rounded-lg shadow-sm border border-gray-200 gap-3 transition-all duration-200 ${isProcessing ? 'opacity-70 pointer-events-none' : 'hover:shadow-md'}`}>
+      {/* Product image */}
+      <div className="w-16 h-16 flex-shrink-0 bg-gray-50 rounded-lg overflow-hidden border border-gray-100">
         <ProductImage 
           imagemUrl={item.produto?.imagem_url}
           imagens={item.produto?.imagens}
@@ -63,49 +53,65 @@ const CartItem: React.FC<CartItemProps> = ({ item, onUpdateQuantity, onRemoveIte
 
       {/* Product details */}
       <div className="flex-1 min-w-0">
-        <h4 className="font-medium text-sm truncate">{item.produto?.nome || 'Produto sem nome'}</h4>
-        <p className="text-green-700 text-sm font-medium">
-          R$ {productPrice.toFixed(2)}
-        </p>
+        <h4 className="font-semibold text-sm text-gray-800 truncate mb-1">
+          {item.produto?.nome || 'Produto sem nome'}
+        </h4>
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-blue-600 text-sm font-bold">
+            R$ {productPrice.toFixed(2)}
+          </span>
+          {quantity > 1 && (
+            <span className="text-xs text-gray-500">
+              × {quantity} = R$ {subtotal.toFixed(2)}
+            </span>
+          )}
+        </div>
+        
+        {/* Stock warning */}
         {maxStock > 0 && maxStock < 10 && (
-          <p className="text-amber-600 text-xs">
-            Apenas {maxStock} em estoque
-          </p>
+          <div className="flex items-center gap-1 text-xs text-amber-600">
+            <Package className="w-3 h-3" />
+            <span>Apenas {maxStock} em estoque</span>
+          </div>
         )}
       </div>
 
-      {/* Quantity controls - compact version */}
-      <div className="flex items-center">
-        <Button 
-          variant="outline"
-          size="icon"
-          className="h-6 w-6 rounded-full p-0 border-gray-200"
-          onClick={handleDecrease}
-          disabled={quantity <= 1 || isProcessing}
-        >
-          <Minus size={12} />
-        </Button>
-        
-        <span className="w-6 text-center text-sm">{quantity}</span>
-        
-        <Button 
-          variant="outline"
-          size="icon"
-          className="h-6 w-6 rounded-full p-0 border-gray-200"
-          onClick={handleIncrease}
-          disabled={quantity >= maxStock || isProcessing}
-        >
-          <Plus size={12} />
-        </Button>
+      {/* Quantity controls */}
+      <div className="flex items-center gap-2">
+        <div className="flex items-center border border-gray-300 rounded-lg bg-gray-50">
+          <Button 
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-l-lg hover:bg-gray-200"
+            onClick={handleDecrease}
+            disabled={quantity <= 1 || isProcessing}
+          >
+            <Minus size={14} />
+          </Button>
+          
+          <span className="w-8 text-center text-sm font-medium bg-white border-x border-gray-300 py-1">
+            {quantity}
+          </span>
+          
+          <Button 
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-r-lg hover:bg-gray-200"
+            onClick={handleIncrease}
+            disabled={quantity >= maxStock || isProcessing}
+          >
+            <Plus size={14} />
+          </Button>
+        </div>
 
         <Button
           variant="ghost"
           size="icon"
-          className="h-6 w-6 text-red-400 hover:text-red-600 hover:bg-red-50 ml-1"
+          className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
           onClick={handleRemove}
           disabled={isProcessing}
         >
-          <Trash2 size={12} />
+          <Trash2 size={14} />
         </Button>
       </div>
     </div>

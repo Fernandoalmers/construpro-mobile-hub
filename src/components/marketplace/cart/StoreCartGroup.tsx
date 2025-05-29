@@ -1,9 +1,8 @@
 
 import React from 'react';
-import Card from '@/components/common/Card';
 import { CartItem as CartItemType } from '@/types/cart';
 import CartItem from './CartItem';
-import { Building } from 'lucide-react';
+import { Building, MapPin } from 'lucide-react';
 
 interface StoreInfo {
   id: string;
@@ -38,8 +37,8 @@ const StoreCartGroup: React.FC<StoreCartGroupProps> = ({
   if (!isValidStore) {
     console.log('[StoreCartGroup] Invalid store, showing placeholder');
     return (
-      <div className="mb-4">
-        <div className="p-3 bg-gray-100 rounded-lg">
+      <div className="mb-6">
+        <div className="p-4 bg-gray-100 rounded-lg">
           <p className="text-gray-500 text-center">Carregando informações da loja...</p>
         </div>
       </div>
@@ -54,29 +53,34 @@ const StoreCartGroup: React.FC<StoreCartGroupProps> = ({
   const displayName = store.nome || `Loja ${store.id.substring(0, 6)}`;
   
   return (
-    <div className="mb-4">
-      <div className="flex items-center mb-2 px-3 py-2 bg-white rounded-lg border-l-2 border-green-600 shadow-sm">
+    <div className="mb-6">
+      {/* Store header */}
+      <div className="flex items-center mb-4 px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border-l-4 border-blue-500 shadow-sm">
         {store.logo_url ? (
           <img 
             src={store.logo_url} 
             alt={displayName}
-            className="w-8 h-8 rounded-full object-cover mr-2 border border-gray-200"
+            className="w-10 h-10 rounded-full object-cover mr-3 border-2 border-white shadow-sm"
             onError={(e) => {
               (e.target as HTMLImageElement).src = 'https://via.placeholder.com/40';
             }}
           />
         ) : (
-          <div className="w-8 h-8 bg-green-50 rounded-full flex items-center justify-center mr-2">
-            <Building size={16} className="text-green-600" />
+          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3 border-2 border-white shadow-sm">
+            <Building size={18} className="text-blue-600" />
           </div>
         )}
-        <div>
-          <h2 className="font-medium text-sm text-gray-800">{displayName}</h2>
-          <p className="text-xs text-gray-500">{items.length} {items.length === 1 ? 'produto' : 'produtos'}</p>
+        <div className="flex-1">
+          <h2 className="font-semibold text-gray-800">{displayName}</h2>
+          <p className="text-xs text-gray-600 flex items-center gap-1">
+            <MapPin className="w-3 h-3" />
+            {items.length} {items.length === 1 ? 'produto' : 'produtos'} • Subtotal: R$ {storeSubtotal.toFixed(2)}
+          </p>
         </div>
       </div>
       
-      <div className="space-y-2">
+      {/* Store items */}
+      <div className="space-y-3">
         {items.map(item => (
           <CartItem 
             key={item.id} 
@@ -86,10 +90,6 @@ const StoreCartGroup: React.FC<StoreCartGroupProps> = ({
             processingItem={processingItem}
           />
         ))}
-        <div className="p-2 bg-gray-50 text-right rounded-lg border border-gray-100">
-          <span className="text-xs font-medium">Subtotal: </span>
-          <span className="text-sm font-medium text-green-600">R$ {storeSubtotal.toFixed(2)}</span>
-        </div>
       </div>
     </div>
   );

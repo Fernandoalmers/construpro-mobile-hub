@@ -68,8 +68,8 @@ export const useCoupon = () => {
 
       console.log('[useCoupon] Final cart items for validation:', cartItemsData);
 
-      // Chamar a função validate_coupon
-      const { data: functionExists, error: functionError } = await supabase.rpc('validate_coupon', {
+      // Chamar a função validate_coupon usando try/catch adequado
+      const { data: validationResult, error: functionError } = await supabase.rpc('validate_coupon', {
         coupon_code: code.toUpperCase().trim(),
         user_id_param: userId,
         order_value: Number(orderValue) || 0,
@@ -87,10 +87,10 @@ export const useCoupon = () => {
         return;
       }
 
-      console.log('[useCoupon] Validation response:', functionExists);
+      console.log('[useCoupon] Validation response:', validationResult);
 
-      if (functionExists && functionExists.length > 0) {
-        const result = functionExists[0];
+      if (validationResult && validationResult.length > 0) {
+        const result = validationResult[0];
         
         if (result.valid) {
           const discountAmount = Number(result.discount_amount) || 0;
