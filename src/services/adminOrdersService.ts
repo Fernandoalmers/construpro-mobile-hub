@@ -286,8 +286,8 @@ export const getOrderDetails = async (orderId: string): Promise<AdminOrder | nul
         console.error('Error fetching client name:', clienteError);
       }
 
-      // Buscar itens do pedido
-      console.log(`[OrderDetails] Fetching items for order ${orderId.substring(0, 8)}...`);
+      // Buscar itens do pedido com mais detalhes de debug
+      console.log(`[OrderDetails] Fetching items for order ${orderId.substring(0, 8)} (full ID: ${orderId})...`);
       const { data: items, error: itemsError } = await supabase
         .from('order_items')
         .select(`
@@ -301,13 +301,98 @@ export const getOrderDetails = async (orderId: string): Promise<AdminOrder | nul
         
       if (itemsError) {
         console.error('Error fetching order items:', itemsError);
-        throw itemsError;
+        console.log(`[OrderDetails] Trying alternative: search in itens_pedido table...`);
+        
+        // Tentar buscar na tabela itens_pedido como fallback
+        const { data: itensAlternative, error: itensError } = await supabase
+          .from('itens_pedido')
+          .select(`
+            id,
+            produto_id,
+            quantidade,
+            preco_unitario,
+            total as subtotal
+          `)
+          .eq('pedido_id', orderId);
+          
+        if (itensError) {
+          console.error('Error fetching itens_pedido:', itensError);
+          // Continuar sem itens, mas com informações básicas do pedido
+        } else {
+          console.log(`[OrderDetails] Found ${itensAlternative?.length || 0} items in itens_pedido table`);
+          // Use os itens encontrados na tabela alternativa
+          const processedItems = itensAlternative || [];
+          
+          // Buscar nomes dos produtos
+          const produtoIds = processedItems.map(item => item.produto_id);
+          
+          let produtos = [];
+          let vendedorInfo = null;
+          
+          if (produtoIds.length > 0) {
+            console.log(`[OrderDetails] Fetching ${produtoIds.length} products...`);
+            const { data: produtosData, error: produtosError } = await supabase
+              .from('produtos')
+              .select('id, nome, vendedor_id')
+              .in('id', produtoIds);
+              
+            if (produtosError) {
+              console.error('Error fetching products:', produtosError);
+            } else {
+              produtos = produtosData || [];
+              console.log(`[OrderDetails] Found ${produtos.length} products`);
+
+              // Buscar informações do vendedor
+              const vendedorId = produtos.length > 0 ? produtos[0].vendedor_id : null;
+              
+              if (vendedorId) {
+                console.log(`[OrderDetails] Fetching vendor ${vendedorId}...`);
+                const { data: vendedor, error: vendedorError } = await supabase
+                  .from('vendedores')
+                  .select('id, nome_loja')
+                  .eq('id', vendedorId)
+                  .single();
+                  
+                if (vendedorError) {
+                  console.error('Error fetching vendor info:', vendedorError);
+                } else {
+                  vendedorInfo = vendedor;
+                  console.log(`[OrderDetails] Found vendor: ${vendedor.nome_loja}`);
+                }
+              }
+            }
+          }
+
+          // Criar mapa para associar IDs de produtos aos nomes
+          const produtoMap = new Map();
+          produtos?.forEach(p => produtoMap.set(p.id, p.nome));
+
+          // Associar nomes dos produtos aos itens
+          const itemsWithProductNames = processedItems.map(item => ({
+            ...item,
+            produto_nome: produtoMap.get(item.produto_id) || 'Produto Desconhecido'
+          }));
+
+          console.log(`[OrderDetails] Successfully processed order details from alternative table`);
+          
+          // Retornar pedido completo com itens e informações do vendedor
+          return {
+            ...order,
+            cliente_nome: cliente?.nome || 'Cliente Desconhecido',
+            loja_id: vendedorInfo?.id,
+            loja_nome: vendedorInfo?.nome_loja || 'Loja não identificada',
+            items: itemsWithProductNames
+          };
+        }
       }
       
-      console.log(`[OrderDetails] Found ${items?.length || 0} items`);
+      console.log(`[OrderDetails] Found ${items?.length || 0} items in order_items table`);
+
+      // Se chegou aqui, use os itens da tabela order_items
+      const processedItems = items || [];
 
       // Buscar nomes dos produtos e informações do vendedor
-      const produtoIds = items.map(item => item.produto_id);
+      const produtoIds = processedItems.map(item => item.produto_id);
       
       let produtos = [];
       let vendedorInfo = null;
@@ -321,27 +406,27 @@ export const getOrderDetails = async (orderId: string): Promise<AdminOrder | nul
           
         if (produtosError) {
           console.error('Error fetching products:', produtosError);
-          throw produtosError;
-        }
-        produtos = produtosData || [];
-        console.log(`[OrderDetails] Found ${produtos.length} products`);
+        } else {
+          produtos = produtosData || [];
+          console.log(`[OrderDetails] Found ${produtos.length} products`);
 
-        // Buscar informações do vendedor (assumindo que todos os produtos são do mesmo vendedor)
-        const vendedorId = produtos.length > 0 ? produtos[0].vendedor_id : null;
-        
-        if (vendedorId) {
-          console.log(`[OrderDetails] Fetching vendor ${vendedorId}...`);
-          const { data: vendedor, error: vendedorError } = await supabase
-            .from('vendedores')
-            .select('id, nome_loja')
-            .eq('id', vendedorId)
-            .single();
-            
-          if (vendedorError) {
-            console.error('Error fetching vendor info:', vendedorError);
-          } else {
-            vendedorInfo = vendedor;
-            console.log(`[OrderDetails] Found vendor: ${vendedor.nome_loja}`);
+          // Buscar informações do vendedor (assumindo que todos os produtos são do mesmo vendedor)
+          const vendedorId = produtos.length > 0 ? produtos[0].vendedor_id : null;
+          
+          if (vendedorId) {
+            console.log(`[OrderDetails] Fetching vendor ${vendedorId}...`);
+            const { data: vendedor, error: vendedorError } = await supabase
+              .from('vendedores')
+              .select('id, nome_loja')
+              .eq('id', vendedorId)
+              .single();
+              
+            if (vendedorError) {
+              console.error('Error fetching vendor info:', vendedorError);
+            } else {
+              vendedorInfo = vendedor;
+              console.log(`[OrderDetails] Found vendor: ${vendedor.nome_loja}`);
+            }
           }
         }
       }
@@ -351,7 +436,7 @@ export const getOrderDetails = async (orderId: string): Promise<AdminOrder | nul
       produtos?.forEach(p => produtoMap.set(p.id, p.nome));
 
       // Associar nomes dos produtos aos itens
-      const itemsWithProductNames = items.map(item => ({
+      const itemsWithProductNames = processedItems.map(item => ({
         ...item,
         produto_nome: produtoMap.get(item.produto_id) || 'Produto Desconhecido'
       }));
@@ -363,7 +448,7 @@ export const getOrderDetails = async (orderId: string): Promise<AdminOrder | nul
         ...order,
         cliente_nome: cliente?.nome || 'Cliente Desconhecido',
         loja_id: vendedorInfo?.id,
-        loja_nome: vendedorInfo?.nome_loja || undefined,
+        loja_nome: vendedorInfo?.nome_loja || 'Loja não identificada',
         items: itemsWithProductNames
       };
     } catch (error) {
