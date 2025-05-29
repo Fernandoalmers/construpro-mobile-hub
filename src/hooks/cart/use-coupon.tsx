@@ -1,34 +1,60 @@
 
 import { useState, useCallback } from 'react';
 import { toast } from '@/components/ui/sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 export const useCoupon = () => {
   const [couponCode, setCouponCode] = useState<string>('');
   const [appliedCoupon, setAppliedCoupon] = useState<{code: string, discount: number} | null>(null);
+  const [isValidating, setIsValidating] = useState(false);
   
-  const applyCoupon = useCallback((code: string) => {
-    // Simple validation
+  const applyCoupon = useCallback(async (code: string, orderValue: number = 0, userId?: string) => {
     if (!code || code.trim() === '') {
       toast.error("Por favor, insira um cupom válido");
       return;
     }
+
+    if (!userId) {
+      toast.error("Usuário não identificado");
+      return;
+    }
+
+    setIsValidating(true);
     
-    // For demo purposes, we'll use some hardcoded coupons
-    // In a real application, this would validate against a backend API
-    const validCoupons: Record<string, number> = {
-      'BEMVINDO10': 10.00,
-      'FRETE20': 20.00,
-      'CONSTRUPRO15': 15.00
-    };
-    
-    if (validCoupons[code.toUpperCase()]) {
-      setAppliedCoupon({
-        code: code.toUpperCase(),
-        discount: validCoupons[code.toUpperCase()]
+    try {
+      // Use the validate_coupon function from Supabase
+      const { data, error } = await supabase.rpc('validate_coupon', {
+        coupon_code: code.toUpperCase(),
+        user_id_param: userId,
+        order_value: orderValue
       });
-      toast.success(`Cupom ${code.toUpperCase()} aplicado com sucesso!`);
-    } else {
-      toast.error("Cupom inválido ou expirado");
+
+      if (error) {
+        console.error('Error validating coupon:', error);
+        toast.error('Erro ao validar cupom');
+        return;
+      }
+
+      if (data && data.length > 0) {
+        const result = data[0];
+        
+        if (result.valid) {
+          setAppliedCoupon({
+            code: code.toUpperCase(),
+            discount: result.discount_amount
+          });
+          toast.success(`Cupom ${code.toUpperCase()} aplicado com sucesso!`);
+        } else {
+          toast.error(result.message || "Cupom inválido");
+        }
+      } else {
+        toast.error("Cupom inválido ou expirado");
+      }
+    } catch (error) {
+      console.error('Error applying coupon:', error);
+      toast.error("Erro ao aplicar cupom");
+    } finally {
+      setIsValidating(false);
     }
   }, []);
   
@@ -43,6 +69,7 @@ export const useCoupon = () => {
     setCouponCode,
     appliedCoupon,
     applyCoupon,
-    removeCoupon
+    removeCoupon,
+    isValidating
   };
 };
