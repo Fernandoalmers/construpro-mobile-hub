@@ -59,7 +59,7 @@ export const useCouponUsage = (couponId?: string) => {
         return;
       }
 
-      console.log('[useCouponUsage] Found', usageRecords.length, 'usage records');
+      console.log('[useCouponUsage] Found usage records:', usageRecords);
 
       // 2. Buscar dados dos usuários
       const userIds = usageRecords.map(record => record.user_id);
@@ -71,6 +71,8 @@ export const useCouponUsage = (couponId?: string) => {
       if (usersError) {
         console.error('[useCouponUsage] Error fetching users:', usersError);
       }
+
+      console.log('[useCouponUsage] Users data:', usersData);
 
       // 3. Buscar dados dos pedidos (se existirem)
       const orderIds = usageRecords
@@ -91,65 +93,96 @@ export const useCouponUsage = (couponId?: string) => {
         }
       }
 
-      // 4. Buscar itens dos pedidos com produtos e vendedores
-      let orderItemsData: any[] = [];
-      let vendorsData: any[] = [];
-      if (orderIds.length > 0) {
-        const { data: itemsData, error: itemsError } = await supabase
-          .from('order_items')
-          .select('id, order_id, produto_id, quantidade, preco_unitario, subtotal')
-          .in('order_id', orderIds);
+      console.log('[useCouponUsage] Orders data:', ordersData);
 
-        if (itemsError) {
-          console.error('[useCouponUsage] Error fetching order items:', itemsError);
-        } else {
-          orderItemsData = itemsData || [];
+      // 4. Para cada order_id, buscar dados do vendedor através dos itens do pedido
+      const vendorDataMap = new Map();
 
-          // 5. Buscar produtos e vendedores se temos itens
-          if (orderItemsData.length > 0) {
-            const productIds = orderItemsData.map(item => item.produto_id);
-            
-            const { data: productsData, error: productsError } = await supabase
-              .from('produtos')
-              .select('id, nome, vendedor_id')
-              .in('id', productIds);
+      for (const orderId of orderIds) {
+        try {
+          // Buscar itens do pedido
+          const { data: orderItems, error: itemsError } = await supabase
+            .from('order_items')
+            .select('id, order_id, produto_id, quantidade, preco_unitario, subtotal')
+            .eq('order_id', orderId);
 
-            if (productsError) {
-              console.error('[useCouponUsage] Error fetching products:', productsError);
-            } else if (productsData && productsData.length > 0) {
-              const vendorIds = [...new Set(productsData.map(p => p.vendedor_id))];
-              
-              const { data: vendors, error: vendorsError } = await supabase
-                .from('vendedores')
-                .select('id, nome_loja')
-                .in('id', vendorIds);
-
-              if (vendorsError) {
-                console.error('[useCouponUsage] Error fetching vendors:', vendorsError);
-              } else {
-                vendorsData = vendors || [];
-              }
-
-              // Combinar dados dos produtos com vendedores
-              orderItemsData = orderItemsData.map(item => {
-                const produto = productsData.find(p => p.id === item.produto_id);
-                const vendedor = produto ? vendorsData.find(v => v.id === produto.vendedor_id) : null;
-                
-                return {
-                  ...item,
-                  produto: produto ? {
-                    nome: produto.nome,
-                    vendedor_id: produto.vendedor_id,
-                    vendedores: vendedor ? { nome_loja: vendedor.nome_loja } : null
-                  } : null
-                };
-              });
-            }
+          if (itemsError) {
+            console.error(`[useCouponUsage] Error fetching items for order ${orderId}:`, itemsError);
+            continue;
           }
+
+          if (!orderItems || orderItems.length === 0) {
+            console.log(`[useCouponUsage] No items found for order ${orderId}`);
+            continue;
+          }
+
+          console.log(`[useCouponUsage] Items for order ${orderId}:`, orderItems);
+
+          // Buscar produtos para estes itens
+          const productIds = orderItems.map(item => item.produto_id);
+          const { data: produtos, error: productError } = await supabase
+            .from('produtos')
+            .select('id, nome, vendedor_id')
+            .in('id', productIds);
+
+          if (productError) {
+            console.error(`[useCouponUsage] Error fetching products for order ${orderId}:`, productError);
+            continue;
+          }
+
+          if (!produtos || produtos.length === 0) {
+            console.log(`[useCouponUsage] No products found for order ${orderId}`);
+            continue;
+          }
+
+          console.log(`[useCouponUsage] Products for order ${orderId}:`, produtos);
+
+          // Buscar vendedores únicos para estes produtos
+          const vendorIds = [...new Set(produtos.map(p => p.vendedor_id))];
+          const { data: vendedores, error: vendorError } = await supabase
+            .from('vendedores')
+            .select('id, nome_loja')
+            .in('id', vendorIds);
+
+          if (vendorError) {
+            console.error(`[useCouponUsage] Error fetching vendors for order ${orderId}:`, vendorError);
+            continue;
+          }
+
+          console.log(`[useCouponUsage] Vendors for order ${orderId}:`, vendedores);
+
+          // Combinar dados para este pedido
+          const enrichedItems = orderItems.map(item => {
+            const produto = produtos.find(p => p.id === item.produto_id);
+            const vendedor = produto ? vendedores?.find(v => v.id === produto.vendedor_id) : null;
+            
+            return {
+              ...item,
+              produto: produto ? {
+                nome: produto.nome,
+                vendedor_id: produto.vendedor_id,
+                vendedores: vendedor ? { nome_loja: vendedor.nome_loja } : null
+              } : null
+            };
+          });
+
+          // Extrair nomes únicos dos vendedores para este pedido
+          const vendorNames = vendedores?.map(v => v.nome_loja).filter(name => name) || [];
+          const vendorName = vendorNames.length > 0 ? vendorNames.join(', ') : 'Vendedor não identificado';
+
+          vendorDataMap.set(orderId, {
+            vendorName,
+            items: enrichedItems
+          });
+
+          console.log(`[useCouponUsage] Processed order ${orderId} with vendor: ${vendorName}`);
+
+        } catch (error) {
+          console.error(`[useCouponUsage] Error processing order ${orderId}:`, error);
         }
       }
 
-      // 6. Combinar todos os dados
+      // 5. Combinar todos os dados finais
       const enrichedUsage: CouponUsageDetail[] = usageRecords.map(usage => {
         // Encontrar dados do usuário
         const userData = usersData?.find(u => u.id === usage.user_id);
@@ -157,20 +190,16 @@ export const useCouponUsage = (couponId?: string) => {
         // Encontrar dados do pedido
         const orderData = ordersData.find(o => o.id === usage.order_id);
         
-        // Encontrar itens do pedido
-        const orderItems = orderItemsData.filter(item => item.order_id === usage.order_id);
-        
-        // Extrair nomes dos vendedores únicos
-        const vendorNames = orderItems
-          .map(item => item.produto?.vendedores?.nome_loja)
-          .filter(name => name)
-          .filter((name, index, arr) => arr.indexOf(name) === index);
+        // Encontrar dados do vendedor e itens para este pedido
+        const vendorInfo = usage.order_id ? vendorDataMap.get(usage.order_id) : null;
+        const vendorName = vendorInfo?.vendorName || 'Vendedor não identificado';
+        const orderItems = vendorInfo?.items || [];
 
-        const vendorName = vendorNames.length > 0 
-          ? vendorNames.join(', ') 
-          : 'Vendedor não identificado';
-
-        console.log('[useCouponUsage] Processing usage:', usage.id, 'vendor:', vendorName);
+        console.log(`[useCouponUsage] Processing usage ${usage.id}:`, {
+          orderId: usage.order_id,
+          vendorName,
+          hasItems: orderItems.length > 0
+        });
 
         return {
           id: usage.id,
