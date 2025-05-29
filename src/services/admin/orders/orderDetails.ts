@@ -4,119 +4,99 @@ import { AdminOrder, AdminOrderItem } from './types';
 
 export const getOrderDetails = async (orderId: string): Promise<AdminOrder | null> => {
   try {
-    console.log(`[OrderDetails] Fetching details for order ${orderId.substring(0, 8)}...`);
+    console.log(`[OrderDetails] Fetching complete order details for ${orderId.substring(0, 8)} using JOIN query...`);
     
-    // Buscar dados básicos do pedido
-    const { data: order, error: orderError } = await supabase
+    // Query única com JOINs para buscar todos os dados necessários
+    const { data: orderData, error: orderError } = await supabase
       .from('orders')
-      .select('*')
+      .select(`
+        *,
+        cliente_nome:profiles!orders_cliente_id_fkey(nome),
+        order_items (
+          id,
+          produto_id,
+          quantidade,
+          preco_unitario,
+          subtotal,
+          produto:produtos!order_items_produto_id_fkey (
+            id,
+            nome,
+            vendedor:vendedores!produtos_vendedor_id_fkey (
+              id,
+              nome_loja
+            )
+          )
+        )
+      `)
       .eq('id', orderId)
       .single();
-        
-    if (orderError || !order) {
-      console.error(`[OrderDetails] Order not found:`, orderError);
+
+    if (orderError) {
+      console.error(`[OrderDetails] Error fetching order:`, orderError);
       return null;
     }
 
-    console.log(`[OrderDetails] Found order in orders table`);
-
-    // Buscar nome do cliente
-    const { data: cliente, error: clienteError } = await supabase
-      .from('profiles')
-      .select('nome')
-      .eq('id', order.cliente_id)
-      .single();
-        
-    if (clienteError) {
-      console.error('Error fetching client name:', clienteError);
+    if (!orderData) {
+      console.warn(`[OrderDetails] Order ${orderId} not found`);
+      return null;
     }
 
-    // Buscar itens do pedido separadamente
-    console.log(`[OrderDetails] Fetching items for order ${orderId.substring(0, 8)}...`);
-    const { data: orderItems, error: itemsError } = await supabase
-      .from('order_items')
-      .select('*')
-      .eq('order_id', orderId);
-        
-    if (itemsError) {
-      console.error('[OrderDetails] Error fetching order items:', itemsError);
-      return {
-        ...order,
-        cliente_nome: cliente?.nome || 'Cliente Desconhecido',
-        loja_nome: 'Erro ao carregar itens',
-        items: []
-      };
-    }
+    console.log(`[OrderDetails] Raw order data:`, JSON.stringify(orderData, null, 2));
 
-    if (!orderItems || orderItems.length === 0) {
-      console.warn(`[OrderDetails] No items found for order ${orderId}`);
-      return {
-        ...order,
-        cliente_nome: cliente?.nome || 'Cliente Desconhecido',
-        loja_nome: 'Pedido sem itens',
-        items: []
-      };
-    }
+    // Processar os itens do pedido
+    const items: AdminOrderItem[] = [];
+    let loja_nome = 'Loja não identificada';
+    let loja_id: string | undefined;
 
-    console.log(`[OrderDetails] Found ${orderItems.length} items`);
-
-    // Buscar dados dos produtos separadamente
-    const productIds = orderItems.map(item => item.produto_id);
-    const { data: produtos, error: produtosError } = await supabase
-      .from('produtos')
-      .select('id, nome, vendedor_id')
-      .in('id', productIds);
-
-    if (produtosError) {
-      console.error('[OrderDetails] Error fetching products:', produtosError);
-      return {
-        ...order,
-        cliente_nome: cliente?.nome || 'Cliente Desconhecido',
-        loja_nome: 'Erro ao carregar produtos',
-        items: []
-      };
-    }
-
-    // Buscar dados dos vendedores
-    const vendorIds = produtos?.map(p => p.vendedor_id).filter(Boolean) || [];
-    let vendorInfo = null;
-    
-    if (vendorIds.length > 0) {
-      const { data: vendedores, error: vendedoresError } = await supabase
-        .from('vendedores')
-        .select('id, nome_loja')
-        .in('id', vendorIds);
-
-      if (vendedoresError) {
-        console.error('[OrderDetails] Error fetching vendors:', vendedoresError);
-      } else if (vendedores && vendedores.length > 0) {
-        vendorInfo = vendedores[0]; // Pegar o primeiro vendedor
-      }
-    }
-
-    // Processar itens combinando com dados dos produtos
-    const items: AdminOrderItem[] = orderItems.map(item => {
-      const produto = produtos?.find(p => p.id === item.produto_id);
+    if (orderData.order_items && Array.isArray(orderData.order_items)) {
+      console.log(`[OrderDetails] Processing ${orderData.order_items.length} order items`);
       
-      return {
-        id: item.id,
-        produto_id: item.produto_id,
-        produto_nome: produto?.nome || 'Produto não encontrado',
-        quantidade: item.quantidade,
-        preco_unitario: item.preco_unitario,
-        subtotal: item.subtotal
-      };
-    });
+      orderData.order_items.forEach((item: any) => {
+        console.log(`[OrderDetails] Processing item:`, JSON.stringify(item, null, 2));
+        
+        const produto = item.produto;
+        const vendedor = produto?.vendedor;
+        
+        // Usar o primeiro vendedor encontrado como referência principal
+        if (vendedor && !loja_id) {
+          loja_id = vendedor.id;
+          loja_nome = vendedor.nome_loja || 'Loja não identificada';
+          console.log(`[OrderDetails] Setting main vendor: ${loja_nome} (${loja_id})`);
+        }
 
-    console.log(`[OrderDetails] Successfully processed order with ${items.length} items and vendor: ${vendorInfo?.nome_loja || 'Não identificado'}`);
-    
-    return {
-      ...order,
-      cliente_nome: cliente?.nome || 'Cliente Desconhecido',
-      loja_id: vendorInfo?.id,
-      loja_nome: vendorInfo?.nome_loja || 'Loja não identificada',
+        items.push({
+          id: item.id,
+          produto_id: item.produto_id,
+          produto_nome: produto?.nome || 'Produto não encontrado',
+          quantidade: item.quantidade,
+          preco_unitario: item.preco_unitario,
+          subtotal: item.subtotal
+        });
+      });
+
+      console.log(`[OrderDetails] Successfully processed ${items.length} items for vendor: ${loja_nome}`);
+    } else {
+      console.warn(`[OrderDetails] No order_items found or invalid format for order ${orderId}`);
+    }
+
+    // Construir o objeto de retorno
+    const result: AdminOrder = {
+      ...orderData,
+      cliente_nome: orderData.cliente_nome?.nome || 'Cliente Desconhecido',
+      loja_id,
+      loja_nome,
       items
     };
+
+    console.log(`[OrderDetails] Final result for order ${orderId.substring(0, 8)}:`, {
+      orderId: result.id.substring(0, 8),
+      clienteNome: result.cliente_nome,
+      lojaNome: result.loja_nome,
+      itemsCount: result.items?.length || 0,
+      valorTotal: result.valor_total
+    });
+
+    return result;
     
   } catch (error) {
     console.error('[OrderDetails] Unexpected error:', error);
