@@ -24,9 +24,9 @@ export const useCoupon = () => {
     try {
       // Preparar dados dos itens do carrinho para validação
       const cartItemsData = cartItems?.map(item => ({
-        produto_id: item.produto?.id || item.product_id,
-        quantidade: item.quantidade || item.quantity,
-        preco: item.produto?.preco_normal || item.price_at_add || item.preco_unitario || 0
+        produto_id: String(item.produto?.id || item.product_id || ''),
+        quantidade: Number(item.quantidade || item.quantity || 0),
+        preco: Number(item.produto?.preco_normal || item.price_at_add || item.preco_unitario || 0)
       })) || [];
 
       console.log('[useCoupon] Validating coupon with cart items:', {
