@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -188,6 +189,16 @@ export function useCartScreen() {
     }
   };
 
+  // Handle coupon application with cart items
+  const handleApplyCoupon = useCallback(async (code: string) => {
+    if (!profile?.id) {
+      toast.error('Usuário não identificado');
+      return;
+    }
+
+    await applyCoupon(code, subtotal, profile.id, cartItems);
+  }, [applyCoupon, subtotal, profile?.id, cartItems]);
+
   return {
     loading,
     error,
@@ -207,7 +218,7 @@ export function useCartScreen() {
     refreshCart: memoizedRefreshCart,
     handleUpdateQuantity,
     handleRemoveItem,
-    applyCoupon,
+    applyCoupon: handleApplyCoupon,
     removeCoupon
   };
 }

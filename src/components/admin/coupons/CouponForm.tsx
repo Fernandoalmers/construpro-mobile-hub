@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AdminCoupon, CreateCouponData } from '@/services/adminCouponsService';
+import ProductSelector from './ProductSelector';
 
 interface CouponFormProps {
   coupon?: AdminCoupon;
@@ -32,7 +33,8 @@ const CouponForm: React.FC<CouponFormProps> = ({
     max_uses: coupon?.max_uses || undefined,
     starts_at: coupon?.starts_at ? new Date(coupon.starts_at).toISOString().slice(0, 16) : '',
     expires_at: coupon?.expires_at ? new Date(coupon.expires_at).toISOString().slice(0, 16) : '',
-    active: coupon?.active ?? true
+    active: coupon?.active ?? true,
+    product_ids: coupon?.specific_products?.map(sp => sp.product_id) || []
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -185,6 +187,13 @@ const CouponForm: React.FC<CouponFormProps> = ({
               />
             </div>
           </div>
+
+          {/* Seletor de produtos específicos */}
+          <ProductSelector
+            selectedProductIds={formData.product_ids || []}
+            onProductsChange={(productIds) => handleChange('product_ids', productIds)}
+            disabled={isLoading}
+          />
 
           <div className="flex items-center space-x-2">
             <Switch

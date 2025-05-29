@@ -17,6 +17,20 @@ export interface AdminCoupon {
   active: boolean;
   created_at: string;
   updated_at: string;
+  specific_products?: CouponProduct[];
+}
+
+export interface CouponProduct {
+  id: string;
+  coupon_id: string;
+  product_id: string;
+  created_at: string;
+  produto?: {
+    id: string;
+    nome: string;
+    preco_normal: number;
+    imagens?: any[];
+  };
 }
 
 export interface CreateCouponData {
@@ -30,6 +44,7 @@ export interface CreateCouponData {
   starts_at?: string;
   expires_at?: string;
   active?: boolean;
+  product_ids?: string[];
 }
 
 export const fetchAdminCoupons = async (): Promise<AdminCoupon[]> => {
@@ -38,7 +53,21 @@ export const fetchAdminCoupons = async (): Promise<AdminCoupon[]> => {
     
     const { data: coupons, error } = await supabase
       .from('coupons')
-      .select('*')
+      .select(`
+        *,
+        specific_products:coupon_products(
+          id,
+          coupon_id,
+          product_id,
+          created_at,
+          produto:produtos(
+            id,
+            nome,
+            preco_normal,
+            imagens
+          )
+        )
+      `)
       .order('created_at', { ascending: false });
       
     if (error) {
@@ -49,7 +78,6 @@ export const fetchAdminCoupons = async (): Promise<AdminCoupon[]> => {
     
     console.log(`[AdminCoupons] Found ${coupons?.length || 0} coupons`);
     
-    // Type assertion to ensure compatibility with AdminCoupon interface
     return (coupons || []).map(coupon => ({
       ...coupon,
       discount_type: coupon.discount_type as 'percentage' | 'fixed'
@@ -65,13 +93,17 @@ export const createCoupon = async (couponData: CreateCouponData): Promise<boolea
   try {
     console.log('[AdminCoupons] Creating coupon:', couponData.code);
     
-    const { error } = await supabase
+    const { product_ids, ...couponFields } = couponData;
+    
+    const { data: createdCoupon, error } = await supabase
       .from('coupons')
       .insert([{
-        ...couponData,
-        active: couponData.active ?? true,
+        ...couponFields,
+        active: couponFields.active ?? true,
         used_count: 0
-      }]);
+      }])
+      .select()
+      .single();
       
     if (error) {
       console.error('[AdminCoupons] Error creating coupon:', error);
@@ -83,12 +115,32 @@ export const createCoupon = async (couponData: CreateCouponData): Promise<boolea
       return false;
     }
     
+    // Se há produtos específicos, criar as relações
+    if (product_ids && product_ids.length > 0) {
+      const couponProducts = product_ids.map(productId => ({
+        coupon_id: createdCoupon.id,
+        product_id: productId
+      }));
+      
+      const { error: productsError } = await supabase
+        .from('coupon_products')
+        .insert(couponProducts);
+        
+      if (productsError) {
+        console.error('[AdminCoupons] Error linking products:', productsError);
+        // Remover o cupom criado se falhou ao vincular produtos
+        await supabase.from('coupons').delete().eq('id', createdCoupon.id);
+        toast.error('Erro ao vincular produtos ao cupom');
+        return false;
+      }
+    }
+    
     // Log the admin action
     await logAdminAction({
       action: 'create_coupon',
       entityType: 'cupom',
-      entityId: couponData.code,
-      details: couponData
+      entityId: createdCoupon.id,
+      details: { ...couponData, coupon_id: createdCoupon.id }
     });
     
     toast.success('Cupom criado com sucesso');
@@ -104,15 +156,44 @@ export const updateCoupon = async (couponId: string, couponData: Partial<CreateC
   try {
     console.log('[AdminCoupons] Updating coupon:', couponId);
     
+    const { product_ids, ...couponFields } = couponData;
+    
     const { error } = await supabase
       .from('coupons')
-      .update(couponData)
+      .update(couponFields)
       .eq('id', couponId);
       
     if (error) {
       console.error('[AdminCoupons] Error updating coupon:', error);
       toast.error('Erro ao atualizar cupom');
       return false;
+    }
+    
+    // Se product_ids foi fornecido, atualizar produtos vinculados
+    if (product_ids !== undefined) {
+      // Remover produtos existentes
+      await supabase
+        .from('coupon_products')
+        .delete()
+        .eq('coupon_id', couponId);
+      
+      // Adicionar novos produtos se houver
+      if (product_ids.length > 0) {
+        const couponProducts = product_ids.map(productId => ({
+          coupon_id: couponId,
+          product_id: productId
+        }));
+        
+        const { error: productsError } = await supabase
+          .from('coupon_products')
+          .insert(couponProducts);
+          
+        if (productsError) {
+          console.error('[AdminCoupons] Error updating product links:', productsError);
+          toast.error('Erro ao atualizar produtos vinculados');
+          return false;
+        }
+      }
     }
     
     // Log the admin action
@@ -217,4 +298,31 @@ export const getCouponStatusText = (active: boolean, expires_at?: string): strin
   }
   
   return 'Ativo';
+};
+
+// Nova função para buscar produtos para seleção
+export const fetchProductsForCoupon = async (searchTerm: string = ''): Promise<any[]> => {
+  try {
+    let query = supabase
+      .from('produtos')
+      .select('id, nome, preco_normal, imagens, categoria, vendedor_id')
+      .eq('status', 'aprovado')
+      .order('nome');
+    
+    if (searchTerm) {
+      query = query.ilike('nome', `%${searchTerm}%`);
+    }
+    
+    const { data, error } = await query.limit(50);
+    
+    if (error) {
+      console.error('Error fetching products:', error);
+      return [];
+    }
+    
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching products for coupon:', error);
+    return [];
+  }
 };

@@ -8,7 +8,7 @@ export const useCoupon = () => {
   const [appliedCoupon, setAppliedCoupon] = useState<{code: string, discount: number} | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   
-  const applyCoupon = useCallback(async (code: string, orderValue: number = 0, userId?: string) => {
+  const applyCoupon = useCallback(async (code: string, orderValue: number = 0, userId?: string, cartItems?: any[]) => {
     if (!code || code.trim() === '') {
       toast.error("Por favor, insira um cupom válido");
       return;
@@ -22,11 +22,25 @@ export const useCoupon = () => {
     setIsValidating(true);
     
     try {
+      // Preparar dados dos itens do carrinho para validação
+      const cartItemsData = cartItems?.map(item => ({
+        produto_id: item.produto?.id || item.product_id,
+        quantidade: item.quantidade || item.quantity,
+        preco: item.produto?.preco_normal || item.price_at_add || item.preco_unitario || 0
+      })) || [];
+
+      console.log('[useCoupon] Validating coupon with cart items:', {
+        code: code.toUpperCase(),
+        orderValue,
+        cartItemsCount: cartItemsData.length
+      });
+
       // Use the validate_coupon function from Supabase
       const { data, error } = await supabase.rpc('validate_coupon', {
         coupon_code: code.toUpperCase(),
         user_id_param: userId,
-        order_value: orderValue
+        order_value: orderValue,
+        cart_items: cartItemsData.length > 0 ? JSON.stringify(cartItemsData) : null
       });
 
       if (error) {
@@ -38,12 +52,27 @@ export const useCoupon = () => {
       if (data && data.length > 0) {
         const result = data[0];
         
+        console.log('[useCoupon] Validation result:', result);
+        
         if (result.valid) {
           setAppliedCoupon({
             code: code.toUpperCase(),
             discount: result.discount_amount
           });
-          toast.success(`Cupom ${code.toUpperCase()} aplicado com sucesso!`);
+          
+          // Mostrar informação sobre produtos elegíveis se aplicável
+          if (result.eligible_products && JSON.parse(result.eligible_products).length > 0) {
+            const eligibleCount = JSON.parse(result.eligible_products).length;
+            const totalItems = cartItemsData.length;
+            
+            if (eligibleCount < totalItems) {
+              toast.success(`Cupom ${code.toUpperCase()} aplicado! Desconto válido para ${eligibleCount} de ${totalItems} produtos no carrinho.`);
+            } else {
+              toast.success(`Cupom ${code.toUpperCase()} aplicado com sucesso!`);
+            }
+          } else {
+            toast.success(`Cupom ${code.toUpperCase()} aplicado com sucesso!`);
+          }
         } else {
           toast.error(result.message || "Cupom inválido");
         }

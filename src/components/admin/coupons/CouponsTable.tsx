@@ -3,7 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Edit, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Edit, Trash2, ToggleLeft, ToggleRight, Package } from 'lucide-react';
 import { AdminCoupon, getCouponStatusBadgeColor, getCouponStatusText } from '@/services/adminCouponsService';
 
 interface CouponsTableProps {
@@ -63,6 +63,7 @@ const CouponsTable: React.FC<CouponsTableProps> = ({
             <TableHead>Nome</TableHead>
             <TableHead>Desconto</TableHead>
             <TableHead>Min. Pedido</TableHead>
+            <TableHead>Produtos</TableHead>
             <TableHead>Usos</TableHead>
             <TableHead>Validade</TableHead>
             <TableHead>Status</TableHead>
@@ -88,6 +89,31 @@ const CouponsTable: React.FC<CouponsTableProps> = ({
               </TableCell>
               <TableCell>
                 {formatCurrency(coupon.min_order_value)}
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center gap-1">
+                  <Package className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm">
+                    {coupon.specific_products && coupon.specific_products.length > 0
+                      ? `${coupon.specific_products.length} específico(s)`
+                      : 'Todos os produtos'
+                    }
+                  </span>
+                </div>
+                {coupon.specific_products && coupon.specific_products.length > 0 && (
+                  <div className="mt-1">
+                    {coupon.specific_products.slice(0, 2).map((sp) => (
+                      <Badge key={sp.id} variant="outline" className="text-xs mr-1 mb-1">
+                        {sp.produto?.nome || 'Produto removido'}
+                      </Badge>
+                    ))}
+                    {coupon.specific_products.length > 2 && (
+                      <Badge variant="outline" className="text-xs">
+                        +{coupon.specific_products.length - 2} mais
+                      </Badge>
+                    )}
+                  </div>
+                )}
               </TableCell>
               <TableCell>
                 {coupon.used_count}{coupon.max_uses ? `/${coupon.max_uses}` : ''}
