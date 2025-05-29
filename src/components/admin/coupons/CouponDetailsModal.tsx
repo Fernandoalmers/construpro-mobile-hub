@@ -22,8 +22,6 @@ const CouponDetailsModal: React.FC<CouponDetailsModalProps> = ({
 }) => {
   const { usageData, isLoading } = useCouponUsage(coupon?.id);
 
-  if (!coupon) return null;
-
   const formatDiscount = (type: string, value: number) => {
     if (type === 'percentage') {
       return `${value}%`;
@@ -31,11 +29,11 @@ const CouponDetailsModal: React.FC<CouponDetailsModalProps> = ({
     return formatCurrency(value);
   };
 
-  // Log para validação dos dados
+  // Log para validação dos dados - moved condition inside useEffect
   React.useEffect(() => {
     if (usageData.length > 0) {
       console.log('[CouponDetailsModal] Dados de uso do cupom para validação:', {
-        cupomCodigo: coupon.code,
+        cupomCodigo: coupon?.code,
         totalUsos: usageData.length,
         usosDetalhados: usageData.map(usage => ({
           id: usage.id,
@@ -49,7 +47,9 @@ const CouponDetailsModal: React.FC<CouponDetailsModalProps> = ({
         }))
       });
     }
-  }, [usageData, coupon.code]);
+  }, [usageData, coupon?.code]);
+
+  if (!coupon) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
