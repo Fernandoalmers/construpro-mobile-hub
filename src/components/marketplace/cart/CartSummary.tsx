@@ -1,114 +1,87 @@
 
 import React from 'react';
-import { ArrowRight, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useNavigate } from 'react-router-dom';
-import { cn } from '@/lib/utils';
+import { Separator } from '@/components/ui/separator';
+import { ShoppingCart, Trash2, CreditCard, Tag } from 'lucide-react';
 
 interface CartSummaryProps {
   subtotal: number;
   discount: number;
-  shipping: number;
   total: number;
-  totalPoints: number;
+  onCheckout: () => void;
+  onClearCart: () => void;
+  itemCount: number;
+  appliedCoupon?: {code: string, discount: number} | null;
 }
 
-const CartSummary: React.FC<CartSummaryProps> = ({ 
-  subtotal, 
-  discount, 
-  shipping, 
-  total, 
-  totalPoints 
+const CartSummary: React.FC<CartSummaryProps> = ({
+  subtotal,
+  discount,
+  total,
+  onCheckout,
+  onClearCart,
+  itemCount,
+  appliedCoupon
 }) => {
-  const navigate = useNavigate();
-  
-  const handleCheckout = () => {
-    navigate('/checkout');
-  };
-
   return (
-    <>
-      {/* Sticky summary at bottom - compact version */}
-      <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 shadow-md px-4 py-2 z-30">
-        <div className="max-w-2xl mx-auto">
-          <div className="flex items-center justify-between">
-            {/* Summary info - compact version */}
-            <div className="flex flex-col">
-              <div className="flex items-baseline gap-1">
-                <span className="text-sm text-gray-600">Total:</span>
-                <span className="font-semibold text-lg">R$ {total.toFixed(2)}</span>
-              </div>
-              <div className="text-xs text-green-700 font-medium">
-                Ganhe {totalPoints} pontos
-              </div>
-            </div>
-            
-            {/* Action buttons */}
-            <div className="flex items-center gap-2">
-              <Button 
-                variant="outline"
-                size="sm"
-                className="border-gray-300 text-xs h-7 px-2"
-                onClick={() => navigate('/marketplace')}
-              >
-                <ShoppingBag size={14} className="mr-1" />
-                Continuar
-              </Button>
-              
-              <Button 
-                onClick={handleCheckout}
-                className={cn(
-                  "text-xs py-1 h-7 px-3",
-                  "bg-green-600 hover:bg-green-700"
-                )}
-                size="sm"
-              >
-                Finalizar
-                <ArrowRight size={14} className="ml-1" />
-              </Button>
-            </div>
+    <div className="bg-white rounded-lg border p-4 space-y-4">
+      <h3 className="font-semibold text-lg flex items-center gap-2">
+        <ShoppingCart className="h-5 w-5" />
+        Resumo do Pedido
+      </h3>
+      
+      <div className="space-y-3">
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-600">Subtotal ({itemCount} {itemCount === 1 ? 'item' : 'itens'})</span>
+          <span className="font-medium">R$ {subtotal.toFixed(2)}</span>
+        </div>
+        
+        {discount > 0 && appliedCoupon && (
+          <div className="flex justify-between text-sm text-green-600">
+            <span className="flex items-center gap-1">
+              <Tag className="h-3 w-3" />
+              Desconto ({appliedCoupon.code})
+            </span>
+            <span className="font-medium">-R$ {discount.toFixed(2)}</span>
           </div>
+        )}
+        
+        <Separator />
+        
+        <div className="flex justify-between text-lg font-semibold">
+          <span>Total</span>
+          <span className="text-blue-600">R$ {total.toFixed(2)}</span>
         </div>
       </div>
       
-      {/* Detailed summary at page bottom - non-sticky */}
-      <div className="mt-8 bg-white rounded-lg shadow p-4">
-        <h3 className="font-medium text-gray-700 mb-3">Resumo da compra</h3>
+      <div className="space-y-2">
+        <Button 
+          onClick={onCheckout} 
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+          size="lg"
+          disabled={itemCount === 0}
+        >
+          <CreditCard className="h-4 w-4 mr-2" />
+          Finalizar Compra
+        </Button>
         
-        <div className="space-y-2">
-          <div className="flex justify-between">
-            <span className="text-gray-600">Subtotal</span>
-            <span>R$ {subtotal.toFixed(2)}</span>
-          </div>
-          
-          {discount > 0 && (
-            <div className="flex justify-between">
-              <span className="text-green-600">Desconto</span>
-              <span className="text-green-600">-R$ {discount.toFixed(2)}</span>
-            </div>
-          )}
-          
-          <div className="flex justify-between">
-            <span className="text-gray-600">Frete</span>
-            <span>Grátis</span>
-          </div>
-          
-          <div className="border-t border-gray-200 my-2 pt-2"></div>
-          
-          <div className="flex justify-between font-semibold">
-            <span>Total</span>
-            <span>R$ {total.toFixed(2)}</span>
-          </div>
-          
-          <div className="bg-green-50 border border-green-100 rounded-md p-2 mt-2">
-            <div className="flex justify-between items-center">
-              <span className="text-green-700 text-sm font-medium">Pontos a receber:</span>
-              <span className="text-green-700 font-semibold">{totalPoints} pontos</span>
-            </div>
-          </div>
-        </div>
+        <Button 
+          onClick={onClearCart} 
+          variant="outline" 
+          className="w-full text-red-600 border-red-300 hover:bg-red-50"
+          disabled={itemCount === 0}
+        >
+          <Trash2 className="h-4 w-4 mr-2" />
+          Limpar Carrinho
+        </Button>
       </div>
-    </>
+      
+      {discount > 0 && (
+        <div className="text-xs text-green-600 text-center p-2 bg-green-50 rounded">
+          🎉 Você economizou R$ {discount.toFixed(2)} com o cupom!
+        </div>
+      )}
+    </div>
   );
 };
 

@@ -22,101 +22,122 @@ export const useCoupon = () => {
     setIsValidating(true);
     
     try {
-      // Preparar dados dos itens do carrinho para validação
+      console.log('[useCoupon] Starting coupon validation:', {
+        code: code.toUpperCase(),
+        orderValue,
+        userId,
+        cartItemsCount: cartItems?.length || 0
+      });
+
+      // Preparar dados dos itens do carrinho de forma mais robusta
       const cartItemsData = cartItems?.map(item => {
-        // Safely extract and convert the values to the correct types
-        const produtoId = item.produto?.id || item.product_id;
-        const quantidade = item.quantidade || item.quantity;
-        const preco = item.produto?.preco_normal || item.price_at_add || item.preco_unitario;
+        // Extrair produto_id de diferentes possíveis estruturas
+        let produtoId = item.produto?.id || item.product_id || item.produto_id;
         
-        // Convert values directly to the correct types with proper type checking
-        let safeProdutoId: string;
-        if (typeof produtoId === 'string') {
-          safeProdutoId = produtoId;
-        } else if (typeof produtoId === 'number') {
-          safeProdutoId = produtoId.toString();
-        } else {
-          safeProdutoId = '';
-        }
+        // Extrair quantidade de diferentes possíveis estruturas
+        let quantidade = item.quantidade || item.quantity || 1;
         
-        let safeQuantidade: number;
-        if (typeof quantidade === 'number') {
-          safeQuantidade = quantidade;
-        } else if (typeof quantidade === 'string') {
-          safeQuantidade = parseFloat(quantidade) || 0;
-        } else {
-          safeQuantidade = 0;
-        }
-        
-        let safePreco: number;
-        if (typeof preco === 'number') {
-          safePreco = preco;
-        } else if (typeof preco === 'string') {
-          safePreco = parseFloat(preco) || 0;
-        } else {
-          safePreco = 0;
-        }
-        
+        // Extrair preço de diferentes possíveis estruturas
+        let preco = item.produto?.preco_normal || 
+                   item.produto?.preco_promocional || 
+                   item.price_at_add || 
+                   item.preco_unitario ||
+                   item.preco ||
+                   0;
+
+        // Garantir tipos corretos
+        const safeProdutoId = String(produtoId || '');
+        const safeQuantidade = Number(quantidade) || 1;
+        const safePreco = Number(preco) || 0;
+
+        console.log('[useCoupon] Processing cart item:', {
+          original: item,
+          processed: {
+            produto_id: safeProdutoId,
+            quantidade: safeQuantidade,
+            preco: safePreco
+          }
+        });
+
         return {
           produto_id: safeProdutoId,
           quantidade: safeQuantidade,
           preco: safePreco
         };
-      }) || [];
+      }).filter(item => item.produto_id && item.preco > 0) || [];
 
-      console.log('[useCoupon] Validating coupon with cart items:', {
-        code: code.toUpperCase(),
-        orderValue,
-        cartItemsCount: cartItemsData.length
-      });
+      console.log('[useCoupon] Final cart items for validation:', cartItemsData);
 
-      // Use the validate_coupon function from Supabase with proper type conversions
+      // Chamar a função validate_coupon do Supabase
       const { data, error } = await supabase.rpc('validate_coupon', {
-        coupon_code: code.toUpperCase(),
+        coupon_code: code.toUpperCase().trim(),
         user_id_param: userId,
-        order_value: Number(orderValue), // Ensure it's a number
+        order_value: Number(orderValue) || 0,
         cart_items: cartItemsData.length > 0 ? cartItemsData : null
       });
 
       if (error) {
-        console.error('Error validating coupon:', error);
-        toast.error('Erro ao validar cupom');
+        console.error('[useCoupon] Supabase RPC error:', error);
+        toast.error('Erro interno ao validar cupom. Tente novamente.');
         return;
       }
+
+      console.log('[useCoupon] Validation response:', data);
 
       if (data && data.length > 0) {
         const result = data[0];
         
-        console.log('[useCoupon] Validation result:', result);
-        
         if (result.valid) {
+          const discountAmount = Number(result.discount_amount) || 0;
+          
           setAppliedCoupon({
-            code: code.toUpperCase(),
-            discount: result.discount_amount
+            code: code.toUpperCase().trim(),
+            discount: discountAmount
           });
           
-          // Mostrar informação sobre produtos elegíveis se aplicável
-          if (result.eligible_products && JSON.parse(String(result.eligible_products)).length > 0) {
-            const eligibleCount = JSON.parse(String(result.eligible_products)).length;
-            const totalItems = cartItemsData.length;
-            
-            if (eligibleCount < totalItems) {
-              toast.success(`Cupom ${code.toUpperCase()} aplicado! Desconto válido para ${eligibleCount} de ${totalItems} produtos no carrinho.`);
-            } else {
+          // Determinar mensagem de sucesso baseada nos produtos elegíveis
+          if (result.eligible_products && result.eligible_products !== null) {
+            try {
+              const eligibleProducts = typeof result.eligible_products === 'string' 
+                ? JSON.parse(result.eligible_products) 
+                : result.eligible_products;
+              
+              if (Array.isArray(eligibleProducts) && eligibleProducts.length > 0) {
+                const eligibleCount = eligibleProducts.length;
+                const totalItems = cartItemsData.length;
+                
+                if (eligibleCount < totalItems && totalItems > 0) {
+                  toast.success(`Cupom aplicado! Desconto válido para ${eligibleCount} de ${totalItems} produtos no carrinho.`);
+                } else {
+                  toast.success(`Cupom ${code.toUpperCase()} aplicado com sucesso!`);
+                }
+              } else {
+                toast.success(`Cupom ${code.toUpperCase()} aplicado com sucesso!`);
+              }
+            } catch (parseError) {
+              console.error('[useCoupon] Error parsing eligible_products:', parseError);
               toast.success(`Cupom ${code.toUpperCase()} aplicado com sucesso!`);
             }
           } else {
             toast.success(`Cupom ${code.toUpperCase()} aplicado com sucesso!`);
           }
+          
+          console.log('[useCoupon] Coupon applied successfully:', {
+            code: code.toUpperCase(),
+            discount: discountAmount
+          });
         } else {
-          toast.error(String(result.message) || "Cupom inválido");
+          const errorMessage = result.message || "Cupom inválido";
+          console.log('[useCoupon] Coupon validation failed:', errorMessage);
+          toast.error(errorMessage);
         }
       } else {
-        toast.error("Cupom inválido ou expirado");
+        console.log('[useCoupon] No validation result returned');
+        toast.error("Erro ao validar cupom. Tente novamente.");
       }
     } catch (error) {
-      console.error('Error applying coupon:', error);
-      toast.error("Erro ao aplicar cupom");
+      console.error('[useCoupon] Unexpected error:', error);
+      toast.error("Erro inesperado ao aplicar cupom. Tente novamente.");
     } finally {
       setIsValidating(false);
     }
@@ -126,6 +147,7 @@ export const useCoupon = () => {
     setAppliedCoupon(null);
     setCouponCode('');
     toast.success("Cupom removido");
+    console.log('[useCoupon] Coupon removed');
   }, []);
   
   return {

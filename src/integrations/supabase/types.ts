@@ -2002,14 +2002,12 @@ export type Database = {
         Returns: undefined
       }
       validate_coupon: {
-        Args:
-          | { coupon_code: string; user_id_param: string; order_value: number }
-          | {
-              coupon_code: string
-              user_id_param: string
-              order_value: number
-              cart_items?: Json
-            }
+        Args: {
+          coupon_code: string
+          user_id_param: string
+          order_value: number
+          cart_items?: Json
+        }
         Returns: {
           valid: boolean
           coupon_id: string
