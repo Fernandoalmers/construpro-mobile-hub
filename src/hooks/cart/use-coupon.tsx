@@ -96,8 +96,8 @@ export const useCoupon = () => {
           });
           
           // Mostrar informação sobre produtos elegíveis se aplicável
-          if (result.eligible_products && JSON.parse(result.eligible_products).length > 0) {
-            const eligibleCount = JSON.parse(result.eligible_products).length;
+          if (result.eligible_products && JSON.parse(String(result.eligible_products)).length > 0) {
+            const eligibleCount = JSON.parse(String(result.eligible_products)).length;
             const totalItems = cartItemsData.length;
             
             if (eligibleCount < totalItems) {
@@ -109,7 +109,7 @@ export const useCoupon = () => {
             toast.success(`Cupom ${code.toUpperCase()} aplicado com sucesso!`);
           }
         } else {
-          toast.error(result.message || "Cupom inválido");
+          toast.error(String(result.message) || "Cupom inválido");
         }
       } else {
         toast.error("Cupom inválido ou expirado");
