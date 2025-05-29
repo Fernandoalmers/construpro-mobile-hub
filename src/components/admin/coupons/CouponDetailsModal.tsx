@@ -30,6 +30,11 @@ const CouponDetailsModal: React.FC<CouponDetailsModalProps> = ({
     return formatCurrency(value);
   };
 
+  // Debug logs
+  console.log('[CouponDetailsModal] Coupon:', coupon);
+  console.log('[CouponDetailsModal] Usage data:', usageData);
+  console.log('[CouponDetailsModal] Is loading:', isLoading);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -74,13 +79,22 @@ const CouponDetailsModal: React.FC<CouponDetailsModalProps> = ({
 
           {/* Histórico de uso */}
           <div>
-            <h3 className="font-semibold mb-4">Histórico de Uso ({usageData.length})</h3>
+            <h3 className="font-semibold mb-4">
+              Histórico de Uso ({usageData.length})
+              {/* Debug info */}
+              <span className="text-xs text-gray-500 ml-2">
+                (Cupom ID: {coupon.id})
+              </span>
+            </h3>
             
             {isLoading ? (
               <LoadingState text="Carregando histórico de uso..." />
             ) : usageData.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                Este cupom ainda não foi utilizado
+                <div>Este cupom ainda não foi utilizado</div>
+                <div className="text-xs mt-2">
+                  Cupom ID verificado: {coupon.id}
+                </div>
               </div>
             ) : (
               <div className="space-y-4">
