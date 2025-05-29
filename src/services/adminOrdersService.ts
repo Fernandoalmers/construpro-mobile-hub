@@ -286,8 +286,8 @@ export const getOrderDetails = async (orderId: string): Promise<AdminOrder | nul
         console.error('Error fetching client name:', clienteError);
       }
 
-      // Buscar itens do pedido com mais detalhes de debug
-      console.log(`[OrderDetails] Fetching items for order ${orderId.substring(0, 8)} (full ID: ${orderId})...`);
+      // Buscar itens do pedido
+      console.log(`[OrderDetails] Fetching items for order ${orderId.substring(0, 8)}...`);
       const { data: items, error: itemsError } = await supabase
         .from('order_items')
         .select(`
@@ -301,9 +301,9 @@ export const getOrderDetails = async (orderId: string): Promise<AdminOrder | nul
         
       if (itemsError) {
         console.error('Error fetching order items:', itemsError);
+        // Try fallback with itens_pedido table
         console.log(`[OrderDetails] Trying alternative: search in itens_pedido table...`);
         
-        // Tentar buscar na tabela itens_pedido como fallback
         const { data: itensAlternative, error: itensError } = await supabase
           .from('itens_pedido')
           .select(`
@@ -317,157 +317,25 @@ export const getOrderDetails = async (orderId: string): Promise<AdminOrder | nul
           
         if (itensError) {
           console.error('Error fetching itens_pedido:', itensError);
-          // Continuar sem itens, mas com informações básicas do pedido
-        } else {
-          console.log(`[OrderDetails] Found ${itensAlternative?.length || 0} items in itens_pedido table`);
-          // Use os itens encontrados na tabela alternativa
-          const processedItems = itensAlternative || [];
-          
-          // Buscar nomes dos produtos
-          if (processedItems.length > 0) {
-            const produtoIds = processedItems.map(item => item.produto_id);
-            
-            let produtos = [];
-            let vendedorInfo = null;
-            
-            console.log(`[OrderDetails] Fetching ${produtoIds.length} products...`);
-            const { data: produtosData, error: produtosError } = await supabase
-              .from('produtos')
-              .select('id, nome, vendedor_id')
-              .in('id', produtoIds);
-              
-            if (produtosError) {
-              console.error('Error fetching products:', produtosError);
-            } else {
-              produtos = produtosData || [];
-              console.log(`[OrderDetails] Found ${produtos.length} products`);
-
-              // Buscar informações do vendedor
-              const vendedorId = produtos.length > 0 ? produtos[0].vendedor_id : null;
-              
-              if (vendedorId) {
-                console.log(`[OrderDetails] Fetching vendor ${vendedorId}...`);
-                const { data: vendedor, error: vendedorError } = await supabase
-                  .from('vendedores')
-                  .select('id, nome_loja')
-                  .eq('id', vendedorId)
-                  .single();
-                  
-                if (vendedorError) {
-                  console.error('Error fetching vendor info:', vendedorError);
-                } else {
-                  vendedorInfo = vendedor;
-                  console.log(`[OrderDetails] Found vendor: ${vendedor.nome_loja}`);
-                }
-              }
-            }
-
-            // Criar mapa para associar IDs de produtos aos nomes
-            const produtoMap = new Map();
-            produtos?.forEach(p => produtoMap.set(p.id, p.nome));
-
-            // Associar nomes dos produtos aos itens e mapear total para subtotal
-            const itemsWithProductNames = processedItems.map(item => ({
-              id: item.id,
-              produto_id: item.produto_id,
-              produto_nome: produtoMap.get(item.produto_id) || 'Produto Desconhecido',
-              quantidade: item.quantidade,
-              preco_unitario: item.preco_unitario,
-              subtotal: item.total // Mapear total para subtotal
-            }));
-
-            console.log(`[OrderDetails] Successfully processed order details from alternative table`);
-            
-            // Retornar pedido completo com itens e informações do vendedor
-            return {
-              ...order,
-              cliente_nome: cliente?.nome || 'Cliente Desconhecido',
-              loja_id: vendedorInfo?.id,
-              loja_nome: vendedorInfo?.nome_loja || 'Loja não identificada',
-              items: itemsWithProductNames
-            };
-          }
+          // Return order without items
+          return {
+            ...order,
+            cliente_nome: cliente?.nome || 'Cliente Desconhecido',
+            loja_nome: 'Erro ao carregar itens',
+            items: []
+          };
         }
+
+        return await processOrderWithItems(order, itensAlternative || [], cliente, true);
       }
       
       console.log(`[OrderDetails] Found ${items?.length || 0} items in order_items table`);
-
-      // Se chegou aqui, use os itens da tabela order_items
-      const processedItems = items || [];
-
-      // Buscar nomes dos produtos e informações do vendedor
-      if (processedItems.length > 0) {
-        const produtoIds = processedItems.map(item => item.produto_id);
-        
-        let produtos = [];
-        let vendedorInfo = null;
-        
-        console.log(`[OrderDetails] Fetching ${produtoIds.length} products...`);
-        const { data: produtosData, error: produtosError } = await supabase
-          .from('produtos')
-          .select('id, nome, vendedor_id')
-          .in('id', produtoIds);
-          
-        if (produtosError) {
-          console.error('Error fetching products:', produtosError);
-        } else {
-          produtos = produtosData || [];
-          console.log(`[OrderDetails] Found ${produtos.length} products`);
-
-          // Buscar informações do vendedor (assumindo que todos os produtos são do mesmo vendedor)
-          const vendedorId = produtos.length > 0 ? produtos[0].vendedor_id : null;
-          
-          if (vendedorId) {
-            console.log(`[OrderDetails] Fetching vendor ${vendedorId}...`);
-            const { data: vendedor, error: vendedorError } = await supabase
-              .from('vendedores')
-              .select('id, nome_loja')
-              .eq('id', vendedorId)
-              .single();
-              
-            if (vendedorError) {
-              console.error('Error fetching vendor info:', vendedorError);
-            } else {
-              vendedorInfo = vendedor;
-              console.log(`[OrderDetails] Found vendor: ${vendedor.nome_loja}`);
-            }
-          }
-        }
-
-        // Criar mapa para associar IDs de produtos aos nomes
-        const produtoMap = new Map();
-        produtos?.forEach(p => produtoMap.set(p.id, p.nome));
-
-        // Associar nomes dos produtos aos itens
-        const itemsWithProductNames = processedItems.map(item => ({
-          ...item,
-          produto_nome: produtoMap.get(item.produto_id) || 'Produto Desconhecido'
-        }));
-
-        console.log(`[OrderDetails] Successfully processed order details`);
-        
-        // Retornar pedido completo com itens e informações do vendedor
-        return {
-          ...order,
-          cliente_nome: cliente?.nome || 'Cliente Desconhecido',
-          loja_id: vendedorInfo?.id,
-          loja_nome: vendedorInfo?.nome_loja || 'Loja não identificada',
-          items: itemsWithProductNames
-        };
-      }
-
-      // Se não há itens, retornar pedido sem itens
-      return {
-        ...order,
-        cliente_nome: cliente?.nome || 'Cliente Desconhecido',
-        loja_nome: 'Pedido sem itens',
-        items: []
-      };
+      return await processOrderWithItems(order, items || [], cliente, false);
       
     } catch (error) {
       console.log('Erro ao buscar na tabela orders, tentando tabela pedidos:', error);
       
-      // Se não encontrar a tabela 'orders', tentar com a tabela 'pedidos'
+      // Fallback para tabela pedidos
       const { data: pedido, error: pedidoError } = await supabase
         .from('pedidos')
         .select(`
@@ -584,6 +452,86 @@ export const getOrderDetails = async (orderId: string): Promise<AdminOrder | nul
     toast.error('Erro ao carregar detalhes do pedido');
     return null;
   }
+};
+
+// Nova função auxiliar para processar pedido com itens
+const processOrderWithItems = async (order: any, items: any[], cliente: any, isFromItensTable: boolean) => {
+  console.log(`[OrderDetails] Processing ${items.length} items from ${isFromItensTable ? 'itens_pedido' : 'order_items'} table`);
+  
+  if (items.length === 0) {
+    return {
+      ...order,
+      cliente_nome: cliente?.nome || 'Cliente Desconhecido',
+      loja_nome: 'Pedido sem itens',
+      items: []
+    };
+  }
+
+  // Buscar nomes dos produtos
+  const produtoIds = items.map(item => item.produto_id);
+  
+  console.log(`[OrderDetails] Fetching ${produtoIds.length} products...`);
+  const { data: produtos, error: produtosError } = await supabase
+    .from('produtos')
+    .select('id, nome, vendedor_id')
+    .in('id', produtoIds);
+    
+  if (produtosError) {
+    console.error('Error fetching products:', produtosError);
+    return {
+      ...order,
+      cliente_nome: cliente?.nome || 'Cliente Desconhecido',
+      loja_nome: 'Erro ao carregar produtos',
+      items: []
+    };
+  }
+
+  const produtosData = produtos || [];
+  console.log(`[OrderDetails] Found ${produtosData.length} products`);
+
+  // Buscar informações do vendedor (assumindo que todos os produtos são do mesmo vendedor)
+  let vendedorInfo = null;
+  const vendedorId = produtosData.length > 0 ? produtosData[0].vendedor_id : null;
+  
+  if (vendedorId) {
+    console.log(`[OrderDetails] Fetching vendor ${vendedorId}...`);
+    const { data: vendedor, error: vendedorError } = await supabase
+      .from('vendedores')
+      .select('id, nome_loja')
+      .eq('id', vendedorId)
+      .single();
+      
+    if (vendedorError) {
+      console.error('Error fetching vendor info:', vendedorError);
+    } else {
+      vendedorInfo = vendedor;
+      console.log(`[OrderDetails] Found vendor: ${vendedor?.nome_loja}`);
+    }
+  }
+
+  // Criar mapa para associar IDs de produtos aos nomes
+  const produtoMap = new Map();
+  produtosData.forEach(p => produtoMap.set(p.id, p.nome));
+
+  // Associar nomes dos produtos aos itens
+  const itemsWithProductNames = items.map(item => ({
+    id: item.id,
+    produto_id: item.produto_id,
+    produto_nome: produtoMap.get(item.produto_id) || 'Produto Desconhecido',
+    quantidade: item.quantidade,
+    preco_unitario: item.preco_unitario,
+    subtotal: isFromItensTable ? item.total : item.subtotal // Mapear total para subtotal se vier de itens_pedido
+  }));
+
+  console.log(`[OrderDetails] Successfully processed order details with ${itemsWithProductNames.length} items`);
+  
+  return {
+    ...order,
+    cliente_nome: cliente?.nome || 'Cliente Desconhecido',
+    loja_id: vendedorInfo?.id,
+    loja_nome: vendedorInfo?.nome_loja || 'Loja não identificada',
+    items: itemsWithProductNames
+  };
 };
 
 export const updateOrderStatus = async (orderId: string, newStatus: string): Promise<boolean> => {
