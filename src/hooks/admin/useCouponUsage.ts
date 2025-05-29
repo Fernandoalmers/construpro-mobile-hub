@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
@@ -39,43 +40,15 @@ export const useCouponUsage = (couponId?: string) => {
     try {
       console.log('[useCouponUsage] Fetching usage for coupon:', id);
       
-      // Buscar dados de uso do cupom com JOIN para obter dados relacionados
-      const { data: usageRecords, error } = await supabase
+      // Step 1: Fetch coupon usage records
+      const { data: usageRecords, error: usageError } = await supabase
         .from('coupon_usage')
-        .select(`
-          id,
-          coupon_id,
-          user_id,
-          order_id,
-          discount_amount,
-          used_at,
-          profiles:user_id (
-            nome,
-            email
-          ),
-          orders:order_id (
-            valor_total,
-            order_items (
-              id,
-              produto_id,
-              quantidade,
-              preco_unitario,
-              subtotal,
-              produtos:produto_id (
-                nome,
-                vendedor_id,
-                vendedores:vendedor_id (
-                  nome_loja
-                )
-              )
-            )
-          )
-        `)
+        .select('*')
         .eq('coupon_id', id)
         .order('used_at', { ascending: false });
 
-      if (error) {
-        console.error('[useCouponUsage] Error fetching usage:', error);
+      if (usageError) {
+        console.error('[useCouponUsage] Error fetching usage:', usageError);
         toast.error('Erro ao carregar histórico de uso do cupom');
         return;
       }
@@ -88,45 +61,87 @@ export const useCouponUsage = (couponId?: string) => {
 
       console.log('[useCouponUsage] Raw usage records:', usageRecords);
 
-      // Processar dados com lógica simplificada para extrair nome do vendedor
+      // Step 2: Get unique user IDs and order IDs
+      const userIds = [...new Set(usageRecords.map(record => record.user_id))];
+      const orderIds = [...new Set(usageRecords.map(record => record.order_id).filter(Boolean))];
+
+      // Step 3: Fetch user profiles
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, nome, email')
+        .in('id', userIds);
+
+      // Step 4: Fetch orders with their items and vendor info
+      const { data: orders } = await supabase
+        .from('orders')
+        .select('id, valor_total')
+        .in('id', orderIds);
+
+      // Step 5: Fetch order items with product and vendor info
+      const { data: orderItems } = await supabase
+        .from('order_items')
+        .select(`
+          *,
+          produtos:produto_id (
+            id,
+            nome,
+            vendedor_id,
+            vendedores:vendedor_id (
+              id,
+              nome_loja
+            )
+          )
+        `)
+        .in('order_id', orderIds);
+
+      console.log('[useCouponUsage] Fetched profiles:', profiles);
+      console.log('[useCouponUsage] Fetched orders:', orders);
+      console.log('[useCouponUsage] Fetched order items:', orderItems);
+
+      // Step 6: Process and combine data
       const enrichedUsage: CouponUsageDetail[] = usageRecords.map(usage => {
-        const userData = usage.profiles;
-        const orderData = usage.orders;
+        // Find user data
+        const userData = profiles?.find(p => p.id === usage.user_id);
         
-        // Extrair nome do vendedor dos itens do pedido
+        // Find order data
+        const orderData = orders?.find(o => o.id === usage.order_id);
+        
+        // Find order items for this order
+        const orderItemsData = orderItems?.filter(item => item.order_id === usage.order_id) || [];
+        
+        // Extract vendor name from first item with vendor data
         let vendorName = 'Vendedor não identificado';
-        let orderItems: any[] = [];
         
-        if (orderData?.order_items && orderData.order_items.length > 0) {
-          orderItems = orderData.order_items.map(item => ({
-            id: item.id,
-            produto_id: item.produto_id,
-            quantidade: item.quantidade,
-            preco_unitario: item.preco_unitario,
-            subtotal: item.subtotal,
-            produto: item.produtos ? {
-              nome: item.produtos.nome,
-              vendedor_id: item.produtos.vendedor_id,
-              vendedores: item.produtos.vendedores ? {
-                nome_loja: item.produtos.vendedores.nome_loja
-              } : null
-            } : null
-          }));
+        if (orderItemsData.length > 0) {
+          const firstItemWithVendor = orderItemsData.find(item => 
+            item.produtos?.vendedores?.nome_loja
+          );
           
-          // Buscar primeiro vendedor válido nos itens
-          const firstVendor = orderData.order_items
-            .map(item => item.produtos?.vendedores?.nome_loja)
-            .filter(nome => nome && nome.trim())[0];
-            
-          if (firstVendor) {
-            vendorName = firstVendor;
+          if (firstItemWithVendor?.produtos?.vendedores?.nome_loja) {
+            vendorName = firstItemWithVendor.produtos.vendedores.nome_loja;
           }
         }
+
+        // Process order items for display
+        const processedOrderItems = orderItemsData.map(item => ({
+          id: item.id,
+          produto_id: item.produto_id,
+          quantidade: item.quantidade,
+          preco_unitario: item.preco_unitario,
+          subtotal: item.subtotal,
+          produto: item.produtos ? {
+            nome: item.produtos.nome,
+            vendedor_id: item.produtos.vendedor_id,
+            vendedores: item.produtos.vendedores ? {
+              nome_loja: item.produtos.vendedores.nome_loja
+            } : undefined
+          } : undefined
+        }));
 
         console.log(`[useCouponUsage] Processing usage ${usage.id}:`, {
           orderId: usage.order_id,
           extractedVendorName: vendorName,
-          hasOrderItems: orderItems.length > 0,
+          hasOrderItems: processedOrderItems.length > 0,
           userData: userData ? `${userData.nome} (${userData.email})` : 'N/A'
         });
 
@@ -142,7 +157,7 @@ export const useCouponUsage = (couponId?: string) => {
           order_total: orderData?.valor_total || 0,
           vendor_name: vendorName,
           store_name: vendorName,
-          order_items: orderItems
+          order_items: processedOrderItems
         };
       });
 
