@@ -87,7 +87,7 @@ export const useCouponUsage = (couponId?: string) => {
             orderTotal = orderData.valor_total;
           }
 
-          // Buscar itens do pedido com informações do produto e vendedor
+          // Buscar itens do pedido primeiro
           const { data: items, error: itemsError } = await supabase
             .from('order_items')
             .select(`
@@ -95,27 +95,61 @@ export const useCouponUsage = (couponId?: string) => {
               produto_id,
               quantidade,
               preco_unitario,
-              subtotal,
-              produtos:produto_id (
-                nome,
-                vendedor_id,
-                vendedores:vendedor_id (
-                  nome_loja
-                )
-              )
+              subtotal
             `)
             .eq('order_id', use.order_id);
 
           if (itemsError) {
             console.error('[useCouponUsage] Error fetching order items:', itemsError);
-          } else {
-            orderItems = items || [];
+          } else if (items) {
+            // Para cada item, buscar informações do produto e vendedor
+            const enrichedItems = await Promise.all(items.map(async (item) => {
+              const { data: produto, error: produtoError } = await supabase
+                .from('produtos')
+                .select(`
+                  nome,
+                  vendedor_id
+                `)
+                .eq('id', item.produto_id)
+                .single();
+
+              if (produtoError) {
+                console.error('[useCouponUsage] Error fetching product:', produtoError);
+                return {
+                  ...item,
+                  produto: null
+                };
+              }
+
+              let vendedorInfo = null;
+              if (produto?.vendedor_id) {
+                const { data: vendedor, error: vendedorError } = await supabase
+                  .from('vendedores')
+                  .select('nome_loja')
+                  .eq('id', produto.vendedor_id)
+                  .single();
+
+                if (!vendedorError && vendedor) {
+                  vendedorInfo = { nome_loja: vendedor.nome_loja };
+                }
+              }
+
+              return {
+                ...item,
+                produto: {
+                  ...produto,
+                  vendedores: vendedorInfo
+                }
+              };
+            }));
+
+            orderItems = enrichedItems;
             
             // Extrair nomes únicos dos vendedores
             const uniqueVendors = new Set<string>();
-            items?.forEach(item => {
-              if (item.produtos?.vendedores?.nome_loja) {
-                uniqueVendors.add(item.produtos.vendedores.nome_loja);
+            enrichedItems.forEach(item => {
+              if (item.produto?.vendedores?.nome_loja) {
+                uniqueVendors.add(item.produto.vendedores.nome_loja);
               }
             });
             vendorNames = Array.from(uniqueVendors);
