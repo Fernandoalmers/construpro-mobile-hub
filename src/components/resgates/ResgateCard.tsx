@@ -53,8 +53,8 @@ const ResgateCard: React.FC<ResgateCardProps> = ({ resgate, userPoints, onClick 
       onClick={handleClick}
     >
       <div className="flex flex-row h-full">
-        {/* Enhanced image area with background */}
-        <div className="w-1/4 max-w-[100px] bg-gray-50 flex items-center justify-center relative">
+        {/* Enhanced image area with WHITE background */}
+        <div className="w-1/4 max-w-[100px] bg-white flex items-center justify-center relative">
           <img 
             src={resgate.imagemUrl} 
             alt={resgate.titulo} 
