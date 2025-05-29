@@ -187,7 +187,7 @@ async function processCouponUsage(
     // Find the coupon by code
     const { data: coupon, error: couponError } = await adminClient
       .from('coupons')
-      .select('id')
+      .select('id, used_count')
       .eq('code', couponData.code.toUpperCase())
       .single();
 
@@ -212,11 +212,11 @@ async function processCouponUsage(
       return false;
     }
 
-    // Update coupon used_count
+    // Update coupon used_count with the correct approach
     const { error: updateError } = await adminClient
       .from('coupons')
       .update({ 
-        used_count: adminClient.raw('used_count + 1')
+        used_count: (coupon.used_count || 0) + 1
       })
       .eq('id', coupon.id);
 
