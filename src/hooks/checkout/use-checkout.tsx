@@ -30,14 +30,40 @@ export function useCheckout() {
   const [processError, setProcessError] = useState<string | null>(null);
   const [orderAttempts, setOrderAttempts] = useState(0);
   
-  // Calculate totals
-  const subtotal = cart?.summary?.subtotal || 0;
+  // Get cart summary data including coupon discount
+  const cartSummary = cart?.summary || {
+    subtotal: 0,
+    shipping: 0,
+    totalItems: 0,
+    totalPoints: 0
+  };
+  
+  // Calculate totals - use cart summary data directly
+  const subtotal = cartSummary.subtotal || 0;
   const shipping = 0; // Free shipping
-  const total = subtotal + shipping;
+  
+  // Get applied coupon information from localStorage or cart context
+  const [appliedCoupon, setAppliedCoupon] = useState<{code: string, discount: number} | null>(null);
+  
+  // Check for applied coupon from localStorage on mount
+  useEffect(() => {
+    const storedCoupon = localStorage.getItem('appliedCoupon');
+    if (storedCoupon) {
+      try {
+        const couponData = JSON.parse(storedCoupon);
+        setAppliedCoupon(couponData);
+      } catch (error) {
+        console.error('Error parsing stored coupon:', error);
+      }
+    }
+  }, []);
+  
+  // Calculate discount and total
+  const discount = appliedCoupon?.discount || 0;
+  const total = Math.max(0, subtotal - discount + shipping);
   
   // Use the product-specific points directly from cart summary
-  // and don't calculate based on total amount
-  const totalPoints = cart?.summary?.totalPoints || 0;
+  const totalPoints = cartSummary.totalPoints || 0;
   
   // Group items by store
   const { groupedItems } = useGroupItemsByStore(cartItems);
@@ -92,13 +118,15 @@ export function useCheckout() {
       setProcessError(null);
       setOrderAttempts(prev => prev + 1);
       
-      // Prepare order data with product-specific points
+      // Prepare order data with discount information
       const orderData = {
         items: cartItems,
         endereco_entrega: selectedAddress,
         forma_pagamento: paymentMethod,
         valor_total: total,
         pontos_ganhos: totalPoints,
+        cupom_aplicado: appliedCoupon,
+        desconto: discount
       };
       
       console.log('Sending order with data:', orderData);
@@ -107,11 +135,12 @@ export function useCheckout() {
       const orderId = await orderService.createOrder(orderData);
       
       if (orderId) {
-        // Success flow
+        // Success flow - clear coupon from localStorage
+        localStorage.removeItem('appliedCoupon');
         clearCart();
         refreshCart();
         toast.success('Pedido realizado com sucesso!');
-        navigate(`/order/confirmacao/${orderId}`); // Updated path to Portuguese version
+        navigate(`/order/confirmacao/${orderId}`);
       } else {
         throw new Error('Falha ao processar pedido');
       }
@@ -129,7 +158,9 @@ export function useCheckout() {
     cartItems, 
     paymentMethod, 
     total, 
-    totalPoints, 
+    totalPoints,
+    appliedCoupon,
+    discount,
     clearCart, 
     refreshCart, 
     navigate
@@ -151,8 +182,10 @@ export function useCheckout() {
     storeGroups: storeGroupsArray,
     subtotal,
     shipping,
+    discount,
     total,
     totalPoints,
+    appliedCoupon,
     showAddressModal,
     isSubmitting,
     processError,

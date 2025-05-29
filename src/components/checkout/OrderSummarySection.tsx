@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, Tag } from 'lucide-react';
 import Card from '@/components/common/Card';
 import CustomButton from '@/components/common/CustomButton';
 import { StoreGroup } from '@/hooks/cart/use-group-items-by-store';
@@ -9,8 +9,10 @@ interface OrderSummarySectionProps {
   storeGroups: StoreGroup[];
   subtotal: number;
   shipping: number;
+  discount?: number;
   total: number;
   totalPoints: number;
+  appliedCoupon?: {code: string, discount: number} | null;
   isSubmitting: boolean;
   onPlaceOrder: () => void;
   onGoBack: () => void;
@@ -20,8 +22,10 @@ const OrderSummarySection: React.FC<OrderSummarySectionProps> = ({
   storeGroups,
   subtotal,
   shipping,
+  discount = 0,
   total,
   totalPoints,
+  appliedCoupon,
   isSubmitting,
   onPlaceOrder,
   onGoBack
@@ -54,19 +58,46 @@ const OrderSummarySection: React.FC<OrderSummarySectionProps> = ({
             <span className="text-gray-600">Subtotal</span>
             <span>R$ {subtotal.toFixed(2)}</span>
           </div>
+          
           <div className="flex justify-between">
             <span className="text-gray-600">Frete</span>
             <span>Grátis</span>
           </div>
+          
+          {/* Show discount if coupon is applied */}
+          {appliedCoupon && discount > 0 && (
+            <div className="flex justify-between text-green-600">
+              <span className="flex items-center gap-1">
+                <Tag className="h-3 w-3" />
+                Desconto ({appliedCoupon.code})
+              </span>
+              <span>-R$ {discount.toFixed(2)}</span>
+            </div>
+          )}
+          
           <div className="border-t border-gray-100 pt-2 mt-2 flex justify-between font-bold">
             <span>Total</span>
             <span>R$ {total.toFixed(2)}</span>
           </div>
+          
           <div className="flex justify-between text-construPro-orange text-sm">
             <span>Pontos a ganhar</span>
             <span>{totalPoints} pontos</span>
           </div>
         </div>
+        
+        {/* Show savings highlight if there's a discount */}
+        {appliedCoupon && discount > 0 && (
+          <div className="bg-green-50 p-3 rounded-md flex items-start gap-2 mb-4 border border-green-200">
+            <Tag className="text-green-500 mt-0.5" size={16} />
+            <div>
+              <p className="font-medium text-green-700">Você economizou R$ {discount.toFixed(2)}!</p>
+              <p className="text-sm text-green-600">
+                Cupom {appliedCoupon.code} aplicado com sucesso.
+              </p>
+            </div>
+          </div>
+        )}
         
         <div className="bg-green-50 p-3 rounded-md flex items-start gap-2 mb-4">
           <CheckCircle size={20} className="text-green-500 mt-0.5" />

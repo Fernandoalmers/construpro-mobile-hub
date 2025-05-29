@@ -30,7 +30,10 @@ const CheckoutScreen: React.FC = () => {
     console.log("Attempting to place order with:", {
       address: checkout.selectedAddress,
       paymentMethod: checkout.paymentMethod,
-      total: checkout.total
+      subtotal: checkout.subtotal,
+      discount: checkout.discount,
+      total: checkout.total,
+      appliedCoupon: checkout.appliedCoupon
     });
     
     checkout.handlePlaceOrder();
@@ -82,8 +85,10 @@ const CheckoutScreen: React.FC = () => {
             storeGroups={checkout.storeGroups}
             subtotal={checkout.subtotal}
             shipping={checkout.shipping}
+            discount={checkout.discount}
             total={checkout.total}
             totalPoints={checkout.totalPoints}
+            appliedCoupon={checkout.appliedCoupon}
             isSubmitting={checkout.isSubmitting}
             onPlaceOrder={handleCheckout}
             onGoBack={() => navigate(-1)}

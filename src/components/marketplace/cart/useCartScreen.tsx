@@ -92,6 +92,15 @@ export const useCartScreen = () => {
     }
   }, [isAuthenticated, user?.id, refreshCart]);
 
+  // Save applied coupon to localStorage when applied
+  useEffect(() => {
+    if (appliedCoupon) {
+      localStorage.setItem('appliedCoupon', JSON.stringify(appliedCoupon));
+    } else {
+      localStorage.removeItem('appliedCoupon');
+    }
+  }, [appliedCoupon]);
+
   const handleApplyCoupon = async (code: string) => {
     if (!user?.id) {
       console.error('[useCartScreen] No user ID available for coupon application');
