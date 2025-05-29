@@ -161,6 +161,78 @@ async function processReferralsForFirstOrder(
   }
 }
 
+// New function to process coupon usage
+async function processCouponUsage(
+  orderId: string,
+  userId: string,
+  couponData: any,
+  discountAmount: number,
+  authHeader: string
+): Promise<boolean> {
+  try {
+    const adminClient = getSupabaseClient(authHeader, true);
+    
+    console.log('Processing coupon usage:', {
+      orderId,
+      userId,
+      couponCode: couponData?.code,
+      discountAmount
+    });
+
+    if (!couponData?.code) {
+      console.log('No coupon to process');
+      return true; // Not an error, just no coupon
+    }
+
+    // Find the coupon by code
+    const { data: coupon, error: couponError } = await adminClient
+      .from('coupons')
+      .select('id')
+      .eq('code', couponData.code.toUpperCase())
+      .single();
+
+    if (couponError || !coupon) {
+      console.error('Error finding coupon:', couponError);
+      return false;
+    }
+
+    // Register coupon usage
+    const { error: usageError } = await adminClient
+      .from('coupon_usage')
+      .insert({
+        coupon_id: coupon.id,
+        user_id: userId,
+        order_id: orderId,
+        discount_amount: discountAmount,
+        used_at: new Date().toISOString()
+      });
+
+    if (usageError) {
+      console.error('Error registering coupon usage:', usageError);
+      return false;
+    }
+
+    // Update coupon used_count
+    const { error: updateError } = await adminClient
+      .from('coupons')
+      .update({ 
+        used_count: adminClient.raw('used_count + 1')
+      })
+      .eq('id', coupon.id);
+
+    if (updateError) {
+      console.error('Error updating coupon used_count:', updateError);
+      return false;
+    }
+
+    console.log('Successfully processed coupon usage');
+    return true;
+  } catch (error) {
+    console.error('Error processing coupon usage:', error);
+    return false;
+  }
+}
+
 // Handle GET request to retrieve all orders for the authenticated user
 export async function handleGetOrders(req: Request, authHeader: string): Promise<Response> {
   try {
@@ -358,6 +430,7 @@ export async function handleCreateOrder(req: Request, authHeader: string): Promi
     // we'll do the operations sequentially and handle errors
     
     let orderResult;
+    let couponProcessed = true;
     try {
       // 1. Create the order
       const { data: order, error: orderError } = await adminClient
@@ -384,7 +457,18 @@ export async function handleCreateOrder(req: Request, authHeader: string): Promi
       
       if (itemsError) throw itemsError;
       
-      // 3. Process referral if this is user's first order
+      // 3. Process coupon usage if coupon was applied
+      if (requestData.cupom_aplicado && requestData.desconto > 0) {
+        couponProcessed = await processCouponUsage(
+          order.id,
+          userId,
+          requestData.cupom_aplicado,
+          requestData.desconto,
+          authHeader
+        );
+      }
+      
+      // 4. Process referral if this is user's first order
       await processReferralsForFirstOrder(userId, orderData.valor_total, authHeader);
       
     } catch (txError: any) {
@@ -405,7 +489,8 @@ export async function handleCreateOrder(req: Request, authHeader: string): Promi
         message: 'Order created successfully',
         order: orderResult,
         inventoryUpdated: true,
-        pointsRegistered: true
+        pointsRegistered: true,
+        couponProcessed
       }),
       { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

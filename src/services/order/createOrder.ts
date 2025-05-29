@@ -23,6 +23,8 @@ export async function createOrder(orderData: CreateOrderPayload): Promise<string
         forma_pagamento: orderData.forma_pagamento,
         valor_total: orderData.valor_total,
         pontos_ganhos: orderData.pontos_ganhos, // Pass the accurate total points
+        cupom_aplicado: orderData.cupom_aplicado, // Pass coupon information
+        desconto: orderData.desconto || 0, // Pass discount amount
         status: 'Confirmado'  // Capitalized to match database constraint
       },
       maxRetries: 3 // Increase retries for critical operations like order creation
@@ -67,6 +69,14 @@ export async function createOrder(orderData: CreateOrderPayload): Promise<string
       if (pointsAmount > 0) {
         toast.success(`Você ganhou ${pointsAmount} pontos com esta compra!`);
       }
+    }
+
+    // Show coupon processing result
+    if (data.couponProcessed === false && orderData.cupom_aplicado) {
+      console.warn('Coupon processing failed, but order was created');
+      toast.warning('Pedido criado, mas houve um problema ao processar o cupom. O administrador foi notificado.');
+    } else if (orderData.cupom_aplicado && orderData.desconto > 0) {
+      toast.success(`Cupom ${orderData.cupom_aplicado.code} aplicado com desconto de R$ ${orderData.desconto.toFixed(2)}!`);
     }
     
     // Success!

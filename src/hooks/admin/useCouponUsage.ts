@@ -50,18 +50,13 @@ export const useCouponUsage = (couponId?: string) => {
         return;
       }
 
-      console.log('[useCouponUsage] Raw usage data:', usage);
-
       if (!usage || usage.length === 0) {
-        console.log('[useCouponUsage] No usage records found');
         setUsageData([]);
         return;
       }
 
       // Para cada uso, buscar informações do usuário e itens do pedido
       const enrichedUsage = await Promise.all(usage.map(async (use) => {
-        console.log('[useCouponUsage] Processing usage:', use);
-        
         // Buscar informações do usuário
         const { data: userProfile, error: userError } = await supabase
           .from('profiles')
@@ -76,8 +71,6 @@ export const useCouponUsage = (couponId?: string) => {
         let orderItems = [];
         
         if (use.order_id) {
-          console.log('[useCouponUsage] Fetching order items for order:', use.order_id);
-          
           // Buscar itens do pedido com informações do produto e vendedor
           const { data: items, error: itemsError } = await supabase
             .from('order_items')
@@ -101,24 +94,19 @@ export const useCouponUsage = (couponId?: string) => {
             console.error('[useCouponUsage] Error fetching order items:', itemsError);
           } else {
             orderItems = items || [];
-            console.log('[useCouponUsage] Found order items:', orderItems.length);
           }
         }
 
-        const enrichedUse = {
+        return {
           ...use,
           user_name: userProfile?.nome || 'Usuário não encontrado',
           user_email: userProfile?.email || '',
           order_items: orderItems
         };
-
-        console.log('[useCouponUsage] Enriched usage:', enrichedUse);
-        return enrichedUse;
       }));
 
-      console.log('[useCouponUsage] Final enriched usage data:', enrichedUsage);
       setUsageData(enrichedUsage);
-    } catch (error) {
+    } catch (error: any) {
       console.error('[useCouponUsage] Error:', error);
       toast.error('Erro ao carregar dados de uso do cupom');
     } finally {
@@ -128,7 +116,6 @@ export const useCouponUsage = (couponId?: string) => {
 
   useEffect(() => {
     if (couponId) {
-      console.log('[useCouponUsage] useEffect triggered with couponId:', couponId);
       fetchCouponUsage(couponId);
     }
   }, [couponId]);
