@@ -1,3 +1,4 @@
+
 import { useEffect, useMemo } from 'react';
 import { useCartData } from '@/hooks/cart/use-cart-data';
 import { useAuth } from '@/context/AuthContext';
@@ -7,7 +8,6 @@ import { useGroupItemsByStore } from '@/hooks/cart/use-group-items-by-store';
 import { useCartTotals } from '@/hooks/cart/use-cart-totals';
 import { useCartOperations } from '@/hooks/cart/use-cart-operations';
 import { useStoreInfo } from '@/hooks/cart/use-store-info';
-import { supabase } from '@/integrations/supabase/client';
 
 export const useCartScreen = () => {
   const { user, isAuthenticated } = useAuth();
@@ -41,7 +41,7 @@ export const useCartScreen = () => {
   const cartItems = cart?.items || [];
   const cartCount = cartItems.length;
 
-  // Extract unique store IDs from cart items - CORRIGIDO: usar apenas loja_id
+  // Extract unique store IDs from cart items
   const storeIds = useMemo(() => {
     const ids = cartItems.map(item => item.produto?.loja_id).filter(Boolean);
     return [...new Set(ids)];
@@ -73,33 +73,17 @@ export const useCartScreen = () => {
     return enhanced;
   }, [groupedItems, storeInfo]);
 
-  // Calculate totals
+  // Calculate totals - garantir que o desconto do cupom seja considerado
   const { subtotal, shipping, discount, total, totalPoints } = useCartTotals(
     cartItems,
     Object.keys(enhancedGroupedItems).length,
-    appliedCoupon?.discount || 0,
+    appliedCoupon?.discount || 0, // Passar o desconto do cupom aplicado
     0,
     (user as any)?.tipo_perfil || 'consumidor'
   );
 
   // Derived states
   const cartIsEmpty = cartItems.length === 0;
-
-  // Execute database coupon fix on component mount
-  useEffect(() => {
-    const executeCouponFix = async () => {
-      try {
-        console.log('[useCartScreen] Executing coupon database fix...');
-        await supabase.functions.invoke('fix-coupon-validation');
-        console.log('[useCartScreen] Coupon database fix completed');
-      } catch (error) {
-        console.log('[useCartScreen] Coupon fix already applied or error:', error);
-      }
-    };
-
-    // Execute fix once when component mounts
-    executeCouponFix();
-  }, []);
 
   // Atualizar carrinho quando usuário faz login
   useEffect(() => {

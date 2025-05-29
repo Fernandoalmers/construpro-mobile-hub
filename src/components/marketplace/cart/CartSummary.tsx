@@ -47,7 +47,8 @@ const CartSummary: React.FC<CartSummaryProps> = ({
           <span className="font-medium text-green-600">Grátis</span>
         </div>
         
-        {discount > 0 && appliedCoupon && (
+        {/* Linha de desconto - sempre mostrar quando há cupom aplicado */}
+        {appliedCoupon && discount > 0 && (
           <div className="flex justify-between text-xs">
             <span className="flex items-center gap-1 text-green-600">
               <Tag className="h-2.5 w-2.5" />
@@ -65,7 +66,8 @@ const CartSummary: React.FC<CartSummaryProps> = ({
         </div>
       </div>
       
-      {discount > 0 && (
+      {/* Destaque de economia quando há desconto */}
+      {appliedCoupon && discount > 0 && (
         <div className="text-xs text-green-600 text-center p-1.5 bg-green-50 rounded-md border border-green-200">
           <div className="flex items-center justify-center gap-1">
             <Tag className="h-2.5 w-2.5" />
