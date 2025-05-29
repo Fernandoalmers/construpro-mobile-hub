@@ -40,9 +40,9 @@ export function useCheckout() {
   const totalPoints = cart?.summary?.totalPoints || 0;
   
   // Group items by store
-  const storeGroupsRecord = useGroupItemsByStore(cartItems, cart?.stores || []);
+  const { groupedItems } = useGroupItemsByStore(cartItems);
   // Convert record to array for components that expect an array
-  const storeGroupsArray = storeGroupsToArray(storeGroupsRecord);
+  const storeGroupsArray = storeGroupsToArray(groupedItems);
   
   // Set default address on load
   useEffect(() => {
@@ -169,4 +169,3 @@ export function useCheckout() {
     handleRetry
   };
 }
-

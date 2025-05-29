@@ -50,8 +50,7 @@ const CartContent: React.FC<CartContentProps> = ({
         {Object.entries(itemsByStore).map(([storeId, storeGroup]) => (
           <StoreCartGroup
             key={storeId}
-            storeId={storeId}
-            storeInfo={storeGroup.loja}
+            store={storeGroup.loja}
             items={storeGroup.items}
             onUpdateQuantity={async (item, quantity) => {
               onUpdateQuantity(item.id, quantity);
@@ -59,6 +58,7 @@ const CartContent: React.FC<CartContentProps> = ({
             onRemoveItem={async (itemId) => {
               onRemoveItem(itemId);
             }}
+            processingItem={processingItem}
           />
         ))}
       </div>

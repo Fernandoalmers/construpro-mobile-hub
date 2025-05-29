@@ -67,15 +67,10 @@ export const storeGroupsToArray = (
 
 export const useGroupItemsByStore = (
   cartItems: CartItem[]
-): { groupedItems: Record<string, StoreGroup>, storeInfo: any[] } => {
+): { groupedItems: Record<string, StoreGroup> } => {
   const groupedItems = useMemo(() => {
     return groupItemsByStore(cartItems);
   }, [cartItems]);
 
-  // Extract unique store info from grouped items
-  const storeInfo = useMemo(() => {
-    return Object.values(groupedItems).map(group => group.loja);
-  }, [groupedItems]);
-
-  return { groupedItems, storeInfo };
+  return { groupedItems };
 };
