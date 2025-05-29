@@ -60,15 +60,73 @@ export const fetchAdminOrders = async (): Promise<AdminOrder[]> => {
         
       if (clientesError) throw clientesError;
 
-      // Criar um mapa para associar rapidamente IDs de clientes aos seus nomes
+      // Buscar informações das lojas através dos itens do pedido
+      const orderIds = orders.map(order => order.id);
+      
+      // Buscar todos os itens dos pedidos
+      const { data: orderItems, error: orderItemsError } = await supabase
+        .from('order_items')
+        .select('order_id, produto_id')
+        .in('order_id', orderIds);
+        
+      if (orderItemsError) throw orderItemsError;
+
+      // Buscar produtos para obter vendedor_id
+      const produtoIds = orderItems ? orderItems.map(item => item.produto_id) : [];
+      
+      let produtos = [];
+      if (produtoIds.length > 0) {
+        const { data: produtosData, error: produtosError } = await supabase
+          .from('produtos')
+          .select('id, vendedor_id')
+          .in('id', produtoIds);
+          
+        if (produtosError) throw produtosError;
+        produtos = produtosData || [];
+      }
+
+      // Buscar vendedores
+      const vendedorIds = produtos.map(produto => produto.vendedor_id);
+      
+      let vendedores = [];
+      if (vendedorIds.length > 0) {
+        const { data: vendedoresData, error: vendedoresError } = await supabase
+          .from('vendedores')
+          .select('id, nome_loja')
+          .in('id', vendedorIds);
+          
+        if (vendedoresError) throw vendedoresError;
+        vendedores = vendedoresData || [];
+      }
+
+      // Criar mapas para associação rápida
       const clienteMap = new Map();
       clientes?.forEach(c => clienteMap.set(c.id, c.nome));
+      
+      const vendedorMap = new Map();
+      vendedores.forEach(v => vendedorMap.set(v.id, v.nome_loja));
+      
+      const produtoVendedorMap = new Map();
+      produtos.forEach(p => produtoVendedorMap.set(p.id, p.vendedor_id));
+      
+      const orderVendedorMap = new Map();
+      orderItems?.forEach(item => {
+        const vendedorId = produtoVendedorMap.get(item.produto_id);
+        if (vendedorId) {
+          orderVendedorMap.set(item.order_id, vendedorId);
+        }
+      });
 
-      // Associar nomes de clientes aos pedidos
-      return orders.map(order => ({
-        ...order,
-        cliente_nome: clienteMap.get(order.cliente_id) || 'Cliente Desconhecido'
-      }));
+      // Associar nomes de clientes e vendedores aos pedidos
+      return orders.map(order => {
+        const vendedorId = orderVendedorMap.get(order.id);
+        return {
+          ...order,
+          cliente_nome: clienteMap.get(order.cliente_id) || 'Cliente Desconhecido',
+          loja_id: vendedorId,
+          loja_nome: vendedorId ? vendedorMap.get(vendedorId) || 'Loja Desconhecida' : undefined
+        };
+      });
     } catch (error) {
       console.log('Erro ao buscar na tabela orders, tentando tabela pedidos:', error);
       
