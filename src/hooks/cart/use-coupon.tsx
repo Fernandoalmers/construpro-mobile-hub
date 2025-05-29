@@ -23,11 +23,18 @@ export const useCoupon = () => {
     
     try {
       // Preparar dados dos itens do carrinho para validação
-      const cartItemsData = cartItems?.map(item => ({
-        produto_id: String(item.produto?.id || item.product_id || ''),
-        quantidade: Number(item.quantidade || item.quantity || 0),
-        preco: Number(item.produto?.preco_normal || item.price_at_add || item.preco_unitario || 0)
-      })) || [];
+      const cartItemsData = cartItems?.map(item => {
+        // Safely extract and convert the values to the correct types
+        const produtoId = item.produto?.id || item.product_id;
+        const quantidade = item.quantidade || item.quantity;
+        const preco = item.produto?.preco_normal || item.price_at_add || item.preco_unitario;
+        
+        return {
+          produto_id: String(produtoId || ''),
+          quantidade: Number(quantidade || 0),
+          preco: Number(preco || 0)
+        };
+      }) || [];
 
       console.log('[useCoupon] Validating coupon with cart items:', {
         code: code.toUpperCase(),
