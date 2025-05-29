@@ -37,6 +37,7 @@ export const useCouponUsage = (couponId?: string) => {
     try {
       console.log('[useCouponUsage] Fetching usage for coupon:', id);
       
+      // Buscar usos do cupom com join explícito para profiles
       const { data: usage, error } = await supabase
         .from('coupon_usage')
         .select(`
@@ -45,11 +46,7 @@ export const useCouponUsage = (couponId?: string) => {
           user_id,
           order_id,
           discount_amount,
-          used_at,
-          profiles:user_id (
-            nome,
-            email
-          )
+          used_at
         `)
         .eq('coupon_id', id)
         .order('used_at', { ascending: false });
@@ -62,8 +59,15 @@ export const useCouponUsage = (couponId?: string) => {
 
       console.log('[useCouponUsage] Found usage records:', usage?.length || 0);
 
-      // Para cada uso, buscar os itens do pedido se houver order_id
+      // Para cada uso, buscar informações do usuário e itens do pedido
       const enrichedUsage = await Promise.all((usage || []).map(async (use) => {
+        // Buscar informações do usuário
+        const { data: userProfile } = await supabase
+          .from('profiles')
+          .select('nome, email')
+          .eq('id', use.user_id)
+          .single();
+
         let orderItems = [];
         
         if (use.order_id) {
@@ -92,8 +96,8 @@ export const useCouponUsage = (couponId?: string) => {
 
         return {
           ...use,
-          user_name: use.profiles?.nome || 'Usuário não encontrado',
-          user_email: use.profiles?.email || '',
+          user_name: userProfile?.nome || 'Usuário não encontrado',
+          user_email: userProfile?.email || '',
           order_items: orderItems
         };
       }));
