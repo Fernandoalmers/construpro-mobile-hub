@@ -6,6 +6,7 @@ import { useCoupon } from '@/hooks/cart/use-coupon';
 import { useNavigate } from 'react-router-dom';
 import { useGroupItemsByStore } from '@/hooks/cart/use-group-items-by-store';
 import { useCartTotals } from '@/hooks/cart/use-cart-totals';
+import { useCartOperations } from '@/hooks/cart/use-cart-operations';
 
 export const useCartScreen = () => {
   const { user, isAuthenticated } = useAuth();
@@ -17,6 +18,15 @@ export const useCartScreen = () => {
     error,
     refreshCart
   } = useCartData(isAuthenticated, user?.id || null, (user as any)?.tipo_perfil || 'consumidor');
+
+  // Get cart operations with refresh callback
+  const {
+    updateQuantity,
+    removeItem,
+    clearCart,
+    isLoading: operationsLoading,
+    operationInProgress
+  } = useCartOperations(refreshCart);
 
   const {
     couponCode,
@@ -82,32 +92,49 @@ export const useCartScreen = () => {
   };
 
   const handleUpdateQuantity = async (cartItemId: string, newQuantity: number) => {
-    // TODO: Implement cart update functionality
-    console.log('Update quantity:', cartItemId, newQuantity);
-    
-    // Se houver cupom aplicado, remover pois os valores mudaram
-    if (appliedCoupon) {
-      removeCoupon();
+    try {
+      console.log('[useCartScreen] Updating quantity:', cartItemId, newQuantity);
+      
+      if (newQuantity <= 0) {
+        await removeItem(cartItemId);
+      } else {
+        await updateQuantity(cartItemId, newQuantity);
+      }
+      
+      // Se houver cupom aplicado, remover pois os valores mudaram
+      if (appliedCoupon) {
+        removeCoupon();
+      }
+    } catch (error) {
+      console.error('[useCartScreen] Error updating quantity:', error);
     }
   };
 
   const handleRemoveItem = async (cartItemId: string) => {
-    // TODO: Implement cart remove functionality
-    console.log('Remove item:', cartItemId);
-    
-    // Se houver cupom aplicado, remover pois os itens mudaram
-    if (appliedCoupon) {
-      removeCoupon();
+    try {
+      console.log('[useCartScreen] Removing item:', cartItemId);
+      await removeItem(cartItemId);
+      
+      // Se houver cupom aplicado, remover pois os itens mudaram
+      if (appliedCoupon) {
+        removeCoupon();
+      }
+    } catch (error) {
+      console.error('[useCartScreen] Error removing item:', error);
     }
   };
 
   const handleClearCart = async () => {
-    // TODO: Implement cart clear functionality
-    console.log('Clear cart');
-    
-    // Remover cupom se houver
-    if (appliedCoupon) {
-      removeCoupon();
+    try {
+      console.log('[useCartScreen] Clearing cart');
+      await clearCart();
+      
+      // Remover cupom se houver
+      if (appliedCoupon) {
+        removeCoupon();
+      }
+    } catch (error) {
+      console.error('[useCartScreen] Error clearing cart:', error);
     }
   };
 
@@ -127,7 +154,7 @@ export const useCartScreen = () => {
 
   return {
     // States
-    loading: isLoading,
+    loading: isLoading || operationsLoading,
     error: error?.message || null,
     cartIsEmpty,
     
@@ -136,7 +163,7 @@ export const useCartScreen = () => {
     cartItems,
     cartCount,
     itemsByStore: groupedItems,
-    processingItem: null, // Add processing state later if needed
+    processingItem: operationInProgress,
     
     // Coupon data
     appliedCoupon,

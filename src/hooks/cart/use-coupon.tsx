@@ -68,24 +68,38 @@ export const useCoupon = () => {
 
       console.log('[useCoupon] Final cart items for validation:', cartItemsData);
 
-      // Chamar a função validate_coupon do Supabase
-      const { data, error } = await supabase.rpc('validate_coupon', {
+      // Debug: Verificar se a função validate_coupon existe
+      const { data: functionExists, error: functionError } = await supabase.rpc('validate_coupon', {
         coupon_code: code.toUpperCase().trim(),
         user_id_param: userId,
         order_value: Number(orderValue) || 0,
         cart_items: cartItemsData.length > 0 ? cartItemsData : null
+      }).catch(err => {
+        console.error('[useCoupon] RPC call failed:', err);
+        
+        if (err.message?.includes('function "validate_coupon" does not exist')) {
+          console.error('[useCoupon] validate_coupon function does not exist in database');
+          return { data: null, error: { message: 'Função de validação de cupom não encontrada no banco de dados. Contate o suporte.' } };
+        }
+        
+        return { data: null, error: err };
       });
 
-      if (error) {
-        console.error('[useCoupon] Supabase RPC error:', error);
-        toast.error('Erro interno ao validar cupom. Tente novamente.');
+      if (functionError) {
+        console.error('[useCoupon] Supabase RPC error:', functionError);
+        
+        if (functionError.message?.includes('function "validate_coupon" does not exist')) {
+          toast.error('Sistema de cupons em manutenção. Tente novamente mais tarde.');
+        } else {
+          toast.error('Erro interno ao validar cupom. Detalhes: ' + functionError.message);
+        }
         return;
       }
 
-      console.log('[useCoupon] Validation response:', data);
+      console.log('[useCoupon] Validation response:', functionExists);
 
-      if (data && data.length > 0) {
-        const result = data[0];
+      if (functionExists && functionExists.length > 0) {
+        const result = functionExists[0];
         
         if (result.valid) {
           const discountAmount = Number(result.discount_amount) || 0;
@@ -135,9 +149,19 @@ export const useCoupon = () => {
         console.log('[useCoupon] No validation result returned');
         toast.error("Erro ao validar cupom. Tente novamente.");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[useCoupon] Unexpected error:', error);
-      toast.error("Erro inesperado ao aplicar cupom. Tente novamente.");
+      
+      // Melhor tratamento de erros para debugging
+      if (error.message) {
+        if (error.message.includes('validate_coupon')) {
+          toast.error("Sistema de cupons temporariamente indisponível. Tente novamente em alguns minutos.");
+        } else {
+          toast.error("Erro inesperado: " + error.message);
+        }
+      } else {
+        toast.error("Erro inesperado ao aplicar cupom. Tente novamente.");
+      }
     } finally {
       setIsValidating(false);
     }
