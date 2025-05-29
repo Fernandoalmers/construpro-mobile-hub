@@ -40,7 +40,7 @@ export const useCouponUsage = (couponId?: string) => {
     try {
       console.log('[useCouponUsage] Fetching usage for coupon:', id);
       
-      // Step 1: Fetch coupon usage records
+      // Step 1: Fetch coupon usage records - simplified query first
       const { data: usageRecords, error: usageError } = await supabase
         .from('coupon_usage')
         .select('*')
@@ -61,106 +61,21 @@ export const useCouponUsage = (couponId?: string) => {
 
       console.log('[useCouponUsage] Raw usage records:', usageRecords);
 
-      // Step 2: Get unique user IDs and order IDs for batch fetching
-      const userIds = [...new Set(usageRecords.map(record => record.user_id))];
-      const orderIds = [...new Set(usageRecords.map(record => record.order_id).filter(Boolean))];
+      // Step 2: Process each usage record individually
+      const enrichedUsage: CouponUsageDetail[] = [];
 
-      // Step 3: Fetch user profiles in batch
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, nome, email')
-        .in('id', userIds);
+      for (const usage of usageRecords) {
+        console.log(`[useCouponUsage] Processing usage record:`, usage);
 
-      // Step 4: Fetch orders in batch
-      const { data: orders } = await supabase
-        .from('orders')
-        .select('id, valor_total')
-        .in('id', orderIds);
+        // Get user data
+        const { data: userData } = await supabase
+          .from('profiles')
+          .select('id, nome, email')
+          .eq('id', usage.user_id)
+          .single();
 
-      // Step 5: Fetch order items in batch
-      const { data: orderItems } = await supabase
-        .from('order_items')
-        .select('*')
-        .in('order_id', orderIds);
-
-      // Step 6: Get product IDs from order items
-      const productIds = [...new Set((orderItems || []).map(item => item.produto_id))];
-
-      // Step 7: Fetch products with vendor info
-      const { data: products } = await supabase
-        .from('produtos')
-        .select('id, nome, vendedor_id')
-        .in('id', productIds);
-
-      // Step 8: Get vendor IDs and fetch vendor info
-      const vendorIds = [...new Set((products || []).map(product => product.vendedor_id))];
-      const { data: vendors } = await supabase
-        .from('vendedores')
-        .select('id, nome_loja')
-        .in('id', vendorIds);
-
-      console.log('[useCouponUsage] Fetched data:', {
-        profiles: profiles?.length || 0,
-        orders: orders?.length || 0,
-        orderItems: orderItems?.length || 0,
-        products: products?.length || 0,
-        vendors: vendors?.length || 0
-      });
-
-      // Step 9: Process and combine data
-      const enrichedUsage: CouponUsageDetail[] = usageRecords.map(usage => {
-        // Find user data
-        const userData = profiles?.find(p => p.id === usage.user_id);
-        
-        // Find order data
-        const orderData = orders?.find(o => o.id === usage.order_id);
-        
-        // Find order items for this order
-        const orderItemsData = orderItems?.filter(item => item.order_id === usage.order_id) || [];
-        
-        // Extract vendor name from first available product
-        let vendorName = 'Vendedor não identificado';
-        
-        if (orderItemsData.length > 0) {
-          // Get first product to determine vendor
-          const firstProduct = products?.find(p => p.id === orderItemsData[0].produto_id);
-          if (firstProduct) {
-            const vendor = vendors?.find(v => v.id === firstProduct.vendedor_id);
-            if (vendor?.nome_loja) {
-              vendorName = vendor.nome_loja;
-            }
-          }
-        }
-
-        // Process order items for display
-        const processedOrderItems = orderItemsData.map(item => {
-          const product = products?.find(p => p.id === item.produto_id);
-          const vendor = product ? vendors?.find(v => v.id === product.vendedor_id) : null;
-          
-          return {
-            id: item.id,
-            produto_id: item.produto_id,
-            quantidade: item.quantidade,
-            preco_unitario: item.preco_unitario,
-            subtotal: item.subtotal,
-            produto: product ? {
-              nome: product.nome,
-              vendedor_id: product.vendedor_id,
-              vendedores: vendor ? {
-                nome_loja: vendor.nome_loja
-              } : undefined
-            } : undefined
-          };
-        });
-
-        console.log(`[useCouponUsage] Processing usage ${usage.id}:`, {
-          orderId: usage.order_id,
-          extractedVendorName: vendorName,
-          hasOrderItems: processedOrderItems.length > 0,
-          userData: userData ? `${userData.nome} (${userData.email})` : 'N/A'
-        });
-
-        return {
+        // Initialize the enriched usage record
+        let enrichedRecord: CouponUsageDetail = {
           id: usage.id,
           coupon_id: usage.coupon_id,
           user_id: usage.user_id,
@@ -169,14 +84,94 @@ export const useCouponUsage = (couponId?: string) => {
           used_at: usage.used_at,
           user_name: userData?.nome || 'Usuário não encontrado',
           user_email: userData?.email || '',
-          order_total: orderData?.valor_total || 0,
-          vendor_name: vendorName,
-          store_name: vendorName,
-          order_items: processedOrderItems
+          order_total: 0,
+          vendor_name: 'Não identificado',
+          store_name: 'Não identificado',
+          order_items: []
         };
-      });
 
-      console.log('[useCouponUsage] Final enriched data:', enrichedUsage);
+        // If there's an order_id, try to get order and vendor info
+        if (usage.order_id) {
+          console.log(`[useCouponUsage] Fetching order data for order_id:`, usage.order_id);
+
+          // Get order data
+          const { data: orderData } = await supabase
+            .from('orders')
+            .select('id, valor_total')
+            .eq('id', usage.order_id)
+            .single();
+
+          if (orderData) {
+            enrichedRecord.order_total = orderData.valor_total || 0;
+            console.log(`[useCouponUsage] Found order total:`, orderData.valor_total);
+          }
+
+          // Get order items
+          const { data: orderItems } = await supabase
+            .from('order_items')
+            .select('*')
+            .eq('order_id', usage.order_id);
+
+          if (orderItems && orderItems.length > 0) {
+            console.log(`[useCouponUsage] Found ${orderItems.length} order items`);
+
+            // Get the first product to determine vendor
+            const { data: firstProduct } = await supabase
+              .from('produtos')
+              .select('id, nome, vendedor_id')
+              .eq('id', orderItems[0].produto_id)
+              .single();
+
+            if (firstProduct) {
+              // Get vendor info
+              const { data: vendor } = await supabase
+                .from('vendedores')
+                .select('id, nome_loja')
+                .eq('id', firstProduct.vendedor_id)
+                .single();
+
+              if (vendor) {
+                enrichedRecord.vendor_name = vendor.nome_loja;
+                enrichedRecord.store_name = vendor.nome_loja;
+                console.log(`[useCouponUsage] Found vendor:`, vendor.nome_loja);
+              }
+            }
+
+            // Process all order items
+            const processedItems = [];
+            for (const item of orderItems) {
+              const { data: product } = await supabase
+                .from('produtos')
+                .select('id, nome, vendedor_id')
+                .eq('id', item.produto_id)
+                .single();
+
+              const processedItem = {
+                id: item.id,
+                produto_id: item.produto_id,
+                quantidade: item.quantidade,
+                preco_unitario: item.preco_unitario,
+                subtotal: item.subtotal,
+                produto: product ? {
+                  nome: product.nome,
+                  vendedor_id: product.vendedor_id
+                } : undefined
+              };
+
+              processedItems.push(processedItem);
+            }
+
+            enrichedRecord.order_items = processedItems;
+          }
+        } else {
+          console.log(`[useCouponUsage] No order_id for usage:`, usage.id);
+        }
+
+        console.log(`[useCouponUsage] Final enriched record:`, enrichedRecord);
+        enrichedUsage.push(enrichedRecord);
+      }
+
+      console.log('[useCouponUsage] All enriched usage data:', enrichedUsage);
       setUsageData(enrichedUsage);
     } catch (error: any) {
       console.error('[useCouponUsage] Error:', error);
@@ -189,6 +184,8 @@ export const useCouponUsage = (couponId?: string) => {
   useEffect(() => {
     if (couponId) {
       fetchCouponUsage(couponId);
+    } else {
+      setUsageData([]);
     }
   }, [couponId]);
 
