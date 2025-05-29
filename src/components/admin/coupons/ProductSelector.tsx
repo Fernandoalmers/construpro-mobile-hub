@@ -55,7 +55,14 @@ const ProductSelector: React.FC<ProductSelectorProps> = ({
     setLoading(true);
     try {
       const data = await fetchProductsForCoupon(searchTerm);
-      setProducts(data);
+      
+      // Transformar os dados para incluir informações do vendedor
+      const transformedProducts = data.map(product => ({
+        ...product,
+        vendedores: product.vendedores || { nome_loja: 'Vendedor não informado' }
+      }));
+      
+      setProducts(transformedProducts);
     } catch (error) {
       console.error('Error loading products:', error);
     } finally {
@@ -66,7 +73,11 @@ const ProductSelector: React.FC<ProductSelectorProps> = ({
   const loadSelectedProducts = async () => {
     try {
       const data = await fetchProductsForCoupon();
-      const selected = data.filter(product => selectedProductIds.includes(product.id));
+      const transformedData = data.map(product => ({
+        ...product,
+        vendedores: product.vendedores || { nome_loja: 'Vendedor não informado' }
+      }));
+      const selected = transformedData.filter(product => selectedProductIds.includes(product.id));
       setSelectedProducts(selected);
     } catch (error) {
       console.error('Error loading selected products:', error);

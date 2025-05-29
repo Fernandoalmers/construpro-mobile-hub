@@ -305,7 +305,19 @@ export const fetchProductsForCoupon = async (searchTerm: string = ''): Promise<a
   try {
     let query = supabase
       .from('produtos')
-      .select('id, nome, preco_normal, imagens, categoria, vendedor_id')
+      .select(`
+        id, 
+        nome, 
+        preco_normal, 
+        preco_promocional,
+        imagens, 
+        categoria, 
+        estoque,
+        vendedor_id,
+        vendedores:vendedor_id (
+          nome_loja
+        )
+      `)
       .eq('status', 'aprovado')
       .order('nome');
     
