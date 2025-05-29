@@ -311,7 +311,7 @@ export const getOrderDetails = async (orderId: string): Promise<AdminOrder | nul
             produto_id,
             quantidade,
             preco_unitario,
-            total as subtotal
+            total
           `)
           .eq('pedido_id', orderId);
           
@@ -324,12 +324,12 @@ export const getOrderDetails = async (orderId: string): Promise<AdminOrder | nul
           const processedItems = itensAlternative || [];
           
           // Buscar nomes dos produtos
-          const produtoIds = processedItems.map(item => item.produto_id);
-          
-          let produtos = [];
-          let vendedorInfo = null;
-          
-          if (produtoIds.length > 0) {
+          if (processedItems.length > 0) {
+            const produtoIds = processedItems.map(item => item.produto_id);
+            
+            let produtos = [];
+            let vendedorInfo = null;
+            
             console.log(`[OrderDetails] Fetching ${produtoIds.length} products...`);
             const { data: produtosData, error: produtosError } = await supabase
               .from('produtos')
@@ -361,28 +361,32 @@ export const getOrderDetails = async (orderId: string): Promise<AdminOrder | nul
                 }
               }
             }
+
+            // Criar mapa para associar IDs de produtos aos nomes
+            const produtoMap = new Map();
+            produtos?.forEach(p => produtoMap.set(p.id, p.nome));
+
+            // Associar nomes dos produtos aos itens e mapear total para subtotal
+            const itemsWithProductNames = processedItems.map(item => ({
+              id: item.id,
+              produto_id: item.produto_id,
+              produto_nome: produtoMap.get(item.produto_id) || 'Produto Desconhecido',
+              quantidade: item.quantidade,
+              preco_unitario: item.preco_unitario,
+              subtotal: item.total // Mapear total para subtotal
+            }));
+
+            console.log(`[OrderDetails] Successfully processed order details from alternative table`);
+            
+            // Retornar pedido completo com itens e informações do vendedor
+            return {
+              ...order,
+              cliente_nome: cliente?.nome || 'Cliente Desconhecido',
+              loja_id: vendedorInfo?.id,
+              loja_nome: vendedorInfo?.nome_loja || 'Loja não identificada',
+              items: itemsWithProductNames
+            };
           }
-
-          // Criar mapa para associar IDs de produtos aos nomes
-          const produtoMap = new Map();
-          produtos?.forEach(p => produtoMap.set(p.id, p.nome));
-
-          // Associar nomes dos produtos aos itens
-          const itemsWithProductNames = processedItems.map(item => ({
-            ...item,
-            produto_nome: produtoMap.get(item.produto_id) || 'Produto Desconhecido'
-          }));
-
-          console.log(`[OrderDetails] Successfully processed order details from alternative table`);
-          
-          // Retornar pedido completo com itens e informações do vendedor
-          return {
-            ...order,
-            cliente_nome: cliente?.nome || 'Cliente Desconhecido',
-            loja_id: vendedorInfo?.id,
-            loja_nome: vendedorInfo?.nome_loja || 'Loja não identificada',
-            items: itemsWithProductNames
-          };
         }
       }
       
@@ -392,12 +396,12 @@ export const getOrderDetails = async (orderId: string): Promise<AdminOrder | nul
       const processedItems = items || [];
 
       // Buscar nomes dos produtos e informações do vendedor
-      const produtoIds = processedItems.map(item => item.produto_id);
-      
-      let produtos = [];
-      let vendedorInfo = null;
-      
-      if (produtoIds.length > 0) {
+      if (processedItems.length > 0) {
+        const produtoIds = processedItems.map(item => item.produto_id);
+        
+        let produtos = [];
+        let vendedorInfo = null;
+        
         console.log(`[OrderDetails] Fetching ${produtoIds.length} products...`);
         const { data: produtosData, error: produtosError } = await supabase
           .from('produtos')
@@ -429,28 +433,37 @@ export const getOrderDetails = async (orderId: string): Promise<AdminOrder | nul
             }
           }
         }
+
+        // Criar mapa para associar IDs de produtos aos nomes
+        const produtoMap = new Map();
+        produtos?.forEach(p => produtoMap.set(p.id, p.nome));
+
+        // Associar nomes dos produtos aos itens
+        const itemsWithProductNames = processedItems.map(item => ({
+          ...item,
+          produto_nome: produtoMap.get(item.produto_id) || 'Produto Desconhecido'
+        }));
+
+        console.log(`[OrderDetails] Successfully processed order details`);
+        
+        // Retornar pedido completo com itens e informações do vendedor
+        return {
+          ...order,
+          cliente_nome: cliente?.nome || 'Cliente Desconhecido',
+          loja_id: vendedorInfo?.id,
+          loja_nome: vendedorInfo?.nome_loja || 'Loja não identificada',
+          items: itemsWithProductNames
+        };
       }
 
-      // Criar mapa para associar IDs de produtos aos nomes
-      const produtoMap = new Map();
-      produtos?.forEach(p => produtoMap.set(p.id, p.nome));
-
-      // Associar nomes dos produtos aos itens
-      const itemsWithProductNames = processedItems.map(item => ({
-        ...item,
-        produto_nome: produtoMap.get(item.produto_id) || 'Produto Desconhecido'
-      }));
-
-      console.log(`[OrderDetails] Successfully processed order details`);
-      
-      // Retornar pedido completo com itens e informações do vendedor
+      // Se não há itens, retornar pedido sem itens
       return {
         ...order,
         cliente_nome: cliente?.nome || 'Cliente Desconhecido',
-        loja_id: vendedorInfo?.id,
-        loja_nome: vendedorInfo?.nome_loja || 'Loja não identificada',
-        items: itemsWithProductNames
+        loja_nome: 'Pedido sem itens',
+        items: []
       };
+      
     } catch (error) {
       console.log('Erro ao buscar na tabela orders, tentando tabela pedidos:', error);
       
@@ -509,30 +522,48 @@ export const getOrderDetails = async (orderId: string): Promise<AdminOrder | nul
       if (itensError) throw itensError;
 
       // Buscar nomes dos produtos
-      const produtoIds = itens.map(item => item.produto_id);
-      
-      const { data: produtos, error: produtosError } = await supabase
-        .from('produtos')
-        .select('id, nome')
-        .in('id', produtoIds);
+      if (itens && itens.length > 0) {
+        const produtoIds = itens.map(item => item.produto_id);
         
-      if (produtosError) throw produtosError;
+        const { data: produtos, error: produtosError } = await supabase
+          .from('produtos')
+          .select('id, nome')
+          .in('id', produtoIds);
+          
+        if (produtosError) throw produtosError;
 
-      // Criar mapa para associar IDs de produtos aos nomes
-      const produtoMap = new Map();
-      produtos?.forEach(p => produtoMap.set(p.id, p.nome));
+        // Criar mapa para associar IDs de produtos aos nomes
+        const produtoMap = new Map();
+        produtos?.forEach(p => produtoMap.set(p.id, p.nome));
 
-      // Associar nomes dos produtos aos itens e transformar no formato esperado
-      const itemsTransformed = itens.map(item => ({
-        id: item.id,
-        produto_id: item.produto_id,
-        produto_nome: produtoMap.get(item.produto_id) || 'Produto Desconhecido',
-        quantidade: item.quantidade,
-        preco_unitario: item.preco_unitario,
-        subtotal: item.total
-      }));
+        // Associar nomes dos produtos aos itens e transformar no formato esperado
+        const itemsTransformed = itens.map(item => ({
+          id: item.id,
+          produto_id: item.produto_id,
+          produto_nome: produtoMap.get(item.produto_id) || 'Produto Desconhecido',
+          quantidade: item.quantidade,
+          preco_unitario: item.preco_unitario,
+          subtotal: item.total
+        }));
 
-      // Transformar dados da tabela 'pedidos' no formato de 'orders'
+        // Transformar dados da tabela 'pedidos' no formato de 'orders'
+        return {
+          id: pedido.id,
+          cliente_id: pedido.usuario_id,
+          cliente_nome: usuario?.nome || 'Cliente Desconhecido',
+          loja_id: pedido.vendedor_id,
+          loja_nome: vendedor?.nome_loja || 'Loja Desconhecida',
+          valor_total: pedido.valor_total,
+          status: pedido.status,
+          forma_pagamento: pedido.forma_pagamento,
+          data_criacao: pedido.created_at,
+          endereco_entrega: pedido.endereco_entrega,
+          pontos_ganhos: 0, // informação não disponível na tabela 'pedidos'
+          items: itemsTransformed
+        };
+      }
+
+      // Se não há itens, retornar pedido sem itens
       return {
         id: pedido.id,
         cliente_id: pedido.usuario_id,
@@ -544,8 +575,8 @@ export const getOrderDetails = async (orderId: string): Promise<AdminOrder | nul
         forma_pagamento: pedido.forma_pagamento,
         data_criacao: pedido.created_at,
         endereco_entrega: pedido.endereco_entrega,
-        pontos_ganhos: 0, // informação não disponível na tabela 'pedidos'
-        items: itemsTransformed
+        pontos_ganhos: 0,
+        items: []
       };
     }
   } catch (error) {
