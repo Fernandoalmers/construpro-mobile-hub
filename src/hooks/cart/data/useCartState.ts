@@ -4,7 +4,7 @@ import { Cart } from '@/types/cart';
 import { useCartFetcher } from './useCartFetcher';
 
 /**
- * Hook to manage cart state - fixed to prevent infinite loops
+ * Hook to manage cart state - optimized to prevent infinite loops
  */
 export function useCartState(
   isAuthenticated: boolean, 
@@ -18,21 +18,25 @@ export function useCartState(
   
   const { fetchCartData } = useCartFetcher();
   const isInitialized = useRef(false);
-  const lastAuthState = useRef<{isAuth: boolean, userId: string | null}>({
-    isAuth: false,
-    userId: null
-  });
+  const refreshInProgress = useRef(false);
 
   console.log('[useCartState] Current state:', { 
     isAuthenticated, 
     userId, 
     userType, 
     isLoading,
-    cartItems: cart?.items?.length || 0
+    cartItems: cart?.items?.length || 0,
+    refreshInProgress: refreshInProgress.current
   });
 
   // Create a stable refresh function
   const refreshCart = useCallback(async () => {
+    // Prevent concurrent refresh calls
+    if (refreshInProgress.current) {
+      console.log('[useCartState] Refresh already in progress, skipping');
+      return;
+    }
+
     console.log('[useCartState] refreshCart called:', { isAuthenticated, userId });
     
     if (!isAuthenticated || !userId) {
@@ -44,6 +48,7 @@ export function useCartState(
     }
     
     try {
+      refreshInProgress.current = true;
       setIsLoading(true);
       setError(null);
       
@@ -90,30 +95,22 @@ export function useCartState(
       });
     } finally {
       setIsLoading(false);
+      refreshInProgress.current = false;
     }
   }, [isAuthenticated, userId, userType, fetchCartData]);
 
-  // Initialize cart only when auth state changes significantly
+  // Initialize cart only once when authenticated
   useEffect(() => {
-    const currentAuthState = { isAuth: isAuthenticated, userId };
-    const lastState = lastAuthState.current;
-    
-    console.log('[useCartState] Auth effect:', { 
-      current: currentAuthState, 
-      last: lastState,
-      hasChanged: currentAuthState.isAuth !== lastState.isAuth || currentAuthState.userId !== lastState.userId
-    });
-    
-    // Only refresh if auth state actually changed or first time
-    if (!isInitialized.current || 
-        currentAuthState.isAuth !== lastState.isAuth || 
-        currentAuthState.userId !== lastState.userId) {
-      
-      console.log('[useCartState] Auth state changed, refreshing cart');
-      lastAuthState.current = currentAuthState;
+    if (isAuthenticated && userId && !isInitialized.current && !refreshInProgress.current) {
+      console.log('[useCartState] Initializing cart for authenticated user');
       isInitialized.current = true;
-      
       refreshCart();
+    } else if (!isAuthenticated) {
+      console.log('[useCartState] User not authenticated, resetting state');
+      isInitialized.current = false;
+      setCart(null);
+      setIsLoading(false);
+      setError(null);
     }
   }, [isAuthenticated, userId, refreshCart]);
 

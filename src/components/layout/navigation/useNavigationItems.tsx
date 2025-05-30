@@ -13,9 +13,15 @@ export interface NavigationItem {
 }
 
 export function useNavigationItems(userRole: string): NavigationItem[] {
-  const { cartCount } = useCart();
+  const { cart } = useCart();
 
-  console.log('[useNavigationItems] userRole:', userRole, 'cartCount:', cartCount);
+  // Calculate count from actual cart items for consistency
+  const actualCartCount = React.useMemo(() => {
+    if (!cart?.items) return 0;
+    return cart.items.reduce((sum, item) => sum + (item.quantidade || 0), 0);
+  }, [cart?.items]);
+
+  console.log('[useNavigationItems] userRole:', userRole, 'actualCartCount:', actualCartCount);
 
   // Common navigation items for all users
   const commonItems: NavigationItem[] = [
@@ -70,7 +76,7 @@ export function useNavigationItems(userRole: string): NavigationItem[] {
       path: '/cart',
       icon: <ShoppingCart size={24} />,
       tooltip: 'Meu Carrinho',
-      badge: cartCount > 0 ? cartCount.toString() : undefined
+      badge: actualCartCount > 0 ? actualCartCount.toString() : undefined
     },
     {
       name: 'Perfil',

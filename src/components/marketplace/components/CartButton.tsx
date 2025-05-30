@@ -7,9 +7,23 @@ import { useCart } from '@/hooks/use-cart';
 
 const CartButton: React.FC = () => {
   const navigate = useNavigate();
-  const { cartCount = 0, isLoading } = useCart();
+  const { cartCount = 0, isLoading, cart } = useCart();
 
-  console.log('[CartButton] Rendering with cartCount:', cartCount, 'isLoading:', isLoading);
+  // Calculate count from actual cart items to ensure accuracy
+  const actualCount = React.useMemo(() => {
+    if (!cart?.items) return 0;
+    return cart.items.reduce((sum, item) => sum + (item.quantidade || 0), 0);
+  }, [cart?.items]);
+
+  const displayCount = actualCount > 0 ? actualCount : 0;
+
+  console.log('[CartButton] Rendering with:', { 
+    cartCount, 
+    actualCount, 
+    displayCount, 
+    isLoading,
+    itemsLength: cart?.items?.length || 0
+  });
 
   return (
     <div className="relative">
@@ -18,12 +32,12 @@ const CartButton: React.FC = () => {
         size="icon" 
         className="relative"
         onClick={() => navigate('/cart')}
-        aria-label={`Ver carrinho com ${cartCount} item(s)`}
+        aria-label={`Ver carrinho com ${displayCount} item(s)`}
       >
         <ShoppingCart size={22} />
-        {cartCount > 0 && (
+        {displayCount > 0 && (
           <span className="absolute -top-1 -right-1 bg-construPro-orange text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-            {cartCount}
+            {displayCount}
           </span>
         )}
       </Button>

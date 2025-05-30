@@ -51,19 +51,24 @@ const CartScreen: React.FC = () => {
     );
   }
 
-  // Show loading state
+  // Show loading state with timeout protection
   if (loading) {
     return (
       <div className="flex flex-col min-h-screen bg-gray-50">
         <CartHeader />
         <div className="flex-1 flex items-center justify-center p-4">
-          <LoadingState type="spinner" text="Carregando seu carrinho..." count={1} />
+          <div className="text-center space-y-4">
+            <LoadingState type="spinner" text="Carregando seu carrinho..." count={1} />
+            <div className="text-sm text-gray-500">
+              Se o carregamento demorar muito, tente recarregar a página
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
-  // Show error state
+  // Show error state with retry option
   if (error) {
     return (
       <div className="flex flex-col min-h-screen bg-gray-50">
@@ -95,11 +100,13 @@ const CartScreen: React.FC = () => {
     );
   }
 
-  // Add some debug information to help troubleshoot cart issues
+  // Add debug information
   console.log("CartScreen rendering with:", { 
     cartIsEmpty, 
     itemCount: cartItems?.length || 0,
-    storeCount: Object.keys(itemsByStore).length
+    storeCount: Object.keys(itemsByStore || {}).length,
+    loading,
+    error
   });
 
   return (
@@ -123,7 +130,6 @@ const CartScreen: React.FC = () => {
               isValidating={isValidating}
             />
             
-            {/* Detailed cart summary rendered at bottom of page */}
             <CartSummary
               subtotal={subtotal}
               discount={discount}
@@ -137,7 +143,6 @@ const CartScreen: React.FC = () => {
         )}
       </div>
       
-      {/* Extra padding to avoid overlapping with fixed elements */}
       {!cartIsEmpty && <div className="h-24" />}
     </div>
   );

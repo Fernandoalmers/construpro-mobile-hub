@@ -5,7 +5,7 @@ import { calculateCartSummary } from './calculateCartSummary';
 import { getProductPoints } from '@/utils/pointsCalculations';
 
 /**
- * Process cart items and calculate summary
+ * Process cart items and calculate summary - OPTIMIZED VERSION
  */
 export async function processCartItems(
   cartId: string, 
@@ -15,31 +15,10 @@ export async function processCartItems(
   console.log('[processCartItems] Processing cart items for cart:', cartId, 'user type:', userType);
   
   try {
-    // Fetch cart items with product data from the correct table (produtos)
+    // Step 1: Fetch cart items first (lighter query)
     const { data: items, error: itemsError } = await supabase
       .from('cart_items')
-      .select(`
-        id,
-        product_id,
-        quantity,
-        price_at_add,
-        created_at,
-        updated_at,
-        produtos!cart_items_product_id_fkey (
-          id,
-          nome,
-          preco_normal,
-          preco_promocional,
-          pontos_profissional,
-          pontos_consumidor,
-          estoque,
-          categoria,
-          segmento,
-          status,
-          vendedor_id,
-          imagens
-        )
-      `)
+      .select('id, product_id, quantity, price_at_add, created_at, updated_at')
       .eq('cart_id', cartId);
 
     if (itemsError) {
@@ -62,20 +41,57 @@ export async function processCartItems(
       };
     }
 
-    // Transform the data to match our CartItem interface
+    // Step 2: Fetch product data for all items in batch
+    const productIds = items.map(item => item.product_id);
+    const { data: produtos, error: produtosError } = await supabase
+      .from('produtos')
+      .select(`
+        id,
+        nome,
+        preco_normal,
+        preco_promocional,
+        pontos_profissional,
+        pontos_consumidor,
+        estoque,
+        categoria,
+        segmento,
+        status,
+        vendedor_id,
+        imagens
+      `)
+      .in('id', productIds);
+
+    if (produtosError) {
+      console.error('[processCartItems] Error fetching products:', produtosError);
+      throw produtosError;
+    }
+
+    // Step 3: Create a map for quick product lookup
+    const productMap = new Map();
+    produtos?.forEach(produto => {
+      productMap.set(produto.id, produto);
+    });
+
+    // Step 4: Transform the data to match our CartItem interface
     const cartItems: CartItem[] = items.map(item => {
+      const produto = productMap.get(item.product_id);
+      
+      if (!produto) {
+        console.warn('[processCartItems] Product not found for item:', item.product_id);
+        return null;
+      }
+
       // Safely handle imagens field with proper type checking
       let imageUrl = null;
       let imagensArray: string[] = [];
       
-      if (item.produtos?.imagens) {
-        // Handle the Json type properly
-        if (Array.isArray(item.produtos.imagens)) {
-          imagensArray = item.produtos.imagens as string[];
+      if (produto.imagens) {
+        if (Array.isArray(produto.imagens)) {
+          imagensArray = produto.imagens as string[];
           imageUrl = imagensArray.length > 0 ? imagensArray[0] : null;
-        } else if (typeof item.produtos.imagens === 'string') {
+        } else if (typeof produto.imagens === 'string') {
           try {
-            const parsed = JSON.parse(item.produtos.imagens);
+            const parsed = JSON.parse(produto.imagens);
             if (Array.isArray(parsed)) {
               imagensArray = parsed;
               imageUrl = imagensArray.length > 0 ? imagensArray[0] : null;
@@ -88,18 +104,8 @@ export async function processCartItems(
         }
       }
 
-      console.log('[processCartItems] Processing item:', {
-        productId: item.produtos?.id,
-        productName: item.produtos?.nome,
-        hasImagens: !!item.produtos?.imagens,
-        imagensCount: imagensArray.length,
-        extractedImageUrl: imageUrl,
-        pontos_profissional: item.produtos?.pontos_profissional,
-        pontos_consumidor: item.produtos?.pontos_consumidor
-      });
-
       // Calculate correct points for this user type
-      const pointsForUserType = getProductPoints(item.produtos, userType);
+      const pointsForUserType = getProductPoints(produto, userType);
 
       return {
         id: item.id,
@@ -110,25 +116,25 @@ export async function processCartItems(
         subtotal: item.price_at_add * item.quantity,
         created_at: item.created_at,
         updated_at: item.updated_at,
-        produto: item.produtos ? {
-          id: item.produtos.id,
-          nome: item.produtos.nome,
-          preco: item.produtos.preco_promocional || item.produtos.preco_normal,
-          preco_normal: item.produtos.preco_normal,
-          preco_promocional: item.produtos.preco_promocional,
+        produto: {
+          id: produto.id,
+          nome: produto.nome,
+          preco: produto.preco_promocional || produto.preco_normal,
+          preco_normal: produto.preco_normal,
+          preco_promocional: produto.preco_promocional,
           imagem_url: imageUrl || '',
-          imagens: imagensArray, // Now properly typed as string[]
-          pontos: pointsForUserType, // Use calculated points for user type
-          pontos_profissional: item.produtos.pontos_profissional,
-          pontos_consumidor: item.produtos.pontos_consumidor,
-          estoque: item.produtos.estoque,
-          categoria: item.produtos.categoria,
-          segmento: item.produtos.segmento,
-          loja_id: item.produtos.vendedor_id,
-          status: item.produtos.status
-        } : null
+          imagens: imagensArray,
+          pontos: pointsForUserType,
+          pontos_profissional: produto.pontos_profissional,
+          pontos_consumidor: produto.pontos_consumidor,
+          estoque: produto.estoque,
+          categoria: produto.categoria,
+          segmento: produto.segmento,
+          loja_id: produto.vendedor_id,
+          status: produto.status
+        }
       };
-    });
+    }).filter(Boolean) as CartItem[]; // Remove null items
 
     // Calculate summary with user type
     const summary = calculateCartSummary(cartItems, userType);
@@ -144,8 +150,7 @@ export async function processCartItems(
       itemCount: cartItems.length,
       totalPoints: summary.totalPoints,
       userType,
-      firstItemImageUrl: cartItems[0]?.produto?.imagem_url,
-      firstItemPoints: cartItems[0]?.produto?.pontos
+      processingTime: 'optimized'
     });
 
     return cart;

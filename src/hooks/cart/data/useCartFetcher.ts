@@ -21,14 +21,14 @@ export function useCartFetcher() {
     console.log('[useCartFetcher] Fetching cart data for user:', userId, 'type:', userType);
     
     try {
-      // Simplified cart lookup - get or create active cart
+      // Simplified cart lookup - get or create active cart quickly
       const { data: existingCarts, error: cartError } = await supabase
         .from('carts')
         .select('id, user_id, created_at')
         .eq('user_id', userId)
         .eq('status', 'active')
         .order('created_at', { ascending: false })
-        .limit(3); // Limit to reduce query time
+        .limit(1); // Only get the most recent one
           
       if (cartError) {
         console.error('[useCartFetcher] Error fetching carts:', cartError);
@@ -58,34 +58,18 @@ export function useCartFetcher() {
         // Use the most recent cart
         activeCartId = existingCarts[0].id;
         console.log('[useCartFetcher] Found active cart:', activeCartId);
-        
-        // Archive other carts in background if needed (non-blocking)
-        if (existingCarts.length > 1) {
-          const cartsToArchive = existingCarts.slice(1).map(c => c.id);
-          // Don't block the main flow for this cleanup
-          setTimeout(() => {
-            supabase
-              .from('carts')
-              .update({ status: 'abandoned' })
-              .in('id', cartsToArchive)
-              .then(({ error }) => {
-                if (!error) {
-                  console.log('[useCartFetcher] Archived old carts in background');
-                }
-              });
-          }, 100);
-        }
       }
 
-      // Process cart items with timeout to prevent hanging
+      // Process cart items with increased timeout
       const timeoutPromise = new Promise<Cart>((_, reject) => {
-        setTimeout(() => reject(new Error('Cart processing timeout')), 10000); // 10 second timeout
+        setTimeout(() => reject(new Error('Cart processing timeout')), 30000); // Increased to 30 seconds
       });
 
       const cartPromise = processCartItems(activeCartId, userId, userType);
       
       try {
         const processedCart = await Promise.race([cartPromise, timeoutPromise]);
+        console.log('[useCartFetcher] Cart processing completed successfully');
         return processedCart;
       } catch (timeoutError) {
         console.warn('[useCartFetcher] Cart processing timed out, returning empty cart');
