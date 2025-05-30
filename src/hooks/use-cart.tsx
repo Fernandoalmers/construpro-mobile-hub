@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { CartContextProvider, useCartContext } from '@/context/CartContext';
@@ -42,7 +43,6 @@ function useDebounce<T extends (...args: any[]) => any>(
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user, profile } = useAuth();
   const [cartCount, setCartCount] = useState(0);
-  const [lastClearTime, setLastClearTime] = useState<number>(0);
   
   // Get user type with proper type guard
   const userType = profile?.tipo_perfil || 'consumidor';
@@ -56,38 +56,33 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // Debounced refresh to avoid excessive calls
   const debouncedRefreshCart = useDebounce(originalRefreshCart, 300);
   
-  // Enhanced refresh function that updates cartCount properly
+  // Enhanced refresh function
   const enhancedRefreshCart = useCallback(async () => {
     await originalRefreshCart();
   }, [originalRefreshCart]);
   
-  // Immediate cart clear handler
+  // Immediate cart clear handler - sets count to 0 instantly
   const handleCartCleared = useCallback(() => {
     console.log('[CartProvider] Cart cleared, setting cartCount to 0 immediately');
     setCartCount(0);
-    setLastClearTime(Date.now());
   }, []);
   
   // Get cart operations with enhanced refresh and clear handler
   const operations = useCartOperations(enhancedRefreshCart, handleCartCleared);
 
-  // Calculate cartCount with memoization for performance
+  // Calculate cartCount with simplified logic
   const cartItems = cart?.items || [];
   
-  // Use memoized calculation to avoid unnecessary recalculations
+  // Simplified calculation - just sum the quantities
   const calculatedCartCount = useMemo(() => {
-    // If cart was just cleared, keep count at 0 for a short period
-    const timeSinceClear = Date.now() - lastClearTime;
-    if (timeSinceClear < 1000 && cartItems.length === 0) {
-      return 0;
-    }
-    
     if (cartItems.length === 0) {
       return 0;
     }
     
-    return cartItems.reduce((sum, item) => sum + (item.quantidade || 0), 0);
-  }, [cartItems, lastClearTime]);
+    const totalCount = cartItems.reduce((sum, item) => sum + (item.quantidade || 0), 0);
+    console.log('[CartProvider] Calculated cart count:', totalCount, 'from', cartItems.length, 'items');
+    return totalCount;
+  }, [cartItems]);
   
   // Update cartCount when calculated count changes
   useEffect(() => {
@@ -99,7 +94,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   
   console.log('CartProvider: cartCount =', cartCount, 'cartItems.length =', cartItems.length, 'isLoading =', isLoading, 'userType =', validUserType);
 
-  // Optimized authentication effect - only refresh when necessary
+  // Authentication effect - only refresh when necessary
   useEffect(() => {
     if (isAuthenticated && user?.id) {
       console.log('Authentication state changed, refreshing cart');
