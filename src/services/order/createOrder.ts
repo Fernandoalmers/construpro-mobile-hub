@@ -68,8 +68,10 @@ export async function createOrder(orderData: CreateOrderPayload): Promise<string
     console.log('=== Prepared Order Payload ===');
     console.log('Payload to send:', JSON.stringify(orderPayload, null, 2));
     console.log('Payload size (bytes):', JSON.stringify(orderPayload).length);
+    console.log('Payload action:', orderPayload.action);
+    console.log('Payload items count:', orderPayload.items.length);
     
-    // Validate payload before sending
+    // Validate payload structure before sending
     if (!orderPayload.action) {
       throw new Error('Action field is missing from payload');
     }
@@ -78,16 +80,21 @@ export async function createOrder(orderData: CreateOrderPayload): Promise<string
       throw new Error('Items are missing from payload');
     }
     
+    // Ensure all required fields are present
+    const requiredFields = ['action', 'items', 'endereco_entrega', 'forma_pagamento', 'valor_total'];
+    const missingFields = requiredFields.filter(field => !orderPayload[field as keyof typeof orderPayload]);
+    
+    if (missingFields.length > 0) {
+      throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+    }
+    
     console.log('=== Sending Request to Edge Function ===');
     
     // Use the supabaseService helper with built-in retry logic
     const { data, error } = await supabaseService.invokeFunction('order-processing', {
       method: 'POST',
       body: orderPayload,
-      maxRetries: 1,
-      headers: {
-        'Content-Type': 'application/json'
-      }
+      maxRetries: 1
     });
     
     console.log('=== Edge Function Response ===');

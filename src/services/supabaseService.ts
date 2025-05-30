@@ -33,18 +33,36 @@ export const supabaseService = {
         }
         
         console.log(`Invoking function ${functionName} (attempt ${retries + 1})`);
+        console.log('Request body type:', typeof body);
+        console.log('Request body keys:', body ? Object.keys(body) : 'undefined');
         console.log('Sending body:', JSON.stringify(body, null, 2));
         
-        // For Supabase Edge Functions, we need to pass the body directly
-        // The Supabase client will handle JSON serialization automatically
-        const { data, error } = await supabase.functions.invoke(functionName, {
-          body: body, // Pass the body object directly
+        // Ensure we have a valid body object for POST requests
+        if (method === 'POST' && (!body || typeof body !== 'object')) {
+          throw new Error('Body is required for POST requests and must be an object');
+        }
+        
+        // For Supabase Edge Functions, pass the body directly as an object
+        const invokeOptions: any = {
           headers: {
-            'Content-Type': 'application/json',
             'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
             ...headers
           }
+        };
+        
+        // Only add body if it exists and is not empty
+        if (body && typeof body === 'object' && Object.keys(body).length > 0) {
+          invokeOptions.body = body;
+        }
+        
+        console.log('Invoke options:', {
+          headers: invokeOptions.headers,
+          hasBody: !!invokeOptions.body,
+          bodyKeys: invokeOptions.body ? Object.keys(invokeOptions.body) : []
         });
+
+        const { data, error } = await supabase.functions.invoke(functionName, invokeOptions);
 
         if (error) {
           console.error(`Function ${functionName} error:`, error);
@@ -82,6 +100,7 @@ export const supabaseService = {
         }
 
         console.log(`Function ${functionName} completed successfully`);
+        console.log('Response data type:', typeof data);
         console.log('Response data:', data);
         return { data, error: null };
       } catch (error: any) {

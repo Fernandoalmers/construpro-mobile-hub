@@ -10,7 +10,7 @@ serve(async (req) => {
   try {
     console.log('Order processing request received');
     console.log('Request method:', req.method);
-    console.log('Request headers:', Object.fromEntries(req.headers.entries()));
+    console.log('Request URL:', req.url);
     
     // Check for authorization header
     const authHeader = req.headers.get('Authorization');
@@ -46,30 +46,16 @@ serve(async (req) => {
     console.log('Verifying user authentication...');
     const user = await verifyUserToken(userClient);
 
-    console.log('Parsing request body...');
+    console.log('Reading request body...');
     
     let requestBody;
     
     try {
-      // Get the raw body text first
-      const bodyText = await req.text();
-      console.log('Raw body length:', bodyText.length);
-      
-      if (!bodyText || bodyText.trim() === '') {
-        console.error('Request body is empty');
-        return new Response(
-          JSON.stringify({ 
-            success: false, 
-            error: 'Request body is required' 
-          }),
-          { status: 400, headers: corsHeaders }
-        );
-      }
-      
-      // Parse JSON
-      requestBody = JSON.parse(bodyText);
+      // Use req.json() directly for better reliability
+      requestBody = await req.json();
       console.log('Successfully parsed request body');
-      console.log('Body keys:', Object.keys(requestBody));
+      console.log('Body keys:', Object.keys(requestBody || {}));
+      console.log('Body content:', JSON.stringify(requestBody, null, 2));
       
     } catch (parseError) {
       console.error('JSON parsing error:', parseError.message);
@@ -77,6 +63,18 @@ serve(async (req) => {
         JSON.stringify({ 
           success: false, 
           error: 'Invalid JSON in request body: ' + parseError.message 
+        }),
+        { status: 400, headers: corsHeaders }
+      );
+    }
+    
+    // Validate that we have a body
+    if (!requestBody || typeof requestBody !== 'object') {
+      console.error('Request body is missing or invalid:', requestBody);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Request body is required and must be a valid JSON object' 
         }),
         { status: 400, headers: corsHeaders }
       );
@@ -97,7 +95,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: 'Invalid action specified' 
+        error: 'Invalid action specified. Expected: validate_stock or create_order' 
       }),
       { status: 400, headers: corsHeaders }
     );
