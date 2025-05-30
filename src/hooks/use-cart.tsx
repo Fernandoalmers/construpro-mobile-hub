@@ -17,7 +17,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       : 'consumidor';
   }, [profile?.tipo_perfil]);
   
-  // Get cart data
+  console.log('[CartProvider] Rendering with:', { 
+    isAuthenticated, 
+    userId: user?.id, 
+    userType 
+  });
+  
+  // Get cart data - only when authenticated with valid user
   const { cart, isLoading, refreshCart, refreshKey } = useCartData(
     isAuthenticated, 
     user?.id || null, 
@@ -27,15 +33,25 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // Get cart operations
   const operations = useCartOperations(refreshCart);
 
-  // Calculate total items
+  // Calculate total items - ensure we're getting the right count
   const cartCount = React.useMemo(() => {
     if (!cart?.items || cart.items.length === 0) {
+      console.log('[CartProvider] No cart items, returning 0');
       return 0;
     }
-    return cart.items.reduce((sum, item) => sum + (item.quantidade || 0), 0);
-  }, [cart?.items]);
+    const count = cart.items.reduce((sum, item) => sum + (item.quantidade || 0), 0);
+    console.log('[CartProvider] Calculated cart count:', count, 'from items:', cart.items.length);
+    return count;
+  }, [cart?.items, refreshKey]); // Include refreshKey to force recalculation
   
   const cartItems = cart?.items || [];
+
+  console.log('[CartProvider] Final state:', {
+    cartCount,
+    itemsLength: cartItems.length,
+    isLoading: isLoading || operations.isLoading,
+    cartId: cart?.id
+  });
 
   // Create context value
   const value: CartContextType = {
@@ -53,12 +69,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   return <CartContextProvider value={value}>{children}</CartContextProvider>;
 }
 
-// Export useCart hook
+// Export useCart hook with better error handling
 export function useCart() {
   try {
     const context = useCartContext();
+    console.log('[useCart] Context values:', {
+      cartCount: context.cartCount,
+      itemsLength: context.cartItems.length,
+      isLoading: context.isLoading
+    });
     return context;
   } catch (error) {
+    console.warn('[useCart] Context not available, returning fallback');
     // Return fallback to prevent crashes
     return {
       cart: null,
