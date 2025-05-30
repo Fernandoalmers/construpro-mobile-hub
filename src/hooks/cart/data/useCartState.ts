@@ -17,34 +17,37 @@ export function useCartState(
   
   const { fetchCartData } = useCartFetcher();
   
-  // Use ref to track if we're already fetching to prevent multiple calls
-  const fetchingRef = useRef(false);
-  const initialLoadRef = useRef(false);
+  // Use refs to track loading state and prevent multiple concurrent calls
+  const isInitialized = useRef(false);
+  const isFetching = useRef(false);
 
-  // Function to refresh cart data - stabilized with useCallback
+  // Function to refresh cart data - simplified and more stable
   const refreshCart = useCallback(async () => {
-    // Prevent multiple concurrent fetches
-    if (fetchingRef.current) {
+    // Prevent concurrent fetches
+    if (isFetching.current) {
       console.log('[useCartState] Fetch already in progress, skipping');
       return;
     }
 
+    // Handle unauthenticated state immediately
     if (!isAuthenticated || !userId) {
       console.log('[useCartState] User not authenticated, setting empty cart');
       setCart(null);
       setIsLoading(false);
-      fetchingRef.current = false;
+      setError(null);
       return;
     }
     
-    fetchingRef.current = true;
+    isFetching.current = true;
     console.log('[useCartState] Refreshing cart for user:', userId, 'type:', userType);
-    setIsLoading(true);
     
     try {
+      setIsLoading(true);
+      setError(null);
+      
       const cartData = await fetchCartData(userId, userType);
       
-      // Force empty cart if no items found
+      // Always set cart data, even if empty
       if (!cartData || !cartData.items || cartData.items.length === 0) {
         console.log('[useCartState] No cart items found, setting empty cart');
         const emptyCart: Cart = {
@@ -64,11 +67,10 @@ export function useCartState(
         setCart(cartData);
       }
       
-      setError(null);
     } catch (err: any) {
       console.error('[useCartState] Error refreshing cart:', err);
       setError(err);
-      // Set cart to empty object rather than null to prevent loading state issues
+      // Set empty cart on error to prevent loading loops
       setCart({
         id: '',
         user_id: userId,
@@ -81,20 +83,25 @@ export function useCartState(
         }
       });
     } finally {
-      // Always ensure loading state is completed
       setIsLoading(false);
-      fetchingRef.current = false;
+      isFetching.current = false;
     }
-  }, [isAuthenticated, userId, userType]); // Removed fetchCartData dependency to prevent loop
+  }, [isAuthenticated, userId, userType, fetchCartData]);
 
-  // Load cart data on mount and when auth state changes - but prevent loops
+  // Simple initialization effect - runs only when auth state changes
   useEffect(() => {
-    // Only run on initial load or when auth/user changes
-    if (!initialLoadRef.current || fetchingRef.current) {
-      initialLoadRef.current = true;
+    // Reset initialization flag when user changes
+    isInitialized.current = false;
+  }, [userId, isAuthenticated]);
+
+  // Separate effect for cart loading
+  useEffect(() => {
+    // Only fetch if not already initialized and not currently fetching
+    if (!isInitialized.current && !isFetching.current) {
+      isInitialized.current = true;
       refreshCart();
     }
-  }, [isAuthenticated, userId, userType]); // Removed refreshCart from dependencies
+  }, [refreshCart]);
 
   return {
     cart,

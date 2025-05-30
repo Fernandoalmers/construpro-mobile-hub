@@ -6,7 +6,6 @@ import { useCartData } from './cart/use-cart-data';
 import { useCartOperations } from './cart/use-cart-operations';
 import { CartContextType } from '@/types/cart';
 import { addToCart as addToCartService } from '@/services/cart/operations/addToCart';
-import { cleanupAbandonedCarts } from '@/services/cart/cartCleanup';
 
 export async function addToCart(productId: string, quantity: number): Promise<void> {
   try {
@@ -23,14 +22,16 @@ export async function addToCart(productId: string, quantity: number): Promise<vo
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user, profile } = useAuth();
   
-  // Get user type with proper type guard
-  const userType = profile?.tipo_perfil || 'consumidor';
-  const validUserType = (['consumidor', 'profissional', 'lojista', 'vendedor'].includes(userType)) 
-    ? userType as 'consumidor' | 'profissional' | 'lojista' | 'vendedor'
-    : 'consumidor';
+  // Get user type with proper type guard and default
+  const userType = React.useMemo(() => {
+    const profileType = profile?.tipo_perfil || 'consumidor';
+    return (['consumidor', 'profissional', 'lojista', 'vendedor'].includes(profileType)) 
+      ? profileType as 'consumidor' | 'profissional' | 'lojista' | 'vendedor'
+      : 'consumidor';
+  }, [profile?.tipo_perfil]);
   
   // Get cart data with user type
-  const { cart, isLoading, refreshCart } = useCartData(isAuthenticated, user?.id || null, validUserType);
+  const { cart, isLoading, refreshCart } = useCartData(isAuthenticated, user?.id || null, userType);
   
   // Get cart operations
   const operations = useCartOperations(refreshCart);
@@ -48,24 +49,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   
   const cartItems = cart?.items || [];
   
-  console.log('[CartProvider] cartCount =', cartCount, 'cartItems.length =', cartItems.length, 'isLoading =', isLoading, 'userType =', validUserType);
+  console.log('[CartProvider] cartCount =', cartCount, 'cartItems.length =', cartItems.length, 'isLoading =', isLoading, 'userType =', userType);
 
-  // Cleanup abandoned carts periodically - but not on every render
-  useEffect(() => {
-    if (isAuthenticated && user?.id) {
-      // Run cart cleanup once when component mounts - with delay to not block initial load
-      const timeoutId = setTimeout(async () => {
-        try {
-          console.log('[CartProvider] Running background cart cleanup');
-          await cleanupAbandonedCarts();
-        } catch (error) {
-          console.error('[CartProvider] Error during cart cleanup:', error);
-        }
-      }, 5000); // Wait 5 seconds after mount
-      
-      return () => clearTimeout(timeoutId);
-    }
-  }, [isAuthenticated, user?.id]); // Only run when auth state changes
+  // Removed cart cleanup from here to avoid performance issues during initialization
 
   // Create context value
   const value: CartContextType = {

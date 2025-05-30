@@ -13,84 +13,87 @@ export function useCartFetcher() {
     userId: string | null, 
     userType: 'consumidor' | 'profissional' | 'lojista' | 'vendedor' = 'consumidor'
   ): Promise<Cart | null> => {
+    if (!userId) {
+      console.log('[useCartFetcher] Skipping cart fetch - user not authenticated');
+      return createEmptyCart('');
+    }
+
+    console.log('[useCartFetcher] Fetching cart data for user:', userId, 'type:', userType);
+    
     try {
-      if (!userId) {
-        console.log('[useCartFetcher] Skipping cart fetch - user not authenticated');
-        return null;
+      // Simplified cart lookup - get or create active cart
+      const { data: existingCarts, error: cartError } = await supabase
+        .from('carts')
+        .select('id, user_id, created_at')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(3); // Limit to reduce query time
+          
+      if (cartError) {
+        console.error('[useCartFetcher] Error fetching carts:', cartError);
+        return createEmptyCart(userId);
       }
 
-      console.log('[useCartFetcher] Fetching cart data for user:', userId, 'type:', userType);
-      
-      try {
-        // First, try to get an existing active cart - simplified query
-        const { data: existingCarts, error: cartError } = await supabase
+      let activeCartId: string;
+
+      if (!existingCarts || existingCarts.length === 0) {
+        // No active cart found, create one quickly
+        console.log('[useCartFetcher] No active cart found, creating new one');
+        
+        const { data: newCart, error: createError } = await supabase
           .from('carts')
-          .select('id, user_id, created_at')
-          .eq('user_id', userId)
-          .eq('status', 'active')
-          .order('created_at', { ascending: false })
-          .limit(5); // Only get a few carts to check
-          
-        if (cartError) {
-          console.error('[useCartFetcher] Error fetching carts:', cartError);
+          .insert({ user_id: userId, status: 'active' })
+          .select('id')
+          .single();
+            
+        if (createError) {
+          console.error('[useCartFetcher] Error creating new cart:', createError);
           return createEmptyCart(userId);
         }
-
-        let activeCartId: string;
-
-        if (!existingCarts || existingCarts.length === 0) {
-          // No active cart found, create one
-          console.log('[useCartFetcher] No active cart found, creating new one');
-          
-          const { data: newCart, error: createError } = await supabase
-            .from('carts')
-            .insert({ user_id: userId, status: 'active' })
-            .select('id')
-            .single();
-            
-          if (createError) {
-            console.error('[useCartFetcher] Error creating new cart:', createError);
-            return createEmptyCart(userId);
-          }
-          
-          activeCartId = newCart.id;
-          console.log('[useCartFetcher] Created new cart:', activeCartId);
-        } else if (existingCarts.length === 1) {
-          // Perfect - one active cart
-          activeCartId = existingCarts[0].id;
-          console.log('[useCartFetcher] Found single active cart:', activeCartId);
-        } else {
-          // Multiple active carts - use most recent, archive others in background
-          activeCartId = existingCarts[0].id;
-          console.log('[useCartFetcher] Multiple carts found, using most recent:', activeCartId);
-          
-          // Archive other carts in background (non-blocking)
+        
+        activeCartId = newCart.id;
+        console.log('[useCartFetcher] Created new cart:', activeCartId);
+      } else {
+        // Use the most recent cart
+        activeCartId = existingCarts[0].id;
+        console.log('[useCartFetcher] Found active cart:', activeCartId);
+        
+        // Archive other carts in background if needed (non-blocking)
+        if (existingCarts.length > 1) {
           const cartsToArchive = existingCarts.slice(1).map(c => c.id);
-          if (cartsToArchive.length > 0) {
-            // Don't await this - let it run in background with proper error handling
+          // Don't block the main flow for this cleanup
+          setTimeout(() => {
             supabase
               .from('carts')
               .update({ status: 'abandoned' })
               .in('id', cartsToArchive)
               .then(({ error }) => {
-                if (error) {
-                  console.warn('[useCartFetcher] Background archiving failed:', error);
-                } else {
+                if (!error) {
                   console.log('[useCartFetcher] Archived old carts in background');
                 }
               });
-          }
+          }, 100);
         }
+      }
 
-        // Process cart items and return the complete cart
-        return await processCartItems(activeCartId, userId, userType);
-      } catch (innerErr: any) {
-        console.error('[useCartFetcher] Error in fetchCartData:', innerErr);
-        // Return empty cart on error to avoid infinite loading
+      // Process cart items with timeout to prevent hanging
+      const timeoutPromise = new Promise<Cart>((_, reject) => {
+        setTimeout(() => reject(new Error('Cart processing timeout')), 10000); // 10 second timeout
+      });
+
+      const cartPromise = processCartItems(activeCartId, userId, userType);
+      
+      try {
+        const processedCart = await Promise.race([cartPromise, timeoutPromise]);
+        return processedCart;
+      } catch (timeoutError) {
+        console.warn('[useCartFetcher] Cart processing timed out, returning empty cart');
         return createEmptyCart(userId);
       }
+
     } catch (err: any) {
-      console.error('[useCartFetcher] Error in fetchCartData outer try/catch:', err);
+      console.error('[useCartFetcher] Error in fetchCartData:', err);
       return createEmptyCart(userId);
     }
   }, []); // No dependencies to prevent recreation
