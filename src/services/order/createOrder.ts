@@ -1,4 +1,3 @@
-
 import { supabaseService } from '../supabaseService';
 import { toast } from '@/components/ui/sonner';
 import { CreateOrderPayload, OrderResponse } from './types';
@@ -21,7 +20,7 @@ export async function createOrder(orderData: CreateOrderPayload): Promise<string
     
     // Prepare order data with correct structure matching Edge Function expectations
     const orderPayload = {
-      action: 'create_order',
+      action: 'create_order', // Add the required action field
       items: orderData.items.map(item => ({
         produto_id: item.produto_id,
         quantidade: item.quantidade,
