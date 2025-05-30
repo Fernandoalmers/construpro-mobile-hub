@@ -25,19 +25,53 @@ export const supabaseService = {
     
     while (retries <= maxRetries) {
       try {
+        // Get current session before making the request
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError || !session) {
+          throw new Error('Authentication session invalid or expired');
+        }
+        
+        console.log(`Invoking function ${functionName} (attempt ${retries + 1})`);
+        
         const { data, error } = await supabase.functions.invoke(functionName, {
           method,
           body,
-          headers
+          headers: {
+            ...headers,
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          }
         });
 
         if (error) {
+          console.error(`Function ${functionName} error:`, error);
+          
+          // Check for authentication-related errors
+          if (error.message?.includes('Auth session missing') || 
+              error.message?.includes('Invalid authentication token') ||
+              error.message?.includes('Authentication failed')) {
+            
+            if (retries < maxRetries) {
+              console.log(`Authentication error, attempting to refresh session (retry ${retries + 1})`);
+              
+              // Try to refresh the session
+              const { error: refreshError } = await supabase.auth.refreshSession();
+              if (!refreshError) {
+                retries++;
+                continue; // Retry with refreshed session
+              }
+            }
+            
+            throw new Error('Authentication session expired - please log in again');
+          }
+          
           if (retries < maxRetries && 
-             (error.message.includes('timeout') || 
-              error.message.includes('network') ||
-              error.message.includes('connection'))) {
+             (error.message?.includes('timeout') || 
+              error.message?.includes('network') ||
+              error.message?.includes('connection'))) {
             // Only retry on network-related errors
-            console.log(`Retry attempt ${retries + 1} for ${functionName}`);
+            console.log(`Network error, retry attempt ${retries + 1} for ${functionName}`);
             retries++;
             await new Promise(resolve => setTimeout(resolve, 1000 * retries));
             continue;
@@ -45,13 +79,16 @@ export const supabaseService = {
           throw error;
         }
 
+        console.log(`Function ${functionName} completed successfully`);
         return { data, error: null };
       } catch (error: any) {
+        console.error(`Function ${functionName} exception:`, error);
+        
         if (retries < maxRetries && 
            (error.message?.includes('timeout') || 
             error.message?.includes('network') ||
             error.message?.includes('connection'))) {
-          console.log(`Retry attempt ${retries + 1} for ${functionName}`);
+          console.log(`Exception retry attempt ${retries + 1} for ${functionName}`);
           retries++;
           await new Promise(resolve => setTimeout(resolve, 1000 * retries));
           continue;

@@ -1,9 +1,12 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '@/hooks/use-cart';
 import { useAddresses } from '@/hooks/useAddresses';
+import { useAuth } from '@/context/AuthContext';
 import { toast } from '@/components/ui/sonner';
 import { orderService } from '@/services/orderService';
+import { supabase } from '@/integrations/supabase/client';
 import { CartItem } from '@/types/cart';
 import { Address } from '@/services/addressService';
 import { useGroupItemsByStore, storeGroupsToArray, StoreGroup } from '@/hooks/cart/use-group-items-by-store';
@@ -14,6 +17,7 @@ export type PaymentMethod = 'credit' | 'debit' | 'money' | 'pix';
 
 export function useCheckout() {
   const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
   const { cart, cartItems, clearCart, refreshCart, updateQuantity, removeItem } = useCart();
   const { 
     addresses, 
@@ -75,6 +79,26 @@ export function useCheckout() {
   // Convert record to array for components that expect an array
   const storeGroupsArray = storeGroupsToArray(groupedItems);
   
+  // Verify authentication before checkout operations
+  const verifyAuthentication = useCallback(async () => {
+    if (!isAuthenticated || !user) {
+      toast.error('Você precisa estar logado para finalizar a compra');
+      navigate('/login');
+      return false;
+    }
+    
+    // Check if session is still valid
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error || !session) {
+      console.error('Session verification failed:', error);
+      toast.error('Sua sessão expirou. Por favor, faça login novamente.');
+      navigate('/login');
+      return false;
+    }
+    
+    return true;
+  }, [isAuthenticated, user, navigate]);
+  
   // Set default address on load
   useEffect(() => {
     if (addresses && addresses.length > 0 && !selectedAddress) {
@@ -92,7 +116,6 @@ export function useCheckout() {
   // Add new address handler
   const addNewAddress = useCallback(async (formData: Partial<Address>) => {
     try {
-      // Use the addAddress function from useAddresses hook
       if (addAddress) {
         await addAddress(formData);
         toast.success('Endereço adicionado com sucesso');
@@ -154,6 +177,12 @@ export function useCheckout() {
   // Handle order placement
   const handlePlaceOrder = useCallback(async () => {
     try {
+      // First verify authentication
+      const isAuthValid = await verifyAuthentication();
+      if (!isAuthValid) {
+        return;
+      }
+      
       if (!selectedAddress) {
         toast.error('Selecione um endereço de entrega');
         return;
@@ -204,6 +233,16 @@ export function useCheckout() {
       }
     } catch (error: any) {
       console.error('Error placing order:', error);
+      
+      // Handle authentication-specific errors
+      if (error.message?.includes('Sessão expirada') || error.message?.includes('autenticação')) {
+        setProcessError('Sessão expirada. Redirecionando para login...');
+        setTimeout(() => {
+          navigate('/login');
+        }, 2000);
+        return;
+      }
+      
       setProcessError(error.message || 'Erro ao processar seu pedido');
       toast.error('Não foi possível completar seu pedido', {
         description: error.message || 'Por favor, tente novamente'
@@ -212,6 +251,7 @@ export function useCheckout() {
       setIsSubmitting(false);
     }
   }, [
+    verifyAuthentication,
     selectedAddress, 
     cartItems, 
     paymentMethod, 
