@@ -1,4 +1,3 @@
-
 import { useEffect, useMemo } from 'react';
 import { useCartData } from '@/hooks/cart/use-cart-data';
 import { useAuth } from '@/context/AuthContext';
@@ -39,7 +38,17 @@ export const useCartScreen = () => {
 
   // Extract cart items from cart object
   const cartItems = cart?.items || [];
-  const cartCount = cartItems.length;
+  
+  // UNIFIED CALCULATION: Use the same logic as the context
+  const cartCount = useMemo(() => {
+    if (!cartItems || cartItems.length === 0) {
+      return 0;
+    }
+    // Sum the quantities - same as context calculation
+    const count = cartItems.reduce((sum, item) => sum + (item.quantidade || 0), 0);
+    console.log('[useCartScreen] UNIFIED cart count:', count, 'from items:', cartItems.length);
+    return count;
+  }, [cartItems]);
 
   // Extract unique store IDs from cart items
   const storeIds = useMemo(() => {
@@ -199,7 +208,7 @@ export const useCartScreen = () => {
     // Cart data
     cart,
     cartItems,
-    cartCount,
+    cartCount, // Use the unified calculation here too
     itemsByStore: enhancedGroupedItems,
     processingItem: operationInProgress,
     
