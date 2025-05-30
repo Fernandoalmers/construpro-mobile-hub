@@ -217,7 +217,6 @@ async function handleOrderCreation(serviceClient: any, user: any, body: any) {
 
     let orderId;
     let inventoryUpdated = true;
-    let pointsRegistered = true;
     let couponProcessed = true;
 
     // Create the order using service client
@@ -299,42 +298,9 @@ async function handleOrderCreation(serviceClient: any, user: any, body: any) {
 
     console.log(`✅ All ${items.length} items processed`);
 
-    // Register points transaction if points are awarded
-    const pointsValue = Number(pontos_ganhos) || 0;
-    if (pointsValue > 0) {
-      try {
-        const { error: pointsError } = await serviceClient
-          .from('points_transactions')
-          .insert([{
-            user_id: user.id,
-            pontos: pointsValue,
-            tipo: 'compra',
-            descricao: `Pontos por compra #${orderId}`,
-            referencia_id: orderId
-          }]);
-
-        if (pointsError) {
-          console.error('❌ Error registering points:', pointsError);
-          pointsRegistered = false;
-        } else {
-          // Update user total points using RPC function
-          const { error: updatePointsError } = await serviceClient
-            .rpc('update_user_points', {
-              user_id: user.id,
-              points_to_add: pointsValue
-            });
-
-          if (updatePointsError) {
-            console.error('❌ Error updating user points:', updatePointsError);
-          } else {
-            console.log('✅ Points registered and user balance updated');
-          }
-        }
-      } catch (pointsError) {
-        console.error('❌ Points processing error:', pointsError);
-        pointsRegistered = false;
-      }
-    }
+    // REMOVED: Manual points registration - let the trigger handle it automatically
+    // The register_points_on_order() trigger will handle points registration
+    console.log('📊 Points will be registered automatically by trigger');
 
     // Process coupon if applicable
     const discountValue = Number(desconto) || 0;
@@ -355,7 +321,7 @@ async function handleOrderCreation(serviceClient: any, user: any, body: any) {
         success: true,
         order: { id: orderId },
         inventoryUpdated,
-        pointsRegistered,
+        pointsRegistered: true, // Always true since trigger handles it
         couponProcessed
       }),
       { headers: corsHeaders }
