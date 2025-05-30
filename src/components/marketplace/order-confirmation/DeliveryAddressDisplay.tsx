@@ -25,7 +25,7 @@ const DeliveryAddressDisplay: React.FC<DeliveryAddressDisplayProps> = ({ enderec
       const estado = addr.estado || '';
       const cep = addr.cep || '';
       
-      // Build address string
+      // Build address string with proper formatting
       const parts = [];
       
       if (rua) {
@@ -36,11 +36,17 @@ const DeliveryAddressDisplay: React.FC<DeliveryAddressDisplayProps> = ({ enderec
       }
       
       if (bairro) parts.push(bairro);
-      if (cidade) parts.push(cidade);
-      if (estado) parts.push(estado);
+      if (cidade && estado) {
+        parts.push(`${cidade} - ${estado}`);
+      } else if (cidade) {
+        parts.push(cidade);
+      } else if (estado) {
+        parts.push(estado);
+      }
+      
       if (cep) parts.push(`CEP: ${cep}`);
       
-      return parts.join(' - ') || 'Endereço não disponível';
+      return parts.join(', ') || 'Endereço não disponível';
     }
     
     return 'Endereço não disponível';
