@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { CartContextProvider, useCartContext } from '@/context/CartContext';
 import { useCartData } from './cart/use-cart-data';
@@ -20,29 +20,9 @@ export async function addToCart(productId: string, quantity: number): Promise<vo
   }
 }
 
-// Debounce function for better performance
-function useDebounce<T extends (...args: any[]) => any>(
-  func: T,
-  delay: number
-): (...args: Parameters<T>) => void {
-  const [timeoutId, setTimeoutId] = useState<NodeJS.Timeout | null>(null);
-  
-  return useCallback((...args: Parameters<T>) => {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
-    
-    const newTimeoutId = setTimeout(() => {
-      func(...args);
-    }, delay);
-    
-    setTimeoutId(newTimeoutId);
-  }, [func, delay, timeoutId]);
-}
-
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user, profile } = useAuth();
-  const [cartCount, setCartCount] = useState(0);
+  const [forceEmptyCount, setForceEmptyCount] = useState(false);
   
   // Get user type with proper type guard
   const userType = profile?.tipo_perfil || 'consumidor';
@@ -51,61 +31,52 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     : 'consumidor';
   
   // Get cart data with user type
-  const { cart, isLoading, refreshCart: originalRefreshCart } = useCartData(isAuthenticated, user?.id || null, validUserType);
+  const { cart, isLoading, refreshCart } = useCartData(isAuthenticated, user?.id || null, validUserType);
   
-  // Debounced refresh to avoid excessive calls
-  const debouncedRefreshCart = useDebounce(originalRefreshCart, 300);
-  
-  // Enhanced refresh function
-  const enhancedRefreshCart = useCallback(async () => {
-    await originalRefreshCart();
-  }, [originalRefreshCart]);
-  
-  // Immediate cart clear handler - sets count to 0 instantly
-  const handleCartCleared = useCallback(() => {
-    console.log('[CartProvider] Cart cleared, setting cartCount to 0 immediately');
-    setCartCount(0);
-  }, []);
-  
-  // Get cart operations with enhanced refresh and clear handler
-  const operations = useCartOperations(enhancedRefreshCart, handleCartCleared);
-
-  // Calculate cartCount with simplified logic
-  const cartItems = cart?.items || [];
-  
-  // Simplified calculation - just sum the quantities
-  const calculatedCartCount = useMemo(() => {
-    if (cartItems.length === 0) {
-      return 0;
-    }
+  // Enhanced refresh function that handles empty cart state
+  const enhancedRefreshCart = async () => {
+    await refreshCart();
     
-    const totalCount = cartItems.reduce((sum, item) => sum + (item.quantidade || 0), 0);
-    console.log('[CartProvider] Calculated cart count:', totalCount, 'from', cartItems.length, 'items');
-    return totalCount;
-  }, [cartItems]);
-  
-  // Update cartCount when calculated count changes
-  useEffect(() => {
-    if (calculatedCartCount !== cartCount) {
-      console.log('[CartProvider] Updating cartCount from', cartCount, 'to', calculatedCartCount);
-      setCartCount(calculatedCartCount);
+    // Check if cart is empty after refresh and force count to 0
+    if (cart && cart.items && cart.items.length === 0) {
+      console.log('[CartProvider] Cart is empty after refresh, forcing count to 0');
+      setForceEmptyCount(true);
+      // Reset the flag after a brief moment
+      setTimeout(() => setForceEmptyCount(false), 100);
     }
-  }, [calculatedCartCount, cartCount]);
+  };
   
-  console.log('CartProvider: cartCount =', cartCount, 'cartItems.length =', cartItems.length, 'isLoading =', isLoading, 'userType =', validUserType);
+  // Get cart operations with enhanced refresh
+  const operations = useCartOperations(enhancedRefreshCart);
 
-  // Authentication effect - only refresh when necessary
+  // Calculate total items in cart - with forced empty state handling
+  const cartItems = cart?.items || [];
+  let cartCount = 0;
+  
+  if (forceEmptyCount || cartItems.length === 0) {
+    cartCount = 0;
+  } else {
+    cartCount = cartItems.reduce((sum, item) => sum + (item.quantidade || 0), 0);
+  }
+  
+  console.log('CartProvider: cartCount =', cartCount, 'cartItems.length =', cartItems.length, 'isLoading =', isLoading, 'userType =', validUserType, 'forceEmptyCount =', forceEmptyCount);
+
+  // Force refresh cart when authentication state changes
   useEffect(() => {
     if (isAuthenticated && user?.id) {
       console.log('Authentication state changed, refreshing cart');
-      debouncedRefreshCart();
-    } else {
-      // Clear cart count when not authenticated
-      setCartCount(0);
+      refreshCart();
     }
-  }, [isAuthenticated, user?.id, debouncedRefreshCart]);
+  }, [isAuthenticated, user?.id, refreshCart]);
   
-  // Cleanup abandoned carts with better frequency control
+  // Reset force empty flag when cart items change
+  useEffect(() => {
+    if (cartItems.length > 0 && forceEmptyCount) {
+      setForceEmptyCount(false);
+    }
+  }, [cartItems.length, forceEmptyCount]);
+  
+  // Cleanup abandoned carts periodically
   useEffect(() => {
     if (isAuthenticated && user?.id) {
       // Run cart cleanup once when component mounts
@@ -118,19 +89,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         }
       };
       
-      // Run once on mount, then weekly
-      const timeoutId = setTimeout(runCleanup, 5000); // Delay initial cleanup
+      // Run once on mount
+      runCleanup();
+      
+      // Then run weekly
       const cleanupInterval = setInterval(runCleanup, 7 * 24 * 60 * 60 * 1000);
       
-      return () => {
-        clearTimeout(timeoutId);
-        clearInterval(cleanupInterval);
-      };
+      return () => clearInterval(cleanupInterval);
     }
   }, [isAuthenticated, user?.id]);
 
-  // Create context value with memoization for performance
-  const value: CartContextType = useMemo(() => ({
+  // Create context value
+  const value: CartContextType = {
     cart,
     cartCount,
     cartItems,
@@ -140,18 +110,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     removeItem: operations.removeItem,
     clearCart: operations.clearCart,
     refreshCart: enhancedRefreshCart
-  }), [
-    cart,
-    cartCount,
-    cartItems,
-    isLoading,
-    operations.isLoading,
-    operations.addToCart,
-    operations.updateQuantity,
-    operations.removeItem,
-    operations.clearCart,
-    enhancedRefreshCart
-  ]);
+  };
 
   return <CartContextProvider value={value}>{children}</CartContextProvider>;
 }
