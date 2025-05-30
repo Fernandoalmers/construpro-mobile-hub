@@ -1,119 +1,49 @@
 
 import React from 'react';
-import AdminLayout from '@/components/admin/AdminLayout';
-import { useTitle } from '@/hooks/use-title';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { Settings, Shield, Bell, Database } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { SecurityFixButton } from '@/components/admin/SecurityFixButton';
 
 const AdminSettingsScreen: React.FC = () => {
-  useTitle('ConstruPro Admin - Configurações');
-  
   return (
-    <AdminLayout currentSection="configurações">
-      <div className="space-y-6">
-        <h2 className="text-2xl font-bold">Configurações do Sistema</h2>
-        
-        <Tabs defaultValue="general">
-          <TabsList className="grid grid-cols-4 w-full max-w-md">
-            <TabsTrigger value="general">Geral</TabsTrigger>
-            <TabsTrigger value="security">Segurança</TabsTrigger>
-            <TabsTrigger value="notifications">Notificações</TabsTrigger>
-            <TabsTrigger value="backup">Backup</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="general" className="space-y-4 mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Settings className="mr-2 h-5 w-5" />
-                  Configurações Gerais
-                </CardTitle>
-                <CardDescription>
-                  Configure os parâmetros gerais do sistema
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Nome da Plataforma</label>
-                      <input 
-                        type="text" 
-                        className="w-full p-2 border rounded" 
-                        defaultValue="ConstruPro" 
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">E-mail de Contato</label>
-                      <input 
-                        type="email" 
-                        className="w-full p-2 border rounded" 
-                        defaultValue="contato@construpro.com" 
-                      />
-                    </div>
-                  </div>
-                  
-                  <Button>Salvar Alterações</Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="security" className="space-y-4 mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Shield className="mr-2 h-5 w-5" />
-                  Segurança
-                </CardTitle>
-                <CardDescription>
-                  Configure as políticas de segurança da plataforma
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-500">Configurações de segurança em breve.</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="notifications" className="space-y-4 mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Bell className="mr-2 h-5 w-5" />
-                  Notificações
-                </CardTitle>
-                <CardDescription>
-                  Configure os templates e políticas de notificação
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-500">Configurações de notificações em breve.</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="backup" className="space-y-4 mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Database className="mr-2 h-5 w-5" />
-                  Backup
-                </CardTitle>
-                <CardDescription>
-                  Configure políticas de backup e restauração
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-500">Configurações de backup em breve.</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Configurações do Sistema</h1>
+        <p className="text-gray-600">Gerencie configurações administrativas e manutenção do sistema</p>
       </div>
-    </AdminLayout>
+
+      <div className="grid gap-6">
+        {/* Configurações de Segurança */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Segurança do Sistema</CardTitle>
+            <CardDescription>
+              Monitore e corrija vulnerabilidades de segurança do banco de dados
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <SecurityFixButton />
+          </CardContent>
+        </Card>
+
+        <Separator />
+
+        {/* Outras configurações podem ser adicionadas aqui futuramente */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Configurações Gerais</CardTitle>
+            <CardDescription>
+              Configurações gerais do sistema (em desenvolvimento)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-500">
+              Outras configurações administrativas serão adicionadas aqui conforme necessário.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 };
 
