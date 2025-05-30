@@ -35,11 +35,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // Get cart operations
   const operations = useCartOperations(refreshCart);
 
-  // Calculate total items in cart - ensure it's using the latest cart data
-  const cartCount = cart?.items?.reduce((sum, item) => sum + item.quantidade, 0) || 0;
+  // Calculate total items in cart - ensure it's always accurate
   const cartItems = cart?.items || [];
+  const cartCount = cartItems.length > 0 
+    ? cartItems.reduce((sum, item) => sum + (item.quantidade || 0), 0) 
+    : 0;
   
-  console.log('CartProvider: cartCount =', cartCount, 'isLoading =', isLoading, 'userType =', validUserType);
+  console.log('CartProvider: cartCount =', cartCount, 'cartItems.length =', cartItems.length, 'isLoading =', isLoading, 'userType =', validUserType);
 
   // Force refresh cart when authentication state changes
   useEffect(() => {

@@ -20,6 +20,7 @@ export function useCartState(
   // Function to refresh cart data
   const refreshCart = useCallback(async () => {
     if (!isAuthenticated || !userId) {
+      console.log('[useCartState] User not authenticated, setting empty cart');
       setCart(null);
       setIsLoading(false);
       return;
@@ -30,7 +31,27 @@ export function useCartState(
     
     try {
       const cartData = await fetchCartData(userId, userType);
-      setCart(cartData);
+      
+      // Force empty cart if no items found
+      if (!cartData || !cartData.items || cartData.items.length === 0) {
+        console.log('[useCartState] No cart items found, setting empty cart');
+        const emptyCart: Cart = {
+          id: cartData?.id || '',
+          user_id: userId,
+          items: [],
+          summary: {
+            subtotal: 0,
+            shipping: 0,
+            totalItems: 0,
+            totalPoints: 0
+          }
+        };
+        setCart(emptyCart);
+      } else {
+        console.log('[useCartState] Cart data loaded with', cartData.items.length, 'items');
+        setCart(cartData);
+      }
+      
       setError(null);
     } catch (err: any) {
       console.error('[useCartState] Error refreshing cart:', err);
