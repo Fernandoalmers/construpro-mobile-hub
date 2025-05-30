@@ -4,7 +4,7 @@ import { Cart } from '@/types/cart';
 import { useCartFetcher } from './useCartFetcher';
 
 /**
- * Hook to manage cart state and refreshing
+ * Hook to manage cart state with improved synchronization
  */
 export function useCartState(
   isAuthenticated: boolean, 
@@ -14,6 +14,7 @@ export function useCartState(
   const [cart, setCart] = useState<Cart | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
+  const [refreshKey, setRefreshKey] = useState<number>(0); // For forcing updates
   
   const { fetchCartData } = useCartFetcher();
   
@@ -22,11 +23,11 @@ export function useCartState(
   const isFetching = useRef(false);
   const lastRefreshTime = useRef<number>(0);
 
-  // Function to refresh cart data - improved with better logging and state management
-  const refreshCart = useCallback(async () => {
-    // Prevent concurrent fetches and rapid successive calls
+  // Function to refresh cart data with forced update capability
+  const refreshCart = useCallback(async (forceUpdate: boolean = false) => {
+    // Prevent concurrent fetches and rapid successive calls (unless forced)
     const now = Date.now();
-    if (isFetching.current || (now - lastRefreshTime.current < 100)) {
+    if (!forceUpdate && (isFetching.current || (now - lastRefreshTime.current < 100))) {
       console.log('[useCartState] Skipping refresh - too soon or already fetching');
       return;
     }
@@ -37,12 +38,13 @@ export function useCartState(
       setCart(null);
       setIsLoading(false);
       setError(null);
+      setRefreshKey(prev => prev + 1); // Force UI update
       return;
     }
     
     isFetching.current = true;
     lastRefreshTime.current = now;
-    console.log('[useCartState] Starting cart refresh for user:', userId, 'type:', userType);
+    console.log('[useCartState] Starting cart refresh for user:', userId, 'type:', userType, 'forced:', forceUpdate);
     
     try {
       setIsLoading(true);
@@ -52,7 +54,8 @@ export function useCartState(
       console.log('[useCartState] Cart data fetched:', {
         hasData: !!cartData,
         itemCount: cartData?.items?.length || 0,
-        cartId: cartData?.id
+        cartId: cartData?.id,
+        refreshKey: refreshKey + 1
       });
       
       // Always set cart data, even if empty
@@ -75,6 +78,9 @@ export function useCartState(
         setCart(cartData);
       }
       
+      // Force refresh key update to trigger UI re-renders
+      setRefreshKey(prev => prev + 1);
+      
     } catch (err: any) {
       console.error('[useCartState] Error refreshing cart:', err);
       setError(err);
@@ -90,12 +96,19 @@ export function useCartState(
           totalPoints: 0
         }
       });
+      setRefreshKey(prev => prev + 1);
     } finally {
       setIsLoading(false);
       isFetching.current = false;
-      console.log('[useCartState] Cart refresh completed');
+      console.log('[useCartState] Cart refresh completed, refreshKey:', refreshKey + 1);
     }
-  }, [isAuthenticated, userId, userType, fetchCartData]);
+  }, [isAuthenticated, userId, userType, fetchCartData, refreshKey]);
+
+  // Enhanced refresh function that forces update
+  const forceRefreshCart = useCallback(async () => {
+    console.log('[useCartState] Force refreshing cart...');
+    await refreshCart(true);
+  }, [refreshCart]);
 
   // Simple initialization effect - runs only when auth state changes
   useEffect(() => {
@@ -118,6 +131,7 @@ export function useCartState(
     cart,
     isLoading,
     error,
-    refreshCart
+    refreshCart: forceRefreshCart, // Use the enhanced version
+    refreshKey // Export refresh key for UI components
   };
 }

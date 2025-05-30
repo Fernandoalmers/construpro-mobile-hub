@@ -31,15 +31,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [profile?.tipo_perfil]);
   
   // Get cart data with user type
-  const { cart, isLoading, refreshCart } = useCartData(isAuthenticated, user?.id || null, userType);
+  const { cart, isLoading, refreshCart, refreshKey } = useCartData(isAuthenticated, user?.id || null, userType);
   
   // Get cart operations
   const operations = useCartOperations(refreshCart);
 
-  // Calculate total items in cart - improved with better logging
+  // Calculate total items in cart with enhanced reactivity
   const cartCount = React.useMemo(() => {
     if (!cart?.items || cart.items.length === 0) {
-      console.log('[CartProvider] No cart items, count = 0');
+      console.log('[CartProvider] No cart items, count = 0, refreshKey:', refreshKey);
       return 0;
     }
     
@@ -47,9 +47,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return sum + (item.quantidade || 0);
     }, 0);
     
-    console.log('[CartProvider] Calculated cart count:', count, 'from', cart.items.length, 'items');
+    console.log('[CartProvider] Calculated cart count:', count, 'from', cart.items.length, 'items, refreshKey:', refreshKey);
     return count;
-  }, [cart?.items]);
+  }, [cart?.items, refreshKey]); // Include refreshKey as dependency
   
   const cartItems = cart?.items || [];
   
@@ -59,33 +59,58 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     isLoading,
     userType,
     hasCart: !!cart,
-    cartId: cart?.id
+    cartId: cart?.id,
+    refreshKey
   });
 
-  // Create context value
+  // Force re-render when cart operations complete
+  const [operationCompleted, setOperationCompleted] = React.useState(0);
+  
+  React.useEffect(() => {
+    if (!operations.isLoading && operations.operationInProgress === null) {
+      // Operation completed, force update
+      setOperationCompleted(prev => prev + 1);
+    }
+  }, [operations.isLoading, operations.operationInProgress]);
+
+  // Enhanced operations with forced refresh
+  const enhancedOperations = React.useMemo(() => ({
+    ...operations,
+    removeItem: async (itemId: string) => {
+      await operations.removeItem(itemId);
+      setOperationCompleted(prev => prev + 1);
+    },
+    clearCart: async () => {
+      await operations.clearCart();
+      setOperationCompleted(prev => prev + 1);
+    }
+  }), [operations]);
+
+  // Create context value with enhanced reactivity
   const value: CartContextType = {
     cart,
     cartCount,
     cartItems,
     isLoading: isLoading || operations.isLoading,
-    addToCart: operations.addToCart,
-    updateQuantity: operations.updateQuantity,
-    removeItem: operations.removeItem,
-    clearCart: operations.clearCart,
+    addToCart: enhancedOperations.addToCart,
+    updateQuantity: enhancedOperations.updateQuantity,
+    removeItem: enhancedOperations.removeItem,
+    clearCart: enhancedOperations.clearCart,
     refreshCart
   };
 
   return <CartContextProvider value={value}>{children}</CartContextProvider>;
 }
 
-// Re-export the useCartContext as useCart for backward compatibility
+// Re-export the useCartContext as useCart with enhanced error handling
 export function useCart() {
   try {
     const context = useCartContext();
     console.log('[useCart] Context values:', {
       cartCount: context.cartCount,
       itemsLength: context.cartItems.length,
-      isLoading: context.isLoading
+      isLoading: context.isLoading,
+      timestamp: new Date().toISOString()
     });
     return context;
   } catch (error) {

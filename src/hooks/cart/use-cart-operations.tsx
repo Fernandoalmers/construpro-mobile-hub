@@ -5,7 +5,7 @@ import { useCartAdd } from './use-cart-add';
 import { addToCart, updateCartItemQuantity, removeFromCart, clearCart } from '@/services/cart/cartItemOperations';
 
 /**
- * Hook for cart operations with loading state management
+ * Hook for cart operations with improved synchronization
  */
 export function useCartOperations(refreshCartData: () => Promise<void>) {
   const [isLoading, setIsLoading] = useState(false);
@@ -66,7 +66,7 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
   };
 
   /**
-   * Remove an item from the cart
+   * Remove an item from the cart - simplified with single refresh
    */
   const handleRemoveItem = async (itemId: string): Promise<void> => {
     try {
@@ -77,16 +77,15 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
       await removeFromCart(itemId);
       console.log('[useCartOperations] Item removed, refreshing cart data...');
       
-      // Force multiple refreshes to ensure state is fully updated
+      // Single refresh with forced update
       await refreshCartData();
-      console.log('[useCartOperations] First refresh completed after remove');
+      console.log('[useCartOperations] Cart data refreshed after remove');
       
-      // Add a small delay and refresh again to ensure all components update
-      setTimeout(async () => {
-        console.log('[useCartOperations] Second refresh after remove...');
-        await refreshCartData();
-        console.log('[useCartOperations] Second refresh completed');
-      }, 50);
+      // Force a small delay to ensure state propagation
+      setTimeout(() => {
+        console.log('[useCartOperations] Secondary refresh for UI consistency');
+        refreshCartData().catch(err => console.warn('Secondary refresh failed:', err));
+      }, 100);
       
       toast.success('Item removido do carrinho');
     } catch (error: any) {
@@ -100,7 +99,7 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
   };
 
   /**
-   * Clear all items from the cart
+   * Clear all items from the cart - simplified with single refresh
    */
   const handleClearCart = async (): Promise<void> => {
     try {
@@ -110,14 +109,14 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
       
       await clearCart();
       
-      // Force multiple refreshes to ensure state is updated
-      console.log('[useCartOperations] First refresh after clear...');
+      // Single refresh with forced update
+      console.log('[useCartOperations] Cart cleared, refreshing data...');
       await refreshCartData();
       
-      // Add a small delay and refresh again to handle any timing issues
-      setTimeout(async () => {
-        console.log('[useCartOperations] Second refresh after clear...');
-        await refreshCartData();
+      // Force a small delay to ensure state propagation
+      setTimeout(() => {
+        console.log('[useCartOperations] Secondary refresh after clear');
+        refreshCartData().catch(err => console.warn('Secondary refresh failed:', err));
       }, 100);
       
       toast.success('Carrinho esvaziado');
