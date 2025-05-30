@@ -80,8 +80,14 @@ export class OrderDetailsService {
         .select('id, nome, imagens')
         .in('id', produtoIds);
 
-      // Criar mapa de produtos
-      const produtoMap = new Map(produtos?.map(p => [p.id, p]) || []);
+      // Criar mapa de produtos com conversão de tipos segura
+      const produtoMap = new Map(produtos?.map(p => [p.id, {
+        id: p.id,
+        nome: p.nome,
+        imagens: Array.isArray(p.imagens) ? p.imagens : 
+                 typeof p.imagens === 'string' ? [p.imagens] : 
+                 p.imagens ? [p.imagens] : []
+      }]) || []);
 
       // Processar itens com informações do produto
       const itensCompletos = itens?.map(item => ({
