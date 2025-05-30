@@ -45,6 +45,9 @@ export interface OrderData {
   updated_at?: string;
   rastreio?: string;
   items: OrderItem[];
+  // Novos campos para desconto de cupom
+  desconto_aplicado?: number;
+  cupom_codigo?: string;
 }
 
 export interface OrderResponse {

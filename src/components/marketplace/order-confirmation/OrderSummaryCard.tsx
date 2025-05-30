@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Clock } from 'lucide-react';
+import { Clock, Tag } from 'lucide-react';
 import Card from '@/components/common/Card';
 
 interface OrderSummaryCardProps {
@@ -19,6 +19,13 @@ const OrderSummaryCard: React.FC<OrderSummaryCardProps> = ({ orderDetails }) => 
 
   // Get order ID for display
   const displayOrderId = orderDetails.id ? orderDetails.id.substring(0, 8).toUpperCase() : '';
+  
+  // Calcular valores considerando desconto
+  const subtotalOriginal = orderDetails.desconto_aplicado 
+    ? Number(orderDetails.valor_total) + Number(orderDetails.desconto_aplicado)
+    : Number(orderDetails.valor_total);
+    
+  const hasDiscount = orderDetails.desconto_aplicado && Number(orderDetails.desconto_aplicado) > 0;
 
   return (
     <Card className="mb-4 p-4">
@@ -49,14 +56,37 @@ const OrderSummaryCard: React.FC<OrderSummaryCardProps> = ({ orderDetails }) => 
 
       <div className="border-b pb-3 mb-4">
         <h3 className="font-medium mb-2">Resumo</h3>
+        
         <div className="grid grid-cols-2 gap-2 mb-1">
-          <span className="text-gray-600">Total:</span>
+          <span className="text-gray-600">Subtotal:</span>
+          <span className="text-right">R$ {subtotalOriginal.toFixed(2)}</span>
+        </div>
+        
+        {hasDiscount && (
+          <div className="grid grid-cols-2 gap-2 mb-1 text-green-600">
+            <span className="flex items-center gap-1">
+              <Tag size={12} />
+              Desconto ({orderDetails.cupom_codigo}):
+            </span>
+            <span className="text-right">-R$ {Number(orderDetails.desconto_aplicado).toFixed(2)}</span>
+          </div>
+        )}
+        
+        <div className="grid grid-cols-2 gap-2 mb-1">
+          <span className="font-bold text-gray-600">Total:</span>
           <span className="font-bold text-right">R$ {orderDetails.valor_total?.toFixed(2) || '0.00'}</span>
         </div>
+        
         <div className="grid grid-cols-2 gap-2 text-construPro-orange">
           <span>Pontos ganhos:</span>
           <span className="text-right">{orderDetails.pontos_ganhos || 0} pontos</span>
         </div>
+        
+        {hasDiscount && (
+          <p className="text-xs text-green-600 mt-2">
+            ✅ Cupom {orderDetails.cupom_codigo} aplicado com sucesso!
+          </p>
+        )}
       </div>
     </Card>
   );

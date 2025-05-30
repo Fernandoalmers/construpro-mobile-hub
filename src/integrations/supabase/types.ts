@@ -510,7 +510,9 @@ export type Database = {
         Row: {
           cliente_id: string
           created_at: string | null
+          cupom_codigo: string | null
           data_criacao: string | null
+          desconto_aplicado: number | null
           endereco_entrega: Json
           forma_pagamento: string
           id: string
@@ -523,7 +525,9 @@ export type Database = {
         Insert: {
           cliente_id: string
           created_at?: string | null
+          cupom_codigo?: string | null
           data_criacao?: string | null
+          desconto_aplicado?: number | null
           endereco_entrega: Json
           forma_pagamento: string
           id?: string
@@ -536,7 +540,9 @@ export type Database = {
         Update: {
           cliente_id?: string
           created_at?: string | null
+          cupom_codigo?: string | null
           data_criacao?: string | null
+          desconto_aplicado?: number | null
           endereco_entrega?: Json
           forma_pagamento?: string
           id?: string

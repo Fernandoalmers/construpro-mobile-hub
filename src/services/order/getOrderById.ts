@@ -91,10 +91,10 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
   try {
     console.log(`🔍 [getOrderById] Fetching order: ${orderId}`);
     
-    // Get order data
+    // Get order data - incluindo os novos campos de desconto
     const { data: orderData, error: orderError } = await supabase
       .from('orders')
-      .select('*')
+      .select('*, desconto_aplicado, cupom_codigo')
       .eq('id', orderId)
       .single();
     

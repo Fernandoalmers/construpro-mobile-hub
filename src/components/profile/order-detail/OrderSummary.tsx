@@ -1,7 +1,7 @@
 
 import React from 'react';
 import Card from '../../common/Card';
-import { Calendar, CreditCard, Award, Package, MapPin } from 'lucide-react';
+import { Calendar, CreditCard, Award, Package, MapPin, Tag } from 'lucide-react';
 import { OrderData } from '@/services/order/types';
 
 interface OrderSummaryProps {
@@ -36,6 +36,8 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({ order }) => {
     });
   };
 
+  const hasDiscount = order.desconto_aplicado && Number(order.desconto_aplicado) > 0;
+
   return (
     <Card className="p-4">
       <div className="flex justify-between items-center mb-3">
@@ -60,6 +62,13 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({ order }) => {
           <Award size={16} />
           <span>Pontos ganhos: {order.pontos_ganhos || 0}</span>
         </div>
+        
+        {hasDiscount && (
+          <div className="flex items-center gap-2 text-green-600">
+            <Tag size={16} />
+            <span>Cupom aplicado: {order.cupom_codigo} (-R$ {Number(order.desconto_aplicado).toFixed(2)})</span>
+          </div>
+        )}
         
         {order.rastreio && (
           <div className="flex items-center gap-2 text-gray-600">
