@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Package, Search, Filter, RefreshCw, Clock, CheckCircle, XCircle, AlertTriangle, Shield } from 'lucide-react';
+import { ChevronLeft, Package, Search, Filter, RefreshCw, Zap } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePedidosVendor } from '@/hooks/vendor/usePedidosVendor';
 import LoadingState from '../common/LoadingState';
-import { toast } from '@/components/ui/sonner';
+import SyncStatusIndicator from './orders/SyncStatusIndicator';
 
 const VendorOrdersScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -23,7 +23,8 @@ const VendorOrdersScreen: React.FC = () => {
     handleMigration,
     syncStatus,
     isCheckingSync,
-    checkSyncIntegrity
+    checkSyncIntegrity,
+    forceSyncOrders
   } = usePedidosVendor();
   
   const [searchTerm, setSearchTerm] = useState('');
@@ -53,50 +54,19 @@ const VendorOrdersScreen: React.FC = () => {
   const getStatusBadge = (status: string) => {
     switch(status.toLowerCase()) {
       case "entregue":
-        return { color: "bg-green-100 text-green-800", icon: CheckCircle };
+        return { color: "bg-green-100 text-green-800", icon: Package };
       case "enviado":
         return { color: "bg-blue-100 text-blue-800", icon: Package };
       case "processando":
-        return { color: "bg-yellow-100 text-yellow-800", icon: Clock };
+        return { color: "bg-yellow-100 text-yellow-800", icon: Package };
       case "confirmado":
-        return { color: "bg-purple-100 text-purple-800", icon: CheckCircle };
+        return { color: "bg-purple-100 text-purple-800", icon: Package };
       case "pendente":
-        return { color: "bg-orange-100 text-orange-800", icon: Clock };
+        return { color: "bg-orange-100 text-orange-800", icon: Package };
       case "cancelado":
-        return { color: "bg-red-100 text-red-800", icon: XCircle };
+        return { color: "bg-red-100 text-red-800", icon: Package };
       default:
         return { color: "bg-gray-100 text-gray-800", icon: Package };
-    }
-  };
-
-  // Get sync status badge
-  const getSyncStatusBadge = () => {
-    if (!syncStatus) return null;
-    
-    switch(syncStatus.sync_status) {
-      case 'SYNC_OK':
-        return (
-          <Badge className="bg-green-100 text-green-800">
-            <Shield size={12} className="mr-1" />
-            Sincronização OK
-          </Badge>
-        );
-      case 'SYNC_WARNING':
-        return (
-          <Badge className="bg-yellow-100 text-yellow-800">
-            <AlertTriangle size={12} className="mr-1" />
-            {syncStatus.missing_pedidos} pedidos não sincronizados
-          </Badge>
-        );
-      case 'SYNC_CRITICAL':
-        return (
-          <Badge className="bg-red-100 text-red-800">
-            <AlertTriangle size={12} className="mr-1" />
-            CRÍTICO: {syncStatus.missing_pedidos} pedidos perdidos
-          </Badge>
-        );
-      default:
-        return null;
     }
   };
 
@@ -160,7 +130,7 @@ const VendorOrdersScreen: React.FC = () => {
             onClick={checkSyncIntegrity}
             disabled={isCheckingSync}
           >
-            <Shield size={16} className={isCheckingSync ? 'animate-spin' : ''} />
+            <RefreshCw size={16} className={isCheckingSync ? 'animate-spin' : ''} />
           </Button>
           <Button
             variant="outline"
@@ -174,16 +144,19 @@ const VendorOrdersScreen: React.FC = () => {
       </div>
       
       {/* Sync Status */}
-      {syncStatus && (
-        <div className="bg-white p-3 border-b">
-          <div className="flex items-center justify-between">
-            {getSyncStatusBadge()}
+      <div className="bg-white p-3 border-b">
+        <div className="flex items-center justify-between">
+          <SyncStatusIndicator 
+            syncStatus={syncStatus} 
+            isChecking={isCheckingSync} 
+          />
+          {syncStatus && (
             <span className="text-xs text-gray-500">
               Última verificação: {new Date(syncStatus.last_check).toLocaleTimeString('pt-BR')}
             </span>
-          </div>
+          )}
         </div>
-      )}
+      </div>
       
       {/* Filters */}
       <div className="bg-white p-4 space-y-3 border-b">
@@ -215,7 +188,7 @@ const VendorOrdersScreen: React.FC = () => {
       </div>
       
       <div className="p-6 space-y-4">
-        {/* Migration Button - show if sync issues or no orders found */}
+        {/* Enhanced Sync Actions */}
         {(pedidos?.length === 0 || (syncStatus && syncStatus.missing_pedidos > 0)) && !isLoading && (
           <Card className="p-4 text-center">
             <h3 className="font-medium mb-2">
@@ -230,14 +203,25 @@ const VendorOrdersScreen: React.FC = () => {
                 : 'Se você tinha pedidos no sistema, execute a sincronização para vê-los aqui.'
               }
             </p>
-            <Button 
-              onClick={handleMigration}
-              disabled={isMigrating}
-              variant="outline"
-              size="sm"
-            >
-              {isMigrating ? 'Sincronizando...' : 'Sincronizar pedidos'}
-            </Button>
+            <div className="flex gap-2 justify-center">
+              <Button 
+                onClick={handleMigration}
+                disabled={isMigrating}
+                variant="outline"
+                size="sm"
+              >
+                {isMigrating ? 'Sincronizando...' : 'Sincronizar Pedidos'}
+              </Button>
+              <Button 
+                onClick={forceSyncOrders}
+                disabled={isMigrating}
+                variant="outline"
+                size="sm"
+              >
+                <Zap size={16} className="mr-1" />
+                Forçar Sincronização
+              </Button>
+            </div>
           </Card>
         )}
 
