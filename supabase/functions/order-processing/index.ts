@@ -1,6 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { corsHeaders, initSupabaseClient, verifyUserToken } from './utils.ts';
+import { corsHeaders, initUserClient, initServiceRoleClient, verifyUserToken } from './utils.ts';
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -36,11 +36,14 @@ serve(async (req) => {
       );
     }
 
-    console.log('Initializing Supabase client...');
-    const supabaseClient = initSupabaseClient(token, true); // Use service role for transactions
+    console.log('Initializing Supabase clients...');
+    
+    // Initialize both clients
+    const userClient = initUserClient(token);
+    const serviceClient = initServiceRoleClient();
     
     console.log('Verifying user authentication...');
-    const user = await verifyUserToken(supabaseClient);
+    const user = await verifyUserToken(userClient);
 
     console.log('Parsing request body...');
     const requestBody = await req.json();
@@ -50,11 +53,11 @@ serve(async (req) => {
 
     // Handle stock validation action
     if (action === 'validate_stock') {
-      return await handleStockValidation(supabaseClient, body.items);
+      return await handleStockValidation(serviceClient, body.items);
     }
 
     if (action === 'create_order') {
-      return await handleOrderCreation(supabaseClient, user, body);
+      return await handleOrderCreation(serviceClient, user, body);
     }
 
     return new Response(
@@ -67,18 +70,22 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Unhandled error in order-processing:', error);
+    
+    // Return 401 for authentication errors, 500 for others
+    const status = error.message?.includes('Authentication') || error.message?.includes('authorization') ? 401 : 500;
+    
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: 'Internal server error: ' + (error.message || 'Unknown error')
+        error: error.message || 'Internal server error'
       }),
-      { status: 500, headers: corsHeaders }
+      { status, headers: corsHeaders }
     );
   }
 });
 
 // Handle order creation with improved error handling
-async function handleOrderCreation(supabaseClient: any, user: any, body: any) {
+async function handleOrderCreation(serviceClient: any, user: any, body: any) {
   try {
     console.log('Processing order creation for user:', user.id);
     
@@ -118,8 +125,8 @@ async function handleOrderCreation(supabaseClient: any, user: any, body: any) {
     let pointsRegistered = true;
     let couponProcessed = true;
 
-    // Create the order
-    const { data: orderData, error: orderError } = await supabaseClient
+    // Create the order using service client
+    const { data: orderData, error: orderError } = await serviceClient
       .from('orders')
       .insert([{
         cliente_id: user.id,
@@ -146,7 +153,7 @@ async function handleOrderCreation(supabaseClient: any, user: any, body: any) {
     for (const item of items) {
       try {
         // Create order item
-        const { error: itemError } = await supabaseClient
+        const { error: itemError } = await serviceClient
           .from('order_items')
           .insert([{
             order_id: orderId,
@@ -162,13 +169,12 @@ async function handleOrderCreation(supabaseClient: any, user: any, body: any) {
           throw new Error(`Failed to create order item: ${itemError.message}`);
         }
 
-        // Update product inventory
-        const { error: updateError } = await supabaseClient
-          .from('produtos')
-          .update({ 
-            estoque: supabaseClient.raw('GREATEST(0, estoque - ?)', [item.quantidade])
-          })
-          .eq('id', item.produto_id);
+        // Update product inventory using raw SQL to avoid conflicts
+        const { error: updateError } = await serviceClient
+          .rpc('update_inventory_on_order', {
+            p_produto_id: item.produto_id,
+            p_quantidade: item.quantidade
+          });
 
         if (updateError) {
           console.error('Error updating inventory:', updateError);
@@ -183,7 +189,7 @@ async function handleOrderCreation(supabaseClient: any, user: any, body: any) {
     // Register points transaction if points are awarded
     if (pontos_ganhos && pontos_ganhos > 0) {
       try {
-        const { error: pointsError } = await supabaseClient
+        const { error: pointsError } = await serviceClient
           .from('points_transactions')
           .insert([{
             user_id: user.id,
@@ -197,13 +203,12 @@ async function handleOrderCreation(supabaseClient: any, user: any, body: any) {
           console.error('Error registering points:', pointsError);
           pointsRegistered = false;
         } else {
-          // Update user total points
-          const { error: updatePointsError } = await supabaseClient
-            .from('profiles')
-            .update({ 
-              saldo_pontos: supabaseClient.raw('COALESCE(saldo_pontos, 0) + ?', [pontos_ganhos])
-            })
-            .eq('id', user.id);
+          // Update user total points using RPC function
+          const { error: updatePointsError } = await serviceClient
+            .rpc('update_user_points', {
+              user_id: user.id,
+              points_to_add: pontos_ganhos
+            });
 
           if (updatePointsError) {
             console.error('Error updating user points:', updatePointsError);
@@ -218,16 +223,32 @@ async function handleOrderCreation(supabaseClient: any, user: any, body: any) {
     // Process coupon if applicable
     if (cupom_aplicado && cupom_aplicado.id && desconto > 0) {
       try {
-        const { error: couponError } = await supabaseClient
-          .from('coupons')
-          .update({ 
-            used_count: supabaseClient.raw('used_count + 1')
-          })
-          .eq('id', cupom_aplicado.id);
+        // Register coupon usage
+        const { error: usageError } = await serviceClient
+          .from('coupon_usage')
+          .insert([{
+            coupon_id: cupom_aplicado.id,
+            user_id: user.id,
+            order_id: orderId,
+            discount_amount: desconto
+          }]);
 
-        if (couponError) {
-          console.error('Error updating coupon:', couponError);
+        if (usageError) {
+          console.error('Error registering coupon usage:', usageError);
           couponProcessed = false;
+        } else {
+          // Update coupon used count
+          const { error: couponError } = await serviceClient
+            .from('coupons')
+            .update({ 
+              used_count: serviceClient.raw('used_count + 1')
+            })
+            .eq('id', cupom_aplicado.id);
+
+          if (couponError) {
+            console.error('Error updating coupon:', couponError);
+            couponProcessed = false;
+          }
         }
       } catch (couponError) {
         console.error('Coupon processing error:', couponError);
@@ -260,14 +281,14 @@ async function handleOrderCreation(supabaseClient: any, user: any, body: any) {
 }
 
 // Stock validation function
-async function handleStockValidation(supabaseClient: any, items: any[]) {
+async function handleStockValidation(serviceClient: any, items: any[]) {
   try {
     console.log('Validating stock for', items.length, 'items');
     
     const failedItems: string[] = [];
     
     for (const item of items) {
-      const { data: product, error: stockError } = await supabaseClient
+      const { data: product, error: stockError } = await serviceClient
         .from('produtos')
         .select('id, nome, estoque')
         .eq('id', item.produto_id)

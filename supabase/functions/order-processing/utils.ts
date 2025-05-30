@@ -8,38 +8,54 @@ export const corsHeaders = {
   'Content-Type': 'application/json'
 }
 
-// Initialize Supabase client with user token
-export function initSupabaseClient(token: string, useServiceRole = false) {
+// Initialize Supabase client for user authentication
+export function initUserClient(token: string) {
   const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
-  const supabaseKey = useServiceRole 
-    ? (Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '') 
-    : (Deno.env.get('SUPABASE_ANON_KEY') || '')
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || ''
   
-  if (!supabaseUrl || !supabaseKey) {
+  if (!supabaseUrl || !supabaseAnonKey) {
     console.error("Missing Supabase environment variables");
     throw new Error("Server configuration error");
   }
   
-  return createClient(supabaseUrl, supabaseKey, {
+  return createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
     },
     global: {
-      headers: useServiceRole ? {} : {
+      headers: {
         Authorization: `Bearer ${token}`,
       },
     },
   })
 }
 
-// Verify user token and get user ID with improved error handling
-export async function verifyUserToken(supabaseClient: any) {
+// Initialize Supabase client with service role for admin operations
+export function initServiceRoleClient() {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+  
+  if (!supabaseUrl || !supabaseServiceKey) {
+    console.error("Missing Supabase service role environment variables");
+    throw new Error("Server configuration error");
+  }
+  
+  return createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    }
+  })
+}
+
+// Verify user token and get user ID
+export async function verifyUserToken(userClient: any) {
   try {
     console.log('Verifying user authentication...');
     
-    // Try to get the authenticated user
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
+    // Try to get the authenticated user using the user client
+    const { data: { user }, error: authError } = await userClient.auth.getUser()
     
     if (authError) {
       console.error("Authentication error:", authError.message);
