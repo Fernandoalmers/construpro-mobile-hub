@@ -118,6 +118,136 @@ serve(async (req) => {
   }
 });
 
+// Process referral activation on first purchase
+async function processReferralActivation(serviceClient: any, userId: string, orderId: string) {
+  try {
+    console.log('🎁 Checking for pending referrals for user:', userId);
+    
+    // Check if this is the user's first order
+    const { data: orderCount, error: orderCountError } = await serviceClient
+      .from('orders')
+      .select('id', { count: 'exact' })
+      .eq('cliente_id', userId);
+    
+    if (orderCountError) {
+      console.error('❌ Error checking order count:', orderCountError);
+      return false;
+    }
+    
+    const isFirstOrder = orderCount.length === 1; // This order is the first one
+    
+    if (!isFirstOrder) {
+      console.log('📝 Not first order, skipping referral activation');
+      return false;
+    }
+    
+    console.log('🎉 First order detected, checking for pending referrals');
+    
+    // Find pending referral for this user
+    const { data: referral, error: referralError } = await serviceClient
+      .from('referrals')
+      .select('id, referrer_id, referred_id, status, pontos')
+      .eq('referred_id', userId)
+      .eq('status', 'pendente')
+      .maybeSingle();
+    
+    if (referralError) {
+      console.error('❌ Error checking referrals:', referralError);
+      return false;
+    }
+    
+    if (!referral) {
+      console.log('📝 No pending referral found for this user');
+      return false;
+    }
+    
+    console.log('🎁 Found pending referral:', referral.id, 'from user:', referral.referrer_id);
+    
+    // Activate the referral
+    const { error: updateReferralError } = await serviceClient
+      .from('referrals')
+      .update({
+        status: 'aprovado',
+        data_aprovacao: new Date().toISOString()
+      })
+      .eq('id', referral.id);
+    
+    if (updateReferralError) {
+      console.error('❌ Error updating referral status:', updateReferralError);
+      return false;
+    }
+    
+    const pointsToAward = referral.pontos || 50;
+    
+    // Award points to referrer
+    console.log('💰 Awarding', pointsToAward, 'points to referrer:', referral.referrer_id);
+    
+    const { error: referrerPointsError } = await serviceClient
+      .from('points_transactions')
+      .insert([{
+        user_id: referral.referrer_id,
+        pontos: pointsToAward,
+        tipo: 'indicacao',
+        descricao: 'Pontos por indicação aprovada - primeira compra do indicado',
+        referencia_id: referral.id
+      }]);
+    
+    if (referrerPointsError) {
+      console.error('❌ Error creating referrer points transaction:', referrerPointsError);
+    } else {
+      // Update referrer balance
+      const { error: referrerBalanceError } = await serviceClient
+        .rpc('update_user_points', {
+          user_id: referral.referrer_id,
+          points_to_add: pointsToAward
+        });
+      
+      if (referrerBalanceError) {
+        console.error('❌ Error updating referrer balance:', referrerBalanceError);
+      } else {
+        console.log('✅ Referrer points awarded successfully');
+      }
+    }
+    
+    // Award points to referred user
+    console.log('💰 Awarding', pointsToAward, 'points to referred user:', referral.referred_id);
+    
+    const { error: referredPointsError } = await serviceClient
+      .from('points_transactions')
+      .insert([{
+        user_id: referral.referred_id,
+        pontos: pointsToAward,
+        tipo: 'indicacao',
+        descricao: 'Pontos por primeira compra com código de indicação',
+        referencia_id: referral.id
+      }]);
+    
+    if (referredPointsError) {
+      console.error('❌ Error creating referred points transaction:', referredPointsError);
+    } else {
+      // Update referred user balance
+      const { error: referredBalanceError } = await serviceClient
+        .rpc('update_user_points', {
+          user_id: referral.referred_id,
+          points_to_add: pointsToAward
+        });
+      
+      if (referredBalanceError) {
+        console.error('❌ Error updating referred balance:', referredBalanceError);
+      } else {
+        console.log('✅ Referred user points awarded successfully');
+      }
+    }
+    
+    console.log('🎉 Referral activation completed successfully');
+    return true;
+    
+  } catch (error) {
+    console.error('❌ Error in referral activation:', error);
+    return false;
+  }
+}
+
 // Handle order creation with improved inventory management
 async function handleOrderCreation(serviceClient: any, user: any, body: any) {
   try {
@@ -218,6 +348,7 @@ async function handleOrderCreation(serviceClient: any, user: any, body: any) {
     let orderId;
     let inventoryUpdated = true;
     let couponProcessed = true;
+    let referralProcessed = false;
 
     // Create the order using service client
     const { data: orderData, error: orderError } = await serviceClient
@@ -302,6 +433,18 @@ async function handleOrderCreation(serviceClient: any, user: any, body: any) {
     // The register_points_on_order() trigger will handle points registration
     console.log('📊 Points will be registered automatically by trigger');
 
+    // NEW: Process referral activation for first purchase
+    console.log('🎁 Processing referral activation...');
+    try {
+      referralProcessed = await processReferralActivation(serviceClient, user.id, orderId);
+      if (referralProcessed) {
+        console.log('✅ Referral activation completed successfully');
+      }
+    } catch (referralError) {
+      console.error('❌ Referral processing error:', referralError);
+      referralProcessed = false;
+    }
+
     // Process coupon if applicable
     const discountValue = Number(desconto) || 0;
     if (cupom_aplicado && cupom_aplicado.code && discountValue > 0) {
@@ -322,6 +465,7 @@ async function handleOrderCreation(serviceClient: any, user: any, body: any) {
         order: { id: orderId },
         inventoryUpdated,
         pointsRegistered: true, // Always true since trigger handles it
+        referralProcessed,
         couponProcessed
       }),
       { headers: corsHeaders }
