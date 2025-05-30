@@ -67,6 +67,7 @@ import {
 } from './imports';
 
 import AdminCouponsScreen from './components/admin/coupons/AdminCouponsScreen';
+import ConviteScreen from './components/referral/ConviteScreen';
 
 function App() {
   const location = useLocation();
@@ -98,6 +99,9 @@ function App() {
         <Route path="/signup" element={<SignUpScreen />} />
         <Route path="/recuperar-senha" element={<ForgotPasswordScreen />} />
         <Route path="/onboarding" element={<OnboardingScreen />} />
+        
+        {/* Referral invitation page - public access */}
+        <Route path="/convite" element={<ConviteScreen />} />
         
         {/* Authentication flow routes */}
         <Route path="/auth/profile-selection" element={
