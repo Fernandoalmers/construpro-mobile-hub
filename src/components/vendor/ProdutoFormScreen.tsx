@@ -86,11 +86,9 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
     }
   };
 
-  // Remove image
+  // Remove image - using the removeImage function from the hook
   const handleRemoveImage = (index: number) => {
-    const newImages = [...images];
-    newImages.splice(index, 1);
-    setImages(newImages);
+    removeImage(index);
   };
 
   // Handle segment ID change
@@ -183,7 +181,7 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
                             />
                             <button
                               type="button"
-                              onClick={() => removeImage(index)}
+                              onClick={() => handleRemoveImage(index)}
                               className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-sm"
                               aria-label="Remover imagem"
                             >
