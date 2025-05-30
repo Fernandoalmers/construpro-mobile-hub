@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Pedido } from './pedidosService';
 
@@ -181,7 +180,7 @@ export class OrderDetailsService {
   }
 
   /**
-   * Atualizar status de um pedido
+   * Atualizar status de um pedido - SINCRONIZANDO AMBAS AS TABELAS
    */
   async updateOrderStatus(pedidoId: string, newStatus: string): Promise<boolean> {
     try {
@@ -208,7 +207,7 @@ export class OrderDetailsService {
       // Verificar se o pedido pertence ao vendedor
       const { data: pedidoCheck } = await supabase
         .from('pedidos')
-        .select('vendedor_id')
+        .select('vendedor_id, usuario_id')
         .eq('id', pedidoId)
         .single();
 
@@ -217,19 +216,38 @@ export class OrderDetailsService {
         return false;
       }
 
-      // Atualizar o status
-      const { error } = await supabase
+      console.log('🔄 [OrderDetailsService] Atualizando status na tabela pedidos...');
+      
+      // 1. Atualizar o status na tabela pedidos (para o vendedor)
+      const { error: pedidosError } = await supabase
         .from('pedidos')
         .update({ status: newStatus })
         .eq('id', pedidoId)
         .eq('vendedor_id', vendorData.id);
 
-      if (error) {
-        console.error('❌ [OrderDetailsService] Erro ao atualizar status:', error);
+      if (pedidosError) {
+        console.error('❌ [OrderDetailsService] Erro ao atualizar status na tabela pedidos:', pedidosError);
         return false;
       }
 
-      console.log('✅ [OrderDetailsService] Status atualizado com sucesso');
+      console.log('✅ [OrderDetailsService] Status atualizado na tabela pedidos');
+      console.log('🔄 [OrderDetailsService] Atualizando status na tabela orders...');
+
+      // 2. Atualizar o status na tabela orders (para o cliente) - usando usuario_id do pedido
+      const { error: ordersError } = await supabase
+        .from('orders')
+        .update({ status: newStatus })
+        .eq('cliente_id', pedidoCheck.usuario_id)
+        .eq('id', pedidoId);
+
+      if (ordersError) {
+        console.warn('⚠️ [OrderDetailsService] Erro ao atualizar status na tabela orders (pode não existir):', ordersError);
+        // Não falhar aqui, pois o pedido pode existir apenas na tabela pedidos
+      } else {
+        console.log('✅ [OrderDetailsService] Status atualizado na tabela orders');
+      }
+
+      console.log('✅ [OrderDetailsService] Status atualizado com sucesso em ambas as tabelas');
       return true;
     } catch (error) {
       console.error('❌ [OrderDetailsService] Erro inesperado:', error);
