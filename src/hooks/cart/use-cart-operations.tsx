@@ -95,15 +95,9 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
       
       await clearCart();
       
-      // Force multiple refreshes to ensure state is updated
-      console.log('[useCartOperations] First refresh after clear...');
+      // Force immediate refresh and ensure empty state
+      console.log('[useCartOperations] Refreshing cart after clear...');
       await refreshCartData();
-      
-      // Add a small delay and refresh again to handle any timing issues
-      setTimeout(async () => {
-        console.log('[useCartOperations] Second refresh after clear...');
-        await refreshCartData();
-      }, 100);
       
       toast.success('Carrinho esvaziado');
     } catch (error: any) {
