@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Package, Search, Filter, RefreshCw, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { ChevronLeft, Package, Search, Filter, RefreshCw, Clock, CheckCircle, XCircle, AlertTriangle, Shield } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,7 +20,10 @@ const VendorOrdersScreen: React.FC = () => {
     handleRefresh, 
     vendorProfileStatus,
     isMigrating,
-    handleMigration
+    handleMigration,
+    syncStatus,
+    isCheckingSync,
+    checkSyncIntegrity
   } = usePedidosVendor();
   
   const [searchTerm, setSearchTerm] = useState('');
@@ -63,6 +66,37 @@ const VendorOrdersScreen: React.FC = () => {
         return { color: "bg-red-100 text-red-800", icon: XCircle };
       default:
         return { color: "bg-gray-100 text-gray-800", icon: Package };
+    }
+  };
+
+  // Get sync status badge
+  const getSyncStatusBadge = () => {
+    if (!syncStatus) return null;
+    
+    switch(syncStatus.sync_status) {
+      case 'SYNC_OK':
+        return (
+          <Badge className="bg-green-100 text-green-800">
+            <Shield size={12} className="mr-1" />
+            Sincronização OK
+          </Badge>
+        );
+      case 'SYNC_WARNING':
+        return (
+          <Badge className="bg-yellow-100 text-yellow-800">
+            <AlertTriangle size={12} className="mr-1" />
+            {syncStatus.missing_pedidos} pedidos não sincronizados
+          </Badge>
+        );
+      case 'SYNC_CRITICAL':
+        return (
+          <Badge className="bg-red-100 text-red-800">
+            <AlertTriangle size={12} className="mr-1" />
+            CRÍTICO: {syncStatus.missing_pedidos} pedidos perdidos
+          </Badge>
+        );
+      default:
+        return null;
     }
   };
 
@@ -123,6 +157,14 @@ const VendorOrdersScreen: React.FC = () => {
           <Button
             variant="outline"
             size="sm"
+            onClick={checkSyncIntegrity}
+            disabled={isCheckingSync}
+          >
+            <Shield size={16} className={isCheckingSync ? 'animate-spin' : ''} />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleRefresh}
             disabled={isLoading}
           >
@@ -130,6 +172,18 @@ const VendorOrdersScreen: React.FC = () => {
           </Button>
         </div>
       </div>
+      
+      {/* Sync Status */}
+      {syncStatus && (
+        <div className="bg-white p-3 border-b">
+          <div className="flex items-center justify-between">
+            {getSyncStatusBadge()}
+            <span className="text-xs text-gray-500">
+              Última verificação: {new Date(syncStatus.last_check).toLocaleTimeString('pt-BR')}
+            </span>
+          </div>
+        </div>
+      )}
       
       {/* Filters */}
       <div className="bg-white p-4 space-y-3 border-b">
@@ -161,12 +215,20 @@ const VendorOrdersScreen: React.FC = () => {
       </div>
       
       <div className="p-6 space-y-4">
-        {/* Migration Button - only show if no orders found */}
-        {pedidos?.length === 0 && !isLoading && (
+        {/* Migration Button - show if sync issues or no orders found */}
+        {(pedidos?.length === 0 || (syncStatus && syncStatus.missing_pedidos > 0)) && !isLoading && (
           <Card className="p-4 text-center">
-            <h3 className="font-medium mb-2">Nenhum pedido encontrado</h3>
+            <h3 className="font-medium mb-2">
+              {syncStatus && syncStatus.missing_pedidos > 0 
+                ? `${syncStatus.missing_pedidos} pedidos não sincronizados`
+                : 'Nenhum pedido encontrado'
+              }
+            </h3>
             <p className="text-sm text-gray-600 mb-4">
-              Se você tinha pedidos no sistema antigo, execute a migração para vê-los aqui.
+              {syncStatus && syncStatus.missing_pedidos > 0
+                ? 'Execute a sincronização para corrigir os pedidos perdidos.'
+                : 'Se você tinha pedidos no sistema, execute a sincronização para vê-los aqui.'
+              }
             </p>
             <Button 
               onClick={handleMigration}
@@ -174,7 +236,7 @@ const VendorOrdersScreen: React.FC = () => {
               variant="outline"
               size="sm"
             >
-              {isMigrating ? 'Migrando...' : 'Migrar pedidos antigos'}
+              {isMigrating ? 'Sincronizando...' : 'Sincronizar pedidos'}
             </Button>
           </Card>
         )}

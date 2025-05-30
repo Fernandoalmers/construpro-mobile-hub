@@ -1890,6 +1890,16 @@ export type Database = {
         Args: { order_id: string; vendor_id: string }
         Returns: boolean
       }
+      check_sync_integrity: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          total_orders: number
+          total_pedidos: number
+          missing_pedidos: number
+          sync_status: string
+          last_check: string
+        }[]
+      }
       clean_duplicate_transactions_safely: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -2010,6 +2020,10 @@ export type Database = {
           details?: Json
         }
         Returns: string
+      }
+      migrate_missing_orders_to_pedidos: {
+        Args: Record<PropertyKey, never>
+        Returns: number
       }
       migrate_orders_to_pedidos: {
         Args: Record<PropertyKey, never>

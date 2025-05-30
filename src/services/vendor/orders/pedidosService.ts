@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 /**
@@ -411,12 +410,12 @@ export const getPedidoById = async (pedidoId: string): Promise<Pedido | null> =>
 };
 
 /**
- * Migrar dados existentes da tabela orders para pedidos
+ * Nova função melhorada para migração usando a função do banco
  */
 export const migrateOrdersToPedidos = async (): Promise<{ success: boolean; count: number; message: string }> => {
   try {
-    // Executar a função SQL de migração
-    const { data, error } = await supabase.rpc('migrate_orders_to_pedidos');
+    // Executar a função SQL de migração melhorada
+    const { data, error } = await supabase.rpc('migrate_missing_orders_to_pedidos');
     
     if (error) {
       return { success: false, count: 0, message: "Erro durante a migração: " + error.message };
@@ -427,7 +426,7 @@ export const migrateOrdersToPedidos = async (): Promise<{ success: boolean; coun
     return {
       success: true,
       count: count,
-      message: `Migração executada com sucesso`
+      message: count > 0 ? `Migração executada com sucesso` : 'Todos os pedidos já estavam sincronizados'
     };
     
   } catch (error) {
@@ -437,5 +436,23 @@ export const migrateOrdersToPedidos = async (): Promise<{ success: boolean; coun
       count: 0,
       message: "Erro durante a migração"
     };
+  }
+};
+
+/**
+ * Nova função para verificar integridade da sincronização
+ */
+export const checkSyncIntegrity = async () => {
+  try {
+    const { data, error } = await supabase.rpc('check_sync_integrity');
+    
+    if (error) {
+      throw new Error(error.message);
+    }
+    
+    return data?.[0] || null;
+  } catch (error) {
+    console.error("Erro ao verificar integridade:", error);
+    throw error;
   }
 };
