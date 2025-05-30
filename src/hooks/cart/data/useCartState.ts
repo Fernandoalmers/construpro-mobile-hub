@@ -20,12 +20,14 @@ export function useCartState(
   // Use refs to track loading state and prevent multiple concurrent calls
   const isInitialized = useRef(false);
   const isFetching = useRef(false);
+  const lastRefreshTime = useRef<number>(0);
 
-  // Function to refresh cart data - simplified and more stable
+  // Function to refresh cart data - improved with better logging and state management
   const refreshCart = useCallback(async () => {
-    // Prevent concurrent fetches
-    if (isFetching.current) {
-      console.log('[useCartState] Fetch already in progress, skipping');
+    // Prevent concurrent fetches and rapid successive calls
+    const now = Date.now();
+    if (isFetching.current || (now - lastRefreshTime.current < 100)) {
+      console.log('[useCartState] Skipping refresh - too soon or already fetching');
       return;
     }
 
@@ -39,13 +41,19 @@ export function useCartState(
     }
     
     isFetching.current = true;
-    console.log('[useCartState] Refreshing cart for user:', userId, 'type:', userType);
+    lastRefreshTime.current = now;
+    console.log('[useCartState] Starting cart refresh for user:', userId, 'type:', userType);
     
     try {
       setIsLoading(true);
       setError(null);
       
       const cartData = await fetchCartData(userId, userType);
+      console.log('[useCartState] Cart data fetched:', {
+        hasData: !!cartData,
+        itemCount: cartData?.items?.length || 0,
+        cartId: cartData?.id
+      });
       
       // Always set cart data, even if empty
       if (!cartData || !cartData.items || cartData.items.length === 0) {
@@ -85,19 +93,22 @@ export function useCartState(
     } finally {
       setIsLoading(false);
       isFetching.current = false;
+      console.log('[useCartState] Cart refresh completed');
     }
   }, [isAuthenticated, userId, userType, fetchCartData]);
 
   // Simple initialization effect - runs only when auth state changes
   useEffect(() => {
+    console.log('[useCartState] Auth state changed:', { isAuthenticated, userId, userType });
     // Reset initialization flag when user changes
     isInitialized.current = false;
-  }, [userId, isAuthenticated]);
+  }, [userId, isAuthenticated, userType]);
 
   // Separate effect for cart loading
   useEffect(() => {
     // Only fetch if not already initialized and not currently fetching
     if (!isInitialized.current && !isFetching.current) {
+      console.log('[useCartState] Initializing cart data fetch');
       isInitialized.current = true;
       refreshCart();
     }

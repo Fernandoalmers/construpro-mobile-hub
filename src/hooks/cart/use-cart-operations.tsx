@@ -22,7 +22,9 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
       setOperationInProgress('add');
       
       await addToCart(productId, quantity);
+      console.log('[useCartOperations] Item added, refreshing cart data...');
       await refreshCartData();
+      console.log('[useCartOperations] Cart data refreshed after add');
       
       toast.success(`${quantity} ${quantity > 1 ? 'unidades' : 'unidade'} adicionada(s) ao carrinho`);
     } catch (error: any) {
@@ -50,7 +52,9 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
       setOperationInProgress('update');
       
       await updateCartItemQuantity(itemId, newQuantity);
+      console.log('[useCartOperations] Quantity updated, refreshing cart data...');
       await refreshCartData();
+      console.log('[useCartOperations] Cart data refreshed after quantity update');
     } catch (error: any) {
       console.error('[useCartOperations] Error updating quantity:', error);
       toast.error(error.message || 'Erro ao atualizar quantidade');
@@ -71,7 +75,18 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
       setOperationInProgress('remove');
       
       await removeFromCart(itemId);
+      console.log('[useCartOperations] Item removed, refreshing cart data...');
+      
+      // Force multiple refreshes to ensure state is fully updated
       await refreshCartData();
+      console.log('[useCartOperations] First refresh completed after remove');
+      
+      // Add a small delay and refresh again to ensure all components update
+      setTimeout(async () => {
+        console.log('[useCartOperations] Second refresh after remove...');
+        await refreshCartData();
+        console.log('[useCartOperations] Second refresh completed');
+      }, 50);
       
       toast.success('Item removido do carrinho');
     } catch (error: any) {

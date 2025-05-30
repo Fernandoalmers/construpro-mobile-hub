@@ -36,22 +36,31 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // Get cart operations
   const operations = useCartOperations(refreshCart);
 
-  // Calculate total items in cart - simplified and more reliable
+  // Calculate total items in cart - improved with better logging
   const cartCount = React.useMemo(() => {
     if (!cart?.items || cart.items.length === 0) {
+      console.log('[CartProvider] No cart items, count = 0');
       return 0;
     }
     
-    return cart.items.reduce((sum, item) => {
+    const count = cart.items.reduce((sum, item) => {
       return sum + (item.quantidade || 0);
     }, 0);
+    
+    console.log('[CartProvider] Calculated cart count:', count, 'from', cart.items.length, 'items');
+    return count;
   }, [cart?.items]);
   
   const cartItems = cart?.items || [];
   
-  console.log('[CartProvider] cartCount =', cartCount, 'cartItems.length =', cartItems.length, 'isLoading =', isLoading, 'userType =', userType);
-
-  // Removed cart cleanup from here to avoid performance issues during initialization
+  console.log('[CartProvider] Rendering with:', {
+    cartCount,
+    itemsLength: cartItems.length,
+    isLoading,
+    userType,
+    hasCart: !!cart,
+    cartId: cart?.id
+  });
 
   // Create context value
   const value: CartContextType = {
@@ -72,7 +81,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 // Re-export the useCartContext as useCart for backward compatibility
 export function useCart() {
   try {
-    return useCartContext();
+    const context = useCartContext();
+    console.log('[useCart] Context values:', {
+      cartCount: context.cartCount,
+      itemsLength: context.cartItems.length,
+      isLoading: context.isLoading
+    });
+    return context;
   } catch (error) {
     console.error('useCart must be used within a CartProvider');
     // Return a fallback with no-op functions to prevent crashes
