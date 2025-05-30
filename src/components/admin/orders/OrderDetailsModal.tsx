@@ -170,7 +170,13 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, open, onCl
               ) : (
                 <div className="flex items-center gap-2 text-amber-600 bg-amber-50 p-3 rounded-md">
                   <AlertTriangle size={16} />
-                  <p className="text-sm">Nenhum item encontrado - pode indicar problema nos dados</p>
+                  <p className="text-sm">
+                    Nenhum item encontrado. 
+                    {order.cliente_nome === 'Cliente Desconhecido' 
+                      ? ' Possível problema de permissões ou dados corrompidos.' 
+                      : ' Verifique se os itens do pedido foram registrados corretamente.'
+                    }
+                  </p>
                 </div>
               )}
             </div>
@@ -207,7 +213,7 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, open, onCl
                 
                 {hasDiscount && (
                   <p className="text-xs text-green-600 mt-1">
-                    ✅ Desconto de {formatCurrency(discount)} aplicado (provavelmente cupom)
+                    ✅ Desconto de {formatCurrency(discount)} aplicado
                   </p>
                 )}
               </div>

@@ -8,6 +8,8 @@ export const processOrders = (
   vendorsMap: Map<string, any>,
   profilesMap: Map<string, any>
 ): AdminOrder[] => {
+  console.log(`[AdminOrders] Processing ${orders.length} orders...`);
+  
   return orders.map(order => {
     const orderItems = itemsByOrderId.get(order.id) || [];
     const clientProfile = profilesMap.get(order.cliente_id);
@@ -37,12 +39,18 @@ export const processOrders = (
       };
     });
 
+    // Log any orders without items for debugging
+    if (items.length === 0) {
+      console.warn(`[AdminOrders] Order ${order.id.substring(0, 8)} has no items - potential RLS or data issue`);
+    }
+
     console.log(`[AdminOrders] Order ${order.id.substring(0, 8)} processed:`, {
       customer: clientProfile?.nome,
       customerType: clientProfile?.tipo_perfil,
       vendor: loja_nome,
       vendor_id: loja_id?.substring(0, 8),
-      items_count: items.length
+      items_count: items.length,
+      has_profile: !!clientProfile
     });
 
     return {

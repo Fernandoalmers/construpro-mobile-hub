@@ -42,6 +42,7 @@ export const fetchClientProfiles = async (clientIds: string[]) => {
 
   if (profilesError) {
     console.error('[AdminOrders] Error fetching profiles:', profilesError);
+    throw new Error(`Failed to fetch client profiles: ${profilesError.message}`);
   }
 
   console.log(`[AdminOrders] Fetched ${allProfiles?.length || 0} profiles for ${clientIds.length} clients`, {
@@ -52,6 +53,8 @@ export const fetchClientProfiles = async (clientIds: string[]) => {
 };
 
 export const fetchOrderItems = async (orderIds: string[]) => {
+  console.log(`[AdminOrders] Fetching order items for ${orderIds.length} orders...`);
+  
   const { data: allOrderItems, error: itemsError } = await supabase
     .from('order_items')
     .select('*')
@@ -59,12 +62,27 @@ export const fetchOrderItems = async (orderIds: string[]) => {
 
   if (itemsError) {
     console.error('[AdminOrders] Error fetching order items:', itemsError);
+    throw new Error(`Failed to fetch order items: ${itemsError.message}`);
   }
+
+  console.log(`[AdminOrders] Successfully fetched ${allOrderItems?.length || 0} order items`, {
+    itemsBreakdown: allOrderItems?.reduce((acc, item) => {
+      acc[item.order_id] = (acc[item.order_id] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>)
+  });
 
   return allOrderItems;
 };
 
 export const fetchProducts = async (productIds: string[]) => {
+  if (productIds.length === 0) {
+    console.log('[AdminOrders] No product IDs to fetch');
+    return [];
+  }
+
+  console.log(`[AdminOrders] Fetching ${productIds.length} products...`);
+  
   const { data: allProducts, error: productsError } = await supabase
     .from('produtos')
     .select('id, nome, vendedor_id')
@@ -72,12 +90,22 @@ export const fetchProducts = async (productIds: string[]) => {
 
   if (productsError) {
     console.error('[AdminOrders] Error fetching products:', productsError);
+    throw new Error(`Failed to fetch products: ${productsError.message}`);
   }
+
+  console.log(`[AdminOrders] Successfully fetched ${allProducts?.length || 0} products`);
 
   return allProducts;
 };
 
 export const fetchVendors = async (vendorIds: string[]) => {
+  if (vendorIds.length === 0) {
+    console.log('[AdminOrders] No vendor IDs to fetch');
+    return [];
+  }
+
+  console.log(`[AdminOrders] Fetching ${vendorIds.length} vendors...`);
+  
   const { data: allVendors, error: vendorsError } = await supabase
     .from('vendedores')
     .select('id, nome_loja')
@@ -85,7 +113,10 @@ export const fetchVendors = async (vendorIds: string[]) => {
 
   if (vendorsError) {
     console.error('[AdminOrders] Error fetching vendors:', vendorsError);
+    throw new Error(`Failed to fetch vendors: ${vendorsError.message}`);
   }
+
+  console.log(`[AdminOrders] Successfully fetched ${allVendors?.length || 0} vendors`);
 
   return allVendors;
 };
