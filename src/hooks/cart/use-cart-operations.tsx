@@ -4,7 +4,7 @@ import { toast } from '@/components/ui/sonner';
 import { addToCart, updateCartItemQuantity, removeFromCart, clearCart } from '@/services/cart/cartItemOperations';
 
 /**
- * Hook for cart operations - optimized to prevent loops
+ * Hook for cart operations - optimized to prevent loops and ensure immediate counter updates
  */
 export function useCartOperations(refreshCartData: () => Promise<void>) {
   const [isLoading, setIsLoading] = useState(false);
@@ -62,8 +62,15 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
       console.log('[useCartOperations] Removing item:', itemId);
       await removeFromCart(itemId);
       
-      console.log('[useCartOperations] Refreshing cart after remove');
+      console.log('[useCartOperations] Refreshing cart after remove - forcing immediate update');
+      // Force immediate refresh to update counter
       await refreshCartData();
+      
+      // Force a small delay and refresh again to ensure synchronization
+      setTimeout(async () => {
+        console.log('[useCartOperations] Secondary refresh for counter sync');
+        await refreshCartData();
+      }, 100);
       
       toast.success('Item removido do carrinho');
     } catch (error: any) {
@@ -84,8 +91,15 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
       console.log('[useCartOperations] Clearing cart');
       await clearCart();
       
-      console.log('[useCartOperations] Refreshing cart after clear');
+      console.log('[useCartOperations] Refreshing cart after clear - forcing immediate update');
+      // Force immediate refresh to update counter
       await refreshCartData();
+      
+      // Force a small delay and refresh again to ensure synchronization
+      setTimeout(async () => {
+        console.log('[useCartOperations] Secondary refresh for counter sync after clear');
+        await refreshCartData();
+      }, 100);
       
       toast.success('Carrinho esvaziado');
     } catch (error: any) {

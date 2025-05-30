@@ -30,10 +30,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     userType
   );
   
-  // Get cart operations
+  // Get cart operations with enhanced refresh
   const operations = useCartOperations(refreshCart);
 
-  // Calculate total items - ensure we're getting the right count
+  // Calculate total items - centralized and consistent calculation
   const cartCount = React.useMemo(() => {
     if (!cart?.items || cart.items.length === 0) {
       console.log('[CartProvider] No cart items, returning 0');
@@ -46,14 +46,33 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   
   const cartItems = cart?.items || [];
 
+  // Force re-render when cart operations complete
+  const [operationCounter, setOperationCounter] = React.useState(0);
+  
+  React.useEffect(() => {
+    if (!operations.isLoading && operationCounter > 0) {
+      console.log('[CartProvider] Operation completed, forcing counter update');
+      setOperationCounter(prev => prev + 1);
+    }
+  }, [operations.isLoading]);
+
   console.log('[CartProvider] Final state:', {
     cartCount,
     itemsLength: cartItems.length,
     isLoading: isLoading || operations.isLoading,
-    cartId: cart?.id
+    cartId: cart?.id,
+    refreshKey,
+    operationCounter
   });
 
-  // Create context value
+  // Enhanced refresh function with immediate counter update
+  const enhancedRefreshCart = React.useCallback(async () => {
+    console.log('[CartProvider] Enhanced refresh cart called');
+    await refreshCart();
+    setOperationCounter(prev => prev + 1);
+  }, [refreshCart]);
+
+  // Create context value with enhanced operations
   const value: CartContextType = {
     cart,
     cartCount,
@@ -61,15 +80,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     isLoading: isLoading || operations.isLoading,
     addToCart: operations.addToCart,
     updateQuantity: operations.updateQuantity,
-    removeItem: operations.removeItem,
-    clearCart: operations.clearCart,
-    refreshCart
+    removeItem: async (itemId: string) => {
+      await operations.removeItem(itemId);
+      setOperationCounter(prev => prev + 1);
+    },
+    clearCart: async () => {
+      await operations.clearCart();
+      setOperationCounter(prev => prev + 1);
+    },
+    refreshCart: enhancedRefreshCart
   };
 
   return <CartContextProvider value={value}>{children}</CartContextProvider>;
 }
 
-// Export useCart hook with better error handling
+// Export useCart hook with better error handling and consistent counter
 export function useCart() {
   try {
     const context = useCartContext();

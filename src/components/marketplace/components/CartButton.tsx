@@ -7,19 +7,13 @@ import { useCart } from '@/hooks/use-cart';
 
 const CartButton: React.FC = () => {
   const navigate = useNavigate();
-  const { cartCount = 0, isLoading, cart } = useCart();
+  const { cartCount, isLoading, cart } = useCart();
 
-  // Calculate count from actual cart items to ensure accuracy
-  const actualCount = React.useMemo(() => {
-    if (!cart?.items) return 0;
-    return cart.items.reduce((sum, item) => sum + (item.quantidade || 0), 0);
-  }, [cart?.items]);
-
-  const displayCount = actualCount > 0 ? actualCount : 0;
+  // Use the centralized cartCount directly from context - no additional calculations
+  const displayCount = cartCount > 0 ? cartCount : 0;
 
   console.log('[CartButton] Rendering with:', { 
     cartCount, 
-    actualCount, 
     displayCount, 
     isLoading,
     itemsLength: cart?.items?.length || 0
