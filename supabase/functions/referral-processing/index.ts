@@ -212,7 +212,7 @@ serve(async (req) => {
           referrer_id: referrer.id,
           referred_id: user.id,
           status: 'pendente',
-          pontos: 50 // Changed from 300 to 50 points
+          pontos: 50
         });
       
       if (createError) {
@@ -231,8 +231,143 @@ serve(async (req) => {
       );
     }
     
-    // PUT: Update a referral status (admin or system)
+    // PUT: Activate referral when first purchase is made
     if (req.method === 'PUT') {
+      const { action, user_id } = await req.json();
+      
+      if (action === 'activate_referral_on_first_purchase') {
+        // Find pending referral for this user
+        const { data: referral, error: referralError } = await adminClient
+          .from('referrals')
+          .select('id, referrer_id, referred_id, status, pontos')
+          .eq('referred_id', user_id)
+          .eq('status', 'pendente')
+          .single();
+        
+        if (referralError || !referral) {
+          // No pending referral found - this is normal for users without referral codes
+          return new Response(
+            JSON.stringify({ success: true, message: 'No pending referral to activate' }),
+            { status: 200, headers: { ...corsHeaders } }
+          );
+        }
+        
+        // Check if this is the user's first order
+        const { data: orders, error: ordersError } = await adminClient
+          .from('orders')
+          .select('id')
+          .eq('cliente_id', user_id)
+          .limit(1);
+        
+        if (ordersError) {
+          return new Response(
+            JSON.stringify({ error: 'Error checking order history' }),
+            { status: 500, headers: { ...corsHeaders } }
+          );
+        }
+        
+        // If this is indeed the first order, activate the referral
+        if (orders && orders.length === 1) {
+          // Update referral status to approved
+          const { error: updateError } = await adminClient
+            .from('referrals')
+            .update({
+              status: 'aprovado',
+              data_aprovacao: new Date().toISOString()
+            })
+            .eq('id', referral.id);
+          
+          if (updateError) {
+            return new Response(
+              JSON.stringify({ error: 'Error updating referral status' }),
+              { status: 500, headers: { ...corsHeaders } }
+            );
+          }
+          
+          // Award points to referrer
+          const { error: referrerUpdateError } = await adminClient.rpc(
+            'update_user_points',
+            { 
+              user_id: referral.referrer_id, 
+              points_to_add: referral.pontos
+            }
+          );
+          
+          if (referrerUpdateError) {
+            return new Response(
+              JSON.stringify({ error: 'Error awarding points to referrer' }),
+              { status: 500, headers: { ...corsHeaders } }
+            );
+          }
+          
+          // Log transaction for referrer
+          const { error: referrerTxError } = await adminClient
+            .from('points_transactions')
+            .insert({
+              user_id: referral.referrer_id,
+              pontos: referral.pontos,
+              tipo: 'indicacao',
+              referencia_id: referral.id,
+              descricao: 'Pontos por indicação aprovada - primeira compra do indicado'
+            });
+          
+          if (referrerTxError) {
+            return new Response(
+              JSON.stringify({ error: 'Error logging referrer transaction' }),
+              { status: 500, headers: { ...corsHeaders } }
+            );
+          }
+          
+          // Award points to referred user
+          const { error: referredUpdateError } = await adminClient.rpc(
+            'update_user_points',
+            { 
+              user_id: referral.referred_id, 
+              points_to_add: referral.pontos
+            }
+          );
+          
+          if (referredUpdateError) {
+            return new Response(
+              JSON.stringify({ error: 'Error awarding points to referred user' }),
+              { status: 500, headers: { ...corsHeaders } }
+            );
+          }
+          
+          // Log transaction for referred user
+          const { error: referredTxError } = await adminClient
+            .from('points_transactions')
+            .insert({
+              user_id: referral.referred_id,
+              pontos: referral.pontos,
+              tipo: 'indicacao',
+              referencia_id: referral.id,
+              descricao: 'Pontos por primeira compra com código de indicação'
+            });
+          
+          if (referredTxError) {
+            return new Response(
+              JSON.stringify({ error: 'Error logging referred user transaction' }),
+              { status: 500, headers: { ...corsHeaders } }
+            );
+          }
+          
+          return new Response(
+            JSON.stringify({
+              success: true,
+              message: 'Referral activated and points awarded'
+            }),
+            { status: 200, headers: { ...corsHeaders } }
+          );
+        }
+        
+        return new Response(
+          JSON.stringify({ success: true, message: 'Not first order, referral remains pending' }),
+          { status: 200, headers: { ...corsHeaders } }
+        );
+      }
+      
+      // Legacy admin update functionality
       const { id, status, pontos } = await req.json();
       
       if (!id || !status) {
@@ -256,7 +391,7 @@ serve(async (req) => {
         );
       }
       
-      // Only admins can update referrals
+      // Only admins can manually update referrals
       if (!profile.is_admin) {
         return new Response(
           JSON.stringify({ error: 'Only admins can update referrals' }),
@@ -285,7 +420,7 @@ serve(async (req) => {
           'update_user_points',
           { 
             user_id: referral.referrer_id, 
-            points_to_add: pontos || 50 // Changed from 300 to 50 points
+            points_to_add: pontos || 50
           }
         );
         
@@ -301,7 +436,7 @@ serve(async (req) => {
           .from('points_transactions')
           .insert({
             user_id: referral.referrer_id,
-            pontos: pontos || 50, // Changed from 300 to 50 points
+            pontos: pontos || 50,
             tipo: 'indicacao',
             referencia_id: id,
             descricao: 'Pontos por indicação aprovada'
@@ -319,7 +454,7 @@ serve(async (req) => {
           'update_user_points',
           { 
             user_id: referral.referred_id, 
-            points_to_add: pontos || 50 // Changed from 300 to 50 points 
+            points_to_add: pontos || 50
           }
         );
         
@@ -335,7 +470,7 @@ serve(async (req) => {
           .from('points_transactions')
           .insert({
             user_id: referral.referred_id,
-            pontos: pontos || 50, // Changed from 300 to 50 points
+            pontos: pontos || 50,
             tipo: 'indicacao',
             referencia_id: id,
             descricao: 'Pontos por se cadastrar com código de indicação'
@@ -354,7 +489,7 @@ serve(async (req) => {
         .from('referrals')
         .update({
           status,
-          pontos: pontos || 50 // Changed from 300 to 50 points
+          pontos: pontos || 50
         })
         .eq('id', id);
       

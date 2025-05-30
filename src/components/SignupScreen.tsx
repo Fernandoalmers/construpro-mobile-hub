@@ -1,442 +1,352 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ArrowLeft, Check, Eye, EyeOff, Users } from 'lucide-react';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useAuth } from '../context/AuthContext';
-import { toast } from "@/components/ui/sonner";
-import type { UserRole } from '../context/AuthContext';
 
-const ESPECIALIDADES_PROFISSIONAIS = [
-  'Pedreiro',
-  'Eletricista',
-  'Encanador',
-  'Pintor',
-  'Carpinteiro',
-  'Marceneiro',
-  'Soldador',
-  'Vidraceiro',
-  'Gesseiro',
-  'Azulejista',
-  'Serralheiro',
-  'Jardineiro',
-  'Outro'
-];
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { Eye, EyeOff, ChevronLeft, Gift } from 'lucide-react';
+import { toast } from '@/components/ui/sonner';
+import CustomInput from './common/CustomInput';
+import CustomButton from './common/CustomButton';
+import Card from './common/Card';
+import { referralService } from '@/services/pointsService';
 
 const SignupScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { signup } = useAuth();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [termsAccepted, setTermsAccepted] = useState(false);
-  const [signupData, setSignupData] = useState({
+  const [formData, setFormData] = useState({
     nome: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
     cpf: '',
     telefone: '',
-    email: '',
-    senha: '',
-    confirmaSenha: '',
-    codigoIndicacao: '',
-    tipo_perfil: 'consumidor' as UserRole,
-    especialidade_profissional: '',
-    nome_loja: ''
+    referralCode: ''
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Check for referral code in localStorage on mount
+  useEffect(() => {
+    const savedReferralCode = localStorage.getItem('referralCode');
+    if (savedReferralCode) {
+      setFormData(prev => ({ ...prev, referralCode: savedReferralCode }));
+    }
+  }, []);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setSignupData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleTipoPerfilChange = (value: UserRole) => {
-    setSignupData(prev => ({
-      ...prev,
-      tipo_perfil: value,
-      // Limpar campos específicos ao mudar tipo
-      especialidade_profissional: '',
-      nome_loja: ''
-    }));
+  const formatCPF = (value: string) => {
+    const cleaned = value.replace(/\D/g, '');
+    const match = cleaned.match(/^(\d{3})(\d{3})(\d{3})(\d{2})$/);
+    if (match) {
+      return `${match[1]}.${match[2]}.${match[3]}-${match[4]}`;
+    }
+    return cleaned;
   };
 
-  const handleEspecialidadeChange = (value: string) => {
-    setSignupData(prev => ({
-      ...prev,
-      especialidade_profissional: value
-    }));
+  const formatPhone = (value: string) => {
+    const cleaned = value.replace(/\D/g, '');
+    const match = cleaned.match(/^(\d{2})(\d{5})(\d{4})$/);
+    if (match) {
+      return `(${match[1]}) ${match[2]}-${match[3]}`;
+    }
+    return cleaned;
+  };
+
+  const handleCPFChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { value } = e.target;
+    const formattedValue = formatCPF(value);
+    setFormData(prev => ({ ...prev, cpf: formattedValue }));
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { value } = e.target;
+    const formattedValue = formatPhone(value);
+    setFormData(prev => ({ ...prev, telefone: formattedValue }));
+  };
+
+  const validateForm = () => {
+    if (!formData.nome.trim()) {
+      toast.error('Nome é obrigatório');
+      return false;
+    }
+    if (!formData.email.trim()) {
+      toast.error('Email é obrigatório');
+      return false;
+    }
+    if (!formData.password) {
+      toast.error('Senha é obrigatória');
+      return false;
+    }
+    if (formData.password.length < 6) {
+      toast.error('Senha deve ter pelo menos 6 caracteres');
+      return false;
+    }
+    if (formData.password !== formData.confirmPassword) {
+      toast.error('Senhas não coincidem');
+      return false;
+    }
+    if (!formData.cpf.trim()) {
+      toast.error('CPF é obrigatório');
+      return false;
+    }
+    if (!formData.telefone.trim()) {
+      toast.error('Telefone é obrigatório');
+      return false;
+    }
+    return true;
   };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    console.log("🚀 [SignupScreen] Starting signup process with data:", {
-      nome: signupData.nome,
-      email: signupData.email,
-      tipo_perfil: signupData.tipo_perfil,
-      especialidade_profissional: signupData.especialidade_profissional,
-      nome_loja: signupData.nome_loja
-    });
-
-    // Validation
-    if (signupData.senha !== signupData.confirmaSenha) {
-      toast.error("As senhas não conferem");
-      return;
-    }
-    if (!termsAccepted) {
-      toast.error("Você precisa aceitar os termos de uso");
-      return;
-    }
-
-    // Validação específica para profissional
-    if (signupData.tipo_perfil === 'profissional' && !signupData.especialidade_profissional) {
-      toast.error("Por favor, selecione sua especialidade profissional");
-      return;
-    }
-
-    setIsSubmitting(true);
+    
+    if (!validateForm()) return;
+    
+    setIsLoading(true);
+    
     try {
-      // Prepare user data with correct structure - including all possible fields
-      const userData: {
-        nome: string;
-        cpf: string | null;
-        telefone: string | null;
-        tipo_perfil: UserRole;
-        codigo_indicacao: string | null;
-        especialidade_profissional?: string;
-        nome_loja?: string;
-      } = {
-        nome: signupData.nome,
-        cpf: signupData.cpf || null,
-        telefone: signupData.telefone || null,
-        tipo_perfil: signupData.tipo_perfil,
-        codigo_indicacao: signupData.codigoIndicacao || null
-      };
-
-      // Adicionar campos específicos baseado no tipo de perfil
-      if (signupData.tipo_perfil === 'profissional' && signupData.especialidade_profissional) {
-        userData.especialidade_profissional = signupData.especialidade_profissional;
-      }
+      console.log('🔄 [SignupScreen] Starting signup process');
       
-      if (signupData.tipo_perfil === 'vendedor' && signupData.nome_loja) {
-        userData.nome_loja = signupData.nome_loja;
-      }
-
-      console.log("📤 [SignupScreen] Sending signup request with userData:", userData);
-
-      const { error } = await signup({
-        email: signupData.email,
-        password: signupData.senha,
-        userData
+      // Step 1: Create auth user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            nome: formData.nome,
+            cpf: formData.cpf.replace(/\D/g, ''),
+            telefone: formData.telefone.replace(/\D/g, ''),
+            papel: 'consumidor',
+            tipo_perfil: 'consumidor',
+            status: 'ativo',
+            saldo_pontos: 0
+          }
+        }
       });
 
-      if (error) {
-        console.error("❌ [SignupScreen] Signup error:", error);
-        toast.error(error.message || "Erro ao criar conta");
-        setIsSubmitting(false);
-        return;
+      if (authError) {
+        console.error('❌ [SignupScreen] Auth error:', authError);
+        throw authError;
       }
 
-      console.log("✅ [SignupScreen] Signup successful!");
-      toast.success("Cadastro realizado com sucesso!");
-
-      // Redirecionar baseado no tipo de perfil
-      switch (signupData.tipo_perfil) {
-        case 'profissional':
-          console.log("🔄 [SignupScreen] Redirecting professional to services");
-          navigate('/services');
-          break;
-        case 'vendedor':
-          console.log("🔄 [SignupScreen] Redirecting vendor to vendor dashboard");
-          navigate('/vendor');
-          break;
-        default:
-          console.log("🔄 [SignupScreen] Redirecting consumer to home");
-          navigate('/home');
+      if (!authData.user) {
+        throw new Error('Falha ao criar usuário');
       }
-    } catch (err) {
-      console.error("💥 [SignupScreen] Unexpected signup error:", err);
-      const errorMsg = err instanceof Error ? err.message : 'Erro ao criar conta';
-      toast.error(errorMsg);
+
+      console.log('✅ [SignupScreen] User created successfully:', authData.user.id);
+
+      // Step 2: Process referral code if provided
+      if (formData.referralCode.trim()) {
+        console.log('🎁 [SignupScreen] Processing referral code:', formData.referralCode);
+        
+        try {
+          const referralSuccess = await referralService.processReferral(
+            authData.user.id, 
+            formData.referralCode.trim()
+          );
+          
+          if (referralSuccess) {
+            console.log('✅ [SignupScreen] Referral processed successfully');
+            toast.success('Código de referência aplicado! Você ganhará 50 pontos na primeira compra.');
+          } else {
+            console.warn('⚠️ [SignupScreen] Referral processing failed');
+            toast.warning('Código de referência inválido, mas seu cadastro foi realizado com sucesso.');
+          }
+        } catch (referralError) {
+          console.error('❌ [SignupScreen] Referral error:', referralError);
+          toast.warning('Erro ao processar código de referência, mas seu cadastro foi realizado com sucesso.');
+        }
+      }
+
+      // Step 3: Clear referral code from localStorage
+      localStorage.removeItem('referralCode');
+
+      // Step 4: Success
+      toast.success('Cadastro realizado com sucesso!');
+      
+      if (authData.session) {
+        console.log('✅ [SignupScreen] User logged in automatically');
+        navigate('/home');
+      } else {
+        console.log('📧 [SignupScreen] Email confirmation required');
+        toast.info('Confirme seu email para fazer login');
+        navigate('/login');
+      }
+
+    } catch (error: any) {
+      console.error('❌ [SignupScreen] Signup error:', error);
+      
+      if (error.message?.includes('already been registered')) {
+        toast.error('Este email já está cadastrado');
+      } else if (error.message?.includes('Invalid email')) {
+        toast.error('Email inválido');
+      } else {
+        toast.error(error.message || 'Erro ao criar conta');
+      }
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
-  const goBack = () => {
-    navigate(-1);
+  const clearReferralCode = () => {
+    setFormData(prev => ({ ...prev, referralCode: '' }));
+    localStorage.removeItem('referralCode');
+    toast.info('Código de referência removido');
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="bg-construPro-blue py-12 px-6 rounded-b-3xl">
-        <button onClick={goBack} className="flex items-center text-white mb-4">
-          <ArrowLeft size={20} className="mr-1" /> Voltar
-        </button>
-        <h1 className="text-2xl font-bold text-white">Criar uma conta</h1>
-        <p className="text-white opacity-80 mt-1">Junte-se a Matershop e comece a acumular pontos</p>
+    <div className="flex flex-col min-h-screen bg-gray-100">
+      {/* Header */}
+      <div className="bg-construPro-blue p-6 pt-12">
+        <div className="flex items-center">
+          <button onClick={() => navigate('/')} className="text-white mr-3">
+            <ChevronLeft size={24} />
+          </button>
+          <h1 className="text-2xl font-bold text-white">Criar Conta</h1>
+        </div>
       </div>
 
-      <div className="p-6 -mt-6">
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <form onSubmit={handleSignup} className="space-y-4">
-            <div>
-              <label htmlFor="nome" className="block text-sm font-medium text-gray-600 mb-1">
-                Nome completo
-              </label>
-              <Input
-                id="nome"
-                name="nome"
-                type="text"
-                value={signupData.nome}
-                onChange={handleChange}
-                placeholder="Seu nome completo"
-                className="w-full"
-                required
-                disabled={isSubmitting}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="cpf" className="block text-sm font-medium text-gray-600 mb-1">
-                CPF
-              </label>
-              <Input
-                id="cpf"
-                name="cpf"
-                type="text"
-                value={signupData.cpf}
-                onChange={handleChange}
-                placeholder="Seu CPF"
-                className="w-full"
-                disabled={isSubmitting}
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Seu CPF é importante para acumular pontos em compras físicas
-              </p>
-            </div>
-
-            <div>
-              <label htmlFor="telefone" className="block text-sm font-medium text-gray-600 mb-1">
-                Telefone
-              </label>
-              <Input
-                id="telefone"
-                name="telefone"
-                type="tel"
-                value={signupData.telefone}
-                onChange={handleChange}
-                placeholder="(00) 00000-0000"
-                className="w-full"
-                required
-                disabled={isSubmitting}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-600 mb-1">
-                Email
-              </label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                value={signupData.email}
-                onChange={handleChange}
-                placeholder="seu@email.com"
-                className="w-full"
-                required
-                disabled={isSubmitting}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="codigoIndicacao" className="block text-sm font-medium text-gray-600 mb-1">
-                Código de indicação (opcional)
-              </label>
-              <div className="relative">
-                <Input
-                  id="codigoIndicacao"
-                  name="codigoIndicacao"
-                  type="text"
-                  value={signupData.codigoIndicacao}
-                  onChange={handleChange}
-                  placeholder="Tem um código? Digite aqui"
-                  className="w-full pl-9"
-                  disabled={isSubmitting}
-                />
-                <Users size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
+      {/* Content */}
+      <div className="flex-1 p-6">
+        {/* Referral Code Display */}
+        {formData.referralCode && (
+          <Card className="p-4 mb-4 bg-green-50 border-green-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <Gift size={20} className="text-green-600 mr-2" />
+                <div>
+                  <p className="text-sm font-medium text-green-800">
+                    Código de convite: {formData.referralCode}
+                  </p>
+                  <p className="text-xs text-green-600">
+                    Você ganhará 50 pontos na primeira compra!
+                  </p>
+                </div>
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Ganhe 50 pontos ao se cadastrar com um código de indicação
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">
-                Tipo de perfil
-              </label>
-              <RadioGroup
-                value={signupData.tipo_perfil}
-                onValueChange={val => handleTipoPerfilChange(val as UserRole)}
-                className="flex flex-col space-y-2"
+              <button
+                onClick={clearReferralCode}
+                className="text-green-600 text-sm underline"
               >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="consumidor" id="consumidor" />
-                  <label htmlFor="consumidor" className="text-sm">Consumidor - Comprar produtos e acumular pontos</label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="profissional" id="profissional" />
-                  <label htmlFor="profissional" className="text-sm">Profissional - Acumule pontos e benefícios</label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="vendedor" id="vendedor" />
-                  <label htmlFor="vendedor" className="text-sm">Vendedor - Vender produtos no marketplace</label>
-                </div>
-              </RadioGroup>
+                Remover
+              </button>
             </div>
+          </Card>
+        )}
 
-            {/* Campo específico para profissional */}
-            {signupData.tipo_perfil === 'profissional' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">
-                  Especialidade Profissional *
-                </label>
-                <Select value={signupData.especialidade_profissional} onValueChange={handleEspecialidadeChange}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Selecione sua especialidade" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ESPECIALIDADES_PROFISSIONAIS.map((especialidade) => (
-                      <SelectItem key={especialidade} value={especialidade}>
-                        {especialidade}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-gray-500 mt-1">
-                  Selecione sua área de atuação profissional
-                </p>
-              </div>
-            )}
+        <form onSubmit={handleSignup} className="space-y-4">
+          <CustomInput
+            label="Nome completo"
+            name="nome"
+            value={formData.nome}
+            onChange={handleInputChange}
+            placeholder="Digite seu nome completo"
+            required
+          />
 
-            {/* Campo específico para vendedor */}
-            {signupData.tipo_perfil === 'vendedor' && (
-              <div>
-                <label htmlFor="nome_loja" className="block text-sm font-medium text-gray-600 mb-1">
-                  Nome da Loja (opcional)
-                </label>
-                <Input
-                  id="nome_loja"
-                  name="nome_loja"
-                  type="text"
-                  value={signupData.nome_loja}
-                  onChange={handleChange}
-                  placeholder="Nome da sua loja"
-                  className="w-full"
-                  disabled={isSubmitting}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Você pode configurar isso depois no painel do vendedor
-                </p>
-              </div>
-            )}
+          <CustomInput
+            label="Email"
+            name="email"
+            type="email"
+            value={formData.email}
+            onChange={handleInputChange}
+            placeholder="Digite seu email"
+            required
+          />
 
-            <div>
-              <label htmlFor="senha" className="block text-sm font-medium text-gray-600 mb-1">
-                Senha
-              </label>
-              <div className="relative">
-                <Input
-                  id="senha"
-                  name="senha"
-                  type={showPassword ? "text" : "password"}
-                  value={signupData.senha}
-                  onChange={handleChange}
-                  placeholder="Crie uma senha"
-                  className="w-full"
-                  required
-                  disabled={isSubmitting}
-                />
-                <button
-                  type="button"
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                  onClick={() => setShowPassword(!showPassword)}
-                  disabled={isSubmitting}
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
+          <CustomInput
+            label="CPF"
+            name="cpf"
+            value={formData.cpf}
+            onChange={handleCPFChange}
+            placeholder="000.000.000-00"
+            maxLength={14}
+            required
+          />
 
-            <div>
-              <label htmlFor="confirmaSenha" className="block text-sm font-medium text-gray-600 mb-1">
-                Confirmar senha
-              </label>
-              <div className="relative">
-                <Input
-                  id="confirmaSenha"
-                  name="confirmaSenha"
-                  type={showConfirmPassword ? "text" : "password"}
-                  value={signupData.confirmaSenha}
-                  onChange={handleChange}
-                  placeholder="Confirme sua senha"
-                  className="w-full"
-                  required
-                  disabled={isSubmitting}
-                />
-                <button
-                  type="button"
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  disabled={isSubmitting}
-                >
-                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
+          <CustomInput
+            label="Telefone"
+            name="telefone"
+            value={formData.telefone}
+            onChange={handlePhoneChange}
+            placeholder="(00) 00000-0000"
+            maxLength={15}
+            required
+          />
 
-            <div className="mt-4 flex items-start gap-3">
-              <div
-                className="min-w-fit mt-1 cursor-pointer"
-                onClick={() => setTermsAccepted(!termsAccepted)}
-              >
-                <div
-                  className={`h-4 w-4 border rounded-sm flex items-center justify-center ${
-                    termsAccepted ? 'border-construPro-orange bg-construPro-orange' : 'border-gray-300'
-                  }`}
-                >
-                  {termsAccepted && <Check size={14} className="text-white" />}
-                </div>
-              </div>
-              <p className="text-sm text-gray-600">
-                Concordo com os Termos de Uso e Política de Privacidade da Matershop
-              </p>
-            </div>
+          {/* Optional Referral Code Input */}
+          {!formData.referralCode && (
+            <CustomInput
+              label="Código de referência (opcional)"
+              name="referralCode"
+              value={formData.referralCode}
+              onChange={handleInputChange}
+              placeholder="Digite o código de convite"
+            />
+          )}
 
-            <Button
-              type="submit"
-              className="w-full mt-6 bg-construPro-orange hover:bg-orange-600 text-white"
-              disabled={isSubmitting}
+          <div className="relative">
+            <CustomInput
+              label="Senha"
+              name="password"
+              type={showPassword ? 'text' : 'password'}
+              value={formData.password}
+              onChange={handleInputChange}
+              placeholder="Digite sua senha"
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-9 text-gray-500"
             >
-              {isSubmitting ? 'Criando conta...' : 'Criar conta'}
-            </Button>
-          </form>
-        </div>
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+          </div>
+
+          <div className="relative">
+            <CustomInput
+              label="Confirmar senha"
+              name="confirmPassword"
+              type={showConfirmPassword ? 'text' : 'password'}
+              value={formData.confirmPassword}
+              onChange={handleInputChange}
+              placeholder="Confirme sua senha"
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-3 top-9 text-gray-500"
+            >
+              {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+          </div>
+
+          <CustomButton
+            type="submit"
+            variant="primary"
+            fullWidth
+            disabled={isLoading}
+          >
+            {isLoading ? 'Criando conta...' : 'Criar Conta'}
+          </CustomButton>
+        </form>
 
         <div className="mt-6 text-center">
-          <p className="text-gray-600">Já tem uma conta?</p>
-          <Button
-            onClick={() => navigate('/login')}
-            variant="link"
-            className="text-construPro-blue font-medium"
-            disabled={isSubmitting}
-          >
-            Entrar
-          </Button>
+          <p className="text-gray-600">
+            Já tem uma conta?{' '}
+            <Link to="/login" className="text-construPro-blue font-medium">
+              Fazer login
+            </Link>
+          </p>
+        </div>
+
+        <div className="mt-4 text-center">
+          <p className="text-xs text-gray-500">
+            Ao criar uma conta, você concorda com nossos Termos de Uso e Política de Privacidade.
+          </p>
         </div>
       </div>
     </div>

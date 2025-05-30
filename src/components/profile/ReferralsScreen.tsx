@@ -27,6 +27,22 @@ const ReferralsScreen: React.FC = () => {
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
 
+  // Get current domain for generating proper invite links
+  const getCurrentDomain = () => {
+    if (typeof window !== 'undefined') {
+      return window.location.origin;
+    }
+    return 'https://matershop.com.br';
+  };
+
+  // Generate proper invite link
+  const getInviteLink = () => {
+    if (referralData?.codigo) {
+      return `${getCurrentDomain()}/convite?codigo=${referralData.codigo}`;
+    }
+    return '';
+  };
+
   const handleCopyCode = () => {
     if (referralData?.codigo) {
       navigator.clipboard.writeText(referralData.codigo);
@@ -34,9 +50,24 @@ const ReferralsScreen: React.FC = () => {
     }
   };
 
+  const handleCopyLink = () => {
+    const inviteLink = getInviteLink();
+    if (inviteLink) {
+      navigator.clipboard.writeText(inviteLink);
+      toast.success("Link de convite copiado!");
+    }
+  };
+
   const handleShareWhatsApp = () => {
-    if (referralData?.codigo) {
-      const message = `Venha para a Matershop! Use meu código ${referralData.codigo} e ganhe 50 pontos na primeira compra. https://matershop.com.br/convite`;
+    const inviteLink = getInviteLink();
+    if (inviteLink) {
+      const message = `🎉 Venha para a Matershop! 
+
+Use meu código de convite ${referralData?.codigo} e ganhe 50 pontos na sua primeira compra! 
+
+Clique aqui para se cadastrar: ${inviteLink}
+
+#Matershop #Ferramentas #Pontos`;
       const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
       window.open(whatsappUrl, '_blank');
     }
@@ -90,12 +121,19 @@ const ReferralsScreen: React.FC = () => {
                 <CustomButton 
                   variant="outline" 
                   fullWidth 
-                  onClick={handleCopyCode} 
+                  onClick={handleCopyLink} 
                   icon={<Copy size={18} />}
                 >
                   Copiar link de convite
                 </CustomButton>
               </div>
+              
+              {/* Preview do link */}
+              {referralData?.codigo && (
+                <div className="mt-3 p-2 bg-blue-50 rounded text-xs text-blue-700">
+                  <strong>Link:</strong> {getInviteLink()}
+                </div>
+              )}
             </>
           )}
         </Card>
@@ -129,7 +167,7 @@ const ReferralsScreen: React.FC = () => {
                 1
               </div>
               <div>
-                <p>Convide amigos para a Matershop usando seu código de indicação.</p>
+                <p>Convide amigos usando seu link ou código de indicação.</p>
               </div>
             </li>
             <li className="flex">
@@ -137,7 +175,7 @@ const ReferralsScreen: React.FC = () => {
                 2
               </div>
               <div>
-                <p>Quando seu amigo se cadastrar e fizer a primeira compra, você ganha 50 pontos.</p>
+                <p>Quando seu amigo se cadastrar e fizer a primeira compra, vocês ganham 50 pontos cada.</p>
               </div>
             </li>
             <li className="flex">
@@ -145,7 +183,7 @@ const ReferralsScreen: React.FC = () => {
                 3
               </div>
               <div>
-                <p>Seu amigo também ganha 50 pontos no primeiro pedido!</p>
+                <p>Os pontos são creditados automaticamente após a confirmação da compra!</p>
               </div>
             </li>
           </ol>
@@ -161,7 +199,7 @@ const ReferralsScreen: React.FC = () => {
             <div className="text-center py-6">
               <Users className="mx-auto text-gray-400 mb-3" size={40} />
               <h3 className="text-lg font-medium text-gray-700">Nenhum amigo indicado</h3>
-              <p className="text-gray-500 mt-1">Comece a compartilhar seu código agora!</p>
+              <p className="text-gray-500 mt-1">Comece a compartilhar seu link agora!</p>
             </div>
           </Card>
         ) : (
@@ -178,6 +216,11 @@ const ReferralsScreen: React.FC = () => {
                       <div className="ml-3">
                         <p className="font-medium">{friend.profiles.nome}</p>
                         <p className="text-xs text-gray-500">Indicado em {formatDate(friend.data)}</p>
+                        {friend.status === 'pendente' && (
+                          <p className="text-xs text-yellow-600 mt-1">
+                            Aguardando primeira compra para liberar pontos
+                          </p>
+                        )}
                       </div>
                     </div>
                     <div className="flex flex-col items-end">
@@ -188,7 +231,7 @@ const ReferralsScreen: React.FC = () => {
                             : 'bg-yellow-100 text-yellow-800'
                         }`}
                       >
-                        {friend.status === 'aprovado' ? 'Aprovado' : 'Pendente'}
+                        {friend.status === 'aprovado' ? 'Pontos Liberados' : 'Pendente'}
                       </span>
                       {friend.pontos > 0 && (
                         <span className="text-sm font-medium text-green-600 mt-1">

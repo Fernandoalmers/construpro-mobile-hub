@@ -11,6 +11,7 @@ import { CartItem } from '@/types/cart';
 import { Address } from '@/services/addressService';
 import { useGroupItemsByStore, storeGroupsToArray, StoreGroup } from '@/hooks/cart/use-group-items-by-store';
 import { validateCartStock, StockValidationResult } from '@/services/checkout/stockValidation';
+import { referralService } from '@/services/pointsService';
 
 // Define the PaymentMethod type
 export type PaymentMethod = 'credit' | 'debit' | 'money' | 'pix';
@@ -78,6 +79,45 @@ export function useCheckout() {
   const { groupedItems } = useGroupItemsByStore(cartItems);
   // Convert record to array for components that expect an array
   const storeGroupsArray = storeGroupsToArray(groupedItems);
+  
+  // Function to activate referral on first purchase
+  const activateReferralOnFirstPurchase = useCallback(async (userId: string) => {
+    try {
+      console.log('🎁 [useCheckout] Checking for pending referrals to activate');
+      
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session) {
+        console.warn('🎁 [useCheckout] No session found for referral activation');
+        return;
+      }
+
+      const response = await fetch('https://orqnibkshlapwhjjmszh.supabase.co/functions/v1/referral-processing', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.session.access_token}`
+        },
+        body: JSON.stringify({
+          action: 'activate_referral_on_first_purchase',
+          user_id: userId
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ [useCheckout] Referral activation result:', result);
+        
+        if (result.message.includes('activated')) {
+          toast.success('🎉 Parabéns! Você e seu amigo ganharam 50 pontos cada pela indicação!');
+        }
+      } else {
+        console.warn('⚠️ [useCheckout] Referral activation request failed:', response.status);
+      }
+    } catch (error) {
+      console.error('❌ [useCheckout] Error activating referral:', error);
+      // Don't show error to user as this is a bonus feature
+    }
+  }, []);
   
   // Verify authentication before checkout operations
   const verifyAuthentication = useCallback(async () => {
@@ -288,6 +328,11 @@ export function useCheckout() {
       if (orderId) {
         console.log('✅ [handlePlaceOrder] Order created successfully:', orderId);
         
+        // Activate referral on first purchase (async, don't await)
+        if (user?.id) {
+          activateReferralOnFirstPurchase(user.id);
+        }
+        
         // Success flow - clear coupon from localStorage
         localStorage.removeItem('appliedCoupon');
         clearCart();
@@ -341,7 +386,8 @@ export function useCheckout() {
     refreshCart, 
     navigate,
     user,
-    isAuthenticated
+    isAuthenticated,
+    activateReferralOnFirstPurchase
   ]);
   
   // Handle retry

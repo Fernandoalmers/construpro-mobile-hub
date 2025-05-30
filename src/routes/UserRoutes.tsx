@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Route } from 'react-router-dom';
 import { ProtectedRoute } from '../imports';
@@ -28,6 +29,7 @@ import {
   OrderConfirmationScreen,
   MarketplaceScreenWrapper
 } from './RouteImports';
+import ConviteScreen from '../components/referral/ConviteScreen';
 
 const UserRoutes: React.FC = () => {
   return (
@@ -36,6 +38,9 @@ const UserRoutes: React.FC = () => {
       <Route path="/" element={<ProtectedRoute><HomeScreen /></ProtectedRoute>} />
       <Route path="/home" element={<ProtectedRoute><HomeScreen /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><ProfileScreen /></ProtectedRoute>} />
+      
+      {/* Referral invitation page - public access */}
+      <Route path="/convite" element={<ConviteScreen />} />
       
       {/* Services screen for professionals */}
       <Route path="/services" element={<ProtectedRoute><ServicesScreen /></ProtectedRoute>} />
