@@ -81,17 +81,30 @@ export class OrderDetailsService {
         .in('id', produtoIds);
 
       // Criar mapa de produtos com conversão de tipos segura e imagens
-      const produtoMap = new Map(produtos?.map(p => [p.id, {
-        id: p.id,
-        nome: p.nome,
-        descricao: p.descricao || '',
-        preco_normal: p.preco_normal,
-        imagens: Array.isArray(p.imagens) ? p.imagens : 
-                 typeof p.imagens === 'string' ? [p.imagens] : 
-                 p.imagens ? [p.imagens] : [],
-        imagem_url: Array.isArray(p.imagens) && p.imagens.length > 0 ? p.imagens[0] : 
-                   typeof p.imagens === 'string' ? p.imagens : null
-      }]) || []);
+      const produtoMap = new Map(produtos?.map(p => {
+        // Safely extract image URL with proper type conversion
+        let imageUrl: string | null = null;
+        if (p.imagens && Array.isArray(p.imagens) && p.imagens.length > 0) {
+          const firstImage = p.imagens[0];
+          if (typeof firstImage === 'string') {
+            imageUrl = firstImage;
+          } else if (firstImage && typeof firstImage === 'object') {
+            // Handle image objects with url property
+            const imgObj = firstImage as Record<string, any>;
+            imageUrl = imgObj.url || imgObj.path || imgObj.src || null;
+          }
+        }
+
+        return [p.id, {
+          id: p.id,
+          nome: p.nome,
+          descricao: p.descricao || '',
+          preco_normal: p.preco_normal,
+          imagens: Array.isArray(p.imagens) ? p.imagens : 
+                   p.imagens ? [p.imagens] : [],
+          imagem_url: imageUrl
+        }];
+      }) || []);
 
       // Processar itens com informações do produto
       const itensCompletos = itens?.map(item => ({
@@ -99,7 +112,9 @@ export class OrderDetailsService {
         produto: produtoMap.get(item.produto_id) || {
           nome: 'Produto não encontrado',
           imagens: [],
-          imagem_url: null
+          imagem_url: null,
+          descricao: '',
+          preco_normal: 0
         }
       })) || [];
 
