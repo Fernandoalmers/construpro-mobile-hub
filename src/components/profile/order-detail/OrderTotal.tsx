@@ -9,16 +9,26 @@ interface OrderTotalProps {
 }
 
 const OrderTotal: React.FC<OrderTotalProps> = ({ order }) => {
+  // Calcular subtotal bruto a partir dos itens do pedido
+  const subtotalBruto = order.items?.reduce((sum, item) => {
+    return sum + (Number(item.preco_unitario) * Number(item.quantidade));
+  }, 0) || 0;
+  
   // Garantir que temos valores numéricos válidos
   const valorTotal = Number(order.valor_total) || 0;
   const descontoAplicado = Number(order.desconto_aplicado) || 0;
   
-  // Calcular subtotal bruto (valor original antes do desconto)
-  const subtotalBruto = descontoAplicado > 0 
-    ? valorTotal + descontoAplicado
-    : valorTotal;
-    
+  // Verificar se há desconto aplicado
   const hasDiscount = descontoAplicado > 0 && order.cupom_codigo;
+
+  console.log('[OrderTotal] Cálculos:', {
+    subtotalBruto,
+    valorTotal,
+    descontoAplicado,
+    hasDiscount,
+    cupomCodigo: order.cupom_codigo,
+    itemsCount: order.items?.length || 0
+  });
 
   return (
     <>

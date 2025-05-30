@@ -31,7 +31,7 @@ const OrderDetailScreen: React.FC = () => {
     enabled: !!id
   });
 
-  // Add more detailed logging to help debug the items issue
+  // Add more detailed logging to help debug
   React.useEffect(() => {
     if (orderData) {
       console.log("📊 [OrderDetailScreen] Order data loaded:", {
@@ -50,6 +50,9 @@ const OrderDetailScreen: React.FC = () => {
         console.log("📦 [OrderDetailScreen] First item details:", {
           id: firstItem.id,
           produto_id: firstItem.produto_id,
+          preco_unitario: firstItem.preco_unitario,
+          quantidade: firstItem.quantidade,
+          subtotal: firstItem.subtotal,
           produto: firstItem.produto ? {
             nome: firstItem.produto.nome,
             hasImage: !!firstItem.produto.imagem_url,
