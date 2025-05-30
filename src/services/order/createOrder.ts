@@ -1,3 +1,4 @@
+
 import { supabaseService } from '../supabaseService';
 import { toast } from '@/components/ui/sonner';
 import { CreateOrderPayload, OrderResponse } from './types';
@@ -5,7 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 
 export async function createOrder(orderData: CreateOrderPayload): Promise<string | null> {
   try {
-    console.log('Creating order with data:', orderData);
+    console.log('=== Starting Order Creation ===');
+    console.log('Raw order data received:', JSON.stringify(orderData, null, 2));
     
     // Verify user session before making the request
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -16,11 +18,24 @@ export async function createOrder(orderData: CreateOrderPayload): Promise<string
       throw new Error('Sessão de autenticação inválida ou expirada');
     }
     
-    console.log('Valid session found, proceeding with order creation');
+    console.log('Valid session found for user:', session.user.id);
+    
+    // Validate required order data
+    if (!orderData.items || orderData.items.length === 0) {
+      throw new Error('Itens do pedido são obrigatórios');
+    }
+    
+    if (!orderData.endereco_entrega) {
+      throw new Error('Endereço de entrega é obrigatório');
+    }
+    
+    if (!orderData.valor_total || orderData.valor_total <= 0) {
+      throw new Error('Valor total deve ser maior que zero');
+    }
     
     // Prepare order data with correct structure matching Edge Function expectations
     const orderPayload = {
-      action: 'create_order', // Add the required action field
+      action: 'create_order', // Required action field for Edge Function routing
       items: orderData.items.map(item => ({
         produto_id: item.produto_id,
         quantidade: item.quantidade,
@@ -50,21 +65,39 @@ export async function createOrder(orderData: CreateOrderPayload): Promise<string
       status: 'Confirmado'
     };
     
-    console.log('Sending order payload:', orderPayload);
+    console.log('=== Prepared Order Payload ===');
+    console.log('Payload to send:', JSON.stringify(orderPayload, null, 2));
+    console.log('Payload size (bytes):', JSON.stringify(orderPayload).length);
+    
+    // Validate payload before sending
+    if (!orderPayload.action) {
+      throw new Error('Action field is missing from payload');
+    }
+    
+    if (!orderPayload.items || orderPayload.items.length === 0) {
+      throw new Error('Items are missing from payload');
+    }
+    
+    console.log('=== Sending Request to Edge Function ===');
     
     // Use the supabaseService helper with built-in retry logic
     const { data, error } = await supabaseService.invokeFunction('order-processing', {
       method: 'POST',
       body: orderPayload,
-      maxRetries: 1, // Reduce retries for faster feedback
+      maxRetries: 1,
       headers: {
         'Content-Type': 'application/json'
       }
     });
     
+    console.log('=== Edge Function Response ===');
+    console.log('Response data:', data);
+    console.log('Response error:', error);
+    
     // Check for error in the response
     if (error) {
-      console.error('Error creating order:', error);
+      console.error('=== Edge Function Error ===');
+      console.error('Error details:', error);
       
       // Enhanced error handling with specific error types
       if (error.message?.includes('Authentication') || error.message?.includes('authorization') || error.status === 401) {
@@ -109,10 +142,14 @@ export async function createOrder(orderData: CreateOrderPayload): Promise<string
     // Check for error in the returned data
     if (!data?.success || !data?.order?.id) {
       const errorMsg = data?.error || 'Resposta inválida do servidor';
-      console.error('Invalid response:', data);
+      console.error('=== Invalid Response ===');
+      console.error('Data received:', data);
       
       throw new Error(errorMsg);
     }
+    
+    console.log('=== Order Creation Successful ===');
+    console.log('Order ID:', data.order.id);
     
     // Add informative toast messages about inventory and points
     if (data.inventoryUpdated === false) {
@@ -139,10 +176,13 @@ export async function createOrder(orderData: CreateOrderPayload): Promise<string
     }
     
     // Success!
-    console.log("Order created successfully:", data.order);
+    console.log("=== Order Creation Complete ===");
+    console.log("Order ID returned:", data.order.id);
     return data.order.id;
   } catch (error: any) {
-    console.error("Error in createOrder:", error);
+    console.error("=== Error in createOrder ===");
+    console.error("Error details:", error);
+    console.error("Error stack:", error.stack);
     // Re-throw the error to be handled by the caller
     throw error;
   }

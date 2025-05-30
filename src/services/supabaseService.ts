@@ -33,16 +33,16 @@ export const supabaseService = {
         }
         
         console.log(`Invoking function ${functionName} (attempt ${retries + 1})`);
-        console.log('Sending body:', body);
+        console.log('Sending body:', JSON.stringify(body, null, 2));
         
-        // For Supabase functions, we need to send the body as the direct parameter
-        // The Supabase client handles the JSON serialization automatically
+        // For Supabase Edge Functions, we need to pass the body directly
+        // The Supabase client will handle JSON serialization automatically
         const { data, error } = await supabase.functions.invoke(functionName, {
-          body: body, // Send body directly - Supabase client will handle JSON serialization
+          body: body, // Pass the body object directly
           headers: {
-            ...headers,
+            'Content-Type': 'application/json',
             'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json'
+            ...headers
           }
         });
 
@@ -82,6 +82,7 @@ export const supabaseService = {
         }
 
         console.log(`Function ${functionName} completed successfully`);
+        console.log('Response data:', data);
         return { data, error: null };
       } catch (error: any) {
         console.error(`Function ${functionName} exception:`, error);
