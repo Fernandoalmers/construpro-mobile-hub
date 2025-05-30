@@ -33,16 +33,24 @@ export const supabaseService = {
         }
         
         console.log(`Invoking function ${functionName} (attempt ${retries + 1})`);
+        console.log('Sending body:', body);
         
-        const { data, error } = await supabase.functions.invoke(functionName, {
+        // Prepare the request options
+        const requestOptions: any = {
           method,
-          body,
           headers: {
             ...headers,
             'Authorization': `Bearer ${session.access_token}`,
             'Content-Type': 'application/json'
           }
-        });
+        };
+
+        // Only add body if it exists and method supports it
+        if (body && (method === 'POST' || method === 'PUT')) {
+          requestOptions.body = body;
+        }
+
+        const { data, error } = await supabase.functions.invoke(functionName, requestOptions);
 
         if (error) {
           console.error(`Function ${functionName} error:`, error);

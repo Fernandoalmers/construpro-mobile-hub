@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, initUserClient, initServiceRoleClient, verifyUserToken } from './utils.ts';
 
@@ -10,6 +9,8 @@ serve(async (req) => {
 
   try {
     console.log('Order processing request received');
+    console.log('Request method:', req.method);
+    console.log('Request headers:', Object.fromEntries(req.headers.entries()));
     
     // Check for authorization header
     const authHeader = req.headers.get('Authorization');
@@ -46,10 +47,41 @@ serve(async (req) => {
     const user = await verifyUserToken(userClient);
 
     console.log('Parsing request body...');
-    const requestBody = await req.json();
+    
+    // Check if request has a body and content-type
+    const contentType = req.headers.get('Content-Type');
+    console.log('Content-Type:', contentType);
+    
+    let requestBody;
+    
+    try {
+      // Clone the request to read the body as text first for debugging
+      const bodyText = await req.text();
+      console.log('Raw body text length:', bodyText.length);
+      console.log('Raw body text (first 200 chars):', bodyText.substring(0, 200));
+      
+      if (!bodyText || bodyText.trim() === '') {
+        throw new Error('Request body is empty');
+      }
+      
+      // Parse the JSON
+      requestBody = JSON.parse(bodyText);
+      console.log('Successfully parsed request body');
+      
+    } catch (parseError) {
+      console.error('JSON parsing error:', parseError.message);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Invalid JSON in request body: ' + parseError.message 
+        }),
+        { status: 400, headers: corsHeaders }
+      );
+    }
+    
     const { action, ...body } = requestBody;
-
     console.log('Request action:', action);
+    console.log('Request body keys:', Object.keys(body));
 
     // Handle stock validation action
     if (action === 'validate_stock') {
@@ -70,6 +102,7 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Unhandled error in order-processing:', error);
+    console.error('Error stack:', error.stack);
     
     // Return 401 for authentication errors, 500 for others
     const status = error.message?.includes('Authentication') || error.message?.includes('authorization') ? 401 : 500;
