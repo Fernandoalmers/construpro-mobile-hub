@@ -187,10 +187,42 @@ export class OrderDetailsService {
     try {
       console.log(`🔄 [OrderDetailsService] Atualizando status do pedido ${pedidoId} para: ${newStatus}`);
       
+      // Verificar se o usuário tem acesso a este pedido
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.error('❌ [OrderDetailsService] Usuário não autenticado');
+        return false;
+      }
+
+      const { data: vendorData } = await supabase
+        .from('vendedores')
+        .select('id, nome_loja')
+        .eq('usuario_id', user.id)
+        .single();
+
+      if (!vendorData) {
+        console.error('❌ [OrderDetailsService] Vendedor não encontrado');
+        return false;
+      }
+
+      // Verificar se o pedido pertence ao vendedor
+      const { data: pedidoCheck } = await supabase
+        .from('pedidos')
+        .select('vendedor_id')
+        .eq('id', pedidoId)
+        .single();
+
+      if (!pedidoCheck || pedidoCheck.vendedor_id !== vendorData.id) {
+        console.error('❌ [OrderDetailsService] Pedido não pertence ao vendedor');
+        return false;
+      }
+
+      // Atualizar o status
       const { error } = await supabase
         .from('pedidos')
         .update({ status: newStatus })
-        .eq('id', pedidoId);
+        .eq('id', pedidoId)
+        .eq('vendedor_id', vendorData.id);
 
       if (error) {
         console.error('❌ [OrderDetailsService] Erro ao atualizar status:', error);

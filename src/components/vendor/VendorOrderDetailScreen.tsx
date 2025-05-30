@@ -13,6 +13,7 @@ import { translatePaymentMethod } from '@/utils/paymentTranslation';
 import { formatCompleteAddress } from '@/utils/addressFormatter';
 import OrderTimeline from './orders/OrderTimeline';
 import ProductImageDisplay from './orders/ProductImageDisplay';
+import VendorOrderActions from './orders/VendorOrderActions';
 
 const VendorOrderDetailScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -127,6 +128,9 @@ const VendorOrderDetailScreen: React.FC = () => {
       </div>
       
       <div className="p-6 space-y-4">
+        {/* Vendor Actions */}
+        <VendorOrderActions pedido={pedido} />
+
         {/* Order Summary */}
         <Card className="p-4">
           <h3 className="font-medium mb-3">Resumo do Pedido</h3>
