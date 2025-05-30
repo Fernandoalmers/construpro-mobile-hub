@@ -21,7 +21,7 @@ export const fetchAdminOrders = async (params: FetchOrdersParams = {}): Promise<
 
     console.log(`[AdminOrders] Fetching orders - Page: ${page}, Limit: ${limit}, Offset: ${offset}`);
 
-    // Primeira query para buscar os pedidos com profiles
+    // Step 1: Fetch orders with customer profiles
     let baseQuery = supabase
       .from('orders')
       .select(`
@@ -40,7 +40,6 @@ export const fetchAdminOrders = async (params: FetchOrdersParams = {}): Promise<
       .order('data_criacao', { ascending: false })
       .range(offset, offset + limit - 1);
 
-    // Add status filter if provided
     if (status && status !== 'all') {
       baseQuery = baseQuery.eq('status', status);
     }
@@ -59,89 +58,110 @@ export const fetchAdminOrders = async (params: FetchOrdersParams = {}): Promise<
 
     console.log(`[AdminOrders] Successfully fetched ${orders.length} orders from ${count} total`);
 
-    // Para cada pedido, buscar os itens e informações do vendedor
-    const processedOrders: AdminOrder[] = await Promise.all(
-      orders.map(async (order: any) => {
-        console.log(`[AdminOrders] Processing order ${order.id.substring(0, 8)} for customer ${order.profiles?.nome}`);
-        
-        // Buscar order_items com produtos e vendedores em uma query otimizada
-        const { data: orderItemsData, error: itemsError } = await supabase
-          .from('order_items')
-          .select(`
-            id,
-            produto_id,
-            quantidade,
-            preco_unitario,
-            subtotal,
-            produtos!order_items_produto_id_fkey(
-              id,
-              nome,
-              vendedor_id,
-              vendedores!produtos_vendedor_id_fkey(
-                id,
-                nome_loja
-              )
-            )
-          `)
-          .eq('order_id', order.id);
+    // Step 2: Get all order IDs to fetch items
+    const orderIds = orders.map(order => order.id);
+    
+    // Step 3: Fetch all order items for these orders
+    const { data: allOrderItems, error: itemsError } = await supabase
+      .from('order_items')
+      .select('*')
+      .in('order_id', orderIds);
 
-        if (itemsError) {
-          console.error(`[AdminOrders] Error fetching items for order ${order.id}:`, itemsError);
+    if (itemsError) {
+      console.error('[AdminOrders] Error fetching order items:', itemsError);
+    }
+
+    // Step 4: Get all unique product IDs
+    const productIds = [...new Set((allOrderItems || []).map(item => item.produto_id))];
+    
+    // Step 5: Fetch all products
+    const { data: allProducts, error: productsError } = await supabase
+      .from('produtos')
+      .select('id, nome, vendedor_id')
+      .in('id', productIds);
+
+    if (productsError) {
+      console.error('[AdminOrders] Error fetching products:', productsError);
+    }
+
+    // Step 6: Get all unique vendor IDs
+    const vendorIds = [...new Set((allProducts || []).map(p => p.vendedor_id).filter(Boolean))];
+    
+    // Step 7: Fetch all vendors
+    const { data: allVendors, error: vendorsError } = await supabase
+      .from('vendedores')
+      .select('id, nome_loja')
+      .in('id', vendorIds);
+
+    if (vendorsError) {
+      console.error('[AdminOrders] Error fetching vendors:', vendorsError);
+    }
+
+    // Step 8: Create lookup maps
+    const itemsByOrderId = new Map();
+    (allOrderItems || []).forEach(item => {
+      if (!itemsByOrderId.has(item.order_id)) {
+        itemsByOrderId.set(item.order_id, []);
+      }
+      itemsByOrderId.get(item.order_id).push(item);
+    });
+
+    const productsMap = new Map((allProducts || []).map(p => [p.id, p]));
+    const vendorsMap = new Map((allVendors || []).map(v => [v.id, v]));
+
+    // Step 9: Process each order
+    const processedOrders: AdminOrder[] = orders.map(order => {
+      const orderItems = itemsByOrderId.get(order.id) || [];
+      
+      // Process items and determine vendor
+      let loja_nome = 'Loja não identificada';
+      let loja_id: string | undefined;
+      
+      const items = orderItems.map((item: any) => {
+        const produto = productsMap.get(item.produto_id);
+        const vendedor = produto?.vendedor_id ? vendorsMap.get(produto.vendedor_id) : null;
+
+        // Use the first vendor found as the main vendor for the order
+        if (vendedor && vendedor.nome_loja && !loja_id) {
+          loja_id = produto.vendedor_id;
+          loja_nome = vendedor.nome_loja;
+          console.log(`[AdminOrders] Setting main vendor for order ${order.id.substring(0, 8)}: ${loja_nome}`);
         }
 
-        // Processar itens e determinar vendedor principal
-        let loja_nome = 'Loja não identificada';
-        let loja_id: string | undefined;
-        const items = (orderItemsData || []).map((item: any) => {
-          const produto = item.produtos;
-          const vendedor = produto?.vendedores;
-
-          // Log para debug
-          console.log(`[AdminOrders] Item ${item.id}: produto=${produto?.nome}, vendedor=${vendedor?.nome_loja}`);
-
-          // Se ainda não temos um vendedor principal e este item tem vendedor, usar como principal
-          if (vendedor && vendedor.nome_loja && !loja_id) {
-            loja_id = vendedor.id;
-            loja_nome = vendedor.nome_loja;
-            console.log(`[AdminOrders] Setting main vendor for order ${order.id}: ${loja_nome} (${loja_id})`);
-          }
-
-          return {
-            id: item.id,
-            produto_id: item.produto_id,
-            produto_nome: produto?.nome || 'Produto não encontrado',
-            quantidade: item.quantidade,
-            preco_unitario: item.preco_unitario,
-            subtotal: item.subtotal
-          };
-        });
-
-        // Log final do processamento
-        console.log(`[AdminOrders] Order ${order.id.substring(0, 8)} processed:`, {
-          customer: order.profiles?.nome,
-          vendor: loja_nome,
-          vendor_id: loja_id,
-          items_count: items.length
-        });
-
         return {
-          id: order.id,
-          cliente_id: order.cliente_id,
-          cliente_nome: order.profiles?.nome || 'Cliente Desconhecido',
-          loja_id,
-          loja_nome,
-          valor_total: order.valor_total,
-          status: order.status,
-          forma_pagamento: order.forma_pagamento,
-          data_criacao: order.data_criacao,
-          created_at: order.created_at,
-          endereco_entrega: order.endereco_entrega,
-          rastreio: order.rastreio,
-          pontos_ganhos: order.pontos_ganhos,
-          items
+          id: item.id,
+          produto_id: item.produto_id,
+          produto_nome: produto?.nome || 'Produto não encontrado',
+          quantidade: item.quantidade,
+          preco_unitario: item.preco_unitario,
+          subtotal: item.subtotal
         };
-      })
-    );
+      });
+
+      console.log(`[AdminOrders] Order ${order.id.substring(0, 8)} processed:`, {
+        customer: order.profiles?.nome,
+        vendor: loja_nome,
+        vendor_id: loja_id?.substring(0, 8),
+        items_count: items.length
+      });
+
+      return {
+        id: order.id,
+        cliente_id: order.cliente_id,
+        cliente_nome: order.profiles?.nome || 'Cliente Desconhecido',
+        loja_id,
+        loja_nome,
+        valor_total: order.valor_total,
+        status: order.status,
+        forma_pagamento: order.forma_pagamento,
+        data_criacao: order.data_criacao,
+        created_at: order.created_at,
+        endereco_entrega: order.endereco_entrega,
+        rastreio: order.rastreio,
+        pontos_ganhos: order.pontos_ganhos,
+        items
+      };
+    });
 
     const totalCount = count || 0;
     const hasMore = offset + limit < totalCount;

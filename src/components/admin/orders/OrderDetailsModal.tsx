@@ -11,7 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AdminOrder, getOrderStatusBadgeColor } from '@/services/adminOrdersService';
-import { Package, MapPin, CreditCard, Calendar, Store, Award, AlertTriangle } from 'lucide-react';
+import { Package, MapPin, CreditCard, Calendar, Store, Award, AlertTriangle, Tag } from 'lucide-react';
 
 interface OrderDetailsModalProps {
   order: AdminOrder | null;
@@ -64,9 +64,10 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, open, onCl
     return JSON.stringify(endereco);
   };
 
-  // Calculate totals for verification
+  // Calculate totals and discount information
   const itemsTotal = order.items ? order.items.reduce((sum, item) => sum + item.subtotal, 0) : 0;
-  const hasTotalMismatch = Math.abs(order.valor_total - itemsTotal) > 0.01;
+  const discount = itemsTotal - order.valor_total;
+  const hasDiscount = Math.abs(discount) > 0.01;
 
   return (
     <Dialog open={open} onOpenChange={() => onClose()}>
@@ -112,7 +113,7 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, open, onCl
                 <h3 className="font-medium text-sm mb-2">Cliente</h3>
                 <p className="text-sm">{order.cliente_nome || 'Cliente não identificado'}</p>
                 {order.cliente_id && (
-                  <p className="text-xs text-muted-foreground mt-1">ID: {order.cliente_id}</p>
+                  <p className="text-xs text-muted-foreground mt-1">ID: {order.cliente_id.substring(0, 8)}</p>
                 )}
               </div>
               
@@ -126,7 +127,7 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, open, onCl
                   {order.loja_nome || 'Loja não identificada'}
                 </p>
                 {order.loja_id && (
-                  <p className="text-xs text-muted-foreground mt-1">ID: {order.loja_id}</p>
+                  <p className="text-xs text-muted-foreground mt-1">ID: {order.loja_id.substring(0, 8)}</p>
                 )}
               </div>
             </div>
@@ -183,15 +184,17 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, open, onCl
                   <span>Subtotal (itens):</span>
                   <span>{formatCurrency(itemsTotal)}</span>
                 </div>
-                {hasTotalMismatch && (
-                  <div className="flex justify-between text-sm text-amber-600">
+                
+                {hasDiscount && (
+                  <div className="flex justify-between text-sm text-green-600">
                     <span className="flex items-center gap-1">
-                      <AlertTriangle size={12} />
-                      Total do sistema:
+                      <Tag size={12} />
+                      Desconto aplicado:
                     </span>
-                    <span>{formatCurrency(order.valor_total)}</span>
+                    <span>-{formatCurrency(discount)}</span>
                   </div>
                 )}
+                
                 <div className="flex justify-between text-sm">
                   <span>Frete:</span>
                   <span>Grátis</span>
@@ -201,9 +204,10 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, open, onCl
                   <span>Total:</span>
                   <span>{formatCurrency(order.valor_total)}</span>
                 </div>
-                {hasTotalMismatch && (
-                  <p className="text-xs text-amber-600 mt-1">
-                    ⚠️ Diferença detectada entre o total do pedido e soma dos itens
+                
+                {hasDiscount && (
+                  <p className="text-xs text-green-600 mt-1">
+                    ✅ Desconto de {formatCurrency(discount)} aplicado (provavelmente cupom)
                   </p>
                 )}
               </div>
