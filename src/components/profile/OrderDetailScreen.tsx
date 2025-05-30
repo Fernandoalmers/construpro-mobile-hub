@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import { Package, ChevronLeft } from 'lucide-react'; // Added ChevronLeft import here
+import { Package, ChevronLeft } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { orderService } from '@/services/orderService';
 import LoadingState from '../common/LoadingState';
@@ -38,7 +38,10 @@ const OrderDetailScreen: React.FC = () => {
         id: orderData.id,
         status: orderData.status,
         hasItems: !!orderData.items,
-        itemsCount: orderData.items?.length || 0
+        itemsCount: orderData.items?.length || 0,
+        valorTotal: orderData.valor_total,
+        descontoAplicado: orderData.desconto_aplicado,
+        cupomCodigo: orderData.cupom_codigo
       });
       
       // If we have items, check the first one for debugging
@@ -107,17 +110,9 @@ const OrderDetailScreen: React.FC = () => {
   console.log("💾 [OrderDetailScreen] Rendering order details:", {
     orderId: order.id,
     itemsCount: orderItems.length,
-    firstItem: orderItems.length > 0 ? {
-      id: orderItems[0].id,
-      produto_id: orderItems[0].produto_id,
-      produto: orderItems[0].produto ? {
-        nome: orderItems[0].produto.nome,
-        hasImage: !!orderItems[0].produto.imagem_url,
-        hasImagens: !!orderItems[0].produto.imagens && 
-                   Array.isArray(orderItems[0].produto.imagens) && 
-                   orderItems[0].produto.imagens.length > 0
-      } : 'No product data'
-    } : 'No items'
+    valorTotal: order.valor_total,
+    descontoAplicado: order.desconto_aplicado,
+    cupomCodigo: order.cupom_codigo
   });
 
   return (
@@ -126,7 +121,7 @@ const OrderDetailScreen: React.FC = () => {
       <OrderDetailHeader />
       
       {/* Content Container with proper padding for bottom buttons */}
-      <div className="flex-1 px-6 pb-32"> {/* Increased bottom padding to avoid button cutoff */}
+      <div className="flex-1 px-6 pb-32">
         {/* Order Summary */}
         <div className="-mt-6 mb-4">
           <OrderSummary order={order} />
