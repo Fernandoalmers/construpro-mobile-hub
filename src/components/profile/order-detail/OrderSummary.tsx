@@ -36,7 +36,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({ order }) => {
     });
   };
 
-  const hasDiscount = order.desconto_aplicado && Number(order.desconto_aplicado) > 0 && order.cupom_codigo;
+  const hasDiscount = order.desconto_aplicado && Number(order.desconto_aplicado) > 0 && order.cupom_codigo && order.cupom_codigo.trim() !== '';
 
   console.log('[OrderSummary] Debugging discount display:', {
     desconto_aplicado: order.desconto_aplicado,
@@ -71,9 +71,11 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({ order }) => {
         </div>
         
         {hasDiscount && (
-          <div className="flex items-center gap-2 text-green-600">
+          <div className="flex items-center gap-2 text-green-600 bg-green-50 p-2 rounded-md">
             <Tag size={16} />
-            <span>Cupom aplicado: {order.cupom_codigo} (-R$ {Number(order.desconto_aplicado).toFixed(2)})</span>
+            <span className="font-medium">
+              Cupom aplicado: {order.cupom_codigo} (Economia: R$ {Number(order.desconto_aplicado).toFixed(2)})
+            </span>
           </div>
         )}
         

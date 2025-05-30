@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Clock, Tag } from 'lucide-react';
+import { Clock, Tag, Percent } from 'lucide-react';
 import Card from '@/components/common/Card';
 
 interface OrderSummaryCardProps {
@@ -29,7 +29,7 @@ const OrderSummaryCard: React.FC<OrderSummaryCardProps> = ({ orderDetails }) => 
     ? valorTotal + descontoAplicado
     : valorTotal;
     
-  const hasDiscount = descontoAplicado > 0 && orderDetails.cupom_codigo;
+  const hasDiscount = descontoAplicado > 0 && orderDetails.cupom_codigo && orderDetails.cupom_codigo.trim() !== '';
 
   return (
     <Card className="mb-4 p-4">
@@ -67,12 +67,14 @@ const OrderSummaryCard: React.FC<OrderSummaryCardProps> = ({ orderDetails }) => 
         </div>
         
         {hasDiscount && (
-          <div className="grid grid-cols-2 gap-2 mb-1 text-green-600">
-            <span className="flex items-center gap-1">
-              <Tag size={12} />
-              Desconto ({orderDetails.cupom_codigo}):
-            </span>
-            <span className="text-right">-R$ {descontoAplicado.toFixed(2)}</span>
+          <div className="bg-green-50 p-2 rounded-md border-l-4 border-green-400 mb-2">
+            <div className="grid grid-cols-2 gap-2 text-green-700">
+              <span className="flex items-center gap-1 font-medium">
+                <Tag size={14} />
+                Desconto ({orderDetails.cupom_codigo}):
+              </span>
+              <span className="text-right font-semibold">-R$ {descontoAplicado.toFixed(2)}</span>
+            </div>
           </div>
         )}
         
@@ -87,9 +89,14 @@ const OrderSummaryCard: React.FC<OrderSummaryCardProps> = ({ orderDetails }) => 
         </div>
         
         {hasDiscount && (
-          <p className="text-xs text-green-600 mt-2">
-            ✅ Cupom {orderDetails.cupom_codigo} aplicado com sucesso!
-          </p>
+          <div className="bg-green-100 border border-green-300 p-2 rounded-md mt-2">
+            <div className="flex items-center gap-2 text-green-800">
+              <Percent size={14} />
+              <span className="text-xs font-medium">
+                Você economizou R$ {descontoAplicado.toFixed(2)} com o cupom {orderDetails.cupom_codigo}!
+              </span>
+            </div>
+          </div>
         )}
       </div>
     </Card>

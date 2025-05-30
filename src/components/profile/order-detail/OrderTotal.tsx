@@ -2,7 +2,7 @@
 import React from 'react';
 import { Separator } from '@/components/ui/separator';
 import { OrderData } from '@/services/order/types';
-import { Tag } from 'lucide-react';
+import { Tag, Percent } from 'lucide-react';
 
 interface OrderTotalProps {
   order: OrderData;
@@ -42,22 +42,22 @@ const OrderTotal: React.FC<OrderTotalProps> = ({ order }) => {
       
       <div className="space-y-3">
         <div className="flex justify-between text-sm">
-          <span>Subtotal:</span>
+          <span className="text-gray-600">Subtotal:</span>
           <span className="font-medium">R$ {subtotalBruto.toFixed(2)}</span>
         </div>
         
         {hasDiscount && (
-          <div className="flex justify-between text-sm text-green-600">
-            <span className="flex items-center gap-1">
-              <Tag size={14} />
-              Desconto ({order.cupom_codigo}):
+          <div className="flex justify-between text-sm bg-green-50 p-2 rounded-md border-l-4 border-green-400">
+            <span className="flex items-center gap-2 text-green-700 font-medium">
+              <Tag size={16} />
+              <span>Desconto aplicado ({order.cupom_codigo}):</span>
             </span>
-            <span className="font-medium">-R$ {descontoAplicado.toFixed(2)}</span>
+            <span className="font-semibold text-green-700">-R$ {descontoAplicado.toFixed(2)}</span>
           </div>
         )}
         
         <div className="flex justify-between text-sm">
-          <span>Frete:</span>
+          <span className="text-gray-600">Frete:</span>
           <span className="text-green-600 font-medium">Grátis</span>
         </div>
         
@@ -69,10 +69,13 @@ const OrderTotal: React.FC<OrderTotalProps> = ({ order }) => {
         </div>
         
         {hasDiscount && (
-          <div className="bg-green-50 p-2 rounded-md">
-            <p className="text-xs text-green-700 text-center">
-              ✅ Desconto de R$ {descontoAplicado.toFixed(2)} aplicado com sucesso!
-            </p>
+          <div className="bg-green-100 border border-green-300 p-3 rounded-md">
+            <div className="flex items-center gap-2 text-green-800">
+              <Percent size={16} />
+              <span className="text-sm font-medium">
+                Você economizou R$ {descontoAplicado.toFixed(2)} com o cupom {order.cupom_codigo}!
+              </span>
+            </div>
           </div>
         )}
       </div>
