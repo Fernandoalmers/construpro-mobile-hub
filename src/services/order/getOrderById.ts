@@ -119,7 +119,15 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
     console.log('✅ [getOrderById] Order data fetched:', {
       id: orderData.id,
       hasItems: !!orderData.order_items,
-      itemsCount: orderData.order_items?.length || 0
+      itemsCount: orderData.order_items?.length || 0,
+      orderItemsStructure: orderData.order_items?.map(item => ({
+        id: item.id,
+        produto_id: item.produto_id,
+        quantidade: item.quantidade,
+        preco_unitario: item.preco_unitario,
+        subtotal: item.subtotal,
+        hasProduto: !!item.produtos
+      }))
     });
     
     // Process order items if they exist
@@ -130,6 +138,18 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
       
       for (const item of orderData.order_items) {
         const productData = item.produtos;
+        
+        console.log(`[getOrderById] Processing item ${item.id}:`, {
+          produto_id: item.produto_id,
+          quantidade: item.quantidade,
+          preco_unitario: item.preco_unitario,
+          subtotal: item.subtotal,
+          productData: productData ? {
+            id: productData.id,
+            nome: productData.nome,
+            hasImagens: !!productData.imagens
+          } : 'No product data'
+        });
         
         // FIXED: Use extractImageUrls for consistent image processing
         const imagens = extractImageUrls(productData?.imagens);

@@ -20,14 +20,20 @@ const OrderSummaryCard: React.FC<OrderSummaryCardProps> = ({ orderDetails }) => 
   // Get order ID for display
   const displayOrderId = orderDetails.id ? orderDetails.id.substring(0, 8).toUpperCase() : '';
   
-  // Garantir que temos valores numéricos válidos
-  const valorTotal = Number(orderDetails.valor_total) || 0;
-  const descontoAplicado = Number(orderDetails.desconto_aplicado) || 0;
+  // Calculate subtotal from order items
+  const subtotalFromItems = orderDetails.items && Array.isArray(orderDetails.items) 
+    ? orderDetails.items.reduce((sum: number, item: any) => {
+        const itemSubtotal = Number(item.subtotal) || (Number(item.preco_unitario) * Number(item.quantidade));
+        return sum + itemSubtotal;
+      }, 0)
+    : 0;
+    
+  // Use calculated subtotal or fallback to valor_total
+  const subtotal = subtotalFromItems > 0 ? subtotalFromItems : Number(orderDetails.valor_total) || 0;
   
-  // Calcular subtotal considerando desconto
-  const subtotalOriginal = descontoAplicado > 0 
-    ? valorTotal + descontoAplicado
-    : valorTotal;
+  // Get discount and total values
+  const descontoAplicado = Number(orderDetails.desconto_aplicado) || 0;
+  const valorTotal = Number(orderDetails.valor_total) || 0;
     
   const hasDiscount = descontoAplicado > 0 && orderDetails.cupom_codigo && orderDetails.cupom_codigo.trim() !== '';
 
@@ -63,7 +69,7 @@ const OrderSummaryCard: React.FC<OrderSummaryCardProps> = ({ orderDetails }) => 
         
         <div className="grid grid-cols-2 gap-2 mb-1">
           <span className="text-gray-600">Subtotal:</span>
-          <span className="text-right">R$ {subtotalOriginal.toFixed(2)}</span>
+          <span className="text-right">R$ {subtotal.toFixed(2)}</span>
         </div>
         
         {hasDiscount && (

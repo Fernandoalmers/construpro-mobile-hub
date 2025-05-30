@@ -14,6 +14,7 @@ import OrderTotal from './order-detail/OrderTotal';
 import OrderActionButtons from './order-detail/OrderActionButtons';
 import { useNavigate } from 'react-router-dom';
 import CustomButton from '../common/CustomButton';
+import DeliveryAddressDisplay from '../marketplace/order-confirmation/DeliveryAddressDisplay';
 
 const OrderDetailScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -143,12 +144,13 @@ const OrderDetailScreen: React.FC = () => {
           <OrderSummary order={order} />
         </div>
         
-        {/* Order Items */}
-        <div className="mb-4">
-          <Card className="p-4">
-            <OrderItemsList items={orderItems} />
-            <OrderTotal order={order} />
-          </Card>
+        {/* Order Items and Address - Using same structure as OrderConfirmationScreen */}
+        <div className="mb-4 p-4 bg-white rounded-lg shadow">
+          <OrderItemsList items={orderItems} />
+          
+          {order.endereco_entrega && (
+            <DeliveryAddressDisplay endereco={order.endereco_entrega} />
+          )}
         </div>
       </div>
       
