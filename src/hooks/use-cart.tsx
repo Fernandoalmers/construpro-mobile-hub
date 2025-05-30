@@ -5,19 +5,6 @@ import { CartContextProvider, useCartContext } from '@/context/CartContext';
 import { useCartData } from './cart/use-cart-data';
 import { useCartOperations } from './cart/use-cart-operations';
 import { CartContextType } from '@/types/cart';
-import { addToCart as addToCartService } from '@/services/cart/operations/addToCart';
-
-export async function addToCart(productId: string, quantity: number): Promise<void> {
-  try {
-    console.log(`[addToCart] Adding ${quantity} of product ${productId} to cart`);
-    
-    await addToCartService(productId, quantity);
-    
-  } catch (error) {
-    console.error('Error adding to cart:', error);
-    throw error;
-  }
-}
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user, profile } = useAuth();
@@ -36,10 +23,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // Get cart operations
   const operations = useCartOperations(refreshCart);
 
-  // Calculate total items in cart with enhanced reactivity
+  // Calculate total items in cart
   const cartCount = React.useMemo(() => {
     if (!cart?.items || cart.items.length === 0) {
-      console.log('[CartProvider] No cart items, count = 0, refreshKey:', refreshKey);
       return 0;
     }
     
@@ -47,9 +33,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return sum + (item.quantidade || 0);
     }, 0);
     
-    console.log('[CartProvider] Calculated cart count:', count, 'from', cart.items.length, 'items, refreshKey:', refreshKey);
+    console.log('[CartProvider] Calculated cart count:', count, 'from', cart.items.length, 'items');
     return count;
-  }, [cart?.items, refreshKey]); // Include refreshKey as dependency
+  }, [cart?.items]);
   
   const cartItems = cart?.items || [];
   
@@ -58,60 +44,29 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     itemsLength: cartItems.length,
     isLoading,
     userType,
-    hasCart: !!cart,
-    cartId: cart?.id,
-    refreshKey
+    hasCart: !!cart
   });
 
-  // Force re-render when cart operations complete
-  const [operationCompleted, setOperationCompleted] = React.useState(0);
-  
-  React.useEffect(() => {
-    if (!operations.isLoading && operations.operationInProgress === null) {
-      // Operation completed, force update
-      setOperationCompleted(prev => prev + 1);
-    }
-  }, [operations.isLoading, operations.operationInProgress]);
-
-  // Enhanced operations with forced refresh
-  const enhancedOperations = React.useMemo(() => ({
-    ...operations,
-    removeItem: async (itemId: string) => {
-      await operations.removeItem(itemId);
-      setOperationCompleted(prev => prev + 1);
-    },
-    clearCart: async () => {
-      await operations.clearCart();
-      setOperationCompleted(prev => prev + 1);
-    }
-  }), [operations]);
-
-  // Create context value with enhanced reactivity
+  // Create context value
   const value: CartContextType = {
     cart,
     cartCount,
     cartItems,
     isLoading: isLoading || operations.isLoading,
-    addToCart: enhancedOperations.addToCart,
-    updateQuantity: enhancedOperations.updateQuantity,
-    removeItem: enhancedOperations.removeItem,
-    clearCart: enhancedOperations.clearCart,
+    addToCart: operations.addToCart,
+    updateQuantity: operations.updateQuantity,
+    removeItem: operations.removeItem,
+    clearCart: operations.clearCart,
     refreshCart
   };
 
   return <CartContextProvider value={value}>{children}</CartContextProvider>;
 }
 
-// Re-export the useCartContext as useCart with enhanced error handling
+// Re-export the useCartContext as useCart
 export function useCart() {
   try {
     const context = useCartContext();
-    console.log('[useCart] Context values:', {
-      cartCount: context.cartCount,
-      itemsLength: context.cartItems.length,
-      isLoading: context.isLoading,
-      timestamp: new Date().toISOString()
-    });
     return context;
   } catch (error) {
     console.error('useCart must be used within a CartProvider');

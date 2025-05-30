@@ -14,21 +14,19 @@ export function useCartState(
   const [cart, setCart] = useState<Cart | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
-  const [refreshKey, setRefreshKey] = useState<number>(0); // For forcing updates
+  const [refreshKey, setRefreshKey] = useState<number>(0);
   
   const { fetchCartData } = useCartFetcher();
   
   // Use refs to track loading state and prevent multiple concurrent calls
   const isInitialized = useRef(false);
   const isFetching = useRef(false);
-  const lastRefreshTime = useRef<number>(0);
 
-  // Function to refresh cart data with forced update capability
-  const refreshCart = useCallback(async (forceUpdate: boolean = false) => {
-    // Prevent concurrent fetches and rapid successive calls (unless forced)
-    const now = Date.now();
-    if (!forceUpdate && (isFetching.current || (now - lastRefreshTime.current < 100))) {
-      console.log('[useCartState] Skipping refresh - too soon or already fetching');
+  // Function to refresh cart data
+  const refreshCart = useCallback(async () => {
+    // Prevent concurrent fetches
+    if (isFetching.current) {
+      console.log('[useCartState] Skipping refresh - already fetching');
       return;
     }
 
@@ -38,13 +36,11 @@ export function useCartState(
       setCart(null);
       setIsLoading(false);
       setError(null);
-      setRefreshKey(prev => prev + 1); // Force UI update
       return;
     }
     
     isFetching.current = true;
-    lastRefreshTime.current = now;
-    console.log('[useCartState] Starting cart refresh for user:', userId, 'type:', userType, 'forced:', forceUpdate);
+    console.log('[useCartState] Starting cart refresh for user:', userId);
     
     try {
       setIsLoading(true);
@@ -54,8 +50,7 @@ export function useCartState(
       console.log('[useCartState] Cart data fetched:', {
         hasData: !!cartData,
         itemCount: cartData?.items?.length || 0,
-        cartId: cartData?.id,
-        refreshKey: refreshKey + 1
+        cartId: cartData?.id
       });
       
       // Always set cart data, even if empty
@@ -78,7 +73,7 @@ export function useCartState(
         setCart(cartData);
       }
       
-      // Force refresh key update to trigger UI re-renders
+      // Update refresh key to trigger UI updates
       setRefreshKey(prev => prev + 1);
       
     } catch (err: any) {
@@ -96,42 +91,32 @@ export function useCartState(
           totalPoints: 0
         }
       });
-      setRefreshKey(prev => prev + 1);
     } finally {
       setIsLoading(false);
       isFetching.current = false;
-      console.log('[useCartState] Cart refresh completed, refreshKey:', refreshKey + 1);
+      console.log('[useCartState] Cart refresh completed');
     }
-  }, [isAuthenticated, userId, userType, fetchCartData, refreshKey]);
-
-  // Enhanced refresh function that forces update
-  const forceRefreshCart = useCallback(async () => {
-    console.log('[useCartState] Force refreshing cart...');
-    await refreshCart(true);
-  }, [refreshCart]);
+  }, [isAuthenticated, userId, userType, fetchCartData]);
 
   // Simple initialization effect - runs only when auth state changes
   useEffect(() => {
     console.log('[useCartState] Auth state changed:', { isAuthenticated, userId, userType });
     // Reset initialization flag when user changes
     isInitialized.current = false;
-  }, [userId, isAuthenticated, userType]);
-
-  // Separate effect for cart loading
-  useEffect(() => {
-    // Only fetch if not already initialized and not currently fetching
-    if (!isInitialized.current && !isFetching.current) {
+    
+    // Only fetch if not already initialized
+    if (!isInitialized.current) {
       console.log('[useCartState] Initializing cart data fetch');
       isInitialized.current = true;
       refreshCart();
     }
-  }, [refreshCart]);
+  }, [userId, isAuthenticated, userType, refreshCart]);
 
   return {
     cart,
     isLoading,
     error,
-    refreshCart: forceRefreshCart, // Use the enhanced version
-    refreshKey // Export refresh key for UI components
+    refreshCart,
+    refreshKey
   };
 }
