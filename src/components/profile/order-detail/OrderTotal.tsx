@@ -9,12 +9,16 @@ interface OrderTotalProps {
 }
 
 const OrderTotal: React.FC<OrderTotalProps> = ({ order }) => {
+  // Garantir que temos um valor numérico válido
+  const valorTotal = Number(order.valor_total) || 0;
+  const descontoAplicado = Number(order.desconto_aplicado) || 0;
+  
   // Calcular subtotal considerando desconto
-  const subtotalOriginal = order.desconto_aplicado 
-    ? Number(order.valor_total) + Number(order.desconto_aplicado)
-    : Number(order.valor_total);
+  const subtotalOriginal = descontoAplicado > 0 
+    ? valorTotal + descontoAplicado
+    : valorTotal;
     
-  const hasDiscount = order.desconto_aplicado && Number(order.desconto_aplicado) > 0;
+  const hasDiscount = descontoAplicado > 0 && order.cupom_codigo;
 
   return (
     <>
@@ -32,7 +36,7 @@ const OrderTotal: React.FC<OrderTotalProps> = ({ order }) => {
               <Tag size={12} />
               Desconto ({order.cupom_codigo}):
             </span>
-            <span>-R$ {Number(order.desconto_aplicado).toFixed(2)}</span>
+            <span>-R$ {descontoAplicado.toFixed(2)}</span>
           </div>
         )}
         
@@ -43,12 +47,12 @@ const OrderTotal: React.FC<OrderTotalProps> = ({ order }) => {
         
         <div className="flex justify-between font-medium">
           <span>Total:</span>
-          <span>R$ {Number(order.valor_total).toFixed(2)}</span>
+          <span>R$ {valorTotal.toFixed(2)}</span>
         </div>
         
         {hasDiscount && (
           <p className="text-xs text-green-600 mt-1">
-            ✅ Desconto de R$ {Number(order.desconto_aplicado).toFixed(2)} aplicado
+            ✅ Desconto de R$ {descontoAplicado.toFixed(2)} aplicado
           </p>
         )}
       </div>
