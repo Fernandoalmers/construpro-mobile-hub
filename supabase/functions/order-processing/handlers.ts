@@ -1,4 +1,3 @@
-
 import { corsHeaders } from './utils.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { OrderData, OrderItem, OrderResponse } from './types.ts';
@@ -415,14 +414,17 @@ export async function handleCreateOrder(req: Request, authHeader: string): Promi
       );
     }
     
-    // Prepare order data
+    // Prepare order data including coupon information
     const orderData: OrderData = {
       cliente_id: userId,
       status: requestData.status || 'Confirmado',
       forma_pagamento: requestData.forma_pagamento || 'Cartão de Crédito',
       endereco_entrega: requestData.endereco_entrega,
       valor_total: requestData.valor_total,
-      pontos_ganhos: requestData.pontos_ganhos || Math.round(requestData.valor_total * 2) // Default to 2x points
+      pontos_ganhos: requestData.pontos_ganhos || Math.round(requestData.valor_total * 2), // Default to 2x points
+      // Include coupon data if present
+      cupom_codigo: requestData.cupom_aplicado?.code || null,
+      desconto_aplicado: requestData.desconto || 0
     };
     
     // Start a transaction
