@@ -40,11 +40,14 @@ export async function createOrder(orderData: CreateOrderPayload): Promise<string
     
     console.log('Sending order payload:', orderPayload);
     
-    // Use the supabaseService helper with built-in retry logic and enhanced error handling
+    // Use the supabaseService helper with built-in retry logic
     const { data, error } = await supabaseService.invokeFunction('order-processing', {
       method: 'POST',
       body: orderPayload,
-      maxRetries: 2 // Reduce retries for faster feedback
+      maxRetries: 1, // Reduce retries for faster feedback
+      headers: {
+        'Content-Type': 'application/json'
+      }
     });
     
     // Check for error in the response
@@ -52,7 +55,7 @@ export async function createOrder(orderData: CreateOrderPayload): Promise<string
       console.error('Error creating order:', error);
       
       // Enhanced error handling with specific error types
-      if (error.message?.includes('Authentication failed') || error.message?.includes('Auth session missing')) {
+      if (error.message?.includes('Authentication') || error.message?.includes('authorization') || error.status === 401) {
         // Try to refresh the session and retry once
         console.log('Attempting to refresh session...');
         const { error: refreshError } = await supabase.auth.refreshSession();
@@ -63,7 +66,7 @@ export async function createOrder(orderData: CreateOrderPayload): Promise<string
           const retryResult = await supabaseService.invokeFunction('order-processing', {
             method: 'POST',
             body: orderPayload,
-            maxRetries: 1
+            maxRetries: 0
           });
           
           if (retryResult.error) {
@@ -86,7 +89,9 @@ export async function createOrder(orderData: CreateOrderPayload): Promise<string
         throw new Error('Erro de conexão: verifique sua internet e tente novamente.');
       }
       
-      throw new Error(error.message || 'Falha ao criar pedido');
+      // Show more specific error message from the server
+      const errorMessage = error.message || 'Falha ao criar pedido';
+      throw new Error(errorMessage);
     }
     
     // Check for error in the returned data

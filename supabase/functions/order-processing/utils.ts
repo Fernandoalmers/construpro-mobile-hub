@@ -33,29 +33,28 @@ export function initSupabaseClient(token: string, useServiceRole = false) {
   })
 }
 
-// Verify user token and get user ID with better error handling
+// Verify user token and get user ID with improved error handling
 export async function verifyUserToken(supabaseClient: any) {
   try {
-    console.log('Attempting to get user from token...');
+    console.log('Verifying user authentication...');
+    
+    // Try to get the authenticated user
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
     
     if (authError) {
-      console.error("Auth error details:", authError);
+      console.error("Authentication error:", authError.message);
       throw new Error(`Authentication failed: ${authError.message}`)
     }
     
-    if (!user) {
-      console.error("No user found in token - token may be invalid or expired");
-      throw new Error('User not authenticated - please log in again')
+    if (!user || !user.id) {
+      console.error("No valid user found in token");
+      throw new Error('Invalid authentication token - please log in again')
     }
     
     console.log('User authenticated successfully:', user.id);
     return user
   } catch (error) {
-    console.error("Token verification error:", error);
-    if (error.message?.includes('Auth session missing')) {
-      throw new Error('Authentication session expired - please log in again')
-    }
-    throw new Error('Invalid or expired authentication token')
+    console.error("Token verification failed:", error);
+    throw new Error('Authentication required - please log in again')
   }
 }
