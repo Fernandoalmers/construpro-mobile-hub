@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { VendorProduct, VendorProductInput } from './types';
 
@@ -48,6 +47,34 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
       console.log('[productOperations] Processing images:', validImages);
     }
     
+    // Validate SKU uniqueness if provided
+    if (productData.sku && productData.sku.trim()) {
+      const { data: existingSku, error: skuError } = await supabase
+        .from('produtos')
+        .select('id')
+        .eq('sku', productData.sku.trim())
+        .neq('id', productData.id || '00000000-0000-0000-0000-000000000000')
+        .single();
+      
+      if (existingSku && !skuError) {
+        throw new Error('SKU já existe no sistema. Escolha um SKU único.');
+      }
+    }
+    
+    // Validate barcode uniqueness if provided
+    if (productData.codigo_barras && productData.codigo_barras.trim()) {
+      const { data: existingBarcode, error: barcodeError } = await supabase
+        .from('produtos')
+        .select('id')
+        .eq('codigo_barras', productData.codigo_barras.trim())
+        .neq('id', productData.id || '00000000-0000-0000-0000-000000000000')
+        .single();
+      
+      if (existingBarcode && !barcodeError) {
+        throw new Error('Código de barras já existe no sistema. Escolha um código único.');
+      }
+    }
+    
     // Prepare data for insert/update
     const dbData = {
       ...productData,
@@ -56,7 +83,10 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
       status: isUpdate ? 'pendente' as const : 'pendente' as const,
       updated_at: new Date().toISOString(),
       // Ensure imagens is stored as proper JSON string
-      imagens: imagensJson
+      imagens: imagensJson,
+      // Clean and format SKU and barcode
+      sku: productData.sku?.trim() || null,
+      codigo_barras: productData.codigo_barras?.trim() || null
     };
     
     console.log('[productOperations] Database data to save:', {
@@ -92,7 +122,16 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
     
     if (error) {
       console.error('[productOperations] Error saving product:', error);
-      return null;
+      // Handle specific database errors
+      if (error.code === '23505') {
+        if (error.message.includes('sku')) {
+          throw new Error('SKU já existe no sistema. Escolha um SKU único.');
+        }
+        if (error.message.includes('codigo_barras')) {
+          throw new Error('Código de barras já existe no sistema. Escolha um código único.');
+        }
+      }
+      throw error;
     }
     
     console.log(`[productOperations] Product ${isUpdate ? 'updated' : 'created'} successfully:`, data);
@@ -115,7 +154,7 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
     
   } catch (error) {
     console.error('[productOperations] Error in saveVendorProduct:', error);
-    return null;
+    throw error;
   }
 };
 
