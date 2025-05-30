@@ -33,14 +33,25 @@ const OrdersManagementScreen: React.FC = () => {
   });
 
   const handleViewOrder = async (order: AdminOrder) => {
-    console.log(`[OrdersManagement] Opening order details for: ${order.id}`);
+    console.log(`[OrdersManagement] Opening order details for:`, {
+      originalId: order.id,
+      fullId: order.id,
+      truncatedDisplay: order.id.substring(0, 8)
+    });
 
     try {
       // Fetch the complete order details using the FULL ID
+      console.log(`[OrdersManagement] Fetching details for order ID: ${order.id}`);
       const orderDetails = await getOrderDetails(order.id);
       
       if (orderDetails) {
-        console.log(`[OrdersManagement] Order details loaded successfully`);
+        console.log(`[OrdersManagement] Order details loaded successfully:`, {
+          orderId: orderDetails.id,
+          itemsCount: orderDetails.items?.length || 0,
+          vendorName: orderDetails.loja_nome,
+          customerName: orderDetails.cliente_nome,
+          total: orderDetails.valor_total
+        });
         setSelectedOrder(orderDetails);
       } else {
         console.error(`[OrdersManagement] Failed to load order details for ID: ${order.id}`);
