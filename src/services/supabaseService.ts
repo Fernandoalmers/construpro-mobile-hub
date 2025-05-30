@@ -35,22 +35,16 @@ export const supabaseService = {
         console.log(`Invoking function ${functionName} (attempt ${retries + 1})`);
         console.log('Sending body:', body);
         
-        // Prepare the request options
-        const requestOptions: any = {
-          method,
+        // For Supabase functions, we need to send the body as the direct parameter
+        // The Supabase client handles the JSON serialization automatically
+        const { data, error } = await supabase.functions.invoke(functionName, {
+          body: body, // Send body directly - Supabase client will handle JSON serialization
           headers: {
             ...headers,
             'Authorization': `Bearer ${session.access_token}`,
             'Content-Type': 'application/json'
           }
-        };
-
-        // Only add body if it exists and method supports it
-        if (body && (method === 'POST' || method === 'PUT')) {
-          requestOptions.body = body;
-        }
-
-        const { data, error } = await supabase.functions.invoke(functionName, requestOptions);
+        });
 
         if (error) {
           console.error(`Function ${functionName} error:`, error);

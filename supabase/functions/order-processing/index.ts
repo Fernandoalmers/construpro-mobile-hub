@@ -48,25 +48,28 @@ serve(async (req) => {
 
     console.log('Parsing request body...');
     
-    // Check if request has a body and content-type
-    const contentType = req.headers.get('Content-Type');
-    console.log('Content-Type:', contentType);
-    
     let requestBody;
     
     try {
-      // Clone the request to read the body as text first for debugging
+      // Get the raw body text first
       const bodyText = await req.text();
-      console.log('Raw body text length:', bodyText.length);
-      console.log('Raw body text (first 200 chars):', bodyText.substring(0, 200));
+      console.log('Raw body length:', bodyText.length);
       
       if (!bodyText || bodyText.trim() === '') {
-        throw new Error('Request body is empty');
+        console.error('Request body is empty');
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Request body is required' 
+          }),
+          { status: 400, headers: corsHeaders }
+        );
       }
       
-      // Parse the JSON
+      // Parse JSON
       requestBody = JSON.parse(bodyText);
       console.log('Successfully parsed request body');
+      console.log('Body keys:', Object.keys(requestBody));
       
     } catch (parseError) {
       console.error('JSON parsing error:', parseError.message);
@@ -81,7 +84,6 @@ serve(async (req) => {
     
     const { action, ...body } = requestBody;
     console.log('Request action:', action);
-    console.log('Request body keys:', Object.keys(body));
 
     // Handle stock validation action
     if (action === 'validate_stock') {
