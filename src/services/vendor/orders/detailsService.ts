@@ -73,20 +73,24 @@ export class OrderDetailsService {
         console.error('❌ [OrderDetailsService] Erro ao buscar itens:', itensError);
       }
 
-      // Buscar informações dos produtos
+      // Buscar informações dos produtos com imagens
       const produtoIds = itens?.map(item => item.produto_id) || [];
       const { data: produtos } = await supabase
         .from('produtos')
-        .select('id, nome, imagens')
+        .select('id, nome, imagens, descricao, preco_normal')
         .in('id', produtoIds);
 
-      // Criar mapa de produtos com conversão de tipos segura
+      // Criar mapa de produtos com conversão de tipos segura e imagens
       const produtoMap = new Map(produtos?.map(p => [p.id, {
         id: p.id,
         nome: p.nome,
+        descricao: p.descricao || '',
+        preco_normal: p.preco_normal,
         imagens: Array.isArray(p.imagens) ? p.imagens : 
                  typeof p.imagens === 'string' ? [p.imagens] : 
-                 p.imagens ? [p.imagens] : []
+                 p.imagens ? [p.imagens] : [],
+        imagem_url: Array.isArray(p.imagens) && p.imagens.length > 0 ? p.imagens[0] : 
+                   typeof p.imagens === 'string' ? p.imagens : null
       }]) || []);
 
       // Processar itens com informações do produto
@@ -94,11 +98,12 @@ export class OrderDetailsService {
         ...item,
         produto: produtoMap.get(item.produto_id) || {
           nome: 'Produto não encontrado',
-          imagens: []
+          imagens: [],
+          imagem_url: null
         }
       })) || [];
 
-      // Buscar informações do cliente com fallbacks
+      // Buscar informações completas do cliente
       let clienteInfo = {
         id: pedido.usuario_id,
         vendedor_id: vendorData.id,
@@ -109,7 +114,7 @@ export class OrderDetailsService {
         total_gasto: 0
       };
 
-      // Tentar buscar do profiles primeiro
+      // Buscar do profiles primeiro (dados mais atualizados)
       const { data: profileData } = await supabase
         .from('profiles')
         .select('nome, email, telefone')
@@ -123,8 +128,10 @@ export class OrderDetailsService {
           email: profileData.email || '',
           telefone: profileData.telefone || ''
         };
-      } else {
-        // Fallback: buscar da tabela clientes_vendedor
+      }
+
+      // Se ainda não temos email/telefone, buscar de clientes_vendedor
+      if (!clienteInfo.email || !clienteInfo.telefone) {
         const { data: clienteVendedorData } = await supabase
           .from('clientes_vendedor')
           .select('nome, email, telefone, total_gasto')
@@ -135,9 +142,9 @@ export class OrderDetailsService {
         if (clienteVendedorData) {
           clienteInfo = {
             ...clienteInfo,
-            nome: clienteVendedorData.nome || 'Cliente',
-            email: clienteVendedorData.email || '',
-            telefone: clienteVendedorData.telefone || '',
+            nome: clienteVendedorData.nome || clienteInfo.nome,
+            email: clienteVendedorData.email || clienteInfo.email,
+            telefone: clienteVendedorData.telefone || clienteInfo.telefone,
             total_gasto: Number(clienteVendedorData.total_gasto) || 0
           };
         }

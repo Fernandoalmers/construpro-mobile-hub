@@ -1,14 +1,18 @@
 
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Package, Calendar, CreditCard, Award, MapPin, Tag, Percent } from 'lucide-react';
+import { ChevronLeft, Package, Calendar, CreditCard, MapPin, Tag, Percent, User, Mail, Phone } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { getPedidoById } from '@/services/vendor/orders/pedidosService';
+import { orderDetailsService } from '@/services/vendor/orders/detailsService';
 import LoadingState from '../common/LoadingState';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import CustomButton from '../common/CustomButton';
+import { translatePaymentMethod } from '@/utils/paymentTranslation';
+import { formatCompleteAddress } from '@/utils/addressFormatter';
+import OrderTimeline from './orders/OrderTimeline';
+import ProductImageDisplay from './orders/ProductImageDisplay';
 
 const VendorOrderDetailScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -20,8 +24,8 @@ const VendorOrderDetailScreen: React.FC = () => {
     isLoading, 
     error 
   } = useQuery({
-    queryKey: ['vendorPedido', id],
-    queryFn: () => id ? getPedidoById(id) : Promise.reject('No order ID provided'),
+    queryKey: ['vendorPedidoDetails', id],
+    queryFn: () => id ? orderDetailsService.getOrderDetails(id) : Promise.reject('No order ID provided'),
     staleTime: 5 * 60 * 1000, // 5 minutes
     enabled: !!id
   });
@@ -135,7 +139,7 @@ const VendorOrderDetailScreen: React.FC = () => {
             
             <div className="flex items-center gap-2 text-gray-600">
               <CreditCard size={16} />
-              <span>Pagamento: {pedido.forma_pagamento}</span>
+              <span>Pagamento: {translatePaymentMethod(pedido.forma_pagamento)}</span>
             </div>
             
             {hasDiscount && (
@@ -151,12 +155,23 @@ const VendorOrderDetailScreen: React.FC = () => {
 
         {/* Customer Info */}
         <Card className="p-4">
-          <h3 className="font-medium mb-3">Informações do Cliente</h3>
+          <div className="flex items-start gap-2 mb-3">
+            <User size={16} className="text-gray-600 mt-0.5" />
+            <h3 className="font-medium">Informações do Cliente</h3>
+          </div>
           <div className="space-y-2 text-sm">
-            <p><strong>Nome:</strong> {pedido.cliente?.nome}</p>
-            <p><strong>Email:</strong> {pedido.cliente?.email}</p>
+            <p><strong>Nome:</strong> {pedido.cliente?.nome || 'Cliente'}</p>
+            {pedido.cliente?.email && (
+              <div className="flex items-center gap-2 text-gray-600">
+                <Mail size={14} />
+                <span>{pedido.cliente.email}</span>
+              </div>
+            )}
             {pedido.cliente?.telefone && (
-              <p><strong>Telefone:</strong> {pedido.cliente.telefone}</p>
+              <div className="flex items-center gap-2 text-gray-600">
+                <Phone size={14} />
+                <span>{pedido.cliente.telefone}</span>
+              </div>
             )}
           </div>
         </Card>
@@ -167,17 +182,17 @@ const VendorOrderDetailScreen: React.FC = () => {
             <MapPin size={16} className="text-gray-600 mt-0.5" />
             <h3 className="font-medium">Endereço de Entrega</h3>
           </div>
-          {pedido.endereco_entrega && (
-            <p className="text-sm text-gray-600">
-              {typeof pedido.endereco_entrega === 'string' 
-                ? pedido.endereco_entrega
-                : `${pedido.endereco_entrega.logradouro || ''}, 
-                    ${pedido.endereco_entrega.numero || ''}, 
-                    ${pedido.endereco_entrega.cidade || ''} - 
-                    ${pedido.endereco_entrega.estado || ''}`
-              }
-            </p>
-          )}
+          <p className="text-sm text-gray-600">
+            {formatCompleteAddress(pedido.endereco_entrega)}
+          </p>
+        </Card>
+
+        {/* Order Timeline */}
+        <Card className="p-4">
+          <OrderTimeline 
+            currentStatus={pedido.status} 
+            createdAt={pedido.created_at} 
+          />
         </Card>
 
         {/* Order Items */}
@@ -186,11 +201,19 @@ const VendorOrderDetailScreen: React.FC = () => {
           <div className="space-y-3">
             {pedido.itens?.map((item) => (
               <div key={item.id} className="flex gap-3 p-3 border rounded-md">
+                <ProductImageDisplay 
+                  imageUrl={item.produto?.imagem_url}
+                  productName={item.produto?.nome || 'Produto'}
+                  className="w-16 h-16"
+                />
                 <div className="flex-1">
                   <h4 className="font-medium">{item.produto?.nome || 'Produto'}</h4>
                   <p className="text-sm text-gray-600">
                     Quantidade: {item.quantidade} x R$ {Number(item.preco_unitario).toFixed(2)}
                   </p>
+                  {item.produto?.descricao && (
+                    <p className="text-xs text-gray-500 mt-1">{item.produto.descricao}</p>
+                  )}
                 </div>
                 <div className="text-right">
                   <p className="font-medium">R$ {Number(item.total).toFixed(2)}</p>
