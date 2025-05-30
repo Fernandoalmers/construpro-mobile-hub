@@ -11,7 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AdminOrder, getOrderStatusBadgeColor } from '@/services/adminOrdersService';
-import { Package, MapPin, CreditCard, Calendar, Store, Award, AlertTriangle } from 'lucide-react';
+import { Package, MapPin, CreditCard, Calendar, Store, Award, AlertTriangle, Database } from 'lucide-react';
 
 interface OrderDetailsModalProps {
   order: AdminOrder | null;
@@ -21,6 +21,27 @@ interface OrderDetailsModalProps {
 
 const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, open, onClose }) => {
   if (!order) return null;
+
+  // Debug logging when modal opens
+  React.useEffect(() => {
+    if (order && open) {
+      console.log(`[OrderDetailsModal] Modal opened with order:`, {
+        orderId: order.id,
+        fullId: order.id,
+        clienteNome: order.cliente_nome,
+        lojaNome: order.loja_nome,
+        itemsCount: order.items?.length || 0,
+        valorTotal: order.valor_total,
+        hasItems: !!(order.items && order.items.length > 0),
+        items: order.items?.map(item => ({
+          id: item.id,
+          produto_nome: item.produto_nome,
+          quantidade: item.quantidade,
+          subtotal: item.subtotal
+        }))
+      });
+    }
+  }, [order, open]);
 
   // Format currency
   const formatCurrency = (value: number) => {
@@ -67,12 +88,18 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, open, onCl
   // Calculate totals for verification
   const itemsTotal = order.items ? order.items.reduce((sum, item) => sum + item.subtotal, 0) : 0;
   const hasTotalMismatch = Math.abs(order.valor_total - itemsTotal) > 0.01;
+  const hasItems = order.items && order.items.length > 0;
 
   return (
     <Dialog open={open} onOpenChange={() => onClose()}>
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>Detalhes do Pedido #{order.id.substring(0, 8)}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            Detalhes do Pedido #{order.id.substring(0, 8)}
+            <Badge variant="outline" className="text-xs">
+              ID: {order.id}
+            </Badge>
+          </DialogTitle>
           <DialogDescription>
             Informações completas sobre este pedido
           </DialogDescription>
@@ -80,6 +107,21 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, open, onCl
         
         <ScrollArea className="flex-grow">
           <div className="space-y-6 p-1">
+            {/* Debug Information */}
+            <div className="bg-blue-50 p-3 rounded-md text-xs">
+              <div className="flex items-center gap-2 mb-2">
+                <Database size={14} />
+                <span className="font-medium">Informações de Debug</span>
+              </div>
+              <div className="space-y-1 text-blue-800">
+                <p><strong>ID Completo:</strong> {order.id}</p>
+                <p><strong>Itens Carregados:</strong> {order.items?.length || 0}</p>
+                <p><strong>Vendedor:</strong> {order.loja_nome || 'Não identificado'}</p>
+                <p><strong>Total do Sistema:</strong> {formatCurrency(order.valor_total)}</p>
+                <p><strong>Total Calculado:</strong> {formatCurrency(itemsTotal)}</p>
+              </div>
+            </div>
+
             {/* Order Status & Info */}
             <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
               <div>
@@ -146,7 +188,28 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, open, onCl
             <div>
               <h3 className="font-medium text-sm mb-4">Itens do Pedido</h3>
               
-              {order.items && order.items.length > 0 ? (
+              {!hasItems ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-amber-600 bg-amber-50 p-3 rounded-md">
+                    <AlertTriangle size={16} />
+                    <div>
+                      <p className="text-sm font-medium">Nenhum item encontrado</p>
+                      <p className="text-xs">Isso pode indicar problema na consulta dos dados ou nas relações entre tabelas.</p>
+                    </div>
+                  </div>
+                  
+                  {/* Additional debug info when no items */}
+                  <div className="bg-gray-50 p-3 rounded-md text-xs">
+                    <p><strong>Possíveis causas:</strong></p>
+                    <ul className="list-disc list-inside mt-1 space-y-1">
+                      <li>ID do pedido truncado ou incorreto</li>
+                      <li>Problemas na tabela order_items</li>
+                      <li>Relações entre produtos e vendedores quebradas</li>
+                      <li>Dados inconsistentes no banco</li>
+                    </ul>
+                  </div>
+                </div>
+              ) : (
                 <div className="space-y-4">
                   {order.items.map((item) => (
                     <div key={item.id} className="flex items-start gap-3 border-b pb-3">
@@ -165,11 +228,6 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, open, onCl
                       </div>
                     </div>
                   ))}
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 text-amber-600 bg-amber-50 p-3 rounded-md">
-                  <AlertTriangle size={16} />
-                  <p className="text-sm">Nenhum item encontrado - pode indicar problema nos dados</p>
                 </div>
               )}
             </div>
@@ -203,7 +261,7 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, open, onCl
                 </div>
                 {hasTotalMismatch && (
                   <p className="text-xs text-amber-600 mt-1">
-                    ⚠️ Diferença detectada entre o total do pedido e soma dos itens
+                    ⚠️ Diferença detectada: Pode haver desconto ou cupom aplicado
                   </p>
                 )}
               </div>
