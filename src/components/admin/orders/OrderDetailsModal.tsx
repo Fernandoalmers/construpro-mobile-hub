@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { 
   Dialog, 
@@ -52,16 +51,49 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, open, onCl
     const endereco = order.endereco_entrega;
     
     if (typeof endereco === 'object') {
-      // Handle different possible address object structures
+      // Handle the current address structure (rua, numero, bairro, cidade, estado, cep)
+      if ('rua' in endereco || 'cidade' in endereco || 'estado' in endereco) {
+        const rua = endereco.rua || '';
+        const numero = endereco.numero || '';
+        const complemento = endereco.complemento || '';
+        const bairro = endereco.bairro || '';
+        const cidade = endereco.cidade || '';
+        const estado = endereco.estado || '';
+        const cep = endereco.cep || '';
+        
+        // Build address string with proper formatting
+        const parts = [];
+        
+        if (rua) {
+          let ruaText = rua;
+          if (numero) ruaText += `, ${numero}`;
+          if (complemento) ruaText += `, ${complemento}`;
+          parts.push(ruaText);
+        }
+        
+        if (bairro) parts.push(bairro);
+        if (cidade && estado) {
+          parts.push(`${cidade} - ${estado}`);
+        } else if (cidade) {
+          parts.push(cidade);
+        } else if (estado) {
+          parts.push(estado);
+        }
+        
+        if (cep) parts.push(`CEP: ${cep}`);
+        
+        return parts.join(', ') || 'Endereço não disponível';
+      }
+      
+      // Handle legacy address structures (logradouro, street)
       if ('logradouro' in endereco) {
         return `${endereco.logradouro}, ${endereco.numero || 'S/N'}${endereco.complemento ? `, ${endereco.complemento}` : ''}, ${endereco.bairro || ''}, ${endereco.cidade || ''} - ${endereco.estado || ''}, ${endereco.cep || ''}`;
       } else if ('street' in endereco) {
-        // Alternative structure
         return `${endereco.street}, ${endereco.number || 'S/N'}${endereco.complement ? `, ${endereco.complement}` : ''}, ${endereco.neighborhood || ''}, ${endereco.city || ''} - ${endereco.state || ''}, ${endereco.zipCode || ''}`;
       }
     }
     
-    return JSON.stringify(endereco);
+    return 'Endereço não disponível';
   };
 
   // Calculate totals and discount information
