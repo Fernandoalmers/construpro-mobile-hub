@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { ArrowLeft, Save, Info, Package, Tag, Image, Layers, FileSymlink } from 'lucide-react';
+import { ArrowLeft, Save, Info, Package, Tag, Image, Layers, FileSymlink, Barcode } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -43,6 +44,10 @@ const productFormSchema = z.object({
   segmento: z.string().min(1, { message: 'Selecione um segmento' }),
   marca: z.string().optional(),
   tags: z.array(z.string()).optional(),
+  
+  // Product Identification
+  sku: z.string().optional(),
+  codigo_barras: z.string().optional(),
   
   // Unit and Packaging
   unidadeVenda: z.enum(['unidade', 'm2', 'litro', 'kg', 'caixa', 'pacote']),
@@ -100,6 +105,8 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
       segmento: '',
       marca: '',
       tags: [],
+      sku: '',
+      codigo_barras: '',
       unidadeVenda: 'unidade',
       valorConversao: null,
       controleQuantidade: 'livre',
@@ -113,6 +120,22 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
       variantes: [],
     }
   });
+  
+  // Validate barcode format (basic EAN/UPC validation)
+  const validateBarcode = (barcode: string): boolean => {
+    if (!barcode) return true; // Optional field
+    // Remove spaces and check if it's numeric and has valid length
+    const cleanBarcode = barcode.replace(/\s/g, '');
+    return /^\d{8}$|^\d{12}$|^\d{13}$|^\d{14}$/.test(cleanBarcode);
+  };
+
+  // Format barcode input
+  const formatBarcode = (value: string): string => {
+    // Remove non-numeric characters
+    const numeric = value.replace(/\D/g, '');
+    // Limit to 14 digits (EAN-14 is the longest common format)
+    return numeric.slice(0, 14);
+  };
   
   // Load product data if in edit mode
   useEffect(() => {
@@ -129,6 +152,8 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
         segmento: initialData.segmento || '',
         marca: initialData.marca || '',
         tags: initialData.tags || [],
+        sku: initialData.sku || '',
+        codigo_barras: initialData.codigo_barras || '',
         unidadeVenda: initialData.unidadeVenda || 'unidade',
         valorConversao: initialData.valorConversao || null,
         controleQuantidade: initialData.controleQuantidade || 'livre',
@@ -159,6 +184,7 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
   const watchUnidadeVenda = form.watch('unidadeVenda');
   const watchTemVariantes = form.watch('temVariantes');
   const watchTipoVariante = form.watch('tipoVariante');
+  const watchCodigoBarras = form.watch('codigo_barras');
 
   // Handle tags selection
   const handleTagToggle = (tag: string) => {
@@ -205,6 +231,12 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
       return;
     }
 
+    // Validate barcode if provided
+    if (values.codigo_barras && !validateBarcode(values.codigo_barras)) {
+      toast.error('Código de barras inválido. Use formato EAN-8, EAN-13, UPC-12 ou EAN-14');
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
@@ -216,6 +248,8 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
         categoria: values.categoria,
         segmento: values.segmento,
         segmento_id: segmentId, // Include segment ID if available
+        sku: values.sku?.trim() || undefined,
+        codigo_barras: values.codigo_barras?.trim() || undefined,
         preco_normal: values.preco,
         preco_promocional: values.precoPromocional || null,
         estoque: values.estoque,
@@ -459,9 +493,75 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
               </AccordionItem>
             </Accordion>
             
-            {/* Unit and Packaging Section */}
+            {/* Product Identification Section */}
             <Accordion type="single" collapsible defaultValue="item-2">
               <AccordionItem value="item-2">
+                <AccordionTrigger className="bg-white px-4 py-3 rounded-t-md shadow-sm border border-gray-200">
+                  <div className="flex items-center space-x-2">
+                    <Barcode size={20} className="text-construPro-blue" />
+                    <span className="font-medium">Identificação do Produto</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="bg-white p-4 border-x border-b border-gray-200 rounded-b-md shadow-sm">
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="sku"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>SKU (Código do Produto)</FormLabel>
+                            <FormControl>
+                              <Input 
+                                {...field}
+                                onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                                placeholder="Ex: PROD-001, ABC123"
+                                maxLength={50}
+                              />
+                            </FormControl>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Código único para identificação interna do produto
+                            </p>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="codigo_barras"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Código de Barras</FormLabel>
+                            <FormControl>
+                              <Input 
+                                {...field}
+                                onChange={(e) => field.onChange(formatBarcode(e.target.value))}
+                                placeholder="Ex: 1234567890123"
+                                maxLength={14}
+                              />
+                            </FormControl>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Código de barras EAN-8, EAN-13, UPC-12 ou EAN-14
+                            </p>
+                            {watchCodigoBarras && !validateBarcode(watchCodigoBarras) && (
+                              <p className="text-xs text-red-500 mt-1">
+                                Formato inválido. Use 8, 12, 13 ou 14 dígitos
+                              </p>
+                            )}
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+            
+            {/* Unit and Packaging Section */}
+            <Accordion type="single" collapsible defaultValue="item-3">
+              <AccordionItem value="item-3">
                 <AccordionTrigger className="bg-white px-4 py-3 rounded-t-md shadow-sm border border-gray-200">
                   <div className="flex items-center space-x-2">
                     <Package size={20} className="text-construPro-blue" />
@@ -569,8 +669,8 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
             </Accordion>
             
             {/* Stock and Price Section */}
-            <Accordion type="single" collapsible defaultValue="item-3">
-              <AccordionItem value="item-3">
+            <Accordion type="single" collapsible defaultValue="item-4">
+              <AccordionItem value="item-4">
                 <AccordionTrigger className="bg-white px-4 py-3 rounded-t-md shadow-sm border border-gray-200">
                   <div className="flex items-center space-x-2">
                     <Tag size={20} className="text-construPro-blue" />
@@ -668,8 +768,8 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
             </Accordion>
             
             {/* Images Section */}
-            <Accordion type="single" collapsible defaultValue="item-4">
-              <AccordionItem value="item-4">
+            <Accordion type="single" collapsible defaultValue="item-5">
+              <AccordionItem value="item-5">
                 <AccordionTrigger className="bg-white px-4 py-3 rounded-t-md shadow-sm border border-gray-200">
                   <div className="flex items-center space-x-2">
                     <Image size={20} className="text-construPro-blue" />
@@ -731,8 +831,8 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
             </Accordion>
             
             {/* Points Section */}
-            <Accordion type="single" collapsible defaultValue="item-5">
-              <AccordionItem value="item-5">
+            <Accordion type="single" collapsible defaultValue="item-6">
+              <AccordionItem value="item-6">
                 <AccordionTrigger className="bg-white px-4 py-3 rounded-t-md shadow-sm border border-gray-200">
                   <div className="flex items-center space-x-2">
                     <Tag size={20} className="text-construPro-blue" />
@@ -814,7 +914,7 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
             
             {/* Variants Section */}
             <Accordion type="single" collapsible>
-              <AccordionItem value="item-6">
+              <AccordionItem value="item-7">
                 <AccordionTrigger className="bg-white px-4 py-3 rounded-t-md shadow-sm border border-gray-200">
                   <div className="flex items-center space-x-2">
                     <Layers size={20} className="text-construPro-blue" />
