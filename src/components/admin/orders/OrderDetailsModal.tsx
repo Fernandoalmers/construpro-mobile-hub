@@ -11,7 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AdminOrder, getOrderStatusBadgeColor } from '@/services/adminOrdersService';
-import { Package, MapPin, CreditCard, Calendar, Store, Award, AlertTriangle, Database } from 'lucide-react';
+import { Package, MapPin, CreditCard, Calendar, Store, Award } from 'lucide-react';
 
 interface OrderDetailsModalProps {
   order: AdminOrder | null;
@@ -21,27 +21,6 @@ interface OrderDetailsModalProps {
 
 const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, open, onClose }) => {
   if (!order) return null;
-
-  // Debug logging when modal opens
-  React.useEffect(() => {
-    if (order && open) {
-      console.log(`[OrderDetailsModal] Modal opened with order:`, {
-        orderId: order.id,
-        fullId: order.id,
-        clienteNome: order.cliente_nome,
-        lojaNome: order.loja_nome,
-        itemsCount: order.items?.length || 0,
-        valorTotal: order.valor_total,
-        hasItems: !!(order.items && order.items.length > 0),
-        items: order.items?.map(item => ({
-          id: item.id,
-          produto_nome: item.produto_nome,
-          quantidade: item.quantidade,
-          subtotal: item.subtotal
-        }))
-      });
-    }
-  }, [order, open]);
 
   // Format currency
   const formatCurrency = (value: number) => {
@@ -96,9 +75,6 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, open, onCl
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             Detalhes do Pedido #{order.id.substring(0, 8)}
-            <Badge variant="outline" className="text-xs">
-              ID: {order.id}
-            </Badge>
           </DialogTitle>
           <DialogDescription>
             Informações completas sobre este pedido
@@ -107,21 +83,6 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, open, onCl
         
         <ScrollArea className="flex-grow">
           <div className="space-y-6 p-1">
-            {/* Debug Information */}
-            <div className="bg-blue-50 p-3 rounded-md text-xs">
-              <div className="flex items-center gap-2 mb-2">
-                <Database size={14} />
-                <span className="font-medium">Informações de Debug</span>
-              </div>
-              <div className="space-y-1 text-blue-800">
-                <p><strong>ID Completo:</strong> {order.id}</p>
-                <p><strong>Itens Carregados:</strong> {order.items?.length || 0}</p>
-                <p><strong>Vendedor:</strong> {order.loja_nome || 'Não identificado'}</p>
-                <p><strong>Total do Sistema:</strong> {formatCurrency(order.valor_total)}</p>
-                <p><strong>Total Calculado:</strong> {formatCurrency(itemsTotal)}</p>
-              </div>
-            </div>
-
             {/* Order Status & Info */}
             <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
               <div>
@@ -189,25 +150,9 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, open, onCl
               <h3 className="font-medium text-sm mb-4">Itens do Pedido</h3>
               
               {!hasItems ? (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-amber-600 bg-amber-50 p-3 rounded-md">
-                    <AlertTriangle size={16} />
-                    <div>
-                      <p className="text-sm font-medium">Nenhum item encontrado</p>
-                      <p className="text-xs">Isso pode indicar problema na consulta dos dados ou nas relações entre tabelas.</p>
-                    </div>
-                  </div>
-                  
-                  {/* Additional debug info when no items */}
-                  <div className="bg-gray-50 p-3 rounded-md text-xs">
-                    <p><strong>Possíveis causas:</strong></p>
-                    <ul className="list-disc list-inside mt-1 space-y-1">
-                      <li>ID do pedido truncado ou incorreto</li>
-                      <li>Problemas na tabela order_items</li>
-                      <li>Relações entre produtos e vendedores quebradas</li>
-                      <li>Dados inconsistentes no banco</li>
-                    </ul>
-                  </div>
+                <div className="text-center py-8 text-muted-foreground">
+                  <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Nenhum item encontrado para este pedido</p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -243,11 +188,8 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, open, onCl
                 </div>
                 {hasTotalMismatch && (
                   <div className="flex justify-between text-sm text-amber-600">
-                    <span className="flex items-center gap-1">
-                      <AlertTriangle size={12} />
-                      Total do sistema:
-                    </span>
-                    <span>{formatCurrency(order.valor_total)}</span>
+                    <span>Desconto/Ajuste:</span>
+                    <span>-{formatCurrency(itemsTotal - order.valor_total)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-sm">
@@ -259,11 +201,6 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, open, onCl
                   <span>Total:</span>
                   <span>{formatCurrency(order.valor_total)}</span>
                 </div>
-                {hasTotalMismatch && (
-                  <p className="text-xs text-amber-600 mt-1">
-                    ⚠️ Diferença detectada: Pode haver desconto ou cupom aplicado
-                  </p>
-                )}
               </div>
             </div>
             
