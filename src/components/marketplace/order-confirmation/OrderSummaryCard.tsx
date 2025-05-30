@@ -20,12 +20,16 @@ const OrderSummaryCard: React.FC<OrderSummaryCardProps> = ({ orderDetails }) => 
   // Get order ID for display
   const displayOrderId = orderDetails.id ? orderDetails.id.substring(0, 8).toUpperCase() : '';
   
-  // Calcular valores considerando desconto
-  const subtotalOriginal = orderDetails.desconto_aplicado 
-    ? Number(orderDetails.valor_total) + Number(orderDetails.desconto_aplicado)
-    : Number(orderDetails.valor_total);
+  // Garantir que temos valores numéricos válidos
+  const valorTotal = Number(orderDetails.valor_total) || 0;
+  const descontoAplicado = Number(orderDetails.desconto_aplicado) || 0;
+  
+  // Calcular subtotal considerando desconto
+  const subtotalOriginal = descontoAplicado > 0 
+    ? valorTotal + descontoAplicado
+    : valorTotal;
     
-  const hasDiscount = orderDetails.desconto_aplicado && Number(orderDetails.desconto_aplicado) > 0;
+  const hasDiscount = descontoAplicado > 0 && orderDetails.cupom_codigo;
 
   return (
     <Card className="mb-4 p-4">
@@ -68,13 +72,13 @@ const OrderSummaryCard: React.FC<OrderSummaryCardProps> = ({ orderDetails }) => 
               <Tag size={12} />
               Desconto ({orderDetails.cupom_codigo}):
             </span>
-            <span className="text-right">-R$ {Number(orderDetails.desconto_aplicado).toFixed(2)}</span>
+            <span className="text-right">-R$ {descontoAplicado.toFixed(2)}</span>
           </div>
         )}
         
         <div className="grid grid-cols-2 gap-2 mb-1">
           <span className="font-bold text-gray-600">Total:</span>
-          <span className="font-bold text-right">R$ {orderDetails.valor_total?.toFixed(2) || '0.00'}</span>
+          <span className="font-bold text-right">R$ {valorTotal.toFixed(2)}</span>
         </div>
         
         <div className="grid grid-cols-2 gap-2 text-construPro-orange">
