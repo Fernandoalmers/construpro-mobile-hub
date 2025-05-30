@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 export async function createOrder(orderData: CreateOrderPayload): Promise<string | null> {
   try {
     console.log('=== Starting Order Creation ===');
-    console.log('Raw order data received:', JSON.stringify(orderData, null, 2));
+    console.log('Raw order data received:', orderData);
     
     // Verify user session before making the request
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -33,9 +33,9 @@ export async function createOrder(orderData: CreateOrderPayload): Promise<string
       throw new Error('Valor total deve ser maior que zero');
     }
     
-    // Prepare order data with correct structure matching Edge Function expectations
+    // Prepare order data as a plain JavaScript object (not JSON string)
     const orderPayload = {
-      action: 'create_order', // Required action field for Edge Function routing
+      action: 'create_order',
       items: orderData.items.map(item => ({
         produto_id: item.produto_id,
         quantidade: item.quantidade,
@@ -57,7 +57,7 @@ export async function createOrder(orderData: CreateOrderPayload): Promise<string
       valor_total: Number(orderData.valor_total),
       pontos_ganhos: Number(orderData.pontos_ganhos || 0),
       cupom_aplicado: orderData.cupom_aplicado ? {
-        id: orderData.cupom_aplicado.code, // Use code as id for now
+        id: orderData.cupom_aplicado.code,
         code: orderData.cupom_aplicado.code,
         discount: Number(orderData.cupom_aplicado.discount || 0)
       } : null,
@@ -66,8 +66,8 @@ export async function createOrder(orderData: CreateOrderPayload): Promise<string
     };
     
     console.log('=== Prepared Order Payload ===');
-    console.log('Payload to send:', JSON.stringify(orderPayload, null, 2));
-    console.log('Payload size (bytes):', JSON.stringify(orderPayload).length);
+    console.log('Payload object:', orderPayload);
+    console.log('Payload is object:', typeof orderPayload === 'object');
     console.log('Payload action:', orderPayload.action);
     console.log('Payload items count:', orderPayload.items.length);
     
@@ -80,20 +80,13 @@ export async function createOrder(orderData: CreateOrderPayload): Promise<string
       throw new Error('Items are missing from payload');
     }
     
-    // Ensure all required fields are present
-    const requiredFields = ['action', 'items', 'endereco_entrega', 'forma_pagamento', 'valor_total'];
-    const missingFields = requiredFields.filter(field => !orderPayload[field as keyof typeof orderPayload]);
-    
-    if (missingFields.length > 0) {
-      throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
-    }
-    
     console.log('=== Sending Request to Edge Function ===');
+    console.log('Calling supabaseService.invokeFunction with payload as JavaScript object');
     
-    // Use the supabaseService helper with built-in retry logic
+    // Use the supabaseService helper - pass body as JavaScript object
     const { data, error } = await supabaseService.invokeFunction('order-processing', {
       method: 'POST',
-      body: orderPayload,
+      body: orderPayload, // Pass as JavaScript object, not JSON string
       maxRetries: 1
     });
     
