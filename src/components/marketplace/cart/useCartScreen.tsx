@@ -7,7 +7,7 @@ import { useCartTotals } from '@/hooks/cart/use-cart-totals';
 import { useStoreInfo } from '@/hooks/cart/use-store-info';
 import { useAuth } from '@/context/AuthContext';
 import { validateCartStock } from '@/services/checkout/stockValidation';
-import { toast } from 'react-toastify';
+import { toast } from '@/components/ui/sonner';
 
 export const useCartScreen = () => {
   const { user, isAuthenticated } = useAuth();
