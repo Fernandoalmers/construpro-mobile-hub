@@ -6,21 +6,52 @@ import { getProductImageUrl } from './getOrderById';
 
 export async function getOrders(): Promise<OrderData[]> {
   try {
-    console.log("🔍 [orderService.getOrders] Fetching orders for current user");
+    console.log("🔍 [orderService.getOrders] Starting order fetch process");
     
-    // Get current authenticated user
-    const { data: userData, error: userError } = await supabase.auth.getUser();
+    // Enhanced authentication check with retry logic
+    let userData;
+    let retryCount = 0;
+    const maxRetries = 3;
     
-    if (userError || !userData.user) {
-      console.error("❌ [orderService.getOrders] User not authenticated:", userError);
+    while (retryCount < maxRetries) {
+      const { data: userDataAttempt, error: userError } = await supabase.auth.getUser();
+      
+      if (!userError && userDataAttempt?.user) {
+        userData = userDataAttempt;
+        break;
+      }
+      
+      retryCount++;
+      console.warn(`❌ [orderService.getOrders] Auth attempt ${retryCount} failed:`, userError);
+      
+      if (retryCount < maxRetries) {
+        // Try to refresh session
+        await supabase.auth.refreshSession();
+        await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms before retry
+      }
+    }
+    
+    if (!userData?.user) {
+      console.error("❌ [orderService.getOrders] User not authenticated after retries");
       toast.error("Você precisa estar logado para ver seus pedidos");
       return [];
     }
     
     const userId = userData.user.id;
-    console.log(`👤 [orderService.getOrders] Fetching orders for user: ${userId}`);
+    console.log(`👤 [orderService.getOrders] Authenticated user ID: ${userId}`);
+    console.log(`📧 [orderService.getOrders] User email: ${userData.user.email}`);
     
-    // Fetch orders ONLY for the authenticated user
+    // Verify session is still valid
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !sessionData.session) {
+      console.error("❌ [orderService.getOrders] Session invalid:", sessionError);
+      toast.error("Sessão expirada. Faça login novamente.");
+      return [];
+    }
+    
+    // Enhanced order query with better error handling
+    console.log(`🔍 [orderService.getOrders] Querying orders for user: ${userId}`);
+    
     const { data: ordersData, error: ordersError } = await supabase
       .from('orders')
       .select(`
@@ -33,30 +64,44 @@ export async function getOrders(): Promise<OrderData[]> {
         endereco_entrega,
         created_at,
         updated_at,
-        rastreio
+        rastreio,
+        cupom_codigo,
+        desconto_aplicado
       `)
-      .eq('cliente_id', userId) // CRITICAL: Filter by authenticated user ID
+      .eq('cliente_id', userId)
       .order('created_at', { ascending: false });
     
     if (ordersError) {
-      console.error("❌ [orderService.getOrders] Error fetching orders:", ordersError);
-      toast.error("Não foi possível carregar seus pedidos", {
-        description: ordersError.message
+      console.error("❌ [orderService.getOrders] Database error:", ordersError);
+      toast.error("Erro ao carregar pedidos", {
+        description: `Código: ${ordersError.code} - ${ordersError.message}`
       });
       throw ordersError;
     }
+    
+    console.log(`📊 [orderService.getOrders] Found ${ordersData?.length || 0} orders in database`);
     
     if (!ordersData || ordersData.length === 0) {
       console.log("ℹ️ [orderService.getOrders] No orders found for user");
       return [];
     }
     
-    console.log(`📦 [orderService.getOrders] Found ${ordersData.length} orders, now fetching items...`);
+    // Log detailed order information for debugging
+    ordersData.forEach((order, index) => {
+      console.log(`📦 [orderService.getOrders] Order ${index + 1}:`, {
+        id: order.id,
+        status: order.status,
+        valor_total: order.valor_total,
+        created_at: order.created_at,
+        cliente_id: order.cliente_id
+      });
+    });
     
     // Get a list of order IDs to fetch items for
     const orderIds = ordersData.map(order => order.id);
+    console.log(`📋 [orderService.getOrders] Fetching items for orders:`, orderIds);
     
-    // Fetch order items with additional security check
+    // Enhanced order items query with better error handling
     const { data: itemsData, error: itemsError } = await supabase
       .from('order_items')
       .select(`
@@ -71,15 +116,17 @@ export async function getOrders(): Promise<OrderData[]> {
     
     if (itemsError) {
       console.error("❌ [orderService.getOrders] Error fetching order items:", itemsError);
-      // Continue with orders, but they won't have items
+      // Continue with orders but they won't have items
+      console.warn("⚠️ [orderService.getOrders] Continuing without items due to error");
     }
     
     console.log(`📋 [orderService.getOrders] Fetched ${itemsData?.length || 0} order items`);
     
     // Get unique product IDs from items
     const productIds = itemsData ? [...new Set(itemsData.map(item => item.produto_id))] : [];
+    console.log(`🛍️ [orderService.getOrders] Unique product IDs: ${productIds.length}`);
     
-    // Fetch product data if we have product IDs
+    // Enhanced products query
     let productsData: any[] = [];
     if (productIds.length > 0) {
       const { data: products, error: productsError } = await supabase
@@ -100,10 +147,9 @@ export async function getOrders(): Promise<OrderData[]> {
         console.error("❌ [orderService.getOrders] Error fetching products:", productsError);
       } else {
         productsData = products || [];
+        console.log(`🛍️ [orderService.getOrders] Fetched ${productsData.length} products`);
       }
     }
-    
-    console.log(`🛍️ [orderService.getOrders] Fetched ${productsData.length} products`);
     
     // Create a map of products by ID for quick lookup
     const productsMap = new Map(productsData.map(product => [product.id, product]));
@@ -132,8 +178,6 @@ export async function getOrders(): Promise<OrderData[]> {
           preco_promocional: productFromMap?.preco_promocional
         };
         
-        console.log(`[orderService.getOrders] Product ${productData.nome} image URL: ${productData.imagem_url}`);
-        
         const orderItem: OrderItem = {
           id: item.id,
           produto_id: item.produto_id,
@@ -150,7 +194,6 @@ export async function getOrders(): Promise<OrderData[]> {
     // Combine orders with their items
     const orders: OrderData[] = ordersData.map(order => {
       const orderItems = itemsByOrderId[order.id] || [];
-      console.log(`📦 [orderService.getOrders] Order ${order.id} has ${orderItems.length} items`);
       
       return {
         ...order,
@@ -158,14 +201,31 @@ export async function getOrders(): Promise<OrderData[]> {
       };
     });
     
-    console.log(`✅ [orderService.getOrders] Retrieved ${orders.length} orders with items and images for user ${userId}`);
+    console.log(`✅ [orderService.getOrders] Successfully processed ${orders.length} orders`);
+    
+    // Final debug log with order summaries
+    orders.forEach((order, index) => {
+      console.log(`📦 [orderService.getOrders] Final order ${index + 1}:`, {
+        id: order.id.substring(0, 8),
+        itemCount: order.items?.length || 0,
+        status: order.status,
+        total: order.valor_total
+      });
+    });
     
     return orders;
+    
   } catch (error: any) {
-    console.error("❌ [orderService.getOrders] Error:", error);
+    console.error("❌ [orderService.getOrders] Unexpected error:", error);
+    
+    // Enhanced error reporting
+    const errorMessage = error?.message || 'Erro desconhecido';
+    const errorCode = error?.code || 'N/A';
+    
     toast.error("Erro ao carregar pedidos", {
-      description: error.message || "Tente novamente mais tarde"
+      description: `${errorMessage} (Código: ${errorCode})`
     });
+    
     return [];
   }
 }

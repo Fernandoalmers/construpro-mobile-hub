@@ -87,16 +87,30 @@ export function useCheckout() {
       return false;
     }
     
-    // Check if session is still valid
-    const { data: { session }, error } = await supabase.auth.getSession();
-    if (error || !session) {
-      console.error('Session verification failed:', error);
-      toast.error('Sua sessão expirou. Por favor, faça login novamente.');
-      navigate('/login');
+    // Enhanced session verification
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error || !session) {
+        console.error('Session verification failed:', error);
+        toast.error('Sua sessão expirou. Por favor, faça login novamente.');
+        navigate('/login');
+        return false;
+      }
+      
+      // Verify user matches session
+      if (session.user?.id !== user.id) {
+        console.error('User ID mismatch between context and session');
+        toast.error('Sessão inconsistente. Por favor, faça login novamente.');
+        navigate('/login');
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Authentication verification error:', error);
+      toast.error('Erro na verificação de autenticação');
       return false;
     }
-    
-    return true;
   }, [isAuthenticated, user, navigate]);
   
   // Set default address on load
@@ -174,12 +188,20 @@ export function useCheckout() {
     refreshCart();
   }, [refreshCart]);
   
-  // Handle order placement with improved data validation
+  // Handle order placement with enhanced error handling and debugging
   const handlePlaceOrder = useCallback(async () => {
     try {
+      console.log('🛒 [handlePlaceOrder] Starting order placement process');
+      console.log('🛒 [handlePlaceOrder] User context:', { 
+        isAuthenticated, 
+        userId: user?.id, 
+        userEmail: user?.email 
+      });
+      
       // First verify authentication
       const isAuthValid = await verifyAuthentication();
       if (!isAuthValid) {
+        console.error('🛒 [handlePlaceOrder] Authentication verification failed');
         return;
       }
       
@@ -193,7 +215,10 @@ export function useCheckout() {
         return;
       }
 
-      // FIXED: Validate address has required fields using correct Portuguese field names
+      console.log('🛒 [handlePlaceOrder] Cart items:', cartItems.length);
+      console.log('🛒 [handlePlaceOrder] Selected address:', selectedAddress);
+
+      // Enhanced address validation with better error messages
       const addressValidation = {
         rua: selectedAddress.logradouro || '',
         numero: selectedAddress.numero || '',
@@ -205,9 +230,9 @@ export function useCheckout() {
         ponto_referencia: '' // This field doesn't exist in our Address interface
       };
 
-      // Check required address fields - BETTER ERROR MESSAGES
+      // Check required address fields
       if (!addressValidation.rua || !addressValidation.cidade || !addressValidation.estado || !addressValidation.cep) {
-        console.error('Address validation failed:', {
+        console.error('🛒 [handlePlaceOrder] Address validation failed:', {
           selectedAddress,
           addressValidation,
           missingFields: {
@@ -221,14 +246,14 @@ export function useCheckout() {
         return;
       }
 
-      console.log('✅ Address validation passed:', addressValidation);
+      console.log('✅ [handlePlaceOrder] Address validation passed:', addressValidation);
 
       setIsSubmitting(true);
       setProcessError(null);
       setOrderAttempts(prev => prev + 1);
       
       // Final stock validation before creating order
-      console.log('Performing final stock validation before order creation');
+      console.log('🛒 [handlePlaceOrder] Performing final stock validation');
       const stockValid = await validateStock();
       if (!stockValid) {
         setIsSubmitting(false);
@@ -237,8 +262,8 @@ export function useCheckout() {
       
       // Prepare order data with proper validation and structure
       const orderData = {
-        items: cartItems, // Use cartItems directly as they already match CartItem interface
-        endereco_entrega: addressValidation, // Use the validated address
+        items: cartItems,
+        endereco_entrega: addressValidation,
         forma_pagamento: paymentMethod,
         valor_total: Number(total),
         pontos_ganhos: Number(totalPoints),
@@ -249,17 +274,20 @@ export function useCheckout() {
         desconto: Number(discount)
       };
       
-      console.log('🚀 Sending order with validated data:', {
+      console.log('🚀 [handlePlaceOrder] Sending order with validated data:', {
         itemsCount: orderData.items.length,
         endereco_entrega: orderData.endereco_entrega,
         valor_total: orderData.valor_total,
-        pontos_ganhos: orderData.pontos_ganhos
+        pontos_ganhos: orderData.pontos_ganhos,
+        userId: user?.id
       });
       
       // Create order
       const orderId = await orderService.createOrder(orderData);
       
       if (orderId) {
+        console.log('✅ [handlePlaceOrder] Order created successfully:', orderId);
+        
         // Success flow - clear coupon from localStorage
         localStorage.removeItem('appliedCoupon');
         clearCart();
@@ -267,21 +295,32 @@ export function useCheckout() {
         toast.success('Pedido realizado com sucesso!');
         navigate(`/order/confirmacao/${orderId}`);
       } else {
-        throw new Error('Falha ao processar pedido');
+        throw new Error('Falha ao processar pedido - ID não retornado');
       }
     } catch (error: any) {
-      console.error('Error placing order:', error);
+      console.error('❌ [handlePlaceOrder] Error placing order:', error);
       
-      // Handle authentication-specific errors
+      // Enhanced error handling with more specific messages
+      let errorMessage = 'Erro ao processar seu pedido';
+      
       if (error.message?.includes('Sessão expirada') || error.message?.includes('autenticação')) {
-        setProcessError('Sessão expirada. Redirecionando para login...');
+        errorMessage = 'Sessão expirada. Redirecionando para login...';
+        setProcessError(errorMessage);
         setTimeout(() => {
           navigate('/login');
         }, 2000);
         return;
       }
       
-      setProcessError(error.message || 'Erro ao processar seu pedido');
+      if (error.message?.includes('address') || error.message?.includes('endereço')) {
+        errorMessage = 'Erro no endereço de entrega. Verifique os dados.';
+      } else if (error.message?.includes('stock') || error.message?.includes('estoque')) {
+        errorMessage = 'Produto fora de estoque. Atualize seu carrinho.';
+      } else if (error.message?.includes('payment') || error.message?.includes('pagamento')) {
+        errorMessage = 'Erro no processamento do pagamento.';
+      }
+      
+      setProcessError(error.message || errorMessage);
       toast.error('Não foi possível completar seu pedido', {
         description: error.message || 'Por favor, tente novamente'
       });
@@ -300,7 +339,9 @@ export function useCheckout() {
     validateStock,
     clearCart, 
     refreshCart, 
-    navigate
+    navigate,
+    user,
+    isAuthenticated
   ]);
   
   // Handle retry

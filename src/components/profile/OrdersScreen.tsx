@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Package, TruckIcon, ShoppingBag, ArrowRight, Search, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, Package, TruckIcon, ShoppingBag, ArrowRight, Search, AlertTriangle, RefreshCw } from 'lucide-react';
 import Card from '../common/Card';
 import CustomButton from '../common/CustomButton';
 import { toast } from "@/components/ui/sonner";
@@ -19,6 +19,7 @@ const OrdersScreen: React.FC = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   const [statusFilter, setStatusFilter] = useState<string>("todos");
+  const [debugMode, setDebugMode] = useState(false);
   
   // Security check - redirect if not authenticated
   React.useEffect(() => {
@@ -30,28 +31,56 @@ const OrdersScreen: React.FC = () => {
     }
   }, [isAuthenticated, navigate]);
   
-  // Fetch orders from Supabase using orderService
+  // Enhanced query with better error handling and debugging
   const { 
     data: orders = [], 
     isLoading, 
     error,
-    refetch 
+    refetch,
+    isRefetching 
   } = useQuery({
     queryKey: ['userOrders', user?.id],
-    queryFn: orderService.getOrders,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    enabled: isAuthenticated && !!user?.id, // Only fetch if authenticated
+    queryFn: async () => {
+      console.log("🔄 [OrdersScreen] React Query executing orderService.getOrders");
+      console.log("🔄 [OrdersScreen] Current user:", { id: user?.id, email: user?.email });
+      
+      const result = await orderService.getOrders();
+      console.log("🔄 [OrdersScreen] React Query result:", { 
+        ordersCount: result.length,
+        orders: result.map(o => ({ id: o.id.substring(0, 8), status: o.status }))
+      });
+      
+      return result;
+    },
+    staleTime: 30 * 1000, // Reduced from 5 minutes to 30 seconds for debugging
+    enabled: isAuthenticated && !!user?.id,
+    retry: (failureCount, error) => {
+      console.log(`🔄 [OrdersScreen] Query retry attempt ${failureCount}:`, error);
+      return failureCount < 3;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
   
-  // Log security info
+  // Enhanced logging for debugging
   React.useEffect(() => {
     if (user?.id) {
-      console.log(`🔐 [OrdersScreen] Loading orders for authenticated user: ${user.id}`);
+      console.log(`🔐 [OrdersScreen] Component mounted for user: ${user.id}`);
+      console.log(`📧 [OrdersScreen] User email: ${user.email}`);
+      console.log(`📊 [OrdersScreen] Orders loaded: ${orders.length}`);
+      
+      if (orders.length > 0) {
+        console.log("📦 [OrdersScreen] First few orders:", orders.slice(0, 3).map(o => ({
+          id: o.id.substring(0, 8),
+          status: o.status,
+          itemsCount: o.items?.length || 0,
+          created_at: o.created_at
+        })));
+      }
     }
-  }, [user?.id]);
+  }, [user?.id, user?.email, orders]);
   
   if (error) {
-    console.error('❌ [OrdersScreen] Error fetching orders:', error);
+    console.error('❌ [OrdersScreen] Query error:', error);
   }
   
   // Don't render anything if not authenticated
@@ -64,7 +93,7 @@ const OrdersScreen: React.FC = () => {
     ? orders 
     : orders.filter(order => {
         if (statusFilter === "emProcesso") {
-          return ["Em Separação", "Confirmado", "Em Trânsito"].includes(order.status);
+          return ["Em Separação", "Confirmado", "Em Trânsito", "Processando"].includes(order.status);
         }
         return order.status === statusFilter;
       });
@@ -80,6 +109,8 @@ const OrdersScreen: React.FC = () => {
         return "bg-yellow-100 text-yellow-800";
       case "Confirmado":
         return "bg-purple-100 text-purple-800";
+      case "Processando":
+        return "bg-orange-100 text-orange-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -111,7 +142,7 @@ const OrdersScreen: React.FC = () => {
   };
   
   const handleTrackOrder = (orderId: string) => {
-    toast.info(`Acompanhamento do pedido ${orderId}`);
+    toast.info(`Acompanhamento do pedido ${orderId.substring(0, 8)}`);
     // In a real app, this would navigate to a tracking page
   };
   
@@ -122,8 +153,13 @@ const OrdersScreen: React.FC = () => {
   };
 
   const handleRetry = () => {
+    console.log("🔄 [OrdersScreen] Manual retry triggered");
     toast.info("Tentando carregar pedidos novamente...");
     refetch();
+  };
+
+  const toggleDebugMode = () => {
+    setDebugMode(!debugMode);
   };
 
   if (isLoading) {
@@ -140,11 +176,32 @@ const OrdersScreen: React.FC = () => {
           </button>
           <h1 className="text-xl font-bold text-white ml-2">Meus Pedidos</h1>
           {user?.id && (
-            <div className="ml-auto text-xs text-white opacity-75">
-              User: {user.id.substring(0, 8)}
+            <div className="ml-auto text-xs text-white opacity-75 flex items-center gap-2">
+              <span>User: {user.id.substring(0, 8)}</span>
+              <button 
+                onClick={toggleDebugMode}
+                className="bg-white/20 px-2 py-1 rounded text-xs"
+              >
+                Debug
+              </button>
             </div>
           )}
         </div>
+        
+        {/* Debug Panel */}
+        {debugMode && (
+          <div className="bg-white/10 p-3 rounded mb-3 text-xs text-white">
+            <p><strong>Debug Info:</strong></p>
+            <p>User ID: {user?.id}</p>
+            <p>Email: {user?.email}</p>
+            <p>Orders Count: {orders.length}</p>
+            <p>Filtered Count: {filteredOrders.length}</p>
+            <p>Loading: {isLoading ? 'Yes' : 'No'}</p>
+            <p>Refetching: {isRefetching ? 'Yes' : 'No'}</p>
+            <p>Error: {error ? 'Yes' : 'No'}</p>
+            <p>Last Fetch: {new Date().toLocaleTimeString()}</p>
+          </div>
+        )}
         
         {/* Tabs - Improved for mobile view */}
         <div className="px-0 -mt-1 -mx-1">
@@ -175,18 +232,25 @@ const OrdersScreen: React.FC = () => {
         </div>
       </div>
       
-      {/* Security Alert for Errors */}
+      {/* Enhanced Error Display */}
       {error && (
         <div className="p-4">
           <Card className="p-4 border-red-200 bg-red-50">
             <div className="flex items-center gap-3">
               <AlertTriangle className="h-5 w-5 text-red-500" />
-              <div>
+              <div className="flex-1">
                 <h3 className="font-medium text-red-800">Erro ao carregar pedidos</h3>
                 <p className="text-sm text-red-700 mt-1">
-                  Verifique sua conexão ou tente novamente
+                  {error instanceof Error ? error.message : 'Erro desconhecido'}
                 </p>
               </div>
+              <button
+                onClick={handleRetry}
+                className="bg-red-100 hover:bg-red-200 p-2 rounded-md transition-colors"
+                disabled={isRefetching}
+              >
+                <RefreshCw size={16} className={`text-red-600 ${isRefetching ? 'animate-spin' : ''}`} />
+              </button>
             </div>
           </Card>
         </div>
@@ -206,8 +270,9 @@ const OrdersScreen: React.FC = () => {
                 variant="primary" 
                 className="mt-4"
                 onClick={handleRetry}
+                disabled={isRefetching}
               >
-                Tentar novamente
+                {isRefetching ? "Carregando..." : "Tentar novamente"}
               </CustomButton>
             ) : (
               <CustomButton 
@@ -273,6 +338,15 @@ const OrdersScreen: React.FC = () => {
                         {orderSummary.firstItem.quantidade}x {orderSummary.firstItemName.substring(0, 20)}
                         {orderSummary.firstItemName.length > 20 ? '...' : ''}
                       </div>
+                    </div>
+                  )}
+                  
+                  {/* Debug info for each order */}
+                  {debugMode && (
+                    <div className="mt-2 text-xs bg-gray-50 p-2 rounded">
+                      <p>ID: {order.id}</p>
+                      <p>Items: {order.items?.length || 0}</p>
+                      <p>Cliente ID: {order.cliente_id}</p>
                     </div>
                   )}
                 </div>
