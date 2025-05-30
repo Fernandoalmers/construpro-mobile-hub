@@ -6,7 +6,7 @@ import { addToCart, updateCartItemQuantity, removeFromCart, clearCart } from '@/
 /**
  * Hook for cart operations - optimized to prevent loops and ensure immediate counter updates
  */
-export function useCartOperations(refreshCartData: () => Promise<void>) {
+export function useCartOperations(refreshCartData: () => Promise<void>, forceUpdate?: () => void) {
   const [isLoading, setIsLoading] = useState(false);
   const [operationInProgress, setOperationInProgress] = useState<string | null>(null);
 
@@ -20,6 +20,11 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
       
       console.log('[useCartOperations] Refreshing cart after add');
       await refreshCartData();
+      
+      // Force immediate update
+      if (forceUpdate) {
+        forceUpdate();
+      }
       
       toast.success(`${quantity} ${quantity > 1 ? 'unidades' : 'unidade'} adicionada(s) ao carrinho`);
     } catch (error: any) {
@@ -44,6 +49,11 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
       
       console.log('[useCartOperations] Refreshing cart after update');
       await refreshCartData();
+      
+      // Force immediate update
+      if (forceUpdate) {
+        forceUpdate();
+      }
     } catch (error: any) {
       console.error('[useCartOperations] Error updating quantity:', error);
       toast.error(error.message || 'Erro ao atualizar quantidade');
@@ -62,8 +72,14 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
       console.log('[useCartOperations] Removing item:', itemId);
       await removeFromCart(itemId);
       
-      console.log('[useCartOperations] Single refresh after remove for immediate counter update');
+      console.log('[useCartOperations] Refreshing cart after remove');
       await refreshCartData();
+      
+      // Force immediate update for counter
+      if (forceUpdate) {
+        console.log('[useCartOperations] Forcing immediate update after remove');
+        forceUpdate();
+      }
       
       toast.success('Item removido do carrinho');
     } catch (error: any) {
@@ -84,8 +100,14 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
       console.log('[useCartOperations] Clearing cart');
       await clearCart();
       
-      console.log('[useCartOperations] Single refresh after clear for immediate counter update');
+      console.log('[useCartOperations] Refreshing cart after clear');
       await refreshCartData();
+      
+      // Force immediate update for counter
+      if (forceUpdate) {
+        console.log('[useCartOperations] Forcing immediate update after clear');
+        forceUpdate();
+      }
       
       toast.success('Carrinho esvaziado');
     } catch (error: any) {

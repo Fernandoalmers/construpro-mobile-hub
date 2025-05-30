@@ -1,31 +1,29 @@
+
 import { useEffect, useMemo } from 'react';
-import { useCartData } from '@/hooks/cart/use-cart-data';
-import { useAuth } from '@/context/AuthContext';
+import { useCart } from '@/hooks/use-cart';
 import { useCoupon } from '@/hooks/cart/use-coupon';
 import { useNavigate } from 'react-router-dom';
 import { useGroupItemsByStore } from '@/hooks/cart/use-group-items-by-store';
 import { useCartTotals } from '@/hooks/cart/use-cart-totals';
-import { useCartOperations } from '@/hooks/cart/use-cart-operations';
 import { useStoreInfo } from '@/hooks/cart/use-store-info';
+import { useAuth } from '@/context/AuthContext';
 
 export const useCartScreen = () => {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   
+  // Use the unified cart context directly
   const {
     cart,
+    cartItems,
+    cartCount, // Use the unified cart count from context
     isLoading,
-    error,
-    refreshCart
-  } = useCartData(isAuthenticated, user?.id || null, (user as any)?.tipo_perfil || 'consumidor');
-
-  const {
+    addToCart,
     updateQuantity,
     removeItem,
     clearCart,
-    isLoading: operationsLoading,
-    operationInProgress
-  } = useCartOperations(refreshCart);
+    refreshCart
+  } = useCart();
 
   const {
     couponCode,
@@ -35,20 +33,6 @@ export const useCartScreen = () => {
     removeCoupon,
     isValidating
   } = useCoupon();
-
-  // Extract cart items from cart object
-  const cartItems = cart?.items || [];
-  
-  // UNIFIED CALCULATION: Use the same logic as the context
-  const cartCount = useMemo(() => {
-    if (!cartItems || cartItems.length === 0) {
-      return 0;
-    }
-    // Sum the quantities - same as context calculation
-    const count = cartItems.reduce((sum, item) => sum + (item.quantidade || 0), 0);
-    console.log('[useCartScreen] UNIFIED cart count:', count, 'from items:', cartItems.length);
-    return count;
-  }, [cartItems]);
 
   // Extract unique store IDs from cart items
   const storeIds = useMemo(() => {
@@ -201,16 +185,16 @@ export const useCartScreen = () => {
 
   return {
     // States
-    loading: isLoading || operationsLoading || storeLoading,
-    error: error?.message || null,
+    loading: isLoading || storeLoading,
+    error: null,
     cartIsEmpty,
     
     // Cart data
     cart,
     cartItems,
-    cartCount, // Use the unified calculation here too
+    cartCount, // Use the unified calculation from context
     itemsByStore: enhancedGroupedItems,
-    processingItem: operationInProgress,
+    processingItem: null,
     
     // Coupon data
     appliedCoupon,

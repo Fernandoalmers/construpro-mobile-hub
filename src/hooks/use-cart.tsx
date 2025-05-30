@@ -30,8 +30,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     userType
   );
   
-  // Get cart operations with enhanced refresh
-  const operations = useCartOperations(refreshCart);
+  // Force update trigger for immediate counter updates
+  const [updateTrigger, setUpdateTrigger] = React.useState(0);
+  const forceUpdate = React.useCallback(() => {
+    console.log('[CartProvider] Forcing immediate update');
+    setUpdateTrigger(prev => prev + 1);
+  }, []);
+  
+  // Get cart operations with force update capability
+  const operations = useCartOperations(refreshCart, forceUpdate);
 
   // Calculate total items - UNIFIED and consistent calculation
   const cartCount = React.useMemo(() => {
@@ -43,19 +50,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const count = cart.items.reduce((sum, item) => sum + (item.quantidade || 0), 0);
     console.log('[CartProvider] UNIFIED cart count calculation:', count, 'from items:', cart.items.length);
     return count;
-  }, [cart?.items, refreshKey]); // Include refreshKey to force recalculation
+  }, [cart?.items, refreshKey, updateTrigger]); // Include both refreshKey and updateTrigger
   
   const cartItems = cart?.items || [];
-
-  // Force component updates with a single counter mechanism
-  const [updateTrigger, setUpdateTrigger] = React.useState(0);
-  
-  React.useEffect(() => {
-    if (!operations.isLoading) {
-      console.log('[CartProvider] Operation completed, triggering counter update');
-      setUpdateTrigger(prev => prev + 1);
-    }
-  }, [operations.isLoading, cartCount]);
 
   console.log('[CartProvider] Final state:', {
     cartCount,
@@ -70,10 +67,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const enhancedRefreshCart = React.useCallback(async () => {
     console.log('[CartProvider] Enhanced refresh cart called');
     await refreshCart();
-    setUpdateTrigger(prev => prev + 1);
-  }, [refreshCart]);
+    forceUpdate();
+  }, [refreshCart, forceUpdate]);
 
-  // Create context value with enhanced operations and unified counter
+  // Create context value with unified counter and direct operations
   const value: CartContextType = {
     cart,
     cartCount, // This is the SINGLE SOURCE OF TRUTH for cart count
@@ -81,14 +78,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     isLoading: isLoading || operations.isLoading,
     addToCart: operations.addToCart,
     updateQuantity: operations.updateQuantity,
-    removeItem: async (itemId: string) => {
-      await operations.removeItem(itemId);
-      setUpdateTrigger(prev => prev + 1);
-    },
-    clearCart: async () => {
-      await operations.clearCart();
-      setUpdateTrigger(prev => prev + 1);
-    },
+    removeItem: operations.removeItem, // Use direct operation
+    clearCart: operations.clearCart,   // Use direct operation
     refreshCart: enhancedRefreshCart
   };
 
