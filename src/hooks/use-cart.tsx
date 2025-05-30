@@ -23,6 +23,7 @@ export async function addToCart(productId: string, quantity: number): Promise<vo
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user, profile } = useAuth();
   const [forceEmptyCount, setForceEmptyCount] = useState(false);
+  const [cartClearedFlag, setCartClearedFlag] = useState(false);
   
   // Get user type with proper type guard
   const userType = profile?.tipo_perfil || 'consumidor';
@@ -42,24 +43,38 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       console.log('[CartProvider] Cart is empty after refresh, forcing count to 0');
       setForceEmptyCount(true);
       // Reset the flag after a brief moment
-      setTimeout(() => setForceEmptyCount(false), 100);
+      setTimeout(() => setForceEmptyCount(false), 200);
     }
   };
   
-  // Get cart operations with enhanced refresh
-  const operations = useCartOperations(enhancedRefreshCart);
+  // Function to handle cart clearing notification
+  const handleCartCleared = () => {
+    console.log('[CartProvider] Cart cleared, forcing immediate count to 0');
+    setCartClearedFlag(true);
+    setForceEmptyCount(true);
+    
+    // Reset flags after state propagation
+    setTimeout(() => {
+      setCartClearedFlag(false);
+      setForceEmptyCount(false);
+    }, 300);
+  };
+  
+  // Get cart operations with enhanced refresh and clear handler
+  const operations = useCartOperations(enhancedRefreshCart, handleCartCleared);
 
-  // Calculate total items in cart - with forced empty state handling
+  // Calculate total items in cart - with multiple safety checks
   const cartItems = cart?.items || [];
   let cartCount = 0;
   
-  if (forceEmptyCount || cartItems.length === 0) {
+  // Force count to 0 in multiple scenarios to ensure accuracy
+  if (forceEmptyCount || cartClearedFlag || cartItems.length === 0) {
     cartCount = 0;
   } else {
     cartCount = cartItems.reduce((sum, item) => sum + (item.quantidade || 0), 0);
   }
   
-  console.log('CartProvider: cartCount =', cartCount, 'cartItems.length =', cartItems.length, 'isLoading =', isLoading, 'userType =', validUserType, 'forceEmptyCount =', forceEmptyCount);
+  console.log('CartProvider: cartCount =', cartCount, 'cartItems.length =', cartItems.length, 'isLoading =', isLoading, 'userType =', validUserType, 'forceEmptyCount =', forceEmptyCount, 'cartClearedFlag =', cartClearedFlag);
 
   // Force refresh cart when authentication state changes
   useEffect(() => {
@@ -71,10 +86,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   
   // Reset force empty flag when cart items change
   useEffect(() => {
-    if (cartItems.length > 0 && forceEmptyCount) {
+    if (cartItems.length > 0 && (forceEmptyCount || cartClearedFlag)) {
       setForceEmptyCount(false);
+      setCartClearedFlag(false);
     }
-  }, [cartItems.length, forceEmptyCount]);
+  }, [cartItems.length, forceEmptyCount, cartClearedFlag]);
   
   // Cleanup abandoned carts periodically
   useEffect(() => {

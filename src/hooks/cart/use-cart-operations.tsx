@@ -7,7 +7,10 @@ import { addToCart, updateCartItemQuantity, removeFromCart, clearCart } from '@/
 /**
  * Hook for cart operations with loading state management
  */
-export function useCartOperations(refreshCartData: () => Promise<void>) {
+export function useCartOperations(
+  refreshCartData: () => Promise<void>, 
+  onCartCleared?: () => void
+) {
   const [isLoading, setIsLoading] = useState(false);
   const [operationInProgress, setOperationInProgress] = useState<string | null>(null);
   const { addToCart: addToCartHook, isLoading: isAddingToCart } = useCartAdd(refreshCartData);
@@ -92,6 +95,11 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
       console.log('[useCartOperations] Clearing cart');
       setIsLoading(true);
       setOperationInProgress('clear');
+      
+      // Notify immediately that cart is being cleared
+      if (onCartCleared) {
+        onCartCleared();
+      }
       
       await clearCart();
       
