@@ -18,16 +18,22 @@ const OrderTotal: React.FC<OrderTotalProps> = ({ order }) => {
   const valorTotal = Number(order.valor_total) || 0;
   const descontoAplicado = Number(order.desconto_aplicado) || 0;
   
-  // Verificar se há desconto aplicado
-  const hasDiscount = descontoAplicado > 0 && order.cupom_codigo;
+  // Verificar se há desconto aplicado - mais rigoroso
+  const hasDiscount = descontoAplicado > 0 && order.cupom_codigo && order.cupom_codigo.trim() !== '';
 
-  console.log('[OrderTotal] Cálculos:', {
+  console.log('[OrderTotal] Cálculos detalhados:', {
     subtotalBruto,
     valorTotal,
     descontoAplicado,
     hasDiscount,
     cupomCodigo: order.cupom_codigo,
-    itemsCount: order.items?.length || 0
+    cupomCodigoTrimmed: order.cupom_codigo?.trim(),
+    itemsCount: order.items?.length || 0,
+    items: order.items?.map(item => ({
+      preco: item.preco_unitario,
+      quantidade: item.quantidade,
+      subtotal: Number(item.preco_unitario) * Number(item.quantidade)
+    }))
   });
 
   return (

@@ -31,7 +31,7 @@ const OrderDetailScreen: React.FC = () => {
     enabled: !!id
   });
 
-  // Add more detailed logging to help debug
+  // Add more detailed logging to help debug discount and data issues
   React.useEffect(() => {
     if (orderData) {
       console.log("📊 [OrderDetailScreen] Order data loaded:", {
@@ -41,7 +41,9 @@ const OrderDetailScreen: React.FC = () => {
         itemsCount: orderData.items?.length || 0,
         valorTotal: orderData.valor_total,
         descontoAplicado: orderData.desconto_aplicado,
-        cupomCodigo: orderData.cupom_codigo
+        cupomCodigo: orderData.cupom_codigo,
+        cupomCodigoType: typeof orderData.cupom_codigo,
+        pontos_ganhos: orderData.pontos_ganhos
       });
       
       // If we have items, check the first one for debugging
@@ -63,6 +65,17 @@ const OrderDetailScreen: React.FC = () => {
         });
       } else {
         console.warn("⚠️ [OrderDetailScreen] No items found in order data");
+      }
+      
+      // Debug discount data specifically
+      if (orderData.cupom_codigo || orderData.desconto_aplicado) {
+        console.log("🎫 [OrderDetailScreen] Discount data:", {
+          cupom_codigo: orderData.cupom_codigo,
+          cupom_codigo_length: orderData.cupom_codigo?.length,
+          desconto_aplicado: orderData.desconto_aplicado,
+          desconto_aplicado_type: typeof orderData.desconto_aplicado,
+          desconto_aplicado_number: Number(orderData.desconto_aplicado)
+        });
       }
     }
   }, [orderData]);

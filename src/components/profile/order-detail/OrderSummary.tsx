@@ -38,6 +38,13 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({ order }) => {
 
   const hasDiscount = order.desconto_aplicado && Number(order.desconto_aplicado) > 0 && order.cupom_codigo;
 
+  console.log('[OrderSummary] Debugging discount display:', {
+    desconto_aplicado: order.desconto_aplicado,
+    cupom_codigo: order.cupom_codigo,
+    hasDiscount,
+    pontos_ganhos: order.pontos_ganhos
+  });
+
   return (
     <Card className="p-4">
       <div className="flex justify-between items-center mb-3">
