@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ArrowLeft, Save, Image as ImageIcon, Info, Tag, Layers } from 'lucide-react';
 import { useProdutoForm } from './hooks/useProdutoForm';
@@ -49,7 +48,9 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
     selectedTags,
     setSelectedTags,
     images,
-    setImages,
+    imageFiles,
+    addImages,
+    removeImage,
     isLoading,
     setSegmentId,
     onSubmit,
@@ -73,15 +74,15 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
     });
   };
 
-  // Handle image upload
+  // Updated image upload handler
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      const newImages = [...images];
-      for (let i = 0; i < files.length && newImages.length < 5; i++) {
-        newImages.push(URL.createObjectURL(files[i]));
-      }
-      setImages(newImages);
+      const fileArray = Array.from(files);
+      addImages(fileArray);
+      
+      // Reset input
+      e.target.value = '';
     }
   };
 
@@ -182,7 +183,7 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
                             />
                             <button
                               type="button"
-                              onClick={() => handleRemoveImage(index)}
+                              onClick={() => removeImage(index)}
                               className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-sm"
                               aria-label="Remover imagem"
                             >
@@ -193,6 +194,11 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
                             {index === 0 && (
                               <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-construPro-blue text-white text-xs px-2 py-0.5 rounded">
                                 Principal
+                              </div>
+                            )}
+                            {img.startsWith('blob:') && (
+                              <div className="absolute top-1 left-1 bg-orange-500 text-white text-xs px-1 py-0.5 rounded">
+                                Nova
                               </div>
                             )}
                           </div>
@@ -215,6 +221,11 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
                       </div>
                       {images.length === 0 && (
                         <p className="text-xs text-red-500">É obrigatório adicionar pelo menos uma imagem.</p>
+                      )}
+                      {imageFiles.length > 0 && (
+                        <p className="text-xs text-blue-600">
+                          {imageFiles.length} nova(s) imagem(ns) será(ão) enviada(s) quando você salvar o produto.
+                        </p>
                       )}
                     </div>
                   </div>
@@ -411,7 +422,10 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
                 loading={isSubmitting}
                 icon={<Save size={18} />}
               >
-                {isEditing ? 'Atualizar Produto' : 'Salvar Produto'}
+                {isSubmitting 
+                  ? (imageFiles.length > 0 ? 'Salvando e enviando imagens...' : 'Salvando...') 
+                  : (isEditing ? 'Atualizar Produto' : 'Salvar Produto')
+                }
               </CustomButton>
               
               <CustomButton

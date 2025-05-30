@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -6,6 +5,7 @@ import * as z from 'zod';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
 import { saveVendorProduct } from '@/services/vendorProductsService';
+import { uploadProductImage } from '@/services/vendor/products/productImages';
 
 // Define product form schema
 const productFormSchema = z.object({
@@ -54,6 +54,7 @@ export const useProdutoForm = ({ isEditing = false, productId, initialData }: Us
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [images, setImages] = useState<string[]>([]);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [isLoading, setIsLoading] = useState(isEditing);
   const [segmentId, setSegmentId] = useState<string | null>(null);
 
@@ -127,8 +128,37 @@ export const useProdutoForm = ({ isEditing = false, productId, initialData }: Us
     }
   }, [isEditing, initialData, form]);
 
+  // Helper function to upload new image files
+  const uploadNewImages = async (productId: string, files: File[]): Promise<string[]> => {
+    const uploadedUrls: string[] = [];
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      console.log(`Uploading image ${i + 1}/${files.length}:`, file.name);
+      
+      try {
+        const uploadedUrl = await uploadProductImage(productId, file, i);
+        if (uploadedUrl) {
+          uploadedUrls.push(uploadedUrl);
+          console.log(`Successfully uploaded image ${i + 1}:`, uploadedUrl);
+        } else {
+          console.warn(`Failed to upload image ${i + 1}:`, file.name);
+        }
+      } catch (error) {
+        console.error(`Error uploading image ${i + 1}:`, error);
+      }
+    }
+    
+    return uploadedUrls;
+  };
+
   const onSubmit = async (values: ProductFormValues) => {
-    if (images.length === 0) {
+    // Separate existing images from new files
+    const existingImages = images.filter(img => !img.startsWith('blob:'));
+    const newImageFiles = imageFiles;
+
+    // Check if we have at least one image (existing or new)
+    if (existingImages.length === 0 && newImageFiles.length === 0) {
       toast.error("É necessário adicionar pelo menos uma imagem do produto.");
       return;
     }
@@ -136,7 +166,7 @@ export const useProdutoForm = ({ isEditing = false, productId, initialData }: Us
     setIsSubmitting(true);
     
     try {
-      // Prepare data for API
+      // Prepare data for API - initially with existing images only
       const productData = {
         id: productId,
         nome: values.nome,
@@ -151,12 +181,14 @@ export const useProdutoForm = ({ isEditing = false, productId, initialData }: Us
         estoque: values.estoque,
         pontos_consumidor: values.pontosConsumidor,
         pontos_profissional: values.pontosProfissional,
-        imagens: images,
-        status: isEditing ? 'pendente' as const : 'pendente' as const,
+        imagens: existingImages, // Start with existing images only
+        status: 'pendente' as const,
       };
       
       console.log("Saving product data:", productData);
+      console.log("New image files to upload:", newImageFiles.length);
       
+      // Save the product first
       const savedProduct = await saveVendorProduct(productData);
       
       if (!savedProduct) {
@@ -165,12 +197,59 @@ export const useProdutoForm = ({ isEditing = false, productId, initialData }: Us
         });
         return;
       }
+
+      console.log("Product saved successfully:", savedProduct.id);
+      
+      // Now upload new images if there are any
+      let finalImages = [...existingImages];
+      
+      if (newImageFiles.length > 0) {
+        console.log("Uploading new images...");
+        
+        try {
+          const uploadedUrls = await uploadNewImages(savedProduct.id, newImageFiles);
+          finalImages = [...finalImages, ...uploadedUrls];
+          
+          console.log("Final images array:", finalImages);
+          
+          // Update product with all images if new ones were uploaded
+          if (uploadedUrls.length > 0) {
+            const updatedProductData = {
+              ...productData,
+              id: savedProduct.id,
+              imagens: finalImages
+            };
+            
+            console.log("Updating product with new images:", updatedProductData);
+            
+            const updatedProduct = await saveVendorProduct(updatedProductData);
+            
+            if (updatedProduct) {
+              console.log("Product updated with new images successfully");
+            }
+          }
+        } catch (uploadError) {
+          console.error("Error uploading images:", uploadError);
+          toast.error("Produto salvo, mas houve erro no upload de algumas imagens");
+        }
+      }
       
       toast.success(isEditing ? "Produto atualizado" : "Produto cadastrado", {
         description: isEditing 
           ? "As alterações foram salvas com sucesso." 
           : "O produto foi cadastrado com sucesso."
       });
+      
+      // Clear blob URLs to prevent memory leaks
+      images.forEach(img => {
+        if (img.startsWith('blob:')) {
+          URL.revokeObjectURL(img);
+        }
+      });
+      
+      // Update state with final images
+      setImages(finalImages);
+      setImageFiles([]);
       
       navigate('/vendor/products');
     } catch (error) {
@@ -183,6 +262,64 @@ export const useProdutoForm = ({ isEditing = false, productId, initialData }: Us
     }
   };
 
+  // Enhanced function to handle adding new images
+  const addImages = (files: File[]) => {
+    const newFiles = [...imageFiles];
+    const newPreviews = [...images];
+    
+    // Process each file
+    for (const file of files) {
+      if (newFiles.length + newPreviews.length >= 5) {
+        toast.error("Máximo de 5 imagens permitidas");
+        break;
+      }
+      
+      // Add to files array
+      newFiles.push(file);
+      
+      // Create blob URL for preview
+      const blobUrl = URL.createObjectURL(file);
+      newPreviews.push(blobUrl);
+    }
+    
+    setImageFiles(newFiles);
+    setImages(newPreviews);
+  };
+
+  // Enhanced function to remove images
+  const removeImage = (index: number) => {
+    const imageToRemove = images[index];
+    const isNewImage = imageToRemove?.startsWith('blob:');
+    
+    // Create new arrays
+    const newImages = [...images];
+    const newFiles = [...imageFiles];
+    
+    // Remove from previews
+    newImages.splice(index, 1);
+    
+    // If it's a blob URL, find and remove corresponding file
+    if (isNewImage) {
+      // Find the corresponding file index
+      const blobUrls = images.filter(img => img.startsWith('blob:'));
+      const blobIndex = blobUrls.indexOf(imageToRemove);
+      
+      if (blobIndex !== -1) {
+        // Remove the file at the corresponding index
+        const fileIndex = imageFiles.length - blobUrls.length + blobIndex;
+        if (fileIndex >= 0 && fileIndex < newFiles.length) {
+          newFiles.splice(fileIndex, 1);
+        }
+      }
+      
+      // Revoke the blob URL to free memory
+      URL.revokeObjectURL(imageToRemove);
+    }
+    
+    setImages(newImages);
+    setImageFiles(newFiles);
+  };
+
   return {
     form,
     isSubmitting,
@@ -190,6 +327,9 @@ export const useProdutoForm = ({ isEditing = false, productId, initialData }: Us
     setSelectedTags,
     images,
     setImages,
+    imageFiles,
+    addImages,
+    removeImage,
     isLoading,
     segmentId,
     setSegmentId,
