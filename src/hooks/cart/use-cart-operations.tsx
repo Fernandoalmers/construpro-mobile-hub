@@ -8,6 +8,7 @@ import { addToCart, updateCartItemQuantity, removeFromCart, clearCart } from '@/
  */
 export function useCartOperations(refreshCartData: () => Promise<void>) {
   const [isLoading, setIsLoading] = useState(false);
+  const [operationInProgress, setOperationInProgress] = useState<string | null>(null);
 
   /**
    * Add an item to the cart
@@ -16,6 +17,7 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
     try {
       console.log(`[useCartOperations] Adding ${quantity} of ${productId} to cart`);
       setIsLoading(true);
+      setOperationInProgress(productId);
       
       await addToCart(productId, quantity);
       console.log('[useCartOperations] Item added, refreshing cart data...');
@@ -28,6 +30,7 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
       throw error;
     } finally {
       setIsLoading(false);
+      setOperationInProgress(null);
     }
   };
 
@@ -43,6 +46,7 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
       
       console.log(`[useCartOperations] Updating quantity for ${itemId} to ${newQuantity}`);
       setIsLoading(true);
+      setOperationInProgress(itemId);
       
       await updateCartItemQuantity(itemId, newQuantity);
       console.log('[useCartOperations] Quantity updated, refreshing cart data...');
@@ -53,6 +57,7 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
       throw error;
     } finally {
       setIsLoading(false);
+      setOperationInProgress(null);
     }
   };
 
@@ -63,6 +68,7 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
     try {
       console.log(`[useCartOperations] Removing item ${itemId}`);
       setIsLoading(true);
+      setOperationInProgress(itemId);
       
       await removeFromCart(itemId);
       console.log('[useCartOperations] Item removed, refreshing cart data...');
@@ -75,6 +81,7 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
       throw error;
     } finally {
       setIsLoading(false);
+      setOperationInProgress(null);
     }
   };
 
@@ -85,6 +92,7 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
     try {
       console.log('[useCartOperations] Clearing cart');
       setIsLoading(true);
+      setOperationInProgress('clear-cart');
       
       await clearCart();
       console.log('[useCartOperations] Cart cleared, refreshing data...');
@@ -97,11 +105,13 @@ export function useCartOperations(refreshCartData: () => Promise<void>) {
       throw error;
     } finally {
       setIsLoading(false);
+      setOperationInProgress(null);
     }
   };
 
   return {
     isLoading,
+    operationInProgress,
     addToCart: handleAddToCart,
     updateQuantity: handleUpdateQuantity,
     removeItem: handleRemoveItem,
