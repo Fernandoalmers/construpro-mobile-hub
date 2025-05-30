@@ -1,5 +1,4 @@
-
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useCart } from '@/hooks/use-cart';
 import { useCoupon } from '@/hooks/cart/use-coupon';
 import { useNavigate } from 'react-router-dom';
@@ -7,6 +6,8 @@ import { useGroupItemsByStore } from '@/hooks/cart/use-group-items-by-store';
 import { useCartTotals } from '@/hooks/cart/use-cart-totals';
 import { useStoreInfo } from '@/hooks/cart/use-store-info';
 import { useAuth } from '@/context/AuthContext';
+import { validateCartStock } from '@/services/checkout/stockValidation';
+import { toast } from 'react-toastify';
 
 export const useCartScreen = () => {
   const { user, isAuthenticated } = useAuth();
@@ -183,6 +184,54 @@ export const useCartScreen = () => {
     navigate('/checkout');
   };
 
+  // New state for stock validation
+  const [stockIssues, setStockIssues] = useState<{
+    outOfStock: string[];
+    lowStock: { itemId: string; available: number }[];
+  }>({ outOfStock: [], lowStock: [] });
+  
+  // Periodic stock validation
+  const validateCurrentStock = useCallback(async () => {
+    if (cartItems.length === 0) return;
+    
+    try {
+      const result = await validateCartStock(cartItems);
+      
+      if (!result.isValid) {
+        const outOfStock = result.invalidItems.map(item => item.itemId);
+        const lowStock = result.adjustedItems.map(item => ({
+          itemId: item.itemId,
+          available: item.newQuantity
+        }));
+        
+        setStockIssues({ outOfStock, lowStock });
+        
+        // Auto-remove out of stock items
+        if (outOfStock.length > 0) {
+          toast.warning(`${outOfStock.length} produto(s) ficaram indisponíveis e foram removidos do carrinho`);
+          for (const itemId of outOfStock) {
+            await removeItem(itemId);
+          }
+        }
+        
+        // Notify about low stock items
+        if (lowStock.length > 0) {
+          toast.warning(`Alguns produtos têm estoque limitado`);
+        }
+      } else {
+        setStockIssues({ outOfStock: [], lowStock: [] });
+      }
+    } catch (error) {
+      console.error('Error validating cart stock:', error);
+    }
+  }, [cartItems, removeItem]);
+  
+  // Validate stock periodically (every 30 seconds)
+  useEffect(() => {
+    const interval = setInterval(validateCurrentStock, 30000);
+    return () => clearInterval(interval);
+  }, [validateCurrentStock]);
+  
   return {
     // States
     loading: isLoading || storeLoading,
@@ -220,6 +269,9 @@ export const useCartScreen = () => {
     
     // User info
     user,
-    isAuthenticated
+    isAuthenticated,
+    
+    // Add stock validation data
+    stockIssues
   };
 };

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '@/hooks/use-cart';
@@ -8,13 +7,14 @@ import { orderService } from '@/services/orderService';
 import { CartItem } from '@/types/cart';
 import { Address } from '@/services/addressService';
 import { useGroupItemsByStore, storeGroupsToArray, StoreGroup } from '@/hooks/cart/use-group-items-by-store';
+import { validateCartStock, StockValidationResult } from '@/services/checkout/stockValidation';
 
 // Define the PaymentMethod type
 export type PaymentMethod = 'credit' | 'debit' | 'money' | 'pix';
 
 export function useCheckout() {
   const navigate = useNavigate();
-  const { cart, cartItems, clearCart, refreshCart } = useCart();
+  const { cart, cartItems, clearCart, refreshCart, updateQuantity, removeItem } = useCart();
   const { 
     addresses, 
     isLoading: addressesLoading, 
@@ -29,6 +29,11 @@ export function useCheckout() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [processError, setProcessError] = useState<string | null>(null);
   const [orderAttempts, setOrderAttempts] = useState(0);
+  
+  // New state for stock validation
+  const [stockValidationResult, setStockValidationResult] = useState<StockValidationResult | null>(null);
+  const [showStockModal, setShowStockModal] = useState(false);
+  const [isValidatingStock, setIsValidatingStock] = useState(false);
   
   // Get cart summary data including coupon discount
   const cartSummary = cart?.summary || {
@@ -101,6 +106,51 @@ export function useCheckout() {
     }
   }, [addAddress]);
   
+  // Validate stock when entering checkout
+  const validateStock = useCallback(async () => {
+    if (!cartItems.length) return true;
+    
+    setIsValidatingStock(true);
+    try {
+      const result = await validateCartStock(cartItems);
+      
+      if (!result.isValid) {
+        setStockValidationResult(result);
+        setShowStockModal(true);
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error validating stock:', error);
+      toast.error('Erro ao validar estoque dos produtos');
+      return false;
+    } finally {
+      setIsValidatingStock(false);
+    }
+  }, [cartItems]);
+  
+  // Handle stock validation results
+  const handleRemoveInvalidItems = useCallback(async (itemIds: string[]) => {
+    for (const itemId of itemIds) {
+      await removeItem(itemId);
+    }
+    toast.success('Produtos indisponíveis foram removidos do carrinho');
+  }, [removeItem]);
+  
+  const handleAdjustItemQuantities = useCallback(async (adjustments: { itemId: string; newQuantity: number }[]) => {
+    for (const adjustment of adjustments) {
+      await updateQuantity(adjustment.itemId, adjustment.newQuantity);
+    }
+    toast.success('Quantidades foram ajustadas conforme o estoque disponível');
+  }, [updateQuantity]);
+  
+  const handleStockModalContinue = useCallback(() => {
+    setShowStockModal(false);
+    setStockValidationResult(null);
+    refreshCart();
+  }, [refreshCart]);
+  
   // Handle order placement
   const handlePlaceOrder = useCallback(async () => {
     try {
@@ -117,6 +167,14 @@ export function useCheckout() {
       setIsSubmitting(true);
       setProcessError(null);
       setOrderAttempts(prev => prev + 1);
+      
+      // Final stock validation before creating order
+      console.log('Performing final stock validation before order creation');
+      const stockValid = await validateStock();
+      if (!stockValid) {
+        setIsSubmitting(false);
+        return;
+      }
       
       // Prepare order data with discount information
       const orderData = {
@@ -161,6 +219,7 @@ export function useCheckout() {
     totalPoints,
     appliedCoupon,
     discount,
+    validateStock,
     clearCart, 
     refreshCart, 
     navigate
@@ -199,6 +258,16 @@ export function useCheckout() {
     selectAddress,
     addNewAddress,
     handlePlaceOrder,
-    handleRetry
+    handleRetry,
+    
+    // New stock validation values
+    stockValidationResult,
+    showStockModal,
+    isValidatingStock,
+    validateStock,
+    setShowStockModal,
+    handleRemoveInvalidItems,
+    handleAdjustItemQuantities,
+    handleStockModalContinue
   };
 }

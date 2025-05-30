@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useCheckout } from '@/hooks/checkout/use-checkout';
@@ -10,10 +9,18 @@ import OrderSummarySection from '@/components/checkout/OrderSummarySection';
 import AddressSelectionModal from '@/components/checkout/AddressSelectionModal';
 import CheckoutErrorState from '@/components/checkout/CheckoutErrorState';
 import { toast } from '@/components/ui/sonner';
+import StockValidationModal from '@/components/checkout/StockValidationModal';
 
 const CheckoutScreen: React.FC = () => {
   const navigate = useNavigate();
   const checkout = useCheckout();
+
+  // Validate stock when component mounts or cart changes
+  useEffect(() => {
+    if (checkout.cartItems?.length > 0) {
+      checkout.validateStock();
+    }
+  }, [checkout.cartItems?.length]);
 
   // Handler to debug and provide feedback during checkout
   const handleCheckout = () => {
@@ -39,8 +46,8 @@ const CheckoutScreen: React.FC = () => {
     checkout.handlePlaceOrder();
   };
 
-  if (checkout.isLoading) {
-    return <LoadingState text="Carregando informações..." />;
+  if (checkout.isLoading || checkout.isValidatingStock) {
+    return <LoadingState text={checkout.isValidatingStock ? "Verificando estoque..." : "Carregando informações..."} />;
   }
 
   return (
@@ -104,6 +111,19 @@ const CheckoutScreen: React.FC = () => {
         onSelectAddress={checkout.selectAddress}
         onAddNewAddress={navigate.bind(null, '/profile/address/add')}
       />
+      
+      {/* Stock Validation Modal */}
+      {checkout.stockValidationResult && (
+        <StockValidationModal
+          open={checkout.showStockModal}
+          onClose={() => checkout.setShowStockModal(false)}
+          validationResult={checkout.stockValidationResult}
+          onRemoveItems={checkout.handleRemoveInvalidItems}
+          onAdjustItems={checkout.handleAdjustItemQuantities}
+          onContinue={checkout.handleStockModalContinue}
+          isProcessing={checkout.isSubmitting}
+        />
+      )}
     </div>
   );
 };
