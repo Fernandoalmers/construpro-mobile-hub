@@ -1,11 +1,11 @@
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { toast } from '@/components/ui/sonner';
 import { useCartAdd } from './use-cart-add';
 import { addToCart, updateCartItemQuantity, removeFromCart, clearCart } from '@/services/cart/cartItemOperations';
 
 /**
- * Hook for cart operations with loading state management
+ * Hook for cart operations with loading state management and immediate UI updates
  */
 export function useCartOperations(
   refreshCartData: () => Promise<void>, 
@@ -16,15 +16,17 @@ export function useCartOperations(
   const { addToCart: addToCartHook, isLoading: isAddingToCart } = useCartAdd(refreshCartData);
 
   /**
-   * Add an item to the cart
+   * Add an item to the cart with immediate UI feedback
    */
-  const handleAddToCart = async (productId: string, quantity: number): Promise<void> => {
+  const handleAddToCart = useCallback(async (productId: string, quantity: number): Promise<void> => {
     try {
       console.log(`[useCartOperations] Adding ${quantity} of ${productId} to cart`);
       setIsLoading(true);
       setOperationInProgress('add');
       
       await addToCart(productId, quantity);
+      
+      // Immediate refresh for UI consistency
       await refreshCartData();
       
       toast.success(`${quantity} ${quantity > 1 ? 'unidades' : 'unidade'} adicionada(s) ao carrinho`);
@@ -36,12 +38,12 @@ export function useCartOperations(
       setIsLoading(false);
       setOperationInProgress(null);
     }
-  };
+  }, [refreshCartData]);
 
   /**
-   * Update the quantity of an item in the cart
+   * Update the quantity of an item in the cart with immediate UI feedback
    */
-  const handleUpdateQuantity = async (itemId: string, newQuantity: number): Promise<void> => {
+  const handleUpdateQuantity = useCallback(async (itemId: string, newQuantity: number): Promise<void> => {
     try {
       if (newQuantity < 1) {
         console.log('[useCartOperations] Quantity must be at least 1');
@@ -53,6 +55,8 @@ export function useCartOperations(
       setOperationInProgress('update');
       
       await updateCartItemQuantity(itemId, newQuantity);
+      
+      // Immediate refresh for UI consistency
       await refreshCartData();
     } catch (error: any) {
       console.error('[useCartOperations] Error updating quantity:', error);
@@ -62,18 +66,20 @@ export function useCartOperations(
       setIsLoading(false);
       setOperationInProgress(null);
     }
-  };
+  }, [refreshCartData]);
 
   /**
-   * Remove an item from the cart
+   * Remove an item from the cart with immediate UI feedback
    */
-  const handleRemoveItem = async (itemId: string): Promise<void> => {
+  const handleRemoveItem = useCallback(async (itemId: string): Promise<void> => {
     try {
       console.log(`[useCartOperations] Removing item ${itemId}`);
       setIsLoading(true);
       setOperationInProgress('remove');
       
       await removeFromCart(itemId);
+      
+      // Immediate refresh for UI consistency
       await refreshCartData();
       
       toast.success('Item removido do carrinho');
@@ -85,25 +91,25 @@ export function useCartOperations(
       setIsLoading(false);
       setOperationInProgress(null);
     }
-  };
+  }, [refreshCartData]);
 
   /**
-   * Clear all items from the cart
+   * Clear all items from the cart with immediate UI feedback
    */
-  const handleClearCart = async (): Promise<void> => {
+  const handleClearCart = useCallback(async (): Promise<void> => {
     try {
       console.log('[useCartOperations] Clearing cart');
       setIsLoading(true);
       setOperationInProgress('clear');
       
-      // Notify immediately that cart is being cleared
+      // Notify UI immediately that cart is being cleared
       if (onCartCleared) {
         onCartCleared();
       }
       
       await clearCart();
       
-      // Force immediate refresh and ensure empty state
+      // Force immediate refresh to ensure empty state
       console.log('[useCartOperations] Refreshing cart after clear...');
       await refreshCartData();
       
@@ -116,7 +122,7 @@ export function useCartOperations(
       setIsLoading(false);
       setOperationInProgress(null);
     }
-  };
+  }, [refreshCartData, onCartCleared]);
 
   return {
     isLoading,
