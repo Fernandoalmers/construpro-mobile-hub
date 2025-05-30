@@ -35,44 +35,37 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // Get cart operations
   const operations = useCartOperations(refreshCart);
 
-  // Calculate total items in cart - ensure it's always accurate
-  const cartItems = cart?.items || [];
-  const cartCount = cartItems.length > 0 
-    ? cartItems.reduce((sum, item) => sum + (item.quantidade || 0), 0) 
-    : 0;
-  
-  console.log('CartProvider: cartCount =', cartCount, 'cartItems.length =', cartItems.length, 'isLoading =', isLoading, 'userType =', validUserType);
-
-  // Force refresh cart when authentication state changes
-  useEffect(() => {
-    if (isAuthenticated && user?.id) {
-      console.log('Authentication state changed, refreshing cart');
-      refreshCart();
+  // Calculate total items in cart - simplified and more reliable
+  const cartCount = React.useMemo(() => {
+    if (!cart?.items || cart.items.length === 0) {
+      return 0;
     }
-  }, [isAuthenticated, user?.id, refreshCart]);
+    
+    return cart.items.reduce((sum, item) => {
+      return sum + (item.quantidade || 0);
+    }, 0);
+  }, [cart?.items]);
   
-  // Cleanup abandoned carts periodically
+  const cartItems = cart?.items || [];
+  
+  console.log('[CartProvider] cartCount =', cartCount, 'cartItems.length =', cartItems.length, 'isLoading =', isLoading, 'userType =', validUserType);
+
+  // Cleanup abandoned carts periodically - but not on every render
   useEffect(() => {
     if (isAuthenticated && user?.id) {
-      // Run cart cleanup once when component mounts
-      const runCleanup = async () => {
+      // Run cart cleanup once when component mounts - with delay to not block initial load
+      const timeoutId = setTimeout(async () => {
         try {
-          console.log('Running cart cleanup');
+          console.log('[CartProvider] Running background cart cleanup');
           await cleanupAbandonedCarts();
         } catch (error) {
-          console.error('Error during cart cleanup:', error);
+          console.error('[CartProvider] Error during cart cleanup:', error);
         }
-      };
+      }, 5000); // Wait 5 seconds after mount
       
-      // Run once on mount
-      runCleanup();
-      
-      // Then run weekly
-      const cleanupInterval = setInterval(runCleanup, 7 * 24 * 60 * 60 * 1000);
-      
-      return () => clearInterval(cleanupInterval);
+      return () => clearTimeout(timeoutId);
     }
-  }, [isAuthenticated, user?.id]);
+  }, [isAuthenticated, user?.id]); // Only run when auth state changes
 
   // Create context value
   const value: CartContextType = {

@@ -1,5 +1,5 @@
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Cart } from '@/types/cart';
 import { useCartFetcher } from './useCartFetcher';
 
@@ -16,16 +16,28 @@ export function useCartState(
   const [error, setError] = useState<Error | null>(null);
   
   const { fetchCartData } = useCartFetcher();
+  
+  // Use ref to track if we're already fetching to prevent multiple calls
+  const fetchingRef = useRef(false);
+  const initialLoadRef = useRef(false);
 
-  // Function to refresh cart data
+  // Function to refresh cart data - stabilized with useCallback
   const refreshCart = useCallback(async () => {
+    // Prevent multiple concurrent fetches
+    if (fetchingRef.current) {
+      console.log('[useCartState] Fetch already in progress, skipping');
+      return;
+    }
+
     if (!isAuthenticated || !userId) {
       console.log('[useCartState] User not authenticated, setting empty cart');
       setCart(null);
       setIsLoading(false);
+      fetchingRef.current = false;
       return;
     }
     
+    fetchingRef.current = true;
     console.log('[useCartState] Refreshing cart for user:', userId, 'type:', userType);
     setIsLoading(true);
     
@@ -71,13 +83,18 @@ export function useCartState(
     } finally {
       // Always ensure loading state is completed
       setIsLoading(false);
+      fetchingRef.current = false;
     }
-  }, [isAuthenticated, userId, userType, fetchCartData]);
+  }, [isAuthenticated, userId, userType]); // Removed fetchCartData dependency to prevent loop
 
-  // Load cart data on mount and when auth state changes
+  // Load cart data on mount and when auth state changes - but prevent loops
   useEffect(() => {
-    refreshCart();
-  }, [refreshCart, isAuthenticated, userId, userType]);
+    // Only run on initial load or when auth/user changes
+    if (!initialLoadRef.current || fetchingRef.current) {
+      initialLoadRef.current = true;
+      refreshCart();
+    }
+  }, [isAuthenticated, userId, userType]); // Removed refreshCart from dependencies
 
   return {
     cart,
