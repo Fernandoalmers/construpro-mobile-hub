@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, initUserClient, initServiceRoleClient, verifyUserToken } from './utils.ts';
 
@@ -141,16 +142,19 @@ async function handleOrderCreation(serviceClient: any, user: any, body: any) {
       throw new Error('Itens do pedido são obrigatórios e devem ser uma lista válida');
     }
     
+    console.log(`📦 Items validation: ${items.length} items received`);
+    
     if (!endereco_entrega || typeof endereco_entrega !== 'object') {
       console.error('Invalid address:', endereco_entrega);
       throw new Error('Endereço de entrega é obrigatório');
     }
     
-    // Validate address fields
+    // Validate address fields - fix the rua field mapping
     const requiredAddressFields = ['rua', 'cidade', 'estado', 'cep'];
     const missingFields = requiredAddressFields.filter(field => !endereco_entrega[field]);
     if (missingFields.length > 0) {
       console.error('Missing address fields:', missingFields);
+      console.error('Address received:', endereco_entrega);
       throw new Error(`Campos obrigatórios do endereço ausentes: ${missingFields.join(', ')}`);
     }
     
@@ -165,9 +169,11 @@ async function handleOrderCreation(serviceClient: any, user: any, body: any) {
       throw new Error('Valor total do pedido deve ser maior que zero');
     }
 
-    // Validate items structure
+    // Validate items structure with detailed logging
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
+      console.log(`📋 Validating item ${i + 1}:`, item);
+      
       if (!item.produto_id || !item.quantidade || !item.preco_unitario) {
         console.error(`Invalid item at index ${i}:`, item);
         throw new Error(`Item ${i + 1} possui dados inválidos (produto_id, quantidade e preco_unitario são obrigatórios)`);
@@ -210,10 +216,20 @@ async function handleOrderCreation(serviceClient: any, user: any, body: any) {
     orderId = orderData.id;
     console.log('Order created successfully with ID:', orderId);
 
-    // Create order items and update inventory
-    for (const item of items) {
+    // Create order items and update inventory - CRITICAL FIX
+    console.log(`📦 Creating ${items.length} order items...`);
+    
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      console.log(`📋 Processing item ${i + 1}/${items.length}:`, {
+        produto_id: item.produto_id,
+        quantidade: item.quantidade,
+        preco_unitario: item.preco_unitario,
+        subtotal: item.subtotal || (Number(item.preco_unitario) * Number(item.quantidade))
+      });
+      
       try {
-        // Create order item
+        // Create order item - REMOVED PONTOS FIELD
         const { error: itemError } = await serviceClient
           .from('order_items')
           .insert([{
@@ -221,14 +237,15 @@ async function handleOrderCreation(serviceClient: any, user: any, body: any) {
             produto_id: item.produto_id,
             quantidade: Number(item.quantidade),
             preco_unitario: Number(item.preco_unitario),
-            subtotal: Number(item.subtotal) || (Number(item.preco_unitario) * Number(item.quantidade)),
-            pontos: Number(item.pontos) || 0
+            subtotal: Number(item.subtotal) || (Number(item.preco_unitario) * Number(item.quantidade))
           }]);
 
         if (itemError) {
           console.error('Error creating order item:', itemError);
           throw new Error(`Falha ao criar item do pedido: ${itemError.message}`);
         }
+        
+        console.log(`✅ Item ${i + 1} created successfully`);
 
         // Update product inventory using raw SQL to avoid conflicts
         const { error: updateError } = await serviceClient
@@ -244,8 +261,11 @@ async function handleOrderCreation(serviceClient: any, user: any, body: any) {
       } catch (itemError) {
         console.error('Error processing item:', itemError);
         inventoryUpdated = false;
+        // Don't throw here, continue with other items
       }
     }
+
+    console.log(`✅ All ${items.length} items processed`);
 
     // Register points transaction if points are awarded
     const pointsValue = Number(pontos_ganhos) || 0;

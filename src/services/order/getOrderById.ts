@@ -91,10 +91,23 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
   try {
     console.log(`🔍 [getOrderById] Fetching order: ${orderId}`);
     
-    // Get order data - incluindo os novos campos de desconto
+    // Get order data with improved query - incluindo os novos campos de desconto
     const { data: orderData, error: orderError } = await supabase
       .from('orders')
-      .select('*, desconto_aplicado, cupom_codigo')
+      .select(`
+        *,
+        order_items (
+          *,
+          produtos (
+            id,
+            nome,
+            imagens,
+            descricao,
+            preco_normal,
+            categoria
+          )
+        )
+      `)
       .eq('id', orderId)
       .single();
     
@@ -103,77 +116,61 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
       return null;
     }
     
-    // Get order items
-    const { data: itemsData, error: itemsError } = await supabase
-      .from('order_items')
-      .select('*')
-      .eq('order_id', orderId);
-    
-    if (itemsError) {
-      console.error('❌ [getOrderById] Error fetching order items:', itemsError);
-      return { ...orderData, items: [] };
-    }
-    
-    // Get product IDs to fetch product data
-    const productIds = itemsData?.map(item => item.produto_id) || [];
-    
-    let productsData: any[] = [];
-    if (productIds.length > 0) {
-      const { data: products, error: productsError } = await supabase
-        .from('produtos')
-        .select('id, nome, imagens, descricao, preco_normal, categoria')
-        .in('id', productIds);
-      
-      if (productsError) {
-        console.error('❌ [getOrderById] Error fetching products:', productsError);
-      } else {
-        productsData = products || [];
-      }
-    }
-    
-    // Create products map
-    const productsMap = new Map(productsData.map(product => [product.id, product]));
-    
-    // Build order items with product data
-    const orderItems: OrderItem[] = (itemsData || []).map(item => {
-      const productData = productsMap.get(item.produto_id);
-      
-      // FIXED: Use extractImageUrls for consistent image processing
-      const imagens = extractImageUrls(productData?.imagens);
-      const imageUrl = imagens.length > 0 ? imagens[0] : null;
-      
-      // Log blob URL detection
-      if (imageUrl && imageUrl.startsWith('blob:')) {
-        console.warn(`[getOrderById] Blob URL detected for product ${item.produto_id}: ${imageUrl.substring(0, 50)}...`);
-      }
-      
-      const produto: ProductData = {
-        id: item.produto_id,
-        nome: productData?.nome || 'Produto indisponível',
-        imagens: imagens,
-        imagem_url: imageUrl,
-        descricao: productData?.descricao || '',
-        preco_normal: productData?.preco_normal || item.preco_unitario,
-        categoria: productData?.categoria || ''
-      };
-      
-      console.log(`[getOrderById] Processed product ${item.produto_id}:`, {
-        hasImageUrl: !!produto.imagem_url,
-        imageUrl: produto.imagem_url,
-        imagensCount: produto.imagens.length
-      });
-      
-      return {
-        id: item.id,
-        produto_id: item.produto_id,
-        quantidade: item.quantidade,
-        preco_unitario: item.preco_unitario,
-        subtotal: item.subtotal,
-        produto
-      };
+    console.log('✅ [getOrderById] Order data fetched:', {
+      id: orderData.id,
+      hasItems: !!orderData.order_items,
+      itemsCount: orderData.order_items?.length || 0
     });
     
-    console.log(`✅ [getOrderById] Successfully fetched order with ${orderItems.length} items`);
+    // Process order items if they exist
+    const orderItems: OrderItem[] = [];
+    
+    if (orderData.order_items && Array.isArray(orderData.order_items)) {
+      console.log(`📦 [getOrderById] Processing ${orderData.order_items.length} items`);
+      
+      for (const item of orderData.order_items) {
+        const productData = item.produtos;
+        
+        // FIXED: Use extractImageUrls for consistent image processing
+        const imagens = extractImageUrls(productData?.imagens);
+        const imageUrl = imagens.length > 0 ? imagens[0] : null;
+        
+        // Log blob URL detection
+        if (imageUrl && imageUrl.startsWith('blob:')) {
+          console.warn(`[getOrderById] Blob URL detected for product ${item.produto_id}: ${imageUrl.substring(0, 50)}...`);
+        }
+        
+        const produto: ProductData = {
+          id: item.produto_id,
+          nome: productData?.nome || 'Produto indisponível',
+          imagens: imagens,
+          imagem_url: imageUrl,
+          descricao: productData?.descricao || '',
+          preco_normal: productData?.preco_normal || item.preco_unitario,
+          categoria: productData?.categoria || ''
+        };
+        
+        console.log(`[getOrderById] Processed product ${item.produto_id}:`, {
+          nome: produto.nome,
+          hasImageUrl: !!produto.imagem_url,
+          imageUrl: produto.imagem_url,
+          imagensCount: produto.imagens.length
+        });
+        
+        orderItems.push({
+          id: item.id,
+          produto_id: item.produto_id,
+          quantidade: item.quantidade,
+          preco_unitario: item.preco_unitario,
+          subtotal: item.subtotal,
+          produto
+        });
+      }
+    } else {
+      console.warn(`⚠️ [getOrderById] No order_items found or items is not an array`);
+    }
+    
+    console.log(`✅ [getOrderById] Successfully processed order with ${orderItems.length} items`);
     
     return {
       ...orderData,

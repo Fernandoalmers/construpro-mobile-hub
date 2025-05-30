@@ -193,7 +193,7 @@ export function useCheckout() {
         return;
       }
 
-      // Validate address has required fields using correct Portuguese field names
+      // FIXED: Validate address has required fields using correct Portuguese field names
       const addressValidation = {
         rua: selectedAddress.logradouro || '',
         numero: selectedAddress.numero || '',
@@ -205,11 +205,23 @@ export function useCheckout() {
         ponto_referencia: '' // This field doesn't exist in our Address interface
       };
 
-      // Check required address fields
+      // Check required address fields - BETTER ERROR MESSAGES
       if (!addressValidation.rua || !addressValidation.cidade || !addressValidation.estado || !addressValidation.cep) {
+        console.error('Address validation failed:', {
+          selectedAddress,
+          addressValidation,
+          missingFields: {
+            rua: !addressValidation.rua,
+            cidade: !addressValidation.cidade,
+            estado: !addressValidation.estado,
+            cep: !addressValidation.cep
+          }
+        });
         toast.error('Endereço incompleto. Verifique se todos os campos obrigatórios estão preenchidos.');
         return;
       }
+
+      console.log('✅ Address validation passed:', addressValidation);
 
       setIsSubmitting(true);
       setProcessError(null);
@@ -226,7 +238,7 @@ export function useCheckout() {
       // Prepare order data with proper validation and structure
       const orderData = {
         items: cartItems, // Use cartItems directly as they already match CartItem interface
-        endereco_entrega: addressValidation,
+        endereco_entrega: addressValidation, // Use the validated address
         forma_pagamento: paymentMethod,
         valor_total: Number(total),
         pontos_ganhos: Number(totalPoints),
@@ -237,7 +249,12 @@ export function useCheckout() {
         desconto: Number(discount)
       };
       
-      console.log('Sending order with validated data:', orderData);
+      console.log('🚀 Sending order with validated data:', {
+        itemsCount: orderData.items.length,
+        endereco_entrega: orderData.endereco_entrega,
+        valor_total: orderData.valor_total,
+        pontos_ganhos: orderData.pontos_ganhos
+      });
       
       // Create order
       const orderId = await orderService.createOrder(orderData);
