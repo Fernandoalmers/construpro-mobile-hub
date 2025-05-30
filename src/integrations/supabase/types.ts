@@ -1890,6 +1890,10 @@ export type Database = {
         Args: { order_id: string; vendor_id: string }
         Returns: boolean
       }
+      check_product_stock: {
+        Args: { p_produto_id: string; p_quantidade: number }
+        Returns: boolean
+      }
       check_sync_integrity: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -2053,6 +2057,10 @@ export type Database = {
       run_orders_migration: {
         Args: Record<PropertyKey, never>
         Returns: Json
+      }
+      update_inventory_on_order: {
+        Args: { p_produto_id: string; p_quantidade: number }
+        Returns: undefined
       }
       update_user_points: {
         Args: { user_id: string; points_to_add: number }

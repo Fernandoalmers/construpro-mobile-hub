@@ -118,13 +118,13 @@ serve(async (req) => {
   }
 });
 
-// Handle order creation with improved error handling and validation
+// Handle order creation with improved inventory management
 async function handleOrderCreation(serviceClient: any, user: any, body: any) {
   try {
-    console.log('Processing order creation for user:', user.id);
-    console.log('Order body received:', JSON.stringify(body, null, 2));
+    console.log('🛒 Processing order creation for user:', user.id);
+    console.log('📦 Order body received:', JSON.stringify(body, null, 2));
     
-    // Extract and validate required fields with better error messages
+    // Extract and validate required fields
     const {
       items,
       endereco_entrega,
@@ -136,56 +136,84 @@ async function handleOrderCreation(serviceClient: any, user: any, body: any) {
       status
     } = body;
 
-    // Validate required fields with detailed error messages
+    // Validate required fields
     if (!items || !Array.isArray(items) || items.length === 0) {
-      console.error('Invalid items:', items);
+      console.error('❌ Invalid items:', items);
       throw new Error('Itens do pedido são obrigatórios e devem ser uma lista válida');
     }
     
     console.log(`📦 Items validation: ${items.length} items received`);
     
     if (!endereco_entrega || typeof endereco_entrega !== 'object') {
-      console.error('Invalid address:', endereco_entrega);
+      console.error('❌ Invalid address:', endereco_entrega);
       throw new Error('Endereço de entrega é obrigatório');
     }
     
-    // Validate address fields - fix the rua field mapping
+    // Validate address fields
     const requiredAddressFields = ['rua', 'cidade', 'estado', 'cep'];
     const missingFields = requiredAddressFields.filter(field => !endereco_entrega[field]);
     if (missingFields.length > 0) {
-      console.error('Missing address fields:', missingFields);
+      console.error('❌ Missing address fields:', missingFields);
       console.error('Address received:', endereco_entrega);
       throw new Error(`Campos obrigatórios do endereço ausentes: ${missingFields.join(', ')}`);
     }
     
     if (!forma_pagamento) {
-      console.error('Invalid payment method:', forma_pagamento);
+      console.error('❌ Invalid payment method:', forma_pagamento);
       throw new Error('Forma de pagamento é obrigatória');
     }
     
     const numericTotal = Number(valor_total);
     if (!numericTotal || numericTotal <= 0) {
-      console.error('Invalid total value:', valor_total);
+      console.error('❌ Invalid total value:', valor_total);
       throw new Error('Valor total do pedido deve ser maior que zero');
     }
 
-    // Validate items structure with detailed logging
+    // Validate items structure and check stock before creating order
+    console.log('🔍 Validating items and checking stock...');
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       console.log(`📋 Validating item ${i + 1}:`, item);
       
       if (!item.produto_id || !item.quantidade || !item.preco_unitario) {
-        console.error(`Invalid item at index ${i}:`, item);
+        console.error(`❌ Invalid item at index ${i}:`, item);
         throw new Error(`Item ${i + 1} possui dados inválidos (produto_id, quantidade e preco_unitario são obrigatórios)`);
       }
       
       if (Number(item.quantidade) <= 0 || Number(item.preco_unitario) <= 0) {
-        console.error(`Invalid item values at index ${i}:`, item);
+        console.error(`❌ Invalid item values at index ${i}:`, item);
         throw new Error(`Item ${i + 1} possui quantidade ou preço inválido`);
+      }
+
+      // Check stock availability using the new function
+      console.log(`🔍 Checking stock for product ${item.produto_id}, quantity: ${item.quantidade}`);
+      const { data: stockCheck, error: stockError } = await serviceClient
+        .rpc('check_product_stock', {
+          p_produto_id: item.produto_id,
+          p_quantidade: Number(item.quantidade)
+        });
+
+      if (stockError) {
+        console.error(`❌ Error checking stock for product ${item.produto_id}:`, stockError);
+        throw new Error(`Erro ao verificar estoque do produto ${i + 1}`);
+      }
+
+      if (!stockCheck) {
+        console.error(`❌ Insufficient stock for product ${item.produto_id}`);
+        // Get current stock for error message
+        const { data: productData } = await serviceClient
+          .from('produtos')
+          .select('nome, estoque')
+          .eq('id', item.produto_id)
+          .single();
+        
+        const productName = productData?.nome || 'Produto';
+        const currentStock = productData?.estoque || 0;
+        throw new Error(`Estoque insuficiente para ${productName}. Disponível: ${currentStock}, Solicitado: ${item.quantidade}`);
       }
     }
 
-    console.log('All validations passed, creating order...');
+    console.log('✅ All stock validations passed, creating order...');
 
     let orderId;
     let inventoryUpdated = true;
@@ -209,14 +237,14 @@ async function handleOrderCreation(serviceClient: any, user: any, body: any) {
       .single();
 
     if (orderError) {
-      console.error('Error creating order:', orderError);
+      console.error('❌ Error creating order:', orderError);
       throw new Error(`Falha ao criar pedido: ${orderError.message}`);
     }
 
     orderId = orderData.id;
-    console.log('Order created successfully with ID:', orderId);
+    console.log('✅ Order created successfully with ID:', orderId);
 
-    // Create order items and update inventory - CRITICAL FIX
+    // Create order items - inventory will be updated automatically by trigger
     console.log(`📦 Creating ${items.length} order items...`);
     
     for (let i = 0; i < items.length; i++) {
@@ -229,7 +257,7 @@ async function handleOrderCreation(serviceClient: any, user: any, body: any) {
       });
       
       try {
-        // Create order item - REMOVED PONTOS FIELD
+        // Create order item - trigger will automatically update inventory
         const { error: itemError } = await serviceClient
           .from('order_items')
           .insert([{
@@ -241,27 +269,31 @@ async function handleOrderCreation(serviceClient: any, user: any, body: any) {
           }]);
 
         if (itemError) {
-          console.error('Error creating order item:', itemError);
+          console.error('❌ Error creating order item:', itemError);
+          // Try manual inventory update as fallback
+          console.log('⚠️ Attempting manual inventory update as fallback...');
+          const { error: manualUpdateError } = await serviceClient
+            .rpc('update_inventory_on_order', {
+              p_produto_id: item.produto_id,
+              p_quantidade: Number(item.quantidade)
+            });
+
+          if (manualUpdateError) {
+            console.error('❌ Manual inventory update failed:', manualUpdateError);
+            inventoryUpdated = false;
+          } else {
+            console.log('✅ Manual inventory update successful');
+          }
+          
           throw new Error(`Falha ao criar item do pedido: ${itemError.message}`);
         }
         
-        console.log(`✅ Item ${i + 1} created successfully`);
+        console.log(`✅ Item ${i + 1} created successfully (inventory updated by trigger)`);
 
-        // Update product inventory using raw SQL to avoid conflicts
-        const { error: updateError } = await serviceClient
-          .rpc('update_inventory_on_order', {
-            p_produto_id: item.produto_id,
-            p_quantidade: Number(item.quantidade)
-          });
-
-        if (updateError) {
-          console.error('Error updating inventory:', updateError);
-          inventoryUpdated = false;
-        }
       } catch (itemError) {
-        console.error('Error processing item:', itemError);
+        console.error('❌ Error processing item:', itemError);
         inventoryUpdated = false;
-        // Don't throw here, continue with other items
+        throw itemError; // Re-throw to abort the order
       }
     }
 
@@ -282,7 +314,7 @@ async function handleOrderCreation(serviceClient: any, user: any, body: any) {
           }]);
 
         if (pointsError) {
-          console.error('Error registering points:', pointsError);
+          console.error('❌ Error registering points:', pointsError);
           pointsRegistered = false;
         } else {
           // Update user total points using RPC function
@@ -293,11 +325,13 @@ async function handleOrderCreation(serviceClient: any, user: any, body: any) {
             });
 
           if (updatePointsError) {
-            console.error('Error updating user points:', updatePointsError);
+            console.error('❌ Error updating user points:', updatePointsError);
+          } else {
+            console.log('✅ Points registered and user balance updated');
           }
         }
       } catch (pointsError) {
-        console.error('Points processing error:', pointsError);
+        console.error('❌ Points processing error:', pointsError);
         pointsRegistered = false;
       }
     }
@@ -306,17 +340,16 @@ async function handleOrderCreation(serviceClient: any, user: any, body: any) {
     const discountValue = Number(desconto) || 0;
     if (cupom_aplicado && cupom_aplicado.code && discountValue > 0) {
       try {
-        // For now, we'll just log the coupon processing since we need the coupon ID
-        console.log('Processing coupon:', cupom_aplicado.code, 'with discount:', discountValue);
+        console.log('💳 Processing coupon:', cupom_aplicado.code, 'with discount:', discountValue);
         // TODO: Implement proper coupon processing when we have the coupon system ready
         couponProcessed = true;
       } catch (couponError) {
-        console.error('Coupon processing error:', couponError);
+        console.error('❌ Coupon processing error:', couponError);
         couponProcessed = false;
       }
     }
 
-    console.log('Order processing completed successfully');
+    console.log('✅ Order processing completed successfully');
     return new Response(
       JSON.stringify({
         success: true,
@@ -329,7 +362,7 @@ async function handleOrderCreation(serviceClient: any, user: any, body: any) {
     );
 
   } catch (error) {
-    console.error('Order creation error:', error);
+    console.error('❌ Order creation error:', error);
     return new Response(
       JSON.stringify({ 
         success: false, 
@@ -340,14 +373,17 @@ async function handleOrderCreation(serviceClient: any, user: any, body: any) {
   }
 }
 
-// Stock validation function
+// Enhanced stock validation function
 async function handleStockValidation(serviceClient: any, items: any[]) {
   try {
-    console.log('Validating stock for', items.length, 'items');
+    console.log('🔍 Validating stock for', items.length, 'items');
     
-    const failedItems: string[] = [];
+    const invalidItems: any[] = [];
+    const adjustedItems: any[] = [];
     
     for (const item of items) {
+      console.log('🔍 Checking stock for product:', item.produto_id, 'quantity:', item.quantidade);
+      
       const { data: product, error: stockError } = await serviceClient
         .from('produtos')
         .select('id, nome, estoque')
@@ -355,35 +391,55 @@ async function handleStockValidation(serviceClient: any, items: any[]) {
         .single();
         
       if (stockError || !product) {
-        console.error('Product not found:', item.produto_id);
-        failedItems.push(item.produto_id);
+        console.error('❌ Product not found:', item.produto_id);
+        invalidItems.push({
+          itemId: item.produto_id,
+          productName: 'Produto não encontrado',
+          requestedQuantity: item.quantidade,
+          availableStock: 0
+        });
         continue;
       }
       
       if (product.estoque < item.quantidade) {
-        console.error('Insufficient stock for product:', product.nome);
-        failedItems.push(item.produto_id);
+        console.warn('⚠️ Insufficient stock for product:', product.nome, 'Available:', product.estoque, 'Requested:', item.quantidade);
+        
+        if (product.estoque === 0) {
+          // No stock available
+          invalidItems.push({
+            itemId: item.produto_id,
+            productName: product.nome,
+            requestedQuantity: item.quantidade,
+            availableStock: product.estoque
+          });
+        } else {
+          // Some stock available, but less than requested
+          adjustedItems.push({
+            itemId: item.produto_id,
+            productName: product.nome,
+            oldQuantity: item.quantidade,
+            newQuantity: product.estoque
+          });
+        }
+      } else {
+        console.log('✅ Stock OK for product:', product.nome);
       }
     }
     
-    if (failedItems.length > 0) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Some products do not have sufficient stock',
-          failedItems
-        }),
-        { headers: corsHeaders }
-      );
-    }
+    const isValid = invalidItems.length === 0 && adjustedItems.length === 0;
     
     return new Response(
-      JSON.stringify({ success: true }),
+      JSON.stringify({
+        success: true,
+        isValid,
+        invalidItems,
+        adjustedItems
+      }),
       { headers: corsHeaders }
     );
     
   } catch (error) {
-    console.error('Stock validation error:', error);
+    console.error('❌ Stock validation error:', error);
     return new Response(
       JSON.stringify({
         success: false,
