@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '@/hooks/use-cart';
@@ -174,7 +173,7 @@ export function useCheckout() {
     refreshCart();
   }, [refreshCart]);
   
-  // Handle order placement
+  // Handle order placement with improved data validation
   const handlePlaceOrder = useCallback(async () => {
     try {
       // First verify authentication
@@ -187,12 +186,30 @@ export function useCheckout() {
         toast.error('Selecione um endereço de entrega');
         return;
       }
-      
+
       if (!cartItems.length) {
         toast.error('Seu carrinho está vazio');
         return;
       }
-      
+
+      // Validate address has required fields
+      const addressValidation = {
+        rua: selectedAddress.rua || selectedAddress.street || '',
+        numero: selectedAddress.numero || selectedAddress.number || '',
+        complemento: selectedAddress.complemento || selectedAddress.complement || '',
+        bairro: selectedAddress.bairro || selectedAddress.neighborhood || '',
+        cidade: selectedAddress.cidade || selectedAddress.city || '',
+        estado: selectedAddress.estado || selectedAddress.state || '',
+        cep: selectedAddress.cep || selectedAddress.zipCode || selectedAddress.zip_code || '',
+        ponto_referencia: selectedAddress.ponto_referencia || selectedAddress.reference || ''
+      };
+
+      // Check required address fields
+      if (!addressValidation.rua || !addressValidation.cidade || !addressValidation.estado || !addressValidation.cep) {
+        toast.error('Endereço incompleto. Verifique se todos os campos obrigatórios estão preenchidos.');
+        return;
+      }
+
       setIsSubmitting(true);
       setProcessError(null);
       setOrderAttempts(prev => prev + 1);
@@ -205,18 +222,27 @@ export function useCheckout() {
         return;
       }
       
-      // Prepare order data with discount information
+      // Prepare order data with proper validation and structure
       const orderData = {
-        items: cartItems,
-        endereco_entrega: selectedAddress,
+        items: cartItems.map(item => ({
+          produto_id: item.produto_id,
+          quantidade: item.quantidade,
+          preco: Number(item.preco),
+          subtotal: Number(item.subtotal) || (Number(item.preco) * Number(item.quantidade)),
+          produto: item.produto // Include product data for points calculation
+        })),
+        endereco_entrega: addressValidation,
         forma_pagamento: paymentMethod,
-        valor_total: total,
-        pontos_ganhos: totalPoints,
-        cupom_aplicado: appliedCoupon,
-        desconto: discount
+        valor_total: Number(total),
+        pontos_ganhos: Number(totalPoints),
+        cupom_aplicado: appliedCoupon ? {
+          code: appliedCoupon.code,
+          discount: Number(appliedCoupon.discount)
+        } : null,
+        desconto: Number(discount)
       };
       
-      console.log('Sending order with data:', orderData);
+      console.log('Sending order with validated data:', orderData);
       
       // Create order
       const orderId = await orderService.createOrder(orderData);

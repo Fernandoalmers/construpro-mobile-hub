@@ -19,7 +19,7 @@ export async function createOrder(orderData: CreateOrderPayload): Promise<string
     
     console.log('Valid session found, proceeding with order creation');
     
-    // Prepare order data with enhanced structure
+    // Prepare order data with correct structure matching Edge Function expectations
     const orderPayload = {
       action: 'create_order',
       items: orderData.items.map(item => ({
@@ -29,12 +29,25 @@ export async function createOrder(orderData: CreateOrderPayload): Promise<string
         subtotal: item.subtotal || item.preco * item.quantidade,
         pontos: item.produto?.pontos || 0
       })),
-      endereco_entrega: orderData.endereco_entrega,
+      endereco_entrega: {
+        rua: orderData.endereco_entrega.rua || '',
+        numero: orderData.endereco_entrega.numero || '',
+        complemento: orderData.endereco_entrega.complemento || '',
+        bairro: orderData.endereco_entrega.bairro || '',
+        cidade: orderData.endereco_entrega.cidade || '',
+        estado: orderData.endereco_entrega.estado || '',
+        cep: orderData.endereco_entrega.cep || '',
+        ponto_referencia: orderData.endereco_entrega.ponto_referencia || ''
+      },
       forma_pagamento: orderData.forma_pagamento,
-      valor_total: orderData.valor_total,
-      pontos_ganhos: orderData.pontos_ganhos,
-      cupom_aplicado: orderData.cupom_aplicado,
-      desconto: orderData.desconto || 0,
+      valor_total: Number(orderData.valor_total),
+      pontos_ganhos: Number(orderData.pontos_ganhos || 0),
+      cupom_aplicado: orderData.cupom_aplicado ? {
+        id: orderData.cupom_aplicado.code, // Use code as id for now
+        code: orderData.cupom_aplicado.code,
+        discount: Number(orderData.cupom_aplicado.discount || 0)
+      } : null,
+      desconto: Number(orderData.desconto || 0),
       status: 'Confirmado'
     };
     
