@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '@/hooks/use-cart';
@@ -192,16 +193,16 @@ export function useCheckout() {
         return;
       }
 
-      // Validate address has required fields
+      // Validate address has required fields using correct Portuguese field names
       const addressValidation = {
-        rua: selectedAddress.rua || selectedAddress.street || '',
-        numero: selectedAddress.numero || selectedAddress.number || '',
-        complemento: selectedAddress.complemento || selectedAddress.complement || '',
-        bairro: selectedAddress.bairro || selectedAddress.neighborhood || '',
-        cidade: selectedAddress.cidade || selectedAddress.city || '',
-        estado: selectedAddress.estado || selectedAddress.state || '',
-        cep: selectedAddress.cep || selectedAddress.zipCode || selectedAddress.zip_code || '',
-        ponto_referencia: selectedAddress.ponto_referencia || selectedAddress.reference || ''
+        rua: selectedAddress.logradouro || '',
+        numero: selectedAddress.numero || '',
+        complemento: selectedAddress.complemento || '',
+        bairro: selectedAddress.bairro || '',
+        cidade: selectedAddress.cidade || '',
+        estado: selectedAddress.estado || '',
+        cep: selectedAddress.cep || '',
+        ponto_referencia: '' // This field doesn't exist in our Address interface
       };
 
       // Check required address fields
@@ -224,13 +225,7 @@ export function useCheckout() {
       
       // Prepare order data with proper validation and structure
       const orderData = {
-        items: cartItems.map(item => ({
-          produto_id: item.produto_id,
-          quantidade: item.quantidade,
-          preco: Number(item.preco),
-          subtotal: Number(item.subtotal) || (Number(item.preco) * Number(item.quantidade)),
-          produto: item.produto // Include product data for points calculation
-        })),
+        items: cartItems, // Use cartItems directly as they already match CartItem interface
         endereco_entrega: addressValidation,
         forma_pagamento: paymentMethod,
         valor_total: Number(total),

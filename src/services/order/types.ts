@@ -1,10 +1,21 @@
 
 import { CartItem } from '@/types/cart';
-import { Address } from '@/services/addressService';
+
+// Define the address structure that matches what we're sending
+export interface OrderAddress {
+  rua: string;
+  numero: string;
+  complemento?: string;
+  bairro: string;
+  cidade: string;
+  estado: string;
+  cep: string;
+  ponto_referencia?: string;
+}
 
 export interface CreateOrderPayload {
   items: CartItem[];
-  endereco_entrega: Address;
+  endereco_entrega: OrderAddress;
   forma_pagamento: string;
   valor_total: number;
   pontos_ganhos: number;
