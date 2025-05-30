@@ -12,8 +12,12 @@ export interface PedidoItem {
   total: number;
   created_at: string;
   produto?: {
+    id?: string;
     nome: string;
     imagens?: any[];
+    imagem_url?: string | null;
+    descricao?: string;
+    preco_normal?: number;
   };
 }
 

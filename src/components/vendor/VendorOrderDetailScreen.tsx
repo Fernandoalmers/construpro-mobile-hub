@@ -202,7 +202,7 @@ const VendorOrderDetailScreen: React.FC = () => {
             {pedido.itens?.map((item) => (
               <div key={item.id} className="flex gap-3 p-3 border rounded-md">
                 <ProductImageDisplay 
-                  imageUrl={item.produto?.imagem_url}
+                  imageUrl={item.produto?.imagem_url || null}
                   productName={item.produto?.nome || 'Produto'}
                   className="w-16 h-16"
                 />
