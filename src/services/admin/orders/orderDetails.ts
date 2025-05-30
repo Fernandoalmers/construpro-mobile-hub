@@ -20,45 +20,71 @@ const validateAndNormalizeUUID = (orderId: string): string => {
 const getOrderDetailsWithJoin = async (orderId: string): Promise<AdminOrder | null> => {
   console.log(`[OrderDetails] Using fallback JOIN approach for ${orderId.substring(0, 8)}...`);
   
-  const { data, error } = await supabase
+  // First get the order data
+  const { data: orderData, error: orderError } = await supabase
     .from('orders')
-    .select(`
-      *,
-      profiles!orders_cliente_id_fkey(nome),
-      order_items(
-        *,
-        produtos(
-          id,
-          nome,
-          vendedor_id,
-          vendedores(
-            id,
-            nome_loja
-          )
-        )
-      )
-    `)
+    .select('*')
     .eq('id', orderId)
     .single();
 
-  if (error || !data) {
-    console.error(`[OrderDetails] JOIN fallback failed:`, error);
+  if (orderError || !orderData) {
+    console.error(`[OrderDetails] JOIN fallback failed to get order:`, orderError);
+    return null;
+  }
+
+  // Get client profile explicitly (no JOIN filtering)
+  const { data: profileData, error: profileError } = await supabase
+    .from('profiles')
+    .select('nome, tipo_perfil')
+    .eq('id', orderData.cliente_id)
+    .single();
+
+  if (profileError) {
+    console.warn(`[OrderDetails] Could not fetch profile for client ${orderData.cliente_id}:`, profileError);
+  }
+
+  console.log(`[OrderDetails] Profile data for client:`, {
+    clientId: orderData.cliente_id.substring(0, 8),
+    profileFound: !!profileData,
+    nome: profileData?.nome,
+    tipo: profileData?.tipo_perfil
+  });
+
+  // Get order items with full JOIN
+  const { data: joinData, error: joinError } = await supabase
+    .from('order_items')
+    .select(`
+      *,
+      produtos(
+        id,
+        nome,
+        vendedor_id,
+        vendedores(
+          id,
+          nome_loja
+        )
+      )
+    `)
+    .eq('order_id', orderId);
+
+  if (joinError || !joinData) {
+    console.error(`[OrderDetails] JOIN fallback failed to get items:`, joinError);
     return null;
   }
 
   console.log(`[OrderDetails] JOIN fallback data:`, {
-    orderId: data.id.substring(0, 8),
-    itemsCount: data.order_items?.length || 0,
-    firstItem: data.order_items?.[0] ? {
-      id: data.order_items[0].id,
-      produto_id: data.order_items[0].produto_id?.substring(0, 8),
-      hasProduct: !!data.order_items[0].produtos,
-      hasVendor: !!data.order_items[0].produtos?.vendedores
+    orderId: orderData.id.substring(0, 8),
+    itemsCount: joinData?.length || 0,
+    firstItem: joinData?.[0] ? {
+      id: joinData[0].id,
+      produto_id: joinData[0].produto_id?.substring(0, 8),
+      hasProduct: !!joinData[0].produtos,
+      hasVendor: !!joinData[0].produtos?.vendedores
     } : null
   });
 
   // Process the joined data
-  const items: AdminOrderItem[] = (data.order_items || []).map((item: any) => ({
+  const items: AdminOrderItem[] = (joinData || []).map((item: any) => ({
     id: item.id,
     produto_id: item.produto_id,
     produto_nome: item.produtos?.nome || 'Produto não encontrado',
@@ -71,16 +97,16 @@ const getOrderDetailsWithJoin = async (orderId: string): Promise<AdminOrder | nu
   let loja_nome = 'Loja não identificada';
   let loja_id: string | undefined;
   
-  const firstVendor = data.order_items?.[0]?.produtos?.vendedores;
+  const firstVendor = joinData?.[0]?.produtos?.vendedores;
   if (firstVendor) {
-    loja_id = data.order_items[0].produtos.vendedor_id;
+    loja_id = joinData[0].produtos.vendedor_id;
     loja_nome = firstVendor.nome_loja;
     console.log(`[OrderDetails] JOIN fallback found vendor: ${loja_nome}`);
   }
 
   return {
-    ...data,
-    cliente_nome: data.profiles?.nome || 'Cliente Desconhecido',
+    ...orderData,
+    cliente_nome: profileData?.nome || 'Cliente Desconhecido',
     loja_id,
     loja_nome,
     items
@@ -93,14 +119,11 @@ export const getOrderDetails = async (orderId: string): Promise<AdminOrder | nul
     const normalizedOrderId = validateAndNormalizeUUID(orderId);
     console.log(`[OrderDetails] Processing order: ${normalizedOrderId.substring(0, 8)}...`);
     
-    // Step 2: Get the main order data with customer info
+    // Step 2: Get the main order data WITHOUT profile JOIN to avoid RLS issues
     console.log(`[OrderDetails] Fetching main order data...`);
     const { data: orderData, error: orderError } = await supabase
       .from('orders')
-      .select(`
-        *,
-        profiles!orders_cliente_id_fkey(nome)
-      `)
+      .select('*')
       .eq('id', normalizedOrderId)
       .single();
 
@@ -114,11 +137,29 @@ export const getOrderDetails = async (orderId: string): Promise<AdminOrder | nul
       status: orderData.status,
       valor_total: orderData.valor_total,
       cliente_id: orderData.cliente_id.substring(0, 8),
-      cliente_nome: orderData.profiles?.nome,
       created_at: orderData.created_at
     });
 
-    // Step 3: Get order items with detailed logging
+    // Step 3: Get client profile explicitly (separate query to avoid RLS filtering)
+    console.log(`[OrderDetails] Fetching client profile for ${orderData.cliente_id.substring(0, 8)}...`);
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('nome, tipo_perfil')
+      .eq('id', orderData.cliente_id)
+      .single();
+
+    if (profileError) {
+      console.warn(`[OrderDetails] Could not fetch profile:`, profileError);
+    }
+
+    console.log(`[OrderDetails] Profile data:`, {
+      found: !!profileData,
+      nome: profileData?.nome,
+      tipo: profileData?.tipo_perfil,
+      error: profileError?.message
+    });
+
+    // Step 4: Get order items with detailed logging
     console.log(`[OrderDetails] Fetching order items for order ${normalizedOrderId.substring(0, 8)}...`);
     const { data: orderItemsData, error: itemsError } = await supabase
       .from('order_items')
@@ -150,7 +191,7 @@ export const getOrderDetails = async (orderId: string): Promise<AdminOrder | nul
       console.warn(`[OrderDetails] Both approaches failed to find items, returning order without items`);
       return {
         ...orderData,
-        cliente_nome: orderData.profiles?.nome || 'Cliente Desconhecido',
+        cliente_nome: profileData?.nome || 'Cliente Desconhecido',
         loja_nome: 'Loja não identificada',
         items: []
       };
@@ -166,7 +207,7 @@ export const getOrderDetails = async (orderId: string): Promise<AdminOrder | nul
       }))
     );
 
-    // Step 4: Get product details
+    // Step 5: Get product details
     const productIds = orderItemsData.map(item => item.produto_id);
     console.log(`[OrderDetails] Fetching products for IDs:`, productIds.map(id => id.substring(0, 8)));
 
@@ -190,9 +231,9 @@ export const getOrderDetails = async (orderId: string): Promise<AdminOrder | nul
       console.error(`[OrderDetails] Error fetching products:`, productsError);
     }
 
-    // Step 5: Get vendor details
+    // Step 6: Get vendor details
     const vendorIds = [...new Set((productsData || []).map(p => p.vendedor_id).filter(Boolean))];
-    console.log(`[OrderDetails] Fetching vendors for IDs:`, vendorIds.map(id => id.substring(0, 8)));
+    console.log(`[OrderDetails] Fetching vendors for IDs:`, vendorIds.map(id => id?.substring(0, 8)));
 
     const { data: vendorsData, error: vendorsError } = await supabase
       .from('vendedores')
@@ -213,13 +254,13 @@ export const getOrderDetails = async (orderId: string): Promise<AdminOrder | nul
       console.error(`[OrderDetails] Error fetching vendors:`, vendorsError);
     }
 
-    // Step 6: Create lookup maps
+    // Step 7: Create lookup maps
     const productsMap = new Map((productsData || []).map(p => [p.id, p]));
     const vendorsMap = new Map((vendorsData || []).map(v => [v.id, v]));
 
     console.log(`[OrderDetails] Created maps - Products: ${productsMap.size}, Vendors: ${vendorsMap.size}`);
 
-    // Step 7: Process items and determine main vendor
+    // Step 8: Process items and determine main vendor
     const items: AdminOrderItem[] = [];
     let loja_nome = 'Loja não identificada';
     let loja_id: string | undefined;
@@ -255,7 +296,7 @@ export const getOrderDetails = async (orderId: string): Promise<AdminOrder | nul
       });
     }
 
-    // Step 8: Verify total calculation and detect discounts
+    // Step 9: Verify total calculation and detect discounts
     const calculatedTotal = items.reduce((sum, item) => sum + item.subtotal, 0);
     const totalDifference = Math.abs(orderData.valor_total - calculatedTotal);
     
@@ -269,7 +310,7 @@ export const getOrderDetails = async (orderId: string): Promise<AdminOrder | nul
     // Build the final result
     const result: AdminOrder = {
       ...orderData,
-      cliente_nome: orderData.profiles?.nome || 'Cliente Desconhecido',
+      cliente_nome: profileData?.nome || 'Cliente Desconhecido',
       loja_id,
       loja_nome,
       items
@@ -278,6 +319,7 @@ export const getOrderDetails = async (orderId: string): Promise<AdminOrder | nul
     console.log(`[OrderDetails] Final result:`, {
       orderId: result.id.substring(0, 8),
       clienteNome: result.cliente_nome,
+      clienteTipo: profileData?.tipo_perfil,
       lojaNome: result.loja_nome,
       lojaId: result.loja_id?.substring(0, 8),
       itemsCount: result.items?.length || 0,

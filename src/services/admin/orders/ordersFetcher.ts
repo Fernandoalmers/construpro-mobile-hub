@@ -21,7 +21,7 @@ export const fetchAdminOrders = async (params: FetchOrdersParams = {}): Promise<
 
     console.log(`[AdminOrders] Fetching orders - Page: ${page}, Limit: ${limit}, Offset: ${offset}`);
 
-    // Step 1: Fetch orders with customer profiles
+    // Step 1: Fetch orders WITHOUT profile JOIN to avoid RLS filtering
     let baseQuery = supabase
       .from('orders')
       .select(`
@@ -34,8 +34,7 @@ export const fetchAdminOrders = async (params: FetchOrdersParams = {}): Promise<
         created_at,
         endereco_entrega,
         rastreio,
-        pontos_ganhos,
-        profiles!orders_cliente_id_fkey(nome)
+        pontos_ganhos
       `, { count: 'exact' })
       .order('data_criacao', { ascending: false })
       .range(offset, offset + limit - 1);
@@ -58,10 +57,26 @@ export const fetchAdminOrders = async (params: FetchOrdersParams = {}): Promise<
 
     console.log(`[AdminOrders] Successfully fetched ${orders.length} orders from ${count} total`);
 
-    // Step 2: Get all order IDs to fetch items
+    // Step 2: Get client profiles separately for all orders
+    const clientIds = [...new Set(orders.map(order => order.cliente_id))];
+    
+    const { data: allProfiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, nome, tipo_perfil')
+      .in('id', clientIds);
+
+    if (profilesError) {
+      console.error('[AdminOrders] Error fetching profiles:', profilesError);
+    }
+
+    console.log(`[AdminOrders] Fetched ${allProfiles?.length || 0} profiles for ${clientIds.length} clients`, {
+      profileTypes: allProfiles?.map(p => ({ id: p.id.substring(0, 8), tipo: p.tipo_perfil }))
+    });
+
+    // Step 3: Get all order IDs to fetch items
     const orderIds = orders.map(order => order.id);
     
-    // Step 3: Fetch all order items for these orders
+    // Step 4: Fetch all order items for these orders
     const { data: allOrderItems, error: itemsError } = await supabase
       .from('order_items')
       .select('*')
@@ -71,10 +86,10 @@ export const fetchAdminOrders = async (params: FetchOrdersParams = {}): Promise<
       console.error('[AdminOrders] Error fetching order items:', itemsError);
     }
 
-    // Step 4: Get all unique product IDs
+    // Step 5: Get all unique product IDs
     const productIds = [...new Set((allOrderItems || []).map(item => item.produto_id))];
     
-    // Step 5: Fetch all products
+    // Step 6: Fetch all products
     const { data: allProducts, error: productsError } = await supabase
       .from('produtos')
       .select('id, nome, vendedor_id')
@@ -84,10 +99,10 @@ export const fetchAdminOrders = async (params: FetchOrdersParams = {}): Promise<
       console.error('[AdminOrders] Error fetching products:', productsError);
     }
 
-    // Step 6: Get all unique vendor IDs
+    // Step 7: Get all unique vendor IDs
     const vendorIds = [...new Set((allProducts || []).map(p => p.vendedor_id).filter(Boolean))];
     
-    // Step 7: Fetch all vendors
+    // Step 8: Fetch all vendors
     const { data: allVendors, error: vendorsError } = await supabase
       .from('vendedores')
       .select('id, nome_loja')
@@ -97,7 +112,7 @@ export const fetchAdminOrders = async (params: FetchOrdersParams = {}): Promise<
       console.error('[AdminOrders] Error fetching vendors:', vendorsError);
     }
 
-    // Step 8: Create lookup maps
+    // Step 9: Create lookup maps
     const itemsByOrderId = new Map();
     (allOrderItems || []).forEach(item => {
       if (!itemsByOrderId.has(item.order_id)) {
@@ -108,10 +123,12 @@ export const fetchAdminOrders = async (params: FetchOrdersParams = {}): Promise<
 
     const productsMap = new Map((allProducts || []).map(p => [p.id, p]));
     const vendorsMap = new Map((allVendors || []).map(v => [v.id, v]));
+    const profilesMap = new Map((allProfiles || []).map(p => [p.id, p]));
 
-    // Step 9: Process each order
+    // Step 10: Process each order
     const processedOrders: AdminOrder[] = orders.map(order => {
       const orderItems = itemsByOrderId.get(order.id) || [];
+      const clientProfile = profilesMap.get(order.cliente_id);
       
       // Process items and determine vendor
       let loja_nome = 'Loja não identificada';
@@ -139,7 +156,8 @@ export const fetchAdminOrders = async (params: FetchOrdersParams = {}): Promise<
       });
 
       console.log(`[AdminOrders] Order ${order.id.substring(0, 8)} processed:`, {
-        customer: order.profiles?.nome,
+        customer: clientProfile?.nome,
+        customerType: clientProfile?.tipo_perfil,
         vendor: loja_nome,
         vendor_id: loja_id?.substring(0, 8),
         items_count: items.length
@@ -148,7 +166,7 @@ export const fetchAdminOrders = async (params: FetchOrdersParams = {}): Promise<
       return {
         id: order.id,
         cliente_id: order.cliente_id,
-        cliente_nome: order.profiles?.nome || 'Cliente Desconhecido',
+        cliente_nome: clientProfile?.nome || 'Cliente Desconhecido',
         loja_id,
         loja_nome,
         valor_total: order.valor_total,
