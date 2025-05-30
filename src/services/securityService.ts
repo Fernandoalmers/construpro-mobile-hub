@@ -52,7 +52,8 @@ class SecurityService {
         return { success: false, error: error.message };
       }
 
-      const result = data as AdminPromotionResult;
+      // Safely cast the result with type checking
+      const result = this.parseAdminPromotionResult(data);
       
       if (result.success) {
         toast.success('Usuário promovido a administrador com sucesso');
@@ -97,7 +98,8 @@ class SecurityService {
         return { success: false, error: error.message };
       }
 
-      const result = data as AdminPromotionResult;
+      // Safely cast the result with type checking
+      const result = this.parseAdminPromotionResult(data);
       
       if (result.success) {
         toast.success('Privilégios de administrador removidos com sucesso');
@@ -122,6 +124,27 @@ class SecurityService {
       });
       return { success: false, error: 'Erro interno ao remover privilégios' };
     }
+  }
+
+  // Helper method to safely parse the admin promotion result
+  private parseAdminPromotionResult(data: any): AdminPromotionResult {
+    // Handle null or undefined data
+    if (!data) {
+      return { success: false, error: 'No response from server' };
+    }
+
+    // If data is already in the correct format
+    if (typeof data === 'object' && 'success' in data) {
+      return {
+        success: Boolean(data.success),
+        message: data.message || undefined,
+        error: data.error || undefined
+      };
+    }
+
+    // Fallback for unexpected data format
+    console.warn('Unexpected admin promotion result format:', data);
+    return { success: false, error: 'Unexpected response format' };
   }
 
   // Input validation utilities
