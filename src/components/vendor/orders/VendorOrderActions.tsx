@@ -35,7 +35,7 @@ const VendorOrderActions: React.FC<VendorOrderActionsProps> = ({ pedido }) => {
   } = useOrderActions(pedido.id);
 
   const handlePrint = useReactToPrint({
-    content: () => printRef.current,
+    contentRef: printRef,
     documentTitle: `Pedido-${pedido.id.substring(0, 8)}`,
     pageStyle: `
       @page {
