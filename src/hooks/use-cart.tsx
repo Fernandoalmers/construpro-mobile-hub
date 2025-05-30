@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { CartContextProvider, useCartContext } from '@/context/CartContext';
 import { useCartData } from './cart/use-cart-data';
@@ -9,7 +9,7 @@ import { CartContextType } from '@/types/cart';
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user, profile } = useAuth();
   
-  // Get user type with proper type guard and default
+  // Get user type with default fallback
   const userType = React.useMemo(() => {
     const profileType = profile?.tipo_perfil || 'consumidor';
     return (['consumidor', 'profissional', 'lojista', 'vendedor'].includes(profileType)) 
@@ -17,35 +17,25 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       : 'consumidor';
   }, [profile?.tipo_perfil]);
   
-  // Get cart data with user type
-  const { cart, isLoading, refreshCart, refreshKey } = useCartData(isAuthenticated, user?.id || null, userType);
+  // Get cart data
+  const { cart, isLoading, refreshCart, refreshKey } = useCartData(
+    isAuthenticated, 
+    user?.id || null, 
+    userType
+  );
   
   // Get cart operations
   const operations = useCartOperations(refreshCart);
 
-  // Calculate total items in cart
+  // Calculate total items
   const cartCount = React.useMemo(() => {
     if (!cart?.items || cart.items.length === 0) {
       return 0;
     }
-    
-    const count = cart.items.reduce((sum, item) => {
-      return sum + (item.quantidade || 0);
-    }, 0);
-    
-    console.log('[CartProvider] Calculated cart count:', count, 'from', cart.items.length, 'items');
-    return count;
+    return cart.items.reduce((sum, item) => sum + (item.quantidade || 0), 0);
   }, [cart?.items]);
   
   const cartItems = cart?.items || [];
-  
-  console.log('[CartProvider] Rendering with:', {
-    cartCount,
-    itemsLength: cartItems.length,
-    isLoading,
-    userType,
-    hasCart: !!cart
-  });
 
   // Create context value
   const value: CartContextType = {
@@ -63,14 +53,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   return <CartContextProvider value={value}>{children}</CartContextProvider>;
 }
 
-// Re-export the useCartContext as useCart
+// Export useCart hook
 export function useCart() {
   try {
     const context = useCartContext();
     return context;
   } catch (error) {
-    console.error('useCart must be used within a CartProvider');
-    // Return a fallback with no-op functions to prevent crashes
+    // Return fallback to prevent crashes
     return {
       cart: null,
       cartCount: 0,

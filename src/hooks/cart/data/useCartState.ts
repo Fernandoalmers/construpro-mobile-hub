@@ -4,7 +4,7 @@ import { Cart } from '@/types/cart';
 import { useCartFetcher } from './useCartFetcher';
 
 /**
- * Hook to manage cart state with improved synchronization
+ * Hook to manage cart state - simplified to prevent infinite loops
  */
 export function useCartState(
   isAuthenticated: boolean, 
@@ -17,45 +17,27 @@ export function useCartState(
   const [refreshKey, setRefreshKey] = useState<number>(0);
   
   const { fetchCartData } = useCartFetcher();
-  
-  // Use refs to track loading state and prevent multiple concurrent calls
   const isInitialized = useRef(false);
-  const isFetching = useRef(false);
 
-  // Function to refresh cart data
+  // Create a stable refresh function that doesn't cause re-renders
   const refreshCart = useCallback(async () => {
-    // Prevent concurrent fetches
-    if (isFetching.current) {
-      console.log('[useCartState] Skipping refresh - already fetching');
-      return;
-    }
-
-    // Handle unauthenticated state immediately
+    console.log('[useCartState] Refreshing cart data');
+    
     if (!isAuthenticated || !userId) {
-      console.log('[useCartState] User not authenticated, setting empty cart');
+      console.log('[useCartState] User not authenticated, clearing cart');
       setCart(null);
       setIsLoading(false);
       setError(null);
       return;
     }
     
-    isFetching.current = true;
-    console.log('[useCartState] Starting cart refresh for user:', userId);
-    
     try {
       setIsLoading(true);
       setError(null);
       
       const cartData = await fetchCartData(userId, userType);
-      console.log('[useCartState] Cart data fetched:', {
-        hasData: !!cartData,
-        itemCount: cartData?.items?.length || 0,
-        cartId: cartData?.id
-      });
       
-      // Always set cart data, even if empty
       if (!cartData || !cartData.items || cartData.items.length === 0) {
-        console.log('[useCartState] No cart items found, setting empty cart');
         const emptyCart: Cart = {
           id: cartData?.id || '',
           user_id: userId,
@@ -69,17 +51,16 @@ export function useCartState(
         };
         setCart(emptyCart);
       } else {
-        console.log('[useCartState] Cart data loaded with', cartData.items.length, 'items');
         setCart(cartData);
       }
       
-      // Update refresh key to trigger UI updates
       setRefreshKey(prev => prev + 1);
       
     } catch (err: any) {
       console.error('[useCartState] Error refreshing cart:', err);
       setError(err);
-      // Set empty cart on error to prevent loading loops
+      
+      // Set empty cart on error
       setCart({
         id: '',
         user_id: userId,
@@ -93,24 +74,19 @@ export function useCartState(
       });
     } finally {
       setIsLoading(false);
-      isFetching.current = false;
-      console.log('[useCartState] Cart refresh completed');
     }
   }, [isAuthenticated, userId, userType, fetchCartData]);
 
-  // Simple initialization effect - runs only when auth state changes
+  // Simple initialization - only run once when auth state changes
   useEffect(() => {
-    console.log('[useCartState] Auth state changed:', { isAuthenticated, userId, userType });
-    // Reset initialization flag when user changes
-    isInitialized.current = false;
+    console.log('[useCartState] Auth state effect:', { isAuthenticated, userId, userType });
     
-    // Only fetch if not already initialized
-    if (!isInitialized.current) {
-      console.log('[useCartState] Initializing cart data fetch');
+    // Reset initialization when user changes
+    if (!isInitialized.current || !isAuthenticated || !userId) {
       isInitialized.current = true;
       refreshCart();
     }
-  }, [userId, isAuthenticated, userType, refreshCart]);
+  }, [isAuthenticated, userId]); // Minimal dependencies to prevent loops
 
   return {
     cart,
