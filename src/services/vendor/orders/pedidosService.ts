@@ -26,6 +26,8 @@ export interface Pedido {
   forma_pagamento: string;
   endereco_entrega: any;
   valor_total: number;
+  cupom_codigo?: string | null;
+  desconto_aplicado?: number;
   created_at: string;
   data_entrega_estimada?: string;
   itens?: PedidoItem[];
@@ -39,60 +41,6 @@ export interface Pedido {
     total_gasto: number;
   };
 }
-
-/**
- * Fetch client information with better error handling and fallbacks
- */
-const fetchClientInfo = async (usuario_id: string, vendedor_id: string) => {
-  try {
-    // First try to get from profiles table
-    const { data: profileData, error: profileError } = await supabase
-      .from('profiles')
-      .select('id, nome, email, telefone')
-      .eq('id', usuario_id)
-      .single();
-
-    if (profileError) {
-      console.log('Could not fetch profile data:', profileError);
-    }
-
-    // Try to get vendor-specific customer data
-    const { data: clienteVendorData, error: clienteError } = await supabase
-      .from('clientes_vendedor')
-      .select('id, total_gasto, ultimo_pedido, nome, email, telefone')
-      .eq('vendedor_id', vendedor_id)
-      .eq('usuario_id', usuario_id)
-      .maybeSingle();
-
-    if (clienteError) {
-      console.log('Could not fetch client vendor data:', clienteError);
-    }
-
-    // Combine data with profile taking precedence, but vendor data for totals
-    const clientInfo = {
-      id: clienteVendorData?.id || usuario_id,
-      vendedor_id: vendedor_id,
-      usuario_id: usuario_id,
-      nome: profileData?.nome || clienteVendorData?.nome || 'Cliente',
-      email: profileData?.email || clienteVendorData?.email || '',
-      telefone: profileData?.telefone || clienteVendorData?.telefone || '',
-      total_gasto: clienteVendorData?.total_gasto || 0
-    };
-    
-    return clientInfo;
-  } catch (error) {
-    console.error('Error fetching client info:', error);
-    return {
-      id: usuario_id,
-      vendedor_id: vendedor_id,
-      usuario_id: usuario_id,
-      nome: 'Cliente',
-      email: '',
-      telefone: '',
-      total_gasto: 0
-    };
-  }
-};
 
 /**
  * Enhanced product data fetching with better image handling
@@ -148,9 +96,13 @@ const fetchProductWithImages = async (produto_id: string) => {
 };
 
 /**
- * Buscar pedidos de um vendedor específico
+ * Buscar pedidos de um vendedor específico com otimização
  */
-export const getVendorPedidos = async (): Promise<Pedido[]> => {
+export const getVendorPedidos = async (
+  limit: number = 20,
+  offset: number = 0,
+  statusFilter?: string
+): Promise<Pedido[]> => {
   try {
     // Obter o vendedor atual
     const { data: { user } } = await supabase.auth.getUser();
@@ -169,77 +121,82 @@ export const getVendorPedidos = async (): Promise<Pedido[]> => {
       throw new Error('Vendedor não encontrado');
     }
     
-    // Buscar pedidos do vendedor na tabela pedidos
-    const { data: pedidos, error: pedidosError } = await supabase
-      .from('pedidos')
-      .select(`
-        id,
-        usuario_id,
-        vendedor_id,
-        status,
-        forma_pagamento,
-        endereco_entrega,
-        valor_total,
-        created_at,
-        data_entrega_estimada
-      `)
-      .eq('vendedor_id', vendorData.id)
-      .order('created_at', { ascending: false });
+    // Usar a nova função otimizada para buscar pedidos
+    const { data: pedidosData, error: pedidosError } = await supabase
+      .rpc('get_vendor_pedidos_paginated', {
+        p_vendedor_id: vendorData.id,
+        p_limit: limit,
+        p_offset: offset,
+        p_status_filter: statusFilter || null
+      });
     
     if (pedidosError) {
-      throw new Error('Erro ao buscar pedidos: ' + pedidosError.message);
+      console.error('Erro ao buscar pedidos otimizados:', pedidosError);
+      // Fallback para método anterior se a função falhar
+      return await getVendorPedidosFallback(vendorData.id, statusFilter);
     }
     
-    if (!pedidos || pedidos.length === 0) {
+    if (!pedidosData || pedidosData.length === 0) {
       return [];
     }
     
-    // Para cada pedido, buscar os itens e informações do cliente
-    const pedidosCompletos: Pedido[] = [];
+    // Buscar itens dos pedidos de forma otimizada
+    const pedidoIds = pedidosData.map(p => p.id);
+    const { data: allItems } = await supabase
+      .from('itens_pedido')
+      .select(`
+        id,
+        pedido_id,
+        produto_id,
+        quantidade,
+        preco_unitario,
+        total,
+        created_at
+      `)
+      .in('pedido_id', pedidoIds);
     
-    for (const pedido of pedidos) {
-      try {
-        // Buscar itens do pedido
-        const { data: itens } = await supabase
-          .from('itens_pedido')
-          .select(`
-            id,
-            produto_id,
-            quantidade,
-            preco_unitario,
-            total,
-            created_at
-          `)
-          .eq('pedido_id', pedido.id);
-        
-        // Buscar informações dos produtos com imagens melhoradas
-        const itensComProdutos: PedidoItem[] = [];
-        if (itens && itens.length > 0) {
-          for (const item of itens) {
-            const produtoData = await fetchProductWithImages(item.produto_id);
-            
-            itensComProdutos.push({
-              ...item,
-              produto: produtoData || { nome: 'Produto não encontrado', imagens: [] }
-            });
-          }
-        }
-        
-        // Use improved client fetching
-        const clienteInfo = await fetchClientInfo(pedido.usuario_id, vendorData.id);
-        
-        const pedidoCompleto: Pedido = {
-          ...pedido,
-          itens: itensComProdutos,
-          cliente: clienteInfo
-        };
-        
-        pedidosCompletos.push(pedidoCompleto);
-        
-      } catch (error) {
-        console.error(`Erro ao processar pedido ${pedido.id}:`, error);
+    // Buscar informações dos produtos
+    const produtoIds = [...new Set(allItems?.map(item => item.produto_id) || [])];
+    const produtoMap = new Map();
+    
+    for (const produtoId of produtoIds) {
+      const produtoData = await fetchProductWithImages(produtoId);
+      if (produtoData) {
+        produtoMap.set(produtoId, produtoData);
       }
     }
+    
+    // Montar os pedidos completos
+    const pedidosCompletos: Pedido[] = pedidosData.map(pedido => {
+      const itens = allItems?.filter(item => item.pedido_id === pedido.id) || [];
+      const itensComProdutos = itens.map(item => ({
+        ...item,
+        produto: produtoMap.get(item.produto_id) || { nome: 'Produto não encontrado', imagens: [] }
+      }));
+      
+      return {
+        id: pedido.id,
+        usuario_id: pedido.usuario_id,
+        vendedor_id: pedido.vendedor_id,
+        status: pedido.status,
+        forma_pagamento: pedido.forma_pagamento,
+        endereco_entrega: pedido.endereco_entrega,
+        valor_total: pedido.valor_total,
+        cupom_codigo: pedido.cupom_codigo,
+        desconto_aplicado: pedido.desconto_aplicado || 0,
+        created_at: pedido.created_at,
+        itens: itensComProdutos,
+        cliente: {
+          id: pedido.usuario_id,
+          vendedor_id: pedido.vendedor_id,
+          usuario_id: pedido.usuario_id,
+          nome: pedido.cliente_nome || 'Cliente',
+          email: pedido.cliente_email || '',
+          telefone: pedido.cliente_telefone || '',
+          total_gasto: 0 // Será calculado se necessário
+        }
+      };
+    });
     
     return pedidosCompletos;
     
@@ -247,6 +204,107 @@ export const getVendorPedidos = async (): Promise<Pedido[]> => {
     console.error("Erro ao buscar pedidos:", error);
     throw error;
   }
+};
+
+/**
+ * Método fallback caso a função otimizada falhe
+ */
+const getVendorPedidosFallback = async (vendorId: string, statusFilter?: string): Promise<Pedido[]> => {
+  // Buscar pedidos do vendedor na tabela pedidos
+  let query = supabase
+    .from('pedidos')
+    .select(`
+      id,
+      usuario_id,
+      vendedor_id,
+      status,
+      forma_pagamento,
+      endereco_entrega,
+      valor_total,
+      cupom_codigo,
+      desconto_aplicado,
+      created_at,
+      data_entrega_estimada
+    `)
+    .eq('vendedor_id', vendorId)
+    .order('created_at', { ascending: false });
+  
+  if (statusFilter) {
+    query = query.eq('status', statusFilter);
+  }
+  
+  const { data: pedidos, error: pedidosError } = await query;
+  
+  if (pedidosError) {
+    throw new Error('Erro ao buscar pedidos: ' + pedidosError.message);
+  }
+  
+  if (!pedidos || pedidos.length === 0) {
+    return [];
+  }
+  
+  // Para cada pedido, buscar os itens e informações do cliente
+  const pedidosCompletos: Pedido[] = [];
+  
+  for (const pedido of pedidos) {
+    try {
+      // Buscar itens do pedido
+      const { data: itens } = await supabase
+        .from('itens_pedido')
+        .select(`
+          id,
+          produto_id,
+          quantidade,
+          preco_unitario,
+          total,
+          created_at
+        `)
+        .eq('pedido_id', pedido.id);
+      
+      // Buscar informações dos produtos
+      const itensComProdutos: PedidoItem[] = [];
+      if (itens && itens.length > 0) {
+        for (const item of itens) {
+          const produtoData = await fetchProductWithImages(item.produto_id);
+          
+          itensComProdutos.push({
+            ...item,
+            produto: produtoData || { nome: 'Produto não encontrado', imagens: [] }
+          });
+        }
+      }
+      
+      // Buscar informações do cliente
+      const { data: clienteData } = await supabase
+        .from('profiles')
+        .select('nome, email, telefone')
+        .eq('id', pedido.usuario_id)
+        .single();
+      
+      const clienteInfo = {
+        id: pedido.usuario_id,
+        vendedor_id: vendorId,
+        usuario_id: pedido.usuario_id,
+        nome: clienteData?.nome || 'Cliente',
+        email: clienteData?.email || '',
+        telefone: clienteData?.telefone || '',
+        total_gasto: 0
+      };
+      
+      const pedidoCompleto: Pedido = {
+        ...pedido,
+        itens: itensComProdutos,
+        cliente: clienteInfo
+      };
+      
+      pedidosCompletos.push(pedidoCompleto);
+      
+    } catch (error) {
+      console.error(`Erro ao processar pedido ${pedido.id}:`, error);
+    }
+  }
+  
+  return pedidosCompletos;
 };
 
 /**
@@ -270,7 +328,7 @@ export const getPedidoById = async (pedidoId: string): Promise<Pedido | null> =>
       throw new Error('Vendedor não encontrado');
     }
     
-    // Buscar o pedido
+    // Buscar o pedido com informações de cupom
     const { data: pedido, error } = await supabase
       .from('pedidos')
       .select(`
@@ -281,6 +339,8 @@ export const getPedidoById = async (pedidoId: string): Promise<Pedido | null> =>
         forma_pagamento,
         endereco_entrega,
         valor_total,
+        cupom_codigo,
+        desconto_aplicado,
         created_at,
         data_entrega_estimada
       `)
@@ -306,7 +366,7 @@ export const getPedidoById = async (pedidoId: string): Promise<Pedido | null> =>
       `)
       .eq('pedido_id', pedido.id);
     
-    // Buscar informações dos produtos com imagens melhoradas
+    // Buscar informações dos produtos com imagens
     const itensComProdutos: PedidoItem[] = [];
     if (itens && itens.length > 0) {
       for (const item of itens) {
@@ -319,8 +379,22 @@ export const getPedidoById = async (pedidoId: string): Promise<Pedido | null> =>
       }
     }
     
-    // Use improved client fetching
-    const clienteInfo = await fetchClientInfo(pedido.usuario_id, vendorData.id);
+    // Buscar informações do cliente
+    const { data: clienteData } = await supabase
+      .from('profiles')
+      .select('nome, email, telefone')
+      .eq('id', pedido.usuario_id)
+      .single();
+    
+    const clienteInfo = {
+      id: pedido.usuario_id,
+      vendedor_id: vendorData.id,
+      usuario_id: pedido.usuario_id,
+      nome: clienteData?.nome || 'Cliente',
+      email: clienteData?.email || '',
+      telefone: clienteData?.telefone || '',
+      total_gasto: 0
+    };
     
     const result = {
       ...pedido,

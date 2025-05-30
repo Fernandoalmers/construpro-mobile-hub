@@ -565,7 +565,9 @@ export type Database = {
       pedidos: {
         Row: {
           created_at: string | null
+          cupom_codigo: string | null
           data_entrega_estimada: string | null
+          desconto_aplicado: number | null
           endereco_entrega: Json
           forma_pagamento: string
           id: string
@@ -576,7 +578,9 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          cupom_codigo?: string | null
           data_entrega_estimada?: string | null
+          desconto_aplicado?: number | null
           endereco_entrega: Json
           forma_pagamento: string
           id?: string
@@ -587,7 +591,9 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          cupom_codigo?: string | null
           data_entrega_estimada?: string | null
+          desconto_aplicado?: number | null
           endereco_entrega?: Json
           forma_pagamento?: string
           id?: string
@@ -1955,6 +1961,30 @@ export type Database = {
       get_vendor_id: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_vendor_pedidos_paginated: {
+        Args: {
+          p_vendedor_id: string
+          p_limit?: number
+          p_offset?: number
+          p_status_filter?: string
+        }
+        Returns: {
+          id: string
+          usuario_id: string
+          vendedor_id: string
+          status: string
+          forma_pagamento: string
+          endereco_entrega: Json
+          valor_total: number
+          cupom_codigo: string
+          desconto_aplicado: number
+          created_at: string
+          cliente_nome: string
+          cliente_email: string
+          cliente_telefone: string
+          total_items: number
+        }[]
       }
       get_vendor_stores: {
         Args: Record<PropertyKey, never>

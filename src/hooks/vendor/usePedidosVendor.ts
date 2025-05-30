@@ -6,7 +6,11 @@ import { getVendorPedidos, migrateOrdersToPedidos, type Pedido } from '@/service
 import { getVendorProfile } from '@/services/vendorProfileService';
 import { supabase } from '@/integrations/supabase/client';
 
-export const usePedidosVendor = () => {
+export const usePedidosVendor = (
+  limit: number = 20,
+  offset: number = 0,
+  statusFilter?: string
+) => {
   const queryClient = useQueryClient();
   const [vendorProfileStatus, setVendorProfileStatus] = useState<'checking' | 'found' | 'not_found'>('checking');
   const [isMigrating, setIsMigrating] = useState(false);
@@ -38,7 +42,7 @@ export const usePedidosVendor = () => {
     checkVendorProfile();
   }, []);
   
-  // Fetch pedidos with improved error handling
+  // Fetch pedidos with improved error handling and pagination
   const { 
     data: pedidos = [], 
     isLoading,
@@ -46,7 +50,7 @@ export const usePedidosVendor = () => {
     refetch,
     isRefetching
   } = useQuery({
-    queryKey: ['vendorPedidos'],
+    queryKey: ['vendorPedidos', limit, offset, statusFilter],
     queryFn: async () => {
       try {
         // Verify authentication before proceeding
@@ -56,7 +60,7 @@ export const usePedidosVendor = () => {
           throw new Error('Usuário não autenticado. Faça login novamente.');
         }
         
-        const results = await getVendorPedidos();
+        const results = await getVendorPedidos(limit, offset, statusFilter);
         return results;
       } catch (error) {
         // Check if it's an authentication error
