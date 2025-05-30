@@ -36,7 +36,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({ order }) => {
     });
   };
 
-  const hasDiscount = order.desconto_aplicado && Number(order.desconto_aplicado) > 0;
+  const hasDiscount = order.desconto_aplicado && Number(order.desconto_aplicado) > 0 && order.cupom_codigo;
 
   return (
     <Card className="p-4">

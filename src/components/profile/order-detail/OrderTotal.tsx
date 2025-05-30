@@ -9,12 +9,12 @@ interface OrderTotalProps {
 }
 
 const OrderTotal: React.FC<OrderTotalProps> = ({ order }) => {
-  // Garantir que temos um valor numérico válido
+  // Garantir que temos valores numéricos válidos
   const valorTotal = Number(order.valor_total) || 0;
   const descontoAplicado = Number(order.desconto_aplicado) || 0;
   
-  // Calcular subtotal considerando desconto
-  const subtotalOriginal = descontoAplicado > 0 
+  // Calcular subtotal bruto (valor original antes do desconto)
+  const subtotalBruto = descontoAplicado > 0 
     ? valorTotal + descontoAplicado
     : valorTotal;
     
@@ -27,7 +27,7 @@ const OrderTotal: React.FC<OrderTotalProps> = ({ order }) => {
       <div className="space-y-2">
         <div className="flex justify-between text-sm">
           <span>Subtotal:</span>
-          <span>R$ {subtotalOriginal.toFixed(2)}</span>
+          <span>R$ {subtotalBruto.toFixed(2)}</span>
         </div>
         
         {hasDiscount && (
