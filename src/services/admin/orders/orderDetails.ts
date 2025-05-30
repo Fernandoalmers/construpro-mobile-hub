@@ -6,10 +6,13 @@ export const getOrderDetails = async (orderId: string): Promise<AdminOrder | nul
   try {
     console.log(`[OrderDetails] Fetching order details for ${orderId.substring(0, 8)}...`);
     
-    // Step 1: Get the main order data
+    // Step 1: Get the main order data with customer info
     const { data: orderData, error: orderError } = await supabase
       .from('orders')
-      .select('*')
+      .select(`
+        *,
+        profiles!orders_cliente_id_fkey(nome)
+      `)
       .eq('id', orderId)
       .single();
 
@@ -22,107 +25,71 @@ export const getOrderDetails = async (orderId: string): Promise<AdminOrder | nul
       id: orderData.id.substring(0, 8),
       status: orderData.status,
       valor_total: orderData.valor_total,
-      cliente_id: orderData.cliente_id.substring(0, 8)
+      cliente_id: orderData.cliente_id.substring(0, 8),
+      cliente_nome: orderData.profiles?.nome
     });
 
-    // Step 2: Get customer information
-    const { data: customerData, error: customerError } = await supabase
-      .from('profiles')
-      .select('nome')
-      .eq('id', orderData.cliente_id)
-      .single();
-
-    if (customerError) {
-      console.warn(`[OrderDetails] Customer not found:`, customerError);
-    }
-
-    // Step 3: Get order items
-    const { data: orderItems, error: itemsError } = await supabase
+    // Step 2: Get order items with products and vendors in one optimized query
+    const { data: orderItemsData, error: itemsError } = await supabase
       .from('order_items')
-      .select('*')
+      .select(`
+        id,
+        produto_id,
+        quantidade,
+        preco_unitario,
+        subtotal,
+        produtos!order_items_produto_id_fkey(
+          id,
+          nome,
+          vendedor_id,
+          vendedores!produtos_vendedor_id_fkey(
+            id,
+            nome_loja
+          )
+        )
+      `)
       .eq('order_id', orderId);
 
     if (itemsError) {
       console.error(`[OrderDetails] Error fetching order items:`, itemsError);
       return {
         ...orderData,
-        cliente_nome: customerData?.nome || 'Cliente Desconhecido',
+        cliente_nome: orderData.profiles?.nome || 'Cliente Desconhecido',
         loja_nome: 'Loja não identificada',
         items: []
       };
     }
 
-    console.log(`[OrderDetails] Found ${orderItems?.length || 0} order items`);
+    console.log(`[OrderDetails] Found ${orderItemsData?.length || 0} order items`);
 
-    // Step 4: Get product details for each item
+    // Step 3: Process items and determine vendor
     const items: AdminOrderItem[] = [];
     let loja_nome = 'Loja não identificada';
     let loja_id: string | undefined;
 
-    if (orderItems && orderItems.length > 0) {
-      // Get all product IDs
-      const productIds = orderItems.map(item => item.produto_id);
-      
-      // Fetch all products in one query
-      const { data: productsData, error: productsError } = await supabase
-        .from('produtos')
-        .select('id, nome, vendedor_id')
-        .in('id', productIds);
-
-      if (productsError) {
-        console.error(`[OrderDetails] Error fetching products:`, productsError);
-      }
-
-      // Create a map for quick product lookup
-      const productsMap = new Map(
-        (productsData || []).map(product => [product.id, product])
-      );
-
-      // Get unique vendor IDs
-      const vendorIds = [...new Set(
-        (productsData || []).map(product => product.vendedor_id).filter(Boolean)
-      )];
-
-      // Fetch vendor information
-      let vendorsMap = new Map();
-      if (vendorIds.length > 0) {
-        const { data: vendorsData, error: vendorsError } = await supabase
-          .from('vendedores')
-          .select('id, nome_loja')
-          .in('id', vendorIds);
-
-        if (vendorsError) {
-          console.error(`[OrderDetails] Error fetching vendors:`, vendorsError);
-        } else {
-          vendorsMap = new Map(
-            (vendorsData || []).map(vendor => [vendor.id, vendor])
-          );
-        }
-      }
-
-      // Process each order item
-      for (const item of orderItems) {
-        const product = productsMap.get(item.produto_id);
-        const vendor = product?.vendedor_id ? vendorsMap.get(product.vendedor_id) : null;
+    if (orderItemsData && orderItemsData.length > 0) {
+      for (const item of orderItemsData) {
+        const produto = item.produtos;
+        const vendedor = produto?.vendedores;
         
+        console.log(`[OrderDetails] Processing item:`, {
+          item_id: item.id,
+          produto_nome: produto?.nome,
+          vendedor_nome: vendedor?.nome_loja,
+          vendedor_id: vendedor?.id
+        });
+
         // Use the first vendor found as the main vendor for the order
-        if (vendor && !loja_id) {
-          loja_id = vendor.id;
-          loja_nome = vendor.nome_loja || 'Loja não identificada';
+        if (vendedor && vendedor.nome_loja && !loja_id) {
+          loja_id = vendedor.id;
+          loja_nome = vendedor.nome_loja;
           console.log(`[OrderDetails] Setting main vendor: ${loja_nome} (${loja_id})`);
         }
 
         items.push({
           id: item.id,
           produto_id: item.produto_id,
-          produto_nome: product?.nome || 'Produto não encontrado',
-          quantidade: item.quantidade,
-          preco_unitario: item.preco_unitario,
-          subtotal: item.subtotal
-        });
-
-        console.log(`[OrderDetails] Processed item:`, {
-          produto_nome: product?.nome || 'Produto não encontrado',
+          produto_nome: produto?.nome || 'Produto não encontrado',
           quantidade: item.quantidade,
           preco_unitario: item.preco_unitario,
           subtotal: item.subtotal
@@ -130,18 +97,18 @@ export const getOrderDetails = async (orderId: string): Promise<AdminOrder | nul
       }
     }
 
-    // Step 5: Verify total calculation
+    // Step 4: Verify total calculation
     const calculatedTotal = items.reduce((sum, item) => sum + item.subtotal, 0);
     console.log(`[OrderDetails] Total verification:`, {
       orderTotal: orderData.valor_total,
       calculatedTotal,
-      difference: orderData.valor_total - calculatedTotal
+      difference: Math.abs(orderData.valor_total - calculatedTotal)
     });
 
     // Build the final result
     const result: AdminOrder = {
       ...orderData,
-      cliente_nome: customerData?.nome || 'Cliente Desconhecido',
+      cliente_nome: orderData.profiles?.nome || 'Cliente Desconhecido',
       loja_id,
       loja_nome,
       items
