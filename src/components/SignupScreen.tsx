@@ -1,15 +1,14 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Eye, EyeOff, ChevronLeft, Gift, User, Store } from 'lucide-react';
+import { Eye, EyeOff, ChevronLeft, Gift, User, Store, Briefcase } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import CustomInput from './common/CustomInput';
 import CustomButton from './common/CustomButton';
 import Card from './common/Card';
 import { referralService } from '@/services/pointsService';
 
-type ProfileType = 'consumidor' | 'lojista';
+type ProfileType = 'consumidor' | 'lojista' | 'profissional';
 
 const SignupScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -179,6 +178,8 @@ const SignupScreen: React.FC = () => {
         // Redirect based on profile type
         if (formData.tipo_perfil === 'lojista') {
           navigate('/vendor');
+        } else if (formData.tipo_perfil === 'profissional') {
+          navigate('/services');
         } else {
           navigate('/home');
         }
@@ -208,14 +209,6 @@ const SignupScreen: React.FC = () => {
     localStorage.removeItem('referralCode');
     toast.info('Código de referência removido');
   };
-
-  // Check for referral code in localStorage on mount
-  useEffect(() => {
-    const savedReferralCode = localStorage.getItem('referralCode');
-    if (savedReferralCode) {
-      setFormData(prev => ({ ...prev, referralCode: savedReferralCode }));
-    }
-  }, []);
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100">
@@ -260,7 +253,7 @@ const SignupScreen: React.FC = () => {
           {/* Profile Type Selection */}
           <div className="mb-6">
             <h3 className="text-lg font-medium text-gray-800 mb-3">Escolha seu tipo de perfil</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Consumidor Card */}
               <Card 
                 className={`p-4 cursor-pointer border-2 transition-all ${
@@ -307,6 +300,31 @@ const SignupScreen: React.FC = () => {
                   <h4 className="font-medium text-gray-800 mb-2">Vendedor</h4>
                   <p className="text-sm text-gray-600">
                     Para vender produtos e gerenciar sua loja
+                  </p>
+                </div>
+              </Card>
+
+              {/* Profissional Card */}
+              <Card 
+                className={`p-4 cursor-pointer border-2 transition-all ${
+                  formData.tipo_perfil === 'profissional' 
+                    ? 'border-construPro-blue bg-blue-50' 
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+                onClick={() => handleProfileTypeSelect('profissional')}
+              >
+                <div className="flex flex-col items-center text-center">
+                  <Briefcase 
+                    size={40} 
+                    className={`mb-3 ${
+                      formData.tipo_perfil === 'profissional' 
+                        ? 'text-construPro-blue' 
+                        : 'text-gray-500'
+                    }`} 
+                  />
+                  <h4 className="font-medium text-gray-800 mb-2">Profissional</h4>
+                  <p className="text-sm text-gray-600">
+                    Para oferecer serviços especializados
                   </p>
                 </div>
               </Card>
