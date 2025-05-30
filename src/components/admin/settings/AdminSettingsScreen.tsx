@@ -3,6 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { SecurityFixButton } from '@/components/admin/SecurityFixButton';
+import { SecurityDashboard } from '@/components/admin/security/SecurityDashboard';
 
 const AdminSettingsScreen: React.FC = () => {
   return (
@@ -13,6 +14,11 @@ const AdminSettingsScreen: React.FC = () => {
       </div>
 
       <div className="grid gap-6">
+        {/* Security Dashboard */}
+        <SecurityDashboard />
+
+        <Separator />
+
         {/* Configurações de Segurança */}
         <Card>
           <CardHeader>

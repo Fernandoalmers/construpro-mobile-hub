@@ -1548,6 +1548,36 @@ export type Database = {
         }
         Relationships: []
       }
+      security_events: {
+        Row: {
+          created_at: string | null
+          details: Json | null
+          event_type: string
+          id: string
+          ip_address: unknown | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          details?: Json | null
+          event_type: string
+          id?: string
+          ip_address?: unknown | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          details?: Json | null
+          event_type?: string
+          id?: string
+          ip_address?: unknown | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       service_requests: {
         Row: {
           categoria: string
@@ -2025,6 +2055,10 @@ export type Database = {
         }
         Returns: string
       }
+      log_security_event: {
+        Args: { event_type: string; details?: Json; user_id_param?: string }
+        Returns: undefined
+      }
       migrate_missing_orders_to_pedidos: {
         Args: Record<PropertyKey, never>
         Returns: number
@@ -2058,6 +2092,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
+      secure_admin_promotion: {
+        Args: { target_user_id: string; action: string; reason?: string }
+        Returns: Json
+      }
       update_inventory_on_order: {
         Args: { p_produto_id: string; p_quantidade: number }
         Returns: undefined
@@ -2065,6 +2103,10 @@ export type Database = {
       update_user_points: {
         Args: { user_id: string; points_to_add: number }
         Returns: undefined
+      }
+      validate_cart_quantity: {
+        Args: { quantity: number }
+        Returns: boolean
       }
       validate_coupon: {
         Args: {

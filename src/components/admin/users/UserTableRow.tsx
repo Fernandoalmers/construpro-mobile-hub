@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { MoreVertical, CheckCircle, XCircle, Lock, Unlock, ShieldCheck, ShieldOff, Trash2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { UserData } from '@/types/admin';
+import { securityService } from '@/services/securityService';
 
 interface UserTableRowProps {
   user: UserData;
@@ -34,6 +35,7 @@ const UserTableRow: React.FC<UserTableRowProps> = ({
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -48,6 +50,36 @@ const UserTableRow: React.FC<UserTableRowProps> = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  // Secure admin promotion using the new security service
+  const handleSecureMakeAdmin = async () => {
+    setIsProcessing(true);
+    try {
+      const result = await securityService.promoteUserToAdmin(user.id, 'Promoted via admin interface');
+      if (result.success) {
+        // Call the original handler to update the UI
+        await handleMakeAdmin(user.id);
+      }
+    } finally {
+      setIsProcessing(false);
+      setIsMenuOpen(false);
+    }
+  };
+
+  // Secure admin demotion using the new security service
+  const handleSecureRemoveAdmin = async () => {
+    setIsProcessing(true);
+    try {
+      const result = await securityService.demoteUserFromAdmin(user.id, 'Demoted via admin interface');
+      if (result.success) {
+        // Call the original handler to update the UI
+        await handleRemoveAdmin(user.id);
+      }
+    } finally {
+      setIsProcessing(false);
+      setIsMenuOpen(false);
+    }
+  };
 
   return (
     <tr className="border-b hover:bg-gray-50">
@@ -79,7 +111,6 @@ const UserTableRow: React.FC<UserTableRowProps> = ({
         </Badge>
       </td>
       <td className="px-4 py-2 text-right">{user.saldo_pontos || 0}</td>
-      {/* Fix the type error by wrapping the div in a td element instead of setting the ref directly on td */}
       <td className="px-4 py-2 text-right relative">
         <div ref={menuRef}>
           <Button 
@@ -87,6 +118,7 @@ const UserTableRow: React.FC<UserTableRowProps> = ({
             size="sm" 
             className="h-8 w-8 p-0"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
+            disabled={isProcessing}
           >
             <span className="sr-only">Abrir menu</span>
             <MoreVertical className="h-4 w-4" />
@@ -103,6 +135,7 @@ const UserTableRow: React.FC<UserTableRowProps> = ({
                         handleApproveUser(user.id);
                         setIsMenuOpen(false);
                       }}
+                      disabled={isProcessing}
                     >
                       <CheckCircle className="mr-2 h-4 w-4" /> Aprovar usuário
                     </Button>
@@ -113,6 +146,7 @@ const UserTableRow: React.FC<UserTableRowProps> = ({
                         handleRejectUser(user.id);
                         setIsMenuOpen(false);
                       }}
+                      disabled={isProcessing}
                     >
                       <XCircle className="mr-2 h-4 w-4" /> Recusar usuário
                     </Button>
@@ -126,6 +160,7 @@ const UserTableRow: React.FC<UserTableRowProps> = ({
                       handleBlockUser(user.id);
                       setIsMenuOpen(false);
                     }}
+                    disabled={isProcessing}
                   >
                     <Lock className="mr-2 h-4 w-4" /> Bloquear usuário
                   </Button>
@@ -138,6 +173,7 @@ const UserTableRow: React.FC<UserTableRowProps> = ({
                       handleUnblockUser(user.id);
                       setIsMenuOpen(false);
                     }}
+                    disabled={isProcessing}
                   >
                     <Unlock className="mr-2 h-4 w-4" /> Desbloquear usuário
                   </Button>
@@ -146,24 +182,22 @@ const UserTableRow: React.FC<UserTableRowProps> = ({
                   <Button 
                     className="w-full justify-start text-sm" 
                     variant="ghost" 
-                    onClick={() => {
-                      handleMakeAdmin(user.id);
-                      setIsMenuOpen(false);
-                    }}
+                    onClick={handleSecureMakeAdmin}
+                    disabled={isProcessing}
                   >
-                    <ShieldCheck className="mr-2 h-4 w-4" /> Tornar administrador
+                    <ShieldCheck className="mr-2 h-4 w-4" /> 
+                    {isProcessing ? 'Processando...' : 'Tornar administrador'}
                   </Button>
                 )}
                 {user.is_admin && (
                   <Button 
                     className="w-full justify-start text-sm" 
                     variant="ghost" 
-                    onClick={() => {
-                      handleRemoveAdmin(user.id);
-                      setIsMenuOpen(false);
-                    }}
+                    onClick={handleSecureRemoveAdmin}
+                    disabled={isProcessing}
                   >
-                    <ShieldOff className="mr-2 h-4 w-4" /> Remover administrador
+                    <ShieldOff className="mr-2 h-4 w-4" /> 
+                    {isProcessing ? 'Processando...' : 'Remover administrador'}
                   </Button>
                 )}
                 <Button 
@@ -173,6 +207,7 @@ const UserTableRow: React.FC<UserTableRowProps> = ({
                     setIsDeleteModalOpen(true);
                     setIsMenuOpen(false);
                   }}
+                  disabled={isProcessing}
                 >
                   <Trash2 className="mr-2 h-4 w-4" /> Excluir usuário
                 </Button>
