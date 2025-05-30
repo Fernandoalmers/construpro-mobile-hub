@@ -67,13 +67,18 @@ export function useCartFetcher() {
           // Archive other carts in background (non-blocking)
           const cartsToArchive = existingCarts.slice(1).map(c => c.id);
           if (cartsToArchive.length > 0) {
-            // Don't await this - let it run in background
+            // Don't await this - let it run in background with proper error handling
             supabase
               .from('carts')
               .update({ status: 'abandoned' })
               .in('id', cartsToArchive)
-              .then(() => console.log('[useCartFetcher] Archived old carts in background'))
-              .catch(err => console.warn('[useCartFetcher] Background archiving failed:', err));
+              .then(({ error }) => {
+                if (error) {
+                  console.warn('[useCartFetcher] Background archiving failed:', error);
+                } else {
+                  console.log('[useCartFetcher] Archived old carts in background');
+                }
+              });
           }
         }
 
