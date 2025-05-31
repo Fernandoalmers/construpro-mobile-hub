@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { updateOrderStatus } from '@/services/vendor/orders/orderStatusUpdater';
+import { updateOrderStatus as updateStatus } from '@/services/vendor/orders/orderStatusUpdater';
 import { toast } from '@/hooks/use-toast';
 
 export const useOrderActions = (orderId: string) => {
@@ -11,7 +11,7 @@ export const useOrderActions = (orderId: string) => {
   const updateStatusMutation = useMutation({
     mutationFn: async (newStatus: string) => {
       setIsUpdating(true);
-      const success = await updateOrderStatus(orderId, newStatus);
+      const success = await updateStatus(orderId, newStatus);
       if (!success) {
         throw new Error('Falha ao atualizar status do pedido');
       }
