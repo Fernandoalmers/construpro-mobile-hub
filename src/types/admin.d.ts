@@ -1,3 +1,4 @@
+
 // If this file doesn't exist, create it with these types
 
 export interface UserData {
@@ -14,6 +15,11 @@ export interface UserData {
   saldo_pontos?: number;
   created_at?: string;
   updated_at?: string;
+  // CAMPOS OBRIGATÓRIOS PARA A TABELA ADMIN
+  codigo_indicacao: string;
+  indicado_por: string;
+  especialidade: string;
+  total_compras: number;
 }
 
 export interface AdminLog {

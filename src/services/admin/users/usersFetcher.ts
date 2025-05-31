@@ -4,7 +4,7 @@ import { UserData } from '@/types/admin';
 
 export const fetchUsers = async (): Promise<UserData[]> => {
   try {
-    console.log('🚀 [fetchUsers] VERSÃO SIMPLIFICADA v2.0 - Iniciando busca...');
+    console.log('🚀 [fetchUsers] INICIANDO BUSCA CORRIGIDA v3.0...');
     
     // 1. Buscar todos os profiles primeiro
     const { data: profiles, error: profilesError } = await supabase
@@ -77,18 +77,18 @@ export const fetchUsers = async (): Promise<UserData[]> => {
       const totalCompras = purchasesByClient[user.id] || 0;
 
       // Mapear campos corretamente
-      const codigo_indicacao = user.codigo || '';
+      const codigoIndicacao = user.codigo || '';
       const especialidade = user.especialidade_profissional || '';
 
-      // Log detalhado para debug
       console.log(`👤 [fetchUsers] Processando: ${user.nome}`);
       console.log(`   - ID: ${user.id}`);
-      console.log(`   - Código (${user.codigo}): "${codigo_indicacao}"`);
-      console.log(`   - Indicado por (${referrerId}): "${indicadoPor}"`);
-      console.log(`   - Especialidade (${user.especialidade_profissional}): "${especialidade}"`);
+      console.log(`   - Código: "${codigoIndicacao}"`);
+      console.log(`   - Indicado por: "${indicadoPor}"`);
+      console.log(`   - Especialidade: "${especialidade}"`);
       console.log(`   - Total compras: R$ ${totalCompras.toFixed(2)}`);
 
-      const processedUser: UserData = {
+      // RETORNAR OBJETO COMPLETO COM TODOS OS CAMPOS NECESSÁRIOS
+      return {
         id: user.id,
         nome: user.nome || 'Sem nome',
         email: user.email || 'Sem email',
@@ -101,23 +101,12 @@ export const fetchUsers = async (): Promise<UserData[]> => {
         is_admin: user.is_admin || false,
         saldo_pontos: user.saldo_pontos || 0,
         created_at: user.created_at,
-        // CAMPOS CORRIGIDOS
-        codigo_indicacao: codigo_indicacao,
+        // CAMPOS ESSENCIAIS QUE ESTAVAM FALTANDO
+        codigo_indicacao: codigoIndicacao,
         indicado_por: indicadoPor,
         especialidade: especialidade,
         total_compras: totalCompras
-      };
-
-      // Log do resultado final
-      console.log(`✅ [fetchUsers] Usuário mapeado:`, {
-        nome: processedUser.nome,
-        codigo_indicacao: processedUser.codigo_indicacao,
-        indicado_por: processedUser.indicado_por,
-        especialidade: processedUser.especialidade,
-        total_compras: processedUser.total_compras
-      });
-
-      return processedUser;
+      } as UserData;
     });
     
     console.log('✅ [fetchUsers] TOTAL de usuários processados:', enrichedUsers.length);
