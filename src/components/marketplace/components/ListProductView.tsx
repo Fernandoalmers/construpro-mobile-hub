@@ -118,11 +118,6 @@ const ListProductView: React.FC<ListProductViewProps> = ({
                   </div>
                 </div>
               )}
-              
-              {/* Free shipping */}
-              <div className="text-xs text-green-600">
-                Entrega GRÁTIS
-              </div>
             </div>
           </div>
         );
