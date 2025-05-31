@@ -81,30 +81,8 @@ export const updateOrderStatus = async (id: string, newInternalStatus: string): 
     const standardStatus = STATUS_MAPPING[newInternalStatus.toLowerCase()] || newInternalStatus;
     console.log('🔄 [OrderStatusUpdater] Status padronizado a ser usado:', standardStatus);
     
-    // Estratégia robusta: usar uma função RPC personalizada para contornar triggers problemáticos
+    // Estratégia simplificada: atualização direta com tratamento robusto de erros
     try {
-      // Primeira tentativa: usar função RPC que desabilita triggers temporariamente
-      const { data: rpcResult, error: rpcError } = await supabase.rpc('update_pedido_status_safe', {
-        pedido_id: id,
-        vendedor_id: vendorData.id,
-        new_status: standardStatus,
-        order_id_to_update: pedidoCheck.order_id
-      });
-
-      if (rpcError) {
-        console.log('🔄 [OrderStatusUpdater] RPC não disponível, usando método direto...');
-        throw rpcError;
-      }
-
-      console.log('✅ [OrderStatusUpdater] Status atualizado via RPC:', rpcResult);
-      toast.success(`Status atualizado para "${standardStatus}"`);
-      return true;
-
-    } catch (rpcError) {
-      console.log('🔄 [OrderStatusUpdater] Fallback para atualização direta...');
-      
-      // Fallback: atualização direta com estratégia de contorno de triggers
-      
       // Se existe order_id, atualizar primeiro a tabela orders
       if (pedidoCheck.order_id) {
         console.log('🔄 [OrderStatusUpdater] Atualizando tabela orders primeiro:', { 
@@ -126,14 +104,16 @@ export const updateOrderStatus = async (id: string, newInternalStatus: string): 
         console.log('✅ [OrderStatusUpdater] Tabela orders atualizada com status:', standardStatus);
       }
       
-      // Estratégia para contornar triggers: usar uma transação com configuração específica
+      // Estratégia para contornar triggers: usar configurações específicas
       try {
-        // Desabilitar triggers temporariamente para esta sessão (se possível)
-        await supabase.rpc('execute_custom_sql', {
-          sql_statement: 'SET session_replication_role = replica;'
-        }).catch(() => {
+        // Tentar desabilitar triggers temporariamente para esta sessão
+        try {
+          await supabase.rpc('execute_custom_sql', {
+            sql_statement: 'SET session_replication_role = replica;'
+          });
+        } catch (sqlError) {
           console.log('⚠️ [OrderStatusUpdater] Não foi possível desabilitar triggers');
-        });
+        }
 
         // Atualizar o status na tabela pedidos
         console.log('🔄 [OrderStatusUpdater] Atualizando tabela pedidos com status padronizado:', standardStatus);
@@ -144,11 +124,13 @@ export const updateOrderStatus = async (id: string, newInternalStatus: string): 
           .eq('vendedor_id', vendorData.id);
 
         // Reabilitar triggers
-        await supabase.rpc('execute_custom_sql', {
-          sql_statement: 'SET session_replication_role = DEFAULT;'
-        }).catch(() => {
+        try {
+          await supabase.rpc('execute_custom_sql', {
+            sql_statement: 'SET session_replication_role = DEFAULT;'
+          });
+        } catch (sqlError) {
           console.log('⚠️ [OrderStatusUpdater] Não foi possível reabilitar triggers');
-        });
+        }
 
         if (pedidosError) {
           console.error('❌ [OrderStatusUpdater] Erro ao atualizar status na tabela pedidos:', pedidosError);
@@ -156,10 +138,14 @@ export const updateOrderStatus = async (id: string, newInternalStatus: string): 
           // Se houve erro no pedidos mas orders foi atualizado, tentar reverter
           if (pedidoCheck.order_id) {
             console.log('🔄 [OrderStatusUpdater] Tentando reverter mudança na tabela orders...');
-            await supabase
-              .from('orders')
-              .update({ status: pedidoCheck.status })
-              .eq('id', pedidoCheck.order_id);
+            try {
+              await supabase
+                .from('orders')
+                .update({ status: pedidoCheck.status })
+                .eq('id', pedidoCheck.order_id);
+            } catch (revertError) {
+              console.error('❌ [OrderStatusUpdater] Erro ao reverter orders:', revertError);
+            }
           }
           
           // Tratar erros específicos de triggers
@@ -179,6 +165,11 @@ export const updateOrderStatus = async (id: string, newInternalStatus: string): 
         toast.error('Erro ao processar atualização. Tente novamente.');
         return false;
       }
+
+    } catch (updateError) {
+      console.error('❌ [OrderStatusUpdater] Erro geral na atualização:', updateError);
+      toast.error('Erro inesperado ao atualizar status');
+      return false;
     }
 
     console.log('✅ [OrderStatusUpdater] Status atualizado com sucesso de', pedidoCheck.status, 'para', standardStatus);
