@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { toast } from '@/components/ui/sonner';
 import { addToCart, updateCartItemQuantity, removeFromCart, clearCart } from '@/services/cart/cartItemOperations';
@@ -98,12 +97,13 @@ export function useCartOperations(refreshCartData: () => Promise<void>, forceUpd
       setOperationInProgress('clear-cart');
       
       console.log('[useCartOperations] Clearing cart');
+      // Use the direct clearCart function - same pattern as removeFromCart
       await clearCart();
       
       console.log('[useCartOperations] Refreshing cart after clear');
       await refreshCartData();
       
-      // Force immediate update for counter
+      // Force immediate update for counter - same as removeItem
       if (forceUpdate) {
         console.log('[useCartOperations] Forcing immediate update after clear');
         forceUpdate();

@@ -5,11 +5,12 @@ import { supabase } from '@/integrations/supabase/client';
 
 /**
  * Hook providing functionality to clear the entire cart
+ * Following the same pattern as use-cart-remove for consistency
  */
 export function useCartClear(refreshCartData: () => Promise<void>) {
   const [isLoading, setIsLoading] = useState(false);
 
-  // Clear entire cart - ensure we catch any errors and optimize for speed
+  // Clear entire cart - using the same direct approach as removeItem
   const clearCart = async (): Promise<void> => {
     try {
       setIsLoading(true);
@@ -35,12 +36,14 @@ export function useCartClear(refreshCartData: () => Promise<void>) {
 
       if (!cart) {
         console.log('🧹 [useCartClear] No active cart found, nothing to clear');
+        // Still refresh to ensure UI is updated
+        await refreshCartData();
         return;
       }
       
       console.log('🧹 [useCartClear] Clearing cart items for cart:', cart.id);
       
-      // Delete all items from cart - single operation for speed
+      // Delete all items from cart - single direct operation like removeItem
       const { error } = await supabase
         .from('cart_items')
         .delete()
@@ -53,8 +56,12 @@ export function useCartClear(refreshCartData: () => Promise<void>) {
 
       console.log('✅ [useCartClear] Cart cleared successfully');
       
-      // Refresh cart data to update UI
+      // Immediately refresh cart data to update UI - same as removeItem
+      console.log('🔄 [useCartClear] Refreshing cart data');
       await refreshCartData();
+      
+      console.log('✅ [useCartClear] Cart data refreshed');
+      
     } catch (error: any) {
       console.error('❌ [useCartClear] Error clearing cart:', error);
       toast.error('Erro ao limpar o carrinho: ' + (error.message || ''));
