@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -38,9 +37,8 @@ const UserTableRow: React.FC<UserTableRowProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Log para debug dos dados do usuário
-  console.log(`🔍 [UserTableRow] Renderizando usuário:`, {
-    nome: user.nome,
+  // Log para verificar dados recebidos
+  console.log(`🔍 [UserTableRow] Dados recebidos para ${user.nome}:`, {
     codigo_indicacao: user.codigo_indicacao,
     indicado_por: user.indicado_por,
     especialidade: user.especialidade,
