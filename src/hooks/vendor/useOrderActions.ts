@@ -53,7 +53,7 @@ export const useOrderActions = (orderId: string) => {
       
       toast({
         title: "Status atualizado",
-        description: `Status alterado para: ${newStatus}`,
+        description: `Status alterado com sucesso`,
       });
       
       // Invalidar múltiplas queries para garantir atualização
@@ -76,7 +76,7 @@ export const useOrderActions = (orderId: string) => {
         } else if (error.message.includes('Vendedor não encontrado')) {
           errorMessage = 'Você não tem permissão para alterar este pedido.';
         } else if (error.message.includes('constraint') || error.message.includes('violates check')) {
-          errorMessage = 'Erro de validação de status. O sistema está sendo corrigido.';
+          errorMessage = 'Erro de validação de status. Tente novamente.';
         } else if (error.message.includes('sincronizar')) {
           errorMessage = 'Erro na sincronização entre sistemas. Tente novamente.';
         } else {
@@ -97,11 +97,14 @@ export const useOrderActions = (orderId: string) => {
   });
 
   const getNextStatus = (currentStatus: string): string | null => {
+    // Mapear status padronizado para próximo status interno
     const statusFlow = {
       'pendente': 'confirmado',
-      'confirmado': 'processando',
+      'confirmado': 'processando', 
+      'em separação': 'enviado',
       'processando': 'enviado',
-      'enviado': 'entregue'
+      'enviado': 'entregue',
+      'em trânsito': 'entregue'
     };
     return statusFlow[currentStatus.toLowerCase()] || null;
   };
@@ -110,8 +113,10 @@ export const useOrderActions = (orderId: string) => {
     const buttonTexts = {
       'pendente': 'Confirmar Pedido',
       'confirmado': 'Iniciar Processamento',
-      'processando': 'Marcar como Enviado',
-      'enviado': 'Marcar como Entregue'
+      'em separação': 'Marcar como Enviado',
+      'processando': 'Marcar como Enviado', 
+      'enviado': 'Marcar como Entregue',
+      'em trânsito': 'Marcar como Entregue'
     };
     return buttonTexts[currentStatus.toLowerCase()] || '';
   };

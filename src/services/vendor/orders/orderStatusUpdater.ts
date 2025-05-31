@@ -2,7 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 
-// Mapeamento de status entre pedidos (interno) e orders (database constraint)
+// Mapeamento de status interno para status padronizado (compatível com constraint)
 const STATUS_MAPPING = {
   'pendente': 'Confirmado',
   'confirmado': 'Em Separação', 
@@ -12,9 +12,18 @@ const STATUS_MAPPING = {
   'cancelado': 'Cancelado'
 };
 
-export const updateOrderStatus = async (id: string, status: string): Promise<boolean> => {
+// Mapeamento reverso para manter consistência interna
+const INTERNAL_STATUS_MAPPING = {
+  'Confirmado': 'confirmado',
+  'Em Separação': 'processando',
+  'Em Trânsito': 'enviado',
+  'Entregue': 'entregue',
+  'Cancelado': 'cancelado'
+};
+
+export const updateOrderStatus = async (id: string, newInternalStatus: string): Promise<boolean> => {
   try {
-    console.log('🔄 [OrderStatusUpdater] Attempting to update order status:', { id, status });
+    console.log('🔄 [OrderStatusUpdater] Attempting to update order status:', { id, newInternalStatus });
     
     // Verificar se o usuário tem acesso a este pedido
     const { data: { user } } = await supabase.auth.getUser();
@@ -62,7 +71,7 @@ export const updateOrderStatus = async (id: string, status: string): Promise<boo
       vendedor_id: pedidoCheck.vendedor_id,
       vendedor_esperado: vendorData.id,
       status_atual: pedidoCheck.status,
-      novo_status: status,
+      novo_status_interno: newInternalStatus,
       order_id: pedidoCheck.order_id
     });
 
@@ -77,18 +86,20 @@ export const updateOrderStatus = async (id: string, status: string): Promise<boo
 
     console.log('✅ [OrderStatusUpdater] Permissões verificadas, iniciando atualização...');
     
-    // Se existe order_id, atualizar primeiro a tabela orders com o status mapeado
+    // Obter o status padronizado que será usado em ambas as tabelas
+    const standardStatus = STATUS_MAPPING[newInternalStatus.toLowerCase()] || newInternalStatus;
+    console.log('🔄 [OrderStatusUpdater] Status padronizado a ser usado:', standardStatus);
+    
+    // Se existe order_id, atualizar primeiro a tabela orders com o status padronizado
     if (pedidoCheck.order_id) {
-      const mappedStatus = STATUS_MAPPING[status.toLowerCase()] || status;
       console.log('🔄 [OrderStatusUpdater] Atualizando tabela orders primeiro:', { 
         order_id: pedidoCheck.order_id,
-        original: status, 
-        mapped: mappedStatus 
+        status: standardStatus 
       });
       
       const { error: ordersError } = await supabase
         .from('orders')
-        .update({ status: mappedStatus })
+        .update({ status: standardStatus })
         .eq('id', pedidoCheck.order_id);
 
       if (ordersError) {
@@ -97,14 +108,14 @@ export const updateOrderStatus = async (id: string, status: string): Promise<boo
         return false;
       }
 
-      console.log('✅ [OrderStatusUpdater] Tabela orders atualizada com status:', mappedStatus);
+      console.log('✅ [OrderStatusUpdater] Tabela orders atualizada com status:', standardStatus);
     }
     
-    // Atualizar o status na tabela pedidos com o status interno
-    console.log('🔄 [OrderStatusUpdater] Atualizando tabela pedidos com status interno:', status);
+    // Atualizar o status na tabela pedidos com o MESMO status padronizado
+    console.log('🔄 [OrderStatusUpdater] Atualizando tabela pedidos com status padronizado:', standardStatus);
     const { error: pedidosError } = await supabase
       .from('pedidos')
-      .update({ status: status })
+      .update({ status: standardStatus })
       .eq('id', id)
       .eq('vendedor_id', vendorData.id);
 
@@ -114,10 +125,9 @@ export const updateOrderStatus = async (id: string, status: string): Promise<boo
       // Se houve erro no pedidos mas orders foi atualizado, tentar reverter
       if (pedidoCheck.order_id) {
         console.log('🔄 [OrderStatusUpdater] Tentando reverter mudança na tabela orders...');
-        const originalMappedStatus = STATUS_MAPPING[pedidoCheck.status.toLowerCase()] || pedidoCheck.status;
         await supabase
           .from('orders')
-          .update({ status: originalMappedStatus })
+          .update({ status: pedidoCheck.status })
           .eq('id', pedidoCheck.order_id);
       }
       
@@ -125,9 +135,9 @@ export const updateOrderStatus = async (id: string, status: string): Promise<boo
       return false;
     }
 
-    console.log('✅ [OrderStatusUpdater] Tabela pedidos atualizada com status:', status);
-    console.log('✅ [OrderStatusUpdater] Status atualizado com sucesso de', pedidoCheck.status, 'para', status);
-    toast.success(`Status atualizado de "${pedidoCheck.status}" para "${status}"`);
+    console.log('✅ [OrderStatusUpdater] Tabela pedidos atualizada com status:', standardStatus);
+    console.log('✅ [OrderStatusUpdater] Status atualizado com sucesso de', pedidoCheck.status, 'para', standardStatus);
+    toast.success(`Status atualizado para "${standardStatus}"`);
     return true;
     
   } catch (error) {
