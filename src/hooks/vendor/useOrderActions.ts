@@ -77,8 +77,8 @@ export const useOrderActions = (orderId: string) => {
           errorMessage = 'Você não tem permissão para alterar este pedido.';
         } else if (error.message.includes('constraint') || error.message.includes('violates check')) {
           errorMessage = 'Erro de validação de status. Tente novamente.';
-        } else if (error.message.includes('sincronizar')) {
-          errorMessage = 'Erro na sincronização entre sistemas. Tente novamente.';
+        } else if (error.message.includes('order_id') || error.message.includes('trigger')) {
+          errorMessage = 'Erro de sincronização entre sistemas. Tente novamente.';
         } else {
           errorMessage = error.message;
         }
@@ -93,7 +93,18 @@ export const useOrderActions = (orderId: string) => {
     onSettled: () => {
       setIsUpdating(false);
       console.log('🏁 [useOrderActions] Mutação finalizada');
-    }
+    },
+    retry: (failureCount, error) => {
+      // Retry apenas para erros específicos que podem ser temporários
+      if (error instanceof Error) {
+        const shouldRetry = error.message.includes('sincronização') || 
+                           error.message.includes('trigger') ||
+                           error.message.includes('order_id');
+        return shouldRetry && failureCount < 2;
+      }
+      return false;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 3000),
   });
 
   const getNextStatus = (currentStatus: string): string | null => {
