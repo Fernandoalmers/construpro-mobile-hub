@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { updateOrderStatus as updateStatus } from '@/services/vendor/orders/orderStatusUpdater';
+import { updateOrderStatus as updateOrderStatusService } from '@/services/vendor/orders/orderStatusUpdater';
 import { toast } from '@/hooks/use-toast';
 
 export const useOrderActions = (orderId: string) => {
@@ -10,14 +10,16 @@ export const useOrderActions = (orderId: string) => {
 
   const updateStatusMutation = useMutation({
     mutationFn: async (newStatus: string) => {
+      console.log('🔄 [useOrderActions] Iniciando atualização de status:', newStatus);
       setIsUpdating(true);
-      const success = await updateStatus(orderId, newStatus);
+      const success = await updateOrderStatusService(orderId, newStatus);
       if (!success) {
         throw new Error('Falha ao atualizar status do pedido');
       }
       return success;
     },
     onSuccess: () => {
+      console.log('✅ [useOrderActions] Status atualizado com sucesso');
       toast({
         title: "Status atualizado",
         description: "O status do pedido foi atualizado com sucesso",
@@ -27,6 +29,7 @@ export const useOrderActions = (orderId: string) => {
       queryClient.invalidateQueries({ queryKey: ['vendorPedidos'] });
     },
     onError: (error) => {
+      console.error('❌ [useOrderActions] Erro ao atualizar status:', error);
       toast({
         title: "Erro",
         description: error instanceof Error ? error.message : "Erro ao atualizar status",
@@ -64,6 +67,7 @@ export const useOrderActions = (orderId: string) => {
   };
 
   const updateOrderStatus = (newStatus: string) => {
+    console.log('🔄 [useOrderActions] Chamando mutação para status:', newStatus);
     updateStatusMutation.mutate(newStatus);
   };
 

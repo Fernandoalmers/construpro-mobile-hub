@@ -36,9 +36,9 @@ export const updateOrderStatus = async (id: string, status: string): Promise<boo
       return false;
     }
 
-    console.log('🔄 [OrderStatusUpdater] Atualizando status na tabela pedidos (sync automático ativo)...');
+    console.log('🔄 [OrderStatusUpdater] Atualizando status na tabela pedidos...');
     
-    // Atualizar o status na tabela pedidos - o trigger irá sincronizar automaticamente
+    // Atualizar o status na tabela pedidos
     const { error: pedidosError } = await supabase
       .from('pedidos')
       .update({ status: status })
@@ -50,7 +50,21 @@ export const updateOrderStatus = async (id: string, status: string): Promise<boo
       return false;
     }
 
-    console.log('✅ [OrderStatusUpdater] Status atualizado com sucesso - sincronização automática ativa');
+    // Se existe order_id, também atualizar na tabela orders para sincronização
+    if (pedidoCheck.order_id) {
+      console.log('🔄 [OrderStatusUpdater] Sincronizando com tabela orders...');
+      const { error: ordersError } = await supabase
+        .from('orders')
+        .update({ status: status })
+        .eq('id', pedidoCheck.order_id);
+
+      if (ordersError) {
+        console.warn('⚠️ [OrderStatusUpdater] Aviso: Erro ao sincronizar com tabela orders:', ordersError);
+        // Não falhar se a sincronização der erro, pois o principal (pedidos) foi atualizado
+      }
+    }
+
+    console.log('✅ [OrderStatusUpdater] Status atualizado com sucesso');
     toast.success('Status do pedido atualizado com sucesso');
     return true;
   } catch (error) {
