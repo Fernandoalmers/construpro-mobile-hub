@@ -18,6 +18,8 @@ export interface PedidoItem {
     imagem_url?: string | null;
     descricao?: string;
     preco_normal?: number;
+    sku?: string | null;
+    codigo_barras?: string | null;
   };
 }
 
