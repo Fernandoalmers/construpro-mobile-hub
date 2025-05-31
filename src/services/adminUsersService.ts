@@ -5,60 +5,83 @@ import { UserData } from '@/types/admin';
 
 export const fetchUsers = async (): Promise<UserData[]> => {
   try {
-    // Buscar dados dos profiles
-    const { data: profilesData, error: profilesError } = await supabase
+    console.log('🔍 [fetchUsers] Iniciando busca de usuários com dados completos...');
+    
+    // Buscar todos os dados dos usuários com joins otimizados
+    const { data: usersData, error: usersError } = await supabase
       .from('profiles')
-      .select('*')
+      .select(`
+        *,
+        referrals!referrals_referred_id_fkey(
+          referrer_id,
+          referrer:profiles!referrals_referrer_id_fkey(nome)
+        )
+      `)
       .order('created_at', { ascending: false });
       
-    if (profilesError) throw profilesError;
+    if (usersError) {
+      console.error('❌ [fetchUsers] Erro ao buscar profiles:', usersError);
+      throw usersError;
+    }
+
+    console.log('✅ [fetchUsers] Profiles encontrados:', usersData?.length || 0);
     
-    // Para cada usuário, buscar dados adicionais
-    const enrichedUsers = await Promise.all(
-      profilesData.map(async (user) => {
-        // Buscar quem indicou este usuário
-        const { data: referralData } = await supabase
-          .from('referrals')
-          .select(`
-            referrer_id,
-            profiles!referrals_referrer_id_fkey(nome)
-          `)
-          .eq('referred_id', user.id)
-          .single();
+    // Buscar dados de compras de forma otimizada
+    const { data: ordersData, error: ordersError } = await supabase
+      .from('orders')
+      .select('cliente_id, valor_total');
 
-        // Calcular total de compras do usuário
-        const { data: ordersData } = await supabase
-          .from('orders')
-          .select('valor_total')
-          .eq('cliente_id', user.id);
+    if (ordersError) {
+      console.warn('⚠️ [fetchUsers] Erro ao buscar orders (continuando sem dados de compras):', ordersError);
+    }
 
-        const totalCompras = ordersData?.reduce((total, order) => total + (order.valor_total || 0), 0) || 0;
+    // Agrupar compras por cliente
+    const purchasesByClient = (ordersData || []).reduce((acc, order) => {
+      if (!acc[order.cliente_id]) {
+        acc[order.cliente_id] = 0;
+      }
+      acc[order.cliente_id] += order.valor_total || 0;
+      return acc;
+    }, {} as Record<string, number>);
 
-        return {
-          id: user.id,
-          nome: user.nome || 'Sem nome',
-          email: user.email || 'Sem email',
-          papel: user.papel || user.tipo_perfil || 'consumidor',
-          tipo_perfil: user.tipo_perfil || user.papel || 'consumidor',
-          status: user.status || 'ativo',
-          cpf: user.cpf || '',
-          telefone: user.telefone || '',
-          avatar: user.avatar || null,
-          is_admin: user.is_admin || false,
-          saldo_pontos: user.saldo_pontos || 0,
-          created_at: user.created_at,
-          // Novos campos
-          codigo_indicacao: user.codigo || '',
-          indicado_por: referralData?.profiles?.nome || '',
-          especialidade: user.especialidade_profissional || '',
-          total_compras: totalCompras
-        };
-      })
-    );
+    console.log('✅ [fetchUsers] Dados de compras processados para', Object.keys(purchasesByClient).length, 'clientes');
+
+    // Processar dados dos usuários
+    const enrichedUsers = usersData.map((user) => {
+      // Extrair dados de referência
+      const referralInfo = user.referrals?.[0]; // Pegar o primeiro referral (deveria ser único)
+      const indicadoPor = referralInfo?.referrer?.nome || '';
+
+      // Calcular total de compras
+      const totalCompras = purchasesByClient[user.id] || 0;
+
+      console.log(`👤 [fetchUsers] Processando usuário ${user.nome}: indicado_por="${indicadoPor}", total_compras=${totalCompras}, codigo="${user.codigo || ''}", especialidade="${user.especialidade_profissional || ''}"`);
+
+      return {
+        id: user.id,
+        nome: user.nome || 'Sem nome',
+        email: user.email || 'Sem email',
+        papel: user.papel || user.tipo_perfil || 'consumidor',
+        tipo_perfil: user.tipo_perfil || user.papel || 'consumidor',
+        status: user.status || 'ativo',
+        cpf: user.cpf || '',
+        telefone: user.telefone || '',
+        avatar: user.avatar || null,
+        is_admin: user.is_admin || false,
+        saldo_pontos: user.saldo_pontos || 0,
+        created_at: user.created_at,
+        // Novos campos com dados corretos
+        codigo_indicacao: user.codigo || '',
+        indicado_por: indicadoPor,
+        especialidade: user.especialidade_profissional || '',
+        total_compras: totalCompras
+      };
+    });
     
+    console.log('✅ [fetchUsers] Usuários processados com sucesso:', enrichedUsers.length);
     return enrichedUsers;
   } catch (error) {
-    console.error('Error fetching users:', error);
+    console.error('❌ [fetchUsers] Erro geral:', error);
     toast.error('Erro ao buscar usuários');
     throw error;
   }
