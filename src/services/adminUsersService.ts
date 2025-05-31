@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { logAdminAction } from './adminService';
@@ -7,16 +8,10 @@ export const fetchUsers = async (): Promise<UserData[]> => {
   try {
     console.log('🔍 [fetchUsers] Iniciando busca de usuários com dados completos...');
     
-    // Buscar todos os dados dos usuários com joins otimizados
+    // Buscar todos os dados dos usuários primeiro
     const { data: usersData, error: usersError } = await supabase
       .from('profiles')
-      .select(`
-        *,
-        referrals!referrals_referred_id_fkey(
-          referrer_id,
-          referrer:profiles!referrals_referrer_id_fkey(nome)
-        )
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
       
     if (usersError) {
@@ -25,6 +20,26 @@ export const fetchUsers = async (): Promise<UserData[]> => {
     }
 
     console.log('✅ [fetchUsers] Profiles encontrados:', usersData?.length || 0);
+    
+    // Buscar dados de referrals separadamente
+    const { data: referralsData, error: referralsError } = await supabase
+      .from('referrals')
+      .select(`
+        referred_id,
+        referrer:profiles!referrals_referrer_id_fkey(nome)
+      `);
+
+    if (referralsError) {
+      console.warn('⚠️ [fetchUsers] Erro ao buscar referrals:', referralsError);
+    }
+
+    // Criar um mapa de referrals para facilitar a busca
+    const referralsMap = (referralsData || []).reduce((acc, referral) => {
+      acc[referral.referred_id] = referral.referrer?.nome || '';
+      return acc;
+    }, {} as Record<string, string>);
+
+    console.log('✅ [fetchUsers] Referrals processados:', Object.keys(referralsMap).length);
     
     // Buscar dados de compras de forma otimizada
     const { data: ordersData, error: ordersError } = await supabase
@@ -48,14 +63,13 @@ export const fetchUsers = async (): Promise<UserData[]> => {
 
     // Processar dados dos usuários
     const enrichedUsers = usersData.map((user) => {
-      // Extrair dados de referência
-      const referralInfo = user.referrals?.[0]; // Pegar o primeiro referral (deveria ser único)
-      const indicadoPor = referralInfo?.referrer?.nome || '';
+      // Buscar dados de referência no mapa
+      const indicadoPor = referralsMap[user.id] || '';
 
       // Calcular total de compras
       const totalCompras = purchasesByClient[user.id] || 0;
 
-      console.log(`👤 [fetchUsers] Processando usuário ${user.nome}: indicado_por="${indicadoPor}", total_compras=${totalCompras}, codigo="${user.codigo || ''}", especialidade="${user.especialidade_profissional || ''}"`);
+      console.log(`👤 [fetchUsers] Processando usuário ${user.nome}: codigo="${user.codigo || ''}", indicado_por="${indicadoPor}", especialidade="${user.especialidade_profissional || ''}", total_compras=${totalCompras}`);
 
       return {
         id: user.id,
@@ -70,7 +84,7 @@ export const fetchUsers = async (): Promise<UserData[]> => {
         is_admin: user.is_admin || false,
         saldo_pontos: user.saldo_pontos || 0,
         created_at: user.created_at,
-        // Novos campos com dados corretos
+        // Campos específicos que estavam faltando
         codigo_indicacao: user.codigo || '',
         indicado_por: indicadoPor,
         especialidade: user.especialidade_profissional || '',
@@ -79,6 +93,8 @@ export const fetchUsers = async (): Promise<UserData[]> => {
     });
     
     console.log('✅ [fetchUsers] Usuários processados com sucesso:', enrichedUsers.length);
+    console.log('🔍 [fetchUsers] Exemplo de dados processados:', enrichedUsers.slice(0, 2));
+    
     return enrichedUsers;
   } catch (error) {
     console.error('❌ [fetchUsers] Erro geral:', error);
