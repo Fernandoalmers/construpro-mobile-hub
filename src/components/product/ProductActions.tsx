@@ -2,8 +2,9 @@
 import React, { useEffect } from 'react';
 import { ShoppingCart, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useCartActions } from '@/hooks/use-cart-actions';
 import { toast } from '@/components/ui/sonner';
+import { useCart } from '@/hooks/use-cart';
+import { useNavigate } from 'react-router-dom';
 
 interface ProductActionsProps {
   productId: string;
@@ -12,18 +13,12 @@ interface ProductActionsProps {
 }
 
 const ProductActions: React.FC<ProductActionsProps> = ({ productId, quantity, maxStock }) => {
-  const { handleAddToCart, handleBuyNow, isAddingToCart, isBuyingNow, clearAllTimeouts } = useCartActions();
+  const navigate = useNavigate();
+  const { addToCart, isLoading } = useCart();
+  const [addingToCart, setAddingToCart] = React.useState(false);
+  const [buyingNow, setBuyingNow] = React.useState(false);
   
-  const isAddingThisToCart = productId ? isAddingToCart[productId] : false;
-  const isBuyingThisNow = productId ? isBuyingNow[productId] : false;
   const isOutOfStock = maxStock !== undefined && maxStock <= 0;
-
-  // Clean up timeouts when component unmounts
-  useEffect(() => {
-    return () => {
-      clearAllTimeouts();
-    };
-  }, [clearAllTimeouts]);
 
   const onAddToCart = async () => {
     if (!productId) {
@@ -39,12 +34,15 @@ const ProductActions: React.FC<ProductActionsProps> = ({ productId, quantity, ma
     }
     
     try {
+      setAddingToCart(true);
       console.log("ProductActions: Adding to cart, productId:", productId, "quantity:", quantity);
-      const result = await handleAddToCart(productId, quantity);
-      console.log("ProductActions: Add to cart result:", result);
+      await addToCart(productId, quantity);
+      console.log("ProductActions: Successfully added to cart");
     } catch (error) {
       console.error('Error in onAddToCart:', error);
-      // Error is already handled in handleAddToCart
+      toast.error('Erro ao adicionar ao carrinho');
+    } finally {
+      setAddingToCart(false);
     }
   };
 
@@ -62,11 +60,15 @@ const ProductActions: React.FC<ProductActionsProps> = ({ productId, quantity, ma
     }
     
     try {
+      setBuyingNow(true);
       console.log("ProductActions: Buying now, productId:", productId, "quantity:", quantity);
-      await handleBuyNow(productId, quantity);
+      await addToCart(productId, quantity);
+      navigate('/cart');
     } catch (error) {
       console.error('Error in onBuyNow:', error);
-      // Error is already handled in handleBuyNow
+      toast.error('Erro ao processar compra');
+    } finally {
+      setBuyingNow(false);
     }
   };
 
@@ -76,20 +78,20 @@ const ProductActions: React.FC<ProductActionsProps> = ({ productId, quantity, ma
         variant="default"
         className="w-full bg-construPro-blue hover:bg-blue-700 text-white py-3 text-base flex items-center justify-center"
         onClick={onAddToCart}
-        disabled={isAddingThisToCart || isBuyingThisNow || isOutOfStock}
+        disabled={addingToCart || buyingNow || isLoading || isOutOfStock}
       >
         <ShoppingCart className="mr-2 h-5 w-5" />
-        {isAddingThisToCart ? 'Adicionando...' : 'Adicionar ao Carrinho'}
+        {addingToCart ? 'Adicionando...' : 'Adicionar ao Carrinho'}
       </Button>
       
       <Button
         variant="default"
         className="w-full bg-green-600 hover:bg-green-700 text-white py-3 text-base flex items-center justify-center"
         onClick={onBuyNow}
-        disabled={isAddingThisToCart || isBuyingThisNow || isOutOfStock}
+        disabled={addingToCart || buyingNow || isLoading || isOutOfStock}
       >
         <ShoppingBag className="mr-2 h-5 w-5" />
-        {isBuyingThisNow ? 'Processando...' : 'Comprar Agora'}
+        {buyingNow ? 'Processando...' : 'Comprar Agora'}
       </Button>
       
       {isOutOfStock && (
