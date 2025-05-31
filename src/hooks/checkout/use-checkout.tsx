@@ -80,10 +80,10 @@ export function useCheckout() {
   // Convert record to array for components that expect an array
   const storeGroupsArray = storeGroupsToArray(groupedItems);
   
-  // Function to activate referral on first purchase
-  const activateReferralOnFirstPurchase = useCallback(async (userId: string) => {
+  // Function to activate referral on first purchase (moved to background)
+  const activateReferralInBackground = useCallback(async (userId: string) => {
     try {
-      console.log('🎁 [useCheckout] Checking for pending referrals to activate');
+      console.log('🎁 [useCheckout] Ativando referral em background');
       
       const { data: session } = await supabase.auth.getSession();
       if (!session.session) {
@@ -108,7 +108,10 @@ export function useCheckout() {
         console.log('✅ [useCheckout] Referral activation result:', result);
         
         if (result.message.includes('activated')) {
-          toast.success('🎉 Parabéns! Você e seu amigo ganharam 50 pontos cada pela indicação!');
+          // Show toast after navigation
+          setTimeout(() => {
+            toast.success('🎉 Parabéns! Você e seu amigo ganharam 50 pontos cada pela indicação!');
+          }, 1000);
         }
       } else {
         console.warn('⚠️ [useCheckout] Referral activation request failed:', response.status);
@@ -228,15 +231,10 @@ export function useCheckout() {
     refreshCart();
   }, [refreshCart]);
   
-  // Handle order placement with enhanced error handling and debugging
+  // Handle order placement with optimized flow - PRINCIPAIS MUDANÇAS AQUI
   const handlePlaceOrder = useCallback(async () => {
     try {
       console.log('🛒 [handlePlaceOrder] Starting order placement process');
-      console.log('🛒 [handlePlaceOrder] User context:', { 
-        isAuthenticated, 
-        userId: user?.id, 
-        userEmail: user?.email 
-      });
       
       // First verify authentication
       const isAuthValid = await verifyAuthentication();
@@ -322,26 +320,37 @@ export function useCheckout() {
         userId: user?.id
       });
       
-      // Create order
+      // FLUXO OTIMIZADO: 1. Criar pedido
       const orderId = await orderService.createOrder(orderData);
       
-      if (orderId) {
-        console.log('✅ [handlePlaceOrder] Order created successfully:', orderId);
-        
-        // Activate referral on first purchase (async, don't await)
-        if (user?.id) {
-          activateReferralOnFirstPurchase(user.id);
-        }
-        
-        // Success flow - clear coupon from localStorage
-        localStorage.removeItem('appliedCoupon');
-        clearCart();
-        refreshCart();
-        toast.success('Pedido realizado com sucesso!');
-        navigate(`/order/confirmacao/${orderId}`);
-      } else {
+      if (!orderId) {
         throw new Error('Falha ao processar pedido - ID não retornado');
       }
+      
+      console.log('✅ [handlePlaceOrder] Order created successfully:', orderId);
+      
+      // FLUXO OTIMIZADO: 2. Limpar carrinho ANTES de navegar
+      console.log('🧹 [handlePlaceOrder] Clearing cart before navigation');
+      await clearCart();
+      
+      // FLUXO OTIMIZADO: 3. Navegar IMEDIATAMENTE após limpeza do carrinho
+      console.log('🚀 [handlePlaceOrder] Navigating to confirmation page');
+      navigate(`/order/confirmacao/${orderId}`);
+      
+      // FLUXO OTIMIZADO: 4. Operações em background APÓS navegação
+      setTimeout(() => {
+        // Limpar cupom do localStorage em background
+        localStorage.removeItem('appliedCoupon');
+        
+        // Toast de sucesso após navegação
+        toast.success('Pedido realizado com sucesso!');
+        
+        // Ativar referral em background (não bloqueia)
+        if (user?.id) {
+          activateReferralInBackground(user.id);
+        }
+      }, 100);
+      
     } catch (error: any) {
       console.error('❌ [handlePlaceOrder] Error placing order:', error);
       
@@ -383,11 +392,10 @@ export function useCheckout() {
     discount,
     validateStock,
     clearCart, 
-    refreshCart, 
     navigate,
     user,
     isAuthenticated,
-    activateReferralOnFirstPurchase
+    activateReferralInBackground
   ]);
   
   // Handle retry
