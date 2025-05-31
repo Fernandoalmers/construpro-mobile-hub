@@ -11,10 +11,10 @@ export const useCustomerOrderRealtime = () => {
   useEffect(() => {
     if (!user?.id) return;
 
-    console.log('🔄 [useCustomerOrderRealtime] Setting up real-time listening for customer orders');
+    console.log('🔄 [useCustomerOrderRealtime] Setting up enhanced real-time for customer orders');
 
     const channel = supabase
-      .channel(`customer-orders-${user.id}`)
+      .channel(`customer-orders-enhanced-${user.id}`)
       .on(
         'postgres_changes',
         {
@@ -24,7 +24,7 @@ export const useCustomerOrderRealtime = () => {
           filter: `cliente_id=eq.${user.id}`
         },
         (payload) => {
-          console.log('📡 [useCustomerOrderRealtime] Order status updated:', payload);
+          console.log('📡 [useCustomerOrderRealtime] Orders table updated:', payload);
           // Invalidate customer order queries
           queryClient.invalidateQueries({ queryKey: ['userOrders'] });
           queryClient.invalidateQueries({ queryKey: ['order'] });
@@ -38,8 +38,8 @@ export const useCustomerOrderRealtime = () => {
           table: 'pedidos'
         },
         (payload) => {
-          console.log('📡 [useCustomerOrderRealtime] Pedido status updated:', payload);
-          // Check if this pedido affects the current user's orders
+          console.log('📡 [useCustomerOrderRealtime] Pedidos table updated:', payload);
+          // Invalidate customer queries to reflect vendor changes
           queryClient.invalidateQueries({ queryKey: ['userOrders'] });
           queryClient.invalidateQueries({ queryKey: ['order'] });
         }
@@ -47,7 +47,7 @@ export const useCustomerOrderRealtime = () => {
       .subscribe();
 
     return () => {
-      console.log('🔄 [useCustomerOrderRealtime] Cleaning up real-time subscription');
+      console.log('🔄 [useCustomerOrderRealtime] Cleaning up enhanced real-time subscription');
       supabase.removeChannel(channel);
     };
   }, [user?.id, queryClient]);

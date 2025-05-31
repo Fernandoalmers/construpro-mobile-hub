@@ -4,7 +4,7 @@ import { useParams } from 'react-router-dom';
 import { Package } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { orderDetailsService } from '@/services/vendor/orders/detailsService';
-import { supabase } from '@/integrations/supabase/client';
+import { useVendorOrderRealtime } from '@/hooks/useVendorOrderRealtime';
 import LoadingState from '../common/LoadingState';
 import { Card } from '@/components/ui/card';
 import CustomButton from '../common/CustomButton';
@@ -21,6 +21,9 @@ const VendorOrderDetailScreen: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
   
+  // Setup real-time updates for this specific order
+  useVendorOrderRealtime(id);
+  
   // Fetch order details
   const { 
     data: pedido, 
@@ -32,53 +35,6 @@ const VendorOrderDetailScreen: React.FC = () => {
     staleTime: 5 * 60 * 1000, // 5 minutes
     enabled: !!id
   });
-
-  // Set up bidirectional real-time listening using order_id for better synchronization
-  useEffect(() => {
-    if (!pedido?.order_id) return;
-
-    console.log('🔄 [VendorOrderDetailScreen] Setting up bidirectional real-time for order_id:', pedido.order_id);
-
-    const channel = supabase
-      .channel(`order-sync-${pedido.order_id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'pedidos',
-          filter: `order_id=eq.${pedido.order_id}`
-        },
-        (payload) => {
-          console.log('📡 [VendorOrderDetailScreen] Pedidos table updated:', payload);
-          // Invalidate vendor order details
-          queryClient.invalidateQueries({ queryKey: ['vendorPedidoDetails', id] });
-          queryClient.invalidateQueries({ queryKey: ['vendorPedidos'] });
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'orders',
-          filter: `id=eq.${pedido.order_id}`
-        },
-        (payload) => {
-          console.log('📡 [VendorOrderDetailScreen] Orders table updated:', payload);
-          // Invalidate both vendor and customer queries for full sync
-          queryClient.invalidateQueries({ queryKey: ['vendorPedidoDetails', id] });
-          queryClient.invalidateQueries({ queryKey: ['userOrders'] });
-          queryClient.invalidateQueries({ queryKey: ['order'] });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      console.log('🔄 [VendorOrderDetailScreen] Cleaning up bidirectional real-time subscription');
-      supabase.removeChannel(channel);
-    };
-  }, [pedido?.order_id, queryClient, id]);
 
   if (isLoading) {
     return (
@@ -120,11 +76,14 @@ const VendorOrderDetailScreen: React.FC = () => {
   const descontoAplicado = Number(pedido.desconto_aplicado) || 0;
   const hasDiscount = descontoAplicado > 0 && pedido.cupom_codigo && pedido.cupom_codigo.trim() !== '';
 
+  // Usar order_id como código principal se disponível, senão usar pedido ID
+  const displayOrderCode = pedido.order_id || pedido.id;
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-100">
-      {/* Header - usar order_id se disponível */}
+      {/* Header - usar order_id como código principal */}
       <OrderHeader 
-        orderId={pedido.id} 
+        orderId={displayOrderCode} 
         status={pedido.status} 
         orderIdFromOrders={pedido.order_id}
       />
