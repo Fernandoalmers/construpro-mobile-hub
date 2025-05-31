@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Package, TruckIcon, ShoppingBag, ArrowRight, Search, AlertTriangle, RefreshCw } from 'lucide-react';
@@ -14,12 +13,16 @@ import LoadingState from '../common/LoadingState';
 import ListEmptyState from '../common/ListEmptyState';
 import { OrderData } from '@/services/order/types';
 import ProductImage from '../admin/products/components/ProductImage';
+import { useCustomerOrderRealtime } from '@/hooks/useCustomerOrderRealtime';
 
 const OrdersScreen: React.FC = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   const [statusFilter, setStatusFilter] = useState<string>("todos");
   const [debugMode, setDebugMode] = useState(false);
+  
+  // Setup real-time updates for customer orders
+  useCustomerOrderRealtime();
   
   // Security check - redirect if not authenticated
   React.useEffect(() => {
@@ -52,7 +55,7 @@ const OrdersScreen: React.FC = () => {
       
       return result;
     },
-    staleTime: 30 * 1000, // Reduced from 5 minutes to 30 seconds for debugging
+    staleTime: 10 * 1000, // Reduced to 10 seconds for better real-time feel
     enabled: isAuthenticated && !!user?.id,
     retry: (failureCount, error) => {
       console.log(`🔄 [OrdersScreen] Query retry attempt ${failureCount}:`, error);
@@ -93,24 +96,29 @@ const OrdersScreen: React.FC = () => {
     ? orders 
     : orders.filter(order => {
         if (statusFilter === "emProcesso") {
-          return ["Em Separação", "Confirmado", "Em Trânsito", "Processando"].includes(order.status);
+          return ["Em Separação", "Confirmado", "Em Trânsito", "Processando", "confirmado", "processando", "enviado"].includes(order.status);
         }
-        return order.status === statusFilter;
+        return order.status === statusFilter || order.status.toLowerCase() === statusFilter.toLowerCase();
       });
       
   // Status badge styling
   const getStatusBadge = (status: string) => {
-    switch(status) {
-      case "Entregue":
+    const statusLower = status.toLowerCase();
+    switch(statusLower) {
+      case "entregue":
         return "bg-green-100 text-green-800";
-      case "Em Trânsito":
+      case "em trânsito":
+      case "enviado":
         return "bg-blue-100 text-blue-800";
-      case "Em Separação":
+      case "em separação":
+      case "processando":
         return "bg-yellow-100 text-yellow-800";
-      case "Confirmado":
+      case "confirmado":
         return "bg-purple-100 text-purple-800";
-      case "Processando":
+      case "pendente":
         return "bg-orange-100 text-orange-800";
+      case "cancelado":
+        return "bg-red-100 text-red-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -200,6 +208,7 @@ const OrdersScreen: React.FC = () => {
             <p>Refetching: {isRefetching ? 'Yes' : 'No'}</p>
             <p>Error: {error ? 'Yes' : 'No'}</p>
             <p>Last Fetch: {new Date().toLocaleTimeString()}</p>
+            <p>Real-time: Active</p>
           </div>
         )}
         
@@ -221,7 +230,7 @@ const OrdersScreen: React.FC = () => {
                   Em Processo
                 </TabsTrigger>
                 <TabsTrigger 
-                  value="Entregue" 
+                  value="entregue" 
                   className="flex-1 py-2 px-1 text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm"
                 >
                   Entregues
@@ -347,6 +356,7 @@ const OrdersScreen: React.FC = () => {
                       <p>ID: {order.id}</p>
                       <p>Items: {order.items?.length || 0}</p>
                       <p>Cliente ID: {order.cliente_id}</p>
+                      <p>Status: {order.status}</p>
                     </div>
                   )}
                 </div>

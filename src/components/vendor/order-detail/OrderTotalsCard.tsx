@@ -21,12 +21,13 @@ const OrderTotalsCard: React.FC<OrderTotalsCardProps> = ({
 }) => {
   return (
     <Card className="p-4">
+      <h3 className="font-medium mb-3">Total a Receber - Sua Loja</h3>
       <Separator className="my-4" />
       
       {/* Order Total */}
       <div className="space-y-3">
         <div className="flex justify-between text-sm">
-          <span className="text-gray-600">Subtotal:</span>
+          <span className="text-gray-600">Subtotal dos seus produtos:</span>
           <span className="font-medium">R$ {subtotal.toFixed(2)}</span>
         </div>
         
@@ -40,28 +41,29 @@ const OrderTotalsCard: React.FC<OrderTotalsCardProps> = ({
           </div>
         )}
         
-        <div className="flex justify-between text-sm">
-          <span className="text-gray-600">Frete:</span>
-          <span className="text-green-600 font-medium">Grátis</span>
-        </div>
-        
         <Separator className="my-2" />
         
         <div className="flex justify-between font-semibold text-lg">
-          <span>Total:</span>
+          <span>Total a receber:</span>
           <span className="text-construPro-orange">R$ {total.toFixed(2)}</span>
         </div>
         
         {hasDiscount && (
-          <div className="bg-green-100 border border-green-300 p-3 rounded-md">
-            <div className="flex items-center gap-2 text-green-800">
+          <div className="bg-blue-50 border border-blue-300 p-3 rounded-md">
+            <div className="flex items-center gap-2 text-blue-800">
               <Percent size={16} />
               <span className="text-sm font-medium">
-                Cliente economizou R$ {discountAmount.toFixed(2)} com o cupom {couponCode}!
+                Valor já com desconto aplicado para seus produtos
               </span>
             </div>
           </div>
         )}
+        
+        <div className="bg-yellow-50 border border-yellow-300 p-3 rounded-md">
+          <div className="text-sm text-yellow-800">
+            <strong>Nota:</strong> Este valor refere-se apenas aos produtos da sua loja neste pedido.
+          </div>
+        </div>
       </div>
     </Card>
   );

@@ -33,14 +33,14 @@ const VendorOrderDetailScreen: React.FC = () => {
     enabled: !!id
   });
 
-  // Set up real-time listening for order updates usando order_id
+  // Set up bidirectional real-time listening using order_id for better synchronization
   useEffect(() => {
     if (!pedido?.order_id) return;
 
-    console.log('🔄 Setting up real-time listening for order_id:', pedido.order_id);
+    console.log('🔄 [VendorOrderDetailScreen] Setting up bidirectional real-time for order_id:', pedido.order_id);
 
     const channel = supabase
-      .channel('order-updates')
+      .channel(`order-sync-${pedido.order_id}`)
       .on(
         'postgres_changes',
         {
@@ -50,9 +50,10 @@ const VendorOrderDetailScreen: React.FC = () => {
           filter: `order_id=eq.${pedido.order_id}`
         },
         (payload) => {
-          console.log('📡 Real-time update received for pedidos:', payload);
-          // Invalidate and refetch the order details
+          console.log('📡 [VendorOrderDetailScreen] Pedidos table updated:', payload);
+          // Invalidate vendor order details
           queryClient.invalidateQueries({ queryKey: ['vendorPedidoDetails', id] });
+          queryClient.invalidateQueries({ queryKey: ['vendorPedidos'] });
         }
       )
       .on(
@@ -64,15 +65,17 @@ const VendorOrderDetailScreen: React.FC = () => {
           filter: `id=eq.${pedido.order_id}`
         },
         (payload) => {
-          console.log('📡 Real-time update received for orders:', payload);
-          // Invalidate and refetch the order details
+          console.log('📡 [VendorOrderDetailScreen] Orders table updated:', payload);
+          // Invalidate both vendor and customer queries for full sync
           queryClient.invalidateQueries({ queryKey: ['vendorPedidoDetails', id] });
+          queryClient.invalidateQueries({ queryKey: ['userOrders'] });
+          queryClient.invalidateQueries({ queryKey: ['order'] });
         }
       )
       .subscribe();
 
     return () => {
-      console.log('🔄 Cleaning up real-time subscription');
+      console.log('🔄 [VendorOrderDetailScreen] Cleaning up bidirectional real-time subscription');
       supabase.removeChannel(channel);
     };
   }, [pedido?.order_id, queryClient, id]);
@@ -108,12 +111,12 @@ const VendorOrderDetailScreen: React.FC = () => {
     );
   }
 
-  // Calculate order totals
+  // Calculate order totals based on vendor items only
   const subtotalBruto = pedido.itens?.reduce((sum, item) => {
     return sum + (Number(item.preco_unitario) * Number(item.quantidade));
   }, 0) || 0;
   
-  const valorTotal = Number(pedido.valor_total) || 0;
+  const valorTotal = Number(pedido.valor_total) || 0; // Already filtered for vendor
   const descontoAplicado = Number(pedido.desconto_aplicado) || 0;
   const hasDiscount = descontoAplicado > 0 && pedido.cupom_codigo && pedido.cupom_codigo.trim() !== '';
 
@@ -155,12 +158,12 @@ const VendorOrderDetailScreen: React.FC = () => {
           />
         </Card>
 
-        {/* Order Items */}
+        {/* Order Items - Only vendor's items */}
         {pedido.itens && pedido.itens.length > 0 && (
           <OrderItemsList items={pedido.itens} />
         )}
 
-        {/* Order Totals */}
+        {/* Order Totals - Only vendor's portion */}
         <OrderTotalsCard 
           subtotal={subtotalBruto}
           total={valorTotal}

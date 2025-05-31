@@ -4,7 +4,7 @@ import { Pedido } from './pedidosService';
 export class OrderDetailsService {
   
   /**
-   * Buscar detalhes completos de um pedido com fallbacks robustos
+   * Buscar detalhes completos de um pedido com fallbacks robustos - apenas itens do vendedor logado
    */
   async getOrderDetails(pedidoId: string): Promise<Pedido | null> {
     try {
@@ -56,7 +56,7 @@ export class OrderDetailsService {
 
       console.log('✅ [OrderDetailsService] Pedido encontrado:', pedido.id);
 
-      // Buscar itens do pedido
+      // Buscar apenas itens do pedido que pertencem aos produtos deste vendedor
       const { data: itens, error: itensError } = await supabase
         .from('itens_pedido')
         .select(`
@@ -65,26 +65,28 @@ export class OrderDetailsService {
           quantidade,
           preco_unitario,
           total,
-          created_at
+          created_at,
+          produtos!inner(
+            id,
+            nome,
+            imagens,
+            vendedor_id
+          )
         `)
-        .eq('pedido_id', pedido.id);
+        .eq('pedido_id', pedido.id)
+        .eq('produtos.vendedor_id', vendorData.id);
 
       if (itensError) {
         console.error('❌ [OrderDetailsService] Erro ao buscar itens:', itensError);
       }
 
-      // Buscar informações dos produtos com imagens, SKU, código de barras
-      const produtoIds = itens?.map(item => item.produto_id) || [];
-      const { data: produtos } = await supabase
-        .from('produtos')
-        .select('id, nome, imagens, descricao, preco_normal, sku, codigo_barras')
-        .in('id', produtoIds);
-
-      // Criar mapa de produtos com conversão de tipos segura
-      const produtoMap = new Map(produtos?.map(p => {
+      // Processar itens com informações simplificadas do produto (apenas foto, nome)
+      const itensCompletos = itens?.map(item => {
+        const produto = item.produtos;
         let imageUrl: string | null = null;
-        if (p.imagens && Array.isArray(p.imagens) && p.imagens.length > 0) {
-          const firstImage = p.imagens[0];
+        
+        if (produto?.imagens && Array.isArray(produto.imagens) && produto.imagens.length > 0) {
+          const firstImage = produto.imagens[0];
           if (typeof firstImage === 'string') {
             imageUrl = firstImage;
           } else if (firstImage && typeof firstImage === 'object') {
@@ -93,32 +95,27 @@ export class OrderDetailsService {
           }
         }
 
-        return [p.id, {
-          id: p.id,
-          nome: p.nome,
-          descricao: p.descricao || '',
-          preco_normal: p.preco_normal,
-          sku: p.sku || null,
-          codigo_barras: p.codigo_barras || null,
-          imagens: Array.isArray(p.imagens) ? p.imagens : 
-                   p.imagens ? [p.imagens] : [],
-          imagem_url: imageUrl
-        }];
-      }) || []);
+        return {
+          id: item.id,
+          produto_id: item.produto_id,
+          quantidade: item.quantidade,
+          preco_unitario: item.preco_unitario,
+          total: item.total,
+          created_at: item.created_at,
+          produto: {
+            id: produto?.id || item.produto_id,
+            nome: produto?.nome || 'Produto não encontrado',
+            imagens: Array.isArray(produto?.imagens) ? produto.imagens : 
+                     produto?.imagens ? [produto.imagens] : [],
+            imagem_url: imageUrl
+          }
+        };
+      }) || [];
 
-      // Processar itens com informações do produto
-      const itensCompletos = itens?.map(item => ({
-        ...item,
-        produto: produtoMap.get(item.produto_id) || {
-          nome: 'Produto não encontrado',
-          imagens: [],
-          imagem_url: null,
-          descricao: '',
-          preco_normal: 0,
-          sku: null,
-          codigo_barras: null
-        }
-      })) || [];
+      // Recalcular o valor total baseado apenas nos itens do vendedor
+      const valorTotalVendedor = itensCompletos.reduce((sum, item) => {
+        return sum + (Number(item.total) || 0);
+      }, 0);
 
       // Buscar informações completas do cliente
       let clienteInfo = {
@@ -169,11 +166,12 @@ export class OrderDetailsService {
 
       const resultado: Pedido = {
         ...pedido,
+        valor_total: valorTotalVendedor, // Usar valor calculado do vendedor
         itens: itensCompletos,
         cliente: clienteInfo
       };
 
-      console.log('✅ [OrderDetailsService] Detalhes completos carregados para:', pedido.id);
+      console.log('✅ [OrderDetailsService] Detalhes completos carregados para:', pedido.id, 'Valor vendedor:', valorTotalVendedor);
       return resultado;
 
     } catch (error) {
