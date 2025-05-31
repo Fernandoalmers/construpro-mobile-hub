@@ -127,19 +127,29 @@ export const getVendorPedidos = async (
       throw new Error('Vendedor não encontrado');
     }
     
-    // Usar a nova função otimizada para buscar pedidos
+    // Usar consulta direta da tabela pedidos com fallback
     const { data: pedidosData, error: pedidosError } = await supabase
-      .rpc('get_vendor_pedidos_paginated', {
-        p_vendedor_id: vendorData.id,
-        p_limit: limit,
-        p_offset: offset,
-        p_status_filter: statusFilter || null
-      });
+      .from('pedidos')
+      .select(`
+        id,
+        usuario_id,
+        vendedor_id,
+        status,
+        forma_pagamento,
+        endereco_entrega,
+        valor_total,
+        cupom_codigo,
+        desconto_aplicado,
+        created_at,
+        reference_id
+      `)
+      .eq('vendedor_id', vendorData.id)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
     
     if (pedidosError) {
-      console.error('Erro ao buscar pedidos otimizados:', pedidosError);
-      // Fallback para método anterior se a função falhar
-      return await getVendorPedidosFallback(vendorData.id, statusFilter);
+      console.error('Erro ao buscar pedidos:', pedidosError);
+      throw pedidosError;
     }
     
     if (!pedidosData || pedidosData.length === 0) {
@@ -172,6 +182,15 @@ export const getVendorPedidos = async (
       }
     }
     
+    // Buscar informações dos clientes
+    const usuarioIds = [...new Set(pedidosData.map(p => p.usuario_id))];
+    const { data: clientesData } = await supabase
+      .from('profiles')
+      .select('id, nome, email, telefone')
+      .in('id', usuarioIds);
+    
+    const clienteMap = new Map(clientesData?.map(c => [c.id, c]) || []);
+    
     // Montar os pedidos completos
     const pedidosCompletos: Pedido[] = pedidosData.map(pedido => {
       const itens = allItems?.filter(item => item.pedido_id === pedido.id) || [];
@@ -179,6 +198,8 @@ export const getVendorPedidos = async (
         ...item,
         produto: produtoMap.get(item.produto_id) || { nome: 'Produto não encontrado', imagens: [] }
       }));
+      
+      const clienteData = clienteMap.get(pedido.usuario_id);
       
       return {
         id: pedido.id,
@@ -197,9 +218,9 @@ export const getVendorPedidos = async (
           id: pedido.usuario_id,
           vendedor_id: pedido.vendedor_id,
           usuario_id: pedido.usuario_id,
-          nome: pedido.cliente_nome || 'Cliente',
-          email: pedido.cliente_email || '',
-          telefone: pedido.cliente_telefone || '',
+          nome: clienteData?.nome || 'Cliente',
+          email: clienteData?.email || '',
+          telefone: clienteData?.telefone || '',
           total_gasto: 0 // Será calculado se necessário
         }
       };

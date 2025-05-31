@@ -25,7 +25,7 @@ export const useOrderRealtime = (referenceId?: string | null) => {
           console.log('📡 [useOrderRealtime] Real-time update received for pedidos:', payload);
           // Invalidate all order-related queries
           queryClient.invalidateQueries({ queryKey: ['vendorPedidoDetails'] });
-          queryClient.invalidateQueries({ queryKey: ['vendorOrders'] });
+          queryClient.invalidateQueries({ queryKey: ['vendorPedidos'] });
           queryClient.invalidateQueries({ queryKey: ['orders'] });
         }
       )
@@ -41,7 +41,7 @@ export const useOrderRealtime = (referenceId?: string | null) => {
           console.log('📡 [useOrderRealtime] Real-time update received for orders:', payload);
           // Invalidate all order-related queries
           queryClient.invalidateQueries({ queryKey: ['vendorPedidoDetails'] });
-          queryClient.invalidateQueries({ queryKey: ['vendorOrders'] });
+          queryClient.invalidateQueries({ queryKey: ['vendorPedidos'] });
           queryClient.invalidateQueries({ queryKey: ['orders'] });
         }
       )
