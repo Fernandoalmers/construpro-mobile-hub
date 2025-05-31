@@ -7,7 +7,7 @@ export class OrderDetailsService {
   /**
    * Buscar detalhes completos de um pedido com fallbacks robustos
    */
-  async getOrderDetails(pedidoId: string): Promise<Pedido | null> => {
+  async getOrderDetails(pedidoId: string): Promise<Pedido | null> {
     try {
       console.log(`🔍 [OrderDetailsService] Buscando detalhes do pedido: ${pedidoId}`);
       
@@ -184,9 +184,9 @@ export class OrderDetailsService {
   }
 
   /**
-   * Atualizar status de um pedido - A sincronização é automática via triggers
+   * Atualizar status de um pedido usando reference_id para sincronização
    */
-  async updateOrderStatus(pedidoId: string, newStatus: string): Promise<boolean> => {
+  async updateOrderStatus(pedidoId: string, newStatus: string): Promise<boolean> {
     try {
       console.log(`🔄 [OrderDetailsService] Atualizando status do pedido ${pedidoId} para: ${newStatus}`);
       
