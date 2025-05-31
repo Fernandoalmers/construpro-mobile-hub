@@ -29,8 +29,9 @@ export class OrderDetailsService {
         return null;
       }
 
-      // Buscar o pedido com informações completas incluindo order_id
-      const { data: pedido, error: pedidoError } = await supabase
+      // Primeiro, tentar buscar na tabela pedidos (ID direto)
+      let pedido = null;
+      const { data: pedidoData, error: pedidoError } = await supabase
         .from('pedidos')
         .select(`
           id,
@@ -50,12 +51,40 @@ export class OrderDetailsService {
         .eq('vendedor_id', vendorData.id)
         .single();
 
-      if (pedidoError || !pedido) {
-        console.error('❌ [OrderDetailsService] Erro ao buscar pedido:', pedidoError);
-        return null;
-      }
+      if (pedidoData && !pedidoError) {
+        pedido = pedidoData;
+        console.log('✅ [OrderDetailsService] Pedido encontrado na tabela pedidos:', pedido.id);
+      } else {
+        // Se não encontrou na tabela pedidos, tentar buscar pelo order_id
+        console.log('🔄 [OrderDetailsService] Tentando buscar pelo order_id...');
+        const { data: pedidoByOrderId, error: orderIdError } = await supabase
+          .from('pedidos')
+          .select(`
+            id,
+            usuario_id,
+            vendedor_id,
+            status,
+            forma_pagamento,
+            endereco_entrega,
+            valor_total,
+            cupom_codigo,
+            desconto_aplicado,
+            created_at,
+            data_entrega_estimada,
+            order_id
+          `)
+          .eq('order_id', pedidoId)
+          .eq('vendedor_id', vendorData.id)
+          .single();
 
-      console.log('✅ [OrderDetailsService] Pedido encontrado:', pedido.id);
+        if (pedidoByOrderId && !orderIdError) {
+          pedido = pedidoByOrderId;
+          console.log('✅ [OrderDetailsService] Pedido encontrado pelo order_id:', pedido.id);
+        } else {
+          console.error('❌ [OrderDetailsService] Pedido não encontrado nem por ID nem por order_id:', { pedidoError, orderIdError });
+          return null;
+        }
+      }
 
       // Buscar apenas itens do pedido que pertencem aos produtos deste vendedor
       const { data: itens, error: itensError } = await supabase
@@ -122,7 +151,6 @@ export class OrderDetailsService {
         return sum + (Number(item.total) || 0);
       }, 0);
 
-      // Buscar informações completas do cliente
       let clienteInfo = {
         id: pedido.usuario_id,
         vendedor_id: vendorData.id,
@@ -133,7 +161,6 @@ export class OrderDetailsService {
         total_gasto: 0
       };
 
-      // Buscar do profiles primeiro (dados mais atualizados)
       const { data: profileData } = await supabase
         .from('profiles')
         .select('nome, email, telefone')
@@ -149,7 +176,6 @@ export class OrderDetailsService {
         };
       }
 
-      // Se ainda não temos email/telefone, buscar de clientes_vendedor
       if (!clienteInfo.email || !clienteInfo.telefone) {
         const { data: clienteVendedorData } = await supabase
           .from('clientes_vendedor')
@@ -171,7 +197,7 @@ export class OrderDetailsService {
 
       const resultado: Pedido = {
         ...pedido,
-        valor_total: valorTotalVendedor, // Usar valor calculado do vendedor
+        valor_total: valorTotalVendedor,
         itens: itensCompletos,
         cliente: clienteInfo
       };
