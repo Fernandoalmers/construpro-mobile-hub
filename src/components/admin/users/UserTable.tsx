@@ -62,6 +62,7 @@ const UserTable: React.FC<UserTableProps> = ({
             <th className="px-4 py-3">Especialidade</th>
             <th className="px-4 py-3 text-right">Pontos</th>
             <th className="px-4 py-3 text-right">Total Compras</th>
+            <th className="px-4 py-3">Data Cadastro</th>
             <th className="px-4 py-3 text-right">Ações</th>
           </tr>
         </thead>
@@ -84,7 +85,7 @@ const UserTable: React.FC<UserTableProps> = ({
             ))
           ) : (
             <tr>
-              <td colSpan={11} className="text-center py-4">
+              <td colSpan={12} className="text-center py-4">
                 Nenhum usuário encontrado.
               </td>
             </tr>

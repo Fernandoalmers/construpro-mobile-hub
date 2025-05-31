@@ -4,7 +4,7 @@ import { UserData } from '@/types/admin';
 
 export const fetchUsers = async (): Promise<UserData[]> => {
   try {
-    console.log('🚀 [fetchUsers] VERSÃO CORRIGIDA v4.0 - Iniciando busca...');
+    console.log('🚀 [fetchUsers] VERSÃO MELHORADA v5.0 - Iniciando busca...');
     
     // 1. Buscar todos os profiles primeiro
     console.log('📊 [fetchUsers] Buscando profiles...');
@@ -97,8 +97,9 @@ export const fetchUsers = async (): Promise<UserData[]> => {
       try {
         console.log(`\n👤 [fetchUsers] Processando usuário ${i + 1}/${profiles.length}: ${user.nome || 'Sem nome'}`);
         
-        // Buscar quem indicou este usuário (SAFE)
+        // Buscar quem indicou este usuário com informações completas
         let indicadoPor = '';
+        let indicadoPorCodigo = '';
         let referrerId = '';
         
         if (user.id && referralsMap.has(user.id)) {
@@ -107,12 +108,23 @@ export const fetchUsers = async (): Promise<UserData[]> => {
           
           if (referrerId && profilesMap.has(referrerId)) {
             const referrerProfile = profilesMap.get(referrerId);
-            indicadoPor = referrerProfile?.nome || '';
+            const referrerNome = referrerProfile?.nome || '';
+            const referrerCodigo = referrerProfile?.codigo || '';
+            
+            // Criar identificação única do indicador
+            if (referrerNome) {
+              if (referrerCodigo) {
+                indicadoPor = `${referrerNome} (${referrerCodigo})`;
+              } else {
+                indicadoPor = `${referrerNome} (${referrerProfile?.email?.substring(0, 10) || 'ID:' + referrerId.substring(0, 8)})`;
+              }
+            }
+            
             console.log(`   🔗 Indicado por: "${indicadoPor}"`);
           }
         }
         
-        // Calcular total de compras (SAFE)
+        // Calcular total de compras
         const totalCompras = user.id ? (purchasesByClient[user.id] || 0) : 0;
         console.log(`   💰 Total compras: R$ ${totalCompras.toFixed(2)}`);
 
@@ -122,6 +134,9 @@ export const fetchUsers = async (): Promise<UserData[]> => {
         
         console.log(`   📋 Código: "${codigoIndicacao}"`);
         console.log(`   🎯 Especialidade: "${especialidade}"`);
+
+        // Formatar data de cadastro
+        const dataCadastro = user.created_at ? new Date(user.created_at).toLocaleDateString('pt-BR') : '';
 
         // Criar objeto do usuário de forma SEGURA
         const userData: UserData = {
@@ -142,7 +157,8 @@ export const fetchUsers = async (): Promise<UserData[]> => {
           codigo_indicacao: codigoIndicacao,
           indicado_por: indicadoPor,
           especialidade: especialidade,
-          total_compras: totalCompras
+          total_compras: totalCompras,
+          data_cadastro: dataCadastro
         };
 
         // Log final do usuário processado
@@ -151,6 +167,7 @@ export const fetchUsers = async (): Promise<UserData[]> => {
         console.log(`      - Indicado por: "${userData.indicado_por}"`);
         console.log(`      - Especialidade: "${userData.especialidade}"`);
         console.log(`      - Total compras: R$ ${userData.total_compras.toFixed(2)}`);
+        console.log(`      - Data cadastro: ${userData.data_cadastro}`);
 
         enrichedUsers.push(userData);
         
@@ -174,7 +191,8 @@ export const fetchUsers = async (): Promise<UserData[]> => {
           codigo_indicacao: '',
           indicado_por: '',
           especialidade: '',
-          total_compras: 0
+          total_compras: 0,
+          data_cadastro: user.created_at ? new Date(user.created_at).toLocaleDateString('pt-BR') : ''
         });
       }
     }
@@ -185,16 +203,6 @@ export const fetchUsers = async (): Promise<UserData[]> => {
     console.log(`   - Usuários indicados por alguém: ${enrichedUsers.filter(u => u.indicado_por).length}`);
     console.log(`   - Usuários com especialidade: ${enrichedUsers.filter(u => u.especialidade).length}`);
     console.log(`   - Usuários com compras: ${enrichedUsers.filter(u => u.total_compras > 0).length}`);
-    
-    // Log de amostra dos primeiros usuários
-    enrichedUsers.slice(0, 3).forEach((user, index) => {
-      console.log(`\n🔍 [fetchUsers] AMOSTRA ${index + 1}:`);
-      console.log(`   Nome: ${user.nome}`);
-      console.log(`   Código: "${user.codigo_indicacao}"`);
-      console.log(`   Indicado por: "${user.indicado_por}"`);
-      console.log(`   Especialidade: "${user.especialidade}"`);
-      console.log(`   Total compras: R$ ${user.total_compras.toFixed(2)}`);
-    });
     
     return enrichedUsers;
     

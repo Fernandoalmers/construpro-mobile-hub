@@ -39,29 +39,12 @@ const UserTableRow: React.FC<UserTableRowProps> = ({
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Log detalhado para VERIFICAR se os dados estão chegando CORRETAMENTE
-  console.log(`🔍 [UserTableRow] DADOS COMPLETOS para ${user.nome}:`);
-  console.log(`   - ID: ${user.id}`);
-  console.log(`   - Código indicação: "${user.codigo_indicacao}" (existe: ${!!user.codigo_indicacao})`);
-  console.log(`   - Indicado por: "${user.indicado_por}" (existe: ${!!user.indicado_por})`);
-  console.log(`   - Especialidade: "${user.especialidade}" (existe: ${!!user.especialidade})`);
-  console.log(`   - Total compras: ${user.total_compras} (existe: ${!!user.total_compras})`);
-  console.log(`   - Objeto COMPLETO:`, {
-    id: user.id,
-    nome: user.nome,
-    codigo_indicacao: user.codigo_indicacao,
-    indicado_por: user.indicado_por,
-    especialidade: user.especialidade,
-    total_compras: user.total_compras
-  });
-
-  // Verificar se Fernando Almeida tem os dados esperados
-  if (user.nome?.includes('Fernando')) {
-    console.log('🎯 [FERNANDO ALMEIDA] Verificação específica:');
-    console.log('   - Código esperado: NWZL01');
-    console.log('   - Código recebido:', user.codigo_indicacao);
-    console.log('   - Total esperado: R$ 3.449,23');
-    console.log('   - Total recebido:', user.total_compras);
-  }
+  console.log(`🔍 [UserTableRow] DADOS MELHORADOS para ${user.nome}:`);
+  console.log(`   - Código indicação: "${user.codigo_indicacao}"`);
+  console.log(`   - Indicado por: "${user.indicado_por}"`);
+  console.log(`   - Especialidade: "${user.especialidade}"`);
+  console.log(`   - Total compras: R$ ${user.total_compras?.toFixed(2)}`);
+  console.log(`   - Data cadastro: ${user.data_cadastro}`);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -141,7 +124,7 @@ const UserTableRow: React.FC<UserTableRowProps> = ({
         </span>
       </td>
       <td className="px-4 py-2">
-        <span className="text-sm text-gray-700">
+        <span className="text-sm text-gray-700" title={user.indicado_por || 'Não foi indicado por ninguém'}>
           {user.indicado_por || '-'}
         </span>
       </td>
@@ -154,6 +137,11 @@ const UserTableRow: React.FC<UserTableRowProps> = ({
       <td className="px-4 py-2 text-right">
         <span className="text-sm font-semibold text-green-600">
           R$ {(user.total_compras || 0).toFixed(2)}
+        </span>
+      </td>
+      <td className="px-4 py-2">
+        <span className="text-xs text-gray-600">
+          {user.data_cadastro || '-'}
         </span>
       </td>
       <td className="px-4 py-2 text-right relative">
