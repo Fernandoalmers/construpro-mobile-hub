@@ -5,7 +5,7 @@ import { getCart } from './fetcher/getCart';
 import { checkProductStock } from './stockChecker';
 
 /**
- * Add item to cart
+ * Add item to cart - ALWAYS SUMS quantities, never replaces
  */
 export async function addToCart(productId: string, quantity: number = 1): Promise<void> {
   try {
@@ -46,8 +46,9 @@ export async function addToCart(productId: string, quantity: number = 1): Promis
     const productPrice = product.preco_promocional || product.preco_normal;
     
     if (existingItem) {
-      // Update quantity of existing item
+      // SEMPRE SOMA - nunca substitui
       const newQuantity = existingItem.quantity + quantity;
+      console.log('[cartItemOperations] Item exists, SUMMING quantities:', existingItem.quantity, '+', quantity, '=', newQuantity);
       
       // Ensure new quantity doesn't exceed stock
       if (newQuantity > product.estoque) {
@@ -62,8 +63,11 @@ export async function addToCart(productId: string, quantity: number = 1): Promis
       if (updateError) {
         throw new Error('Erro ao atualizar item no carrinho');
       }
+      
+      console.log('[cartItemOperations] Successfully SUMMED quantity to', newQuantity);
     } else {
       // Add new item
+      console.log('[cartItemOperations] Adding NEW item with quantity:', quantity);
       const { error: insertError } = await supabase
         .from('cart_items')
         .insert({
@@ -76,6 +80,8 @@ export async function addToCart(productId: string, quantity: number = 1): Promis
       if (insertError) {
         throw new Error('Erro ao adicionar item ao carrinho');
       }
+      
+      console.log('[cartItemOperations] Successfully added NEW item');
     }
     
   } catch (error: any) {
@@ -185,6 +191,8 @@ export async function clearCart(): Promise<void> {
       if (error) {
         throw new Error('Erro ao limpar o carrinho');
       }
+      
+      console.log('[cartItemOperations] Cart cleared successfully');
     }
     
   } catch (error: any) {

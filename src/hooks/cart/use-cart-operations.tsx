@@ -1,10 +1,7 @@
 
 import { useState } from 'react';
 import { toast } from '@/components/ui/sonner';
-import { addToCart } from '@/services/cart/operations/addToCart';
-import { updateCartItemQuantity, removeFromCart } from '@/services/cart/cartItemOperations';
-import { clearCartItems } from '@/services/cart/operations/cartItemModifiers';
-import { supabase } from '@/integrations/supabase/client';
+import { addToCart, updateCartItemQuantity, removeFromCart, clearCart } from '@/services/cart/cartItemOperations';
 
 /**
  * Hook for cart operations - optimized to prevent loops and ensure immediate counter updates
@@ -101,36 +98,7 @@ export function useCartOperations(refreshCartData: () => Promise<void>, forceUpd
       setOperationInProgress('clear-cart');
       
       console.log('[useCartOperations] Clearing cart');
-      
-      // Get authenticated user
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) {
-        throw new Error('Usuário não autenticado');
-      }
-      
-      // Get active cart
-      const { data: cart, error: cartError } = await supabase
-        .from('carts')
-        .select('id')
-        .eq('user_id', userData.user.id)
-        .eq('status', 'active')
-        .maybeSingle();
-
-      if (cartError) {
-        console.error('Error finding active cart:', cartError);
-        throw cartError;
-      }
-
-      if (!cart) {
-        console.log('[useCartOperations] No active cart found, nothing to clear');
-        return;
-      }
-      
-      // Clear all items from cart using the working function
-      const { success } = await clearCartItems(cart.id);
-      if (!success) {
-        throw new Error('Erro ao limpar o carrinho');
-      }
+      await clearCart();
       
       console.log('[useCartOperations] Refreshing cart after clear');
       await refreshCartData();
