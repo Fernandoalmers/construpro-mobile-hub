@@ -1,9 +1,10 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Package } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { orderDetailsService } from '@/services/vendor/orders/detailsService';
+import { supabase } from '@/integrations/supabase/client';
 import LoadingState from '../common/LoadingState';
 import { Card } from '@/components/ui/card';
 import CustomButton from '../common/CustomButton';
@@ -18,6 +19,7 @@ import OrderTotalsCard from './order-detail/OrderTotalsCard';
 
 const VendorOrderDetailScreen: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const queryClient = useQueryClient();
   
   // Fetch order details
   const { 
@@ -30,6 +32,50 @@ const VendorOrderDetailScreen: React.FC = () => {
     staleTime: 5 * 60 * 1000, // 5 minutes
     enabled: !!id
   });
+
+  // Set up real-time listening for order updates
+  useEffect(() => {
+    if (!pedido?.reference_id) return;
+
+    console.log('🔄 Setting up real-time listening for reference_id:', pedido.reference_id);
+
+    const channel = supabase
+      .channel('order-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'pedidos',
+          filter: `reference_id=eq.${pedido.reference_id}`
+        },
+        (payload) => {
+          console.log('📡 Real-time update received for pedidos:', payload);
+          // Invalidate and refetch the order details
+          queryClient.invalidateQueries({ queryKey: ['vendorPedidoDetails', id] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'orders',
+          filter: `reference_id=eq.${pedido.reference_id}`
+        },
+        (payload) => {
+          console.log('📡 Real-time update received for orders:', payload);
+          // Invalidate and refetch the order details
+          queryClient.invalidateQueries({ queryKey: ['vendorPedidoDetails', id] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('🔄 Cleaning up real-time subscription');
+      supabase.removeChannel(channel);
+    };
+  }, [pedido?.reference_id, queryClient, id]);
 
   if (isLoading) {
     return (
@@ -74,7 +120,11 @@ const VendorOrderDetailScreen: React.FC = () => {
   return (
     <div className="flex flex-col min-h-screen bg-gray-100">
       {/* Header */}
-      <OrderHeader orderId={pedido.id} status={pedido.status} />
+      <OrderHeader 
+        orderId={pedido.id} 
+        status={pedido.status} 
+        referenceId={pedido.reference_id}
+      />
       
       <div className="p-6 space-y-4">
         {/* Vendor Actions */}

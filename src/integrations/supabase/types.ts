@@ -518,6 +518,7 @@ export type Database = {
           id: string
           pontos_ganhos: number
           rastreio: string | null
+          reference_id: string | null
           status: string
           updated_at: string | null
           valor_total: number
@@ -533,6 +534,7 @@ export type Database = {
           id?: string
           pontos_ganhos?: number
           rastreio?: string | null
+          reference_id?: string | null
           status: string
           updated_at?: string | null
           valor_total: number
@@ -548,6 +550,7 @@ export type Database = {
           id?: string
           pontos_ganhos?: number
           rastreio?: string | null
+          reference_id?: string | null
           status?: string
           updated_at?: string | null
           valor_total?: number
@@ -571,6 +574,7 @@ export type Database = {
           endereco_entrega: Json
           forma_pagamento: string
           id: string
+          reference_id: string | null
           status: string
           usuario_id: string
           valor_total: number
@@ -584,6 +588,7 @@ export type Database = {
           endereco_entrega: Json
           forma_pagamento: string
           id?: string
+          reference_id?: string | null
           status?: string
           usuario_id: string
           valor_total: number
@@ -597,6 +602,7 @@ export type Database = {
           endereco_entrega?: Json
           forma_pagamento?: string
           id?: string
+          reference_id?: string | null
           status?: string
           usuario_id?: string
           valor_total?: number
@@ -1972,6 +1978,10 @@ export type Database = {
           data: string
           time_frame: string
         }[]
+      }
+      get_or_create_reference_id: {
+        Args: { p_cliente_id: string; p_created_at: string }
+        Returns: string
       }
       get_order_by_id: {
         Args: { order_id: string }

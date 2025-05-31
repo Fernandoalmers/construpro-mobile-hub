@@ -7,7 +7,7 @@ export class OrderDetailsService {
   /**
    * Buscar detalhes completos de um pedido com fallbacks robustos
    */
-  async getOrderDetails(pedidoId: string): Promise<Pedido | null> {
+  async getOrderDetails(pedidoId: string): Promise<Pedido | null> => {
     try {
       console.log(`🔍 [OrderDetailsService] Buscando detalhes do pedido: ${pedidoId}`);
       
@@ -29,7 +29,7 @@ export class OrderDetailsService {
         return null;
       }
 
-      // Buscar o pedido com informações completas
+      // Buscar o pedido com informações completas incluindo reference_id
       const { data: pedido, error: pedidoError } = await supabase
         .from('pedidos')
         .select(`
@@ -43,7 +43,8 @@ export class OrderDetailsService {
           cupom_codigo,
           desconto_aplicado,
           created_at,
-          data_entrega_estimada
+          data_entrega_estimada,
+          reference_id
         `)
         .eq('id', pedidoId)
         .eq('vendedor_id', vendorData.id)
@@ -73,23 +74,21 @@ export class OrderDetailsService {
         console.error('❌ [OrderDetailsService] Erro ao buscar itens:', itensError);
       }
 
-      // Buscar informações dos produtos com imagens, SKU, código de barras e unidade de medida
+      // Buscar informações dos produtos com imagens, SKU, código de barras
       const produtoIds = itens?.map(item => item.produto_id) || [];
       const { data: produtos } = await supabase
         .from('produtos')
         .select('id, nome, imagens, descricao, preco_normal, sku, codigo_barras')
         .in('id', produtoIds);
 
-      // Criar mapa de produtos com conversão de tipos segura e informações completas
+      // Criar mapa de produtos com conversão de tipos segura
       const produtoMap = new Map(produtos?.map(p => {
-        // Safely extract image URL with proper type conversion
         let imageUrl: string | null = null;
         if (p.imagens && Array.isArray(p.imagens) && p.imagens.length > 0) {
           const firstImage = p.imagens[0];
           if (typeof firstImage === 'string') {
             imageUrl = firstImage;
           } else if (firstImage && typeof firstImage === 'object') {
-            // Handle image objects with url property
             const imgObj = firstImage as Record<string, any>;
             imageUrl = imgObj.url || imgObj.path || imgObj.src || null;
           }
@@ -185,9 +184,9 @@ export class OrderDetailsService {
   }
 
   /**
-   * Atualizar status de um pedido - SINCRONIZANDO AMBAS AS TABELAS
+   * Atualizar status de um pedido - A sincronização é automática via triggers
    */
-  async updateOrderStatus(pedidoId: string, newStatus: string): Promise<boolean> {
+  async updateOrderStatus(pedidoId: string, newStatus: string): Promise<boolean> => {
     try {
       console.log(`🔄 [OrderDetailsService] Atualizando status do pedido ${pedidoId} para: ${newStatus}`);
       
@@ -212,7 +211,7 @@ export class OrderDetailsService {
       // Verificar se o pedido pertence ao vendedor
       const { data: pedidoCheck } = await supabase
         .from('pedidos')
-        .select('vendedor_id, usuario_id')
+        .select('vendedor_id, usuario_id, reference_id')
         .eq('id', pedidoId)
         .single();
 
@@ -223,7 +222,7 @@ export class OrderDetailsService {
 
       console.log('🔄 [OrderDetailsService] Atualizando status na tabela pedidos...');
       
-      // 1. Atualizar o status na tabela pedidos (para o vendedor)
+      // Atualizar o status na tabela pedidos - o trigger irá sincronizar automaticamente
       const { error: pedidosError } = await supabase
         .from('pedidos')
         .update({ status: newStatus })
@@ -235,24 +234,7 @@ export class OrderDetailsService {
         return false;
       }
 
-      console.log('✅ [OrderDetailsService] Status atualizado na tabela pedidos');
-      console.log('🔄 [OrderDetailsService] Atualizando status na tabela orders...');
-
-      // 2. Atualizar o status na tabela orders (para o cliente) - usando usuario_id do pedido
-      const { error: ordersError } = await supabase
-        .from('orders')
-        .update({ status: newStatus })
-        .eq('cliente_id', pedidoCheck.usuario_id)
-        .eq('id', pedidoId);
-
-      if (ordersError) {
-        console.warn('⚠️ [OrderDetailsService] Erro ao atualizar status na tabela orders (pode não existir):', ordersError);
-        // Não falhar aqui, pois o pedido pode existir apenas na tabela pedidos
-      } else {
-        console.log('✅ [OrderDetailsService] Status atualizado na tabela orders');
-      }
-
-      console.log('✅ [OrderDetailsService] Status atualizado com sucesso em ambas as tabelas');
+      console.log('✅ [OrderDetailsService] Status atualizado com sucesso - sincronização automática ativa');
       return true;
     } catch (error) {
       console.error('❌ [OrderDetailsService] Erro inesperado:', error);

@@ -35,6 +35,7 @@ export interface Pedido {
   desconto_aplicado?: number;
   created_at: string;
   data_entrega_estimada?: string;
+  reference_id?: string | null; // Add reference_id field
   itens?: PedidoItem[];
   cliente?: {
     id: string;
@@ -190,6 +191,7 @@ export const getVendorPedidos = async (
         cupom_codigo: pedido.cupom_codigo,
         desconto_aplicado: pedido.desconto_aplicado || 0,
         created_at: pedido.created_at,
+        reference_id: pedido.reference_id, // Include reference_id
         itens: itensComProdutos,
         cliente: {
           id: pedido.usuario_id,

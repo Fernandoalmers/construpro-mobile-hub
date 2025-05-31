@@ -7,9 +7,10 @@ import { Badge } from '@/components/ui/badge';
 interface OrderHeaderProps {
   orderId: string;
   status: string;
+  referenceId?: string;
 }
 
-const OrderHeader: React.FC<OrderHeaderProps> = ({ orderId, status }) => {
+const OrderHeader: React.FC<OrderHeaderProps> = ({ orderId, status, referenceId }) => {
   const navigate = useNavigate();
 
   const getStatusBadge = (status: string) => {
@@ -31,13 +32,16 @@ const OrderHeader: React.FC<OrderHeaderProps> = ({ orderId, status }) => {
     }
   };
 
+  // Use reference_id for display if available, otherwise fallback to orderId
+  const displayId = referenceId ? referenceId.substring(0, 8).toUpperCase() : orderId.substring(0, 8).toUpperCase();
+
   return (
     <div className="bg-white p-4 flex items-center shadow-sm">
       <button onClick={() => navigate('/vendor/orders')} className="mr-4">
         <ChevronLeft size={24} />
       </button>
       <div className="flex-1">
-        <h1 className="text-xl font-bold">Pedido #{orderId.substring(0, 8)}</h1>
+        <h1 className="text-xl font-bold">Pedido #{displayId}</h1>
         <Badge className={getStatusBadge(status)}>
           {status}
         </Badge>
