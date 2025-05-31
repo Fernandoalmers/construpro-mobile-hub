@@ -18,7 +18,7 @@ import {
   removeAdmin,
   getRoleBadgeColor, 
   getStatusBadgeColor 
-} from '@/services/userManagementService';
+} from '@/services/admin/users/index'; // Mudando para a versão corrigida
 import { UserData } from '@/types/admin';
 
 const UsersManagement: React.FC = () => {
@@ -31,7 +31,9 @@ const UsersManagement: React.FC = () => {
   useEffect(() => {
     const loadUsers = async () => {
       setIsLoading(true);
+      console.log('🔄 [UsersManagement] Carregando usuários com versão corrigida...');
       const userData = await fetchUsers();
+      console.log('✅ [UsersManagement] Usuários carregados:', userData.length);
       setUsers(userData);
       setIsLoading(false);
     };

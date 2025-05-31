@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -37,14 +38,30 @@ const UserTableRow: React.FC<UserTableRowProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Log detalhado para verificar dados recebidos
+  // Log detalhado para VERIFICAR se os dados estão chegando CORRETAMENTE
   console.log(`🔍 [UserTableRow] DADOS COMPLETOS para ${user.nome}:`);
   console.log(`   - ID: ${user.id}`);
-  console.log(`   - Código indicação: "${user.codigo_indicacao}" (tipo: ${typeof user.codigo_indicacao})`);
-  console.log(`   - Indicado por: "${user.indicado_por}" (tipo: ${typeof user.indicado_por})`);
-  console.log(`   - Especialidade: "${user.especialidade}" (tipo: ${typeof user.especialidade})`);
-  console.log(`   - Total compras: ${user.total_compras} (tipo: ${typeof user.total_compras})`);
-  console.log(`   - Objeto completo:`, user);
+  console.log(`   - Código indicação: "${user.codigo_indicacao}" (existe: ${!!user.codigo_indicacao})`);
+  console.log(`   - Indicado por: "${user.indicado_por}" (existe: ${!!user.indicado_por})`);
+  console.log(`   - Especialidade: "${user.especialidade}" (existe: ${!!user.especialidade})`);
+  console.log(`   - Total compras: ${user.total_compras} (existe: ${!!user.total_compras})`);
+  console.log(`   - Objeto COMPLETO:`, {
+    id: user.id,
+    nome: user.nome,
+    codigo_indicacao: user.codigo_indicacao,
+    indicado_por: user.indicado_por,
+    especialidade: user.especialidade,
+    total_compras: user.total_compras
+  });
+
+  // Verificar se Fernando Almeida tem os dados esperados
+  if (user.nome?.includes('Fernando')) {
+    console.log('🎯 [FERNANDO ALMEIDA] Verificação específica:');
+    console.log('   - Código esperado: NWZL01');
+    console.log('   - Código recebido:', user.codigo_indicacao);
+    console.log('   - Total esperado: R$ 3.449,23');
+    console.log('   - Total recebido:', user.total_compras);
+  }
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

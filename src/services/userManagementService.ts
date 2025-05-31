@@ -1,21 +1,23 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { UserData } from '@/types/admin';
 import { logAdminAction } from './adminService';
 import { adminSecurityService } from './adminSecurityService';
 import { toast } from '@/components/ui/sonner';
 
-export const fetchUsers = async (): Promise<UserData[]> => {
+// FUNÇÃO ANTIGA - NÃO USAR MAIS
+// Esta função foi substituída pela versão em /admin/users/usersFetcher.ts
+export const fetchUsers_OLD = async (): Promise<UserData[]> => {
+  console.warn('⚠️ [fetchUsers_OLD] Esta função está obsoleta. Use fetchUsers de /admin/users/index.ts');
   try {
     // Verificar se o usuário atual é admin antes de permitir a consulta
     const isAdmin = await adminSecurityService.isCurrentUserAdmin();
     if (!isAdmin) {
-      console.error('🚫 [fetchUsers] Unauthorized access attempt');
+      console.error('🚫 [fetchUsers_OLD] Unauthorized access attempt');
       toast.error('Acesso negado: Apenas administradores podem visualizar usuários');
       return [];
     }
 
-    console.log('🔍 [fetchUsers] Admin verified, fetching users');
+    console.log('🔍 [fetchUsers_OLD] Admin verified, fetching users');
 
     // Get profile data from Supabase
     const { data: profilesData, error: profilesError } = await supabase
@@ -46,14 +48,17 @@ export const fetchUsers = async (): Promise<UserData[]> => {
       };
     });
 
-    console.log(`✅ [fetchUsers] Retrieved ${combinedData.length} users`);
+    console.log(`✅ [fetchUsers_OLD] Retrieved ${combinedData.length} users`);
     return combinedData;
   } catch (error) {
-    console.error('❌ [fetchUsers] Error:', error);
+    console.error('❌ [fetchUsers_OLD] Error:', error);
     toast.error('Erro ao carregar usuários');
     return [];
   }
 };
+
+// Re-exportar da nova localização
+export { fetchUsers } from './admin/users/index';
 
 export const approveUser = async (userId: string): Promise<boolean> => {
   try {

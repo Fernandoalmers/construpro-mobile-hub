@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import AdminLayout from '../AdminLayout';
 import { 
@@ -18,7 +17,7 @@ import {
   removeAdmin,
   getRoleBadgeColor, 
   getStatusBadgeColor 
-} from '@/services/adminUsersService';
+} from '@/services/admin/users/index'; // Usando a versão corrigida
 import { UserData } from '@/types/admin';
 import { toast } from '@/components/ui/sonner';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
@@ -52,9 +51,12 @@ const UserManagementScreen: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
+      console.log('🔄 [UserManagementScreen] Carregando usuários com versão corrigida...');
       const userData = await fetchUsers();
+      console.log('✅ [UserManagementScreen] Usuários carregados:', userData.length);
       setUsers(userData);
     } catch (err) {
+      console.error('❌ [UserManagementScreen] Erro ao carregar usuários:', err);
       setError('Failed to load users. Please try again.');
       toast.error('Erro ao carregar usuários');
     } finally {
