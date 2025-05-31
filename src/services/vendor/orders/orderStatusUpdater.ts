@@ -2,6 +2,16 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 
+// Mapeamento de status entre pedidos (interno) e orders (database constraint)
+const STATUS_MAPPING = {
+  'pendente': 'Confirmado',
+  'confirmado': 'Em Separação', 
+  'processando': 'Em Separação',
+  'enviado': 'Em Trânsito',
+  'entregue': 'Entregue',
+  'cancelado': 'Cancelado'
+};
+
 export const updateOrderStatus = async (id: string, status: string): Promise<boolean> => {
   try {
     console.log('🔄 [OrderStatusUpdater] Attempting to update order status:', { id, status });
@@ -84,16 +94,24 @@ export const updateOrderStatus = async (id: string, status: string): Promise<boo
     // Se existe order_id, também atualizar na tabela orders para sincronização
     if (pedidoCheck.order_id) {
       console.log('🔄 [OrderStatusUpdater] Sincronizando com tabela orders...');
+      
+      // Mapear o status interno para o valor aceito pela constraint da tabela orders
+      const mappedStatus = STATUS_MAPPING[status.toLowerCase()] || status;
+      console.log('🔀 [OrderStatusUpdater] Mapeando status:', { 
+        original: status, 
+        mapped: mappedStatus 
+      });
+      
       const { error: ordersError } = await supabase
         .from('orders')
-        .update({ status: status })
+        .update({ status: mappedStatus })
         .eq('id', pedidoCheck.order_id);
 
       if (ordersError) {
         console.warn('⚠️ [OrderStatusUpdater] Aviso: Erro ao sincronizar com tabela orders:', ordersError);
         // Não falhar se a sincronização der erro, pois o principal (pedidos) foi atualizado
       } else {
-        console.log('✅ [OrderStatusUpdater] Sincronizado com tabela orders');
+        console.log('✅ [OrderStatusUpdater] Sincronizado com tabela orders usando status:', mappedStatus);
       }
     }
 

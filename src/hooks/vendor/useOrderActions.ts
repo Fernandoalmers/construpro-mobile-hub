@@ -74,6 +74,8 @@ export const useOrderActions = (orderId: string) => {
           errorMessage = 'Sessão expirada. Faça login novamente.';
         } else if (error.message.includes('Vendedor não encontrado')) {
           errorMessage = 'Você não tem permissão para alterar este pedido.';
+        } else if (error.message.includes('constraint')) {
+          errorMessage = 'Erro de validação de status. Tente novamente.';
         } else {
           errorMessage = error.message;
         }
