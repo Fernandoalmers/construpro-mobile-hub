@@ -62,7 +62,8 @@ export const updateOrderStatus = async (id: string, status: string): Promise<boo
       vendedor_id: pedidoCheck.vendedor_id,
       vendedor_esperado: vendorData.id,
       status_atual: pedidoCheck.status,
-      novo_status: status
+      novo_status: status,
+      order_id: pedidoCheck.order_id
     });
 
     if (pedidoCheck.vendedor_id !== vendorData.id) {
@@ -74,30 +75,13 @@ export const updateOrderStatus = async (id: string, status: string): Promise<boo
       return false;
     }
 
-    console.log('✅ [OrderStatusUpdater] Permissões verificadas, atualizando status...');
+    console.log('✅ [OrderStatusUpdater] Permissões verificadas, iniciando atualização...');
     
-    // Atualizar o status na tabela pedidos
-    const { error: pedidosError } = await supabase
-      .from('pedidos')
-      .update({ status: status })
-      .eq('id', id)
-      .eq('vendedor_id', vendorData.id);
-
-    if (pedidosError) {
-      console.error('❌ [OrderStatusUpdater] Erro ao atualizar status na tabela pedidos:', pedidosError);
-      toast.error('Erro ao atualizar status do pedido: ' + pedidosError.message);
-      return false;
-    }
-
-    console.log('✅ [OrderStatusUpdater] Status atualizado na tabela pedidos');
-
-    // Se existe order_id, também atualizar na tabela orders para sincronização
+    // Se existe order_id, atualizar primeiro a tabela orders com o status mapeado
     if (pedidoCheck.order_id) {
-      console.log('🔄 [OrderStatusUpdater] Sincronizando com tabela orders...');
-      
-      // Mapear o status interno para o valor aceito pela constraint da tabela orders
       const mappedStatus = STATUS_MAPPING[status.toLowerCase()] || status;
-      console.log('🔀 [OrderStatusUpdater] Mapeando status:', { 
+      console.log('🔄 [OrderStatusUpdater] Atualizando tabela orders primeiro:', { 
+        order_id: pedidoCheck.order_id,
         original: status, 
         mapped: mappedStatus 
       });
@@ -108,16 +92,44 @@ export const updateOrderStatus = async (id: string, status: string): Promise<boo
         .eq('id', pedidoCheck.order_id);
 
       if (ordersError) {
-        console.warn('⚠️ [OrderStatusUpdater] Aviso: Erro ao sincronizar com tabela orders:', ordersError);
-        // Não falhar se a sincronização der erro, pois o principal (pedidos) foi atualizado
-      } else {
-        console.log('✅ [OrderStatusUpdater] Sincronizado com tabela orders usando status:', mappedStatus);
+        console.error('❌ [OrderStatusUpdater] Erro ao atualizar tabela orders:', ordersError);
+        toast.error('Erro ao sincronizar status com sistema principal: ' + ordersError.message);
+        return false;
       }
+
+      console.log('✅ [OrderStatusUpdater] Tabela orders atualizada com status:', mappedStatus);
+    }
+    
+    // Atualizar o status na tabela pedidos com o status interno
+    console.log('🔄 [OrderStatusUpdater] Atualizando tabela pedidos com status interno:', status);
+    const { error: pedidosError } = await supabase
+      .from('pedidos')
+      .update({ status: status })
+      .eq('id', id)
+      .eq('vendedor_id', vendorData.id);
+
+    if (pedidosError) {
+      console.error('❌ [OrderStatusUpdater] Erro ao atualizar status na tabela pedidos:', pedidosError);
+      
+      // Se houve erro no pedidos mas orders foi atualizado, tentar reverter
+      if (pedidoCheck.order_id) {
+        console.log('🔄 [OrderStatusUpdater] Tentando reverter mudança na tabela orders...');
+        const originalMappedStatus = STATUS_MAPPING[pedidoCheck.status.toLowerCase()] || pedidoCheck.status;
+        await supabase
+          .from('orders')
+          .update({ status: originalMappedStatus })
+          .eq('id', pedidoCheck.order_id);
+      }
+      
+      toast.error('Erro ao atualizar status do pedido: ' + pedidosError.message);
+      return false;
     }
 
+    console.log('✅ [OrderStatusUpdater] Tabela pedidos atualizada com status:', status);
     console.log('✅ [OrderStatusUpdater] Status atualizado com sucesso de', pedidoCheck.status, 'para', status);
     toast.success(`Status atualizado de "${pedidoCheck.status}" para "${status}"`);
     return true;
+    
   } catch (error) {
     console.error('❌ [OrderStatusUpdater] Erro inesperado:', error);
     toast.error('Erro inesperado ao atualizar status do pedido');

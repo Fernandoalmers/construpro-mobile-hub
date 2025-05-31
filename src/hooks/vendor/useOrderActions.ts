@@ -39,6 +39,7 @@ export const useOrderActions = (orderId: string) => {
         throw new Error('Vendedor não encontrado para o usuário atual');
       }
       
+      console.log('🚀 [useOrderActions] Chamando serviço de atualização...');
       const success = await updateOrderStatusService(orderId, newStatus);
       if (!success) {
         throw new Error('Falha ao atualizar status do pedido');
@@ -63,7 +64,7 @@ export const useOrderActions = (orderId: string) => {
       // Forçar refresh da página de detalhes após um pequeno delay
       setTimeout(() => {
         window.location.reload();
-      }, 1000);
+      }, 1500);
     },
     onError: (error) => {
       console.error('❌ [useOrderActions] Erro na mutação:', error);
@@ -74,8 +75,10 @@ export const useOrderActions = (orderId: string) => {
           errorMessage = 'Sessão expirada. Faça login novamente.';
         } else if (error.message.includes('Vendedor não encontrado')) {
           errorMessage = 'Você não tem permissão para alterar este pedido.';
-        } else if (error.message.includes('constraint')) {
-          errorMessage = 'Erro de validação de status. Tente novamente.';
+        } else if (error.message.includes('constraint') || error.message.includes('violates check')) {
+          errorMessage = 'Erro de validação de status. O sistema está sendo corrigido.';
+        } else if (error.message.includes('sincronizar')) {
+          errorMessage = 'Erro na sincronização entre sistemas. Tente novamente.';
         } else {
           errorMessage = error.message;
         }
