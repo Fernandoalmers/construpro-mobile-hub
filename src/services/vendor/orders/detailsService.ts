@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Pedido } from './pedidosService';
 
@@ -181,65 +182,6 @@ export class OrderDetailsService {
     } catch (error) {
       console.error('❌ [OrderDetailsService] Erro inesperado:', error);
       return null;
-    }
-  }
-
-  /**
-   * Atualizar status de um pedido usando order_id para sincronização
-   */
-  async updateOrderStatus(pedidoId: string, newStatus: string): Promise<boolean> {
-    try {
-      console.log(`🔄 [OrderDetailsService] Atualizando status do pedido ${pedidoId} para: ${newStatus}`);
-      
-      // Verificar se o usuário tem acesso a este pedido
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.error('❌ [OrderDetailsService] Usuário não autenticado');
-        return false;
-      }
-
-      const { data: vendorData } = await supabase
-        .from('vendedores')
-        .select('id, nome_loja')
-        .eq('usuario_id', user.id)
-        .single();
-
-      if (!vendorData) {
-        console.error('❌ [OrderDetailsService] Vendedor não encontrado');
-        return false;
-      }
-
-      // Verificar se o pedido pertence ao vendedor
-      const { data: pedidoCheck } = await supabase
-        .from('pedidos')
-        .select('vendedor_id, usuario_id, order_id')
-        .eq('id', pedidoId)
-        .single();
-
-      if (!pedidoCheck || pedidoCheck.vendedor_id !== vendorData.id) {
-        console.error('❌ [OrderDetailsService] Pedido não pertence ao vendedor');
-        return false;
-      }
-
-      console.log('🔄 [OrderDetailsService] Atualizando status na tabela pedidos...');
-      
-      // Atualizar o status na tabela pedidos - o trigger irá sincronizar automaticamente
-      const { error: pedidosError } = await supabase
-        .from('pedidos')
-        .update({ status: newStatus })
-        .eq('id', pedidoId)
-        .eq('vendedor_id', vendorData.id);
-
-      if (pedidosError) {
-        console.error('❌ [OrderDetailsService] Erro ao atualizar status na tabela pedidos:', pedidosError);
-        return false;
-      }
-
-      console.log('✅ [OrderDetailsService] Status atualizado com sucesso - sincronização automática ativa');
-      return true;
-    } catch (error) {
-      console.error('❌ [OrderDetailsService] Erro inesperado:', error);
-      return false;
     }
   }
 }
