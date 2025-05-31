@@ -70,6 +70,8 @@ export class OrderDetailsService {
             id,
             nome,
             imagens,
+            sku,
+            codigo_barras,
             vendedor_id
           )
         `)
@@ -80,7 +82,7 @@ export class OrderDetailsService {
         console.error('❌ [OrderDetailsService] Erro ao buscar itens:', itensError);
       }
 
-      // Processar itens com informações simplificadas do produto (apenas foto, nome)
+      // Processar itens com informações completas do produto (incluindo SKU e código de barras)
       const itensCompletos = itens?.map(item => {
         const produto = item.produtos;
         let imageUrl: string | null = null;
@@ -107,7 +109,9 @@ export class OrderDetailsService {
             nome: produto?.nome || 'Produto não encontrado',
             imagens: Array.isArray(produto?.imagens) ? produto.imagens : 
                      produto?.imagens ? [produto.imagens] : [],
-            imagem_url: imageUrl
+            imagem_url: imageUrl,
+            sku: produto?.sku || null,
+            codigo_barras: produto?.codigo_barras || null
           }
         };
       }) || [];
