@@ -37,13 +37,14 @@ const UserTableRow: React.FC<UserTableRowProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Log para verificar dados recebidos
-  console.log(`🔍 [UserTableRow] Dados recebidos para ${user.nome}:`, {
-    codigo_indicacao: user.codigo_indicacao,
-    indicado_por: user.indicado_por,
-    especialidade: user.especialidade,
-    total_compras: user.total_compras
-  });
+  // Log detalhado para verificar dados recebidos
+  console.log(`🔍 [UserTableRow] DADOS COMPLETOS para ${user.nome}:`);
+  console.log(`   - ID: ${user.id}`);
+  console.log(`   - Código indicação: "${user.codigo_indicacao}" (tipo: ${typeof user.codigo_indicacao})`);
+  console.log(`   - Indicado por: "${user.indicado_por}" (tipo: ${typeof user.indicado_por})`);
+  console.log(`   - Especialidade: "${user.especialidade}" (tipo: ${typeof user.especialidade})`);
+  console.log(`   - Total compras: ${user.total_compras} (tipo: ${typeof user.total_compras})`);
+  console.log(`   - Objeto completo:`, user);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
