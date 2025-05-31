@@ -1,10 +1,11 @@
 
 import React, { useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Package } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { orderDetailsService } from '@/services/vendor/orders/detailsService';
 import { useVendorOrderRealtime } from '@/hooks/useVendorOrderRealtime';
+import { toast } from '@/components/ui/sonner';
 import LoadingState from '../common/LoadingState';
 import { Card } from '@/components/ui/card';
 import CustomButton from '../common/CustomButton';
@@ -19,49 +20,119 @@ import OrderTotalsCard from './order-detail/OrderTotalsCard';
 
 const VendorOrderDetailScreen: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
+  
+  // Validate order ID format
+  const isValidUUID = (uuid: string) => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(uuid);
+  };
+
+  // Redirect if invalid ID
+  useEffect(() => {
+    if (!id || !isValidUUID(id)) {
+      console.error('❌ [VendorOrderDetailScreen] Invalid order ID:', id);
+      toast.error('ID de pedido inválido');
+      navigate('/vendor/orders', { replace: true });
+      return;
+    }
+  }, [id, navigate]);
   
   // Setup real-time updates for this specific order
   useVendorOrderRealtime(id);
   
-  // Fetch order details
+  // Fetch order details with improved error handling
   const { 
     data: pedido, 
     isLoading, 
-    error 
+    error,
+    isError 
   } = useQuery({
     queryKey: ['vendorPedidoDetails', id],
-    queryFn: () => id ? orderDetailsService.getOrderDetails(id) : Promise.reject('No order ID provided'),
+    queryFn: async () => {
+      if (!id) {
+        throw new Error('No order ID provided');
+      }
+      
+      console.log('🔍 [VendorOrderDetailScreen] Fetching order details for:', id);
+      const result = await orderDetailsService.getOrderDetails(id);
+      
+      if (!result) {
+        console.error('❌ [VendorOrderDetailScreen] Order not found:', id);
+        throw new Error('Order not found');
+      }
+      
+      console.log('✅ [VendorOrderDetailScreen] Order details loaded:', result.id);
+      return result;
+    },
     staleTime: 5 * 60 * 1000, // 5 minutes
-    enabled: !!id
+    retry: (failureCount, error) => {
+      // Don't retry if order is not found
+      if (error?.message === 'Order not found') {
+        return false;
+      }
+      // Retry up to 2 times for other errors
+      return failureCount < 2;
+    },
+    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
+    enabled: !!id && isValidUUID(id || ''),
+    meta: {
+      errorPolicy: 'none' // Don't show global error handling
+    }
   });
 
+  // Handle order not found - redirect to orders list
+  useEffect(() => {
+    if (isError && error?.message === 'Order not found') {
+      console.log('🔄 [VendorOrderDetailScreen] Order not found, redirecting to orders list');
+      toast.error('Pedido não encontrado');
+      navigate('/vendor/orders', { replace: true });
+    }
+  }, [isError, error, navigate]);
+
+  // Show loading state
   if (isLoading) {
     return (
       <div className="flex flex-col min-h-screen bg-gray-100">
-        <OrderHeader orderId="..." status="..." />
+        <OrderHeader orderId={id || "..."} status="..." />
         <div className="p-6">
-          <LoadingState text="Carregando detalhes do pedido" />
+          <LoadingState text="Carregando detalhes do pedido..." />
         </div>
       </div>
     );
   }
   
-  if (error || !pedido) {
+  // Show error state with redirect option (fallback)
+  if (isError || !pedido) {
     return (
       <div className="flex flex-col min-h-screen bg-gray-100">
-        <OrderHeader orderId="..." status="..." />
+        <OrderHeader orderId={id || "..."} status="..." />
         <div className="text-center py-10">
           <Package className="mx-auto text-gray-400 mb-3" size={40} />
           <h3 className="text-lg font-medium text-gray-700">Pedido não encontrado</h3>
-          <p className="text-gray-500 mt-1">O pedido que você está procurando não existe ou houve um erro ao carregar</p>
-          <CustomButton 
-            variant="primary" 
-            className="mt-4"
-            onClick={() => window.history.back()}
-          >
-            Voltar para pedidos
-          </CustomButton>
+          <p className="text-gray-500 mt-1">
+            {error?.message === 'Order not found' 
+              ? 'O pedido que você está procurando não existe ou você não tem permissão para visualizá-lo'
+              : 'Houve um erro ao carregar os detalhes do pedido'
+            }
+          </p>
+          <div className="flex gap-2 justify-center mt-4">
+            <CustomButton 
+              variant="primary" 
+              onClick={() => navigate('/vendor/orders', { replace: true })}
+            >
+              Voltar para pedidos
+            </CustomButton>
+            {error?.message !== 'Order not found' && (
+              <CustomButton 
+                variant="outline"
+                onClick={() => queryClient.invalidateQueries({ queryKey: ['vendorPedidoDetails', id] })}
+              >
+                Tentar novamente
+              </CustomButton>
+            )}
+          </div>
         </div>
       </div>
     );

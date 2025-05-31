@@ -11,21 +11,27 @@ export class OrderDetailsService {
     try {
       console.log(`🔍 [OrderDetailsService] Buscando detalhes do pedido: ${pedidoId}`);
       
+      // Validate input
+      if (!pedidoId || typeof pedidoId !== 'string') {
+        console.error('❌ [OrderDetailsService] ID de pedido inválido:', pedidoId);
+        return null;
+      }
+      
       // Verificar se o usuário tem acesso a este pedido
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.error('❌ [OrderDetailsService] Usuário não autenticado');
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        console.error('❌ [OrderDetailsService] Erro de autenticação:', authError);
         return null;
       }
 
-      const { data: vendorData } = await supabase
+      const { data: vendorData, error: vendorError } = await supabase
         .from('vendedores')
         .select('id, nome_loja')
         .eq('usuario_id', user.id)
         .single();
 
-      if (!vendorData) {
-        console.error('❌ [OrderDetailsService] Vendedor não encontrado');
+      if (vendorError || !vendorData) {
+        console.error('❌ [OrderDetailsService] Vendedor não encontrado:', vendorError);
         return null;
       }
 
@@ -81,7 +87,12 @@ export class OrderDetailsService {
           pedido = pedidoByOrderId;
           console.log('✅ [OrderDetailsService] Pedido encontrado pelo order_id:', pedido.id);
         } else {
-          console.error('❌ [OrderDetailsService] Pedido não encontrado nem por ID nem por order_id:', { pedidoError, orderIdError });
+          console.error('❌ [OrderDetailsService] Pedido não encontrado ou sem permissão:', { 
+            pedidoId,
+            vendorId: vendorData.id,
+            pedidoError: pedidoError?.message,
+            orderIdError: orderIdError?.message
+          });
           return null;
         }
       }
@@ -207,6 +218,16 @@ export class OrderDetailsService {
 
     } catch (error) {
       console.error('❌ [OrderDetailsService] Erro inesperado:', error);
+      
+      // If it's a network error or timeout, throw it for retry
+      if (error instanceof Error && (
+        error.message.includes('fetch') || 
+        error.message.includes('network') ||
+        error.message.includes('timeout')
+      )) {
+        throw error;
+      }
+      
       return null;
     }
   }
