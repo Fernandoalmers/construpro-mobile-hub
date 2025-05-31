@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Pedido } from './pedidosService';
 
@@ -72,14 +73,14 @@ export class OrderDetailsService {
         console.error('❌ [OrderDetailsService] Erro ao buscar itens:', itensError);
       }
 
-      // Buscar informações dos produtos com imagens
+      // Buscar informações dos produtos com imagens, SKU, código de barras e unidade de medida
       const produtoIds = itens?.map(item => item.produto_id) || [];
       const { data: produtos } = await supabase
         .from('produtos')
-        .select('id, nome, imagens, descricao, preco_normal')
+        .select('id, nome, imagens, descricao, preco_normal, sku, codigo_barras')
         .in('id', produtoIds);
 
-      // Criar mapa de produtos com conversão de tipos segura e imagens
+      // Criar mapa de produtos com conversão de tipos segura e informações completas
       const produtoMap = new Map(produtos?.map(p => {
         // Safely extract image URL with proper type conversion
         let imageUrl: string | null = null;
@@ -99,6 +100,8 @@ export class OrderDetailsService {
           nome: p.nome,
           descricao: p.descricao || '',
           preco_normal: p.preco_normal,
+          sku: p.sku || null,
+          codigo_barras: p.codigo_barras || null,
           imagens: Array.isArray(p.imagens) ? p.imagens : 
                    p.imagens ? [p.imagens] : [],
           imagem_url: imageUrl
@@ -113,7 +116,9 @@ export class OrderDetailsService {
           imagens: [],
           imagem_url: null,
           descricao: '',
-          preco_normal: 0
+          preco_normal: 0,
+          sku: null,
+          codigo_barras: null
         }
       })) || [];
 

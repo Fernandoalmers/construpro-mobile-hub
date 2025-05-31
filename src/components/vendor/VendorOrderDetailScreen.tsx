@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Package, Calendar, CreditCard, MapPin, Tag, Percent, User, Mail, Phone } from 'lucide-react';
+import { ChevronLeft, Package, Calendar, CreditCard, MapPin, Tag, Percent, User, Mail, Phone, Barcode, Hash } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { orderDetailsService } from '@/services/vendor/orders/detailsService';
 import LoadingState from '../common/LoadingState';
@@ -204,23 +204,41 @@ const VendorOrderDetailScreen: React.FC = () => {
           <h3 className="font-medium mb-3">Itens do Pedido</h3>
           <div className="space-y-3">
             {pedido.itens?.map((item) => (
-              <div key={item.id} className="flex gap-3 p-3 border rounded-md">
+              <div key={item.id} className="flex gap-3 p-4 border rounded-md bg-gray-50">
                 <ProductImageDisplay 
                   imageUrl={item.produto?.imagem_url || null}
                   productName={item.produto?.nome || 'Produto'}
                   className="w-16 h-16"
                 />
                 <div className="flex-1">
-                  <h4 className="font-medium">{item.produto?.nome || 'Produto'}</h4>
-                  <p className="text-sm text-gray-600">
-                    Quantidade: {item.quantidade} x R$ {Number(item.preco_unitario).toFixed(2)}
-                  </p>
-                  {item.produto?.descricao && (
-                    <p className="text-xs text-gray-500 mt-1">{item.produto.descricao}</p>
-                  )}
+                  <h4 className="font-medium text-lg mb-2">{item.produto?.nome || 'Produto'}</h4>
+                  
+                  {/* Informações essenciais para separação */}
+                  <div className="grid grid-cols-2 gap-4 mb-3 text-sm">
+                    {item.produto?.sku && (
+                      <div className="flex items-center gap-2 text-blue-700 bg-blue-50 px-2 py-1 rounded">
+                        <Hash size={14} />
+                        <span className="font-medium">SKU: {item.produto.sku}</span>
+                      </div>
+                    )}
+                    {item.produto?.codigo_barras && (
+                      <div className="flex items-center gap-2 text-green-700 bg-green-50 px-2 py-1 rounded">
+                        <Barcode size={14} />
+                        <span className="font-medium">EAN: {item.produto.codigo_barras}</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-1 text-sm text-gray-600">
+                    <p><strong>Quantidade:</strong> {item.quantidade} un</p>
+                    <p><strong>Preço unitário:</strong> R$ {Number(item.preco_unitario).toFixed(2)}</p>
+                    {item.produto?.descricao && (
+                      <p className="text-xs text-gray-500 mt-2">{item.produto.descricao}</p>
+                    )}
+                  </div>
                 </div>
                 <div className="text-right">
-                  <p className="font-medium">R$ {Number(item.total).toFixed(2)}</p>
+                  <p className="font-bold text-lg text-construPro-orange">R$ {Number(item.total).toFixed(2)}</p>
                 </div>
               </div>
             ))}
