@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -36,6 +37,15 @@ const UserTableRow: React.FC<UserTableRowProps> = ({
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Log para debug dos dados do usuário
+  console.log(`🔍 [UserTableRow] Renderizando usuário:`, {
+    nome: user.nome,
+    codigo_indicacao: user.codigo_indicacao,
+    indicado_por: user.indicado_por,
+    especialidade: user.especialidade,
+    total_compras: user.total_compras
+  });
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -110,23 +120,23 @@ const UserTableRow: React.FC<UserTableRowProps> = ({
         </Badge>
       </td>
       <td className="px-4 py-2">
-        <span className="text-xs text-gray-600">
+        <span className="text-sm font-mono text-blue-600">
           {user.codigo_indicacao || '-'}
         </span>
       </td>
       <td className="px-4 py-2">
-        <span className="text-xs text-gray-600">
+        <span className="text-sm text-gray-700">
           {user.indicado_por || '-'}
         </span>
       </td>
       <td className="px-4 py-2">
-        <span className="text-xs text-gray-600">
+        <span className="text-sm text-gray-700">
           {user.especialidade || '-'}
         </span>
       </td>
       <td className="px-4 py-2 text-right">{user.saldo_pontos || 0}</td>
       <td className="px-4 py-2 text-right">
-        <span className="text-sm font-medium text-green-600">
+        <span className="text-sm font-semibold text-green-600">
           R$ {(user.total_compras || 0).toFixed(2)}
         </span>
       </td>
