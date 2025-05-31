@@ -1,7 +1,7 @@
 
 import React, { useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
-import { FileText, Printer, CheckCircle, AlertCircle } from 'lucide-react';
+import { FileText, Printer, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -58,6 +58,11 @@ const VendorOrderActions: React.FC<VendorOrderActionsProps> = ({ pedido }) => {
 
   const handleStatusUpdate = () => {
     if (nextStatus) {
+      console.log('🎯 [VendorOrderActions] Iniciando atualização de status:', {
+        pedido_id: pedido.id,
+        status_atual: pedido.status,
+        novo_status: nextStatus
+      });
       updateOrderStatus(nextStatus);
     }
   };
@@ -81,6 +86,11 @@ const VendorOrderActions: React.FC<VendorOrderActionsProps> = ({ pedido }) => {
         </h3>
         
         <div className="space-y-3">
+          {/* Debug info durante desenvolvimento */}
+          <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+            <strong>Debug:</strong> Status atual: {pedido.status} | Próximo: {nextStatus} | Pode atualizar: {canUpdate ? 'Sim' : 'Não'}
+          </div>
+
           {/* Botão de atualização de status */}
           {canUpdate && nextStatus && (
             <AlertDialog>
@@ -90,7 +100,14 @@ const VendorOrderActions: React.FC<VendorOrderActionsProps> = ({ pedido }) => {
                   disabled={isUpdating}
                   variant="default"
                 >
-                  {isUpdating ? 'Atualizando...' : buttonText}
+                  {isUpdating ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Atualizando...
+                    </>
+                  ) : (
+                    buttonText
+                  )}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
@@ -104,9 +121,9 @@ const VendorOrderActions: React.FC<VendorOrderActionsProps> = ({ pedido }) => {
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleStatusUpdate}>
-                    Confirmar
+                  <AlertDialogCancel disabled={isUpdating}>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleStatusUpdate} disabled={isUpdating}>
+                    {isUpdating ? 'Atualizando...' : 'Confirmar'}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
