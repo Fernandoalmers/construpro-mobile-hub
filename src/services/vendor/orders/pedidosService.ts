@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 /**
@@ -35,7 +36,7 @@ export interface Pedido {
   desconto_aplicado?: number;
   created_at: string;
   data_entrega_estimada?: string;
-  reference_id?: string | null; // Add reference_id field
+  order_id?: string | null; // Novo campo para referenciar orders.id
   itens?: PedidoItem[];
   cliente?: {
     id: string;
@@ -127,7 +128,7 @@ export const getVendorPedidos = async (
       throw new Error('Vendedor não encontrado');
     }
     
-    // Usar consulta direta da tabela pedidos com fallback
+    // Usar consulta direta da tabela pedidos
     const { data: pedidosData, error: pedidosError } = await supabase
       .from('pedidos')
       .select(`
@@ -141,7 +142,7 @@ export const getVendorPedidos = async (
         cupom_codigo,
         desconto_aplicado,
         created_at,
-        reference_id
+        order_id
       `)
       .eq('vendedor_id', vendorData.id)
       .order('created_at', { ascending: false })
@@ -212,7 +213,7 @@ export const getVendorPedidos = async (
         cupom_codigo: pedido.cupom_codigo,
         desconto_aplicado: pedido.desconto_aplicado || 0,
         created_at: pedido.created_at,
-        reference_id: pedido.reference_id, // Include reference_id
+        order_id: pedido.order_id, // Incluir order_id
         itens: itensComProdutos,
         cliente: {
           id: pedido.usuario_id,
@@ -356,7 +357,7 @@ export const getPedidoById = async (pedidoId: string): Promise<Pedido | null> =>
       throw new Error('Vendedor não encontrado');
     }
     
-    // Buscar o pedido com informações de cupom
+    // Buscar o pedido com order_id incluído
     const { data: pedido, error } = await supabase
       .from('pedidos')
       .select(`
@@ -370,7 +371,8 @@ export const getPedidoById = async (pedidoId: string): Promise<Pedido | null> =>
         cupom_codigo,
         desconto_aplicado,
         created_at,
-        data_entrega_estimada
+        data_entrega_estimada,
+        order_id
       `)
       .eq('id', pedidoId)
       .eq('vendedor_id', vendorData.id)

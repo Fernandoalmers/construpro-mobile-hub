@@ -3,23 +3,23 @@ import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-export const useOrderRealtime = (referenceId?: string | null) => {
+export const useOrderRealtime = (orderId?: string | null) => {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (!referenceId) return;
+    if (!orderId) return;
 
-    console.log('🔄 [useOrderRealtime] Setting up real-time listening for reference_id:', referenceId);
+    console.log('🔄 [useOrderRealtime] Setting up real-time listening for order_id:', orderId);
 
     const channel = supabase
-      .channel(`order-updates-${referenceId}`)
+      .channel(`order-updates-${orderId}`)
       .on(
         'postgres_changes',
         {
           event: 'UPDATE',
           schema: 'public',
           table: 'pedidos',
-          filter: `reference_id=eq.${referenceId}`
+          filter: `order_id=eq.${orderId}`
         },
         (payload) => {
           console.log('📡 [useOrderRealtime] Real-time update received for pedidos:', payload);
@@ -35,7 +35,7 @@ export const useOrderRealtime = (referenceId?: string | null) => {
           event: 'UPDATE',
           schema: 'public',
           table: 'orders',
-          filter: `reference_id=eq.${referenceId}`
+          filter: `id=eq.${orderId}`
         },
         (payload) => {
           console.log('📡 [useOrderRealtime] Real-time update received for orders:', payload);
@@ -48,8 +48,8 @@ export const useOrderRealtime = (referenceId?: string | null) => {
       .subscribe();
 
     return () => {
-      console.log('🔄 [useOrderRealtime] Cleaning up real-time subscription for:', referenceId);
+      console.log('🔄 [useOrderRealtime] Cleaning up real-time subscription for:', orderId);
       supabase.removeChannel(channel);
     };
-  }, [referenceId, queryClient]);
+  }, [orderId, queryClient]);
 };

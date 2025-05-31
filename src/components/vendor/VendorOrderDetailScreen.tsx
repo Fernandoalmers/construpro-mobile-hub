@@ -33,11 +33,11 @@ const VendorOrderDetailScreen: React.FC = () => {
     enabled: !!id
   });
 
-  // Set up real-time listening for order updates
+  // Set up real-time listening for order updates usando order_id
   useEffect(() => {
-    if (!pedido?.reference_id) return;
+    if (!pedido?.order_id) return;
 
-    console.log('🔄 Setting up real-time listening for reference_id:', pedido.reference_id);
+    console.log('🔄 Setting up real-time listening for order_id:', pedido.order_id);
 
     const channel = supabase
       .channel('order-updates')
@@ -47,7 +47,7 @@ const VendorOrderDetailScreen: React.FC = () => {
           event: 'UPDATE',
           schema: 'public',
           table: 'pedidos',
-          filter: `reference_id=eq.${pedido.reference_id}`
+          filter: `order_id=eq.${pedido.order_id}`
         },
         (payload) => {
           console.log('📡 Real-time update received for pedidos:', payload);
@@ -61,7 +61,7 @@ const VendorOrderDetailScreen: React.FC = () => {
           event: 'UPDATE',
           schema: 'public',
           table: 'orders',
-          filter: `reference_id=eq.${pedido.reference_id}`
+          filter: `id=eq.${pedido.order_id}`
         },
         (payload) => {
           console.log('📡 Real-time update received for orders:', payload);
@@ -75,7 +75,7 @@ const VendorOrderDetailScreen: React.FC = () => {
       console.log('🔄 Cleaning up real-time subscription');
       supabase.removeChannel(channel);
     };
-  }, [pedido?.reference_id, queryClient, id]);
+  }, [pedido?.order_id, queryClient, id]);
 
   if (isLoading) {
     return (
@@ -119,11 +119,11 @@ const VendorOrderDetailScreen: React.FC = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100">
-      {/* Header */}
+      {/* Header - usar order_id se disponível */}
       <OrderHeader 
         orderId={pedido.id} 
         status={pedido.status} 
-        referenceId={pedido.reference_id}
+        orderIdFromOrders={pedido.order_id}
       />
       
       <div className="p-6 space-y-4">

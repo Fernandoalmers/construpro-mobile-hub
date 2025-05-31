@@ -574,6 +574,7 @@ export type Database = {
           endereco_entrega: Json
           forma_pagamento: string
           id: string
+          order_id: string | null
           reference_id: string | null
           status: string
           usuario_id: string
@@ -588,6 +589,7 @@ export type Database = {
           endereco_entrega: Json
           forma_pagamento: string
           id?: string
+          order_id?: string | null
           reference_id?: string | null
           status?: string
           usuario_id: string
@@ -602,6 +604,7 @@ export type Database = {
           endereco_entrega?: Json
           forma_pagamento?: string
           id?: string
+          order_id?: string | null
           reference_id?: string | null
           status?: string
           usuario_id?: string
@@ -609,6 +612,13 @@ export type Database = {
           vendedor_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "pedidos_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pedidos_vendedor_id_fkey"
             columns: ["vendedor_id"]

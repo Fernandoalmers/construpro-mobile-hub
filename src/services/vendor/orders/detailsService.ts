@@ -7,7 +7,7 @@ export class OrderDetailsService {
   /**
    * Buscar detalhes completos de um pedido com fallbacks robustos
    */
-  async getOrderDetails(pedidoId: string): Promise<Pedido | null> {
+  async getOrderDetails(pedidoId: string): Promise<Pedido | null> => {
     try {
       console.log(`🔍 [OrderDetailsService] Buscando detalhes do pedido: ${pedidoId}`);
       
@@ -29,7 +29,7 @@ export class OrderDetailsService {
         return null;
       }
 
-      // Buscar o pedido com informações completas incluindo reference_id
+      // Buscar o pedido com informações completas incluindo order_id
       const { data: pedido, error: pedidoError } = await supabase
         .from('pedidos')
         .select(`
@@ -44,7 +44,7 @@ export class OrderDetailsService {
           desconto_aplicado,
           created_at,
           data_entrega_estimada,
-          reference_id
+          order_id
         `)
         .eq('id', pedidoId)
         .eq('vendedor_id', vendorData.id)
@@ -184,9 +184,9 @@ export class OrderDetailsService {
   }
 
   /**
-   * Atualizar status de um pedido usando reference_id para sincronização
+   * Atualizar status de um pedido usando order_id para sincronização
    */
-  async updateOrderStatus(pedidoId: string, newStatus: string): Promise<boolean> {
+  async updateOrderStatus(pedidoId: string, newStatus: string): Promise<boolean> => {
     try {
       console.log(`🔄 [OrderDetailsService] Atualizando status do pedido ${pedidoId} para: ${newStatus}`);
       
@@ -211,7 +211,7 @@ export class OrderDetailsService {
       // Verificar se o pedido pertence ao vendedor
       const { data: pedidoCheck } = await supabase
         .from('pedidos')
-        .select('vendedor_id, usuario_id, reference_id')
+        .select('vendedor_id, usuario_id, order_id')
         .eq('id', pedidoId)
         .single();
 
