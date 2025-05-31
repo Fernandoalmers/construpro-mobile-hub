@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { logAdminAction } from './adminService';
@@ -6,27 +5,58 @@ import { UserData } from '@/types/admin';
 
 export const fetchUsers = async (): Promise<UserData[]> => {
   try {
-    const { data, error } = await supabase
+    // Buscar dados dos profiles
+    const { data: profilesData, error: profilesError } = await supabase
       .from('profiles')
       .select('*')
       .order('created_at', { ascending: false });
       
-    if (error) throw error;
+    if (profilesError) throw profilesError;
     
-    return data.map(user => ({
-      id: user.id,
-      nome: user.nome || 'Sem nome',
-      email: user.email || 'Sem email',
-      papel: user.papel || user.tipo_perfil || 'consumidor',
-      tipo_perfil: user.tipo_perfil || user.papel || 'consumidor',
-      status: user.status || 'ativo',
-      cpf: user.cpf || '',
-      telefone: user.telefone || '',
-      avatar: user.avatar || null,
-      is_admin: user.is_admin || false,
-      saldo_pontos: user.saldo_pontos || 0,
-      created_at: user.created_at
-    }));
+    // Para cada usuário, buscar dados adicionais
+    const enrichedUsers = await Promise.all(
+      profilesData.map(async (user) => {
+        // Buscar quem indicou este usuário
+        const { data: referralData } = await supabase
+          .from('referrals')
+          .select(`
+            referrer_id,
+            profiles!referrals_referrer_id_fkey(nome)
+          `)
+          .eq('referred_id', user.id)
+          .single();
+
+        // Calcular total de compras do usuário
+        const { data: ordersData } = await supabase
+          .from('orders')
+          .select('valor_total')
+          .eq('cliente_id', user.id);
+
+        const totalCompras = ordersData?.reduce((total, order) => total + (order.valor_total || 0), 0) || 0;
+
+        return {
+          id: user.id,
+          nome: user.nome || 'Sem nome',
+          email: user.email || 'Sem email',
+          papel: user.papel || user.tipo_perfil || 'consumidor',
+          tipo_perfil: user.tipo_perfil || user.papel || 'consumidor',
+          status: user.status || 'ativo',
+          cpf: user.cpf || '',
+          telefone: user.telefone || '',
+          avatar: user.avatar || null,
+          is_admin: user.is_admin || false,
+          saldo_pontos: user.saldo_pontos || 0,
+          created_at: user.created_at,
+          // Novos campos
+          codigo_indicacao: user.codigo || '',
+          indicado_por: referralData?.profiles?.nome || '',
+          especialidade: user.especialidade_profissional || '',
+          total_compras: totalCompras
+        };
+      })
+    );
+    
+    return enrichedUsers;
   } catch (error) {
     console.error('Error fetching users:', error);
     toast.error('Erro ao buscar usuários');

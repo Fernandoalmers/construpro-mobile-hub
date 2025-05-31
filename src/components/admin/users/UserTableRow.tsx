@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -110,7 +109,27 @@ const UserTableRow: React.FC<UserTableRowProps> = ({
           {user.status || 'ativo'}
         </Badge>
       </td>
+      <td className="px-4 py-2">
+        <span className="text-xs text-gray-600">
+          {user.codigo_indicacao || '-'}
+        </span>
+      </td>
+      <td className="px-4 py-2">
+        <span className="text-xs text-gray-600">
+          {user.indicado_por || '-'}
+        </span>
+      </td>
+      <td className="px-4 py-2">
+        <span className="text-xs text-gray-600">
+          {user.especialidade || '-'}
+        </span>
+      </td>
       <td className="px-4 py-2 text-right">{user.saldo_pontos || 0}</td>
+      <td className="px-4 py-2 text-right">
+        <span className="text-sm font-medium text-green-600">
+          R$ {(user.total_compras || 0).toFixed(2)}
+        </span>
+      </td>
       <td className="px-4 py-2 text-right relative">
         <div ref={menuRef}>
           <Button 

@@ -12,6 +12,11 @@ export interface UserData {
   saldo_pontos?: number;
   created_at?: string;
   updated_at?: string;
+  // Novos campos para indicação, especialidade e compras
+  codigo_indicacao?: string;
+  indicado_por?: string;
+  especialidade?: string;
+  total_compras?: number;
 }
 
 export interface AdminLog {
