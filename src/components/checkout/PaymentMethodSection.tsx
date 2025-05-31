@@ -18,14 +18,48 @@ const PaymentMethodSection: React.FC<PaymentMethodSectionProps> = ({
   changeAmount,
   onChangeAmountChange
 }) => {
+  
+  // DEBUGGING: Add detailed logs to track payment method selection
+  const handlePaymentMethodClick = (method: PaymentMethod, e: React.MouseEvent) => {
+    console.log('🔍 [PaymentMethodSection] Payment method button clicked:', {
+      method,
+      currentMethod: paymentMethod,
+      event: e.type,
+      target: e.target,
+      timestamp: new Date().toISOString()
+    });
+    
+    // PROTECTION: Prevent any potential form submission
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log('🔍 [PaymentMethodSection] About to call onPaymentMethodChange with:', method);
+    
+    // Call the payment method change handler
+    onPaymentMethodChange(method);
+    
+    console.log('🔍 [PaymentMethodSection] Payment method change completed');
+  };
+
+  // DEBUGGING: Track change amount input
+  const handleChangeAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('🔍 [PaymentMethodSection] Change amount input changed:', {
+      value: e.target.value,
+      timestamp: new Date().toISOString()
+    });
+    
+    onChangeAmountChange(e.target.value);
+  };
+
   return (
     <div>
       <h2 className="font-bold mb-3">Forma de Pagamento</h2>
       <Card className="p-4">
+        {/* PROTECTION: Wrap in div instead of form to prevent accidental submission */}
         <div className="grid grid-cols-2 gap-3 mb-4">
           <button
             type="button"
-            onClick={() => onPaymentMethodChange('credit')}
+            onClick={(e) => handlePaymentMethodClick('credit', e)}
             className={cn(
               "flex flex-col items-center justify-center p-3 rounded-md border",
               paymentMethod === 'credit' 
@@ -45,7 +79,7 @@ const PaymentMethodSection: React.FC<PaymentMethodSectionProps> = ({
           
           <button
             type="button"
-            onClick={() => onPaymentMethodChange('debit')}
+            onClick={(e) => handlePaymentMethodClick('debit', e)}
             className={cn(
               "flex flex-col items-center justify-center p-3 rounded-md border",
               paymentMethod === 'debit' 
@@ -65,7 +99,7 @@ const PaymentMethodSection: React.FC<PaymentMethodSectionProps> = ({
           
           <button
             type="button"
-            onClick={() => onPaymentMethodChange('money')}
+            onClick={(e) => handlePaymentMethodClick('money', e)}
             className={cn(
               "flex flex-col items-center justify-center p-3 rounded-md border",
               paymentMethod === 'money' 
@@ -85,7 +119,7 @@ const PaymentMethodSection: React.FC<PaymentMethodSectionProps> = ({
           
           <button
             type="button"
-            onClick={() => onPaymentMethodChange('pix')}
+            onClick={(e) => handlePaymentMethodClick('pix', e)}
             className={cn(
               "flex flex-col items-center justify-center p-3 rounded-md border",
               paymentMethod === 'pix' 
@@ -110,7 +144,7 @@ const PaymentMethodSection: React.FC<PaymentMethodSectionProps> = ({
             <input
               type="text"
               value={changeAmount}
-              onChange={(e) => onChangeAmountChange(e.target.value)}
+              onChange={handleChangeAmountChange}
               className="w-full border border-gray-300 rounded-md px-3 py-2"
               placeholder="Ex: 50,00"
             />

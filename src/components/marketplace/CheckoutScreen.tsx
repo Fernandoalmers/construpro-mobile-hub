@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
@@ -22,19 +23,29 @@ const CheckoutScreen: React.FC = () => {
     }
   }, [checkout.cartItems?.length]);
 
-  // Handler to debug and provide feedback during checkout
+  // DEBUGGING: Track all handlePlaceOrder calls to identify source
   const handleCheckout = () => {
+    console.log('🚀 [CheckoutScreen] handleCheckout called from BUTTON CLICK', {
+      timestamp: new Date().toISOString(),
+      selectedAddress: checkout.selectedAddress,
+      paymentMethod: checkout.paymentMethod,
+      cartItemsLength: checkout.cartItems?.length,
+      stackTrace: new Error().stack
+    });
+    
     if (!checkout.selectedAddress) {
+      console.log('❌ [CheckoutScreen] No address selected');
       toast.error("Selecione um endereço de entrega");
       return;
     }
     
     if (checkout.cartItems?.length === 0) {
+      console.log('❌ [CheckoutScreen] Empty cart');
       toast.error("Seu carrinho está vazio");
       return;
     }
     
-    console.log("Attempting to place order with:", {
+    console.log('✅ [CheckoutScreen] Validation passed, proceeding with order:', {
       address: checkout.selectedAddress,
       paymentMethod: checkout.paymentMethod,
       subtotal: checkout.subtotal,
@@ -44,6 +55,19 @@ const CheckoutScreen: React.FC = () => {
     });
     
     checkout.handlePlaceOrder();
+  };
+
+  // DEBUGGING: Track payment method changes to see if they trigger handlePlaceOrder
+  const handlePaymentMethodChange = (method: any) => {
+    console.log('💳 [CheckoutScreen] Payment method change requested:', {
+      newMethod: method,
+      currentMethod: checkout.paymentMethod,
+      timestamp: new Date().toISOString()
+    });
+    
+    checkout.setPaymentMethod(method);
+    
+    console.log('💳 [CheckoutScreen] Payment method change completed');
   };
 
   if (checkout.isLoading || checkout.isValidatingStock) {
@@ -79,10 +103,10 @@ const CheckoutScreen: React.FC = () => {
             onChangeAddress={() => checkout.setShowAddressModal(true)}
           />
           
-          {/* Payment Method */}
+          {/* Payment Method - PROTECTED with custom handler */}
           <PaymentMethodSection
             paymentMethod={checkout.paymentMethod}
-            onPaymentMethodChange={checkout.setPaymentMethod}
+            onPaymentMethodChange={handlePaymentMethodChange}
             changeAmount={checkout.changeAmount}
             onChangeAmountChange={checkout.setChangeAmount}
           />

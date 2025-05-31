@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '@/hooks/use-cart';
@@ -234,27 +233,45 @@ export function useCheckout() {
   // Handle order placement with optimized flow - PRINCIPAIS MUDANÇAS AQUI
   const handlePlaceOrder = useCallback(async () => {
     try {
-      console.log('🛒 [handlePlaceOrder] Starting order placement process');
+      console.log('🛒 [useCheckout] handlePlaceOrder ENTRY POINT - WHO CALLED ME?', {
+        timestamp: new Date().toISOString(),
+        stackTrace: new Error().stack?.split('\n').slice(0, 10), // Show first 10 lines of stack trace
+        selectedAddress: selectedAddress,
+        cartItemsLength: cartItems?.length,
+        paymentMethod: paymentMethod,
+        isSubmitting: isSubmitting
+      });
+      
+      // PROTECTION: Prevent multiple simultaneous calls
+      if (isSubmitting) {
+        console.log('⚠️ [useCheckout] Already submitting, ignoring duplicate call');
+        return;
+      }
+      
+      console.log('🛒 [useCheckout] Starting order placement process');
       
       // First verify authentication
       const isAuthValid = await verifyAuthentication();
       if (!isAuthValid) {
-        console.error('🛒 [handlePlaceOrder] Authentication verification failed');
+        console.error('🛒 [useCheckout] Authentication verification failed');
         return;
       }
       
       if (!selectedAddress) {
+        console.log('❌ [useCheckout] No selected address');
         toast.error('Selecione um endereço de entrega');
         return;
       }
 
       if (!cartItems.length) {
+        console.log('❌ [useCheckout] Empty cart');
         toast.error('Seu carrinho está vazio');
         return;
       }
 
-      console.log('🛒 [handlePlaceOrder] Cart items:', cartItems.length);
-      console.log('🛒 [handlePlaceOrder] Selected address:', selectedAddress);
+      console.log('🛒 [useCheckout] Validation passed, proceeding with order creation');
+      console.log('🛒 [useCheckout] Cart items:', cartItems.length);
+      console.log('🛒 [useCheckout] Selected address:', selectedAddress);
 
       // Enhanced address validation with better error messages
       const addressValidation = {
@@ -270,7 +287,7 @@ export function useCheckout() {
 
       // Check required address fields
       if (!addressValidation.rua || !addressValidation.cidade || !addressValidation.estado || !addressValidation.cep) {
-        console.error('🛒 [handlePlaceOrder] Address validation failed:', {
+        console.error('🛒 [useCheckout] Address validation failed:', {
           selectedAddress,
           addressValidation,
           missingFields: {
@@ -284,14 +301,14 @@ export function useCheckout() {
         return;
       }
 
-      console.log('✅ [handlePlaceOrder] Address validation passed:', addressValidation);
+      console.log('✅ [useCheckout] Address validation passed:', addressValidation);
 
       setIsSubmitting(true);
       setProcessError(null);
       setOrderAttempts(prev => prev + 1);
       
       // Final stock validation before creating order
-      console.log('🛒 [handlePlaceOrder] Performing final stock validation');
+      console.log('🛒 [useCheckout] Performing final stock validation');
       const stockValid = await validateStock();
       if (!stockValid) {
         setIsSubmitting(false);
@@ -312,7 +329,7 @@ export function useCheckout() {
         desconto: Number(discount)
       };
       
-      console.log('🚀 [handlePlaceOrder] Sending order with validated data:', {
+      console.log('🚀 [useCheckout] Sending order with validated data:', {
         itemsCount: orderData.items.length,
         endereco_entrega: orderData.endereco_entrega,
         valor_total: orderData.valor_total,
@@ -327,14 +344,14 @@ export function useCheckout() {
         throw new Error('Falha ao processar pedido - ID não retornado');
       }
       
-      console.log('✅ [handlePlaceOrder] Order created successfully:', orderId);
+      console.log('✅ [useCheckout] Order created successfully:', orderId);
       
       // FLUXO OTIMIZADO: 2. Limpar carrinho ANTES de navegar
-      console.log('🧹 [handlePlaceOrder] Clearing cart before navigation');
+      console.log('🧹 [useCheckout] Clearing cart before navigation');
       await clearCart();
       
       // FLUXO OTIMIZADO: 3. Navegar IMEDIATAMENTE após limpeza do carrinho
-      console.log('🚀 [handlePlaceOrder] Navigating to confirmation page');
+      console.log('🚀 [useCheckout] Navigating to confirmation page');
       navigate(`/order/confirmacao/${orderId}`);
       
       // FLUXO OTIMIZADO: 4. Operações em background APÓS navegação
@@ -352,7 +369,7 @@ export function useCheckout() {
       }, 100);
       
     } catch (error: any) {
-      console.error('❌ [handlePlaceOrder] Error placing order:', error);
+      console.error('❌ [useCheckout] Error placing order:', error);
       
       // Enhanced error handling with more specific messages
       let errorMessage = 'Erro ao processar seu pedido';
@@ -395,7 +412,8 @@ export function useCheckout() {
     navigate,
     user,
     isAuthenticated,
-    activateReferralInBackground
+    activateReferralInBackground,
+    isSubmitting // Added to dependencies
   ]);
   
   // Handle retry
