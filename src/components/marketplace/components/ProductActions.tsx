@@ -3,8 +3,8 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingCart, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useCartActions } from '@/hooks/use-cart-actions';
 import { toast } from '@/components/ui/sonner';
+import { useCart } from '@/hooks/use-cart';
 
 interface ProductActionsProps {
   produto: any;
@@ -26,14 +26,10 @@ const ProductActions: React.FC<ProductActionsProps> = ({
   size = 'default',
 }) => {
   const navigate = useNavigate();
-  const { isAddingToCart, isBuyingNow, handleAddToCart, handleBuyNow, clearAllTimeouts } = useCartActions();
-  
-  // Clean up timeouts when component unmounts
-  useEffect(() => {
-    return () => {
-      clearAllTimeouts();
-    };
-  }, [clearAllTimeouts]);
+  // FIXED: Use only useCart() hook - this ensures consistent behavior
+  const { addToCart, isLoading } = useCart();
+  const [addingToCart, setAddingToCart] = React.useState(false);
+  const [buyingNow, setBuyingNow] = React.useState(false);
 
   const handleAddToCartClick = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -56,17 +52,21 @@ const ProductActions: React.FC<ProductActionsProps> = ({
         return;
       }
       
-      console.log("Adicionando ao carrinho:", produto.id, "quantidade:", quantidade);
+      setAddingToCart(true);
+      console.log("ProductActions: Using UNIFIED useCart().addToCart - should SUM quantities");
       
-      // Use the cartActions hook to handle adding to cart
-      const success = await handleAddToCart(produto.id, quantidade);
-      if (success && onSuccess) {
+      // Use the unified cart hook to handle adding to cart
+      await addToCart(produto.id, quantidade);
+      
+      if (onSuccess) {
         console.log("Product added to cart successfully, calling onSuccess");
         onSuccess();
       }
     } catch (error: any) {
       console.error("Error adding to cart:", error);
       toast.error(error.message || "Erro ao adicionar ao carrinho");
+    } finally {
+      setAddingToCart(false);
     }
   };
 
@@ -91,21 +91,23 @@ const ProductActions: React.FC<ProductActionsProps> = ({
         return;
       }
       
-      console.log("Comprando agora:", produto.id, "quantidade:", quantidade);
+      setBuyingNow(true);
+      console.log("ProductActions: Adding to cart then navigating");
       
-      // This will add to cart and navigate to cart page
-      await handleBuyNow(produto.id, quantidade);
+      // Add to cart first, then navigate
+      await addToCart(produto.id, quantidade);
+      navigate('/cart');
     } catch (error: any) {
       console.error("Error buying now:", error);
       toast.error(error.message || "Erro ao processar compra");
+    } finally {
+      setBuyingNow(false);
     }
   };
 
   // Check if button should be disabled
   const isButtonDisabled = !produto || !produto.estoque || produto.estoque < 1;
-  const isAddingToCartActive = produto?.id ? isAddingToCart[produto.id] : false;
-  const isBuyingNowActive = produto?.id ? isBuyingNow[produto.id] : false;
-  const anyActionInProgress = isAddingToCartActive || isBuyingNowActive;
+  const anyActionInProgress = addingToCart || buyingNow || isLoading;
   
   if (size === 'compact') {
     return (
@@ -118,7 +120,7 @@ const ProductActions: React.FC<ProductActionsProps> = ({
           disabled={isButtonDisabled || anyActionInProgress}
         >
           <ShoppingCart className="mr-1 h-4 w-4" />
-          {isAddingToCartActive ? "Adicionando..." : "Adicionar"}
+          {addingToCart ? "Adicionando..." : "Adicionar"}
         </Button>
         <Button
           size="sm"
@@ -127,7 +129,7 @@ const ProductActions: React.FC<ProductActionsProps> = ({
           disabled={isButtonDisabled || anyActionInProgress}
         >
           <ShoppingBag className="mr-1 h-4 w-4" />
-          {isBuyingNowActive ? "Processando..." : "Comprar"}
+          {buyingNow ? "Processando..." : "Comprar"}
         </Button>
       </div>
     );
@@ -141,7 +143,7 @@ const ProductActions: React.FC<ProductActionsProps> = ({
         disabled={isButtonDisabled || anyActionInProgress}
       >
         <ShoppingCart className="mr-2 h-5 w-5" />
-        {isAddingToCartActive ? "Adicionando ao Carrinho..." : "Adicionar ao Carrinho"}
+        {addingToCart ? "Adicionando ao Carrinho..." : "Adicionar ao Carrinho"}
       </Button>
       
       <Button
@@ -150,7 +152,7 @@ const ProductActions: React.FC<ProductActionsProps> = ({
         disabled={isButtonDisabled || anyActionInProgress}
       >
         <ShoppingBag className="mr-2 h-5 w-5" />
-        {isBuyingNowActive ? "Processando..." : "Comprar Agora"}
+        {buyingNow ? "Processando..." : "Comprar Agora"}
       </Button>
       
       {isButtonDisabled && (

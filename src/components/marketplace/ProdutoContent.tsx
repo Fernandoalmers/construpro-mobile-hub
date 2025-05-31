@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Heart, ShoppingCart, Star, Share2, Info, Store } from 'lucide-react';
@@ -20,6 +19,7 @@ interface ProdutoContentProps {
 
 const ProdutoContent: React.FC<ProdutoContentProps> = ({ produto }) => {
   const navigate = useNavigate();
+  // FIXED: Use only useCart() hook - this ensures consistent behavior
   const { addToCart, isLoading } = useCart();
   const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
   const { profile } = useAuth();
@@ -67,8 +67,9 @@ const ProdutoContent: React.FC<ProdutoContentProps> = ({ produto }) => {
 
     try {
       setAddingToCart(true);
+      console.log('[ProdutoContent] Using UNIFIED useCart().addToCart - should SUM quantities');
       await addToCart(produto.id, quantity);
-      toast.success(`${quantity} ${quantity === 1 ? 'item adicionado' : 'itens adicionados'} ao carrinho!`);
+      // Toast is handled by the useCart hook
     } catch (error) {
       console.error('Erro ao adicionar ao carrinho:', error);
       toast.error('Erro ao adicionar produto ao carrinho');
