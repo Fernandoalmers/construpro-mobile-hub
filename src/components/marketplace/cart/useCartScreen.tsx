@@ -1,4 +1,3 @@
-
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useCart } from '@/hooks/use-cart';
 import { useCoupon } from '@/hooks/cart/use-coupon';
@@ -159,24 +158,15 @@ export const useCartScreen = () => {
 
   const handleClearCart = async () => {
     try {
-      console.log('[useCartScreen] Clearing cart - starting operation');
-      
-      // Force immediate UI update first
-      if (appliedCoupon) {
-        console.log('[useCartScreen] Removing applied coupon');
-        removeCoupon();
-      }
-      
-      // Call the clear cart operation
-      console.log('[useCartScreen] Calling clearCart operation');
+      console.log('[useCartScreen] Clearing cart');
       await clearCart();
       
-      console.log('[useCartScreen] Cart cleared successfully');
-      toast.success('Carrinho limpo com sucesso!');
-      
+      // Remover cupom se houver
+      if (appliedCoupon) {
+        removeCoupon();
+      }
     } catch (error) {
       console.error('[useCartScreen] Error clearing cart:', error);
-      toast.error('Erro ao limpar o carrinho. Tente novamente.');
     }
   };
 
@@ -272,7 +262,7 @@ export const useCartScreen = () => {
     refreshCart,
     handleUpdateQuantity,
     handleRemoveItem,
-    clearCart: handleClearCart, // Use the enhanced clear cart function
+    clearCart: handleClearCart,
     applyCoupon: handleApplyCoupon,
     removeCoupon,
     handleCheckout,

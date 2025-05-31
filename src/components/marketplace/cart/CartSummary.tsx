@@ -1,8 +1,8 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { ShoppingCart, Trash2, CreditCard, Tag, Package, Loader2 } from 'lucide-react';
+import { ShoppingCart, Trash2, CreditCard, Tag, Package } from 'lucide-react';
 
 interface CartSummaryProps {
   subtotal: number;
@@ -23,28 +23,6 @@ const CartSummary: React.FC<CartSummaryProps> = ({
   itemCount,
   appliedCoupon
 }) => {
-  const [isClearingCart, setIsClearingCart] = useState(false);
-
-  const handleClearCart = async () => {
-    if (itemCount === 0) return;
-    
-    // Confirm before clearing
-    if (!window.confirm('Tem certeza que deseja limpar todo o carrinho?')) {
-      return;
-    }
-    
-    try {
-      setIsClearingCart(true);
-      console.log('[CartSummary] Clearing cart...');
-      await onClearCart();
-      console.log('[CartSummary] Cart cleared successfully');
-    } catch (error) {
-      console.error('[CartSummary] Error clearing cart:', error);
-    } finally {
-      setIsClearingCart(false);
-    }
-  };
-
   return (
     <div className="bg-white rounded-lg border shadow-sm p-3 space-y-2 sticky bottom-4">
       <div className="flex items-center justify-between">
@@ -110,17 +88,13 @@ const CartSummary: React.FC<CartSummaryProps> = ({
         </Button>
         
         <Button 
-          onClick={handleClearCart} 
+          onClick={onClearCart} 
           variant="outline" 
           className="w-full text-red-600 border-red-300 hover:bg-red-50 hover:border-red-400 h-7 text-xs"
-          disabled={itemCount === 0 || isClearingCart}
+          disabled={itemCount === 0}
         >
-          {isClearingCart ? (
-            <Loader2 className="h-2.5 w-2.5 mr-2 animate-spin" />
-          ) : (
-            <Trash2 className="h-2.5 w-2.5 mr-2" />
-          )}
-          {isClearingCart ? 'Limpando...' : 'Limpar Carrinho'}
+          <Trash2 className="h-2.5 w-2.5 mr-2" />
+          Limpar Carrinho
         </Button>
       </div>
     </div>

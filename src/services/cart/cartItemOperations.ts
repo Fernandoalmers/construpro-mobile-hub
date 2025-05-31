@@ -151,7 +151,7 @@ export async function removeFromCart(itemId: string): Promise<void> {
 }
 
 /**
- * Clear all items from cart - simplified to match removeFromCart pattern
+ * Clear all items from cart
  */
 export async function clearCart(): Promise<void> {
   try {
@@ -176,7 +176,7 @@ export async function clearCart(): Promise<void> {
     }
     
     if (cart) {
-      // Remove all items - direct delete like removeFromCart
+      // Remove all items
       const { error } = await supabase
         .from('cart_items')
         .delete()
