@@ -80,7 +80,7 @@ const ConviteScreen: React.FC = () => {
             <div className="flex items-center">
               <Award size={24} className="text-construPro-orange mr-3" />
               <div>
-                <p className="font-medium">50 pontos para você</p>
+                <p className="font-medium">20 pontos para você</p>
                 <p className="text-sm text-gray-600">Receba pontos na sua primeira compra</p>
               </div>
             </div>
@@ -90,7 +90,7 @@ const ConviteScreen: React.FC = () => {
             <div className="flex items-center">
               <Users size={24} className="text-construPro-orange mr-3" />
               <div>
-                <p className="font-medium">50 pontos para quem te indicou</p>
+                <p className="font-medium">20 pontos para quem te indicou</p>
                 <p className="text-sm text-gray-600">Seu amigo também ganha pontos</p>
               </div>
             </div>
@@ -117,7 +117,7 @@ const ConviteScreen: React.FC = () => {
               <div className="bg-construPro-blue text-white w-6 h-6 rounded-full flex items-center justify-center mr-3 flex-shrink-0 text-sm">
                 3
               </div>
-              <p className="text-sm">Receba 50 pontos automaticamente</p>
+              <p className="text-sm">Receba 20 pontos automaticamente</p>
             </li>
           </ol>
         </Card>
