@@ -4,7 +4,7 @@ import { UserData } from '@/types/admin';
 
 export const fetchUsers = async (): Promise<UserData[]> => {
   try {
-    console.log('🚀 [fetchUsers] VERSÃO DEBUG v6.0 - Iniciando busca com logs detalhados...');
+    console.log('🚀 [fetchUsers] VERSÃO DEBUG v7.0 - RASTREAMENTO ESPECÍFICO CONSUMIDOR01...');
     
     // 1. Buscar todos os profiles primeiro
     console.log('📊 [fetchUsers] Buscando profiles...');
@@ -86,13 +86,26 @@ export const fetchUsers = async (): Promise<UserData[]> => {
     });
     console.log(`📍 [fetchUsers] Mapa de profiles criado: ${profilesMap.size} entradas`);
 
-    // LOGS ESPECÍFICOS PARA consumidor01@email.com
+    // RASTREAMENTO ULTRA ESPECÍFICO PARA CONSUMIDOR01
     const consumidor01Profile = profiles.find(p => p.email === 'consumidor01@email.com');
     if (consumidor01Profile) {
-      console.log('🎯 [fetchUsers] RASTREANDO consumidor01@email.com:');
+      console.log('🎯 [fetchUsers] === RASTREAMENTO CONSUMIDOR01 ===');
       console.log(`   Profile ID: ${consumidor01Profile.id}`);
       console.log(`   Nome: ${consumidor01Profile.nome}`);
       console.log(`   Email: ${consumidor01Profile.email}`);
+      
+      // Verificar TODOS os referrals que mencionam este usuário
+      console.log('🔍 [fetchUsers] Verificando referrals onde CONSUMIDOR01 aparece:');
+      referrals?.forEach((ref, index) => {
+        if (ref.referred_id === consumidor01Profile.id || ref.referrer_id === consumidor01Profile.id) {
+          console.log(`   Referral ${index + 1}:`);
+          console.log(`     ID: ${ref.id}`);
+          console.log(`     Referrer: ${ref.referrer_id}`);
+          console.log(`     Referred: ${ref.referred_id}`);
+          console.log(`     Status: ${ref.status}`);
+          console.log(`     ${ref.referred_id === consumidor01Profile.id ? '👉 CONSUMIDOR01 é o REFERRED' : '👉 CONSUMIDOR01 é o REFERRER'}`);
+        }
+      });
       
       // Verificar se está no mapa de referrals
       const temReferral = referralsMap.has(consumidor01Profile.id);
@@ -113,14 +126,31 @@ export const fetchUsers = async (): Promise<UserData[]> => {
         }
       } else {
         console.log(`   ❌ Consumidor01 não encontrado no mapa de referrals!`);
-        console.log(`   🔍 Verificando referrals que apontam para este usuário:`);
-        referrals?.forEach(ref => {
-          if (ref.referred_id === consumidor01Profile.id) {
-            console.log(`     Encontrado referral: ${ref.id} (Status: ${ref.status})`);
-            console.log(`     Referrer: ${ref.referrer_id}`);
-          }
-        });
       }
+      
+      // Verificar se o email do Profissional 2 existe
+      const profissional2Profile = profiles.find(p => p.email === 'profissional2@email.com');
+      if (profissional2Profile) {
+        console.log(`   🔍 Profissional2 existe: ID=${profissional2Profile.id}, Nome=${profissional2Profile.nome}`);
+        
+        // Verificar se existe referral direto entre eles
+        const referralDireto = referrals?.find(ref => 
+          ref.referred_id === consumidor01Profile.id && ref.referrer_id === profissional2Profile.id
+        );
+        
+        if (referralDireto) {
+          console.log(`   ✅ REFERRAL DIRETO ENCONTRADO:`);
+          console.log(`     ID: ${referralDireto.id}`);
+          console.log(`     Status: ${referralDireto.status}`);
+          console.log(`     Data: ${referralDireto.data}`);
+        } else {
+          console.log(`   ❌ REFERRAL DIRETO NÃO ENCONTRADO!`);
+        }
+      } else {
+        console.log(`   ❌ Profissional2 não encontrado nos profiles!`);
+      }
+      
+      console.log('🎯 [fetchUsers] === FIM RASTREAMENTO CONSUMIDOR01 ===');
     } else {
       console.log('❌ [fetchUsers] consumidor01@email.com NÃO ENCONTRADO nos profiles!');
     }
@@ -181,6 +211,15 @@ export const fetchUsers = async (): Promise<UserData[]> => {
           console.log(`   ℹ️ Usuário não tem referral`);
         }
         
+        // LOG ESPECÍFICO PARA CONSUMIDOR01 NO PROCESSAMENTO
+        if (user.email === 'consumidor01@email.com') {
+          console.log(`   🎯 PROCESSANDO CONSUMIDOR01:`);
+          console.log(`      - User ID: ${user.id}`);
+          console.log(`      - Referrals Map tem este ID: ${referralsMap.has(user.id)}`);
+          console.log(`      - Referrer ID: ${referrerId}`);
+          console.log(`      - Indicado por final: "${indicadoPor}"`);
+        }
+        
         // Calcular total de compras
         const totalCompras = user.id ? (purchasesByClient[user.id] || 0) : 0;
         console.log(`   💰 Total compras: R$ ${totalCompras.toFixed(2)}`);
@@ -220,7 +259,7 @@ export const fetchUsers = async (): Promise<UserData[]> => {
 
         // Log final do usuário processado se for consumidor01
         if (user.email === 'consumidor01@email.com') {
-          console.log(`   🎯 CONSUMIDOR01 PROCESSADO:`);
+          console.log(`   🎯 CONSUMIDOR01 PROCESSADO FINAL:`);
           console.log(`      - Código: "${userData.codigo_indicacao}"`);
           console.log(`      - Indicado por: "${userData.indicado_por}"`);
           console.log(`      - Especialidade: "${userData.especialidade}"`);
