@@ -14,7 +14,7 @@ const STATUS_MAPPING = {
 
 export const updateOrderStatus = async (id: string, newInternalStatus: string): Promise<boolean> => {
   try {
-    console.log('🔄 [OrderStatusUpdater] Attempting to update order status:', { id, newInternalStatus });
+    console.log('🔄 [OrderStatusUpdater] Attempting to update order status via Edge Function:', { id, newInternalStatus });
     
     // Verificar se o usuário tem acesso a este pedido
     const { data: { user } } = await supabase.auth.getUser();
@@ -75,58 +75,35 @@ export const updateOrderStatus = async (id: string, newInternalStatus: string): 
       return false;
     }
 
-    console.log('✅ [OrderStatusUpdater] Permissões verificadas, iniciando atualização...');
+    console.log('✅ [OrderStatusUpdater] Permissões verificadas, chamando Edge Function...');
     
     // Obter o status padronizado que será usado
     const standardStatus = STATUS_MAPPING[newInternalStatus.toLowerCase()] || newInternalStatus;
     console.log('🔄 [OrderStatusUpdater] Status padronizado a ser usado:', standardStatus);
     
-    // Simplified approach: Update pedidos table directly without complex trigger handling
-    try {
-      // Update the pedidos table directly
-      console.log('🔄 [OrderStatusUpdater] Atualizando tabela pedidos com status padronizado:', standardStatus);
-      const { error: pedidosError } = await supabase
-        .from('pedidos')
-        .update({ status: standardStatus })
-        .eq('id', id)
-        .eq('vendedor_id', vendorData.id);
-
-      if (pedidosError) {
-        console.error('❌ [OrderStatusUpdater] Erro ao atualizar status na tabela pedidos:', pedidosError);
-        toast.error('Erro ao atualizar status do pedido: ' + pedidosError.message);
-        return false;
+    // Usar Edge Function para atualização segura
+    const { data: functionResult, error: functionError } = await supabase.functions.invoke('update-pedido-status-safe', {
+      body: {
+        pedido_id: id,
+        vendedor_id: vendorData.id,
+        new_status: standardStatus,
+        order_id_to_update: pedidoCheck.order_id
       }
+    });
 
-      console.log('✅ [OrderStatusUpdater] Tabela pedidos atualizada com status:', standardStatus);
-
-      // If there's an order_id reference, also update the orders table
-      if (pedidoCheck.order_id) {
-        console.log('🔄 [OrderStatusUpdater] Atualizando tabela orders:', { 
-          order_id: pedidoCheck.order_id,
-          status: standardStatus 
-        });
-        
-        const { error: ordersError } = await supabase
-          .from('orders')
-          .update({ status: standardStatus })
-          .eq('id', pedidoCheck.order_id);
-
-        if (ordersError) {
-          console.warn('⚠️ [OrderStatusUpdater] Aviso ao atualizar tabela orders:', ordersError);
-          // Don't fail the operation if orders table update fails
-          console.log('ℹ️ [OrderStatusUpdater] Continuando com sucesso apenas na tabela pedidos');
-        } else {
-          console.log('✅ [OrderStatusUpdater] Tabela orders também atualizada com status:', standardStatus);
-        }
-      }
-
-    } catch (updateError) {
-      console.error('❌ [OrderStatusUpdater] Erro geral na atualização:', updateError);
-      toast.error('Erro inesperado ao atualizar status');
+    if (functionError) {
+      console.error('❌ [OrderStatusUpdater] Erro na Edge Function:', functionError);
+      toast.error('Erro ao atualizar status: ' + functionError.message);
       return false;
     }
 
-    console.log('✅ [OrderStatusUpdater] Status atualizado com sucesso de', pedidoCheck.status, 'para', standardStatus);
+    if (!functionResult?.success) {
+      console.error('❌ [OrderStatusUpdater] Edge Function retornou erro:', functionResult);
+      toast.error('Erro ao atualizar status: ' + (functionResult?.error || 'Erro desconhecido'));
+      return false;
+    }
+
+    console.log('✅ [OrderStatusUpdater] Status atualizado com sucesso via Edge Function:', functionResult);
     toast.success(`Status atualizado para "${standardStatus}"`);
     return true;
     
