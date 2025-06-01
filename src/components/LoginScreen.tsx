@@ -84,7 +84,7 @@ const LoginScreen: React.FC = () => {
     navigate('/signup');
   };
   return <div className="min-h-screen flex flex-col bg-white">
-      <div className="bg-construPro-blue py-16 rounded-b-3xl">
+      <div className="bg-orange-600 py-16 rounded-b-3xl">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-white">Matershop</h1>
           <p className="text-white opacity-80 mt-2">Materiais, clube e recompensas</p>
@@ -93,7 +93,7 @@ const LoginScreen: React.FC = () => {
 
       <div className="flex-grow p-6 -mt-6">
         <div className="bg-white rounded-lg shadow-lg p-6">
-          <h2 className="text-2xl font-bold mb-6 text-construPro-blue">Entrar</h2>
+          <h2 className="text-2xl font-bold mb-6 text-orange-600">Entrar</h2>
           
           {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md flex items-center gap-2 text-red-600">
               <AlertCircle size={18} />
@@ -136,7 +136,7 @@ const LoginScreen: React.FC = () => {
 
         <div className="mt-8 text-center">
           <p className="text-gray-600">Ainda não tem uma conta?</p>
-          <Button onClick={goToSignup} variant="link" className="text-construPro-blue font-medium" disabled={isLoading || loggingIn}>
+          <Button onClick={goToSignup} variant="link" className="text-orange-600 font-medium" disabled={isLoading || loggingIn}>
             Criar uma conta
           </Button>
         </div>

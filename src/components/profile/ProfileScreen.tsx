@@ -1,329 +1,221 @@
 
-import React, { useRef } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { useVendorProfile } from '@/hooks/useVendorProfile';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { toast } from '@/components/ui/sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { Avatar } from '@/components/ui/avatar';
 import { 
   User, 
-  MapPin, 
-  Phone, 
-  Mail, 
-  Star, 
-  Gift, 
+  Settings, 
   ShoppingBag, 
   Heart, 
-  Settings, 
-  FileText,
+  Gift, 
+  Users, 
+  Star,
   CreditCard,
-  Users,
-  Package,
-  MessageCircle,
-  RefreshCw,
-  Camera,
-  Store
+  MapPin,
+  LogOut,
+  ArrowRight,
+  Award,
+  TrendingUp,
+  Calendar
 } from 'lucide-react';
+import { toast } from '@/components/ui/sonner';
 
 const ProfileScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { profile, logout, refreshProfile, isLoading, updateProfile } = useAuth();
-  const { vendorProfile } = useVendorProfile();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  console.log("ProfileScreen: Rendering with state:", { 
-    hasProfile: !!profile, 
-    isLoading,
-    profileId: profile?.id,
-    userRole: profile?.tipo_perfil,
-    hasVendorProfile: !!vendorProfile,
-    vendorProfile: vendorProfile
-  });
-
-  const handleRefreshProfile = async () => {
-    console.log("ProfileScreen: Refreshing profile...");
-    await refreshProfile();
-  };
+  const { profile, signOut } = useAuth();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
+    setIsLoggingOut(true);
     try {
-      await logout();
+      await signOut();
+      toast.success("Logout realizado com sucesso!");
       navigate('/login');
     } catch (error) {
-      console.error('Erro ao fazer logout:', error);
+      console.error('Erro no logout:', error);
+      toast.error("Erro ao fazer logout");
+    } finally {
+      setIsLoggingOut(false);
     }
   };
-
-  const handleAvatarClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !profile?.id) return;
-
-    try {
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        toast.error('Por favor, selecione um arquivo de imagem');
-        return;
-      }
-
-      // Validate file size (2MB limit)
-      if (file.size > 2 * 1024 * 1024) {
-        toast.error('A imagem deve ter no máximo 2MB');
-        return;
-      }
-
-      console.log('Uploading avatar for user:', profile.id);
-
-      // Create unique filename
-      const fileExt = file.name.split('.').pop();
-      const fileName = `avatar-${Date.now()}.${fileExt}`;
-      const filePath = `${profile.id}/${fileName}`;
-
-      // Upload to Supabase Storage
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file, { upsert: true });
-
-      if (uploadError) {
-        console.error('Upload error:', uploadError);
-        toast.error('Erro ao fazer upload da imagem');
-        return;
-      }
-
-      // Get public URL
-      const { data } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
-
-      if (!data?.publicUrl) {
-        toast.error('Erro ao obter URL da imagem');
-        return;
-      }
-
-      // Update profile with new avatar URL
-      await updateProfile({ avatar: data.publicUrl });
-      toast.success('Avatar atualizado com sucesso!');
-
-    } catch (error) {
-      console.error('Error uploading avatar:', error);
-      toast.error('Erro ao atualizar avatar');
-    }
-  };
-
-  // Show loading state
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4" />
-          <h2 className="text-lg font-semibold">Carregando perfil...</h2>
-        </div>
-      </div>
-    );
-  }
-
-  // Show error state if no profile after loading
-  if (!profile) {
-    return (
-      <div className="flex items-center justify-center min-h-screen p-4">
-        <div className="text-center max-w-md">
-          <User className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-          <h2 className="text-xl font-semibold mb-2">Erro ao carregar perfil</h2>
-          <p className="text-gray-600 mb-6">
-            Não foi possível carregar suas informações. Tente novamente.
-          </p>
-          <div className="space-y-3">
-            <Button onClick={handleRefreshProfile} className="w-full">
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Tentar Novamente
-            </Button>
-            <Button 
-              onClick={handleLogout} 
-              variant="outline" 
-              className="w-full"
-            >
-              Sair da Conta
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Determine if user is a vendor and get appropriate display info
-  const isVendor = profile.tipo_perfil === 'vendedor' || profile.tipo_perfil === 'lojista';
-  const displayName = isVendor && vendorProfile?.nome_loja ? vendorProfile.nome_loja : profile.nome || 'Usuário';
-  const displayEmail = isVendor && vendorProfile?.email ? vendorProfile.email : profile.email;
-  const displayAvatar = isVendor && vendorProfile?.logo ? vendorProfile.logo : profile.avatar;
 
   const menuItems = [
     {
-      icon: User,
       title: 'Dados Pessoais',
-      description: 'Gerencie suas informações pessoais',
-      onClick: () => navigate('/profile/user-data'),
-      color: 'text-blue-600'
+      description: 'Gerencie suas informações',
+      icon: User,
+      route: '/profile/dados',
+      color: 'bg-blue-500'
     },
     {
-      icon: MapPin,
-      title: 'Endereços',
-      description: 'Gerencie seus endereços de entrega',
-      onClick: () => navigate('/profile/addresses'),
-      color: 'text-green-600'
-    },
-    {
+      title: 'Pedidos',
+      description: 'Histórico de compras',
       icon: ShoppingBag,
-      title: 'Meus Pedidos',
-      description: 'Acompanhe seus pedidos online',
-      onClick: () => navigate('/profile/orders'),
-      color: 'text-orange-600'
+      route: '/profile/pedidos',
+      color: 'bg-green-500'
     },
     {
-      icon: Package,
-      title: 'Compras Físicas',
-      description: 'Histórico de compras nas lojas',
-      onClick: () => navigate('/profile/physical-purchases'),
-      color: 'text-purple-600'
-    },
-    {
-      icon: Star,
-      title: 'Histórico de Pontos',
-      description: 'Acompanhe seus pontos acumulados',
-      onClick: () => navigate('/profile/points-history'),
-      color: 'text-yellow-600'
-    },
-    {
-      icon: Users,
-      title: 'Indicações',
-      description: 'Convide amigos e ganhe pontos',
-      onClick: () => navigate('/profile/referrals'),
-      color: 'text-pink-600'
-    },
-    {
-      icon: Heart,
       title: 'Favoritos',
-      description: 'Produtos que você curtiu',
-      onClick: () => navigate('/profile/favorites'),
-      color: 'text-red-600'
+      description: 'Produtos salvos',
+      icon: Heart,
+      route: '/profile/favoritos',
+      color: 'bg-red-500'
     },
     {
-      icon: FileText,
-      title: 'Avaliações',
-      description: 'Suas avaliações de produtos',
-      onClick: () => navigate('/profile/reviews'),
-      color: 'text-indigo-600'
+      title: 'Histórico de Pontos',
+      description: 'Acompanhe seus pontos',
+      icon: Gift,
+      route: '/profile/pontos',
+      color: 'bg-purple-500'
     },
     {
-      icon: Settings,
+      title: 'Indicações',
+      description: 'Convide amigos',
+      icon: Users,
+      route: '/profile/indicacoes',
+      color: 'bg-construPro-orange'
+    },
+    {
+      title: 'Endereços',
+      description: 'Gerencie endereços',
+      icon: MapPin,
+      route: '/profile/enderecos',
+      color: 'bg-indigo-500'
+    },
+    {
       title: 'Configurações',
-      description: 'Preferências do aplicativo',
-      onClick: () => navigate('/profile/settings'),
-      color: 'text-gray-600'
+      description: 'Preferências da conta',
+      icon: Settings,
+      route: '/profile/configuracoes',
+      color: 'bg-gray-500'
     }
   ];
 
-  // Add vendor-specific menu items
-  if (isVendor) {
-    menuItems.unshift({
-      icon: Store,
-      title: 'Painel do Vendedor',
-      description: 'Gerencie sua loja e produtos',
-      onClick: () => navigate('/vendor'),
-      color: 'text-construPro-orange'
-    });
-  }
+  const pointsLevel = Math.floor((profile?.saldo_pontos || 0) / 1000) + 1;
+  const pointsToNextLevel = 1000 - ((profile?.saldo_pontos || 0) % 1000);
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Header com informações do usuário */}
-      <div className="bg-construPro-blue text-white">
-        <div className="p-6">
-          <div className="flex items-center space-x-4">
-            <div className="relative">
-              <Avatar className="w-20 h-20 border-4 border-white cursor-pointer hover:opacity-80 transition-opacity" onClick={handleAvatarClick}>
-                <AvatarImage src={displayAvatar || ''} alt={displayName || 'Avatar'} />
-                <AvatarFallback className="bg-construPro-orange text-white text-lg font-bold">
-                  {displayName?.charAt(0)?.toUpperCase() || 'U'}
-                </AvatarFallback>
-              </Avatar>
-              <div className="absolute -bottom-1 -right-1 bg-construPro-orange rounded-full p-1.5 cursor-pointer hover:bg-orange-600 transition-colors" onClick={handleAvatarClick}>
-                <Camera className="w-3 h-3 text-white" />
-              </div>
+    <div className="flex flex-col min-h-screen bg-gray-50 pb-20">
+      {/* Header with black background */}
+      <div className="bg-black py-8 px-4 rounded-b-2xl shadow-lg">
+        <div className="text-center">
+          <div className="relative mb-4">
+            <Avatar className="w-20 h-20 mx-auto border-4 border-white/20">
+              <img 
+                src={profile?.avatar || '/placeholder.svg'} 
+                alt={profile?.nome || 'Avatar'} 
+                className="w-full h-full object-cover"
+              />
+            </Avatar>
+            <div className="absolute -bottom-1 -right-1 bg-construPro-orange rounded-full p-1">
+              <Award size={16} className="text-white" />
+            </div>
+          </div>
+          
+          <h1 className="text-2xl font-bold text-white mb-1">
+            {profile?.nome || 'Usuário'}
+          </h1>
+          
+          <p className="text-gray-200 text-sm mb-3">
+            {profile?.email}
+          </p>
+
+          <Badge className="bg-white/10 text-white border-white/20">
+            Nível {pointsLevel}
+          </Badge>
+        </div>
+
+        {/* Points Summary */}
+        <div className="mt-6 bg-white/10 backdrop-blur-sm rounded-lg p-4">
+          <div className="flex justify-between items-center mb-3">
+            <div className="text-center flex-1">
+              <p className="text-2xl font-bold text-white">
+                {(profile?.saldo_pontos || 0).toLocaleString()}
+              </p>
+              <p className="text-gray-200 text-sm">Pontos disponíveis</p>
             </div>
             
-            <div className="flex-1">
-              <h1 className="text-2xl font-bold">{displayName}</h1>
-              {displayEmail && (
-                <p className="text-construPro-blue-light opacity-90">{displayEmail}</p>
-              )}
-              
-              <div className="flex items-center space-x-4 mt-2">
-                <Badge variant="secondary" className="bg-construPro-orange text-white">
-                  {profile.tipo_perfil === 'consumidor' && 'Consumidor'}
-                  {profile.tipo_perfil === 'profissional' && 'Profissional'}
-                  {(profile.tipo_perfil === 'vendedor' || profile.tipo_perfil === 'lojista') && 'Vendedor'}
-                </Badge>
-                
-                <div className="flex items-center space-x-1">
-                  <Gift className="w-4 h-4" />
-                  <span className="font-semibold">{profile.saldo_pontos || 0} pontos</span>
-                </div>
-              </div>
+            <div className="w-px h-12 bg-white/20 mx-4"></div>
+            
+            <div className="text-center flex-1">
+              <p className="text-lg font-bold text-construPro-orange">
+                {pointsToNextLevel.toLocaleString()}
+              </p>
+              <p className="text-gray-200 text-sm">Para próximo nível</p>
             </div>
+          </div>
+
+          <div className="w-full bg-white/20 rounded-full h-2">
+            <div 
+              className="bg-construPro-orange h-2 rounded-full transition-all duration-300" 
+              style={{ 
+                width: `${((profile?.saldo_pontos || 0) % 1000) / 10}%` 
+              }}
+            ></div>
           </div>
         </div>
       </div>
 
-      {/* Hidden file input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        onChange={handleFileChange}
-        className="hidden"
-      />
-
-      {/* Menu de opções */}
+      {/* Quick Stats */}
       <div className="p-4">
-        <div className="grid gap-3">
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          <Card className="p-3 text-center">
+            <TrendingUp size={20} className="text-green-500 mx-auto mb-1" />
+            <p className="text-xs text-gray-600">Este mês</p>
+            <p className="font-bold text-black">+245 pts</p>
+          </Card>
+          
+          <Card className="p-3 text-center">
+            <Calendar size={20} className="text-blue-500 mx-auto mb-1" />
+            <p className="text-xs text-gray-600">Membro desde</p>
+            <p className="font-bold text-black">Jan 2024</p>
+          </Card>
+          
+          <Card className="p-3 text-center">
+            <Star size={20} className="text-yellow-500 mx-auto mb-1" />
+            <p className="text-xs text-gray-600">Resgates</p>
+            <p className="font-bold text-black">5 itens</p>
+          </Card>
+        </div>
+
+        {/* Menu Items */}
+        <div className="space-y-3">
           {menuItems.map((item, index) => (
-            <Card key={index} className="hover:shadow-md transition-shadow cursor-pointer" onClick={item.onClick}>
-              <CardContent className="flex items-center p-4">
-                <div className={`w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center mr-4 ${item.color}`}>
-                  <item.icon className="w-5 h-5" />
+            <Card 
+              key={index}
+              className="p-4 cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => navigate(item.route)}
+            >
+              <div className="flex items-center">
+                <div className={`${item.color} p-3 rounded-full mr-4`}>
+                  <item.icon size={20} className="text-white" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-medium text-gray-900">{item.title}</h3>
-                  <p className="text-sm text-gray-500">{item.description}</p>
+                  <h3 className="font-semibold text-black">{item.title}</h3>
+                  <p className="text-sm text-gray-600">{item.description}</p>
                 </div>
-              </CardContent>
+                <ArrowRight size={18} className="text-gray-400" />
+              </div>
             </Card>
           ))}
         </div>
 
-        {/* Ações do perfil */}
-        <div className="mt-6 space-y-3">
+        {/* Logout Button */}
+        <Card className="mt-6 p-4">
           <Button
+            variant="ghost"
+            className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
             onClick={handleLogout}
-            variant="outline"
-            className="w-full text-red-600 border-red-200 hover:bg-red-50"
+            disabled={isLoggingOut}
           >
-            Sair da conta
+            <LogOut size={20} className="mr-4" />
+            {isLoggingOut ? 'Saindo...' : 'Sair da conta'}
           </Button>
-        </div>
-
-        {/* Informações adicionais */}
-        <div className="mt-6 text-center text-sm text-gray-500">
-          <p>Matershop - Sua construção em boas mãos</p>
-          <p className="mt-1">Versão 1.0.0</p>
-        </div>
+        </Card>
       </div>
     </div>
   );

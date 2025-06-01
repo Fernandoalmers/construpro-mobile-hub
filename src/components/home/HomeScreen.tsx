@@ -1,219 +1,213 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getProducts, Product } from '@/services/productService';
-import { getUserProfile } from '@/services/userService';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { 
+  ShoppingCart, 
+  Heart, 
+  Gift, 
+  Users, 
+  TrendingUp, 
+  Award,
+  Star,
+  ArrowRight,
+  QrCode,
+  Zap
+} from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import LoadingState from '../common/LoadingState';
-import ErrorState from '../common/ErrorState';
-import Card from '../common/Card';
-import Avatar from '../common/Avatar';
-import CustomButton from '../common/CustomButton';
-import { Receipt, Gift, MessageSquare, Award, ChevronRight } from 'lucide-react';
-import { calculateMonthlyPoints, calculateLevelInfo, getCurrentMonthName } from '@/utils/pointsCalculations';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import MonthlyLevelProgress from '../profile/points-history/MonthlyLevelProgress';
-
-// Define the shortcuts array for the quick access section (removed Escanear)
-const shortcuts = [
-  {
-    id: 'receipt',
-    label: 'Compras',
-    route: '/compras',
-    icon: <Receipt size={24} />
-  },
-  {
-    id: 'rewards',
-    label: 'Resgates',
-    route: '/resgates',
-    icon: <Gift size={24} />
-  },
-  {
-    id: 'chat',
-    label: 'Suporte',
-    route: '/suporte',
-    icon: <MessageSquare size={24} />
-  }
-];
-
-// Define the promotion items
-const promoItems = [
-  {
-    id: 1,
-    title: 'Dobro de pontos em materiais elétricos',
-    description: 'Promoção válida até 30/06/2025',
-    color: 'bg-amber-50'
-  },
-  {
-    id: 2,
-    title: 'Compre e ganhe um brinde',
-    description: 'Nas compras acima de R$ 300,00',
-    color: 'bg-blue-50'
-  },
-  {
-    id: 3,
-    title: 'Indique um amigo e ganhe 20 pontos',
-    description: 'Cada amigo que se cadastrar e efetuar sua primeira compra',
-    color: 'bg-green-50'
-  }
-];
+import { toast } from '@/components/ui/sonner';
 
 const HomeScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
-  
-  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Fetch point transactions for monthly level calculation
-  const { data: transactions = [] } = useQuery({
-    queryKey: ['pointsHistory', user?.id],
-    queryFn: async () => {
-      if (!user) return [];
-      
-      const { data, error } = await supabase
-        .from('points_transactions')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('data', { ascending: false });
-      
-      if (error) {
-        console.error('Error fetching points history:', error);
-        return [];
-      }
-      
-      return data;
-    },
-    enabled: !!user
-  });
+  const { profile } = useAuth();
+  const [currentPoints, setCurrentPoints] = useState(0);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        
-        // Fetch products
-        const productsData = await getProducts();
-        setFeaturedProducts(productsData.slice(0, 6));
-        
-        // Extract unique categories
-        const uniqueCategories = Array.from(new Set(productsData.map(p => p.categoria)));
-        setCategories(uniqueCategories);
-        
-        // Get user profile if logged in but profile not in auth context
-        if (user && !profile) {
-          await getUserProfile();
-        }
-      } catch (err) {
-        console.error('Error fetching home data:', err);
-        setError('Erro ao carregar dados iniciais');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchData();
-  }, [user, profile]);
+    if (profile?.saldo_pontos) {
+      setCurrentPoints(profile.saldo_pontos);
+    }
+  }, [profile]);
 
-  if (loading) {
-    return <LoadingState text="Carregando..." />;
-  }
+  const quickActions = [
+    {
+      title: 'Marketplace',
+      description: 'Compre produtos e ganhe pontos',
+      icon: ShoppingCart,
+      color: 'bg-construPro-orange',
+      route: '/marketplace'
+    },
+    {
+      title: 'Escanear QR',
+      description: 'Ganhe pontos em lojas físicas',
+      icon: QrCode,
+      color: 'bg-green-500',
+      route: '/escanear'
+    },
+    {
+      title: 'Resgates',
+      description: 'Troque pontos por recompensas',
+      icon: Gift,
+      color: 'bg-purple-500',
+      route: '/resgates'
+    },
+    {
+      title: 'Convites',
+      description: 'Convide amigos e ganhe mais',
+      icon: Users,
+      color: 'bg-blue-500',
+      route: '/convite'
+    }
+  ];
 
-  if (error) {
-    return (
-      <ErrorState 
-        title="Erro ao carregar dados" 
-        message={error}
-        onRetry={() => window.location.reload()}
-      />
-    );
-  }
+  const handleQuickAction = (route: string) => {
+    navigate(route);
+  };
 
-  // Calculate level info based on monthly points
-  const saldoPontos = profile?.saldo_pontos || 0;
-  
-  // Calculate monthly points and level
-  const monthlyPoints = calculateMonthlyPoints(transactions);
-  const levelInfo = calculateLevelInfo(monthlyPoints);
-  const currentMonth = getCurrentMonthName();
-  
-  // Get user's name from profile or user metadata
-  const userName = profile?.nome || user?.user_metadata?.nome || "Usuário";
+  const nextLevel = Math.ceil(currentPoints / 1000) * 1000;
+  const progressToNext = nextLevel > 0 ? (currentPoints / nextLevel) * 100 : 0;
 
   return (
-    <div className="flex flex-col bg-gray-100 min-h-screen pb-20">
-      {/* Header Section */}
-      <div className="bg-construPro-blue p-6 pt-12 rounded-b-3xl">
-        <div className="flex justify-between items-center mb-4">
+    <div className="flex flex-col min-h-screen bg-gray-50 pb-20">
+      {/* Header */}
+      <div className="bg-black py-8 px-4 rounded-b-2xl shadow-lg">
+        <div className="flex items-center justify-between mb-4">
           <div>
-            <p className="text-white text-opacity-80">Olá,</p>
-            <h1 className="text-2xl font-bold text-white">{userName.split(' ')[0]}!</h1>
+            <h1 className="text-2xl font-bold text-white">Olá, {profile?.nome || 'Usuário'}!</h1>
+            <p className="text-gray-200 text-sm">Bem-vindo de volta ao Matershop</p>
           </div>
-          <Avatar 
-            src={profile?.avatar || undefined} 
-            alt={userName}
-            fallback={userName}
-            size="lg" 
-            className="border-2 border-white"
-            onClick={() => navigate('/profile')}
-          />
+          <div className="text-right">
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2">
+              <p className="text-white text-xs">Seus pontos</p>
+              <p className="text-white text-xl font-bold">{currentPoints.toLocaleString()}</p>
+            </div>
+          </div>
         </div>
-        
-        <Card className="p-4 mb-4">
+
+        {/* Progress to next level */}
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3">
           <div className="flex justify-between items-center mb-2">
-            <p className="text-gray-600">Seu saldo</p>
-            <CustomButton 
-              variant="link" 
-              onClick={() => navigate('/profile/points-history')}
-              className="flex items-center text-construPro-blue p-0"
-            >
-              Ver extrato <ChevronRight size={16} />
-            </CustomButton>
+            <span className="text-white text-sm">Progresso para {nextLevel.toLocaleString()} pts</span>
+            <span className="text-white text-sm">{Math.round(progressToNext)}%</span>
           </div>
-          <h2 className="text-3xl font-bold text-construPro-blue mb-1">{saldoPontos.toLocaleString()} pontos</h2>
-        </Card>
-      </div>
-
-      {/* Level Card */}
-      <div className="px-6 -mt-6">
-        <MonthlyLevelProgress
-          currentMonth={currentMonth}
-          levelInfo={levelInfo}
-        />
-      </div>
-
-      {/* Shortcuts */}
-      <div className="p-6">
-        <h2 className="font-bold text-lg text-gray-800 mb-4">Acesso rápido</h2>
-        <div className="grid grid-cols-3 gap-3">
-          {shortcuts.map((shortcut) => (
-            <button 
-              key={shortcut.id} 
-              className="flex flex-col items-center"
-              onClick={() => navigate(shortcut.route)}
-            >
-              <div className="w-14 h-14 rounded-full bg-white shadow-md flex items-center justify-center mb-2 text-construPro-orange">
-                {shortcut.icon}
-              </div>
-              <span className="text-sm text-gray-700">{shortcut.label}</span>
-            </button>
-          ))}
+          <div className="w-full bg-white/20 rounded-full h-2">
+            <div 
+              className="bg-construPro-orange h-2 rounded-full transition-all duration-300" 
+              style={{ width: `${progressToNext}%` }}
+            ></div>
+          </div>
         </div>
       </div>
 
-      {/* Promotions */}
-      <div className="p-6 pt-2">
-        <h2 className="font-bold text-lg text-gray-800 mb-4">Promoções e Novidades</h2>
-        <div className="space-y-4">
-          {promoItems.map((item) => (
-            <Card key={item.id} className={`p-4 border-l-4 border-construPro-orange ${item.color}`}>
-              <h3 className="font-bold">{item.title}</h3>
-              <p className="text-sm text-gray-700">{item.description}</p>
+      {/* Quick Actions */}
+      <div className="p-4">
+        <h2 className="text-lg font-bold text-black mb-4">Ações Rápidas</h2>
+        <div className="grid grid-cols-2 gap-3">
+          {quickActions.map((action, index) => (
+            <Card 
+              key={index}
+              className="p-4 cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => handleQuickAction(action.route)}
+            >
+              <div className="flex flex-col items-center text-center">
+                <div className={`${action.color} p-3 rounded-full mb-2`}>
+                  <action.icon size={24} className="text-white" />
+                </div>
+                <h3 className="font-semibold text-sm text-black">{action.title}</h3>
+                <p className="text-xs text-gray-600 mt-1">{action.description}</p>
+              </div>
             </Card>
           ))}
         </div>
+      </div>
+
+      {/* Highlights Section */}
+      <div className="p-4">
+        <h2 className="text-lg font-bold text-black mb-4">Destaques</h2>
+        
+        {/* Level System Card */}
+        <Card className="p-4 mb-4 bg-gradient-to-r from-construPro-orange to-orange-400">
+          <div className="flex items-center justify-between text-white">
+            <div>
+              <h3 className="font-bold">Sistema de Níveis</h3>
+              <p className="text-sm opacity-90">Suba de nível e desbloqueie benefícios</p>
+            </div>
+            <Award size={32} />
+          </div>
+        </Card>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <Card className="p-3">
+            <div className="flex items-center">
+              <div className="bg-green-100 p-2 rounded-full mr-3">
+                <TrendingUp size={16} className="text-green-600" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-600">Este mês</p>
+                <p className="font-bold text-black">+245 pts</p>
+              </div>
+            </div>
+          </Card>
+          
+          <Card className="p-3">
+            <div className="flex items-center">
+              <div className="bg-purple-100 p-2 rounded-full mr-3">
+                <Heart size={16} className="text-purple-600" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-600">Favoritos</p>
+                <p className="font-bold text-black">12 itens</p>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* Recent Activity */}
+        <Card className="p-4">
+          <h3 className="font-bold text-black mb-3">Atividade Recente</h3>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="bg-green-100 p-2 rounded-full mr-3">
+                  <Zap size={14} className="text-green-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-black">Compra realizada</p>
+                  <p className="text-xs text-gray-600">2 dias atrás</p>
+                </div>
+              </div>
+              <Badge variant="secondary" className="bg-green-100 text-green-700">
+                +50 pts
+              </Badge>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="bg-construPro-orange/10 p-2 rounded-full mr-3">
+                  <Star size={14} className="text-construPro-orange" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-black">Resgate realizado</p>
+                  <p className="text-xs text-gray-600">5 dias atrás</p>
+                </div>
+              </div>
+              <Badge variant="secondary" className="bg-construPro-orange/10 text-construPro-orange">
+                -100 pts
+              </Badge>
+            </div>
+          </div>
+          
+          <Button 
+            variant="ghost" 
+            className="w-full mt-3 text-black hover:bg-gray-100"
+            onClick={() => navigate('/profile/pontos')}
+          >
+            Ver histórico completo
+            <ArrowRight size={16} className="ml-2" />
+          </Button>
+        </Card>
       </div>
     </div>
   );
