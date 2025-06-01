@@ -4,7 +4,7 @@ import { UserData } from '@/types/admin';
 
 export const fetchUsers = async (): Promise<UserData[]> => {
   try {
-    console.log('🚀 [fetchUsers] VERSÃO MELHORADA v5.0 - Iniciando busca...');
+    console.log('🚀 [fetchUsers] VERSÃO DEBUG v6.0 - Iniciando busca com logs detalhados...');
     
     // 1. Buscar todos os profiles primeiro
     console.log('📊 [fetchUsers] Buscando profiles...');
@@ -25,7 +25,7 @@ export const fetchUsers = async (): Promise<UserData[]> => {
 
     console.log(`✅ [fetchUsers] ${profiles.length} profiles encontrados`);
     
-    // 2. Buscar todos os referrals
+    // 2. Buscar todos os referrals COM LOGS DETALHADOS
     console.log('📊 [fetchUsers] Buscando referrals...');
     const { data: referrals, error: referralsError } = await supabase
       .from('referrals')
@@ -36,6 +36,19 @@ export const fetchUsers = async (): Promise<UserData[]> => {
     }
 
     console.log(`✅ [fetchUsers] ${referrals?.length || 0} referrals encontrados`);
+    
+    // LOG DETALHADO DOS REFERRALS
+    if (referrals && referrals.length > 0) {
+      console.log('🔍 [fetchUsers] TODOS OS REFERRALS ENCONTRADOS:');
+      referrals.forEach((ref, index) => {
+        console.log(`   ${index + 1}. ID: ${ref.id}`);
+        console.log(`      Referrer: ${ref.referrer_id}`);
+        console.log(`      Referred: ${ref.referred_id}`);
+        console.log(`      Status: ${ref.status}`);
+        console.log(`      Data: ${ref.data}`);
+        console.log(`      ----`);
+      });
+    }
 
     // 3. Buscar dados de compras (orders)
     console.log('📊 [fetchUsers] Buscando orders...');
@@ -49,7 +62,7 @@ export const fetchUsers = async (): Promise<UserData[]> => {
 
     console.log(`✅ [fetchUsers] ${orders?.length || 0} orders encontradas`);
 
-    // 4. Criar mapas para lookup rápido
+    // 4. Criar mapas para lookup rápido COM LOGS DETALHADOS
     console.log('🔄 [fetchUsers] Criando mapas de dados...');
     
     // Mapa de referrals: quem foi indicado por quem
@@ -58,6 +71,7 @@ export const fetchUsers = async (): Promise<UserData[]> => {
       referrals.forEach(referral => {
         if (referral.referred_id && referral.referrer_id) {
           referralsMap.set(referral.referred_id, referral.referrer_id);
+          console.log(`🔗 [fetchUsers] Mapeamento: ${referral.referred_id} -> ${referral.referrer_id}`);
         }
       });
     }
@@ -71,6 +85,45 @@ export const fetchUsers = async (): Promise<UserData[]> => {
       }
     });
     console.log(`📍 [fetchUsers] Mapa de profiles criado: ${profilesMap.size} entradas`);
+
+    // LOGS ESPECÍFICOS PARA consumidor01@email.com
+    const consumidor01Profile = profiles.find(p => p.email === 'consumidor01@email.com');
+    if (consumidor01Profile) {
+      console.log('🎯 [fetchUsers] RASTREANDO consumidor01@email.com:');
+      console.log(`   Profile ID: ${consumidor01Profile.id}`);
+      console.log(`   Nome: ${consumidor01Profile.nome}`);
+      console.log(`   Email: ${consumidor01Profile.email}`);
+      
+      // Verificar se está no mapa de referrals
+      const temReferral = referralsMap.has(consumidor01Profile.id);
+      console.log(`   Tem referral no mapa: ${temReferral}`);
+      
+      if (temReferral) {
+        const referrerId = referralsMap.get(consumidor01Profile.id);
+        console.log(`   Referrer ID: ${referrerId}`);
+        
+        if (referrerId && profilesMap.has(referrerId)) {
+          const referrerProfile = profilesMap.get(referrerId);
+          console.log(`   Referrer encontrado:`);
+          console.log(`     Nome: ${referrerProfile.nome}`);
+          console.log(`     Email: ${referrerProfile.email}`);
+          console.log(`     Código: ${referrerProfile.codigo}`);
+        } else {
+          console.log(`   ❌ Referrer não encontrado no mapa de profiles!`);
+        }
+      } else {
+        console.log(`   ❌ Consumidor01 não encontrado no mapa de referrals!`);
+        console.log(`   🔍 Verificando referrals que apontam para este usuário:`);
+        referrals?.forEach(ref => {
+          if (ref.referred_id === consumidor01Profile.id) {
+            console.log(`     Encontrado referral: ${ref.id} (Status: ${ref.status})`);
+            console.log(`     Referrer: ${ref.referrer_id}`);
+          }
+        });
+      }
+    } else {
+      console.log('❌ [fetchUsers] consumidor01@email.com NÃO ENCONTRADO nos profiles!');
+    }
 
     // Agrupar compras por cliente
     const purchasesByClient: Record<string, number> = {};
@@ -95,7 +148,7 @@ export const fetchUsers = async (): Promise<UserData[]> => {
       const user = profiles[i];
       
       try {
-        console.log(`\n👤 [fetchUsers] Processando usuário ${i + 1}/${profiles.length}: ${user.nome || 'Sem nome'}`);
+        console.log(`\n👤 [fetchUsers] Processando usuário ${i + 1}/${profiles.length}: ${user.nome || 'Sem nome'} (${user.email})`);
         
         // Buscar quem indicou este usuário com informações completas
         let indicadoPor = '';
@@ -121,7 +174,11 @@ export const fetchUsers = async (): Promise<UserData[]> => {
             }
             
             console.log(`   🔗 Indicado por: "${indicadoPor}"`);
+          } else {
+            console.log(`   ❌ Referrer profile não encontrado para ID: ${referrerId}`);
           }
+        } else {
+          console.log(`   ℹ️ Usuário não tem referral`);
         }
         
         // Calcular total de compras
@@ -161,13 +218,15 @@ export const fetchUsers = async (): Promise<UserData[]> => {
           data_cadastro: dataCadastro
         };
 
-        // Log final do usuário processado
-        console.log(`   ✅ Usuário processado com sucesso:`);
-        console.log(`      - Código: "${userData.codigo_indicacao}"`);
-        console.log(`      - Indicado por: "${userData.indicado_por}"`);
-        console.log(`      - Especialidade: "${userData.especialidade}"`);
-        console.log(`      - Total compras: R$ ${userData.total_compras.toFixed(2)}`);
-        console.log(`      - Data cadastro: ${userData.data_cadastro}`);
+        // Log final do usuário processado se for consumidor01
+        if (user.email === 'consumidor01@email.com') {
+          console.log(`   🎯 CONSUMIDOR01 PROCESSADO:`);
+          console.log(`      - Código: "${userData.codigo_indicacao}"`);
+          console.log(`      - Indicado por: "${userData.indicado_por}"`);
+          console.log(`      - Especialidade: "${userData.especialidade}"`);
+          console.log(`      - Total compras: R$ ${userData.total_compras.toFixed(2)}`);
+          console.log(`      - Data cadastro: ${userData.data_cadastro}`);
+        }
 
         enrichedUsers.push(userData);
         
@@ -203,6 +262,16 @@ export const fetchUsers = async (): Promise<UserData[]> => {
     console.log(`   - Usuários indicados por alguém: ${enrichedUsers.filter(u => u.indicado_por).length}`);
     console.log(`   - Usuários com especialidade: ${enrichedUsers.filter(u => u.especialidade).length}`);
     console.log(`   - Usuários com compras: ${enrichedUsers.filter(u => u.total_compras > 0).length}`);
+    
+    // LOG FINAL ESPECÍFICO PARA CONSUMIDOR01
+    const consumidor01Final = enrichedUsers.find(u => u.email === 'consumidor01@email.com');
+    if (consumidor01Final) {
+      console.log(`\n🎯 [fetchUsers] RESULTADO FINAL CONSUMIDOR01:`);
+      console.log(`   - Nome: ${consumidor01Final.nome}`);
+      console.log(`   - Email: ${consumidor01Final.email}`);
+      console.log(`   - Indicado por: "${consumidor01Final.indicado_por}"`);
+      console.log(`   - Status: ${consumidor01Final.status}`);
+    }
     
     return enrichedUsers;
     
