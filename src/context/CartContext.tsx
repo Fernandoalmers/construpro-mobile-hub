@@ -18,6 +18,3 @@ export function useCartContext() {
 
 // Export the CartContext Provider component
 export const CartContextProvider = CartContext.Provider;
-
-// Export CartProvider as an alias for CartContextProvider to match App.tsx import
-export const CartProvider = CartContextProvider;
