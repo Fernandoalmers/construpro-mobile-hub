@@ -205,7 +205,7 @@ const ProfileScreen: React.FC = () => {
   return <div className="min-h-screen bg-gray-50 pb-20">
       {/* Header com informações do usuário */}
       <div className="bg-construPro-blue text-white">
-        <div className="p-6 bg-black">
+        <div className="p-6 bg-construPro-blue">
           <div className="flex items-center space-x-4">
             <div className="relative">
               <Avatar className="w-20 h-20 border-4 border-white cursor-pointer hover:opacity-80 transition-opacity" onClick={handleAvatarClick}>
