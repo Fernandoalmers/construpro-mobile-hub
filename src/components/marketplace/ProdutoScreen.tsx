@@ -7,7 +7,7 @@ import ErrorState from '../common/ErrorState';
 import CartPopup from './CartPopup';
 
 // Import our new components
-import ProdutoHeader from './produto/ProdutoHeader';
+import { ProdutoHeader } from './produto/ProdutoHeader';
 import ProdutoContent from './produto/ProdutoContent';
 
 // Import our refactored hooks

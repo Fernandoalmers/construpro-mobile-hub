@@ -1,15 +1,15 @@
 
 import React, { useState } from 'react';
-import { MarketplaceScreenWrapper } from './MarketplaceScreenWrapper';
-import { MarketplaceHeader } from './MarketplaceHeader';
-import { SegmentCardsHeader } from './components/SegmentCardsHeader';
-import { StoresSection } from './components/StoresSection';
-import { ProductListSection } from './ProductListSection';
-import { CartButton } from './components/CartButton';
+import MarketplaceScreenWrapper from './MarketplaceScreenWrapper';
+import MarketplaceHeader from './MarketplaceHeader';
+import SegmentCardsHeader from './components/SegmentCardsHeader';
+import StoresSection from './components/StoresSection';
+import ProductListSection from './ProductListSection';
+import CartButton from './components/CartButton';
 import { useMarketplaceData } from '@/hooks/useMarketplaceData';
-import { LoadingState } from '@/components/common/LoadingState';
-import { ErrorState } from '@/components/common/ErrorState';
-import { SearchResults } from './components/SearchResults';
+import LoadingState from '@/components/common/LoadingState';
+import ErrorState from '@/components/common/ErrorState';
+import SearchResults from './components/SearchResults';
 
 const MarketplaceScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');

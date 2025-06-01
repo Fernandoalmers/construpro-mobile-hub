@@ -5,7 +5,7 @@ import { useCart } from '@/hooks/use-cart';
 import { FilterOption } from '@/hooks/use-product-filter';
 
 // Import our new components
-import MarketplaceHeaderTop from './components/MarketplaceHeaderTop';
+import { MarketplaceHeaderTop } from './components/MarketplaceHeaderTop';
 import SearchBar from './components/SearchBar';
 import FilterDialogs from './components/FilterDialogs';
 import FilterChips from './components/FilterChips';
@@ -70,7 +70,7 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
   return (
     <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
       <motion.div 
-        className="bg-construPro-blue p-4 pt-8"
+        className="bg-orange-600 p-4 pt-8"
         initial={{ opacity: 1 }}
         animate={{ 
           opacity: hideHeader ? 0.95 : 1,
