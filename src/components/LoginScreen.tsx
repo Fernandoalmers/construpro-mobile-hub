@@ -84,7 +84,7 @@ const LoginScreen: React.FC = () => {
     navigate('/signup');
   };
   return <div className="min-h-screen flex flex-col bg-white">
-      <div className="py-16 rounded-b-3xl bg-black">
+      <div className="py-16 rounded-b-3xl bg-construPro-blue">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-white">Matershop</h1>
           <p className="text-white opacity-80 mt-2">Materiais, clube e recompensas</p>
