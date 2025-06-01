@@ -20,29 +20,15 @@ const MarketplaceScreen: React.FC = () => {
   const [sortBy, setSortBy] = useState<string>('relevance');
   const [viewType, setViewType] = useState<'grid' | 'list'>('grid');
 
-  const {
-    segments,
-    categories,
-    stores,
-    products,
-    loading,
-    error
-  } = useMarketplaceData({
-    searchQuery,
-    selectedSegment,
-    selectedCategory,
-    selectedStore,
-    priceRange,
-    sortBy
-  });
+  const marketplaceData = useMarketplaceData(searchQuery);
 
-  if (loading.segments || loading.categories || loading.stores) {
-    return <LoadingState message="Carregando marketplace..." />;
+  if (!marketplaceData) {
+    return <LoadingState text="Carregando marketplace..." />;
   }
 
-  if (error.segments || error.categories || error.stores) {
-    return <ErrorState message="Erro ao carregar marketplace" />;
-  }
+  const { segments = [], categories = [], stores = [], products = [] } = marketplaceData;
+  const loading = { segments: false, categories: false, stores: false, products: false };
+  const error = { segments: null, categories: null, stores: null, products: null };
 
   const handleClearFilters = () => {
     setSearchQuery('');
@@ -61,24 +47,26 @@ const MarketplaceScreen: React.FC = () => {
         {/* Header com cor laranja escura */}
         <div className="bg-orange-600 py-6 px-4 shadow-lg">
           <MarketplaceHeader
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            selectedSegment={selectedSegment}
-            onSegmentChange={setSelectedSegment}
-            selectedCategory={selectedCategory}
-            onCategoryChange={setSelectedCategory}
-            selectedStore={selectedStore}
-            onStoreChange={setSelectedStore}
-            priceRange={priceRange}
-            onPriceRangeChange={setPriceRange}
-            sortBy={sortBy}
-            onSortChange={setSortBy}
-            viewType={viewType}
-            onViewTypeChange={setViewType}
-            segments={segments}
-            categories={categories}
+            hideHeader={false}
+            searchTerm={searchQuery}
+            selectedCategories={selectedCategory ? [selectedCategory] : []}
+            selectedLojas={selectedStore ? [selectedStore] : []}
+            selectedRatings={[]}
+            selectedSegments={selectedSegment ? [selectedSegment] : []}
+            selectedPriceRanges={[]}
+            allCategories={categories.map(cat => ({ id: cat.id || cat.nome, label: cat.nome }))}
+            ratingOptions={[]}
+            priceRangeOptions={[]}
+            segmentOptions={segments.map(seg => ({ id: seg.id || seg.nome, label: seg.nome }))}
             stores={stores}
-            onClearFilters={handleClearFilters}
+            onSearchChange={(e) => setSearchQuery(e.target.value)}
+            onSearch={(term) => setSearchQuery(term)}
+            onLojaClick={setSelectedStore}
+            onCategoryClick={setSelectedCategory}
+            onRatingClick={() => {}}
+            onSegmentClick={setSelectedSegment}
+            onPriceRangeClick={() => {}}
+            clearFilters={handleClearFilters}
           />
         </div>
 
@@ -86,29 +74,31 @@ const MarketplaceScreen: React.FC = () => {
         <div className="flex-1">
           {isFiltered ? (
             <SearchResults
-              searchQuery={searchQuery}
-              selectedSegment={selectedSegment}
-              selectedCategory={selectedCategory}
-              selectedStore={selectedStore}
-              priceRange={priceRange}
-              sortBy={sortBy}
-              viewType={viewType}
-              onClearFilters={handleClearFilters}
-              segments={segments}
-              categories={categories}
-              stores={stores}
-              products={products}
-              loading={loading.products}
-              error={error.products}
+              searchResults={products}
+              showResults={true}
+              onResultClick={(productId) => {
+                window.location.href = `/produto/${productId}`;
+              }}
             />
           ) : (
             <>
-              <SegmentCardsHeader segments={segments} onSegmentSelect={setSelectedSegment} />
-              <StoresSection stores={stores} onStoreSelect={setSelectedStore} />
+              <SegmentCardsHeader 
+                selectedSegment={selectedSegment || null} 
+                onSegmentClick={setSelectedSegment} 
+              />
+              <StoresSection 
+                stores={stores} 
+                onLojaClick={setSelectedStore}
+                storesError={error.stores}
+              />
               <ProductListSection
-                products={products}
-                loading={loading.products}
-                error={error.products}
+                displayedProducts={products}
+                filteredProdutos={products}
+                hasMore={false}
+                loadMoreProducts={() => {}}
+                clearFilters={handleClearFilters}
+                onLojaClick={setSelectedStore}
+                isLoading={loading.products}
                 viewType={viewType}
               />
             </>

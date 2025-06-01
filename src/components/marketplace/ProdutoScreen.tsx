@@ -48,9 +48,7 @@ const ProdutoScreen: React.FC = () => {
     <div className="bg-gray-100 min-h-screen pb-16">
       {/* Header with search, breadcrumbs, and navigation */}
       <ProdutoHeader 
-        productName={produto.nome} 
-        productCategory={produto.categoria} 
-        productCode={produto.sku || produto.id.substring(0, 8)}
+        productName={produto.nome}
       />
 
       {/* Main content */}

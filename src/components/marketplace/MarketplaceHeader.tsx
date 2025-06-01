@@ -55,8 +55,6 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
   onPriceRangeClick = () => {},
   clearFilters
 }) => {
-  const { cartCount } = useCart();
-
   // Fix the store mapping to ensure proper format
   const lojasOptions = stores.map(store => ({
     id: store.id,
@@ -78,7 +76,7 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
         transition={{ duration: 0.3 }}
       >
         {/* Header Top with Back Button and Cart */}
-        <MarketplaceHeaderTop cartCount={cartCount} />
+        <MarketplaceHeaderTop />
         
         {/* Search Bar - sem mostrar sugestões nesta tela */}
         <SearchBar
