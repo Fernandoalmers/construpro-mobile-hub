@@ -211,7 +211,7 @@ serve(async (req) => {
           referrer_id: referrer.id,
           referred_id: user.id,
           status: 'pendente',
-          pontos: 50
+          pontos: 20
         });
       
       if (createError) {
@@ -508,7 +508,7 @@ serve(async (req) => {
           'update_user_points',
           { 
             user_id: referral.referrer_id, 
-            points_to_add: pontos || 50
+            points_to_add: pontos || 20
           }
         );
         
@@ -524,7 +524,7 @@ serve(async (req) => {
           .from('points_transactions')
           .insert({
             user_id: referral.referrer_id,
-            pontos: pontos || 50,
+            pontos: pontos || 20,
             tipo: 'indicacao',
             referencia_id: id,
             descricao: 'Pontos por indicação aprovada'
@@ -542,7 +542,7 @@ serve(async (req) => {
           'update_user_points',
           { 
             user_id: referral.referred_id, 
-            points_to_add: pontos || 50
+            points_to_add: pontos || 20
           }
         );
         
@@ -558,7 +558,7 @@ serve(async (req) => {
           .from('points_transactions')
           .insert({
             user_id: referral.referred_id,
-            pontos: pontos || 50,
+            pontos: pontos || 20,
             tipo: 'indicacao',
             referencia_id: id,
             descricao: 'Pontos por se cadastrar com código de indicação'
@@ -577,7 +577,7 @@ serve(async (req) => {
         .from('referrals')
         .update({
           status,
-          pontos: pontos || 50
+          pontos: pontos || 20
         })
         .eq('id', id);
       
