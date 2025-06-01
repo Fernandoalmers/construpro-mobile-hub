@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Users, Share2, Copy, UserCheck, Award } from 'lucide-react';
@@ -214,7 +213,7 @@ Clique aqui para se cadastrar: ${inviteLink}
                         className={friend.status === 'aprovado' ? 'text-green-600' : 'text-yellow-600'} 
                       />
                       <div className="ml-3">
-                        <p className="font-medium">{friend.profiles.nome}</p>
+                        <p className="font-medium">{friend.profiles?.nome || 'Usuário'}</p>
                         <p className="text-xs text-gray-500">Indicado em {formatDate(friend.data)}</p>
                         {friend.status === 'pendente' && (
                           <p className="text-xs text-yellow-600 mt-1">
