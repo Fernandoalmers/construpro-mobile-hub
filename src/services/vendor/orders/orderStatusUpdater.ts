@@ -81,11 +81,27 @@ export const updateOrderStatus = async (id: string, newInternalStatus: string): 
     const standardStatus = STATUS_MAPPING[newInternalStatus.toLowerCase()] || newInternalStatus;
     console.log('🔄 [OrderStatusUpdater] Status padronizado a ser usado:', standardStatus);
     
-    // Estratégia simplificada: atualização direta com tratamento robusto de erros
+    // Simplified approach: Update pedidos table directly without complex trigger handling
     try {
-      // Se existe order_id, atualizar primeiro a tabela orders
+      // Update the pedidos table directly
+      console.log('🔄 [OrderStatusUpdater] Atualizando tabela pedidos com status padronizado:', standardStatus);
+      const { error: pedidosError } = await supabase
+        .from('pedidos')
+        .update({ status: standardStatus })
+        .eq('id', id)
+        .eq('vendedor_id', vendorData.id);
+
+      if (pedidosError) {
+        console.error('❌ [OrderStatusUpdater] Erro ao atualizar status na tabela pedidos:', pedidosError);
+        toast.error('Erro ao atualizar status do pedido: ' + pedidosError.message);
+        return false;
+      }
+
+      console.log('✅ [OrderStatusUpdater] Tabela pedidos atualizada com status:', standardStatus);
+
+      // If there's an order_id reference, also update the orders table
       if (pedidoCheck.order_id) {
-        console.log('🔄 [OrderStatusUpdater] Atualizando tabela orders primeiro:', { 
+        console.log('🔄 [OrderStatusUpdater] Atualizando tabela orders:', { 
           order_id: pedidoCheck.order_id,
           status: standardStatus 
         });
@@ -96,74 +112,12 @@ export const updateOrderStatus = async (id: string, newInternalStatus: string): 
           .eq('id', pedidoCheck.order_id);
 
         if (ordersError) {
-          console.error('❌ [OrderStatusUpdater] Erro ao atualizar tabela orders:', ordersError);
-          toast.error('Erro ao sincronizar status com sistema principal: ' + ordersError.message);
-          return false;
+          console.warn('⚠️ [OrderStatusUpdater] Aviso ao atualizar tabela orders:', ordersError);
+          // Don't fail the operation if orders table update fails
+          console.log('ℹ️ [OrderStatusUpdater] Continuando com sucesso apenas na tabela pedidos');
+        } else {
+          console.log('✅ [OrderStatusUpdater] Tabela orders também atualizada com status:', standardStatus);
         }
-
-        console.log('✅ [OrderStatusUpdater] Tabela orders atualizada com status:', standardStatus);
-      }
-      
-      // Estratégia para contornar triggers: usar configurações específicas
-      try {
-        // Tentar desabilitar triggers temporariamente para esta sessão
-        try {
-          await supabase.rpc('execute_custom_sql', {
-            sql_statement: 'SET session_replication_role = replica;'
-          });
-        } catch (sqlError) {
-          console.log('⚠️ [OrderStatusUpdater] Não foi possível desabilitar triggers');
-        }
-
-        // Atualizar o status na tabela pedidos
-        console.log('🔄 [OrderStatusUpdater] Atualizando tabela pedidos com status padronizado:', standardStatus);
-        const { error: pedidosError } = await supabase
-          .from('pedidos')
-          .update({ status: standardStatus })
-          .eq('id', id)
-          .eq('vendedor_id', vendorData.id);
-
-        // Reabilitar triggers
-        try {
-          await supabase.rpc('execute_custom_sql', {
-            sql_statement: 'SET session_replication_role = DEFAULT;'
-          });
-        } catch (sqlError) {
-          console.log('⚠️ [OrderStatusUpdater] Não foi possível reabilitar triggers');
-        }
-
-        if (pedidosError) {
-          console.error('❌ [OrderStatusUpdater] Erro ao atualizar status na tabela pedidos:', pedidosError);
-          
-          // Se houve erro no pedidos mas orders foi atualizado, tentar reverter
-          if (pedidoCheck.order_id) {
-            console.log('🔄 [OrderStatusUpdater] Tentando reverter mudança na tabela orders...');
-            try {
-              await supabase
-                .from('orders')
-                .update({ status: pedidoCheck.status })
-                .eq('id', pedidoCheck.order_id);
-            } catch (revertError) {
-              console.error('❌ [OrderStatusUpdater] Erro ao reverter orders:', revertError);
-            }
-          }
-          
-          // Tratar erros específicos de triggers
-          if (pedidosError.message?.includes('order_id')) {
-            toast.error('Erro de sincronização entre sistemas. Tente novamente.');
-          } else if (pedidosError.message?.includes('constraint') || pedidosError.message?.includes('violates check')) {
-            toast.error('Erro de validação de status. Tente novamente.');
-          } else {
-            toast.error('Erro ao atualizar status do pedido: ' + pedidosError.message);
-          }
-          return false;
-        }
-
-        console.log('✅ [OrderStatusUpdater] Tabela pedidos atualizada com status:', standardStatus);
-      } catch (transactionError) {
-        console.error('❌ [OrderStatusUpdater] Erro na transação:', transactionError);
-        toast.error('Erro ao processar atualização. Tente novamente.');
-        return false;
       }
 
     } catch (updateError) {
