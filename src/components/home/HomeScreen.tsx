@@ -126,7 +126,7 @@ const HomeScreen: React.FC = () => {
   const userName = profile?.nome || user?.user_metadata?.nome || "Usuário";
   return <div className="flex flex-col bg-gray-100 min-h-screen pb-20">
       {/* Header Section */}
-      <div className="p-6 pt-12 rounded-b-3xl bg-black">
+      <div className="p-6 pt-12 rounded-b-3xl bg-construPro-blue">
         <div className="flex justify-between items-center mb-4">
           <div>
             <p className="text-white text-opacity-80">Olá,</p>
