@@ -86,6 +86,56 @@ export const referralService = {
       console.error('Error in getPointsHistory:', error);
       return [];
     }
+  },
+
+  // NEW: Activate referral for user (called after purchase)
+  async activateReferralForUser(userId: string): Promise<boolean> {
+    try {
+      const { data, error } = await supabase.functions.invoke('referral-processing', {
+        method: 'PUT',
+        body: {
+          action: 'activate_referral_on_purchase',
+          user_id: userId
+        }
+      });
+      
+      if (error) {
+        console.error('Error activating referral:', error);
+        return false;
+      }
+      
+      console.log('Referral activation result:', data.message);
+      return data?.success === true;
+    } catch (error) {
+      console.error('Error in activateReferralForUser:', error);
+      return false;
+    }
+  },
+
+  // NEW: Fix all pending referrals (admin function)
+  async fixPendingReferrals(): Promise<{ success: boolean; processed: number; activated: number }> {
+    try {
+      const { data, error } = await supabase.functions.invoke('referral-processing', {
+        method: 'PUT',
+        body: {
+          action: 'fix_pending_referrals'
+        }
+      });
+      
+      if (error) {
+        console.error('Error fixing pending referrals:', error);
+        return { success: false, processed: 0, activated: 0 };
+      }
+      
+      return {
+        success: data?.success === true,
+        processed: data?.processed || 0,
+        activated: data?.activated || 0
+      };
+    } catch (error) {
+      console.error('Error in fixPendingReferrals:', error);
+      return { success: false, processed: 0, activated: 0 };
+    }
   }
 };
 

@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -231,11 +230,13 @@ serve(async (req) => {
       );
     }
     
-    // PUT: Activate referral when first purchase is made
+    // PUT: Activate referral when purchase is made OR process retroactive fixes
     if (req.method === 'PUT') {
       const { action, user_id } = await req.json();
       
-      if (action === 'activate_referral_on_first_purchase') {
+      if (action === 'activate_referral_on_purchase') {
+        console.log(`Processing referral activation for user: ${user_id}`);
+        
         // Find pending referral for this user
         const { data: referral, error: referralError } = await adminClient
           .from('referrals')
@@ -245,39 +246,53 @@ serve(async (req) => {
           .single();
         
         if (referralError || !referral) {
-          // No pending referral found - this is normal for users without referral codes
+          console.log(`No pending referral found for user ${user_id}`);
           return new Response(
             JSON.stringify({ success: true, message: 'No pending referral to activate' }),
             { status: 200, headers: { ...corsHeaders } }
           );
         }
         
-        // Check if this is the user's first order
+        // Check if user has any orders (both in orders and pedidos tables)
         const { data: orders, error: ordersError } = await adminClient
           .from('orders')
           .select('id')
           .eq('cliente_id', user_id)
           .limit(1);
         
-        if (ordersError) {
+        const { data: pedidos, error: pedidosError } = await adminClient
+          .from('pedidos')
+          .select('id')
+          .eq('usuario_id', user_id)
+          .limit(1);
+        
+        if (ordersError && pedidosError) {
+          console.error(`Error checking orders for user ${user_id}:`, ordersError, pedidosError);
           return new Response(
             JSON.stringify({ error: 'Error checking order history' }),
             { status: 500, headers: { ...corsHeaders } }
           );
         }
         
-        // If this is indeed the first order, activate the referral
-        if (orders && orders.length === 1) {
+        const hasOrders = (orders && orders.length > 0) || (pedidos && pedidos.length > 0);
+        
+        console.log(`User ${user_id} has orders: ${hasOrders}, orders count: ${orders?.length || 0}, pedidos count: ${pedidos?.length || 0}`);
+        
+        // If user has made any purchase, activate the referral
+        if (hasOrders) {
+          console.log(`Activating referral for user ${user_id}`);
+          
           // Update referral status to approved
           const { error: updateError } = await adminClient
             .from('referrals')
             .update({
               status: 'aprovado',
-              data_aprovacao: new Date().toISOString()
+              updated_at: new Date().toISOString()
             })
             .eq('id', referral.id);
           
           if (updateError) {
+            console.error(`Error updating referral status:`, updateError);
             return new Response(
               JSON.stringify({ error: 'Error updating referral status' }),
               { status: 500, headers: { ...corsHeaders } }
@@ -294,6 +309,7 @@ serve(async (req) => {
           );
           
           if (referrerUpdateError) {
+            console.error(`Error awarding points to referrer:`, referrerUpdateError);
             return new Response(
               JSON.stringify({ error: 'Error awarding points to referrer' }),
               { status: 500, headers: { ...corsHeaders } }
@@ -308,14 +324,11 @@ serve(async (req) => {
               pontos: referral.pontos,
               tipo: 'indicacao',
               referencia_id: referral.id,
-              descricao: 'Pontos por indicação aprovada - primeira compra do indicado'
+              descricao: 'Pontos por indicação aprovada - compra realizada pelo indicado'
             });
           
           if (referrerTxError) {
-            return new Response(
-              JSON.stringify({ error: 'Error logging referrer transaction' }),
-              { status: 500, headers: { ...corsHeaders } }
-            );
+            console.error(`Error logging referrer transaction:`, referrerTxError);
           }
           
           // Award points to referred user
@@ -328,10 +341,7 @@ serve(async (req) => {
           );
           
           if (referredUpdateError) {
-            return new Response(
-              JSON.stringify({ error: 'Error awarding points to referred user' }),
-              { status: 500, headers: { ...corsHeaders } }
-            );
+            console.error(`Error awarding points to referred user:`, referredUpdateError);
           }
           
           // Log transaction for referred user
@@ -342,15 +352,14 @@ serve(async (req) => {
               pontos: referral.pontos,
               tipo: 'indicacao',
               referencia_id: referral.id,
-              descricao: 'Pontos por primeira compra com código de indicação'
+              descricao: 'Pontos por compra com código de indicação'
             });
           
           if (referredTxError) {
-            return new Response(
-              JSON.stringify({ error: 'Error logging referred user transaction' }),
-              { status: 500, headers: { ...corsHeaders } }
-            );
+            console.error(`Error logging referred user transaction:`, referredTxError);
           }
+          
+          console.log(`Successfully activated referral for user ${user_id}`);
           
           return new Response(
             JSON.stringify({
@@ -362,7 +371,86 @@ serve(async (req) => {
         }
         
         return new Response(
-          JSON.stringify({ success: true, message: 'Not first order, referral remains pending' }),
+          JSON.stringify({ success: true, message: 'User has no purchases yet, referral remains pending' }),
+          { status: 200, headers: { ...corsHeaders } }
+        );
+      }
+      
+      // NEW: Retroactive fix for pending referrals
+      if (action === 'fix_pending_referrals') {
+        console.log('Starting retroactive fix for pending referrals');
+        
+        // Get all pending referrals
+        const { data: pendingReferrals, error: pendingError } = await adminClient
+          .from('referrals')
+          .select('id, referrer_id, referred_id, pontos')
+          .eq('status', 'pendente');
+        
+        if (pendingError) {
+          console.error('Error fetching pending referrals:', pendingError);
+          return new Response(
+            JSON.stringify({ error: 'Error fetching pending referrals' }),
+            { status: 500, headers: { ...corsHeaders } }
+          );
+        }
+        
+        let processedCount = 0;
+        let activatedCount = 0;
+        
+        for (const referral of pendingReferrals || []) {
+          console.log(`Processing pending referral ${referral.id} for user ${referral.referred_id}`);
+          
+          // Check if referred user has any purchases
+          const { data: orders } = await adminClient
+            .from('orders')
+            .select('id')
+            .eq('cliente_id', referral.referred_id)
+            .limit(1);
+          
+          const { data: pedidos } = await adminClient
+            .from('pedidos')
+            .select('id')
+            .eq('usuario_id', referral.referred_id)
+            .limit(1);
+          
+          const hasOrders = (orders && orders.length > 0) || (pedidos && pedidos.length > 0);
+          
+          if (hasOrders) {
+            console.log(`User ${referral.referred_id} has purchases, activating referral ${referral.id}`);
+            
+            // Activate this referral
+            const activateResponse = await fetch(req.url, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': authHeader
+              },
+              body: JSON.stringify({
+                action: 'activate_referral_on_purchase',
+                user_id: referral.referred_id
+              })
+            });
+            
+            if (activateResponse.ok) {
+              activatedCount++;
+              console.log(`Successfully activated referral ${referral.id}`);
+            } else {
+              console.error(`Failed to activate referral ${referral.id}`);
+            }
+          }
+          
+          processedCount++;
+        }
+        
+        console.log(`Retroactive fix completed: ${processedCount} processed, ${activatedCount} activated`);
+        
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: `Processed ${processedCount} pending referrals, activated ${activatedCount}`,
+            processed: processedCount,
+            activated: activatedCount
+          }),
           { status: 200, headers: { ...corsHeaders } }
         );
       }
