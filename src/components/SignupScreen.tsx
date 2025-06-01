@@ -113,7 +113,7 @@ const SignupScreen: React.FC = () => {
     setIsLoading(true);
     
     try {
-      console.log('🔄 [SignupScreen] Starting signup process');
+      console.log('🔄 [SignupScreen] Starting signup process v2.0');
       
       // Step 1: Create auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -169,8 +169,25 @@ const SignupScreen: React.FC = () => {
       // Step 3: Clear referral code from localStorage
       localStorage.removeItem('referralCode');
 
-      // Step 4: Success
-      toast.success('Cadastro realizado com sucesso!');
+      // Step 4: Get user profile to show referral code
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('codigo')
+          .eq('id', authData.user.id)
+          .single();
+
+        if (profile?.codigo) {
+          console.log('🎯 [SignupScreen] User referral code:', profile.codigo);
+          toast.success(`Cadastro realizado! Seu código de indicação é: ${profile.codigo}`);
+        } else {
+          console.log('✅ [SignupScreen] Cadastro realizado (código será gerado)');
+          toast.success('Cadastro realizado com sucesso!');
+        }
+      } catch (profileError) {
+        console.warn('⚠️ [SignupScreen] Não foi possível obter código:', profileError);
+        toast.success('Cadastro realizado com sucesso!');
+      }
       
       if (authData.session) {
         console.log('✅ [SignupScreen] User logged in automatically');

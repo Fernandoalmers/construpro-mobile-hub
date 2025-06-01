@@ -4,8 +4,10 @@ import {
   Card, CardContent, CardDescription, 
   CardFooter, CardHeader, CardTitle 
 } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import UserFilters from './UserFilters';
 import UserTable from './UserTable';
+import FixMissingCodes from '../FixMissingCodes';
 import { 
   fetchUsers, 
   approveUser, 
@@ -202,43 +204,65 @@ const UserManagementScreen: React.FC = () => {
 
   return (
     <AdminLayout currentSection="Usuários">
-      <Card>
-        <CardHeader>
-          <CardTitle>Gerenciamento de Usuários</CardTitle>
-          <CardDescription>
-            Visualize e gerencie todos os usuários da plataforma
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <UserFilters 
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            roleFilter={roleFilter}
-            setRoleFilter={setRoleFilter}
-            statusFilter={statusFilter}
-            setStatusFilter={setStatusFilter}
-          />
-          
-          <UserTable 
-            filteredUsers={filteredUsers}
-            isLoading={isLoading}
-            handleApproveUser={handleApproveUser}
-            handleRejectUser={handleRejectUser}
-            handleBlockUser={handleBlockUser}
-            handleUnblockUser={handleUnblockUser}
-            handleDeleteUser={handleDeleteUser}
-            handleMakeAdmin={handleMakeAdmin}
-            handleRemoveAdmin={handleRemoveAdmin}
-            getRoleBadgeColor={getRoleBadgeColor}
-            getStatusBadgeColor={getStatusBadgeColor}
-          />
-        </CardContent>
-        <CardFooter className="flex justify-between">
-          <p className="text-sm text-gray-500">
-            Exibindo {filteredUsers.length} de {users.length} usuários
-          </p>
-        </CardFooter>
-      </Card>
+      <Tabs defaultValue="usuarios" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="usuarios">Gerenciar Usuários</TabsTrigger>
+          <TabsTrigger value="correcoes">Correções</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="usuarios">
+          <Card>
+            <CardHeader>
+              <CardTitle>Gerenciamento de Usuários</CardTitle>
+              <CardDescription>
+                Visualize e gerencie todos os usuários da plataforma
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <UserFilters 
+                searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
+                roleFilter={roleFilter}
+                setRoleFilter={setRoleFilter}
+                statusFilter={statusFilter}
+                setStatusFilter={setStatusFilter}
+              />
+              
+              <UserTable 
+                filteredUsers={filteredUsers}
+                isLoading={isLoading}
+                handleApproveUser={handleApproveUser}
+                handleRejectUser={handleRejectUser}
+                handleBlockUser={handleBlockUser}
+                handleUnblockUser={handleUnblockUser}
+                handleDeleteUser={handleDeleteUser}
+                handleMakeAdmin={handleMakeAdmin}
+                handleRemoveAdmin={handleRemoveAdmin}
+                getRoleBadgeColor={getRoleBadgeColor}
+                getStatusBadgeColor={getStatusBadgeColor}
+              />
+            </CardContent>
+            <CardFooter className="flex justify-between">
+              <p className="text-sm text-gray-500">
+                Exibindo {filteredUsers.length} de {users.length} usuários
+              </p>
+            </CardFooter>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="correcoes">
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight">Ferramentas de Correção</h2>
+              <p className="text-muted-foreground">
+                Ferramentas para corrigir inconsistências de dados dos usuários.
+              </p>
+            </div>
+            
+            <FixMissingCodes />
+          </div>
+        </TabsContent>
+      </Tabs>
     </AdminLayout>
   );
 };

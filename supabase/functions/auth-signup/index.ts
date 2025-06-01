@@ -15,6 +15,64 @@ interface SignupData {
   nome_loja?: string;
 }
 
+/**
+ * Generate a random referral code
+ * @param length Length of the code to generate
+ * @returns A random alphanumeric code
+ */
+function generateReferralCode(length: number = 6): string {
+  const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Excluding confusing characters like I, O, 0, 1
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  return result;
+}
+
+/**
+ * Check if a referral code already exists
+ */
+async function isCodeUnique(supabase: any, code: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('codigo', code)
+    .limit(1);
+  
+  if (error) {
+    console.error('Error checking code uniqueness:', error);
+    return false;
+  }
+  
+  return !data || data.length === 0;
+}
+
+/**
+ * Generate a unique referral code
+ */
+async function generateUniqueReferralCode(supabase: any): Promise<string> {
+  let attempts = 0;
+  const maxAttempts = 10;
+  
+  while (attempts < maxAttempts) {
+    const code = generateReferralCode(6);
+    const isUnique = await isCodeUnique(supabase, code);
+    
+    if (isUnique) {
+      console.log(`Generated unique referral code: ${code} (attempt ${attempts + 1})`);
+      return code;
+    }
+    
+    attempts++;
+    console.log(`Code ${code} already exists, trying again (attempt ${attempts})`);
+  }
+  
+  // Fallback: generate longer code if all attempts failed
+  const fallbackCode = generateReferralCode(8);
+  console.warn(`Using fallback longer code after ${maxAttempts} attempts: ${fallbackCode}`);
+  return fallbackCode;
+}
+
 serve(async (req) => {
   // Set CORS headers
   const headers = {
@@ -38,13 +96,13 @@ serve(async (req) => {
   }
   
   try {
-    console.log("Auth signup function called");
+    console.log("🚀 Auth signup function called - v2.0 with referral code generation");
     
     // Parse request body
     let userData: SignupData;
     try {
       userData = await req.json();
-      console.log("Received signup data:", { 
+      console.log("📥 Received signup data:", { 
         email: userData.email, 
         nome: userData.nome,
         tipo_perfil: userData.tipo_perfil,
@@ -52,7 +110,7 @@ serve(async (req) => {
         nome_loja: userData.nome_loja
       });
     } catch (parseError) {
-      console.error("Error parsing request body:", parseError);
+      console.error("❌ Error parsing request body:", parseError);
       return new Response(
         JSON.stringify({ error: 'Invalid JSON in request body' }),
         { status: 400, headers }
@@ -77,14 +135,14 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
     if (!supabaseUrl || !supabaseServiceKey) {
-      console.error("Missing environment variables: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+      console.error("❌ Missing environment variables: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
       return new Response(
         JSON.stringify({ error: 'Server configuration error' }),
         { status: 500, headers }
       );
     }
 
-    console.log("Initializing Supabase client for auth-signup");
+    console.log("🔧 Initializing Supabase client for auth-signup");
     
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
@@ -93,7 +151,12 @@ serve(async (req) => {
       }
     });
 
-    // Prepare user metadata with all required fields
+    // Generate unique referral code for this user
+    console.log("🎲 Generating unique referral code...");
+    const referralCode = await generateUniqueReferralCode(supabaseAdmin);
+    console.log("✅ Generated referral code:", referralCode);
+
+    // Prepare user metadata with all required fields including referral code
     const userMetadata = {
       nome: userData.nome,
       cpf: userData.cpf || null,
@@ -101,7 +164,8 @@ serve(async (req) => {
       tipo_perfil: userData.tipo_perfil,
       papel: userData.tipo_perfil, // For backward compatibility
       status: 'ativo',
-      saldo_pontos: 0
+      saldo_pontos: 0,
+      codigo: referralCode // Add the generated referral code
     };
 
     // Add specific fields based on profile type
@@ -113,7 +177,7 @@ serve(async (req) => {
       userMetadata.nome_loja = userData.nome_loja;
     }
 
-    console.log("Creating user with metadata:", userMetadata);
+    console.log("👤 Creating user with metadata:", { ...userMetadata, codigo: referralCode });
     
     // Create user with metadata
     const { data, error } = await supabaseAdmin.auth.admin.createUser({
@@ -124,7 +188,7 @@ serve(async (req) => {
     });
     
     if (error) {
-      console.error("Error creating user:", error);
+      console.error("❌ Error creating user:", error);
       let statusCode = 500;
       let errorMessage = error.message;
       
@@ -140,9 +204,9 @@ serve(async (req) => {
       );
     }
 
-    console.log("User created successfully:", data.user?.id);
+    console.log("✅ User created successfully:", data.user?.id);
 
-    // Create profile directly to ensure it exists
+    // Create profile directly to ensure it exists with referral code
     if (data.user) {
       try {
         const profileData = {
@@ -155,37 +219,44 @@ serve(async (req) => {
           tipo_perfil: userData.tipo_perfil,
           especialidade_profissional: userData.especialidade_profissional || null,
           status: 'ativo',
-          saldo_pontos: 0
+          saldo_pontos: 0,
+          codigo: referralCode // Ensure the referral code is saved
         };
 
-        console.log("Creating profile directly:", profileData);
+        console.log("📝 Creating profile directly with referral code:", { 
+          id: profileData.id, 
+          nome: profileData.nome,
+          codigo: profileData.codigo
+        });
 
         const { error: profileError } = await supabaseAdmin
           .from('profiles')
           .insert(profileData);
 
         if (profileError) {
-          console.error("Error creating profile:", profileError);
-          // Don't fail the signup if profile creation fails, the trigger should handle it
+          console.error("❌ Error creating profile:", profileError);
+          // Don't fail the signup if profile creation fails, but log it
+          console.warn("⚠️ Profile creation failed, trigger should handle it");
         } else {
-          console.log("Profile created successfully");
+          console.log("✅ Profile created successfully with referral code:", referralCode);
         }
       } catch (profileCreateError) {
-        console.error("Exception creating profile:", profileCreateError);
+        console.error("❌ Exception creating profile:", profileCreateError);
       }
     }
     
-    // Return success response
+    // Return success response with referral code
     return new Response(
       JSON.stringify({
         success: true,
-        user: data.user
+        user: data.user,
+        referralCode: referralCode
       }),
       { status: 201, headers }
     );
     
   } catch (error) {
-    console.error("Unexpected error in auth-signup:", error);
+    console.error("❌ Unexpected error in auth-signup:", error);
     return new Response(
       JSON.stringify({ error: error.message || "Erro interno do servidor" }),
       { status: 500, headers }
