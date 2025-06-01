@@ -2,7 +2,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./context/AuthContext";
@@ -20,36 +20,34 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
-      <BrowserRouter>
-        <AuthProvider>
-          <CartProvider>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              
-              {/* Public Routes */}
-              <PublicRoutes />
-              
-              {/* Auth Routes */}
-              <AuthRoutes />
-              
-              {/* User Routes */}
-              <UserRoutes />
-              
-              {/* Admin Routes */}
-              <AdminRoutes />
-              
-              {/* Vendor Routes */}
-              <VendorRoutes />
-              
-              {/* Auto Fix Routes */}
-              <AutoFixRoutes />
-              
-              {/* Catch all route - redirect to home */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </CartProvider>
-        </AuthProvider>
-      </BrowserRouter>
+      <AuthProvider>
+        <CartProvider>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            
+            {/* Public Routes */}
+            <PublicRoutes />
+            
+            {/* Auth Routes */}
+            <AuthRoutes />
+            
+            {/* User Routes */}
+            <UserRoutes />
+            
+            {/* Admin Routes */}
+            <AdminRoutes />
+            
+            {/* Vendor Routes */}
+            <VendorRoutes />
+            
+            {/* Auto Fix Routes */}
+            <AutoFixRoutes />
+            
+            {/* Catch all route - redirect to home */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </CartProvider>
+      </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
