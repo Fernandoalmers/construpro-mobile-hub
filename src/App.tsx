@@ -26,22 +26,22 @@ const App = () => (
             <Route path="/" element={<Index />} />
             
             {/* Public Routes */}
-            <PublicRoutes />
+            {PublicRoutes()}
             
             {/* Auth Routes */}
-            <AuthRoutes />
+            {AuthRoutes()}
             
             {/* User Routes */}
-            <UserRoutes />
+            {UserRoutes()}
             
             {/* Admin Routes */}
-            <AdminRoutes />
+            {AdminRoutes()}
             
             {/* Vendor Routes */}
-            <VendorRoutes />
+            {VendorRoutes()}
             
             {/* Auto Fix Routes */}
-            <AutoFixRoutes />
+            {AutoFixRoutes()}
             
             {/* Catch all route - redirect to home */}
             <Route path="*" element={<NotFound />} />
