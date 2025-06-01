@@ -63,7 +63,7 @@ const ReferralsScreen: React.FC = () => {
     if (inviteLink) {
       const message = `🎉 Venha para a Matershop! 
 
-Use meu código de convite ${referralData?.codigo} e ganhe 50 pontos na sua primeira compra! 
+Use meu código de convite ${referralData?.codigo} e ganhe 20 pontos na sua primeira compra! 
 
 Clique aqui para se cadastrar: ${inviteLink}
 
@@ -175,7 +175,7 @@ Clique aqui para se cadastrar: ${inviteLink}
                 2
               </div>
               <div>
-                <p>Quando seu amigo se cadastrar e fizer a primeira compra, vocês ganham 50 pontos cada.</p>
+                <p>Quando seu amigo se cadastrar e fizer a primeira compra, vocês ganham 20 pontos cada.</p>
               </div>
             </li>
             <li className="flex">
