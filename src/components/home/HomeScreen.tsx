@@ -52,8 +52,8 @@ const promoItems = [
   },
   {
     id: 3,
-    title: 'Indique um amigo e ganhe 50 pontos',
-    description: 'Cada amigo que se cadastrar',
+    title: 'Indique um amigo e ganhe 20 pontos',
+    description: 'Cada amigo que se cadastrar e efetuar sua primeira compra',
     color: 'bg-green-50'
   }
 ];
