@@ -109,7 +109,7 @@ const MarketplaceHomeScreen: React.FC = () => {
   }
   return <div className="flex flex-col min-h-screen bg-gray-50 pb-20">
       {/* Header */}
-      <div className="p-4 pt-8 bg-construPro-orange">
+      <div className="p-4 pt-8 bg-construPro-blue">
         <h1 className="text-2xl font-bold text-white mb-4">Loja</h1>
         
         <CustomInput isSearch placeholder="Buscar produtos" onClick={() => navigate('/marketplace/products')} className="mb-2 cursor-pointer" readOnly />
