@@ -228,7 +228,7 @@ const SignupScreen: React.FC = () => {
   };
   return <div className="flex flex-col min-h-screen bg-gray-100">
       {/* Header */}
-      <div className="p-6 pt-12 bg-black">
+      <div className="p-6 pt-12 bg-construPro-blue">
         <div className="flex items-center">
           <button onClick={() => navigate('/')} className="text-white mr-3">
             <ChevronLeft size={24} />
