@@ -7,9 +7,7 @@ import CustomInput from './common/CustomInput';
 import CustomButton from './common/CustomButton';
 import Card from './common/Card';
 import { referralService } from '@/services/pointsService';
-
 type ProfileType = 'consumidor' | 'lojista' | 'profissional';
-
 const SignupScreen: React.FC = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -30,15 +28,22 @@ const SignupScreen: React.FC = () => {
   useEffect(() => {
     const savedReferralCode = localStorage.getItem('referralCode');
     if (savedReferralCode) {
-      setFormData(prev => ({ ...prev, referralCode: savedReferralCode }));
+      setFormData(prev => ({
+        ...prev,
+        referralCode: savedReferralCode
+      }));
     }
   }, []);
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    const {
+      name,
+      value
+    } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
-
   const formatCPF = (value: string) => {
     const cleaned = value.replace(/\D/g, '');
     const match = cleaned.match(/^(\d{3})(\d{3})(\d{3})(\d{2})$/);
@@ -47,7 +52,6 @@ const SignupScreen: React.FC = () => {
     }
     return cleaned;
   };
-
   const formatPhone = (value: string) => {
     const cleaned = value.replace(/\D/g, '');
     const match = cleaned.match(/^(\d{2})(\d{5})(\d{4})$/);
@@ -56,23 +60,32 @@ const SignupScreen: React.FC = () => {
     }
     return cleaned;
   };
-
   const handleCPFChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { value } = e.target;
+    const {
+      value
+    } = e.target;
     const formattedValue = formatCPF(value);
-    setFormData(prev => ({ ...prev, cpf: formattedValue }));
+    setFormData(prev => ({
+      ...prev,
+      cpf: formattedValue
+    }));
   };
-
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { value } = e.target;
+    const {
+      value
+    } = e.target;
     const formattedValue = formatPhone(value);
-    setFormData(prev => ({ ...prev, telefone: formattedValue }));
+    setFormData(prev => ({
+      ...prev,
+      telefone: formattedValue
+    }));
   };
-
   const handleProfileTypeSelect = (tipo: ProfileType) => {
-    setFormData(prev => ({ ...prev, tipo_perfil: tipo }));
+    setFormData(prev => ({
+      ...prev,
+      tipo_perfil: tipo
+    }));
   };
-
   const validateForm = () => {
     if (!formData.nome.trim()) {
       toast.error('Nome é obrigatório');
@@ -104,19 +117,18 @@ const SignupScreen: React.FC = () => {
     }
     return true;
   };
-
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!validateForm()) return;
-    
     setIsLoading(true);
-    
     try {
       console.log('🔄 [SignupScreen] Starting signup process v2.0');
-      
+
       // Step 1: Create auth user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      const {
+        data: authData,
+        error: authError
+      } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
@@ -131,28 +143,20 @@ const SignupScreen: React.FC = () => {
           }
         }
       });
-
       if (authError) {
         console.error('❌ [SignupScreen] Auth error:', authError);
         throw authError;
       }
-
       if (!authData.user) {
         throw new Error('Falha ao criar usuário');
       }
-
       console.log('✅ [SignupScreen] User created successfully:', authData.user.id);
 
       // Step 2: Process referral code if provided
       if (formData.referralCode.trim()) {
         console.log('🎁 [SignupScreen] Processing referral code:', formData.referralCode);
-        
         try {
-          const referralSuccess = await referralService.processReferral(
-            authData.user.id, 
-            formData.referralCode.trim()
-          );
-          
+          const referralSuccess = await referralService.processReferral(authData.user.id, formData.referralCode.trim());
           if (referralSuccess) {
             console.log('✅ [SignupScreen] Referral processed successfully');
             toast.success('Código de referência aplicado! Você ganhará 50 pontos na primeira compra.');
@@ -171,12 +175,9 @@ const SignupScreen: React.FC = () => {
 
       // Step 4: Get user profile to show referral code
       try {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('codigo')
-          .eq('id', authData.user.id)
-          .single();
-
+        const {
+          data: profile
+        } = await supabase.from('profiles').select('codigo').eq('id', authData.user.id).single();
         if (profile?.codigo) {
           console.log('🎯 [SignupScreen] User referral code:', profile.codigo);
           toast.success(`Cadastro realizado! Seu código de indicação é: ${profile.codigo}`);
@@ -188,10 +189,9 @@ const SignupScreen: React.FC = () => {
         console.warn('⚠️ [SignupScreen] Não foi possível obter código:', profileError);
         toast.success('Cadastro realizado com sucesso!');
       }
-      
       if (authData.session) {
         console.log('✅ [SignupScreen] User logged in automatically');
-        
+
         // Redirect based on profile type
         if (formData.tipo_perfil === 'lojista') {
           navigate('/vendor');
@@ -205,10 +205,8 @@ const SignupScreen: React.FC = () => {
         toast.info('Confirme seu email para fazer login');
         navigate('/login');
       }
-
     } catch (error: any) {
       console.error('❌ [SignupScreen] Signup error:', error);
-      
       if (error.message?.includes('already been registered')) {
         toast.error('Este email já está cadastrado');
       } else if (error.message?.includes('Invalid email')) {
@@ -220,17 +218,17 @@ const SignupScreen: React.FC = () => {
       setIsLoading(false);
     }
   };
-
   const clearReferralCode = () => {
-    setFormData(prev => ({ ...prev, referralCode: '' }));
+    setFormData(prev => ({
+      ...prev,
+      referralCode: ''
+    }));
     localStorage.removeItem('referralCode');
     toast.info('Código de referência removido');
   };
-
-  return (
-    <div className="flex flex-col min-h-screen bg-gray-100">
+  return <div className="flex flex-col min-h-screen bg-gray-100">
       {/* Header */}
-      <div className="bg-construPro-blue p-6 pt-12">
+      <div className="p-6 pt-12 bg-construPro-orange">
         <div className="flex items-center">
           <button onClick={() => navigate('/')} className="text-white mr-3">
             <ChevronLeft size={24} />
@@ -242,8 +240,7 @@ const SignupScreen: React.FC = () => {
       {/* Content */}
       <div className="flex-1 p-6">
         {/* Referral Code Display */}
-        {formData.referralCode && (
-          <Card className="p-4 mb-4 bg-green-50 border-green-200">
+        {formData.referralCode && <Card className="p-4 mb-4 bg-green-50 border-green-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <Gift size={20} className="text-green-600 mr-2" />
@@ -256,15 +253,11 @@ const SignupScreen: React.FC = () => {
                   </p>
                 </div>
               </div>
-              <button
-                onClick={clearReferralCode}
-                className="text-green-600 text-sm underline"
-              >
+              <button onClick={clearReferralCode} className="text-green-600 text-sm underline">
                 Remover
               </button>
             </div>
-          </Card>
-        )}
+          </Card>}
 
         <form onSubmit={handleSignup} className="space-y-4">
           {/* Profile Type Selection */}
@@ -272,23 +265,9 @@ const SignupScreen: React.FC = () => {
             <h3 className="text-lg font-medium text-gray-800 mb-3">Escolha seu tipo de perfil</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Consumidor Card */}
-              <Card 
-                className={`p-4 cursor-pointer border-2 transition-all ${
-                  formData.tipo_perfil === 'consumidor' 
-                    ? 'border-construPro-blue bg-blue-50' 
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-                onClick={() => handleProfileTypeSelect('consumidor')}
-              >
+              <Card className={`p-4 cursor-pointer border-2 transition-all ${formData.tipo_perfil === 'consumidor' ? 'border-construPro-blue bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`} onClick={() => handleProfileTypeSelect('consumidor')}>
                 <div className="flex flex-col items-center text-center">
-                  <User 
-                    size={40} 
-                    className={`mb-3 ${
-                      formData.tipo_perfil === 'consumidor' 
-                        ? 'text-construPro-blue' 
-                        : 'text-gray-500'
-                    }`} 
-                  />
+                  <User size={40} className={`mb-3 ${formData.tipo_perfil === 'consumidor' ? 'text-construPro-blue' : 'text-gray-500'}`} />
                   <h4 className="font-medium text-gray-800 mb-2">Consumidor</h4>
                   <p className="text-sm text-gray-600">
                     Para comprar produtos e acumular pontos
@@ -297,23 +276,9 @@ const SignupScreen: React.FC = () => {
               </Card>
 
               {/* Vendedor Card */}
-              <Card 
-                className={`p-4 cursor-pointer border-2 transition-all ${
-                  formData.tipo_perfil === 'lojista' 
-                    ? 'border-construPro-blue bg-blue-50' 
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-                onClick={() => handleProfileTypeSelect('lojista')}
-              >
+              <Card className={`p-4 cursor-pointer border-2 transition-all ${formData.tipo_perfil === 'lojista' ? 'border-construPro-blue bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`} onClick={() => handleProfileTypeSelect('lojista')}>
                 <div className="flex flex-col items-center text-center">
-                  <Store 
-                    size={40} 
-                    className={`mb-3 ${
-                      formData.tipo_perfil === 'lojista' 
-                        ? 'text-construPro-blue' 
-                        : 'text-gray-500'
-                    }`} 
-                  />
+                  <Store size={40} className={`mb-3 ${formData.tipo_perfil === 'lojista' ? 'text-construPro-blue' : 'text-gray-500'}`} />
                   <h4 className="font-medium text-gray-800 mb-2">Vendedor</h4>
                   <p className="text-sm text-gray-600">
                     Para vender produtos e gerenciar sua loja
@@ -322,23 +287,9 @@ const SignupScreen: React.FC = () => {
               </Card>
 
               {/* Profissional Card */}
-              <Card 
-                className={`p-4 cursor-pointer border-2 transition-all ${
-                  formData.tipo_perfil === 'profissional' 
-                    ? 'border-construPro-blue bg-blue-50' 
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-                onClick={() => handleProfileTypeSelect('profissional')}
-              >
+              <Card className={`p-4 cursor-pointer border-2 transition-all ${formData.tipo_perfil === 'profissional' ? 'border-construPro-blue bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`} onClick={() => handleProfileTypeSelect('profissional')}>
                 <div className="flex flex-col items-center text-center">
-                  <Briefcase 
-                    size={40} 
-                    className={`mb-3 ${
-                      formData.tipo_perfil === 'profissional' 
-                        ? 'text-construPro-blue' 
-                        : 'text-gray-500'
-                    }`} 
-                  />
+                  <Briefcase size={40} className={`mb-3 ${formData.tipo_perfil === 'profissional' ? 'text-construPro-blue' : 'text-gray-500'}`} />
                   <h4 className="font-medium text-gray-800 mb-2">Profissional</h4>
                   <p className="text-sm text-gray-600">
                     Para oferecer serviços especializados
@@ -348,100 +299,32 @@ const SignupScreen: React.FC = () => {
             </div>
           </div>
 
-          <CustomInput
-            label="Nome completo"
-            name="nome"
-            value={formData.nome}
-            onChange={handleInputChange}
-            placeholder="Digite seu nome completo"
-            required
-          />
+          <CustomInput label="Nome completo" name="nome" value={formData.nome} onChange={handleInputChange} placeholder="Digite seu nome completo" required />
 
-          <CustomInput
-            label="Email"
-            name="email"
-            type="email"
-            value={formData.email}
-            onChange={handleInputChange}
-            placeholder="Digite seu email"
-            required
-          />
+          <CustomInput label="Email" name="email" type="email" value={formData.email} onChange={handleInputChange} placeholder="Digite seu email" required />
 
-          <CustomInput
-            label="CPF"
-            name="cpf"
-            value={formData.cpf}
-            onChange={handleCPFChange}
-            placeholder="000.000.000-00"
-            maxLength={14}
-            required
-          />
+          <CustomInput label="CPF" name="cpf" value={formData.cpf} onChange={handleCPFChange} placeholder="000.000.000-00" maxLength={14} required />
 
-          <CustomInput
-            label="Telefone"
-            name="telefone"
-            value={formData.telefone}
-            onChange={handlePhoneChange}
-            placeholder="(00) 00000-0000"
-            maxLength={15}
-            required
-          />
+          <CustomInput label="Telefone" name="telefone" value={formData.telefone} onChange={handlePhoneChange} placeholder="(00) 00000-0000" maxLength={15} required />
 
           {/* Optional Referral Code Input */}
-          {!formData.referralCode && (
-            <CustomInput
-              label="Código de referência (opcional)"
-              name="referralCode"
-              value={formData.referralCode}
-              onChange={handleInputChange}
-              placeholder="Digite o código de convite"
-            />
-          )}
+          {!formData.referralCode && <CustomInput label="Código de referência (opcional)" name="referralCode" value={formData.referralCode} onChange={handleInputChange} placeholder="Digite o código de convite" />}
 
           <div className="relative">
-            <CustomInput
-              label="Senha"
-              name="password"
-              type={showPassword ? 'text' : 'password'}
-              value={formData.password}
-              onChange={handleInputChange}
-              placeholder="Digite sua senha"
-              required
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-9 text-gray-500"
-            >
+            <CustomInput label="Senha" name="password" type={showPassword ? 'text' : 'password'} value={formData.password} onChange={handleInputChange} placeholder="Digite sua senha" required />
+            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-9 text-gray-500">
               {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
           </div>
 
           <div className="relative">
-            <CustomInput
-              label="Confirmar senha"
-              name="confirmPassword"
-              type={showConfirmPassword ? 'text' : 'password'}
-              value={formData.confirmPassword}
-              onChange={handleInputChange}
-              placeholder="Confirme sua senha"
-              required
-            />
-            <button
-              type="button"
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute right-3 top-9 text-gray-500"
-            >
+            <CustomInput label="Confirmar senha" name="confirmPassword" type={showConfirmPassword ? 'text' : 'password'} value={formData.confirmPassword} onChange={handleInputChange} placeholder="Confirme sua senha" required />
+            <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-9 text-gray-500">
               {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
           </div>
 
-          <CustomButton
-            type="submit"
-            variant="primary"
-            fullWidth
-            disabled={isLoading}
-          >
+          <CustomButton type="submit" variant="primary" fullWidth disabled={isLoading}>
             {isLoading ? 'Criando conta...' : 'Criar Conta'}
           </CustomButton>
         </form>
@@ -461,8 +344,6 @@ const SignupScreen: React.FC = () => {
           </p>
         </div>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default SignupScreen;
