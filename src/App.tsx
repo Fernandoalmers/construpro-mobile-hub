@@ -7,11 +7,11 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./hooks/use-cart";
+import PublicRoutes from "./routes/PublicRoutes";
 import AuthRoutes from "./routes/AuthRoutes";
 import UserRoutes from "./routes/UserRoutes";
 import AdminRoutes from "./routes/AdminRoutes";
 import VendorRoutes from "./routes/VendorRoutes";
-import PublicRoutes from "./routes/PublicRoutes";
 import AutoFixRoutes from "./routes/AutoFixRoutes";
 
 const queryClient = new QueryClient();
@@ -26,22 +26,22 @@ const App = () => (
             <Route path="/" element={<Index />} />
             
             {/* Public Routes */}
-            {PublicRoutes()}
+            <PublicRoutes />
             
             {/* Auth Routes */}
-            {AuthRoutes()}
+            <AuthRoutes />
             
             {/* User Routes */}
-            {UserRoutes()}
+            <UserRoutes />
             
             {/* Admin Routes */}
-            {AdminRoutes()}
+            <AdminRoutes />
             
             {/* Vendor Routes */}
-            {VendorRoutes()}
+            <VendorRoutes />
             
             {/* Auto Fix Routes */}
-            {AutoFixRoutes()}
+            <AutoFixRoutes />
             
             {/* Catch all route - redirect to home */}
             <Route path="*" element={<NotFound />} />

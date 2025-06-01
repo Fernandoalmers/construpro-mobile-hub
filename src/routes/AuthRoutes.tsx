@@ -8,18 +8,20 @@ import {
 } from './RouteImports';
 
 const AuthRoutes: React.FC = () => {
-  return [
-    <Route key="profile-selection" path="/auth/profile-selection" element={
-      <ProtectedRoute>
-        <ProfileSelectionScreen />
-      </ProtectedRoute>
-    } />,
-    <Route key="professional-profile" path="/auth/professional-profile" element={
-      <ProtectedRoute>
-        <ProfessionalProfileScreen />
-      </ProtectedRoute>
-    } />
-  ];
+  return (
+    <>
+      <Route path="/auth/profile-selection" element={
+        <ProtectedRoute>
+          <ProfileSelectionScreen />
+        </ProtectedRoute>
+      } />
+      <Route path="/auth/professional-profile" element={
+        <ProtectedRoute>
+          <ProfessionalProfileScreen />
+        </ProtectedRoute>
+      } />
+    </>
+  );
 };
 
 export default AuthRoutes;
