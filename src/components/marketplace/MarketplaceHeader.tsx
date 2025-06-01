@@ -5,7 +5,7 @@ import { useCart } from '@/hooks/use-cart';
 import { FilterOption } from '@/hooks/use-product-filter';
 
 // Import our new components
-import { MarketplaceHeaderTop } from './components/MarketplaceHeaderTop';
+import MarketplaceHeaderTop from './components/MarketplaceHeaderTop';
 import SearchBar from './components/SearchBar';
 import FilterDialogs from './components/FilterDialogs';
 import FilterChips from './components/FilterChips';
@@ -55,6 +55,8 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
   onPriceRangeClick = () => {},
   clearFilters
 }) => {
+  const { cartCount } = useCart();
+
   // Fix the store mapping to ensure proper format
   const lojasOptions = stores.map(store => ({
     id: store.id,
@@ -68,7 +70,7 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
   return (
     <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
       <motion.div 
-        className="bg-orange-600 p-4 pt-8"
+        className="bg-construPro-blue p-4 pt-8"
         initial={{ opacity: 1 }}
         animate={{ 
           opacity: hideHeader ? 0.95 : 1,
@@ -76,7 +78,7 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
         transition={{ duration: 0.3 }}
       >
         {/* Header Top with Back Button and Cart */}
-        <MarketplaceHeaderTop />
+        <MarketplaceHeaderTop cartCount={cartCount} />
         
         {/* Search Bar - sem mostrar sugestões nesta tela */}
         <SearchBar
