@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -11,7 +10,6 @@ import { ProtectedRoute, BottomTabNavigator } from "./imports";
 import {
   LoginScreen,
   SignUpScreen,
-  OnboardingScreen,
   ForgotPasswordScreen,
   ProfileSelectionScreen,
   ProfessionalProfileScreen,
@@ -81,7 +79,6 @@ const App = () => (
             <Route path="/login" element={<LoginScreen />} />
             <Route path="/signup" element={<SignUpScreen />} />
             <Route path="/recuperar-senha" element={<ForgotPasswordScreen />} />
-            <Route path="/onboarding" element={<OnboardingScreen />} />
             
             {/* Auth Routes */}
             <Route path="/auth/profile-selection" element={
