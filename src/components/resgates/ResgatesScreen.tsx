@@ -98,7 +98,7 @@ const ResgatesScreen: React.FC = () => {
   };
   
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
+    <div className="flex flex-col min-h-screen bg-gray-50 pb-20">
       {/* Enhanced Header */}
       <div className="bg-gradient-to-b from-construPro-blue to-construPro-blue/90 p-6">
         <div className="flex items-center justify-between mb-4">
