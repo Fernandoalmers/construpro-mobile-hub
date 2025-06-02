@@ -71,7 +71,7 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
       opacity: hideHeader ? 0.95 : 1
     }} transition={{
       duration: 0.3
-    }} className="p-4 pt-8 bg-black">
+    }} className="p-4 pt-8 bg-construPro-blue">
         {/* Header Top with Back Button and Cart */}
         <MarketplaceHeaderTop cartCount={cartCount} />
         
