@@ -8,11 +8,14 @@ import StoresHeader from './components/StoresHeader';
 import StoresTable from './components/StoresTable';
 import { getAdminStores } from '@/services/admin/stores/storesFetcher';
 import { approveStore, rejectStore } from '@/services/admin/stores/storeStatusManager';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/components/ui/use-toast';
 
 const StoresManagementScreen: React.FC = () => {
   useTitle('ConstruPro Admin - Lojas');
+  
+  // Get query client for cache invalidation
+  const queryClient = useQueryClient();
   
   // Use React Query to fetch stores data
   const { 
@@ -91,9 +94,9 @@ const StoresManagementScreen: React.FC = () => {
       const success = await approveStore(storeId);
       
       if (success) {
-        // Refresh the stores list
-        await refreshStores();
-        console.log('[StoresManagementScreen] Store approved and list refreshed');
+        // Invalidate and refetch stores data using React Query
+        await queryClient.invalidateQueries({ queryKey: ['adminStores'] });
+        console.log('[StoresManagementScreen] Store approved and cache invalidated');
       }
     } catch (error) {
       console.error('[StoresManagementScreen] Error approving store:', error);
@@ -122,9 +125,9 @@ const StoresManagementScreen: React.FC = () => {
       const success = await rejectStore(storeId);
       
       if (success) {
-        // Refresh the stores list
-        await refreshStores();
-        console.log('[StoresManagementScreen] Store rejected and list refreshed');
+        // Invalidate and refetch stores data using React Query
+        await queryClient.invalidateQueries({ queryKey: ['adminStores'] });
+        console.log('[StoresManagementScreen] Store rejected and cache invalidated');
       }
     } catch (error) {
       console.error('[StoresManagementScreen] Error rejecting store:', error);
