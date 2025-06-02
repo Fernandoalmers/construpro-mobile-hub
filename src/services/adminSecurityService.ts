@@ -1,184 +1,117 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
+import { securityService } from './securityService';
 
-export interface AdminPromotionLog {
-  id: string;
-  promoted_user_id: string;
-  promoted_by_admin_id: string;
-  action: 'promote' | 'demote';
-  timestamp: string;
-  reason?: string;
-}
-
-class AdminSecurityService {
-  // Verificar se o usuário atual é admin de forma segura
+// Enhanced admin security service with proper RLS integration
+export const adminSecurityService = {
+  // Use the new secure function to check admin status
   async isCurrentUserAdmin(): Promise<boolean> {
-    try {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) {
-        console.error('❌ [AdminSecurity] No authenticated user');
-        return false;
-      }
+    return await securityService.isCurrentUserAdmin();
+  },
 
-      const { data, error } = await supabase.rpc('get_user_admin_status', {
-        user_id: userData.user.id
-      });
-      
-      if (error) {
-        console.error('❌ [AdminSecurity] Error checking admin status:', error);
-        return false;
-      }
-      return !!data;
-    } catch (error) {
-      console.error('❌ [AdminSecurity] Exception checking admin status:', error);
-      return false;
-    }
-  }
-
-  // Promover usuário para admin (APENAS para admins existentes)
+  // Secure admin promotion with enhanced logging
   async promoteUserToAdmin(userId: string, reason?: string): Promise<boolean> {
-    try {
-      // Verificar se o usuário atual é admin
-      const isAdmin = await this.isCurrentUserAdmin();
-      if (!isAdmin) {
-        console.error('🚫 [AdminSecurity] Unauthorized promotion attempt');
-        toast.error('Acesso negado: Apenas administradores podem promover usuários');
-        
-        // Log da tentativa não autorizada
-        await this.logSecurityViolation('unauthorized_promotion_attempt', userId);
-        return false;
-      }
-
-      // Promover o usuário
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_admin: true })
-        .eq('id', userId);
-
-      if (error) {
-        console.error('❌ [AdminSecurity] Error promoting user:', error);
-        toast.error('Erro ao promover usuário');
-        return false;
-      }
-
-      // Log da promoção
-      await this.logAdminPromotion(userId, 'promote', reason);
-      
-      console.log(`✅ [AdminSecurity] User ${userId} promoted to admin`);
-      toast.success('Usuário promovido a administrador com sucesso');
+    console.log('🔐 [adminSecurityService] Attempting to promote user to admin:', userId);
+    
+    const result = await securityService.promoteUserToAdmin(userId, reason);
+    
+    if (result.success) {
+      console.log('✅ [adminSecurityService] User promoted successfully');
       return true;
-    } catch (error) {
-      console.error('❌ [AdminSecurity] Exception promoting user:', error);
-      toast.error('Erro interno ao promover usuário');
+    } else {
+      console.error('❌ [adminSecurityService] Failed to promote user:', result.error);
       return false;
     }
-  }
+  },
 
-  // Remover privilégios de admin (APENAS para admins existentes)
+  // Secure admin demotion with enhanced logging
   async demoteUserFromAdmin(userId: string, reason?: string): Promise<boolean> {
-    try {
-      // Verificar se o usuário atual é admin
-      const isAdmin = await this.isCurrentUserAdmin();
-      if (!isAdmin) {
-        console.error('🚫 [AdminSecurity] Unauthorized demotion attempt');
-        toast.error('Acesso negado: Apenas administradores podem remover privilégios');
-        
-        // Log da tentativa não autorizada
-        await this.logSecurityViolation('unauthorized_demotion_attempt', userId);
-        return false;
-      }
-
-      // Remover privilégios
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_admin: false })
-        .eq('id', userId);
-
-      if (error) {
-        console.error('❌ [AdminSecurity] Error demoting user:', error);
-        toast.error('Erro ao remover privilégios');
-        return false;
-      }
-
-      // Log da remoção
-      await this.logAdminPromotion(userId, 'demote', reason);
-      
-      console.log(`✅ [AdminSecurity] User ${userId} demoted from admin`);
-      toast.success('Privilégios de administrador removidos com sucesso');
+    console.log('🔐 [adminSecurityService] Attempting to demote user from admin:', userId);
+    
+    const result = await securityService.demoteUserFromAdmin(userId, reason);
+    
+    if (result.success) {
+      console.log('✅ [adminSecurityService] User demoted successfully');
       return true;
-    } catch (error) {
-      console.error('❌ [AdminSecurity] Exception demoting user:', error);
-      toast.error('Erro interno ao remover privilégios');
+    } else {
+      console.error('❌ [adminSecurityService] Failed to demote user:', result.error);
       return false;
     }
-  }
+  },
 
-  // Log de promoções/remoções de admin
-  private async logAdminPromotion(userId: string, action: 'promote' | 'demote', reason?: string): Promise<void> {
-    try {
-      const { data: currentUser } = await supabase.auth.getUser();
-      if (!currentUser.user) return;
-
-      await supabase.rpc('log_admin_action', {
-        action: `${action}_admin`,
-        entity_type: 'user',
-        entity_id: userId,
-        details: {
-          action,
-          target_user_id: userId,
-          reason: reason || 'No reason provided',
-          timestamp: new Date().toISOString()
-        }
+  // Verify admin access for sensitive operations
+  async verifyAdminAccess(operation: string): Promise<boolean> {
+    const isAdmin = await this.isCurrentUserAdmin();
+    
+    if (!isAdmin) {
+      console.error('🚫 [adminSecurityService] Unauthorized admin operation attempt:', operation);
+      await securityService.logSecurityEvent('unauthorized_admin_operation', {
+        operation,
+        timestamp: new Date().toISOString()
       });
-    } catch (error) {
-      console.error('❌ [AdminSecurity] Error logging admin promotion:', error);
+      toast.error('Acesso negado: Apenas administradores podem realizar esta operação');
+      return false;
     }
-  }
 
-  // Log de violações de segurança
-  private async logSecurityViolation(violation: string, targetUserId?: string): Promise<void> {
+    await securityService.logSecurityEvent('admin_operation_authorized', {
+      operation,
+      timestamp: new Date().toISOString()
+    });
+
+    return true;
+  },
+
+  // Get security events (admin only)
+  async getSecurityEvents(limit: number = 50): Promise<any[]> {
     try {
-      const { data: currentUser } = await supabase.auth.getUser();
-      if (!currentUser.user) return;
-
-      await supabase.rpc('log_admin_action', {
-        action: 'security_violation',
-        entity_type: 'security',
-        entity_id: violation,
-        details: {
-          violation_type: violation,
-          target_user_id: targetUserId,
-          user_agent: navigator.userAgent,
-          timestamp: new Date().toISOString(),
-          url: window.location.href
-        }
-      });
-    } catch (error) {
-      console.error('❌ [AdminSecurity] Error logging security violation:', error);
-    }
-  }
-
-  // Verificar se um usuário específico é admin
-  async isUserAdmin(userId: string): Promise<boolean> {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', userId)
-        .single();
-
-      if (error) {
-        console.error('❌ [AdminSecurity] Error checking user admin status:', error);
-        return false;
+      if (!(await this.verifyAdminAccess('view_security_events'))) {
+        return [];
       }
 
-      return !!data?.is_admin;
+      const { data, error } = await supabase
+        .from('security_events')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (error) {
+        console.error('Error fetching security events:', error);
+        return [];
+      }
+
+      return data || [];
     } catch (error) {
-      console.error('❌ [AdminSecurity] Exception checking user admin status:', error);
-      return false;
+      console.error('Exception fetching security events:', error);
+      return [];
+    }
+  },
+
+  // Get admin logs (admin only)  
+  async getAdminLogs(limit: number = 50): Promise<any[]> {
+    try {
+      if (!(await this.verifyAdminAccess('view_admin_logs'))) {
+        return [];
+      }
+
+      const { data, error } = await supabase
+        .from('admin_logs')
+        .select(`
+          *,
+          profiles!admin_id (nome, email)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (error) {
+        console.error('Error fetching admin logs:', error);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Exception fetching admin logs:', error);
+      return [];
     }
   }
-}
-
-export const adminSecurityService = new AdminSecurityService();
+};

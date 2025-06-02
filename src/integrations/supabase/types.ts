@@ -1975,6 +1975,10 @@ export type Database = {
         Args: { sql_statement: string }
         Returns: Json
       }
+      get_current_vendor_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_duplicate_transactions: {
         Args: Record<PropertyKey, never>
         Returns: {

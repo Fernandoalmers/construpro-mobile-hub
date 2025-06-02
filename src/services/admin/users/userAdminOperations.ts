@@ -1,27 +1,26 @@
 
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { logAdminAction } from '@/services/adminService';
+import { securityService } from '@/services/securityService';
 
 export const makeAdmin = async (userId: string): Promise<boolean> => {
   try {
-    const { error } = await supabase
-      .from('profiles')
-      .update({ is_admin: true })
-      .eq('id', userId);
+    const result = await securityService.promoteUserToAdmin(userId, 'Admin promotion via user management');
+    
+    if (result.success) {
+      // Log the admin action
+      await logAdminAction({
+        action: 'make_admin',
+        entityType: 'usuario',
+        entityId: userId,
+        details: { is_admin: true }
+      });
       
-    if (error) throw error;
-    
-    // Log the admin action
-    await logAdminAction({
-      action: 'make_admin',
-      entityType: 'usuario',
-      entityId: userId,
-      details: { is_admin: true }
-    });
-    
-    toast.success('Usuário promovido a administrador');
-    return true;
+      return true;
+    } else {
+      console.error('Failed to promote user to admin:', result.error);
+      return false;
+    }
   } catch (error) {
     console.error('Error making user admin:', error);
     toast.error('Erro ao promover usuário a administrador');
@@ -31,23 +30,22 @@ export const makeAdmin = async (userId: string): Promise<boolean> => {
 
 export const removeAdmin = async (userId: string): Promise<boolean> => {
   try {
-    const { error } = await supabase
-      .from('profiles')
-      .update({ is_admin: false })
-      .eq('id', userId);
+    const result = await securityService.demoteUserFromAdmin(userId, 'Admin demotion via user management');
+    
+    if (result.success) {
+      // Log the admin action
+      await logAdminAction({
+        action: 'remove_admin',
+        entityType: 'usuario',
+        entityId: userId,
+        details: { is_admin: false }
+      });
       
-    if (error) throw error;
-    
-    // Log the admin action
-    await logAdminAction({
-      action: 'remove_admin',
-      entityType: 'usuario',
-      entityId: userId,
-      details: { is_admin: false }
-    });
-    
-    toast.success('Privilégios de administrador removidos');
-    return true;
+      return true;
+    } else {
+      console.error('Failed to demote user from admin:', result.error);
+      return false;
+    }
   } catch (error) {
     console.error('Error removing admin privileges:', error);
     toast.error('Erro ao remover privilégios de administrador');

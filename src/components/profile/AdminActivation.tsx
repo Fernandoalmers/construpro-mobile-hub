@@ -2,13 +2,12 @@
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { ShieldCheck, AlertTriangle } from 'lucide-react';
 import { securityService } from '@/services/securityService';
 
 const AdminActivation: React.FC = () => {
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -17,10 +16,8 @@ const AdminActivation: React.FC = () => {
       if (!user) return;
 
       try {
-        const { data, error } = await supabase.rpc('is_admin');
-        
-        if (error) throw error;
-        setIsAdmin(!!data);
+        const adminStatus = await securityService.isCurrentUserAdmin();
+        setIsAdmin(adminStatus);
       } catch (error) {
         console.error('Error checking admin status:', error);
       }
@@ -42,29 +39,14 @@ const AdminActivation: React.FC = () => {
           await refreshProfile();
         }
       } else {
-        // Direct promotion - this should now be blocked by our trigger
-        // Let's try the old method to demonstrate the security improvement
-        const { error } = await supabase
-          .from('profiles')
-          .update({ is_admin: true })
-          .eq('id', user.id);
-
-        if (error) {
-          // Expected to fail due to our security trigger
-          console.log('Direct admin promotion blocked by security trigger:', error.message);
-          toast.error('Promoção direta de administrador foi bloqueada por segurança. Use o painel administrativo.');
-          
-          // Log this security event
-          await securityService.logSecurityEvent('blocked_direct_admin_promotion', {
-            user_id: user.id,
-            error: error.message
-          });
-        } else {
-          // This shouldn't happen with our security measures
-          setIsAdmin(true);
-          await refreshProfile();
-          toast.success('Permissões administrativas ativadas');
-        }
+        // This should now be blocked by our security measures
+        toast.error('Promoção direta de administrador foi bloqueada por segurança. Solicite a um administrador existente.');
+        
+        // Log this security event
+        await securityService.logSecurityEvent('blocked_direct_admin_promotion', {
+          user_id: user.id,
+          method: 'profile_toggle'
+        });
       }
     } catch (error) {
       console.error('Error toggling admin status:', error);
