@@ -77,7 +77,7 @@ const LandingPage = () => {
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
                 <p className="text-sm text-gray-500">
-                  <strong>Profissional?</strong> Use seu CNPJ/CPF para benefícios extras!
+                  <strong>Profissional e consumidor?</strong> Use seu CNPJ/CPF para benefícios extras!
                 </p>
               </div>
             </div>
@@ -96,7 +96,7 @@ const LandingPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Por que escolher o Matershop?
+              Por que escolher a Matershop?
             </h2>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
@@ -116,7 +116,7 @@ const LandingPage = () => {
               <CardContent className="p-8 text-center">
                 <Award className="h-12 w-12 text-orange-points mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-gray-900 mb-3">
-                  Pontos que viram prêmios
+                  Pontos que viram prêmios/recompensas
                 </h3>
                 <p className="text-gray-600">
                   Cada compra gera pontos que você troca por produtos e benefícios.
@@ -188,9 +188,9 @@ const LandingPage = () => {
               <div className="space-y-4">
                 {[
                   "Compare preços sem sair da obra",
-                  "Ganhe até 3× mais pontos com CNPJ",
+                  "Ganhe até 3× mais pontos como profissional",
                   "Dashboard único com todos os seus pedidos e pontos",
-                  "Programa de indicação: chame colegas, ganhe pontos extras"
+                  "Programa de indicação: convide colegas, ganhe pontos extras"
                 ].map((benefit, index) => (
                   <div key={index} className="flex items-start">
                     <CheckCircle className="h-6 w-6 text-orange-points mr-3 mt-0.5 flex-shrink-0" />
@@ -264,7 +264,7 @@ const LandingPage = () => {
             Pronto para economizar e ganhar recompensas?
           </h2>
           <p className="text-xl text-blue-100 mb-8">
-            Junte-se a milhares de profissionais que já economizam com o Matershop
+            Junte-se a milhares de profissionais e consumidores que já economizam com a Matershop
           </p>
           <Button 
             onClick={handleSignUp}
@@ -283,7 +283,7 @@ const LandingPage = () => {
           <div className="text-center">
             <h3 className="text-2xl font-bold text-white mb-4">Matershop</h3>
             <p className="text-gray-400 mb-6">
-              Clube de Compras Inteligentes para Profissionais da Construção
+              Marketplace e Clube de Compras Inteligentes para Profissionais e consumidores da Construção
             </p>
             <div className="flex justify-center space-x-6">
               <Button 
