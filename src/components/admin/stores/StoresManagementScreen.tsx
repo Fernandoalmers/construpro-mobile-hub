@@ -26,6 +26,8 @@ const StoresManagementScreen: React.FC = () => {
   } = useQuery({
     queryKey: ['adminStores'],
     queryFn: getAdminStores,
+    staleTime: 0, // Always fetch fresh data
+    gcTime: 0, // Don't cache
     meta: {
       onError: (err: any) => {
         toast({
@@ -80,8 +82,11 @@ const StoresManagementScreen: React.FC = () => {
   // Handle store approval
   const handleApproveStore = async (storeId: string) => {
     try {
+      console.log('[StoresManagementScreen] Starting approval process for store:', storeId);
+      
       // Check if it's an incomplete store (temporary ID)
       if (storeId.startsWith('incomplete-')) {
+        console.log('[StoresManagementScreen] Cannot approve incomplete store:', storeId);
         toast({
           title: "Ação não permitida",
           description: "Não é possível aprovar uma loja com registro incompleto. O proprietário precisa completar o cadastro da loja.",
@@ -90,16 +95,37 @@ const StoresManagementScreen: React.FC = () => {
         return;
       }
 
-      console.log('[StoresManagementScreen] Approving store:', storeId);
+      console.log('[StoresManagementScreen] Calling approveStore function...');
       const success = await approveStore(storeId);
+      console.log('[StoresManagementScreen] Approval result:', success);
       
       if (success) {
-        // Invalidate and refetch stores data using React Query
+        console.log('[StoresManagementScreen] Invalidating cache and refetching...');
+        
+        // Force invalidate all related queries
         await queryClient.invalidateQueries({ queryKey: ['adminStores'] });
-        console.log('[StoresManagementScreen] Store approved and cache invalidated');
+        
+        // Also force a refetch as backup
+        await refreshStores();
+        
+        console.log('[StoresManagementScreen] Cache invalidated and data refetched');
+        
+        // Show success toast
+        toast({
+          title: "Sucesso",
+          description: "Loja aprovada com sucesso!",
+          variant: "default"
+        });
+      } else {
+        console.error('[StoresManagementScreen] Approval failed - no success returned');
+        toast({
+          title: "Erro",
+          description: "Falha ao aprovar loja. Tente novamente.",
+          variant: "destructive"
+        });
       }
     } catch (error) {
-      console.error('[StoresManagementScreen] Error approving store:', error);
+      console.error('[StoresManagementScreen] Error in approval process:', error);
       toast({
         title: "Erro",
         description: "Falha ao aprovar loja. Tente novamente.",
@@ -111,8 +137,11 @@ const StoresManagementScreen: React.FC = () => {
   // Handle store rejection
   const handleRejectStore = async (storeId: string) => {
     try {
+      console.log('[StoresManagementScreen] Starting rejection process for store:', storeId);
+      
       // Check if it's an incomplete store (temporary ID)
       if (storeId.startsWith('incomplete-')) {
+        console.log('[StoresManagementScreen] Cannot reject incomplete store:', storeId);
         toast({
           title: "Ação não permitida",
           description: "Não é possível rejeitar uma loja com registro incompleto. O proprietário precisa completar o cadastro da loja primeiro.",
@@ -121,16 +150,37 @@ const StoresManagementScreen: React.FC = () => {
         return;
       }
 
-      console.log('[StoresManagementScreen] Rejecting store:', storeId);
+      console.log('[StoresManagementScreen] Calling rejectStore function...');
       const success = await rejectStore(storeId);
+      console.log('[StoresManagementScreen] Rejection result:', success);
       
       if (success) {
-        // Invalidate and refetch stores data using React Query
+        console.log('[StoresManagementScreen] Invalidating cache and refetching...');
+        
+        // Force invalidate all related queries
         await queryClient.invalidateQueries({ queryKey: ['adminStores'] });
-        console.log('[StoresManagementScreen] Store rejected and cache invalidated');
+        
+        // Also force a refetch as backup
+        await refreshStores();
+        
+        console.log('[StoresManagementScreen] Cache invalidated and data refetched');
+        
+        // Show success toast
+        toast({
+          title: "Sucesso",
+          description: "Loja rejeitada com sucesso!",
+          variant: "default"
+        });
+      } else {
+        console.error('[StoresManagementScreen] Rejection failed - no success returned');
+        toast({
+          title: "Erro",
+          description: "Falha ao rejeitar loja. Tente novamente.",
+          variant: "destructive"
+        });
       }
     } catch (error) {
-      console.error('[StoresManagementScreen] Error rejecting store:', error);
+      console.error('[StoresManagementScreen] Error in rejection process:', error);
       toast({
         title: "Erro",
         description: "Falha ao rejeitar loja. Tente novamente.",
@@ -141,7 +191,11 @@ const StoresManagementScreen: React.FC = () => {
 
   // Log stores data for debugging
   useEffect(() => {
-    console.log('[Stores fetched]', stores, error);
+    console.log('[StoresManagementScreen] Stores data updated:', {
+      storesCount: stores.length,
+      stores: stores.map(s => ({ id: s.id, nome: s.nome, status: s.status })),
+      error
+    });
   }, [stores, error]);
 
   return (
