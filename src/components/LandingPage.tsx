@@ -56,7 +56,7 @@ const LandingPage = () => {
               </div>
             </div>
             <div className="relative">
-              <img alt="App Matershop" src="/lovable-uploads/2a4834bb-9836-4472-83f1-737a07c2d9c8.png" className="w-full max-w-md mx-auto rounded-2xl shadow-xl object-contain" />
+              <img alt="App Matershop" src="/lovable-uploads/2a4834bb-9836-4472-83f1-737a07c2d9c8.png" className="w-full max-w-md mx-auto rounded-2xl object-contain" />
             </div>
           </div>
         </div>
