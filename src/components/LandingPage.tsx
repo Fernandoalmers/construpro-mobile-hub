@@ -17,6 +17,11 @@ const LandingPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
+              <img 
+                src="/matershop-logo.png" 
+                alt="Matershop" 
+                className="h-8 w-auto mr-2"
+              />
               <h1 className="text-2xl font-bold text-royal-blue">Matershop</h1>
             </div>
             <div className="flex items-center space-x-4">
@@ -56,7 +61,11 @@ const LandingPage = () => {
             </div>
             <div className="relative">
               <div className="bg-gray-200 rounded-2xl p-8 shadow-xl">
-                <Smartphone className="h-64 w-32 mx-auto text-royal-blue" />
+                <img 
+                  src="/lovable-uploads/73d74cef-8ff2-4872-bac5-f102508ab3d7.png" 
+                  alt="App Matershop" 
+                  className="h-64 w-32 mx-auto object-contain"
+                />
                 <p className="text-center text-gray-600 mt-4">App Matershop</p>
               </div>
             </div>
@@ -240,7 +249,14 @@ const LandingPage = () => {
       <footer className="py-12 bg-black">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h3 className="text-2xl font-bold text-white mb-4">Matershop</h3>
+            <div className="flex items-center justify-center mb-4">
+              <img 
+                src="/matershop-logo.png" 
+                alt="Matershop" 
+                className="h-8 w-auto mr-2"
+              />
+              <h3 className="text-2xl font-bold text-white">Matershop</h3>
+            </div>
             <p className="text-gray-400 mb-6">
               Marketplace e Clube de Compras Inteligentes para Profissionais e Consumidores da Construção
             </p>
