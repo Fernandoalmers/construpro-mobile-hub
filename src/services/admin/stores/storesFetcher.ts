@@ -89,35 +89,41 @@ export async function getAdminStores(): Promise<AdminStore[]> {
       };
     });
 
-    // Verificar se existem lojistas sem entrada na tabela vendedores
-    const { data: lojistasOrfaos, error: lojistasError } = await supabase
+    // Buscar todos os lojistas para garantir que nenhum seja perdido
+    const { data: allLojistas, error: lojistasError } = await supabase
       .from('profiles')
       .select('id, nome, email, telefone, created_at')
-      .eq('tipo_perfil', 'lojista')
-      .not('id', 'in', `(${proprietarioIds.join(',') || 'null'})`);
+      .eq('tipo_perfil', 'lojista');
 
     if (lojistasError) {
-      console.error('[getAdminStores] Error checking orphan lojistas:', lojistasError);
-    } else if (lojistasOrfaos && lojistasOrfaos.length > 0) {
-      console.warn('[getAdminStores] Found lojistas without vendedores entry:', lojistasOrfaos.length);
-      
-      // Adicionar lojistas órfãos como lojas pendentes
-      const lojasOrfas: AdminStore[] = lojistasOrfaos.map(lojista => ({
-        id: `orphan-${lojista.id}`, // ID temporário para identificar
-        nome: `${lojista.nome || 'Loja sem nome'} (Registro Incompleto)`,
-        logo_url: null,
-        banner_url: null,
-        descricao: 'Lojista registrado mas sem dados de loja completos',
-        proprietario_id: lojista.id,
-        proprietario_nome: lojista.nome || 'Nome não informado',
-        status: 'pendente',
-        produtos_count: 0,
-        contato: lojista.telefone || lojista.email || 'N/A',
-        created_at: lojista.created_at,
-        updated_at: lojista.created_at
-      }));
-      
-      stores.push(...lojasOrfas);
+      console.error('[getAdminStores] Error fetching all lojistas:', lojistasError);
+    } else if (allLojistas && allLojistas.length > 0) {
+      // Verificar quais lojistas não têm entrada na tabela vendedores
+      const lojistasWithoutVendedores = allLojistas.filter(lojista => 
+        !proprietarioIds.includes(lojista.id)
+      );
+
+      if (lojistasWithoutVendedores.length > 0) {
+        console.warn('[getAdminStores] Found lojistas without vendedores entry:', lojistasWithoutVendedores.length);
+        
+        // Adicionar lojistas sem registro como lojas pendentes
+        const lojasIncompletas: AdminStore[] = lojistasWithoutVendedores.map(lojista => ({
+          id: `incomplete-${lojista.id}`, // ID temporário para identificar
+          nome: `${lojista.nome || 'Loja sem nome'} (Registro Incompleto)`,
+          logo_url: null,
+          banner_url: null,
+          descricao: 'Lojista registrado mas sem dados de loja completos',
+          proprietario_id: lojista.id,
+          proprietario_nome: lojista.nome || 'Nome não informado',
+          status: 'pendente',
+          produtos_count: 0,
+          contato: lojista.telefone || lojista.email || 'N/A',
+          created_at: lojista.created_at,
+          updated_at: lojista.created_at
+        }));
+        
+        stores.push(...lojasIncompletas);
+      }
     }
 
     console.log('[getAdminStores] Total stores processed:', stores.length);
@@ -131,6 +137,22 @@ export async function getAdminStores(): Promise<AdminStore[]> {
     return stores;
   } catch (error) {
     console.error('[getAdminStores] Error:', error);
+    throw error;
+  }
+}
+
+export async function getAdminPendingStores(): Promise<AdminStore[]> {
+  try {
+    console.log('[getAdminPendingStores] Fetching pending stores...');
+    
+    const allStores = await getAdminStores();
+    const pendingStores = allStores.filter(store => store.status === 'pendente');
+    
+    console.log('[getAdminPendingStores] Pending stores found:', pendingStores.length);
+    
+    return pendingStores;
+  } catch (error) {
+    console.error('[getAdminPendingStores] Error:', error);
     throw error;
   }
 }
