@@ -33,7 +33,7 @@ const LandingPage = () => {
 
       {/* Hero Section */}
       <section id="hero" className="bg-gradient-to-b from-gray-50 to-white py-20">
-        <div className="">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
               <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 leading-tight mb-6">
