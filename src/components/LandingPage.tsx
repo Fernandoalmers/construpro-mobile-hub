@@ -242,7 +242,7 @@ const LandingPage = () => {
           <div className="text-center">
             <h3 className="text-2xl font-bold text-white mb-4">Matershop</h3>
             <p className="text-gray-400 mb-6">
-              Marketplace e Clube de Compras Inteligentes para Profissionais e consumidores da Construção
+              Marketplace e Clube de Compras Inteligentes para Profissionais e Consumidores da Construção
             </p>
             <div className="flex justify-center space-x-6">
               <Button variant="outline" onClick={handleLogin} className="border-gray-600 text-gray-300 bg-construPro-orange">
