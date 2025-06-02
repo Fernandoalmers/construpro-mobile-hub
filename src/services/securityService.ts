@@ -8,7 +8,41 @@ export interface SecurityEvent {
   user_id?: string;
 }
 
+// Rate limiting storage
+const rateLimitStore = new Map<string, { count: number; firstAttempt: number }>();
+
 export const securityService = {
+  // Rate limiting check
+  checkRateLimit(key: string, maxAttempts: number, windowMs: number): boolean {
+    const now = Date.now();
+    const existing = rateLimitStore.get(key);
+    
+    if (!existing) {
+      rateLimitStore.set(key, { count: 1, firstAttempt: now });
+      return true;
+    }
+    
+    // Reset if window has passed
+    if (now - existing.firstAttempt > windowMs) {
+      rateLimitStore.set(key, { count: 1, firstAttempt: now });
+      return true;
+    }
+    
+    // Check if limit exceeded
+    if (existing.count >= maxAttempts) {
+      return false;
+    }
+    
+    // Increment count
+    existing.count++;
+    return true;
+  },
+
+  // Cart quantity validation
+  validateCartQuantity(quantity: number): boolean {
+    return Number.isInteger(quantity) && quantity > 0 && quantity <= 1000;
+  },
+
   // Log security events using the new secure function
   async logSecurityEvent(eventType: string, details: any = {}, userId?: string): Promise<boolean> {
     try {
@@ -66,12 +100,15 @@ export const securityService = {
         return { success: false, error: error.message };
       }
 
-      if (data?.success) {
+      // Type assertion for the response
+      const response = data as { success?: boolean; message?: string; error?: string };
+      
+      if (response?.success) {
         toast.success('Usuário promovido a administrador com sucesso');
-        return { success: true, message: data.message };
+        return { success: true, message: response.message };
       } else {
-        toast.error(data?.error || 'Falha ao promover usuário');
-        return { success: false, error: data?.error };
+        toast.error(response?.error || 'Falha ao promover usuário');
+        return { success: false, error: response?.error };
       }
     } catch (error) {
       console.error('Exception promoting user to admin:', error);
@@ -104,12 +141,15 @@ export const securityService = {
         return { success: false, error: error.message };
       }
 
-      if (data?.success) {
+      // Type assertion for the response
+      const response = data as { success?: boolean; message?: string; error?: string };
+
+      if (response?.success) {
         toast.success('Privilégios de administrador removidos com sucesso');
-        return { success: true, message: data.message };
+        return { success: true, message: response.message };
       } else {
-        toast.error(data?.error || 'Falha ao remover privilégios');
-        return { success: false, error: data?.error };
+        toast.error(response?.error || 'Falha ao remover privilégios');
+        return { success: false, error: response?.error };
       }
     } catch (error) {
       console.error('Exception demoting user from admin:', error);

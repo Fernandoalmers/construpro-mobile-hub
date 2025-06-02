@@ -1,7 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { securityService } from '@/services/securityService';
-import { config } from '@/config/environment';
+import { securityConfig } from '@/config/security';
 import { toast } from '@/components/ui/sonner';
 
 interface SecureCartItem {
@@ -16,7 +16,7 @@ class SecureCartService {
     try {
       // Rate limiting check
       const rateLimitKey = `cart_add_${item.productId}`;
-      if (!securityService.checkRateLimit(rateLimitKey, config.security.rateLimit.maxCartUpdates, config.security.rateLimit.cartWindowMs)) {
+      if (!securityService.checkRateLimit(rateLimitKey, securityConfig.rateLimit.maxCartUpdates, securityConfig.rateLimit.cartWindowMs)) {
         toast.error('Muitas tentativas. Tente novamente em alguns momentos.');
         await securityService.logSecurityEvent('cart_rate_limit_exceeded', {
           product_id: item.productId,
@@ -144,7 +144,7 @@ class SecureCartService {
       }
 
       // Rate limiting
-      if (!securityService.checkRateLimit(`cart_update_${cartItemId}`, config.security.rateLimit.maxCartUpdates, config.security.rateLimit.cartWindowMs)) {
+      if (!securityService.checkRateLimit(`cart_update_${cartItemId}`, securityConfig.rateLimit.maxCartUpdates, securityConfig.rateLimit.cartWindowMs)) {
         toast.error('Muitas atualizações. Tente novamente em alguns momentos.');
         return false;
       }
