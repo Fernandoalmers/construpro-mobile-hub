@@ -1,29 +1,47 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Smartphone, Gift, Settings, CheckCircle, Star, ArrowRight, Users, TrendingUp, Award } from 'lucide-react';
+
 const LandingPage = () => {
   const navigate = useNavigate();
+
   const handleSignUp = () => {
     navigate('/signup');
   };
+
   const handleLogin = () => {
     navigate('/login');
   };
-  return <div className="min-h-screen bg-white">
+
+  return (
+    <div className="min-h-screen bg-white">
       {/* Navigation */}
       <nav className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
+              <img 
+                src="/lovable-uploads/1349e6dc-0942-4cf7-9ee4-179461d0f81e.png" 
+                alt="Matershop Logo" 
+                className="h-8 w-8 mr-2"
+              />
               <h1 className="text-2xl font-bold text-royal-blue">Matershop</h1>
             </div>
             <div className="flex items-center space-x-4">
-              <Button variant="outline" onClick={handleLogin} className="border-royal-blue text-royal-blue hover:bg-royal-blue hover:text-white">
+              <Button 
+                variant="outline" 
+                onClick={handleLogin}
+                className="border-royal-blue text-royal-blue hover:bg-royal-blue hover:text-white"
+              >
                 Entrar
               </Button>
-              <Button onClick={handleSignUp} className="bg-orange-points hover:bg-orange-points/90 text-white">
+              <Button 
+                onClick={handleSignUp}
+                className="bg-orange-points hover:bg-orange-points/90 text-white"
+              >
                 Criar Conta
               </Button>
             </div>
@@ -36,16 +54,27 @@ const LandingPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 leading-tight mb-6">
-                Matershop conecta você às{' '}
-                <span className="text-royal-blue">melhores ofertas</span> e{' '}
-                <span className="text-orange-points">recompensas</span> da construção civil
-              </h1>
+              <div className="flex items-center mb-6">
+                <img 
+                  src="/lovable-uploads/1349e6dc-0942-4cf7-9ee4-179461d0f81e.png" 
+                  alt="Matershop Logo" 
+                  className="h-12 w-12 mr-4"
+                />
+                <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 leading-tight">
+                  Matershop conecta você às{' '}
+                  <span className="text-royal-blue">melhores ofertas</span> e{' '}
+                  <span className="text-orange-points">recompensas</span> da construção civil
+                </h1>
+              </div>
               <p className="text-xl text-gray-600 mb-8 leading-relaxed">
                 Cadastre-se grátis, garanta descontos exclusivos e acumule pontos online e nas lojas físicas parceiras.
               </p>
               <div className="space-y-4">
-                <Button onClick={handleSignUp} size="lg" className="bg-orange-points hover:bg-orange-points/90 text-white text-lg px-8 py-4 rounded-lg shadow-lg">
+                <Button 
+                  onClick={handleSignUp} 
+                  size="lg" 
+                  className="bg-orange-points hover:bg-orange-points/90 text-white text-lg px-8 py-4 rounded-lg shadow-lg"
+                >
                   Criar conta gratuita
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
@@ -240,18 +269,31 @@ const LandingPage = () => {
       <footer className="py-12 bg-black">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h3 className="text-2xl font-bold text-white mb-4">Matershop</h3>
+            <div className="flex items-center justify-center mb-4">
+              <img 
+                src="/lovable-uploads/1349e6dc-0942-4cf7-9ee4-179461d0f81e.png" 
+                alt="Matershop Logo" 
+                className="h-10 w-10 mr-3"
+              />
+              <h3 className="text-2xl font-bold text-white">Matershop</h3>
+            </div>
             <p className="text-gray-400 mb-6">
               Marketplace e Clube de Compras Inteligentes para Profissionais e Consumidores da Construção
             </p>
             <div className="flex justify-center space-x-6">
-              <Button variant="outline" onClick={handleLogin} className="border-gray-600 text-gray-300 bg-construPro-orange">
+              <Button 
+                variant="outline" 
+                onClick={handleLogin}
+                className="border-gray-600 text-gray-300 hover:bg-gray-700"
+              >
                 Já tem conta? Entre aqui
               </Button>
             </div>
           </div>
         </div>
       </footer>
-    </div>;
+    </div>
+  );
 };
+
 export default LandingPage;
