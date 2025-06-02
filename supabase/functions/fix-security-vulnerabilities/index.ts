@@ -370,11 +370,91 @@ serve(async (req) => {
           BEGIN
             -- Update product inventory by reducing it by the quantity ordered
             UPDATE public.produtos
-            SET estoque = GREATEST(0, estoque - p_quantidade)
+            SET estoque = GREATEST(0, estoque - NEW.quantidade)
             WHERE id = NEW.produto_id;
             
             -- Log the inventory update for debugging
             RAISE NOTICE 'Trigger: Updated inventory for product % by reducing %', NEW.produto_id, NEW.quantidade;
+            
+            RETURN NEW;
+          END;
+          $function$;
+        `
+      },
+      {
+        name: 'get_or_create_reference_id',
+        sql: `
+          CREATE OR REPLACE FUNCTION public.get_or_create_reference_id(p_order_id uuid)
+          RETURNS uuid
+          LANGUAGE plpgsql
+          SECURITY DEFINER
+          SET search_path = 'public'
+          AS $function$
+          DECLARE
+            ref_id UUID;
+          BEGIN
+            -- Try to get existing reference_id
+            SELECT reference_id INTO ref_id
+            FROM public.orders
+            WHERE id = p_order_id;
+            
+            -- If no reference_id exists, create one
+            IF ref_id IS NULL THEN
+              ref_id := gen_random_uuid();
+              
+              -- Update the order with the new reference_id
+              UPDATE public.orders
+              SET reference_id = ref_id
+              WHERE id = p_order_id;
+            END IF;
+            
+            RETURN ref_id;
+          END;
+          $function$;
+        `
+      },
+      {
+        name: 'sync_order_status_with_reference',
+        sql: `
+          CREATE OR REPLACE FUNCTION public.sync_order_status_with_reference()
+          RETURNS trigger
+          LANGUAGE plpgsql
+          SECURITY DEFINER
+          SET search_path = 'public'
+          AS $function$
+          BEGIN
+            -- Update all orders with the same reference_id when status changes
+            IF OLD.status IS DISTINCT FROM NEW.status AND NEW.reference_id IS NOT NULL THEN
+              UPDATE public.orders
+              SET status = NEW.status,
+                  updated_at = now()
+              WHERE reference_id = NEW.reference_id
+                AND id != NEW.id; -- Don't update the same record
+            END IF;
+            
+            RETURN NEW;
+          END;
+          $function$;
+        `
+      },
+      {
+        name: 'sync_pedidos_status_to_orders',
+        sql: `
+          CREATE OR REPLACE FUNCTION public.sync_pedidos_status_to_orders()
+          RETURNS trigger
+          LANGUAGE plpgsql
+          SECURITY DEFINER
+          SET search_path = 'public'
+          AS $function$
+          BEGIN
+            -- When pedido status changes, update corresponding order if it exists
+            IF OLD.status IS DISTINCT FROM NEW.status THEN
+              UPDATE public.orders
+              SET status = NEW.status,
+                  updated_at = now()
+              WHERE cliente_id = NEW.usuario_id
+                AND ABS(EXTRACT(EPOCH FROM (created_at - NEW.created_at))) < 300; -- 5 minutes tolerance
+            END IF;
             
             RETURN NEW;
           END;
