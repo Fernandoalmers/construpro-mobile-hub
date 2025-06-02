@@ -1,4 +1,3 @@
-
 import type { Config } from 'tailwindcss';
 
 const config: Config = {
@@ -38,6 +37,10 @@ const config: Config = {
         "pulse-subtle": "pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
       },
       colors: {
+        // Landing page specific colors
+        'royal-blue': '#0047AB',
+        'orange-points': '#F45B00',
+        // Existing construPro colors
         construPro: {
           blue: '#134A97',  
           orange: '#EF6C00', 
