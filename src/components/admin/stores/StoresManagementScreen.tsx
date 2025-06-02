@@ -7,6 +7,7 @@ import LoadingState from '@/components/common/LoadingState';
 import StoresHeader from './components/StoresHeader';
 import StoresTable from './components/StoresTable';
 import { getAdminStores } from '@/services/admin/stores/storesFetcher';
+import { approveStore, rejectStore } from '@/services/admin/stores/storeStatusManager';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from '@/components/ui/use-toast';
 
@@ -74,13 +75,65 @@ const StoresManagementScreen: React.FC = () => {
   }, [stores, filter, searchTerm]);
   
   // Handle store approval
-  const approveStore = async (storeId: string) => {
-    // Implementation left as is - not part of the requested changes
+  const handleApproveStore = async (storeId: string) => {
+    try {
+      // Check if it's an incomplete store (temporary ID)
+      if (storeId.startsWith('incomplete-')) {
+        toast({
+          title: "Ação não permitida",
+          description: "Não é possível aprovar uma loja com registro incompleto. O proprietário precisa completar o cadastro da loja.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      console.log('[StoresManagementScreen] Approving store:', storeId);
+      const success = await approveStore(storeId);
+      
+      if (success) {
+        // Refresh the stores list
+        await refreshStores();
+        console.log('[StoresManagementScreen] Store approved and list refreshed');
+      }
+    } catch (error) {
+      console.error('[StoresManagementScreen] Error approving store:', error);
+      toast({
+        title: "Erro",
+        description: "Falha ao aprovar loja. Tente novamente.",
+        variant: "destructive"
+      });
+    }
   };
   
   // Handle store rejection
-  const rejectStore = async (storeId: string) => {
-    // Implementation left as is - not part of the requested changes
+  const handleRejectStore = async (storeId: string) => {
+    try {
+      // Check if it's an incomplete store (temporary ID)
+      if (storeId.startsWith('incomplete-')) {
+        toast({
+          title: "Ação não permitida",
+          description: "Não é possível rejeitar uma loja com registro incompleto. O proprietário precisa completar o cadastro da loja primeiro.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      console.log('[StoresManagementScreen] Rejecting store:', storeId);
+      const success = await rejectStore(storeId);
+      
+      if (success) {
+        // Refresh the stores list
+        await refreshStores();
+        console.log('[StoresManagementScreen] Store rejected and list refreshed');
+      }
+    } catch (error) {
+      console.error('[StoresManagementScreen] Error rejecting store:', error);
+      toast({
+        title: "Erro",
+        description: "Falha ao rejeitar loja. Tente novamente.",
+        variant: "destructive"
+      });
+    }
   };
 
   // Log stores data for debugging
@@ -127,8 +180,8 @@ const StoresManagementScreen: React.FC = () => {
           ) : (
             <StoresTable 
               stores={filteredStores}
-              approveStore={approveStore}
-              rejectStore={rejectStore}
+              approveStore={handleApproveStore}
+              rejectStore={handleRejectStore}
             />
           )}
         </Card>
