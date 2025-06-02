@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -39,7 +40,8 @@ const LandingPage = () => {
               <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 leading-tight mb-6">
                 Matershop conecta você às{' '}
                 <span className="text-royal-blue">melhores ofertas</span> e{' '}
-                <span className="text-orange-points">recompensas</span> da construção civil
+                <span className="text-orange-points">recompensas</span> da
+                construção civil
               </h1>
               <p className="text-xl text-gray-600 mb-8 leading-relaxed">
                 Cadastre-se grátis, garanta descontos exclusivos e acumule pontos online e nas lojas físicas parceiras.
@@ -55,10 +57,11 @@ const LandingPage = () => {
               </div>
             </div>
             <div className="relative">
-              <div className="bg-gray-200 rounded-2xl p-8 shadow-xl">
-                <Smartphone className="h-64 w-32 mx-auto text-royal-blue" />
-                <p className="text-center text-gray-600 mt-4">App Matershop</p>
-              </div>
+              <img 
+                src="/lovable-uploads/78595993-58ee-4d91-837a-f562a9a88e4d.png" 
+                alt="App Matershop" 
+                className="w-full max-w-md mx-auto rounded-2xl shadow-xl"
+              />
             </div>
           </div>
         </div>
