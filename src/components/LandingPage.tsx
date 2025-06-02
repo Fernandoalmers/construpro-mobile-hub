@@ -243,7 +243,7 @@ const LandingPage = () => {
               Marketplace e Clube de Compras Inteligentes para Profissionais e Consumidores da Construção
             </p>
             <div className="flex justify-center space-x-6">
-              <Button variant="outline" onClick={handleLogin} className="border-gray-600 text-gray-300 bg-construPro-orange">
+              <Button variant="outline" onClick={handleLogin} className="border-gray-600 text-gray-300 bg-orange-points">
                 Já tem conta? Entre aqui
               </Button>
             </div>
