@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { logAdminAction } from '@/services/adminService';
@@ -332,7 +333,11 @@ export const deleteStore = async (storeId: string): Promise<boolean> => {
     
     if (error) {
       console.error('[StoreStatusManager] Error deleting store:', error);
-      toast.error('Erro ao excluir loja: ' + error.message);
+      toast({
+        title: "Erro",
+        description: `Erro ao excluir loja: ${error.message}`,
+        variant: "destructive"
+      });
       return false;
     }
     
@@ -348,11 +353,19 @@ export const deleteStore = async (storeId: string): Promise<boolean> => {
       // Non-blocking error - store was still deleted
     }
     
-    toast.success('Loja excluída com sucesso!');
+    toast({
+      title: "Sucesso",
+      description: "Loja excluída com sucesso!",
+      variant: "default"
+    });
     return true;
   } catch (error) {
     console.error('[StoreStatusManager] Unexpected error deleting store:', error);
-    toast.error('Erro inesperado ao excluir loja');
+    toast({
+      title: "Erro",
+      description: "Erro inesperado ao excluir loja",
+      variant: "destructive"
+    });
     return false;
   }
 };
