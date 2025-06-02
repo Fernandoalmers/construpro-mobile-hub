@@ -370,7 +370,7 @@ serve(async (req) => {
           BEGIN
             -- Update product inventory by reducing it by the quantity ordered
             UPDATE public.produtos
-            SET estoque = GREATEST(0, estoque - NEW.quantidade)
+            SET estoque = GREATEST(0, estoque - p_quantidade)
             WHERE id = NEW.produto_id;
             
             -- Log the inventory update for debugging
