@@ -3,7 +3,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Gift, Settings, CheckCircle, Star, ArrowRight, Users, Award } from 'lucide-react';
+import { Smartphone, Gift, Settings, CheckCircle, Star, ArrowRight, Users, TrendingUp, Award } from 'lucide-react';
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -26,20 +26,20 @@ const LandingPage = () => {
               <img 
                 src="/lovable-uploads/1349e6dc-0942-4cf7-9ee4-179461d0f81e.png" 
                 alt="Matershop Logo" 
-                className="h-8 w-auto mr-3"
+                className="h-8 w-8 mr-2"
               />
               <h1 className="text-2xl font-bold text-royal-blue">Matershop</h1>
             </div>
             <div className="flex items-center space-x-4">
               <Button 
                 variant="outline" 
-                onClick={handleLogin} 
+                onClick={handleLogin}
                 className="border-royal-blue text-royal-blue hover:bg-royal-blue hover:text-white"
               >
                 Entrar
               </Button>
               <Button 
-                onClick={handleSignUp} 
+                onClick={handleSignUp}
                 className="bg-orange-points hover:bg-orange-points/90 text-white"
               >
                 Criar Conta
@@ -54,11 +54,18 @@ const LandingPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 leading-tight mb-6">
-                Matershop conecta você às{' '}
-                <span className="text-royal-blue">melhores ofertas</span> e{' '}
-                <span className="text-orange-points">recompensas</span> da construção civil
-              </h1>
+              <div className="flex items-center mb-6">
+                <img 
+                  src="/lovable-uploads/1349e6dc-0942-4cf7-9ee4-179461d0f81e.png" 
+                  alt="Matershop Logo" 
+                  className="h-12 w-12 mr-4"
+                />
+                <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 leading-tight">
+                  Matershop conecta você às{' '}
+                  <span className="text-royal-blue">melhores ofertas</span> e{' '}
+                  <span className="text-orange-points">recompensas</span> da construção civil
+                </h1>
+              </div>
               <p className="text-xl text-gray-600 mb-8 leading-relaxed">
                 Cadastre-se grátis, garanta descontos exclusivos e acumule pontos online e nas lojas físicas parceiras.
               </p>
@@ -78,11 +85,7 @@ const LandingPage = () => {
             </div>
             <div className="relative">
               <div className="bg-gray-200 rounded-2xl p-8 shadow-xl">
-                <img 
-                  src="/lovable-uploads/570938f5-622e-4ae3-9a6a-10824efbc4a0.png" 
-                  alt="App Matershop Interface Mockup" 
-                  className="w-full h-auto mx-auto"
-                />
+                <Smartphone className="h-64 w-32 mx-auto text-royal-blue" />
                 <p className="text-center text-gray-600 mt-4">App Matershop</p>
               </div>
             </div>
@@ -186,11 +189,7 @@ const LandingPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className="bg-gray-200 rounded-2xl p-12 shadow-xl">
-              <img 
-                src="/lovable-uploads/b0c39168-18f8-41dd-a4a0-d83c7db7c41e.png" 
-                alt="Dashboard Profissional Matershop" 
-                className="w-full h-auto mx-auto"
-              />
+              <TrendingUp className="h-48 w-48 mx-auto text-royal-blue" />
               <p className="text-center text-gray-600 mt-4">Dashboard Profissional</p>
             </div>
             <div>
@@ -198,23 +197,12 @@ const LandingPage = () => {
                 Feito sob medida para quem vive de obra
               </h2>
               <div className="space-y-4">
-                {[
-                  "Compare preços sem sair da obra",
-                  "Ganhe até 3× mais pontos como profissional", 
-                  "Dashboard único com todos os seus pedidos e pontos",
-                  "Programa de indicação: convide colegas, ganhe pontos extras"
-                ].map((benefit, index) => (
-                  <div key={index} className="flex items-start">
+                {["Compare preços sem sair da obra", "Ganhe até 3× mais pontos como profissional", "Dashboard único com todos os seus pedidos e pontos", "Programa de indicação: convide colegas, ganhe pontos extras"].map((benefit, index) => <div key={index} className="flex items-start">
                     <CheckCircle className="h-6 w-6 text-orange-points mr-3 mt-0.5 flex-shrink-0" />
                     <p className="text-lg text-gray-700">{benefit}</p>
-                  </div>
-                ))}
+                  </div>)}
               </div>
-              <Button 
-                onClick={handleSignUp} 
-                size="lg" 
-                className="bg-royal-blue hover:bg-royal-blue/90 text-white mt-8 px-8 py-4 rounded-lg"
-              >
+              <Button onClick={handleSignUp} size="lg" className="bg-royal-blue hover:bg-royal-blue/90 text-white mt-8 px-8 py-4 rounded-lg">
                 Começar agora
               </Button>
             </div>
@@ -281,11 +269,11 @@ const LandingPage = () => {
       <footer className="py-12 bg-black">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <div className="flex justify-center items-center mb-4">
+            <div className="flex items-center justify-center mb-4">
               <img 
                 src="/lovable-uploads/1349e6dc-0942-4cf7-9ee4-179461d0f81e.png" 
                 alt="Matershop Logo" 
-                className="h-12 w-auto mr-3"
+                className="h-10 w-10 mr-3"
               />
               <h3 className="text-2xl font-bold text-white">Matershop</h3>
             </div>
@@ -295,8 +283,8 @@ const LandingPage = () => {
             <div className="flex justify-center space-x-6">
               <Button 
                 variant="outline" 
-                onClick={handleLogin} 
-                className="border-gray-600 text-gray-300 bg-construPro-orange"
+                onClick={handleLogin}
+                className="border-gray-600 text-gray-300 hover:bg-gray-700"
               >
                 Já tem conta? Entre aqui
               </Button>
