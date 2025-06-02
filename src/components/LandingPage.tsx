@@ -1,33 +1,17 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { 
-  Smartphone, 
-  Gift, 
-  Settings, 
-  CheckCircle, 
-  Star,
-  ArrowRight,
-  Users,
-  TrendingUp,
-  Award
-} from 'lucide-react';
-
+import { Smartphone, Gift, Settings, CheckCircle, Star, ArrowRight, Users, TrendingUp, Award } from 'lucide-react';
 const LandingPage = () => {
   const navigate = useNavigate();
-
   const handleSignUp = () => {
     navigate('/signup');
   };
-
   const handleLogin = () => {
     navigate('/login');
   };
-
-  return (
-    <div className="min-h-screen bg-white">
+  return <div className="min-h-screen bg-white">
       {/* Navigation */}
       <nav className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -36,17 +20,10 @@ const LandingPage = () => {
               <h1 className="text-2xl font-bold text-royal-blue">Matershop</h1>
             </div>
             <div className="flex items-center space-x-4">
-              <Button 
-                variant="outline" 
-                onClick={handleLogin}
-                className="border-royal-blue text-royal-blue hover:bg-royal-blue hover:text-white"
-              >
+              <Button variant="outline" onClick={handleLogin} className="border-royal-blue text-royal-blue hover:bg-royal-blue hover:text-white">
                 Entrar
               </Button>
-              <Button 
-                onClick={handleSignUp}
-                className="bg-orange-points hover:bg-orange-points/90 text-white"
-              >
+              <Button onClick={handleSignUp} className="bg-orange-points hover:bg-orange-points/90 text-white">
                 Criar Conta
               </Button>
             </div>
@@ -68,11 +45,7 @@ const LandingPage = () => {
                 Cadastre-se grátis, garanta descontos exclusivos e acumule pontos online e nas lojas físicas parceiras.
               </p>
               <div className="space-y-4">
-                <Button 
-                  onClick={handleSignUp}
-                  size="lg"
-                  className="bg-orange-points hover:bg-orange-points/90 text-white text-lg px-8 py-4 rounded-lg shadow-lg"
-                >
+                <Button onClick={handleSignUp} size="lg" className="bg-orange-points hover:bg-orange-points/90 text-white text-lg px-8 py-4 rounded-lg shadow-lg">
                   Criar conta gratuita
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
@@ -151,13 +124,23 @@ const LandingPage = () => {
             </p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {[
-              { step: 1, title: "Cadastre-se", desc: "Crie sua conta gratuita em menos de 2 minutos" },
-              { step: 2, title: "Aproveite descontos", desc: "Acesse cupons exclusivos para materiais" },
-              { step: 3, title: "Compre & acumule", desc: "Ganhe pontos a cada compra online ou física" },
-              { step: 4, title: "Troque por recompensas", desc: "Use seus pontos em prêmios incríveis" }
-            ].map((item) => (
-              <div key={item.step} className="text-center">
+            {[{
+            step: 1,
+            title: "Cadastre-se",
+            desc: "Crie sua conta gratuita em menos de 2 minutos"
+          }, {
+            step: 2,
+            title: "Aproveite descontos",
+            desc: "Acesse cupons exclusivos para materiais"
+          }, {
+            step: 3,
+            title: "Compre & acumule",
+            desc: "Ganhe pontos a cada compra online ou física"
+          }, {
+            step: 4,
+            title: "Troque por recompensas",
+            desc: "Use seus pontos em prêmios incríveis"
+          }].map(item => <div key={item.step} className="text-center">
                 <div className="bg-royal-blue text-white rounded-full w-16 h-16 flex items-center justify-center text-2xl font-bold mx-auto mb-4">
                   {item.step}
                 </div>
@@ -167,8 +150,7 @@ const LandingPage = () => {
                 <p className="text-gray-600">
                   {item.desc}
                 </p>
-              </div>
-            ))}
+              </div>)}
           </div>
         </div>
       </section>
@@ -186,23 +168,12 @@ const LandingPage = () => {
                 Feito sob medida para quem vive de obra
               </h2>
               <div className="space-y-4">
-                {[
-                  "Compare preços sem sair da obra",
-                  "Ganhe até 3× mais pontos como profissional",
-                  "Dashboard único com todos os seus pedidos e pontos",
-                  "Programa de indicação: convide colegas, ganhe pontos extras"
-                ].map((benefit, index) => (
-                  <div key={index} className="flex items-start">
+                {["Compare preços sem sair da obra", "Ganhe até 3× mais pontos como profissional", "Dashboard único com todos os seus pedidos e pontos", "Programa de indicação: convide colegas, ganhe pontos extras"].map((benefit, index) => <div key={index} className="flex items-start">
                     <CheckCircle className="h-6 w-6 text-orange-points mr-3 mt-0.5 flex-shrink-0" />
                     <p className="text-lg text-gray-700">{benefit}</p>
-                  </div>
-                ))}
+                  </div>)}
               </div>
-              <Button 
-                onClick={handleSignUp}
-                size="lg"
-                className="bg-royal-blue hover:bg-royal-blue/90 text-white mt-8 px-8 py-4 rounded-lg"
-              >
+              <Button onClick={handleSignUp} size="lg" className="bg-royal-blue hover:bg-royal-blue/90 text-white mt-8 px-8 py-4 rounded-lg">
                 Começar agora
               </Button>
             </div>
@@ -219,29 +190,22 @@ const LandingPage = () => {
             </h2>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                name: "João Silva",
-                role: "Pedreiro",
-                content: "Economizei mais de R$ 500 no último mês só com os cupons. Recomendo para todos os colegas!"
-              },
-              {
-                name: "Maria Santos",
-                role: "Engenheira Civil",
-                content: "O dashboard é perfeito para acompanhar todos os gastos da obra. Organização que faltava!"
-              },
-              {
-                name: "Carlos Oliveira", 
-                role: "Mestre de Obra",
-                content: "Os pontos acumulam rápido e já troquei por várias ferramentas. Sistema muito bom!"
-              }
-            ].map((testimonial, index) => (
-              <Card key={index} className="border-0 shadow-lg rounded-lg">
+            {[{
+            name: "João Silva",
+            role: "Pedreiro",
+            content: "Economizei mais de R$ 500 no último mês só com os cupons. Recomendo para todos os colegas!"
+          }, {
+            name: "Maria Santos",
+            role: "Engenheira Civil",
+            content: "O dashboard é perfeito para acompanhar todos os gastos da obra. Organização que faltava!"
+          }, {
+            name: "Carlos Oliveira",
+            role: "Mestre de Obra",
+            content: "Os pontos acumulam rápido e já troquei por várias ferramentas. Sistema muito bom!"
+          }].map((testimonial, index) => <Card key={index} className="border-0 shadow-lg rounded-lg">
                 <CardContent className="p-6">
                   <div className="flex mb-4">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="h-5 w-5 text-yellow-400 fill-current" />
-                    ))}
+                    {[...Array(5)].map((_, i) => <Star key={i} className="h-5 w-5 text-yellow-400 fill-current" />)}
                   </div>
                   <p className="text-gray-600 mb-4 italic">
                     "{testimonial.content}"
@@ -251,8 +215,7 @@ const LandingPage = () => {
                     <p className="text-sm text-gray-500">{testimonial.role}</p>
                   </div>
                 </CardContent>
-              </Card>
-            ))}
+              </Card>)}
           </div>
         </div>
       </section>
@@ -266,11 +229,7 @@ const LandingPage = () => {
           <p className="text-xl text-blue-100 mb-8">
             Junte-se a milhares de profissionais e consumidores que já economizam com a Matershop
           </p>
-          <Button 
-            onClick={handleSignUp}
-            size="lg"
-            className="bg-orange-points hover:bg-orange-points/90 text-white text-xl px-12 py-6 rounded-lg shadow-xl"
-          >
+          <Button onClick={handleSignUp} size="lg" className="bg-orange-points hover:bg-orange-points/90 text-white text-xl px-12 py-6 rounded-lg shadow-xl">
             Cadastre-se agora
             <Users className="ml-3 h-6 w-6" />
           </Button>
@@ -286,19 +245,13 @@ const LandingPage = () => {
               Marketplace e Clube de Compras Inteligentes para Profissionais e consumidores da Construção
             </p>
             <div className="flex justify-center space-x-6">
-              <Button 
-                variant="outline" 
-                onClick={handleLogin}
-                className="border-gray-600 text-gray-300 hover:bg-gray-800"
-              >
+              <Button variant="outline" onClick={handleLogin} className="border-gray-600 text-gray-300 bg-construPro-orange">
                 Já tem conta? Entre aqui
               </Button>
             </div>
           </div>
         </div>
       </footer>
-    </div>
-  );
+    </div>;
 };
-
 export default LandingPage;
