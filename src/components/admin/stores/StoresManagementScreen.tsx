@@ -109,20 +109,8 @@ const StoresManagementScreen: React.FC = () => {
         await refreshStores();
         
         console.log('[StoresManagementScreen] Cache invalidated and data refetched');
-        
-        // Show success toast
-        toast({
-          title: "Sucesso",
-          description: "Loja aprovada com sucesso!",
-          variant: "default"
-        });
       } else {
         console.error('[StoresManagementScreen] Approval failed - no success returned');
-        toast({
-          title: "Erro",
-          description: "Falha ao aprovar loja. Tente novamente.",
-          variant: "destructive"
-        });
       }
     } catch (error) {
       console.error('[StoresManagementScreen] Error in approval process:', error);
@@ -164,20 +152,8 @@ const StoresManagementScreen: React.FC = () => {
         await refreshStores();
         
         console.log('[StoresManagementScreen] Cache invalidated and data refetched');
-        
-        // Show success toast
-        toast({
-          title: "Sucesso",
-          description: "Loja rejeitada com sucesso!",
-          variant: "default"
-        });
       } else {
         console.error('[StoresManagementScreen] Rejection failed - no success returned');
-        toast({
-          title: "Erro",
-          description: "Falha ao rejeitar loja. Tente novamente.",
-          variant: "destructive"
-        });
       }
     } catch (error) {
       console.error('[StoresManagementScreen] Error in rejection process:', error);
