@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import AdminLayout from '../AdminLayout';
 import { useTitle } from '@/hooks/use-title';
 import { Card } from '@/components/ui/card';
@@ -33,9 +33,45 @@ const StoresManagementScreen: React.FC = () => {
     }
   });
 
-  // For backward compatibility with existing hooks
+  // State for filtering
   const [filter, setFilter] = React.useState('all');
   const [searchTerm, setSearchTerm] = React.useState('');
+  
+  // Apply filters to the stores data
+  const filteredStores = useMemo(() => {
+    let filtered = [...stores];
+    
+    // Apply status filter
+    if (filter !== 'all') {
+      if (filter === 'aprovado') {
+        // Include both 'aprovado' and 'ativo' status for approved filter
+        filtered = filtered.filter(store => 
+          store.status === 'aprovado' || store.status === 'ativo'
+        );
+      } else {
+        filtered = filtered.filter(store => store.status === filter);
+      }
+    }
+    
+    // Apply search filter
+    if (searchTerm) {
+      const lowerSearch = searchTerm.toLowerCase();
+      filtered = filtered.filter(store => 
+        store.nome.toLowerCase().includes(lowerSearch) ||
+        (store.descricao && store.descricao.toLowerCase().includes(lowerSearch)) ||
+        (store.proprietario_nome && store.proprietario_nome.toLowerCase().includes(lowerSearch))
+      );
+    }
+    
+    console.log('[StoresManagementScreen] Filtered stores:', {
+      total: stores.length,
+      filtered: filtered.length,
+      filter,
+      searchTerm
+    });
+    
+    return filtered;
+  }, [stores, filter, searchTerm]);
   
   // Handle store approval
   const approveStore = async (storeId: string) => {
@@ -68,13 +104,29 @@ const StoresManagementScreen: React.FC = () => {
             <div className="p-6">
               <LoadingState text="Carregando lojas..." />
             </div>
-          ) : stores.length === 0 ? (
+          ) : filteredStores.length === 0 ? (
             <div className="p-6 text-center">
-              <p className="text-gray-500">Nenhuma loja encontrada.</p>
+              <p className="text-gray-500">
+                {searchTerm || filter !== 'all' 
+                  ? 'Nenhuma loja encontrada com os filtros aplicados.' 
+                  : 'Nenhuma loja encontrada.'
+                }
+              </p>
+              {(searchTerm || filter !== 'all') && (
+                <button 
+                  onClick={() => {
+                    setSearchTerm('');
+                    setFilter('all');
+                  }}
+                  className="mt-2 text-blue-600 hover:underline"
+                >
+                  Limpar filtros
+                </button>
+              )}
             </div>
           ) : (
             <StoresTable 
-              stores={stores}
+              stores={filteredStores}
               approveStore={approveStore}
               rejectStore={rejectStore}
             />
