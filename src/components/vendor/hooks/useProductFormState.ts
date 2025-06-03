@@ -42,39 +42,33 @@ export const useProductFormState = ({ isEditing = false, productId, initialData 
   // Initialize form data when initialData is provided
   useEffect(() => {
     if (initialData && isEditing) {
-      console.log('[useProductFormState] useEffect triggered with initialData:', initialData);
-      console.log('[useProductFormState] Raw images from initialData:', initialData.imagens);
+      console.log('[useProductFormState] Initializing with data:', initialData);
+      console.log('[useProductFormState] Raw images from data:', initialData.imagens);
       
-      try {
-        // Process images first
-        const processedImages = processImages(initialData.imagens || []);
-        console.log('[useProductFormState] Processed images result:', processedImages);
-        
-        // Initialize form data with processed images
-        initializeFormData(initialData, processedImages);
-        
-        // Initialize image states with processed images
-        console.log('[useProductFormState] About to initialize image states with:', processedImages);
-        initializeImageStates(processedImages);
-        
-        console.log('[useProductFormState] Initialization complete');
-      } catch (error) {
-        console.error('[useProductFormState] Error during initialization:', error);
-      }
+      // Process images first
+      const processedImages = processImages(initialData.imagens || []);
+      console.log('[useProductFormState] Processed images:', processedImages);
+      
+      // Initialize form data with processed images
+      initializeFormData(initialData, processedImages);
+      
+      // Initialize image states with processed images
+      initializeImageStates(processedImages);
+      
+      console.log('[useProductFormState] Initialization complete');
     }
   }, [initialData, isEditing, processImages, initializeFormData, initializeImageStates]);
 
-  // Debug effect to log state changes
+  // Debug logging
   useEffect(() => {
-    console.log('[useProductFormState] State debug:', {
+    console.log('[useProductFormState] Current state:', {
       formDataNome: formData.nome,
-      formDataDescricao: formData.descricao,
       imagePreviews: imagePreviews.length,
       existingImages: existingImages.length,
       imageFiles: imageFiles.length,
-      imagePreviewsContent: imagePreviews.slice(0, 2) // Show first 2 URLs for debugging
+      previewUrls: imagePreviews.slice(0, 2)
     });
-  }, [formData.nome, formData.descricao, imagePreviews, existingImages, imageFiles]);
+  }, [formData.nome, imagePreviews, existingImages, imageFiles]);
 
   return {
     loading,

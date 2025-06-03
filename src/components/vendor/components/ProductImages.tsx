@@ -19,12 +19,10 @@ const ProductImages: React.FC<ProductImagesProps> = ({
   onImageUpload,
   onRemoveImage
 }) => {
-  // Enhanced debug logging
   console.log('[ProductImages] Render state:', {
     imagePreviews: imagePreviews.length,
-    imagePreviewsContent: imagePreviews,
+    imagePreviewsUrls: imagePreviews,
     existingImages: existingImages.length,
-    existingImagesContent: existingImages,
     imageFiles: imageFiles.length,
     uploadingImages
   });
@@ -38,18 +36,18 @@ const ProductImages: React.FC<ProductImagesProps> = ({
       
       {/* Debug info in development */}
       {process.env.NODE_ENV === 'development' && (
-        <div className="mb-4 p-2 bg-gray-100 rounded text-xs">
+        <div className="mb-4 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
           <strong>Debug Info:</strong> 
           <br />- Image previews: {imagePreviews.length} 
           <br />- Existing images: {existingImages.length} 
           <br />- New files: {imageFiles.length}
           <br />- Uploading: {uploadingImages ? 'Yes' : 'No'}
           {imagePreviews.length > 0 && (
-            <div className="mt-1">
-              <strong>Preview URLs:</strong>
+            <div className="mt-2">
+              <strong>URLs:</strong>
               {imagePreviews.map((url, i) => (
-                <div key={i} className="truncate text-xs">
-                  {i + 1}. {url.length > 60 ? url.substring(0, 60) + '...' : url}
+                <div key={i} className="truncate text-xs mt-1">
+                  {i + 1}. {url.length > 80 ? url.substring(0, 80) + '...' : url}
                 </div>
               ))}
             </div>
@@ -94,19 +92,13 @@ const ProductImages: React.FC<ProductImagesProps> = ({
               const isExisting = existingImages.includes(imageUrl);
               const isBlob = imageUrl.startsWith('blob:');
               
-              console.log(`[ProductImages] Rendering image ${index}:`, {
-                url: imageUrl.substring(0, 100) + '...',
-                isExisting,
-                isBlob
-              });
-              
               return (
-                <div key={`image-${index}-${imageUrl.substring(imageUrl.length - 10)}`} className="relative group">
+                <div key={`image-${index}-${Date.now()}`} className="relative group">
                   <img
                     src={imageUrl}
                     alt={`Preview ${index + 1}`}
                     className="w-full h-24 object-cover rounded-lg border"
-                    onLoad={() => console.log(`[ProductImages] Image ${index} loaded successfully from:`, imageUrl.substring(0, 50) + '...')}
+                    onLoad={() => console.log(`[ProductImages] Image ${index} loaded:`, imageUrl.substring(0, 50) + '...')}
                     onError={(e) => {
                       console.error(`[ProductImages] Error loading image ${index}:`, imageUrl);
                       const target = e.target as HTMLImageElement;
@@ -148,11 +140,12 @@ const ProductImages: React.FC<ProductImagesProps> = ({
         <div className="mt-4">
           <p className="text-red-500 text-sm">É obrigatório adicionar pelo menos uma imagem.</p>
           {process.env.NODE_ENV === 'development' && (
-            <div className="text-gray-500 text-xs mt-1">
-              <p>Debug: Se você está editando um produto, verifique se as imagens estão sendo carregadas corretamente.</p>
+            <div className="text-gray-500 text-xs mt-2 bg-gray-50 p-2 rounded">
+              <p><strong>Debug:</strong> Se você está editando um produto e não vê imagens:</p>
               <p>- Existing images: {existingImages.length}</p>
               <p>- Image previews: {imagePreviews.length}</p>
               <p>- Image files: {imageFiles.length}</p>
+              <p>- Verifique se as imagens estão sendo processadas corretamente no console</p>
             </div>
           )}
         </div>

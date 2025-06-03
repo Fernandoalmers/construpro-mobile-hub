@@ -39,22 +39,17 @@ export const useProductFormData = (initialData?: any) => {
   });
 
   const handleInputChange = useCallback((field: string, value: any) => {
-    console.log(`[useProductFormData] handleInputChange called: ${field} =`, value);
-    setFormData(prev => {
-      const newData = {
-        ...prev,
-        [field]: value
-      };
-      console.log(`[useProductFormData] Form data updated for ${field}:`, newData);
-      return newData;
-    });
+    console.log(`[useProductFormData] handleInputChange: ${field} =`, value);
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
   }, []);
 
   const handleSegmentIdChange = useCallback((segmentId: string) => {
-    console.log('[useProductFormData] Segment ID changing from', currentSegmentId, 'to', segmentId);
+    console.log('[useProductFormData] Segment ID changing to:', segmentId);
     
     if (segmentId !== currentSegmentId) {
-      console.log('[useProductFormData] Segment changed, clearing category');
       setCurrentSegmentId(segmentId);
       setFormData(prev => ({
         ...prev,
@@ -70,18 +65,15 @@ export const useProductFormData = (initialData?: any) => {
   }, [currentSegmentId]);
 
   const handleSegmentNameChange = useCallback((segmentName: string) => {
-    console.log('[useProductFormData] Segment name changing to:', segmentName);
     handleInputChange('segmento', segmentName);
   }, [handleInputChange]);
 
   const handleCategoryChange = useCallback((categoryName: string) => {
-    console.log('[useProductFormData] Category changing to:', categoryName);
     handleInputChange('categoria', categoryName);
   }, [handleInputChange]);
 
   const initializeFormData = useCallback((data: any, processedImages: string[]) => {
-    console.log('[useProductFormData] Initializing with data:', data);
-    console.log('[useProductFormData] Initializing with processed images:', processedImages);
+    console.log('[useProductFormData] Initializing form data with:', { data, processedImages });
     
     const newFormData = {
       id: data.id || '',
@@ -100,11 +92,10 @@ export const useProductFormData = (initialData?: any) => {
       imagens: [...processedImages]
     };
     
-    console.log('[useProductFormData] Setting form data:', newFormData);
     setFormData(newFormData);
     setCurrentSegmentId(data.segmento_id || '');
     
-    console.log('[useProductFormData] Form data initialization complete');
+    console.log('[useProductFormData] Form data initialized:', newFormData);
   }, []);
 
   return {
