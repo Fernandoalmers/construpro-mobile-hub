@@ -9,7 +9,6 @@ import {
   FormControl, 
   FormMessage 
 } from '@/components/ui/form';
-import { AdminSegment } from '@/types/admin';
 import CustomInput from '@/components/common/CustomInput';
 import CustomSelect from '@/components/common/CustomSelect';
 import CustomButton from '@/components/common/CustomButton';
@@ -19,12 +18,12 @@ interface CategoryFormProps {
   initialData?: {
     id?: string;
     nome: string;
-    segment_id?: string;
+    segmento_id?: string;
     status?: string;
   };
   onSubmit: (data: {
     nome: string;
-    segment_id?: string;
+    segmento_id: string;
     status: string;
   }) => void;
   isLoading: boolean;
@@ -41,7 +40,7 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
   const form = useForm({
     defaultValues: {
       nome: initialData?.nome || '',
-      segment_id: initialData?.segment_id || '',
+      segmento_id: initialData?.segmento_id || '',
       status: initialData?.status || 'ativo'
     }
   });
@@ -63,21 +62,23 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
   }, []);
 
   const handleSubmit = form.handleSubmit((data) => {
-    // Ensure status is always defined
-    const formData = {
-      ...data,
+    // Ensure required fields are present
+    if (!data.segmento_id) {
+      form.setError('segmento_id', { message: 'Segmento é obrigatório' });
+      return;
+    }
+    
+    onSubmit({
+      nome: data.nome,
+      segmento_id: data.segmento_id,
       status: data.status || 'ativo'
-    };
-    onSubmit(formData);
+    });
   });
 
   const segmentOptions = segments.map(segment => ({
     value: segment.id,
     label: segment.nome
   }));
-
-  // Add an empty option for no segment
-  segmentOptions.unshift({ value: '', label: 'Nenhum segmento' });
 
   const statusOptions = [
     { value: 'ativo', label: 'Ativo' },
@@ -90,6 +91,7 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
         <FormField
           control={form.control}
           name="nome"
+          rules={{ required: 'Nome da categoria é obrigatório' }}
           render={({ field }) => (
             <FormItem>
               <FormLabel>Nome da Categoria</FormLabel>
@@ -106,7 +108,8 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
 
         <FormField
           control={form.control}
-          name="segment_id"
+          name="segmento_id"
+          rules={{ required: 'Segmento é obrigatório' }}
           render={({ field }) => (
             <FormItem>
               <FormLabel>Segmento</FormLabel>

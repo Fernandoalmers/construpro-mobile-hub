@@ -5,7 +5,8 @@ import { FileSymlink } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import ProductSegmentSelect from '../ProductSegmentSelect';
-import { categorias, tagOptions } from '../utils/productValidation';
+import ProductCategorySelect from '../ProductCategorySelect';
+import { tagOptions } from '../utils/productValidation';
 import { ProductFormValues } from '../hooks/useProdutoForm';
 import {
   FormControl,
@@ -14,13 +15,6 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   AccordionContent,
   AccordionItem,
@@ -40,6 +34,9 @@ const GeneralInformationSection: React.FC<GeneralInformationSectionProps> = ({
   onTagToggle,
   onSegmentIdChange
 }) => {
+  // Watch segment ID to filter categories
+  const watchSegmentId = form.watch('segmento_id');
+
   return (
     <AccordionItem value="item-1">
       <AccordionTrigger className="bg-white px-4 py-3 rounded-t-md shadow-sm border border-gray-200">
@@ -109,24 +106,15 @@ const GeneralInformationSection: React.FC<GeneralInformationSectionProps> = ({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Categoria*</FormLabel>
-                  <Select 
-                    onValueChange={field.onChange} 
-                    defaultValue={field.value}
-                    value={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione uma categoria" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {categorias.map(categoria => (
-                        <SelectItem key={categoria} value={categoria}>
-                          {categoria}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <ProductCategorySelect
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                      error={form.formState.errors.categoria?.message}
+                      required={true}
+                      segmentId={watchSegmentId}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

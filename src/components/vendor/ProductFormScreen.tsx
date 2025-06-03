@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Upload, X, Save, Eye } from 'lucide-react';
+import { ArrowLeft, Upload, X, Save } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { saveVendorProduct } from '@/services/vendor/products/productOperations';
 import { uploadProductImage } from '@/services/products/images/imageUpload';
 import ProductSegmentSelect from './ProductSegmentSelect';
+import ProductCategorySelect from './ProductCategorySelect';
 
 interface ProductFormScreenProps {
   isEditing?: boolean;
@@ -342,12 +343,11 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
             </div>
             <div>
               <label className="block text-sm font-medium mb-2">Categoria *</label>
-              <input
-                type="text"
+              <ProductCategorySelect
                 value={formData.categoria}
-                onChange={(e) => handleInputChange('categoria', e.target.value)}
-                className="w-full border rounded-lg px-3 py-2"
-                placeholder="Digite a categoria"
+                onChange={(value) => handleInputChange('categoria', value)}
+                segmentId={formData.segmento_id}
+                required={true}
               />
             </div>
           </div>
@@ -367,7 +367,13 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
             <ProductSegmentSelect
               value={formData.segmento}
               onChange={(segmentName) => handleInputChange('segmento', segmentName)}
-              onSegmentIdChange={(segmentId) => handleInputChange('segmento_id', segmentId)}
+              onSegmentIdChange={(segmentId) => {
+                handleInputChange('segmento_id', segmentId);
+                // Clear category when segment changes
+                if (formData.categoria) {
+                  handleInputChange('categoria', '');
+                }
+              }}
               initialSegmentId={formData.segmento_id}
             />
           </div>
