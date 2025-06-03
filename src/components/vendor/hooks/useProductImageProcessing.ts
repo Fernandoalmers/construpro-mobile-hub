@@ -12,105 +12,41 @@ export const useProductImageProcessing = () => {
       return [];
     }
 
-    let processedImages: string[] = [];
+    // Use the enhanced safeFirstImage function to extract all valid URLs
+    const result: string[] = [];
     
     try {
-      // Handle different types of image data
+      // If it's already an array, process each item
       if (Array.isArray(rawImages)) {
         console.log('[useProductImageProcessing] Processing array, length:', rawImages.length);
         
-        // Enhanced nested array detection and flattening
-        let currentArray = rawImages;
-        let flattenDepth = 0;
-        
-        // Safely flatten nested arrays with depth limit
-        while (currentArray.length > 0 && Array.isArray(currentArray[0]) && flattenDepth < 5) {
-          console.log('[useProductImageProcessing] Flattening nested array at depth:', flattenDepth);
-          currentArray = currentArray.flat();
-          flattenDepth++;
-        }
-        
-        if (flattenDepth >= 5) {
-          console.error('[useProductImageProcessing] Too many nested arrays, stopping to prevent infinite loop');
-          return [];
-        }
-        
-        processedImages = currentArray.filter((img, index) => {
-          if (!img || typeof img !== 'string') {
-            console.log(`[useProductImageProcessing] Skipping invalid item at index ${index}:`, img);
-            return false;
-          }
-          
-          const trimmed = img.trim();
-          const isValid = trimmed !== '' && trimmed !== 'null' && trimmed !== 'undefined';
-          
-          if (!isValid) {
-            console.log(`[useProductImageProcessing] Skipping empty/invalid item at index ${index}:`, trimmed);
+        // Process each element in the array
+        rawImages.forEach((item, index) => {
+          const extractedUrl = safeFirstImage(item);
+          if (extractedUrl) {
+            console.log(`[useProductImageProcessing] ✅ Extracted URL from index ${index}:`, extractedUrl.substring(0, 50) + '...');
+            result.push(extractedUrl);
           } else {
-            console.log(`[useProductImageProcessing] ✅ Valid image at index ${index}:`, trimmed.substring(0, 50) + '...');
+            console.log(`[useProductImageProcessing] ❌ No valid URL from index ${index}`);
           }
-          
-          return isValid;
         });
-      } else if (typeof rawImages === 'string') {
-        if (rawImages.trim() === '' || rawImages === 'null' || rawImages === 'undefined') {
-          console.log('[useProductImageProcessing] Empty string provided');
-          return [];
-        }
-        
-        // Try to parse as JSON first
-        try {
-          const parsed = JSON.parse(rawImages);
-          console.log('[useProductImageProcessing] Parsed JSON string:', parsed);
-          
-          if (Array.isArray(parsed)) {
-            // Recursively process the parsed array
-            return processImages(parsed);
-          } else if (typeof parsed === 'string') {
-            processedImages = [parsed];
-          }
-        } catch (e) {
-          // If not JSON, treat as single URL
-          console.log('[useProductImageProcessing] Treating as single URL string');
-          processedImages = [rawImages];
-        }
       } else {
-        console.log('[useProductImageProcessing] Unsupported data type:', typeof rawImages);
-        return [];
+        // For non-array inputs, try to extract a single URL
+        const extractedUrl = safeFirstImage(rawImages);
+        if (extractedUrl) {
+          console.log('[useProductImageProcessing] ✅ Extracted single URL:', extractedUrl.substring(0, 50) + '...');
+          result.push(extractedUrl);
+        } else {
+          console.log('[useProductImageProcessing] ❌ No valid URL extracted from input');
+        }
       }
       
-      // Enhanced validation with URL format checking
-      const validImages = processedImages.filter((img, index) => {
-        if (!img || typeof img !== 'string') {
-          console.log(`[useProductImageProcessing] Final filter: skipping non-string at ${index}:`, img);
-          return false;
-        }
-        
-        const trimmed = img.trim();
-        
-        // Basic validation
-        if (trimmed === '' || trimmed === 'null' || trimmed === 'undefined') {
-          console.log(`[useProductImageProcessing] Final filter: skipping empty at ${index}:`, trimmed);
-          return false;
-        }
-        
-        // Enhanced URL validation
-        const isValidUrl = trimmed.match(/^(https?:\/\/|blob:|data:image\/)/);
-        if (!isValidUrl) {
-          console.log(`[useProductImageProcessing] Final filter: invalid URL format at ${index}:`, trimmed.substring(0, 50) + '...');
-          return false;
-        }
-        
-        console.log(`[useProductImageProcessing] ✅ Final validation passed for ${index}:`, trimmed.substring(0, 50) + '...');
-        return true;
-      });
-      
-      console.log('[useProductImageProcessing] Final processed images count:', validImages.length);
-      validImages.forEach((img, index) => {
+      console.log('[useProductImageProcessing] Final processed images count:', result.length);
+      result.forEach((img, index) => {
         console.log(`[useProductImageProcessing] Final image ${index}:`, img.substring(0, 80) + '...');
       });
       
-      return validImages;
+      return result;
       
     } catch (error) {
       console.error('[useProductImageProcessing] Error processing images:', error);

@@ -2,6 +2,7 @@
 /**
  * Safely extracts the first image URL from various image data formats
  * Handles: strings, arrays, nested arrays, and JSON strings
+ * Enhanced version with better nested array handling
  */
 export function safeFirstImage(imagens: any): string | null {
   if (!imagens) {
@@ -21,7 +22,7 @@ export function safeFirstImage(imagens: any): string | null {
   // Handle string (could be JSON or single URL)
   if (typeof imagens === 'string') {
     // Skip if it's already a blob URL or looks like a single URL
-    if (imagens.startsWith('blob:') || imagens.startsWith('http')) {
+    if (imagens.startsWith('blob:') || imagens.startsWith('http') || imagens.startsWith('data:')) {
       console.log('[imageUtils] ✅ Direct URL string:', imagens.substring(0, 50) + '...');
       return imagens;
     }
@@ -58,21 +59,42 @@ export function safeFirstImage(imagens: any): string | null {
     return null;
   }
   
-  // Enhanced nested array handling with depth protection
+  // Enhanced nested array handling with depth protection and better flattening
   let depth = 0;
-  while (imageArray.length > 0 && Array.isArray(imageArray[0]) && depth < 5) {
-    console.log('[imageUtils] Flattening nested array at depth:', depth);
-    imageArray = imageArray.flat();
-    depth++;
-  }
+  let currentArray = imageArray;
   
-  if (depth >= 5) {
-    console.error('[imageUtils] ❌ Too many nested arrays, stopping to prevent infinite loop');
-    return null;
+  while (depth < 10) { // Increased depth limit for safety
+    // Check if we have any nested arrays
+    const hasNestedArrays = currentArray.some(item => Array.isArray(item));
+    
+    if (!hasNestedArrays) {
+      break; // No more nested arrays to flatten
+    }
+    
+    console.log('[imageUtils] Flattening nested array at depth:', depth);
+    
+    // Flatten one level and filter out empty arrays
+    const newArray = [];
+    for (const item of currentArray) {
+      if (Array.isArray(item)) {
+        newArray.push(...item);
+      } else {
+        newArray.push(item);
+      }
+    }
+    
+    currentArray = newArray;
+    depth++;
+    
+    // Safety check to prevent infinite loops
+    if (depth >= 10) {
+      console.error('[imageUtils] ❌ Too many nested arrays, stopping to prevent infinite loop');
+      break;
+    }
   }
   
   // Enhanced filtering with better validation
-  const validImages = imageArray.filter((img, index) => {
+  const validImages = currentArray.filter((img, index) => {
     if (!img || typeof img !== 'string') {
       console.log(`[imageUtils] Skipping invalid item at index ${index}:`, img);
       return false;
@@ -84,8 +106,9 @@ export function safeFirstImage(imagens: any): string | null {
       return false;
     }
     
-    // Basic URL validation
-    if (!trimmed.match(/^(https?:\/\/|blob:|data:image\/)/)) {
+    // Enhanced URL validation - more permissive for various URL formats
+    const isValidUrl = trimmed.match(/^(https?:\/\/|blob:|data:image\/|\/)/);
+    if (!isValidUrl) {
       console.log(`[imageUtils] Skipping invalid URL format at index ${index}:`, trimmed.substring(0, 50) + '...');
       return false;
     }
@@ -127,10 +150,20 @@ export function debugImageData(productName: string, imageData: any, context: str
     console.log('Is array:', Array.isArray(imageData));
     if (Array.isArray(imageData)) {
       console.log('Array length:', imageData.length);
-      console.log('First element type:', typeof imageData[0]);
-      console.log('Is first element array:', Array.isArray(imageData[0]));
+      if (imageData.length > 0) {
+        console.log('First element:', imageData[0]);
+        console.log('First element type:', typeof imageData[0]);
+        console.log('Is first element array:', Array.isArray(imageData[0]));
+        
+        // Check for deeply nested arrays
+        if (Array.isArray(imageData[0]) && imageData[0].length > 0) {
+          console.log('Second level element:', imageData[0][0]);
+          console.log('Second level element type:', typeof imageData[0][0]);
+        }
+      }
     }
     console.log('Stringified:', JSON.stringify(imageData));
+    console.log('Result from safeFirstImage:', safeFirstImage(imageData));
     console.groupEnd();
   }
 }
