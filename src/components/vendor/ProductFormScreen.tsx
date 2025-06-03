@@ -49,29 +49,48 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
   // Initialize form data
   useEffect(() => {
     if (initialData) {
-      console.log('[ProductFormScreen] Setting form data from initialData:', initialData);
+      console.log('[ProductFormScreen] Initializing with data:', initialData);
+      console.log('[ProductFormScreen] Raw images data:', initialData.imagens);
+      console.log('[ProductFormScreen] Type of images:', typeof initialData.imagens);
       
-      // Parse existing images
-      let parsedExistingImages: string[] = [];
+      // Process existing images correctly
+      let processedImages: string[] = [];
+      
       if (initialData.imagens) {
-        if (typeof initialData.imagens === 'string') {
+        // If it's already an array, use it directly
+        if (Array.isArray(initialData.imagens)) {
+          processedImages = initialData.imagens;
+          console.log('[ProductFormScreen] Images are already an array:', processedImages);
+        } 
+        // If it's a string, try to parse it
+        else if (typeof initialData.imagens === 'string') {
           try {
-            parsedExistingImages = JSON.parse(initialData.imagens);
+            const parsed = JSON.parse(initialData.imagens);
+            if (Array.isArray(parsed)) {
+              processedImages = parsed;
+              console.log('[ProductFormScreen] Successfully parsed images from string:', processedImages);
+            } else {
+              // If it's a single image string
+              processedImages = [initialData.imagens];
+              console.log('[ProductFormScreen] Single image string converted to array:', processedImages);
+            }
           } catch (e) {
-            console.warn('Failed to parse imagens string:', initialData.imagens);
-            parsedExistingImages = [initialData.imagens]; // Treat as single image
+            console.warn('[ProductFormScreen] Failed to parse images string, treating as single image:', initialData.imagens);
+            processedImages = [initialData.imagens];
           }
-        } else if (Array.isArray(initialData.imagens)) {
-          parsedExistingImages = initialData.imagens;
         }
       }
       
-      // Filter out invalid images (empty strings, blob URLs)
-      const validExistingImages = parsedExistingImages.filter(img => 
-        img && typeof img === 'string' && img.trim() !== '' && !img.startsWith('blob:')
+      // Filter out only truly invalid images (empty strings, null, undefined)
+      const validImages = processedImages.filter(img => 
+        img && 
+        typeof img === 'string' && 
+        img.trim() !== '' && 
+        img !== 'null' && 
+        img !== 'undefined'
       );
       
-      console.log('[ProductFormScreen] Valid existing images:', validExistingImages);
+      console.log('[ProductFormScreen] Valid images after filtering:', validImages);
       
       const newFormData = {
         id: initialData.id || '',
@@ -87,17 +106,19 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
         estoque: initialData.estoque || 0,
         sku: initialData.sku || '',
         codigo_barras: initialData.codigo_barras || '',
-        imagens: validExistingImages
+        imagens: validImages
       };
       
+      console.log('[ProductFormScreen] Form data initialized:', newFormData);
       setFormData(newFormData);
       setCurrentSegmentId(initialData.segmento_id || '');
 
-      // Set existing images state and previews
-      setExistingImages(validExistingImages);
-      setImagePreviews(validExistingImages);
+      // Set all image states consistently
+      setExistingImages(validImages);
+      setImagePreviews(validImages);
       
-      console.log('[ProductFormScreen] Form initialized with existing images:', validExistingImages);
+      console.log('[ProductFormScreen] All image states set to:', validImages);
+      console.log('[ProductFormScreen] Existing images count:', validImages.length);
     }
   }, [initialData]);
 
@@ -176,9 +197,9 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
       return;
     }
 
-    console.log('[ProductFormScreen] Starting image upload for files:', files.map(f => f.name));
-    console.log('[ProductFormScreen] Current previews count:', imagePreviews.length);
+    console.log('[ProductFormScreen] Adding new images. Current previews:', imagePreviews.length);
     console.log('[ProductFormScreen] Current existing images:', existingImages.length);
+    console.log('[ProductFormScreen] New files to add:', files.length);
     
     setUploadingImages(true);
     
@@ -250,11 +271,11 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
       
       if (blobIndex !== -1) {
         // Remove the corresponding file
-        const newImageStartIndex = existingImages.length;
-        const fileIndex = newImageStartIndex + blobIndex - blobUrls.slice(0, blobIndex).length;
+        const fileIndexOffset = existingImages.length;
+        const actualFileIndex = blobIndex;
         
-        if (fileIndex >= 0 && fileIndex < newFiles.length) {
-          newFiles.splice(fileIndex, 1);
+        if (actualFileIndex >= 0 && actualFileIndex < newFiles.length) {
+          newFiles.splice(actualFileIndex, 1);
         }
       }
       
@@ -321,7 +342,7 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
         imagens: [...existingImages] // Start with existing images preserved
       };
       
-      console.log('[ProductFormScreen] Product data to save:', productToSave);
+      console.log('[ProductFormScreen] Product data to save (with existing images):', productToSave);
       
       // Save product first
       const savedProduct = await saveVendorProduct(productToSave);
