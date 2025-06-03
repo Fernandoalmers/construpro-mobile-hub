@@ -2,8 +2,8 @@
 import { useState } from 'react';
 import { toast } from '@/components/ui/sonner';
 import { saveVendorProduct, updateProductImages } from '@/services/vendorProductsService';
-// Use absolute import to avoid any module resolution conflicts
-import { uploadProductImage } from '../../../services/vendor/products/productImages';
+// Import específico da função vendor para evitar conflitos de nome
+import { uploadProductImage } from '@/services/vendor/products/productImages';
 import { ProductFormData } from './useProductFormData';
 
 interface UseProductSaveProps {

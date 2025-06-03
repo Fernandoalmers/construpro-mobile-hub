@@ -16,7 +16,7 @@ import {
 
 import {
   uploadImageFile,
-  uploadProductImage,
+  uploadGenericProductImage,
   updateProductImages,
   getProductImages,
   updateProductImage,
@@ -89,7 +89,7 @@ export {
   
   // Product Images
   uploadImageFile,
-  uploadProductImage,
+  uploadGenericProductImage,
   updateProductImages,
   getProductImages,
   updateProductImage,

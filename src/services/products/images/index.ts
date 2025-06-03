@@ -1,7 +1,7 @@
 
 // Re-export all product image functionality
 export type { ProductImage } from './productImageTypes';
-export { uploadImageFile, uploadProductImage } from './imageUpload';
+export { uploadImageFile, uploadGenericProductImage } from './imageUpload';
 export { 
   updateProductImages,
   getProductImages,
