@@ -1,11 +1,16 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Upload, X, Save } from 'lucide-react';
+
+import React from 'react';
 import { toast } from '@/components/ui/sonner';
-import { saveVendorProduct } from '@/services/vendor/products/productOperations';
-import { uploadProductImage } from '@/services/products/images/imageUpload';
-import ProductSegmentSelect from './ProductSegmentSelect';
-import ProductCategorySelect from './ProductCategorySelect';
+import { useProductFormState } from './hooks/useProductFormState';
+import { useProductImageOperations } from './hooks/useProductImageOperations';
+import { useProductValidation } from './hooks/useProductValidation';
+import { useProductSave } from './hooks/useProductSave';
+import ProductFormHeader from './components/ProductFormHeader';
+import ProductBasicInformation from './components/ProductBasicInformation';
+import ProductIdentification from './components/ProductIdentification';
+import ProductPricing from './components/ProductPricing';
+import ProductImages from './components/ProductImages';
+import ProductPoints from './components/ProductPoints';
 
 interface ProductFormScreenProps {
   isEditing?: boolean;
@@ -18,689 +23,125 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
   productId, 
   initialData 
 }) => {
-  const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const [uploadingImages, setUploadingImages] = useState(false);
-  const [currentSegmentId, setCurrentSegmentId] = useState<string>('');
-  
-  // Form state
-  const [formData, setFormData] = useState({
-    id: '',
-    nome: '',
-    descricao: '',
-    categoria: '',
-    segmento: '',
-    segmento_id: '',
-    preco_normal: 0,
-    preco_promocional: null as number | null,
-    pontos_consumidor: 0,
-    pontos_profissional: 0,
-    estoque: 0,
-    sku: '',
-    codigo_barras: '',
-    imagens: [] as string[]
+  const {
+    loading,
+    setLoading,
+    uploadingImages,
+    setUploadingImages,
+    currentSegmentId,
+    formData,
+    imageFiles,
+    setImageFiles,
+    imagePreviews,
+    setImagePreviews,
+    existingImages,
+    setExistingImages,
+    handleInputChange,
+    handleSegmentIdChange,
+    handleSegmentNameChange,
+    handleCategoryChange,
+    navigate
+  } = useProductFormState({ isEditing, productId, initialData });
+
+  const { handleImageUpload, removeImage } = useProductImageOperations({
+    imagePreviews,
+    setImagePreviews,
+    imageFiles,
+    setImageFiles,
+    existingImages,
+    setExistingImages,
+    formData,
+    setFormData: (updater) => {
+      if (typeof updater === 'function') {
+        const newData = updater(formData);
+        Object.keys(newData).forEach(key => {
+          if (newData[key] !== formData[key]) {
+            handleInputChange(key, newData[key]);
+          }
+        });
+      }
+    },
+    setUploadingImages
   });
 
-  // Separate state for new image files and all image previews
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
-  const [existingImages, setExistingImages] = useState<string[]>([]);
+  const { validateForm, formatBarcode, validateBarcode } = useProductValidation();
 
-  // Initialize form data
-  useEffect(() => {
-    if (initialData) {
-      console.log('[ProductFormScreen] Initializing with data:', initialData);
-      console.log('[ProductFormScreen] Raw images data:', initialData.imagens);
-      console.log('[ProductFormScreen] Type of images:', typeof initialData.imagens);
-      
-      // Process existing images correctly
-      let processedImages: string[] = [];
-      
-      if (initialData.imagens) {
-        // If it's already an array, use it directly
-        if (Array.isArray(initialData.imagens)) {
-          processedImages = initialData.imagens;
-          console.log('[ProductFormScreen] Images are already an array:', processedImages);
-        } 
-        // If it's a string, try to parse it
-        else if (typeof initialData.imagens === 'string') {
-          try {
-            const parsed = JSON.parse(initialData.imagens);
-            if (Array.isArray(parsed)) {
-              processedImages = parsed;
-              console.log('[ProductFormScreen] Successfully parsed images from string:', processedImages);
-            } else {
-              // If it's a single image string
-              processedImages = [initialData.imagens];
-              console.log('[ProductFormScreen] Single image string converted to array:', processedImages);
-            }
-          } catch (e) {
-            console.warn('[ProductFormScreen] Failed to parse images string, treating as single image:', initialData.imagens);
-            processedImages = [initialData.imagens];
+  const { handleSave } = useProductSave({
+    isEditing,
+    setLoading,
+    existingImages,
+    imageFiles,
+    imagePreviews,
+    setImageFiles,
+    setExistingImages,
+    setImagePreviews,
+    setFormData: (updater) => {
+      if (typeof updater === 'function') {
+        const newData = updater(formData);
+        Object.keys(newData).forEach(key => {
+          if (newData[key] !== formData[key]) {
+            handleInputChange(key, newData[key]);
           }
-        }
+        });
       }
-      
-      // Filter out only truly invalid images (empty strings, null, undefined)
-      const validImages = processedImages.filter(img => 
-        img && 
-        typeof img === 'string' && 
-        img.trim() !== '' && 
-        img !== 'null' && 
-        img !== 'undefined'
-      );
-      
-      console.log('[ProductFormScreen] Valid images after filtering:', validImages);
-      
-      const newFormData = {
-        id: initialData.id || '',
-        nome: initialData.nome || '',
-        descricao: initialData.descricao || '',
-        categoria: initialData.categoria || '',
-        segmento: initialData.segmento || '',
-        segmento_id: initialData.segmento_id || '',
-        preco_normal: initialData.preco_normal || 0,
-        preco_promocional: initialData.preco_promocional || null,
-        pontos_consumidor: initialData.pontos_consumidor || 0,
-        pontos_profissional: initialData.pontos_profissional || 0,
-        estoque: initialData.estoque || 0,
-        sku: initialData.sku || '',
-        codigo_barras: initialData.codigo_barras || '',
-        imagens: validImages
-      };
-      
-      console.log('[ProductFormScreen] Form data initialized:', newFormData);
-      setFormData(newFormData);
-      setCurrentSegmentId(initialData.segmento_id || '');
+    },
+    navigate
+  });
 
-      // Set all image states consistently
-      setExistingImages(validImages);
-      setImagePreviews(validImages);
-      
-      console.log('[ProductFormScreen] All image states set to:', validImages);
-      console.log('[ProductFormScreen] Existing images count:', validImages.length);
-    }
-  }, [initialData]);
-
-  const handleInputChange = useCallback((field: string, value: any) => {
-    console.log(`[ProductFormScreen] Updating field ${field} with value:`, value);
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  }, []);
-
-  // Stable callback for segment ID changes
-  const handleSegmentIdChange = useCallback((segmentId: string) => {
-    console.log('[ProductFormScreen] Segment ID change requested:', segmentId);
-    console.log('[ProductFormScreen] Current segment ID:', currentSegmentId);
-    console.log('[ProductFormScreen] Current category:', formData.categoria);
-    
-    // Only process if the segment ID actually changed
-    if (segmentId !== currentSegmentId) {
-      console.log('[ProductFormScreen] Segment ID actually changed, updating and clearing category');
-      setCurrentSegmentId(segmentId);
-      
-      setFormData(prev => ({
-        ...prev,
-        segmento_id: segmentId,
-        categoria: '' // Clear category only when segment actually changes
-      }));
-      
-      console.log('[ProductFormScreen] Category cleared due to segment change');
-    } else {
-      console.log('[ProductFormScreen] Segment ID unchanged, preserving category');
-      // Just update the segment_id in form data without clearing category
-      setFormData(prev => ({
-        ...prev,
-        segmento_id: segmentId
-      }));
-    }
-  }, [currentSegmentId, formData.categoria]);
-
-  // Stable callback for segment name changes
-  const handleSegmentNameChange = useCallback((segmentName: string) => {
-    console.log('[ProductFormScreen] Segment name changed to:', segmentName);
-    handleInputChange('segmento', segmentName);
-  }, [handleInputChange]);
-
-  // Stable callback for category changes
-  const handleCategoryChange = useCallback((categoryName: string) => {
-    console.log('[ProductFormScreen] Category changed to:', categoryName);
-    handleInputChange('categoria', categoryName);
-  }, [handleInputChange]);
-
-  // Validate barcode format (basic EAN/UPC validation)
-  const validateBarcode = (barcode: string): boolean => {
-    if (!barcode) return true; // Optional field
-    // Remove spaces and check if it's numeric and has valid length
-    const cleanBarcode = barcode.replace(/\s/g, '');
-    return /^\d{8}$|^\d{12}$|^\d{13}$|^\d{14}$/.test(cleanBarcode);
-  };
-
-  // Format barcode input
-  const formatBarcode = (value: string): string => {
-    // Remove non-numeric characters
-    const numeric = value.replace(/\D/g, '');
-    // Limit to 14 digits (EAN-14 is the longest common format)
-    return numeric.slice(0, 14);
-  };
-
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    if (files.length === 0) return;
-
-    // Check if adding new files would exceed the limit
-    const totalImages = imagePreviews.length + files.length;
-    if (totalImages > 5) {
-      toast.error(`Máximo de 5 imagens permitidas. Você pode adicionar apenas ${5 - imagePreviews.length} imagem(ns) a mais.`);
+  const onSave = async () => {
+    const validationError = validateForm(formData, existingImages, imageFiles);
+    if (validationError) {
+      toast.error(validationError);
       return;
     }
 
-    console.log('[ProductFormScreen] Adding new images. Current previews:', imagePreviews.length);
-    console.log('[ProductFormScreen] Current existing images:', existingImages.length);
-    console.log('[ProductFormScreen] New files to add:', files.length);
-    
-    setUploadingImages(true);
-    
-    try {
-      const newImageFiles = [...imageFiles, ...files];
-      const newPreviews = [...imagePreviews];
-      
-      // Create blob URLs for immediate preview of new files
-      for (const file of files) {
-        const previewUrl = URL.createObjectURL(file);
-        newPreviews.push(previewUrl);
-        console.log('[ProductFormScreen] Created preview URL for new file:', previewUrl);
-      }
-      
-      setImageFiles(newImageFiles);
-      setImagePreviews(newPreviews);
-      
-      toast.success(`${files.length} imagem(ns) adicionada(s). Salve o produto para fazer upload permanente.`);
-    } catch (error) {
-      console.error('[ProductFormScreen] Error handling image upload:', error);
-      toast.error('Erro ao processar imagens');
-    } finally {
-      setUploadingImages(false);
-    }
-  };
-
-  const removeImage = (index: number) => {
-    console.log('[ProductFormScreen] Removing image at index:', index);
-    console.log('[ProductFormScreen] Current previews:', imagePreviews);
-    console.log('[ProductFormScreen] Current existing images:', existingImages);
-    console.log('[ProductFormScreen] Current form images:', formData.imagens);
-    
-    const imageToRemove = imagePreviews[index];
-    const isExistingImage = existingImages.includes(imageToRemove);
-    const isBlobUrl = imageToRemove?.startsWith('blob:');
-    
-    console.log('[ProductFormScreen] Image to remove:', imageToRemove);
-    console.log('[ProductFormScreen] Is existing image:', isExistingImage);
-    console.log('[ProductFormScreen] Is blob URL:', isBlobUrl);
-    
-    // Create new arrays
-    const newPreviews = [...imagePreviews];
-    const newFiles = [...imageFiles];
-    const newExistingImages = [...existingImages];
-    const newFormImages = [...formData.imagens];
-    
-    // Remove from previews
-    newPreviews.splice(index, 1);
-    
-    if (isExistingImage) {
-      // Removing an existing image
-      const existingIndex = existingImages.indexOf(imageToRemove);
-      if (existingIndex !== -1) {
-        newExistingImages.splice(existingIndex, 1);
-      }
-      
-      // Remove from form data images
-      const formImageIndex = formData.imagens.indexOf(imageToRemove);
-      if (formImageIndex !== -1) {
-        newFormImages.splice(formImageIndex, 1);
-      }
-      
-      console.log('[ProductFormScreen] Removed existing image from all arrays');
-    } else if (isBlobUrl) {
-      // Removing a new image (blob URL)
-      // Find the corresponding file and remove it
-      const blobUrls = imagePreviews.filter(img => img.startsWith('blob:'));
-      const blobIndex = blobUrls.indexOf(imageToRemove);
-      
-      if (blobIndex !== -1) {
-        // Remove the corresponding file
-        const fileIndexOffset = existingImages.length;
-        const actualFileIndex = blobIndex;
-        
-        if (actualFileIndex >= 0 && actualFileIndex < newFiles.length) {
-          newFiles.splice(actualFileIndex, 1);
-        }
-      }
-      
-      // Revoke the blob URL to free memory
-      URL.revokeObjectURL(imageToRemove);
-      console.log('[ProductFormScreen] Removed new image and revoked blob URL');
-    }
-    
-    // Update all states
-    setImagePreviews(newPreviews);
-    setImageFiles(newFiles);
-    setExistingImages(newExistingImages);
-    setFormData(prev => ({
-      ...prev,
-      imagens: newFormImages
-    }));
-    
-    console.log('[ProductFormScreen] Updated states after removal');
-    console.log('[ProductFormScreen] New previews count:', newPreviews.length);
-    console.log('[ProductFormScreen] New existing images count:', newExistingImages.length);
-    console.log('[ProductFormScreen] New files count:', newFiles.length);
-  };
-
-  const handleSave = async () => {
-    console.log('[ProductFormScreen] Starting save process');
-    console.log('[ProductFormScreen] Form data images:', formData.imagens);
-    console.log('[ProductFormScreen] Existing images:', existingImages);
-    console.log('[ProductFormScreen] New image files:', imageFiles.length);
-    
-    if (!formData.nome.trim()) {
-      toast.error('Nome do produto é obrigatório');
-      return;
-    }
-
-    if (!formData.categoria.trim()) {
-      toast.error('Categoria é obrigatória');
-      return;
-    }
-
-    if (formData.preco_normal <= 0) {
-      toast.error('Preço deve ser maior que zero');
-      return;
-    }
-
-    // Check if we have at least one image (existing or new)
-    const totalImages = existingImages.length + imageFiles.length;
-    if (totalImages === 0) {
-      toast.error('É obrigatório ter pelo menos uma imagem do produto');
-      return;
-    }
-
-    // Validate barcode if provided
-    if (formData.codigo_barras && !validateBarcode(formData.codigo_barras)) {
-      toast.error('Código de barras inválido. Use formato EAN-8, EAN-13, UPC-12 ou EAN-14');
-      return;
-    }
-
-    setLoading(true);
-    
-    try {
-      // Prepare product data with existing images preserved
-      let productToSave = {
-        ...formData,
-        imagens: [...existingImages] // Start with existing images preserved
-      };
-      
-      console.log('[ProductFormScreen] Product data to save (with existing images):', productToSave);
-      
-      // Save product first
-      const savedProduct = await saveVendorProduct(productToSave);
-      
-      if (!savedProduct) {
-        throw new Error('Falha ao salvar produto');
-      }
-      
-      console.log('[ProductFormScreen] Product saved successfully:', savedProduct.id);
-      
-      // Now upload new image files if any
-      let finalImages = [...existingImages];
-      
-      if (imageFiles.length > 0) {
-        console.log('[ProductFormScreen] Uploading', imageFiles.length, 'new images');
-        
-        for (let i = 0; i < imageFiles.length; i++) {
-          const file = imageFiles[i];
-          console.log('[ProductFormScreen] Uploading image', i + 1, ':', file.name);
-          
-          try {
-            const uploadedUrl = await uploadProductImage(savedProduct.id, file, finalImages.length + i);
-            
-            if (uploadedUrl) {
-              finalImages.push(uploadedUrl);
-              console.log('[ProductFormScreen] Successfully uploaded image:', uploadedUrl);
-            } else {
-              console.warn('[ProductFormScreen] Failed to upload image:', file.name);
-            }
-          } catch (uploadError) {
-            console.error('[ProductFormScreen] Error uploading image:', file.name, uploadError);
-            // Continue with other images even if one fails
-          }
-        }
-        
-        // Update product with all images if new ones were uploaded
-        if (finalImages.length > existingImages.length) {
-          console.log('[ProductFormScreen] Updating product with all images:', finalImages);
-          
-          const updatedProduct = await saveVendorProduct({
-            ...productToSave,
-            id: savedProduct.id,
-            imagens: finalImages
-          });
-          
-          if (updatedProduct) {
-            console.log('[ProductFormScreen] Product updated with new images successfully');
-          }
-        }
-      }
-      
-      toast.success(isEditing ? 'Produto atualizado com sucesso!' : 'Produto criado com sucesso!');
-      
-      // Clean up blob URLs for new files
-      imagePreviews.forEach((preview) => {
-        if (preview.startsWith('blob:')) {
-          URL.revokeObjectURL(preview);
-        }
-      });
-      
-      // Update states with final results
-      setImageFiles([]);
-      setExistingImages(finalImages);
-      setImagePreviews(finalImages);
-      setFormData(prev => ({
-        ...prev,
-        id: savedProduct.id,
-        imagens: finalImages
-      }));
-      
-      // Navigate back to products list
-      setTimeout(() => {
-        navigate('/vendor/products');
-      }, 1500);
-      
-    } catch (error) {
-      console.error('[ProductFormScreen] Error saving product:', error);
-      toast.error('Erro ao salvar produto: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
-    } finally {
-      setLoading(false);
-    }
+    await handleSave(formData);
   };
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100">
-      {/* Header */}
-      <div className="bg-white p-4 flex items-center justify-between shadow-sm">
-        <div className="flex items-center">
-          <button onClick={() => navigate('/vendor/products')} className="mr-4">
-            <ArrowLeft size={24} />
-          </button>
-          <h1 className="text-xl font-bold">
-            {isEditing ? 'Editar Produto' : 'Novo Produto'}
-          </h1>
-        </div>
-        <button
-          onClick={handleSave}
-          disabled={loading}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 disabled:opacity-50"
-        >
-          <Save size={16} />
-          {loading ? 'Salvando...' : 'Salvar'}
-        </button>
-      </div>
+      <ProductFormHeader
+        isEditing={isEditing}
+        onBack={() => navigate('/vendor/products')}
+        onSave={onSave}
+        loading={loading}
+      />
 
-      {/* Form Content */}
       <div className="flex-1 p-6 space-y-6">
-        {/* Basic Information */}
-        <div className="bg-white rounded-lg p-6 shadow-sm">
-          <h2 className="text-lg font-semibold mb-4">Informações Básicas</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Nome do Produto *</label>
-              <input
-                type="text"
-                value={formData.nome}
-                onChange={(e) => handleInputChange('nome', e.target.value)}
-                className="w-full border rounded-lg px-3 py-2"
-                placeholder="Digite o nome do produto"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Categoria *</label>
-              <ProductCategorySelect
-                value={formData.categoria}
-                onChange={handleCategoryChange}
-                segmentId={currentSegmentId}
-                required={true}
-              />
-            </div>
-          </div>
-          
-          <div className="mt-4">
-            <label className="block text-sm font-medium mb-2">Descrição</label>
-            <textarea
-              value={formData.descricao}
-              onChange={(e) => handleInputChange('descricao', e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 h-24"
-              placeholder="Descrição detalhada do produto"
-            />
-          </div>
+        <ProductBasicInformation
+          formData={formData}
+          currentSegmentId={currentSegmentId}
+          onInputChange={handleInputChange}
+          onSegmentNameChange={handleSegmentNameChange}
+          onSegmentIdChange={handleSegmentIdChange}
+          onCategoryChange={handleCategoryChange}
+        />
 
-          <div className="mt-4">
-            <label className="block text-sm font-medium mb-2">Segmento</label>
-            <ProductSegmentSelect
-              value={formData.segmento}
-              onChange={handleSegmentNameChange}
-              onSegmentIdChange={handleSegmentIdChange}
-              initialSegmentId={currentSegmentId}
-            />
-          </div>
-        </div>
+        <ProductIdentification
+          formData={formData}
+          onInputChange={handleInputChange}
+          formatBarcode={formatBarcode}
+          validateBarcode={validateBarcode}
+        />
 
-        {/* Product Identification */}
-        <div className="bg-white rounded-lg p-6 shadow-sm">
-          <h2 className="text-lg font-semibold mb-4">Identificação do Produto</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">SKU (Código do Produto)</label>
-              <input
-                type="text"
-                value={formData.sku}
-                onChange={(e) => handleInputChange('sku', e.target.value.toUpperCase())}
-                className="w-full border rounded-lg px-3 py-2"
-                placeholder="Ex: PROD-001, ABC123"
-                maxLength={50}
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Código único para identificação interna do produto
-              </p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Código de Barras</label>
-              <input
-                type="text"
-                value={formData.codigo_barras}
-                onChange={(e) => handleInputChange('codigo_barras', formatBarcode(e.target.value))}
-                className="w-full border rounded-lg px-3 py-2"
-                placeholder="Ex: 1234567890123"
-                maxLength={14}
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Código de barras EAN-8, EAN-13, UPC-12 ou EAN-14
-              </p>
-              {formData.codigo_barras && !validateBarcode(formData.codigo_barras) && (
-                <p className="text-xs text-red-500 mt-1">
-                  Formato inválido. Use 8, 12, 13 ou 14 dígitos
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
+        <ProductPricing
+          formData={formData}
+          onInputChange={handleInputChange}
+        />
 
-        {/* Pricing */}
-        <div className="bg-white rounded-lg p-6 shadow-sm">
-          <h2 className="text-lg font-semibold mb-4">Estoque e Preço</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Preço por unidade *</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.preco_normal}
-                onChange={(e) => handleInputChange('preco_normal', parseFloat(e.target.value) || 0)}
-                className="w-full border rounded-lg px-3 py-2"
-                placeholder="0.00"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Preço promocional</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.preco_promocional || ''}
-                onChange={(e) => handleInputChange('preco_promocional', e.target.value ? parseFloat(e.target.value) : null)}
-                className="w-full border rounded-lg px-3 py-2"
-                placeholder="0.00"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Estoque disponível *</label>
-              <input
-                type="number"
-                min="0"
-                value={formData.estoque}
-                onChange={(e) => handleInputChange('estoque', parseInt(e.target.value) || 0)}
-                className="w-full border rounded-lg px-3 py-2"
-                placeholder="0"
-              />
-            </div>
-          </div>
-        </div>
+        <ProductImages
+          imagePreviews={imagePreviews}
+          existingImages={existingImages}
+          imageFiles={imageFiles}
+          uploadingImages={uploadingImages}
+          onImageUpload={handleImageUpload}
+          onRemoveImage={removeImage}
+        />
 
-        <div className="bg-white rounded-lg p-6 shadow-sm">
-          <h2 className="text-lg font-semibold mb-4">Imagens</h2>
-          <p className="text-sm text-gray-600 mb-4">
-            Adicione até 5 imagens do produto (primeira será a principal) *
-          </p>
-          
-          {/* Image Upload Area */}
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={handleImageUpload}
-              className="hidden"
-              id="image-upload"
-              disabled={uploadingImages || imagePreviews.length >= 5}
-            />
-            <label
-              htmlFor="image-upload"
-              className={`cursor-pointer ${uploadingImages || imagePreviews.length >= 5 ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              <Upload className="mx-auto h-12 w-12 text-gray-400" />
-              <p className="mt-2 text-sm text-gray-600">
-                {uploadingImages ? 'Processando imagens...' : 
-                 imagePreviews.length >= 5 ? 'Máximo de 5 imagens atingido' :
-                 'Clique para adicionar imagens ou arraste aqui'}
-              </p>
-            </label>
-          </div>
-
-          {/* Image Previews */}
-          {imagePreviews.length > 0 && (
-            <div className="mt-4">
-              <h3 className="text-md font-medium mb-2">
-                Imagens ({imagePreviews.length}/5)
-                {existingImages.length > 0 && ` - ${existingImages.length} existente(s)`}
-                {imageFiles.length > 0 && ` - ${imageFiles.length} nova(s)`}
-              </h3>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                {imagePreviews.map((imageUrl, index) => {
-                  const isExisting = existingImages.includes(imageUrl);
-                  const isBlob = imageUrl.startsWith('blob:');
-                  
-                  return (
-                    <div key={index} className="relative group">
-                      <img
-                        src={imageUrl}
-                        alt={`Preview ${index + 1}`}
-                        className="w-full h-24 object-cover rounded-lg border"
-                        onError={(e) => {
-                          console.error(`Error loading preview image ${index}:`, imageUrl);
-                          e.currentTarget.src = 'https://via.placeholder.com/150x150?text=Erro';
-                        }}
-                      />
-                      <button
-                        onClick={() => removeImage(index)}
-                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X size={12} />
-                      </button>
-                      {index === 0 && (
-                        <div className="absolute bottom-1 left-1 bg-blue-500 text-white text-xs px-1 rounded">
-                          Principal
-                        </div>
-                      )}
-                      {isExisting && (
-                        <div className="absolute top-1 left-1 bg-green-500 text-white text-xs px-1 rounded">
-                          Existente
-                        </div>
-                      )}
-                      {isBlob && (
-                        <div className="absolute top-1 left-1 bg-orange-500 text-white text-xs px-1 rounded">
-                          Nova
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-          
-          {imagePreviews.length === 0 && (
-            <p className="text-red-500 text-sm mt-2">É obrigatório adicionar pelo menos uma imagem.</p>
-          )}
-          
-          {imageFiles.length > 0 && (
-            <p className="text-blue-600 text-sm mt-2">
-              {imageFiles.length} nova(s) imagem(ns) será(ão) enviada(s) quando você salvar o produto.
-            </p>
-          )}
-        </div>
-
-        <div className="bg-white rounded-lg p-6 shadow-sm">
-          <h2 className="text-lg font-semibold mb-4">Pontos</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Pontos para consumidor</label>
-              <input
-                type="number"
-                min="0"
-                value={formData.pontos_consumidor}
-                onChange={(e) => handleInputChange('pontos_consumidor', parseInt(e.target.value) || 0)}
-                className="w-full border rounded-lg px-3 py-2"
-                placeholder="0"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Pontos para profissional</label>
-              <input
-                type="number"
-                min="0"
-                value={formData.pontos_profissional}
-                onChange={(e) => handleInputChange('pontos_profissional', parseInt(e.target.value) || 0)}
-                className="w-full border rounded-lg px-3 py-2"
-                placeholder="0"
-              />
-            </div>
-          </div>
-          <p className="text-sm text-gray-500 mt-2">
-            A pontuação é concedida com base no perfil do cliente. Consumidores e profissionais ganham pontos diferentes que podem ser resgatados posteriormente.
-          </p>
-        </div>
+        <ProductPoints
+          formData={formData}
+          onInputChange={handleInputChange}
+        />
       </div>
     </div>
   );
