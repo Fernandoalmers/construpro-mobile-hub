@@ -15,20 +15,17 @@ import {
   updateProductStatus
 } from './vendor/products';
 
-// Import the vendor-specific uploadProductImage (3 params)
-import { uploadProductImage } from './vendor/products/productImages';
-
 // Import types separately
 import type { VendorProduct, VendorProductInput, ProductImage } from './vendor/products/types';
 
-// Re-export functions - using the vendor-specific uploadProductImage
+// Re-export functions - NOTE: uploadProductImage is NOT re-exported to avoid conflicts
+// Components should import it directly from vendor/products/productImages
 export {
   getVendorProducts,
   getVendorProduct,
   saveVendorProduct,
   deleteVendorProduct,
   updateProductStatus,
-  uploadProductImage,     // This is now the 3-param version from vendor/products
   updateProductImages,
   getProductImages,
   updateProductImage,
