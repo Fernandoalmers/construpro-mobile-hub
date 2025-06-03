@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { VendorProduct, VendorProductInput } from './types';
 
@@ -36,15 +37,20 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
       productData.categoria = 'Geral'; // Default category if none provided
     }
     
-    // Properly handle images array
+    // Properly handle images array - FIXED: avoid double array
     let imagensJson = '[]';
     if (productData.imagens && Array.isArray(productData.imagens)) {
       // Filter out empty strings and blob URLs
       const validImages = productData.imagens.filter(img => 
         img && typeof img === 'string' && img.trim() !== '' && !img.startsWith('blob:')
       );
+      
+      console.log('[productOperations] Valid images before JSON.stringify:', validImages);
+      
+      // FIXED: Save as simple array, not double array
       imagensJson = JSON.stringify(validImages);
-      console.log('[productOperations] Processing images:', validImages);
+      
+      console.log('[productOperations] Images JSON string:', imagensJson);
     }
     
     // Validate SKU uniqueness if provided
@@ -82,7 +88,7 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
       // When updating, set status to 'pendente' to require re-approval
       status: isUpdate ? 'pendente' as const : 'pendente' as const,
       updated_at: new Date().toISOString(),
-      // Ensure imagens is stored as proper JSON string
+      // Ensure imagens is stored as proper JSON string (simple array)
       imagens: imagensJson,
       // Clean and format SKU and barcode
       sku: productData.sku?.trim() || null,
@@ -91,7 +97,7 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
     
     console.log('[productOperations] Database data to save:', {
       ...dbData,
-      imagens: `JSON string with ${JSON.parse(imagensJson).length} images`
+      imagens: `JSON string: ${imagensJson}`
     });
     
     // Remove id when creating a new product
@@ -136,11 +142,24 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
     
     console.log(`[productOperations] Product ${isUpdate ? 'updated' : 'created'} successfully:`, data);
     
-    // Parse images back to array for return
+    // Parse images back to array for return - FIXED: handle both simple and double arrays
     let returnedImages = [];
     if (data.imagens) {
       try {
-        returnedImages = JSON.parse(data.imagens);
+        const parsed = JSON.parse(data.imagens);
+        console.log('[productOperations] Parsed images from DB:', parsed);
+        
+        // Handle both simple array ["url"] and double array [["url"]]
+        if (Array.isArray(parsed)) {
+          if (parsed.length > 0 && Array.isArray(parsed[0])) {
+            // Double array format [["url"]] - flatten it
+            returnedImages = parsed.flat();
+            console.log('[productOperations] Flattened double array to:', returnedImages);
+          } else {
+            // Simple array format ["url"] - use as is
+            returnedImages = parsed;
+          }
+        }
       } catch (e) {
         console.warn('[productOperations] Error parsing returned images:', e);
         returnedImages = [];

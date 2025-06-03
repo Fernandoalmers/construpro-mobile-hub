@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { toast } from '@/components/ui/sonner';
 import { saveVendorProduct, updateProductImages } from '@/services/vendorProductsService';
-// Import específico da função vendor para evitar conflitos de nome
+// Import direto da função específica do vendor
 import { uploadProductImage } from '@/services/vendor/products/productImages';
 import { ProductFormData } from './useProductFormData';
 
@@ -46,8 +46,8 @@ export const useProductSave = ({
 
       console.log('[useProductSave] Initial product data:', productData);
 
-      // Save the product first
-      const savedProduct = await saveVendorProduct(productData, isEditing);
+      // Save the product first - função detecta automaticamente se é update pelo id
+      const savedProduct = await saveVendorProduct(productData);
       console.log('[useProductSave] Product saved:', savedProduct);
 
       if (!savedProduct?.id) {
@@ -61,14 +61,22 @@ export const useProductSave = ({
         setUploadingImages(true);
         
         try {
-          const uploadPromises = imageFiles.map((file, index) =>
-            uploadProductImage(String(savedProduct.id), file, existingImages.length + index)
-          );
+          // Upload images one by one to avoid conflicts
+          for (let i = 0; i < imageFiles.length; i++) {
+            const file = imageFiles[i];
+            const imageIndex = existingImages.length + i;
+            console.log(`[useProductSave] Uploading image ${i + 1}/${imageFiles.length}`);
+            
+            const uploadedUrl = await uploadProductImage(String(savedProduct.id), file, imageIndex);
+            if (uploadedUrl) {
+              uploadedImageUrls.push(uploadedUrl);
+              console.log(`[useProductSave] Uploaded image ${i + 1}: ${uploadedUrl}`);
+            } else {
+              console.warn(`[useProductSave] Failed to upload image ${i + 1}`);
+            }
+          }
           
-          uploadedImageUrls = await Promise.all(uploadPromises);
-          uploadedImageUrls = uploadedImageUrls.filter(url => url !== null) as string[];
-          
-          console.log('[useProductSave] Uploaded image URLs:', uploadedImageUrls);
+          console.log('[useProductSave] All uploaded image URLs:', uploadedImageUrls);
         } catch (uploadError) {
           console.error('[useProductSave] Error uploading images:', uploadError);
           toast.error('Erro ao fazer upload das imagens');

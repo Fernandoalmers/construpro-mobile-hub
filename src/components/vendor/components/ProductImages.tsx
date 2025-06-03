@@ -27,6 +27,14 @@ const ProductImages: React.FC<ProductImagesProps> = ({
     uploadingImages
   });
 
+  const handleImageError = (event: React.SyntheticEvent<HTMLImageElement, Event>, index: number) => {
+    console.error(`[ProductImages] Error loading image at index ${index}:`, imagePreviews[index]);
+    const target = event.currentTarget;
+    target.onerror = null; // Prevent infinite loop
+    target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xMiA4VjE2TTggMTJIMTYiIHN0cm9rZT0iIzlDQTNBRiIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KPHN2Zz4K'; // Simple placeholder SVG
+    target.alt = 'Imagem não encontrada';
+  };
+
   return (
     <div className="bg-white rounded-lg p-6 shadow-sm">
       <h2 className="text-lg font-semibold mb-4">Imagens</h2>
@@ -98,14 +106,8 @@ const ProductImages: React.FC<ProductImagesProps> = ({
                     src={imageUrl}
                     alt={`Preview ${index + 1}`}
                     className="w-full h-24 object-cover rounded-lg border"
-                    onLoad={() => console.log(`[ProductImages] Image ${index} loaded:`, imageUrl.substring(0, 50) + '...')}
-                    onError={(e) => {
-                      console.error(`[ProductImages] Error loading image ${index}:`, imageUrl);
-                      const target = e.target as HTMLImageElement;
-                      target.style.backgroundColor = '#f3f4f6';
-                      target.style.border = '2px dashed #d1d5db';
-                      target.alt = 'Erro ao carregar imagem';
-                    }}
+                    onLoad={() => console.log(`[ProductImages] Image ${index} loaded successfully:`, imageUrl.substring(0, 50) + '...')}
+                    onError={(e) => handleImageError(e, index)}
                   />
                   <button
                     onClick={() => onRemoveImage(index)}
