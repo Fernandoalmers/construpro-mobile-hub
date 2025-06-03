@@ -1,7 +1,8 @@
 
 import { useState } from 'react';
 import { toast } from '@/components/ui/sonner';
-import { saveVendorProduct, uploadProductImage, updateProductImages } from '@/services/vendorProductsService';
+import { saveVendorProduct, updateProductImages } from '@/services/vendorProductsService';
+import { uploadProductImage } from '@/services/vendor/products/productImages';
 import { ProductFormData } from './useProductFormData';
 
 interface UseProductSaveProps {
@@ -59,8 +60,8 @@ export const useProductSave = ({
         setUploadingImages(true);
         
         try {
-          const uploadPromises = imageFiles.map((file) =>
-            uploadProductImage(savedProduct.id, file)
+          const uploadPromises = imageFiles.map((file, index) =>
+            uploadProductImage(savedProduct.id, file, existingImages.length + index)
           );
           
           uploadedImageUrls = await Promise.all(uploadPromises);
