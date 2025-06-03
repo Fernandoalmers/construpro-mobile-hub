@@ -5,11 +5,11 @@ import { ProductFormData } from './useProductFormData';
 
 interface UseProductImageOperationsProps {
   imagePreviews: string[];
-  setImagePreviews: (previews: string[]) => void;
+  setImagePreviews: (previews: string[] | ((prev: string[]) => string[])) => void;
   imageFiles: File[];
-  setImageFiles: (files: File[]) => void;
+  setImageFiles: (files: File[] | ((prev: File[]) => File[])) => void;
   existingImages: string[];
-  setExistingImages: (images: string[]) => void;
+  setExistingImages: (images: string[] | ((prev: string[]) => string[])) => void;
   formData: ProductFormData;
   setFormData: (updater: (prev: ProductFormData) => ProductFormData) => void;
   setUploadingImages: (uploading: boolean) => void;

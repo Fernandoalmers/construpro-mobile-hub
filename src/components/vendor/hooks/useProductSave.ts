@@ -10,9 +10,9 @@ interface UseProductSaveProps {
   existingImages: string[];
   imageFiles: File[];
   imagePreviews: string[];
-  setImageFiles: (files: File[]) => void;
-  setExistingImages: (images: string[]) => void;
-  setImagePreviews: (previews: string[]) => void;
+  setImageFiles: (files: File[] | ((prev: File[]) => File[])) => void;
+  setExistingImages: (images: string[] | ((prev: string[]) => string[])) => void;
+  setImagePreviews: (previews: string[] | ((prev: string[]) => string[])) => void;
   setFormData: (updater: (prev: ProductFormData) => ProductFormData) => void;
   navigate: (path: string) => void;
 }
