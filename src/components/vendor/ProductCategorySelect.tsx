@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { fetchCategoriesForDropdown } from '@/services/admin/categories';
 import {
   Select,
@@ -33,9 +33,11 @@ const ProductCategorySelect: React.FC<ProductCategorySelectProps> = ({
   const [categories, setCategories] = useState<Category[]>([]);
   const [filteredCategories, setFilteredCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const previousSegmentId = useRef<string>('');
 
   console.log('[ProductCategorySelect] Component rendered with segmentId:', segmentId);
   console.log('[ProductCategorySelect] Current value:', value);
+  console.log('[ProductCategorySelect] Previous segmentId:', previousSegmentId.current);
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -60,10 +62,12 @@ const ProductCategorySelect: React.FC<ProductCategorySelectProps> = ({
   // Filter categories when segmentId changes
   useEffect(() => {
     console.log('[ProductCategorySelect] Filtering categories for segmentId:', segmentId);
+    console.log('[ProductCategorySelect] Previous segmentId was:', previousSegmentId.current);
     
     if (!segmentId || segmentId.trim() === '') {
       console.log('[ProductCategorySelect] No segmentId provided, showing all categories');
       setFilteredCategories(categories);
+      previousSegmentId.current = '';
       return;
     }
 
@@ -76,16 +80,28 @@ const ProductCategorySelect: React.FC<ProductCategorySelectProps> = ({
     console.log('[ProductCategorySelect] Filtered categories:', filtered);
     setFilteredCategories(filtered);
 
-    // Clear selection if current category is not in filtered list
-    if (value && value.trim() !== '') {
-      const isValidCategory = filtered.some(cat => cat.nome === value);
-      console.log('[ProductCategorySelect] Current value', value, 'is valid:', isValidCategory);
+    // Only clear selection if segment actually changed AND current category is not valid for new segment
+    const segmentActuallyChanged = previousSegmentId.current !== '' && previousSegmentId.current !== segmentId;
+    
+    if (segmentActuallyChanged && value && value.trim() !== '') {
+      const isValidCategoryForNewSegment = filtered.some(cat => cat.nome === value);
+      console.log('[ProductCategorySelect] Segment changed from', previousSegmentId.current, 'to', segmentId);
+      console.log('[ProductCategorySelect] Current value', value, 'is valid for new segment:', isValidCategoryForNewSegment);
       
-      if (!isValidCategory) {
-        console.log('[ProductCategorySelect] Clearing invalid category selection');
+      if (!isValidCategoryForNewSegment) {
+        console.log('[ProductCategorySelect] Clearing invalid category selection due to segment change');
         onChange('');
+      } else {
+        console.log('[ProductCategorySelect] Preserving valid category selection');
       }
+    } else if (!segmentActuallyChanged) {
+      console.log('[ProductCategorySelect] Segment did not change, preserving current selection');
+    } else if (!value || value.trim() === '') {
+      console.log('[ProductCategorySelect] No current selection to validate');
     }
+
+    // Update the previous segment ID
+    previousSegmentId.current = segmentId;
   }, [segmentId, categories, value, onChange]);
   
   return (
