@@ -19,12 +19,12 @@ const ProductImages: React.FC<ProductImagesProps> = ({
   onImageUpload,
   onRemoveImage
 }) => {
-  // Improved debug logging
+  // Enhanced debug logging
   console.log('[ProductImages] Render state:', {
     imagePreviews: imagePreviews.length,
-    imagePreviewsContent: imagePreviews,
+    imagePreviewsContent: imagePreviews.map(url => url.substring(0, 100) + '...'),
     existingImages: existingImages.length,
-    existingImagesContent: existingImages,
+    existingImagesContent: existingImages.map(url => url.substring(0, 100) + '...'),
     imageFiles: imageFiles.length,
     uploadingImages
   });
@@ -40,9 +40,19 @@ const ProductImages: React.FC<ProductImagesProps> = ({
       {process.env.NODE_ENV === 'development' && (
         <div className="mb-4 p-2 bg-gray-100 rounded text-xs">
           <strong>Debug:</strong> 
-          <br />- Previews: {imagePreviews.length} {imagePreviews.length > 0 && `(${imagePreviews.map(img => img.length > 50 ? img.substring(0, 50) + '...' : img).join(', ')})`}
-          <br />- Existing: {existingImages.length} {existingImages.length > 0 && `(${existingImages.map(img => img.length > 50 ? img.substring(0, 50) + '...' : img).join(', ')})`}
+          <br />- Previews: {imagePreviews.length} 
+          <br />- Existing: {existingImages.length} 
           <br />- Files: {imageFiles.length}
+          {imagePreviews.length > 0 && (
+            <div className="mt-1">
+              <strong>URLs:</strong>
+              {imagePreviews.map((url, i) => (
+                <div key={i} className="truncate">
+                  {i + 1}. {url.length > 80 ? url.substring(0, 80) + '...' : url}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
       
@@ -86,8 +96,7 @@ const ProductImages: React.FC<ProductImagesProps> = ({
               console.log(`[ProductImages] Rendering image ${index}:`, {
                 url: imageUrl.substring(0, 100) + '...',
                 isExisting,
-                isBlob,
-                fullUrl: imageUrl
+                isBlob
               });
               
               return (
@@ -99,8 +108,10 @@ const ProductImages: React.FC<ProductImagesProps> = ({
                     onLoad={() => console.log(`[ProductImages] Image ${index} loaded successfully`)}
                     onError={(e) => {
                       console.error(`[ProductImages] Error loading image ${index}:`, imageUrl);
-                      // Don't replace with placeholder for now, let user see the broken image
-                      console.error('[ProductImages] Image failed to load, URL:', imageUrl);
+                      // Show a placeholder or broken image indicator
+                      const target = e.target as HTMLImageElement;
+                      target.style.backgroundColor = '#f3f4f6';
+                      target.style.border = '2px dashed #d1d5db';
                     }}
                   />
                   <button
