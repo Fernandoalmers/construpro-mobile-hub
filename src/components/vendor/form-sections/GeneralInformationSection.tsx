@@ -34,8 +34,12 @@ const GeneralInformationSection: React.FC<GeneralInformationSectionProps> = ({
   onTagToggle,
   onSegmentIdChange
 }) => {
-  // Watch segment ID to filter categories
-  const watchSegmentId = form.watch('segmento_id');
+  // Get the current segment to filter categories
+  const currentSegment = form.watch('segmento');
+  
+  // For now, we'll use the segment name to filter categories
+  // This can be improved later to use the actual segment ID
+  const segmentIdForFiltering = currentSegment || '';
 
   return (
     <AccordionItem value="item-1">
@@ -112,7 +116,7 @@ const GeneralInformationSection: React.FC<GeneralInformationSectionProps> = ({
                       onChange={field.onChange}
                       error={form.formState.errors.categoria?.message}
                       required={true}
-                      segmentId={watchSegmentId}
+                      segmentId={segmentIdForFiltering}
                     />
                   </FormControl>
                   <FormMessage />

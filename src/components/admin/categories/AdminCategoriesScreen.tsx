@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { useTitle } from '@/hooks/use-title';
@@ -9,22 +10,46 @@ import { AlertTriangle, Plus, Search, Edit, Trash, Image as ImageIcon } from 'lu
 import { toast } from '@/components/ui/sonner';
 import LoadingState from '@/components/common/LoadingState';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AdminCategory, AdminSegment } from '@/types/admin';
 import CustomModal from '@/components/common/CustomModal';
 import CategoryForm from '@/components/admin/categories/CategoryForm';
 import SegmentForm from '@/components/admin/categories/SegmentForm';
 import { Badge } from '@/components/ui/badge';
 import {
-  fetchAdminCategories,
-  fetchAdminSegments,
-  createCategory,
-  createSegment,
-  updateCategory,
-  updateSegment,
-  deleteCategory,
-  deleteSegment,
+  fetchProductCategories,
+  createProductCategory,
+  updateProductCategory,
+  deleteProductCategory,
   getCategoryStatusBadgeColor
-} from '@/services/adminCategoriesService';
+} from '@/services/admin/categories';
+import {
+  getProductSegments,
+  createProductSegment,
+  updateProductSegment,
+  deleteProductSegment,
+  ProductSegment
+} from '@/services/admin/productSegmentsService';
+
+// Define types aligned with the actual data structure
+interface AdminCategory {
+  id: string;
+  nome: string;
+  segmento_id: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  segment_name?: string;
+  produtos_count: number;
+}
+
+interface AdminSegment {
+  id: string;
+  nome: string;
+  image_url?: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  categorias_count: number;
+}
 
 const AdminCategoriesScreen: React.FC = () => {
   useTitle('ConstruPro Admin - Categorias');
@@ -53,8 +78,13 @@ const AdminCategoriesScreen: React.FC = () => {
   const loadCategories = async () => {
     try {
       setIsLoading(true);
-      const categoriesData = await fetchAdminCategories();
-      setCategories(categoriesData);
+      const categoriesData = await fetchProductCategories();
+      // Transform to match AdminCategory interface
+      const transformedData: AdminCategory[] = categoriesData.map(cat => ({
+        ...cat,
+        produtos_count: cat.produtos_count || 0
+      }));
+      setCategories(transformedData);
     } catch (error) {
       console.error('Error fetching categories:', error);
       toast.error('Erro ao buscar categorias');
@@ -67,8 +97,15 @@ const AdminCategoriesScreen: React.FC = () => {
   const loadSegments = async () => {
     try {
       setIsLoading(true);
-      const segmentsData = await fetchAdminSegments();
-      setSegments(segmentsData);
+      const segmentsData = await getProductSegments();
+      // Transform to match AdminSegment interface
+      const transformedData: AdminSegment[] = segmentsData.map(seg => ({
+        ...seg,
+        created_at: seg.created_at || new Date().toISOString(),
+        updated_at: seg.updated_at || new Date().toISOString(),
+        categorias_count: seg.categorias_count || 0
+      }));
+      setSegments(transformedData);
     } finally {
       setIsLoading(false);
     }
@@ -94,12 +131,12 @@ const AdminCategoriesScreen: React.FC = () => {
   // Handler for creating a new category
   const handleCreateCategory = async (data: {
     nome: string;
-    segment_id?: string;
+    segmento_id: string;
     status: string;
   }) => {
     setIsSubmitting(true);
     try {
-      const success = await createCategory(data);
+      const success = await createProductCategory(data);
       if (success) {
         setCreateCategoryModalOpen(false);
         await loadCategories();
@@ -120,7 +157,7 @@ const AdminCategoriesScreen: React.FC = () => {
   ) => {
     setIsSubmitting(true);
     try {
-      const success = await createSegment(data, imageFile);
+      const success = await createProductSegment(data, imageFile);
       if (success) {
         setCreateSegmentModalOpen(false);
         await loadSegments();
@@ -133,14 +170,14 @@ const AdminCategoriesScreen: React.FC = () => {
   // Handler for updating a category
   const handleUpdateCategory = async (data: {
     nome: string;
-    segment_id?: string;
+    segmento_id: string;
     status: string;
   }) => {
     if (!selectedCategory) return;
     
     setIsSubmitting(true);
     try {
-      const success = await updateCategory(selectedCategory.id, data);
+      const success = await updateProductCategory(selectedCategory.id, data);
       if (success) {
         setEditCategoryModalOpen(false);
         await loadCategories();
@@ -163,7 +200,7 @@ const AdminCategoriesScreen: React.FC = () => {
     
     setIsSubmitting(true);
     try {
-      const success = await updateSegment(selectedSegment.id, data, imageFile);
+      const success = await updateProductSegment(selectedSegment.id, data, imageFile);
       if (success) {
         setEditSegmentModalOpen(false);
         await loadSegments();
@@ -179,7 +216,7 @@ const AdminCategoriesScreen: React.FC = () => {
     
     setIsSubmitting(true);
     try {
-      const success = await deleteCategory(selectedCategory.id);
+      const success = await deleteProductCategory(selectedCategory.id);
       if (success) {
         setDeleteCategoryModalOpen(false);
         await loadCategories();
@@ -195,7 +232,7 @@ const AdminCategoriesScreen: React.FC = () => {
     
     setIsSubmitting(true);
     try {
-      const success = await deleteSegment(selectedSegment.id);
+      const success = await deleteProductSegment(selectedSegment.id);
       if (success) {
         setDeleteSegmentModalOpen(false);
         await loadSegments();
@@ -432,7 +469,7 @@ const AdminCategoriesScreen: React.FC = () => {
             initialData={{
               id: selectedCategory.id,
               nome: selectedCategory.nome,
-              segment_id: selectedCategory.segment_id,
+              segmento_id: selectedCategory.segmento_id,
               status: selectedCategory.status
             }}
             onSubmit={handleUpdateCategory}

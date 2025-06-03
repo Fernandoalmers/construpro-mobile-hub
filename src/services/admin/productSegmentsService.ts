@@ -1,152 +1,219 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 
 export interface ProductSegment {
   id: string;
   nome: string;
-  image_url?: string | null;
+  image_url?: string;
   status: string;
+  created_at?: string;
+  updated_at?: string;
+  categorias_count?: number;
 }
 
 export const getProductSegments = async (): Promise<ProductSegment[]> => {
   try {
-    console.log('[ProductSegmentsService] Fetching product segments with RPC');
+    const { data, error } = await supabase
+      .from('product_segments')
+      .select('*')
+      .order('nome');
     
-    const { data, error } = await supabase.rpc('get_product_segments');
+    if (error) throw error;
     
-    if (error) {
-      console.error('[ProductSegmentsService] Error fetching product segments with RPC:', error);
-      toast.error('Erro ao carregar segmentos de produtos');
-      return [];
-    }
-    
-    if (!data) {
-      console.log('[ProductSegmentsService] No segments data returned');
-      return [];
-    }
-    
-    console.log('[ProductSegmentsService] RPC returned data:', data);
-    
-    // The RPC function now returns all required fields directly
-    const segments = data.map(item => ({
-      id: item.id,
-      nome: item.nome,
-      image_url: item.image_url || null,
-      status: item.status || 'ativo'
+    return data.map(segment => ({
+      ...segment,
+      categorias_count: 0 // Will be calculated separately if needed
     }));
-    
-    console.log('[ProductSegmentsService] Processed segments:', segments);
-    return segments;
   } catch (error) {
-    console.error('[ProductSegmentsService] Error in getProductSegments:', error);
-    toast.error('Erro ao carregar segmentos');
-    return [];
+    console.error('Error fetching segments:', error);
+    throw error;
   }
 };
 
-// Upload image to segment-images bucket
-export const uploadSegmentImage = async (file: File): Promise<string | null> => {
+export const createProductSegment = async (
+  segmentData: {
+    nome: string;
+    status: string;
+    image_url?: string | null;
+  },
+  imageFile?: File
+): Promise<boolean> => {
   try {
-    console.log('[ProductSegmentsService] Starting image upload:', file.name);
+    let image_url = segmentData.image_url;
     
-    // Generate unique filename
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+    // Handle image upload if provided
+    if (imageFile) {
+      const fileExt = imageFile.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `segments/${fileName}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('product-images')
+        .upload(filePath, imageFile);
+      
+      if (uploadError) {
+        console.error('Error uploading image:', uploadError);
+        toast.error('Erro ao fazer upload da imagem');
+        return false;
+      }
+      
+      const { data: { publicUrl } } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(filePath);
+      
+      image_url = publicUrl;
+    }
     
-    console.log('[ProductSegmentsService] Uploading to:', fileName);
-    
-    const { data, error } = await supabase.storage
-      .from('segment-images')
-      .upload(fileName, file, {
-        cacheControl: '3600',
-        upsert: false
-      });
+    const { error } = await supabase
+      .from('product_segments')
+      .insert([{
+        nome: segmentData.nome,
+        status: segmentData.status,
+        image_url: image_url
+      }]);
     
     if (error) {
-      console.error('[ProductSegmentsService] Upload error:', error);
-      toast.error('Erro ao fazer upload da imagem');
+      console.error('Error creating segment:', error);
+      toast.error('Erro ao criar segmento: ' + error.message);
+      return false;
+    }
+    
+    toast.success('Segmento criado com sucesso!');
+    return true;
+  } catch (error) {
+    console.error('Error in createProductSegment:', error);
+    toast.error('Erro ao criar segmento');
+    return false;
+  }
+};
+
+export const updateProductSegment = async (
+  segmentId: string,
+  segmentData: {
+    nome: string;
+    status: string;
+    image_url?: string | null;
+  },
+  imageFile?: File
+): Promise<boolean> => {
+  try {
+    let image_url = segmentData.image_url;
+    
+    // Handle image upload if provided
+    if (imageFile) {
+      const fileExt = imageFile.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `segments/${fileName}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('product-images')
+        .upload(filePath, imageFile);
+      
+      if (uploadError) {
+        console.error('Error uploading image:', uploadError);
+        toast.error('Erro ao fazer upload da imagem');
+        return false;
+      }
+      
+      const { data: { publicUrl } } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(filePath);
+      
+      image_url = publicUrl;
+    }
+    
+    const { error } = await supabase
+      .from('product_segments')
+      .update({
+        nome: segmentData.nome,
+        status: segmentData.status,
+        image_url: image_url,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', segmentId);
+    
+    if (error) {
+      console.error('Error updating segment:', error);
+      toast.error('Erro ao atualizar segmento: ' + error.message);
+      return false;
+    }
+    
+    toast.success('Segmento atualizado com sucesso!');
+    return true;
+  } catch (error) {
+    console.error('Error in updateProductSegment:', error);
+    toast.error('Erro ao atualizar segmento');
+    return false;
+  }
+};
+
+export const deleteProductSegment = async (segmentId: string): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('product_segments')
+      .delete()
+      .eq('id', segmentId);
+    
+    if (error) {
+      console.error('Error deleting segment:', error);
+      toast.error('Erro ao excluir segmento: ' + error.message);
+      return false;
+    }
+    
+    toast.success('Segmento excluído com sucesso!');
+    return true;
+  } catch (error) {
+    console.error('Error in deleteProductSegment:', error);
+    toast.error('Erro ao excluir segmento');
+    return false;
+  }
+};
+
+export const uploadSegmentImage = async (imageFile: File): Promise<string | null> => {
+  try {
+    const fileExt = imageFile.name.split('.').pop();
+    const fileName = `${Math.random()}.${fileExt}`;
+    const filePath = `segments/${fileName}`;
+    
+    const { error: uploadError } = await supabase.storage
+      .from('product-images')
+      .upload(filePath, imageFile);
+    
+    if (uploadError) {
+      console.error('Error uploading image:', uploadError);
       return null;
     }
     
-    console.log('[ProductSegmentsService] Upload successful:', data);
-    
-    // Get public URL
     const { data: { publicUrl } } = supabase.storage
-      .from('segment-images')
-      .getPublicUrl(fileName);
+      .from('product-images')
+      .getPublicUrl(filePath);
     
-    console.log('[ProductSegmentsService] Public URL:', publicUrl);
     return publicUrl;
   } catch (error) {
-    console.error('[ProductSegmentsService] Error in uploadSegmentImage:', error);
-    toast.error('Erro ao fazer upload da imagem');
+    console.error('Error in uploadSegmentImage:', error);
     return null;
   }
 };
 
-// Delete image from segment-images bucket
 export const deleteSegmentImage = async (imageUrl: string): Promise<boolean> => {
   try {
-    if (!imageUrl) return true;
-    
-    // Extract filename from URL
+    // Extract file path from URL
     const urlParts = imageUrl.split('/');
-    const fileName = urlParts[urlParts.length - 1];
-    
-    console.log('[ProductSegmentsService] Deleting image:', fileName);
+    const filePath = urlParts.slice(-2).join('/'); // Get segments/filename.ext
     
     const { error } = await supabase.storage
-      .from('segment-images')
-      .remove([fileName]);
+      .from('product-images')
+      .remove([filePath]);
     
     if (error) {
-      console.error('[ProductSegmentsService] Delete error:', error);
+      console.error('Error deleting image:', error);
       return false;
     }
     
-    console.log('[ProductSegmentsService] Image deleted successfully');
     return true;
   } catch (error) {
-    console.error('[ProductSegmentsService] Error in deleteSegmentImage:', error);
+    console.error('Error in deleteSegmentImage:', error);
     return false;
-  }
-};
-
-// Add a function to check if the storage bucket exists
-export const checkSegmentImageBucket = async (): Promise<boolean> => {
-  try {
-    const { data, error } = await supabase
-      .storage
-      .getBucket('segment-images');
-    
-    if (error) {
-      console.error('[ProductSegmentsService] Error checking segment-images bucket:', error);
-      return false;
-    }
-    
-    return !!data;
-  } catch (error) {
-    console.error('[ProductSegmentsService] Error in checkSegmentImageBucket:', error);
-    return false;
-  }
-};
-
-// Add a function to list segment images for debugging
-export const listSegmentImages = async (): Promise<string[]> => {
-  try {
-    const { data, error } = await supabase
-      .storage
-      .from('segment-images')
-      .list();
-    
-    if (error) {
-      console.error('[ProductSegmentsService] Error listing segment images:', error);
-      return [];
-    }
-    
-    return (data || []).map(file => file.name);
-  } catch (error) {
-    console.error('[ProductSegmentsService] Error in listSegmentImages:', error);
-    return [];
   }
 };
