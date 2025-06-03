@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { FileSymlink } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -34,12 +34,28 @@ const GeneralInformationSection: React.FC<GeneralInformationSectionProps> = ({
   onTagToggle,
   onSegmentIdChange
 }) => {
-  // Get the current segment to filter categories
+  const [currentSegmentId, setCurrentSegmentId] = useState<string>('');
+  
+  // Watch the segment field to detect changes
   const currentSegment = form.watch('segmento');
   
-  // For now, we'll use the segment name to filter categories
-  // This can be improved later to use the actual segment ID
-  const segmentIdForFiltering = currentSegment || '';
+  console.log('[GeneralInformationSection] Current segment:', currentSegment);
+  console.log('[GeneralInformationSection] Current segment ID:', currentSegmentId);
+
+  // Handle segment ID change from ProductSegmentSelect
+  const handleSegmentIdChange = (segmentId: string | null) => {
+    console.log('[GeneralInformationSection] Segment ID changed to:', segmentId);
+    
+    const newSegmentId = segmentId || '';
+    setCurrentSegmentId(newSegmentId);
+    onSegmentIdChange(newSegmentId);
+    
+    // Clear category when segment changes
+    if (form.getValues('categoria')) {
+      console.log('[GeneralInformationSection] Clearing category due to segment change');
+      form.setValue('categoria', '');
+    }
+  };
 
   return (
     <AccordionItem value="item-1">
@@ -96,7 +112,7 @@ const GeneralInformationSection: React.FC<GeneralInformationSectionProps> = ({
                       onChange={field.onChange}
                       error={form.formState.errors.segmento?.message}
                       required={true}
-                      onSegmentIdChange={onSegmentIdChange}
+                      onSegmentIdChange={handleSegmentIdChange}
                     />
                   </FormControl>
                   <FormMessage />
@@ -116,7 +132,7 @@ const GeneralInformationSection: React.FC<GeneralInformationSectionProps> = ({
                       onChange={field.onChange}
                       error={form.formState.errors.categoria?.message}
                       required={true}
-                      segmentId={segmentIdForFiltering}
+                      segmentId={currentSegmentId}
                     />
                   </FormControl>
                   <FormMessage />
