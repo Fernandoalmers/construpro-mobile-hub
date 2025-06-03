@@ -70,17 +70,25 @@ export const useProductImageOperations = ({
   const removeImage = useCallback((index: number) => {
     console.log('[useProductImageOperations] Removing image at index:', index);
     
+    if (index < 0 || index >= imagePreviews.length) {
+      console.error('[useProductImageOperations] Invalid index:', index);
+      return;
+    }
+    
     const imageToRemove = imagePreviews[index];
     const isExistingImage = existingImages.includes(imageToRemove);
     const isBlobUrl = imageToRemove?.startsWith('blob:');
     
     console.log('[useProductImageOperations] Image removal details:', {
-      imageToRemove,
+      imageToRemove: imageToRemove.substring(0, 100) + '...',
       isExistingImage,
       isBlobUrl,
-      index
+      index,
+      existingImagesCount: existingImages.length,
+      imageFilesCount: imageFiles.length
     });
     
+    // Create new arrays to avoid mutation
     const newPreviews = [...imagePreviews];
     const newFiles = [...imageFiles];
     const newExistingImages = [...existingImages];
@@ -94,24 +102,33 @@ export const useProductImageOperations = ({
       const existingIndex = existingImages.indexOf(imageToRemove);
       if (existingIndex !== -1) {
         newExistingImages.splice(existingIndex, 1);
+        console.log('[useProductImageOperations] Removed from existing images at index:', existingIndex);
       }
       
       // Remove from form images
-      const formImageIndex = formData.imagens.indexOf(imageToRemove);
+      const formImageIndex = formData.imagens?.indexOf(imageToRemove) ?? -1;
       if (formImageIndex !== -1) {
         newFormImages.splice(formImageIndex, 1);
+        console.log('[useProductImageOperations] Removed from form images at index:', formImageIndex);
       }
     } else if (isBlobUrl) {
       // For blob URLs, find the corresponding file and remove it
-      const blobUrls = imagePreviews.filter(img => img.startsWith('blob:'));
-      const blobIndex = blobUrls.indexOf(imageToRemove);
+      // Count how many blob URLs come before this one
+      let blobIndex = 0;
+      for (let i = 0; i < index; i++) {
+        if (imagePreviews[i].startsWith('blob:')) {
+          blobIndex++;
+        }
+      }
       
-      if (blobIndex !== -1 && blobIndex < newFiles.length) {
+      if (blobIndex < newFiles.length) {
         newFiles.splice(blobIndex, 1);
+        console.log('[useProductImageOperations] Removed file at blob index:', blobIndex);
       }
       
       // Revoke the blob URL to prevent memory leaks
       URL.revokeObjectURL(imageToRemove);
+      console.log('[useProductImageOperations] Revoked blob URL');
     }
     
     // Update all states

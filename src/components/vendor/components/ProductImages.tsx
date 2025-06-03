@@ -19,10 +19,12 @@ const ProductImages: React.FC<ProductImagesProps> = ({
   onImageUpload,
   onRemoveImage
 }) => {
-  // Debug logging
+  // Improved debug logging
   console.log('[ProductImages] Render state:', {
-    imagePreviews,
-    existingImages,
+    imagePreviews: imagePreviews.length,
+    imagePreviewsContent: imagePreviews,
+    existingImages: existingImages.length,
+    existingImagesContent: existingImages,
     imageFiles: imageFiles.length,
     uploadingImages
   });
@@ -37,7 +39,10 @@ const ProductImages: React.FC<ProductImagesProps> = ({
       {/* Debug info in development */}
       {process.env.NODE_ENV === 'development' && (
         <div className="mb-4 p-2 bg-gray-100 rounded text-xs">
-          <strong>Debug:</strong> Previews: {imagePreviews.length}, Existing: {existingImages.length}, Files: {imageFiles.length}
+          <strong>Debug:</strong> 
+          <br />- Previews: {imagePreviews.length} {imagePreviews.length > 0 && `(${imagePreviews.map(img => img.length > 50 ? img.substring(0, 50) + '...' : img).join(', ')})`}
+          <br />- Existing: {existingImages.length} {existingImages.length > 0 && `(${existingImages.map(img => img.length > 50 ? img.substring(0, 50) + '...' : img).join(', ')})`}
+          <br />- Files: {imageFiles.length}
         </div>
       )}
       
@@ -79,21 +84,23 @@ const ProductImages: React.FC<ProductImagesProps> = ({
               const isBlob = imageUrl.startsWith('blob:');
               
               console.log(`[ProductImages] Rendering image ${index}:`, {
-                url: imageUrl,
+                url: imageUrl.substring(0, 100) + '...',
                 isExisting,
-                isBlob
+                isBlob,
+                fullUrl: imageUrl
               });
               
               return (
-                <div key={`${imageUrl}-${index}`} className="relative group">
+                <div key={`${index}-${imageUrl.substring(imageUrl.length - 10)}`} className="relative group">
                   <img
                     src={imageUrl}
                     alt={`Preview ${index + 1}`}
                     className="w-full h-24 object-cover rounded-lg border"
-                    onLoad={() => console.log(`[ProductImages] Image loaded successfully: ${imageUrl}`)}
+                    onLoad={() => console.log(`[ProductImages] Image ${index} loaded successfully`)}
                     onError={(e) => {
                       console.error(`[ProductImages] Error loading image ${index}:`, imageUrl);
-                      e.currentTarget.src = '/placeholder.svg';
+                      // Don't replace with placeholder for now, let user see the broken image
+                      console.error('[ProductImages] Image failed to load, URL:', imageUrl);
                     }}
                   />
                   <button
@@ -128,9 +135,12 @@ const ProductImages: React.FC<ProductImagesProps> = ({
         <div className="mt-4">
           <p className="text-red-500 text-sm">É obrigatório adicionar pelo menos uma imagem.</p>
           {process.env.NODE_ENV === 'development' && (
-            <p className="text-gray-500 text-xs mt-1">
-              Debug: Se você está editando um produto, verifique se as imagens estão sendo carregadas corretamente.
-            </p>
+            <div className="text-gray-500 text-xs mt-1">
+              <p>Debug: Se você está editando um produto, verifique se as imagens estão sendo carregadas corretamente.</p>
+              <p>- Existing images: {existingImages.length}</p>
+              <p>- Image previews: {imagePreviews.length}</p>
+              <p>- Image files: {imageFiles.length}</p>
+            </div>
           )}
         </div>
       )}

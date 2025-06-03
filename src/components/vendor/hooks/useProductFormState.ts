@@ -33,17 +33,17 @@ export const useProductFormState = ({ isEditing = false, productId, initialData 
     imagens: [] as string[]
   });
 
-  // Image states
+  // Image states - initialize as separate arrays to avoid circular references
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
 
-  // Process images with improved validation and logging
+  // Improved image processing with better validation and logging
   const processImages = useCallback((rawImages: any): string[] => {
     console.log('[useProductFormState] Processing raw images:', rawImages);
     
     if (!rawImages) {
-      console.log('[useProductFormState] No images provided');
+      console.log('[useProductFormState] No images provided - returning empty array');
       return [];
     }
 
@@ -52,7 +52,8 @@ export const useProductFormState = ({ isEditing = false, productId, initialData 
     try {
       // Handle different types of image data
       if (Array.isArray(rawImages)) {
-        processedImages = rawImages;
+        processedImages = [...rawImages]; // Create a new array to avoid references
+        console.log('[useProductFormState] Raw images is already an array:', processedImages);
       } else if (typeof rawImages === 'string') {
         if (rawImages.trim() === '' || rawImages === 'null' || rawImages === 'undefined') {
           console.log('[useProductFormState] Empty or invalid image string');
@@ -63,7 +64,7 @@ export const useProductFormState = ({ isEditing = false, productId, initialData 
         try {
           const parsed = JSON.parse(rawImages);
           if (Array.isArray(parsed)) {
-            processedImages = parsed;
+            processedImages = [...parsed]; // Create a new array
           } else {
             processedImages = [rawImages];
           }
@@ -73,7 +74,7 @@ export const useProductFormState = ({ isEditing = false, productId, initialData 
         }
       }
       
-      // Filter and validate URLs - simplified validation
+      // Simplified validation - just check if URL looks valid
       const validImages = processedImages.filter(img => {
         if (!img || typeof img !== 'string') {
           console.log('[useProductFormState] Invalid image (not string):', img);
@@ -86,18 +87,19 @@ export const useProductFormState = ({ isEditing = false, productId, initialData 
           return false;
         }
         
-        // Accept any URL that looks like it could be an image
-        const isValidUrl = trimmed.startsWith('http') || trimmed.startsWith('/') || trimmed.startsWith('blob:');
+        // More permissive URL validation - accept any string that looks like a URL
+        const isValidUrl = trimmed.includes('http') || trimmed.startsWith('/') || trimmed.startsWith('blob:');
         
         if (!isValidUrl) {
           console.log('[useProductFormState] Invalid URL format:', trimmed);
           return false;
         }
         
+        console.log('[useProductFormState] Valid image URL:', trimmed);
         return true;
       });
       
-      console.log('[useProductFormState] Valid images after filtering:', validImages);
+      console.log('[useProductFormState] Final valid images:', validImages);
       return validImages;
       
     } catch (error) {
@@ -106,15 +108,17 @@ export const useProductFormState = ({ isEditing = false, productId, initialData 
     }
   }, []);
 
-  // Initialize form data
+  // Initialize form data with improved image handling
   useEffect(() => {
     if (initialData) {
       console.log('[useProductFormState] Initializing with data:', initialData);
+      console.log('[useProductFormState] Raw images from initialData:', initialData.imagens);
       
-      // Process images with improved handling
+      // Process images first
       const processedImages = processImages(initialData.imagens);
-      console.log('[useProductFormState] Processed images:', processedImages);
+      console.log('[useProductFormState] Processed images result:', processedImages);
       
+      // Create form data
       const newFormData = {
         id: initialData.id || '',
         nome: initialData.nome || '',
@@ -129,21 +133,24 @@ export const useProductFormState = ({ isEditing = false, productId, initialData 
         estoque: initialData.estoque || 0,
         sku: initialData.sku || '',
         codigo_barras: initialData.codigo_barras || '',
-        imagens: processedImages
+        imagens: [...processedImages] // Create new array
       };
       
       console.log('[useProductFormState] Setting form data:', newFormData);
       setFormData(newFormData);
       setCurrentSegmentId(initialData.segmento_id || '');
       
-      // Initialize image states with processed images
-      setExistingImages(processedImages);
-      setImagePreviews(processedImages);
+      // Initialize image states with separate arrays to avoid circular references
+      const imagesCopy = [...processedImages];
+      console.log('[useProductFormState] Setting image states with:', imagesCopy);
       
-      console.log('[useProductFormState] Image states initialized:', {
-        existingImages: processedImages,
-        imagePreviews: processedImages
-      });
+      setExistingImages(imagesCopy);
+      setImagePreviews([...imagesCopy]); // Create separate copy for previews
+      setImageFiles([]); // No new files when editing existing product
+      
+      console.log('[useProductFormState] Image states initialized successfully');
+      console.log('[useProductFormState] - existingImages length:', imagesCopy.length);
+      console.log('[useProductFormState] - imagePreviews will be set to length:', imagesCopy.length);
     }
   }, [initialData, processImages]);
 
@@ -187,6 +194,7 @@ export const useProductFormState = ({ isEditing = false, productId, initialData 
     setUploadingImages,
     currentSegmentId,
     formData,
+    setFormData,
     imageFiles,
     setImageFiles,
     imagePreviews,
