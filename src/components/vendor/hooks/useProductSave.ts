@@ -59,8 +59,8 @@ export const useProductSave = ({
         setUploadingImages(true);
         
         try {
-          const uploadPromises = imageFiles.map((file, index) =>
-            uploadProductImage(savedProduct.id, file, existingImages.length + index)
+          const uploadPromises = imageFiles.map((file) =>
+            uploadProductImage(savedProduct.id, file)
           );
           
           uploadedImageUrls = await Promise.all(uploadPromises);
