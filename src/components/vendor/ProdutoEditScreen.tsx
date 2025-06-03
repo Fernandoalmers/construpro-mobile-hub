@@ -4,9 +4,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
 import ProductFormScreen from './ProductFormScreen';
 import { getVendorProduct } from '@/services/vendorProductsService';
+import { getProductImages } from '@/services/products/images';
 import LoadingState from '../common/LoadingState';
 import { ArrowLeft } from 'lucide-react';
-import { Collapsible } from '@/components/ui/collapsible';
 
 const ProdutoEditScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -41,20 +41,31 @@ const ProdutoEditScreen: React.FC = () => {
           return;
         }
         
+        // Verificar se o campo imagens está vazio e buscar da tabela product_images
+        let imageUrls = [];
+        if (productData.imagens && Array.isArray(productData.imagens) && productData.imagens.length > 0) {
+          imageUrls = productData.imagens;
+        } else {
+          console.log("[ProdutoEditScreen] No images in productos.imagens, fetching from product_images table");
+          const productImages = await getProductImages(id);
+          imageUrls = productImages.map(img => img.url);
+          console.log("[ProdutoEditScreen] Fetched images from product_images:", imageUrls);
+        }
+        
         // Add any missing fields with defaults before passing to the form
         const enhancedProductData = {
           ...productData,
           nome: productData.nome || '',
           descricao: productData.descricao || '',
-          segmento: productData.segmento || '',  // Ensure segmento exists even if null/undefined
-          categoria: productData.categoria || '', // Ensure categoria exists even if null/undefined
-          segmento_id: productData.segmento_id || null, // Preserve segment ID if available
+          segmento: productData.segmento || '',
+          categoria: productData.categoria || '',
+          segmento_id: productData.segmento_id || null,
           preco_normal: productData.preco_normal || 0,
           preco_promocional: productData.preco_promocional || null,
           pontos_consumidor: productData.pontos_consumidor || 0,
           pontos_profissional: productData.pontos_profissional || 0,
           estoque: productData.estoque || 0,
-          imagens: Array.isArray(productData.imagens) ? productData.imagens : []
+          imagens: imageUrls // Use as URLs processadas
         };
         
         console.log("[ProdutoEditScreen] Enhanced product data:", enhancedProductData);

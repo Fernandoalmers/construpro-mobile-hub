@@ -1,8 +1,8 @@
 
-import { useCallback } from 'react';
+import { useState } from 'react';
 import { toast } from '@/components/ui/sonner';
-import { saveVendorProduct } from '@/services/vendor/products/productOperations';
-import { uploadProductImage } from '@/services/products/images/imageUpload';
+import { saveVendorProduct, uploadProductImage, updateProductImages } from '@/services/vendorProductsService';
+import { ProductFormData } from './useProductFormData';
 
 interface UseProductSaveProps {
   isEditing: boolean;
@@ -13,7 +13,7 @@ interface UseProductSaveProps {
   setImageFiles: (files: File[]) => void;
   setExistingImages: (images: string[]) => void;
   setImagePreviews: (previews: string[]) => void;
-  setFormData: (data: any) => void;
+  setFormData: (updater: (prev: ProductFormData) => ProductFormData) => void;
   navigate: (path: string) => void;
 }
 
@@ -29,82 +29,93 @@ export const useProductSave = ({
   setFormData,
   navigate
 }: UseProductSaveProps) => {
+  const [uploadingImages, setUploadingImages] = useState(false);
 
-  const handleSave = useCallback(async (formData: any) => {
-    setLoading(true);
-    
+  const handleSave = async (formData: ProductFormData) => {
     try {
-      let productToSave = {
+      setLoading(true);
+      console.log('[useProductSave] Starting save process:', { isEditing, formData });
+
+      // Prepare product data with existing images
+      const productData = {
         ...formData,
-        imagens: [...existingImages]
+        imagens: [...existingImages] // Start with existing images
       };
-      
-      const savedProduct = await saveVendorProduct(productToSave);
-      
-      if (!savedProduct) {
-        throw new Error('Falha ao salvar produto');
+
+      console.log('[useProductSave] Initial product data:', productData);
+
+      // Save the product first
+      const savedProduct = await saveVendorProduct(productData, isEditing);
+      console.log('[useProductSave] Product saved:', savedProduct);
+
+      if (!savedProduct?.id) {
+        throw new Error('Erro ao salvar produto: ID não retornado');
       }
-      
-      let finalImages = [...existingImages];
-      
+
+      // Upload new images if any
+      let uploadedImageUrls: string[] = [];
       if (imageFiles.length > 0) {
-        for (let i = 0; i < imageFiles.length; i++) {
-          const file = imageFiles[i];
-          
-          try {
-            const uploadedUrl = await uploadProductImage(savedProduct.id, file, finalImages.length + i);
-            
-            if (uploadedUrl) {
-              finalImages.push(uploadedUrl);
-            }
-          } catch (uploadError) {
-            console.error('[useProductSave] Error uploading image:', file.name, uploadError);
-          }
-        }
+        console.log('[useProductSave] Uploading', imageFiles.length, 'new images');
+        setUploadingImages(true);
         
-        if (finalImages.length > existingImages.length) {
-          const updatedProduct = await saveVendorProduct({
-            ...productToSave,
-            id: savedProduct.id,
-            imagens: finalImages
-          });
+        try {
+          const uploadPromises = imageFiles.map((file, index) =>
+            uploadProductImage(savedProduct.id, file, existingImages.length + index)
+          );
           
-          if (updatedProduct) {
-            console.log('[useProductSave] Product updated with new images successfully');
-          }
+          uploadedImageUrls = await Promise.all(uploadPromises);
+          uploadedImageUrls = uploadedImageUrls.filter(url => url !== null) as string[];
+          
+          console.log('[useProductSave] Uploaded image URLs:', uploadedImageUrls);
+        } catch (uploadError) {
+          console.error('[useProductSave] Error uploading images:', uploadError);
+          toast.error('Erro ao fazer upload das imagens');
+          throw uploadError;
+        } finally {
+          setUploadingImages(false);
         }
       }
-      
-      toast.success(isEditing ? 'Produto atualizado com sucesso!' : 'Produto criado com sucesso!');
-      
-      imagePreviews.forEach((preview) => {
-        if (preview.startsWith('blob:')) {
-          URL.revokeObjectURL(preview);
+
+      // Combine all image URLs
+      const allImageUrls = [...existingImages, ...uploadedImageUrls];
+      console.log('[useProductSave] All image URLs:', allImageUrls);
+
+      // Always update the product images field to ensure sync
+      if (allImageUrls.length > 0) {
+        console.log('[useProductSave] Updating product images in database');
+        const updateSuccess = await updateProductImages(savedProduct.id, allImageUrls);
+        if (!updateSuccess) {
+          console.warn('[useProductSave] Failed to update product images field');
         }
-      });
-      
-      setImageFiles([]);
-      setExistingImages(finalImages);
-      setImagePreviews(finalImages);
-      setFormData((prev: any) => ({
+      }
+
+      // Update form state
+      setFormData(prev => ({
         ...prev,
         id: savedProduct.id,
-        imagens: finalImages
+        imagens: allImageUrls
       }));
-      
-      setTimeout(() => {
-        navigate('/vendor/products');
-      }, 1500);
-      
+
+      // Update image states
+      setExistingImages(allImageUrls);
+      setImagePreviews(allImageUrls);
+      setImageFiles([]);
+
+      console.log('[useProductSave] Save completed successfully');
+      toast.success(isEditing ? 'Produto atualizado com sucesso!' : 'Produto criado com sucesso!');
+      navigate('/vendor/products');
+
     } catch (error) {
       console.error('[useProductSave] Error saving product:', error);
       toast.error('Erro ao salvar produto: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
     } finally {
       setLoading(false);
+      setUploadingImages(false);
     }
-  }, [isEditing, setLoading, existingImages, imageFiles, imagePreviews, setImageFiles, setExistingImages, setImagePreviews, setFormData, navigate]);
+  };
 
   return {
-    handleSave
+    handleSave,
+    uploadingImages
   };
 };
