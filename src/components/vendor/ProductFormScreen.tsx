@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Upload, X, Save } from 'lucide-react';
@@ -42,9 +41,10 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
     imagens: [] as string[]
   });
 
-  // Separate state for image files and previews
+  // Separate state for new image files and all image previews
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [existingImages, setExistingImages] = useState<string[]>([]);
 
   // Initialize form data
   useEffect(() => {
@@ -52,19 +52,26 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
       console.log('[ProductFormScreen] Setting form data from initialData:', initialData);
       
       // Parse existing images
-      let existingImages: string[] = [];
+      let parsedExistingImages: string[] = [];
       if (initialData.imagens) {
         if (typeof initialData.imagens === 'string') {
           try {
-            existingImages = JSON.parse(initialData.imagens);
+            parsedExistingImages = JSON.parse(initialData.imagens);
           } catch (e) {
             console.warn('Failed to parse imagens string:', initialData.imagens);
-            existingImages = [initialData.imagens]; // Treat as single image
+            parsedExistingImages = [initialData.imagens]; // Treat as single image
           }
         } else if (Array.isArray(initialData.imagens)) {
-          existingImages = initialData.imagens;
+          parsedExistingImages = initialData.imagens;
         }
       }
+      
+      // Filter out invalid images (empty strings, blob URLs)
+      const validExistingImages = parsedExistingImages.filter(img => 
+        img && typeof img === 'string' && img.trim() !== '' && !img.startsWith('blob:')
+      );
+      
+      console.log('[ProductFormScreen] Valid existing images:', validExistingImages);
       
       const newFormData = {
         id: initialData.id || '',
@@ -80,19 +87,17 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
         estoque: initialData.estoque || 0,
         sku: initialData.sku || '',
         codigo_barras: initialData.codigo_barras || '',
-        imagens: existingImages
+        imagens: validExistingImages
       };
       
       setFormData(newFormData);
       setCurrentSegmentId(initialData.segmento_id || '');
 
-      // Set existing images as previews (filter out blob URLs)
-      const validImages = existingImages.filter(img => 
-        img && !img.startsWith('blob:') && img.trim() !== ''
-      );
-      setImagePreviews(validImages);
+      // Set existing images state and previews
+      setExistingImages(validExistingImages);
+      setImagePreviews(validExistingImages);
       
-      console.log('[ProductFormScreen] Initial segment ID set to:', initialData.segmento_id);
+      console.log('[ProductFormScreen] Form initialized with existing images:', validExistingImages);
     }
   }, [initialData]);
 
@@ -164,7 +169,16 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
 
+    // Check if adding new files would exceed the limit
+    const totalImages = imagePreviews.length + files.length;
+    if (totalImages > 5) {
+      toast.error(`Máximo de 5 imagens permitidas. Você pode adicionar apenas ${5 - imagePreviews.length} imagem(ns) a mais.`);
+      return;
+    }
+
     console.log('[ProductFormScreen] Starting image upload for files:', files.map(f => f.name));
+    console.log('[ProductFormScreen] Current previews count:', imagePreviews.length);
+    console.log('[ProductFormScreen] Current existing images:', existingImages.length);
     
     setUploadingImages(true);
     
@@ -172,11 +186,11 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
       const newImageFiles = [...imageFiles, ...files];
       const newPreviews = [...imagePreviews];
       
-      // Create blob URLs for immediate preview
+      // Create blob URLs for immediate preview of new files
       for (const file of files) {
         const previewUrl = URL.createObjectURL(file);
         newPreviews.push(previewUrl);
-        console.log('[ProductFormScreen] Created preview URL:', previewUrl);
+        console.log('[ProductFormScreen] Created preview URL for new file:', previewUrl);
       }
       
       setImageFiles(newImageFiles);
@@ -193,39 +207,82 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
 
   const removeImage = (index: number) => {
     console.log('[ProductFormScreen] Removing image at index:', index);
+    console.log('[ProductFormScreen] Current previews:', imagePreviews);
+    console.log('[ProductFormScreen] Current existing images:', existingImages);
+    console.log('[ProductFormScreen] Current form images:', formData.imagens);
     
+    const imageToRemove = imagePreviews[index];
+    const isExistingImage = existingImages.includes(imageToRemove);
+    const isBlobUrl = imageToRemove?.startsWith('blob:');
+    
+    console.log('[ProductFormScreen] Image to remove:', imageToRemove);
+    console.log('[ProductFormScreen] Is existing image:', isExistingImage);
+    console.log('[ProductFormScreen] Is blob URL:', isBlobUrl);
+    
+    // Create new arrays
     const newPreviews = [...imagePreviews];
     const newFiles = [...imageFiles];
+    const newExistingImages = [...existingImages];
     const newFormImages = [...formData.imagens];
     
-    // If it's a blob URL, revoke it
-    if (newPreviews[index]?.startsWith('blob:')) {
-      URL.revokeObjectURL(newPreviews[index]);
-    }
-    
+    // Remove from previews
     newPreviews.splice(index, 1);
     
-    // Remove corresponding file if it exists
-    if (newFiles[index]) {
-      newFiles.splice(index, 1);
+    if (isExistingImage) {
+      // Removing an existing image
+      const existingIndex = existingImages.indexOf(imageToRemove);
+      if (existingIndex !== -1) {
+        newExistingImages.splice(existingIndex, 1);
+      }
+      
+      // Remove from form data images
+      const formImageIndex = formData.imagens.indexOf(imageToRemove);
+      if (formImageIndex !== -1) {
+        newFormImages.splice(formImageIndex, 1);
+      }
+      
+      console.log('[ProductFormScreen] Removed existing image from all arrays');
+    } else if (isBlobUrl) {
+      // Removing a new image (blob URL)
+      // Find the corresponding file and remove it
+      const blobUrls = imagePreviews.filter(img => img.startsWith('blob:'));
+      const blobIndex = blobUrls.indexOf(imageToRemove);
+      
+      if (blobIndex !== -1) {
+        // Remove the corresponding file
+        const newImageStartIndex = existingImages.length;
+        const fileIndex = newImageStartIndex + blobIndex - blobUrls.slice(0, blobIndex).length;
+        
+        if (fileIndex >= 0 && fileIndex < newFiles.length) {
+          newFiles.splice(fileIndex, 1);
+        }
+      }
+      
+      // Revoke the blob URL to free memory
+      URL.revokeObjectURL(imageToRemove);
+      console.log('[ProductFormScreen] Removed new image and revoked blob URL');
     }
     
-    // Remove from form data images if it exists
-    if (newFormImages[index]) {
-      newFormImages.splice(index, 1);
-    }
-    
+    // Update all states
     setImagePreviews(newPreviews);
     setImageFiles(newFiles);
+    setExistingImages(newExistingImages);
     setFormData(prev => ({
       ...prev,
       imagens: newFormImages
     }));
+    
+    console.log('[ProductFormScreen] Updated states after removal');
+    console.log('[ProductFormScreen] New previews count:', newPreviews.length);
+    console.log('[ProductFormScreen] New existing images count:', newExistingImages.length);
+    console.log('[ProductFormScreen] New files count:', newFiles.length);
   };
 
   const handleSave = async () => {
-    console.log('[ProductFormScreen] Starting save process with form data:', formData);
-    console.log('[ProductFormScreen] Current segment ID:', currentSegmentId);
+    console.log('[ProductFormScreen] Starting save process');
+    console.log('[ProductFormScreen] Form data images:', formData.imagens);
+    console.log('[ProductFormScreen] Existing images:', existingImages);
+    console.log('[ProductFormScreen] New image files:', imageFiles.length);
     
     if (!formData.nome.trim()) {
       toast.error('Nome do produto é obrigatório');
@@ -242,6 +299,13 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
       return;
     }
 
+    // Check if we have at least one image (existing or new)
+    const totalImages = existingImages.length + imageFiles.length;
+    if (totalImages === 0) {
+      toast.error('É obrigatório ter pelo menos uma imagem do produto');
+      return;
+    }
+
     // Validate barcode if provided
     if (formData.codigo_barras && !validateBarcode(formData.codigo_barras)) {
       toast.error('Código de barras inválido. Use formato EAN-8, EAN-13, UPC-12 ou EAN-14');
@@ -251,25 +315,15 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
     setLoading(true);
     
     try {
-      console.log('[ProductFormScreen] Form data being saved:', formData);
-      console.log('[ProductFormScreen] Image files to upload:', imageFiles.length);
+      // Prepare product data with existing images preserved
+      let productToSave = {
+        ...formData,
+        imagens: [...existingImages] // Start with existing images preserved
+      };
       
-      // First, save the product to get an ID if creating new
-      let productToSave = { ...formData };
+      console.log('[ProductFormScreen] Product data to save:', productToSave);
       
-      // Prepare images array - start with existing valid images
-      let finalImages: string[] = [];
-      
-      // Add existing valid images (non-blob URLs)
-      const existingValidImages = formData.imagens.filter(img => 
-        img && !img.startsWith('blob:') && img.trim() !== ''
-      );
-      finalImages = [...existingValidImages];
-      
-      console.log('[ProductFormScreen] Existing valid images:', existingValidImages);
-      
-      // Save product first (with existing images only)
-      productToSave.imagens = finalImages;
+      // Save product first
       const savedProduct = await saveVendorProduct(productToSave);
       
       if (!savedProduct) {
@@ -278,7 +332,9 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
       
       console.log('[ProductFormScreen] Product saved successfully:', savedProduct.id);
       
-      // Now upload new image files
+      // Now upload new image files if any
+      let finalImages = [...existingImages];
+      
       if (imageFiles.length > 0) {
         console.log('[ProductFormScreen] Uploading', imageFiles.length, 'new images');
         
@@ -301,8 +357,8 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
           }
         }
         
-        // Update product with all images
-        if (finalImages.length > existingValidImages.length) {
+        // Update product with all images if new ones were uploaded
+        if (finalImages.length > existingImages.length) {
           console.log('[ProductFormScreen] Updating product with all images:', finalImages);
           
           const updatedProduct = await saveVendorProduct({
@@ -312,24 +368,23 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
           });
           
           if (updatedProduct) {
-            console.log('[ProductFormScreen] Product updated with new images');
+            console.log('[ProductFormScreen] Product updated with new images successfully');
           }
         }
       }
       
       toast.success(isEditing ? 'Produto atualizado com sucesso!' : 'Produto criado com sucesso!');
       
-      // Clear uploaded files and blob URLs
-      imageFiles.forEach((_, index) => {
-        const preview = imagePreviews[index];
-        if (preview?.startsWith('blob:')) {
+      // Clean up blob URLs for new files
+      imagePreviews.forEach((preview) => {
+        if (preview.startsWith('blob:')) {
           URL.revokeObjectURL(preview);
         }
       });
       
+      // Update states with final results
       setImageFiles([]);
-      
-      // Update previews with final images
+      setExistingImages(finalImages);
       setImagePreviews(finalImages);
       setFormData(prev => ({
         ...prev,
@@ -535,38 +590,63 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
           {/* Image Previews */}
           {imagePreviews.length > 0 && (
             <div className="mt-4">
-              <h3 className="text-md font-medium mb-2">Imagens ({imagePreviews.length}/5)</h3>
+              <h3 className="text-md font-medium mb-2">
+                Imagens ({imagePreviews.length}/5)
+                {existingImages.length > 0 && ` - ${existingImages.length} existente(s)`}
+                {imageFiles.length > 0 && ` - ${imageFiles.length} nova(s)`}
+              </h3>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                {imagePreviews.map((imageUrl, index) => (
-                  <div key={index} className="relative group">
-                    <img
-                      src={imageUrl}
-                      alt={`Preview ${index + 1}`}
-                      className="w-full h-24 object-cover rounded-lg border"
-                      onError={(e) => {
-                        console.error(`Error loading preview image ${index}:`, imageUrl);
-                        e.currentTarget.src = 'https://via.placeholder.com/150x150?text=Erro';
-                      }}
-                    />
-                    <button
-                      onClick={() => removeImage(index)}
-                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X size={12} />
-                    </button>
-                    {index === 0 && (
-                      <div className="absolute bottom-1 left-1 bg-blue-500 text-white text-xs px-1 rounded">
-                        Principal
-                      </div>
-                    )}
-                  </div>
-                ))}
+                {imagePreviews.map((imageUrl, index) => {
+                  const isExisting = existingImages.includes(imageUrl);
+                  const isBlob = imageUrl.startsWith('blob:');
+                  
+                  return (
+                    <div key={index} className="relative group">
+                      <img
+                        src={imageUrl}
+                        alt={`Preview ${index + 1}`}
+                        className="w-full h-24 object-cover rounded-lg border"
+                        onError={(e) => {
+                          console.error(`Error loading preview image ${index}:`, imageUrl);
+                          e.currentTarget.src = 'https://via.placeholder.com/150x150?text=Erro';
+                        }}
+                      />
+                      <button
+                        onClick={() => removeImage(index)}
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X size={12} />
+                      </button>
+                      {index === 0 && (
+                        <div className="absolute bottom-1 left-1 bg-blue-500 text-white text-xs px-1 rounded">
+                          Principal
+                        </div>
+                      )}
+                      {isExisting && (
+                        <div className="absolute top-1 left-1 bg-green-500 text-white text-xs px-1 rounded">
+                          Existente
+                        </div>
+                      )}
+                      {isBlob && (
+                        <div className="absolute top-1 left-1 bg-orange-500 text-white text-xs px-1 rounded">
+                          Nova
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
           
           {imagePreviews.length === 0 && (
             <p className="text-red-500 text-sm mt-2">É obrigatório adicionar pelo menos uma imagem.</p>
+          )}
+          
+          {imageFiles.length > 0 && (
+            <p className="text-blue-600 text-sm mt-2">
+              {imageFiles.length} nova(s) imagem(ns) será(ão) enviada(s) quando você salvar o produto.
+            </p>
           )}
         </div>
 
