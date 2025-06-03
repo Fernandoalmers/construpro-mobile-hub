@@ -22,9 +22,9 @@ const ProductImages: React.FC<ProductImagesProps> = ({
   // Enhanced debug logging
   console.log('[ProductImages] Render state:', {
     imagePreviews: imagePreviews.length,
-    imagePreviewsContent: imagePreviews.map(url => url.substring(0, 100) + '...'),
+    imagePreviewsContent: imagePreviews,
     existingImages: existingImages.length,
-    existingImagesContent: existingImages.map(url => url.substring(0, 100) + '...'),
+    existingImagesContent: existingImages,
     imageFiles: imageFiles.length,
     uploadingImages
   });
@@ -47,7 +47,7 @@ const ProductImages: React.FC<ProductImagesProps> = ({
             <div className="mt-1">
               <strong>URLs:</strong>
               {imagePreviews.map((url, i) => (
-                <div key={i} className="truncate">
+                <div key={i} className="truncate text-xs">
                   {i + 1}. {url.length > 80 ? url.substring(0, 80) + '...' : url}
                 </div>
               ))}

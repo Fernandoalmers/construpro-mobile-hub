@@ -7,20 +7,23 @@ export const useProductImageState = () => {
   const [existingImages, setExistingImages] = useState<string[]>([]);
 
   const initializeImageStates = (processedImages: string[]) => {
-    console.log('[useProductImageState] Setting image states with:', processedImages.length, 'images');
+    console.log('[useProductImageState] Initializing with processed images:', processedImages);
+    console.log('[useProductImageState] Number of images to initialize:', processedImages.length);
     
-    // Create completely separate arrays for each state
-    const existingImagesCopy = [...processedImages];
-    const imagePreviewsCopy = [...processedImages];
+    if (!Array.isArray(processedImages)) {
+      console.error('[useProductImageState] processedImages is not an array:', processedImages);
+      return;
+    }
     
-    setExistingImages(existingImagesCopy);
-    setImagePreviews(imagePreviewsCopy);
+    // Set states directly with the processed images
+    setExistingImages([...processedImages]);
+    setImagePreviews([...processedImages]);
     setImageFiles([]); // No new files when editing existing product
     
-    console.log('[useProductImageState] Image states set successfully:');
-    console.log('[useProductImageState] - existingImages:', existingImagesCopy.length);
-    console.log('[useProductImageState] - imagePreviews:', imagePreviewsCopy.length);
-    console.log('[useProductImageState] - imageFiles:', 0);
+    console.log('[useProductImageState] Image states initialized:');
+    console.log('[useProductImageState] - existingImages set to:', processedImages.length, 'items');
+    console.log('[useProductImageState] - imagePreviews set to:', processedImages.length, 'items');
+    console.log('[useProductImageState] - imageFiles set to: 0 items');
   };
 
   return {
