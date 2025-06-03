@@ -13,6 +13,18 @@ export interface ProductCategory {
   produtos_count?: number;
 }
 
+// Get badge color for status
+export const getCategoryStatusBadgeColor = (status: string): string => {
+  switch (status) {
+    case 'ativo':
+      return 'bg-green-100 text-green-800';
+    case 'inativo':
+      return 'bg-red-100 text-red-800';
+    default:
+      return 'bg-gray-100 text-gray-800';
+  }
+};
+
 // Fetch categories from product_categories table
 export const fetchProductCategories = async (): Promise<ProductCategory[]> => {
   try {
