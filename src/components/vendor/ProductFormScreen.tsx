@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Upload, X, Save } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
@@ -22,6 +22,7 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
+  const [currentSegmentId, setCurrentSegmentId] = useState<string>('');
   
   // Form state
   const [formData, setFormData] = useState({
@@ -48,7 +49,7 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
   // Initialize form data
   useEffect(() => {
     if (initialData) {
-      console.log('Setting form data from initialData:', initialData);
+      console.log('[ProductFormScreen] Setting form data from initialData:', initialData);
       
       // Parse existing images
       let existingImages: string[] = [];
@@ -65,7 +66,7 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
         }
       }
       
-      setFormData({
+      const newFormData = {
         id: initialData.id || '',
         nome: initialData.nome || '',
         descricao: initialData.descricao || '',
@@ -80,7 +81,10 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
         sku: initialData.sku || '',
         codigo_barras: initialData.codigo_barras || '',
         imagens: existingImages
-      });
+      };
+      
+      setFormData(newFormData);
+      setCurrentSegmentId(initialData.segmento_id || '');
 
       // Set existing images as previews (filter out blob URLs)
       const validImages = existingImages.filter(img => 
@@ -88,16 +92,57 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
       );
       setImagePreviews(validImages);
       
-      console.log('Setting initial segment ID:', initialData.segmento_id);
+      console.log('[ProductFormScreen] Initial segment ID set to:', initialData.segmento_id);
     }
   }, [initialData]);
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = useCallback((field: string, value: any) => {
+    console.log(`[ProductFormScreen] Updating field ${field} with value:`, value);
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
-  };
+  }, []);
+
+  // Stable callback for segment ID changes
+  const handleSegmentIdChange = useCallback((segmentId: string) => {
+    console.log('[ProductFormScreen] Segment ID change requested:', segmentId);
+    console.log('[ProductFormScreen] Current segment ID:', currentSegmentId);
+    console.log('[ProductFormScreen] Current category:', formData.categoria);
+    
+    // Only process if the segment ID actually changed
+    if (segmentId !== currentSegmentId) {
+      console.log('[ProductFormScreen] Segment ID actually changed, updating and clearing category');
+      setCurrentSegmentId(segmentId);
+      
+      setFormData(prev => ({
+        ...prev,
+        segmento_id: segmentId,
+        categoria: '' // Clear category only when segment actually changes
+      }));
+      
+      console.log('[ProductFormScreen] Category cleared due to segment change');
+    } else {
+      console.log('[ProductFormScreen] Segment ID unchanged, preserving category');
+      // Just update the segment_id in form data without clearing category
+      setFormData(prev => ({
+        ...prev,
+        segmento_id: segmentId
+      }));
+    }
+  }, [currentSegmentId, formData.categoria]);
+
+  // Stable callback for segment name changes
+  const handleSegmentNameChange = useCallback((segmentName: string) => {
+    console.log('[ProductFormScreen] Segment name changed to:', segmentName);
+    handleInputChange('segmento', segmentName);
+  }, [handleInputChange]);
+
+  // Stable callback for category changes
+  const handleCategoryChange = useCallback((categoryName: string) => {
+    console.log('[ProductFormScreen] Category changed to:', categoryName);
+    handleInputChange('categoria', categoryName);
+  }, [handleInputChange]);
 
   // Validate barcode format (basic EAN/UPC validation)
   const validateBarcode = (barcode: string): boolean => {
@@ -119,7 +164,7 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
 
-    console.log('[ProductForm] Starting image upload for files:', files.map(f => f.name));
+    console.log('[ProductFormScreen] Starting image upload for files:', files.map(f => f.name));
     
     setUploadingImages(true);
     
@@ -131,7 +176,7 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
       for (const file of files) {
         const previewUrl = URL.createObjectURL(file);
         newPreviews.push(previewUrl);
-        console.log('[ProductForm] Created preview URL:', previewUrl);
+        console.log('[ProductFormScreen] Created preview URL:', previewUrl);
       }
       
       setImageFiles(newImageFiles);
@@ -139,7 +184,7 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
       
       toast.success(`${files.length} imagem(ns) adicionada(s). Salve o produto para fazer upload permanente.`);
     } catch (error) {
-      console.error('[ProductForm] Error handling image upload:', error);
+      console.error('[ProductFormScreen] Error handling image upload:', error);
       toast.error('Erro ao processar imagens');
     } finally {
       setUploadingImages(false);
@@ -147,7 +192,7 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
   };
 
   const removeImage = (index: number) => {
-    console.log('[ProductForm] Removing image at index:', index);
+    console.log('[ProductFormScreen] Removing image at index:', index);
     
     const newPreviews = [...imagePreviews];
     const newFiles = [...imageFiles];
@@ -179,6 +224,9 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
   };
 
   const handleSave = async () => {
+    console.log('[ProductFormScreen] Starting save process with form data:', formData);
+    console.log('[ProductFormScreen] Current segment ID:', currentSegmentId);
+    
     if (!formData.nome.trim()) {
       toast.error('Nome do produto é obrigatório');
       return;
@@ -203,9 +251,8 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
     setLoading(true);
     
     try {
-      console.log('[ProductForm] Starting save process');
-      console.log('[ProductForm] Form data:', formData);
-      console.log('[ProductForm] Image files to upload:', imageFiles.length);
+      console.log('[ProductFormScreen] Form data being saved:', formData);
+      console.log('[ProductFormScreen] Image files to upload:', imageFiles.length);
       
       // First, save the product to get an ID if creating new
       let productToSave = { ...formData };
@@ -219,7 +266,7 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
       );
       finalImages = [...existingValidImages];
       
-      console.log('[ProductForm] Existing valid images:', existingValidImages);
+      console.log('[ProductFormScreen] Existing valid images:', existingValidImages);
       
       // Save product first (with existing images only)
       productToSave.imagens = finalImages;
@@ -229,34 +276,34 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
         throw new Error('Falha ao salvar produto');
       }
       
-      console.log('[ProductForm] Product saved successfully:', savedProduct.id);
+      console.log('[ProductFormScreen] Product saved successfully:', savedProduct.id);
       
       // Now upload new image files
       if (imageFiles.length > 0) {
-        console.log('[ProductForm] Uploading', imageFiles.length, 'new images');
+        console.log('[ProductFormScreen] Uploading', imageFiles.length, 'new images');
         
         for (let i = 0; i < imageFiles.length; i++) {
           const file = imageFiles[i];
-          console.log('[ProductForm] Uploading image', i + 1, ':', file.name);
+          console.log('[ProductFormScreen] Uploading image', i + 1, ':', file.name);
           
           try {
             const uploadedUrl = await uploadProductImage(savedProduct.id, file, finalImages.length + i);
             
             if (uploadedUrl) {
               finalImages.push(uploadedUrl);
-              console.log('[ProductForm] Successfully uploaded image:', uploadedUrl);
+              console.log('[ProductFormScreen] Successfully uploaded image:', uploadedUrl);
             } else {
-              console.warn('[ProductForm] Failed to upload image:', file.name);
+              console.warn('[ProductFormScreen] Failed to upload image:', file.name);
             }
           } catch (uploadError) {
-            console.error('[ProductForm] Error uploading image:', file.name, uploadError);
+            console.error('[ProductFormScreen] Error uploading image:', file.name, uploadError);
             // Continue with other images even if one fails
           }
         }
         
         // Update product with all images
         if (finalImages.length > existingValidImages.length) {
-          console.log('[ProductForm] Updating product with all images:', finalImages);
+          console.log('[ProductFormScreen] Updating product with all images:', finalImages);
           
           const updatedProduct = await saveVendorProduct({
             ...productToSave,
@@ -265,7 +312,7 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
           });
           
           if (updatedProduct) {
-            console.log('[ProductForm] Product updated with new images');
+            console.log('[ProductFormScreen] Product updated with new images');
           }
         }
       }
@@ -296,7 +343,7 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
       }, 1500);
       
     } catch (error) {
-      console.error('[ProductForm] Error saving product:', error);
+      console.error('[ProductFormScreen] Error saving product:', error);
       toast.error('Erro ao salvar produto: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
     } finally {
       setLoading(false);
@@ -345,8 +392,8 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
               <label className="block text-sm font-medium mb-2">Categoria *</label>
               <ProductCategorySelect
                 value={formData.categoria}
-                onChange={(value) => handleInputChange('categoria', value)}
-                segmentId={formData.segmento_id}
+                onChange={handleCategoryChange}
+                segmentId={currentSegmentId}
                 required={true}
               />
             </div>
@@ -366,15 +413,9 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
             <label className="block text-sm font-medium mb-2">Segmento</label>
             <ProductSegmentSelect
               value={formData.segmento}
-              onChange={(segmentName) => handleInputChange('segmento', segmentName)}
-              onSegmentIdChange={(segmentId) => {
-                handleInputChange('segmento_id', segmentId);
-                // Clear category when segment changes
-                if (formData.categoria) {
-                  handleInputChange('categoria', '');
-                }
-              }}
-              initialSegmentId={formData.segmento_id}
+              onChange={handleSegmentNameChange}
+              onSegmentIdChange={handleSegmentIdChange}
+              initialSegmentId={currentSegmentId}
             />
           </div>
         </div>
@@ -461,7 +502,6 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
           </div>
         </div>
 
-        {/* Images */}
         <div className="bg-white rounded-lg p-6 shadow-sm">
           <h2 className="text-lg font-semibold mb-4">Imagens</h2>
           <p className="text-sm text-gray-600 mb-4">
@@ -530,7 +570,6 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
           )}
         </div>
 
-        {/* Points */}
         <div className="bg-white rounded-lg p-6 shadow-sm">
           <h2 className="text-lg font-semibold mb-4">Pontos</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
