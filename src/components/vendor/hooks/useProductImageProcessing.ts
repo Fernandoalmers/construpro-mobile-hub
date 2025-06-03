@@ -18,7 +18,6 @@ export const useProductImageProcessing = () => {
       if (Array.isArray(rawImages)) {
         console.log('[useProductImageProcessing] Raw images is already an array:', rawImages);
         processedImages = rawImages.filter(img => img && typeof img === 'string' && img.trim() !== '');
-        console.log('[useProductImageProcessing] Filtered array images:', processedImages);
       } else if (typeof rawImages === 'string') {
         console.log('[useProductImageProcessing] Raw images is a string:', rawImages);
         
@@ -30,14 +29,12 @@ export const useProductImageProcessing = () => {
         // Try to parse as JSON first
         try {
           const parsed = JSON.parse(rawImages);
-          console.log('[useProductImageProcessing] Parsed JSON:', parsed);
           if (Array.isArray(parsed)) {
             processedImages = parsed.filter(img => img && typeof img === 'string' && img.trim() !== '');
           } else {
             processedImages = [rawImages];
           }
         } catch (e) {
-          console.log('[useProductImageProcessing] Not JSON, treating as single URL');
           // If not JSON, treat as single URL
           processedImages = [rawImages];
         }
@@ -46,33 +43,26 @@ export const useProductImageProcessing = () => {
         return [];
       }
       
-      // Simplified validation - accept any non-empty string that looks like a URL
+      // Validate URLs - be more permissive with Supabase storage URLs
       const validImages = processedImages.filter(img => {
         if (!img || typeof img !== 'string') {
-          console.log('[useProductImageProcessing] Invalid image (not string):', img);
           return false;
         }
         
         const trimmed = img.trim();
         if (trimmed === '' || trimmed === 'null' || trimmed === 'undefined') {
-          console.log('[useProductImageProcessing] Empty or null image string:', trimmed);
           return false;
         }
         
-        // Accept any string that contains common image patterns or Supabase URLs
+        // Accept any reasonable URL format
         const isValidUrl = trimmed.includes('http') || 
                           trimmed.includes('supabase') || 
                           trimmed.includes('storage') ||
                           trimmed.includes('blob:') ||
-                          trimmed.length > 10; // Basic length check
+                          trimmed.length > 10;
         
-        if (isValidUrl) {
-          console.log('[useProductImageProcessing] Valid image URL accepted:', trimmed.substring(0, 100) + '...');
-          return true;
-        } else {
-          console.log('[useProductImageProcessing] Invalid image URL rejected:', trimmed);
-          return false;
-        }
+        console.log('[useProductImageProcessing] Image validation result for:', trimmed.substring(0, 50) + '...', 'Valid:', isValidUrl);
+        return isValidUrl;
       });
       
       console.log('[useProductImageProcessing] Final valid images count:', validImages.length);

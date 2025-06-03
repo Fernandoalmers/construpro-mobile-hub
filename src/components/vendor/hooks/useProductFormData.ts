@@ -39,13 +39,13 @@ export const useProductFormData = (initialData?: any) => {
   });
 
   const handleInputChange = useCallback((field: string, value: any) => {
-    console.log(`[useProductFormData] Changing ${field} to:`, value);
+    console.log(`[useProductFormData] handleInputChange called: ${field} =`, value);
     setFormData(prev => {
       const newData = {
         ...prev,
         [field]: value
       };
-      console.log(`[useProductFormData] New form data after ${field} change:`, newData);
+      console.log(`[useProductFormData] Form data updated for ${field}:`, newData);
       return newData;
     });
   }, []);

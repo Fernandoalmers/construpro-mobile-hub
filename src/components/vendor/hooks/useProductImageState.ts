@@ -1,12 +1,12 @@
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 
 export const useProductImageState = () => {
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
 
-  const initializeImageStates = (processedImages: string[]) => {
+  const initializeImageStates = useCallback((processedImages: string[]) => {
     console.log('[useProductImageState] Initializing with processed images:', processedImages);
     console.log('[useProductImageState] Number of images to initialize:', processedImages?.length || 0);
     
@@ -20,7 +20,7 @@ export const useProductImageState = () => {
     
     console.log('[useProductImageState] Setting states with images:', imagesCopy);
     
-    // Set all states
+    // Set all states synchronously
     setExistingImages(imagesCopy);
     setImagePreviews(imagesCopy); 
     setImageFiles([]); // Clear any new files when editing existing product
@@ -29,7 +29,7 @@ export const useProductImageState = () => {
     console.log('[useProductImageState] - existingImages set to:', imagesCopy.length, 'items');
     console.log('[useProductImageState] - imagePreviews set to:', imagesCopy.length, 'items');
     console.log('[useProductImageState] - imageFiles cleared');
-  };
+  }, []);
 
   return {
     imageFiles,

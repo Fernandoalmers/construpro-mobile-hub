@@ -41,19 +41,19 @@ export const useProductFormState = ({ isEditing = false, productId, initialData 
 
   // Initialize form data when initialData is provided
   useEffect(() => {
-    if (initialData) {
+    if (initialData && isEditing) {
       console.log('[useProductFormState] useEffect triggered with initialData:', initialData);
       console.log('[useProductFormState] Raw images from initialData:', initialData.imagens);
       
       try {
         // Process images first
-        const processedImages = processImages(initialData.imagens);
+        const processedImages = processImages(initialData.imagens || []);
         console.log('[useProductFormState] Processed images result:', processedImages);
         
-        // Initialize form data
+        // Initialize form data with processed images
         initializeFormData(initialData, processedImages);
         
-        // Initialize image states
+        // Initialize image states with processed images
         console.log('[useProductFormState] About to initialize image states with:', processedImages);
         initializeImageStates(processedImages);
         
@@ -62,7 +62,7 @@ export const useProductFormState = ({ isEditing = false, productId, initialData 
         console.error('[useProductFormState] Error during initialization:', error);
       }
     }
-  }, [initialData, processImages, initializeFormData, initializeImageStates]);
+  }, [initialData, isEditing, processImages, initializeFormData, initializeImageStates]);
 
   // Debug effect to log state changes
   useEffect(() => {
@@ -71,7 +71,8 @@ export const useProductFormState = ({ isEditing = false, productId, initialData 
       formDataDescricao: formData.descricao,
       imagePreviews: imagePreviews.length,
       existingImages: existingImages.length,
-      imageFiles: imageFiles.length
+      imageFiles: imageFiles.length,
+      imagePreviewsContent: imagePreviews.slice(0, 2) // Show first 2 URLs for debugging
     });
   }, [formData.nome, formData.descricao, imagePreviews, existingImages, imageFiles]);
 
