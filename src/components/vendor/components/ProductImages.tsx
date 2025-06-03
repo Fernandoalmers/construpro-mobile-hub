@@ -19,12 +19,27 @@ const ProductImages: React.FC<ProductImagesProps> = ({
   onImageUpload,
   onRemoveImage
 }) => {
+  // Debug logging
+  console.log('[ProductImages] Render state:', {
+    imagePreviews,
+    existingImages,
+    imageFiles: imageFiles.length,
+    uploadingImages
+  });
+
   return (
     <div className="bg-white rounded-lg p-6 shadow-sm">
       <h2 className="text-lg font-semibold mb-4">Imagens</h2>
       <p className="text-sm text-gray-600 mb-4">
         Adicione até 5 imagens do produto (primeira será a principal) *
       </p>
+      
+      {/* Debug info in development */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="mb-4 p-2 bg-gray-100 rounded text-xs">
+          <strong>Debug:</strong> Previews: {imagePreviews.length}, Existing: {existingImages.length}, Files: {imageFiles.length}
+        </div>
+      )}
       
       {/* Image Upload Area */}
       <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
@@ -63,15 +78,22 @@ const ProductImages: React.FC<ProductImagesProps> = ({
               const isExisting = existingImages.includes(imageUrl);
               const isBlob = imageUrl.startsWith('blob:');
               
+              console.log(`[ProductImages] Rendering image ${index}:`, {
+                url: imageUrl,
+                isExisting,
+                isBlob
+              });
+              
               return (
-                <div key={index} className="relative group">
+                <div key={`${imageUrl}-${index}`} className="relative group">
                   <img
                     src={imageUrl}
                     alt={`Preview ${index + 1}`}
                     className="w-full h-24 object-cover rounded-lg border"
+                    onLoad={() => console.log(`[ProductImages] Image loaded successfully: ${imageUrl}`)}
                     onError={(e) => {
-                      console.error(`Error loading preview image ${index}:`, imageUrl);
-                      e.currentTarget.src = 'https://via.placeholder.com/150x150?text=Erro';
+                      console.error(`[ProductImages] Error loading image ${index}:`, imageUrl);
+                      e.currentTarget.src = '/placeholder.svg';
                     }}
                   />
                   <button
@@ -103,7 +125,14 @@ const ProductImages: React.FC<ProductImagesProps> = ({
       )}
       
       {imagePreviews.length === 0 && (
-        <p className="text-red-500 text-sm mt-2">É obrigatório adicionar pelo menos uma imagem.</p>
+        <div className="mt-4">
+          <p className="text-red-500 text-sm">É obrigatório adicionar pelo menos uma imagem.</p>
+          {process.env.NODE_ENV === 'development' && (
+            <p className="text-gray-500 text-xs mt-1">
+              Debug: Se você está editando um produto, verifique se as imagens estão sendo carregadas corretamente.
+            </p>
+          )}
+        </div>
       )}
       
       {imageFiles.length > 0 && (
