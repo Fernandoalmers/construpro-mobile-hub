@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Heart, ShoppingCart, Star, Share2, Info, Store } from 'lucide-react';
@@ -9,6 +10,7 @@ import { useCart } from '@/hooks/use-cart';
 import { useFavorites } from '@/hooks/useFavorites';
 import { useAuth } from '@/context/AuthContext';
 import { getProductPoints } from '@/utils/pointsCalculations';
+import { safeFirstImage } from '@/utils/imageUtils';
 import ProductImageGallery from './components/ProductImageGallery';
 import QuantitySelector from './components/QuantitySelector';
 import { Product } from '@/services/productService';
@@ -19,7 +21,6 @@ interface ProdutoContentProps {
 
 const ProdutoContent: React.FC<ProdutoContentProps> = ({ produto }) => {
   const navigate = useNavigate();
-  // FIXED: Use only useCart() hook - this ensures consistent behavior
   const { addToCart, isLoading } = useCart();
   const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
   const { profile } = useAuth();
@@ -27,16 +28,12 @@ const ProdutoContent: React.FC<ProdutoContentProps> = ({ produto }) => {
   const [addingToCart, setAddingToCart] = useState(false);
   const [favorited, setFavorited] = useState(false);
 
-  console.log('Produto data:', produto);
-
   // Get user type for correct points calculation with type guard
   const userType = profile?.tipo_perfil || 'consumidor';
   const validUserType = (['consumidor', 'profissional', 'lojista', 'vendedor'].includes(userType)) 
     ? userType as 'consumidor' | 'profissional' | 'lojista' | 'vendedor'
     : 'consumidor';
   const displayPoints = getProductPoints(produto, validUserType);
-
-  console.log('User type:', validUserType, 'Display points:', displayPoints);
 
   // FIXED: Standardized store name logic - always use real store name
   const storeName = produto.stores?.nome_loja || 
@@ -46,13 +43,6 @@ const ProdutoContent: React.FC<ProdutoContentProps> = ({ produto }) => {
 
   // FIXED: Only show store info if we have a valid store name
   const shouldShowStoreInfo = storeName && storeName.trim().length > 0;
-
-  console.log('Store info for product page:', {
-    productName: produto.nome,
-    storeName,
-    shouldShowStoreInfo,
-    storeData: produto.stores || produto.vendedores
-  });
 
   const handleAddToCart = async () => {
     if (produto.estoque === 0) {
@@ -67,9 +57,7 @@ const ProdutoContent: React.FC<ProdutoContentProps> = ({ produto }) => {
 
     try {
       setAddingToCart(true);
-      console.log('[ProdutoContent] Using UNIFIED useCart().addToCart - should SUM quantities');
       await addToCart(produto.id, quantity);
-      // Toast is handled by the useCart hook
     } catch (error) {
       console.error('Erro ao adicionar ao carrinho:', error);
       toast.error('Erro ao adicionar produto ao carrinho');
@@ -128,14 +116,9 @@ const ProdutoContent: React.FC<ProdutoContentProps> = ({ produto }) => {
     ? Math.round(((originalPrice - finalPrice) / originalPrice) * 100)
     : 0;
 
-  const mainImage = produto.imagem_url || '';
+  // Use safe image extraction for gallery
+  const mainImage = safeFirstImage(produto.imagem_url) || '';
   const images = produto.imagens || (mainImage ? [mainImage] : []);
-
-  console.log('[ProdutoContent] Passing images to gallery:', {
-    mainImage,
-    images,
-    productName: produto.nome
-  });
 
   return (
     <div className="min-h-screen bg-white">

@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import ProductStatusBadge from './ProductStatusBadge';
 import { VendorProduct } from '@/services/vendor/products/types';
+import { safeFirstImage, handleImageError } from '@/utils/imageUtils';
 
 interface ProductItemProps {
   produto: VendorProduct;
@@ -32,32 +33,8 @@ const ProductItem: React.FC<ProductItemProps> = ({
       <ToggleLeft className="text-gray-500" size={20} />;
   };
 
-  // Extract first image if exists
-  let imagemUrl: string | undefined = undefined;
-  
-  if (typeof produto.imagens === 'string') {
-    try {
-      const parsedImages = JSON.parse(produto.imagens);
-      if (Array.isArray(parsedImages) && parsedImages.length > 0) {
-        imagemUrl = String(parsedImages[0]); // Ensure we convert to string
-      }
-    } catch (e) {
-      console.error('Error parsing produto.imagens:', e);
-    }
-  } else if (Array.isArray(produto.imagens) && produto.imagens.length > 0) {
-    imagemUrl = String(produto.imagens[0]); // Ensure we convert to string
-  } else if (produto.imagens && typeof produto.imagens === 'object') {
-    // Handle case when imagens is a Json object
-    try {
-      const stringifiedImages = JSON.stringify(produto.imagens);
-      const parsedImages = JSON.parse(stringifiedImages);
-      if (Array.isArray(parsedImages) && parsedImages.length > 0) {
-        imagemUrl = String(parsedImages[0]); // Ensure we convert to string
-      }
-    } catch (e) {
-      console.error('Error handling Json imagens:', e);
-    }
-  }
+  // Extract first image safely - this fixes the [\"url\"] bug
+  const imagemUrl = safeFirstImage(produto.imagens);
 
   return (
     <Card className="overflow-hidden hover:shadow-md transition-shadow">
@@ -70,10 +47,7 @@ const ProductItem: React.FC<ProductItemProps> = ({
                 src={imagemUrl} 
                 alt={produto.nome} 
                 className="w-full h-full object-cover"
-                onError={(e) => {
-                  console.error('Error loading image:', imagemUrl);
-                  e.currentTarget.src = 'https://via.placeholder.com/150?text=Sem+Imagem';
-                }}
+                onError={handleImageError}
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400 text-xs">

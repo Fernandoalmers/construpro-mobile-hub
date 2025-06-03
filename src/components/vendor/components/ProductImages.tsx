@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Upload, X } from 'lucide-react';
+import { safeFirstImage, handleImageError } from '@/utils/imageUtils';
 
 interface ProductImagesProps {
   imagePreviews: string[];
@@ -26,14 +27,6 @@ const ProductImages: React.FC<ProductImagesProps> = ({
     imageFiles: imageFiles.length,
     uploadingImages
   });
-
-  const handleImageError = (event: React.SyntheticEvent<HTMLImageElement, Event>, index: number) => {
-    console.error(`[ProductImages] Error loading image at index ${index}:`, imagePreviews[index]);
-    const target = event.currentTarget;
-    target.onerror = null; // Prevent infinite loop
-    target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xMiA4VjE2TTggMTJIMTYiIHN0cm9rZT0iIzlDQTNBRiIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KPHN2Zz4K'; // Simple placeholder SVG
-    target.alt = 'Imagem não encontrada';
-  };
 
   return (
     <div className="bg-white rounded-lg p-6 shadow-sm">
@@ -107,7 +100,7 @@ const ProductImages: React.FC<ProductImagesProps> = ({
                     alt={`Preview ${index + 1}`}
                     className="w-full h-24 object-cover rounded-lg border"
                     onLoad={() => console.log(`[ProductImages] Image ${index} loaded successfully:`, imageUrl.substring(0, 50) + '...')}
-                    onError={(e) => handleImageError(e, index)}
+                    onError={handleImageError}
                   />
                   <button
                     onClick={() => onRemoveImage(index)}

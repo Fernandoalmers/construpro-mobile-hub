@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Heart, ShoppingCart, Star, Store } from 'lucide-react';
@@ -9,6 +10,7 @@ import { useCart } from '@/hooks/use-cart';
 import { useFavorites } from '@/hooks/useFavorites';
 import { useAuth } from '@/context/AuthContext';
 import { getProductPoints } from '@/utils/pointsCalculations';
+import { safeFirstImage, handleImageError } from '@/utils/imageUtils';
 import { UserRole } from '@/context/AuthContext';
 
 interface Product {
@@ -49,22 +51,11 @@ interface ProdutoCardProps {
 
 const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onClick }) => {
   const navigate = useNavigate();
-  // FIXED: Use only useCart() hook - this ensures consistent behavior
   const { addToCart, isLoading } = useCart();
   const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
   const { profile } = useAuth();
-  const [imageError, setImageError] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
   const [favorited, setFavorited] = useState(false);
-
-  // Debug log to check product data
-  console.log('[ProdutoCard] Product data:', {
-    id: produto.id,
-    nome: produto.nome,
-    stores: produto.stores,
-    vendedores: produto.vendedores,
-    vendedor_id: produto.vendedor_id
-  });
 
   // Get user type for correct points calculation with type guard
   const userType = profile?.tipo_perfil || 'consumidor';
@@ -92,9 +83,7 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
 
     try {
       setAddingToCart(true);
-      console.log('[ProdutoCard] Using UNIFIED useCart().addToCart - should SUM quantities');
       await addToCart(produto.id, 1);
-      // Toast is handled by the useCart hook
     } catch (error) {
       console.error('Erro ao adicionar ao carrinho:', error);
       toast.error('Erro ao adicionar produto ao carrinho');
@@ -141,6 +130,9 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
   const finalPrice = hasPromotion ? produto.preco_promocional : produto.preco;
   const originalPrice = hasPromotion ? (produto.preco_normal || produto.preco) : null;
 
+  // Use safe image extraction - fixes the ["url"] bug
+  const displayImageUrl = safeFirstImage(produto.imagem_url);
+
   return (
     <Card 
       className={`cursor-pointer hover:shadow-lg transition-all duration-200 overflow-hidden ${className}`}
@@ -149,12 +141,12 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
       <div className="relative">
         {/* Product Image */}
         <div className="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">
-          {produto.imagem_url && !imageError ? (
+          {displayImageUrl ? (
             <img
-              src={produto.imagem_url}
+              src={displayImageUrl}
               alt={produto.nome}
               className="w-full h-full object-cover transition-transform duration-200 hover:scale-105"
-              onError={() => setImageError(true)}
+              onError={handleImageError}
               loading="lazy"
             />
           ) : (
