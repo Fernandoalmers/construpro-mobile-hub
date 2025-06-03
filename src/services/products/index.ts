@@ -15,6 +15,7 @@ import {
 } from './productBase';
 
 import {
+  uploadImageFile,
   uploadProductImage,
   updateProductImages,
   getProductImages,
@@ -87,6 +88,7 @@ export {
   unsubscribeAll,
   
   // Product Images
+  uploadImageFile,
   uploadProductImage,
   updateProductImages,
   getProductImages,
