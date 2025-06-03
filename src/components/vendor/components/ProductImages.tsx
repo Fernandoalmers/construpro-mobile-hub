@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Upload, X } from 'lucide-react';
-import { safeFirstImage, handleImageError } from '@/utils/imageUtils';
+import { safeFirstImage, handleImageError, debugImageData } from '@/utils/imageUtils';
 
 interface ProductImagesProps {
   imagePreviews: string[];
@@ -26,6 +26,11 @@ const ProductImages: React.FC<ProductImagesProps> = ({
     existingImages: existingImages.length,
     imageFiles: imageFiles.length,
     uploadingImages
+  });
+
+  // Debug existing images processing
+  existingImages.forEach((img, index) => {
+    debugImageData(`Existing Image ${index}`, img, 'in ProductImages');
   });
 
   return (
@@ -93,14 +98,20 @@ const ProductImages: React.FC<ProductImagesProps> = ({
               const isExisting = existingImages.includes(imageUrl);
               const isBlob = imageUrl.startsWith('blob:');
               
+              // Debug each image preview
+              debugImageData(`Preview ${index}`, imageUrl, 'rendering preview');
+              
               return (
                 <div key={`image-${index}-${Date.now()}`} className="relative group">
                   <img
                     src={imageUrl}
                     alt={`Preview ${index + 1}`}
                     className="w-full h-24 object-cover rounded-lg border"
-                    onLoad={() => console.log(`[ProductImages] Image ${index} loaded successfully:`, imageUrl.substring(0, 50) + '...')}
-                    onError={handleImageError}
+                    onLoad={() => console.log(`[ProductImages] ✅ Image ${index} loaded successfully:`, imageUrl.substring(0, 50) + '...')}
+                    onError={(e) => {
+                      console.error(`[ProductImages] ❌ Image ${index} failed to load:`, imageUrl);
+                      handleImageError(e);
+                    }}
                   />
                   <button
                     onClick={() => onRemoveImage(index)}
