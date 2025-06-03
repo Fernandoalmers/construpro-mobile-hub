@@ -1,6 +1,8 @@
+
 import { useState } from 'react';
 import { toast } from '@/components/ui/sonner';
-import { saveVendorProduct, updateProductImages, uploadProductImage } from '@/services/vendorProductsService';
+import { saveVendorProduct, updateProductImages } from '@/services/vendorProductsService';
+import { uploadProductImage } from '@/services/vendor/products/productImages';
 import { ProductFormData } from './useProductFormData';
 
 interface UseProductSaveProps {
