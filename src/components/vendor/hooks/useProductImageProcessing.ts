@@ -46,7 +46,7 @@ export const useProductImageProcessing = () => {
         return [];
       }
       
-      // Very basic validation - just check if it's a non-empty string
+      // Simplified validation - accept any non-empty string that looks like a URL
       const validImages = processedImages.filter(img => {
         if (!img || typeof img !== 'string') {
           console.log('[useProductImageProcessing] Invalid image (not string):', img);
@@ -59,8 +59,20 @@ export const useProductImageProcessing = () => {
           return false;
         }
         
-        console.log('[useProductImageProcessing] Valid image URL accepted:', trimmed.substring(0, 100) + '...');
-        return true;
+        // Accept any string that contains common image patterns or Supabase URLs
+        const isValidUrl = trimmed.includes('http') || 
+                          trimmed.includes('supabase') || 
+                          trimmed.includes('storage') ||
+                          trimmed.includes('blob:') ||
+                          trimmed.length > 10; // Basic length check
+        
+        if (isValidUrl) {
+          console.log('[useProductImageProcessing] Valid image URL accepted:', trimmed.substring(0, 100) + '...');
+          return true;
+        } else {
+          console.log('[useProductImageProcessing] Invalid image URL rejected:', trimmed);
+          return false;
+        }
       });
       
       console.log('[useProductImageProcessing] Final valid images count:', validImages.length);

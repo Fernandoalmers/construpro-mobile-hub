@@ -39,16 +39,17 @@ const ProductImages: React.FC<ProductImagesProps> = ({
       {/* Debug info in development */}
       {process.env.NODE_ENV === 'development' && (
         <div className="mb-4 p-2 bg-gray-100 rounded text-xs">
-          <strong>Debug:</strong> 
-          <br />- Previews: {imagePreviews.length} 
-          <br />- Existing: {existingImages.length} 
-          <br />- Files: {imageFiles.length}
+          <strong>Debug Info:</strong> 
+          <br />- Image previews: {imagePreviews.length} 
+          <br />- Existing images: {existingImages.length} 
+          <br />- New files: {imageFiles.length}
+          <br />- Uploading: {uploadingImages ? 'Yes' : 'No'}
           {imagePreviews.length > 0 && (
             <div className="mt-1">
-              <strong>URLs:</strong>
+              <strong>Preview URLs:</strong>
               {imagePreviews.map((url, i) => (
                 <div key={i} className="truncate text-xs">
-                  {i + 1}. {url.length > 80 ? url.substring(0, 80) + '...' : url}
+                  {i + 1}. {url.length > 60 ? url.substring(0, 60) + '...' : url}
                 </div>
               ))}
             </div>
@@ -100,23 +101,24 @@ const ProductImages: React.FC<ProductImagesProps> = ({
               });
               
               return (
-                <div key={`${index}-${imageUrl.substring(imageUrl.length - 10)}`} className="relative group">
+                <div key={`image-${index}-${imageUrl.substring(imageUrl.length - 10)}`} className="relative group">
                   <img
                     src={imageUrl}
                     alt={`Preview ${index + 1}`}
                     className="w-full h-24 object-cover rounded-lg border"
-                    onLoad={() => console.log(`[ProductImages] Image ${index} loaded successfully`)}
+                    onLoad={() => console.log(`[ProductImages] Image ${index} loaded successfully from:`, imageUrl.substring(0, 50) + '...')}
                     onError={(e) => {
                       console.error(`[ProductImages] Error loading image ${index}:`, imageUrl);
-                      // Show a placeholder or broken image indicator
                       const target = e.target as HTMLImageElement;
                       target.style.backgroundColor = '#f3f4f6';
                       target.style.border = '2px dashed #d1d5db';
+                      target.alt = 'Erro ao carregar imagem';
                     }}
                   />
                   <button
                     onClick={() => onRemoveImage(index)}
                     className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    type="button"
                   >
                     <X size={12} />
                   </button>

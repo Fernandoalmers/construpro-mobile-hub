@@ -8,22 +8,27 @@ export const useProductImageState = () => {
 
   const initializeImageStates = (processedImages: string[]) => {
     console.log('[useProductImageState] Initializing with processed images:', processedImages);
-    console.log('[useProductImageState] Number of images to initialize:', processedImages.length);
+    console.log('[useProductImageState] Number of images to initialize:', processedImages?.length || 0);
     
     if (!Array.isArray(processedImages)) {
       console.error('[useProductImageState] processedImages is not an array:', processedImages);
       return;
     }
     
-    // Set states directly with the processed images
-    setExistingImages([...processedImages]);
-    setImagePreviews([...processedImages]);
-    setImageFiles([]); // No new files when editing existing product
+    // Create a copy to avoid reference issues
+    const imagesCopy = [...processedImages];
     
-    console.log('[useProductImageState] Image states initialized:');
-    console.log('[useProductImageState] - existingImages set to:', processedImages.length, 'items');
-    console.log('[useProductImageState] - imagePreviews set to:', processedImages.length, 'items');
-    console.log('[useProductImageState] - imageFiles set to: 0 items');
+    console.log('[useProductImageState] Setting states with images:', imagesCopy);
+    
+    // Set all states
+    setExistingImages(imagesCopy);
+    setImagePreviews(imagesCopy); 
+    setImageFiles([]); // Clear any new files when editing existing product
+    
+    console.log('[useProductImageState] Image states initialized successfully');
+    console.log('[useProductImageState] - existingImages set to:', imagesCopy.length, 'items');
+    console.log('[useProductImageState] - imagePreviews set to:', imagesCopy.length, 'items');
+    console.log('[useProductImageState] - imageFiles cleared');
   };
 
   return {
