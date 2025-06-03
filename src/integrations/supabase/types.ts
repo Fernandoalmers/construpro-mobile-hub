@@ -1152,6 +1152,7 @@ export type Database = {
       profiles: {
         Row: {
           avatar: string | null
+          cnpj: string | null
           codigo: string | null
           cpf: string | null
           created_at: string
@@ -1172,6 +1173,7 @@ export type Database = {
         }
         Insert: {
           avatar?: string | null
+          cnpj?: string | null
           codigo?: string | null
           cpf?: string | null
           created_at?: string
@@ -1192,6 +1194,7 @@ export type Database = {
         }
         Update: {
           avatar?: string | null
+          cnpj?: string | null
           codigo?: string | null
           cpf?: string | null
           created_at?: string

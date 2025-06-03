@@ -9,6 +9,7 @@ interface SignupData {
   password: string;
   nome: string;
   cpf?: string;
+  cnpj?: string;
   telefone?: string;
   tipo_perfil: UserRole;
   especialidade_profissional?: string;
@@ -96,7 +97,7 @@ serve(async (req) => {
   }
   
   try {
-    console.log("🚀 Auth signup function called - v2.0 with referral code generation");
+    console.log("🚀 Auth signup function called - v3.0 with CPF/CNPJ distinction");
     
     // Parse request body
     let userData: SignupData;
@@ -107,7 +108,9 @@ serve(async (req) => {
         nome: userData.nome,
         tipo_perfil: userData.tipo_perfil,
         especialidade_profissional: userData.especialidade_profissional,
-        nome_loja: userData.nome_loja
+        nome_loja: userData.nome_loja,
+        has_cpf: !!userData.cpf,
+        has_cnpj: !!userData.cnpj
       });
     } catch (parseError) {
       console.error("❌ Error parsing request body:", parseError);
@@ -123,6 +126,23 @@ serve(async (req) => {
         JSON.stringify({ error: 'Email, senha e nome são obrigatórios' }),
         { status: 400, headers }
       )
+    }
+    
+    // Validate document based on profile type
+    if (userData.tipo_perfil === 'lojista') {
+      if (!userData.cnpj) {
+        return new Response(
+          JSON.stringify({ error: 'CNPJ é obrigatório para vendedores' }),
+          { status: 400, headers }
+        )
+      }
+    } else {
+      if (!userData.cpf) {
+        return new Response(
+          JSON.stringify({ error: 'CPF é obrigatório' }),
+          { status: 400, headers }
+        )
+      }
     }
     
     // Set default role if not provided
@@ -159,7 +179,6 @@ serve(async (req) => {
     // Prepare user metadata with all required fields including referral code
     const userMetadata = {
       nome: userData.nome,
-      cpf: userData.cpf || null,
       telefone: userData.telefone || null,
       tipo_perfil: userData.tipo_perfil,
       papel: userData.tipo_perfil, // For backward compatibility
@@ -167,6 +186,13 @@ serve(async (req) => {
       saldo_pontos: 0,
       codigo: referralCode // Add the generated referral code
     };
+
+    // Add document fields based on profile type
+    if (userData.tipo_perfil === 'lojista') {
+      userMetadata.cnpj = userData.cnpj;
+    } else {
+      userMetadata.cpf = userData.cpf;
+    }
 
     // Add specific fields based on profile type
     if (userData.tipo_perfil === 'profissional' && userData.especialidade_profissional) {
@@ -177,7 +203,11 @@ serve(async (req) => {
       userMetadata.nome_loja = userData.nome_loja;
     }
 
-    console.log("👤 Creating user with metadata:", { ...userMetadata, codigo: referralCode });
+    console.log("👤 Creating user with metadata:", { 
+      ...userMetadata, 
+      codigo: referralCode,
+      documento_tipo: userData.tipo_perfil === 'lojista' ? 'CNPJ' : 'CPF'
+    });
     
     // Create user with metadata
     const { data, error } = await supabaseAdmin.auth.admin.createUser({
@@ -213,7 +243,6 @@ serve(async (req) => {
           id: data.user.id,
           nome: userData.nome,
           email: userData.email,
-          cpf: userData.cpf || null,
           telefone: userData.telefone || null,
           papel: userData.tipo_perfil,
           tipo_perfil: userData.tipo_perfil,
@@ -223,10 +252,18 @@ serve(async (req) => {
           codigo: referralCode // Ensure the referral code is saved
         };
 
+        // Add document fields to profile
+        if (userData.tipo_perfil === 'lojista') {
+          profileData.cnpj = userData.cnpj;
+        } else {
+          profileData.cpf = userData.cpf;
+        }
+
         console.log("📝 Creating profile directly with referral code:", { 
           id: profileData.id, 
           nome: profileData.nome,
-          codigo: profileData.codigo
+          codigo: profileData.codigo,
+          documento_tipo: userData.tipo_perfil === 'lojista' ? 'CNPJ' : 'CPF'
         });
 
         const { error: profileError } = await supabaseAdmin

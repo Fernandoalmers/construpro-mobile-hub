@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,7 +8,28 @@ import CustomInput from './common/CustomInput';
 import CustomButton from './common/CustomButton';
 import Card from './common/Card';
 import { referralService } from '@/services/pointsService';
+
 type ProfileType = 'consumidor' | 'lojista' | 'profissional';
+
+const ESPECIALIDADES_PROFISSIONAIS = [
+  'Pedreiro',
+  'Eletricista',
+  'Encanador',
+  'Pintor',
+  'Marceneiro',
+  'Soldador',
+  'Gesseiro',
+  'Azulejista',
+  'Serralheiro',
+  'Jardineiro',
+  'Arquiteto',
+  'Engenheiro Civil',
+  'Designer de Interiores',
+  'Mestre de Obras',
+  'Técnico em Segurança do Trabalho',
+  'Outros'
+];
+
 const SignupScreen: React.FC = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -16,8 +38,10 @@ const SignupScreen: React.FC = () => {
     password: '',
     confirmPassword: '',
     cpf: '',
+    cnpj: '',
     telefone: '',
     referralCode: '',
+    especialidade_profissional: '',
     tipo_perfil: 'consumidor' as ProfileType
   });
   const [showPassword, setShowPassword] = useState(false);
@@ -34,24 +58,37 @@ const SignupScreen: React.FC = () => {
       }));
     }
   }, []);
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const {
-      name,
-      value
-    } = e.target;
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
   };
+
   const formatCPF = (value: string) => {
     const cleaned = value.replace(/\D/g, '');
-    const match = cleaned.match(/^(\d{3})(\d{3})(\d{3})(\d{2})$/);
-    if (match) {
-      return `${match[1]}.${match[2]}.${match[3]}-${match[4]}`;
+    if (cleaned.length <= 11) {
+      const match = cleaned.match(/^(\d{3})(\d{3})(\d{3})(\d{2})$/);
+      if (match) {
+        return `${match[1]}.${match[2]}.${match[3]}-${match[4]}`;
+      }
     }
     return cleaned;
   };
+
+  const formatCNPJ = (value: string) => {
+    const cleaned = value.replace(/\D/g, '');
+    if (cleaned.length <= 14) {
+      const match = cleaned.match(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/);
+      if (match) {
+        return `${match[1]}.${match[2]}.${match[3]}/${match[4]}-${match[5]}`;
+      }
+    }
+    return cleaned;
+  };
+
   const formatPhone = (value: string) => {
     const cleaned = value.replace(/\D/g, '');
     const match = cleaned.match(/^(\d{2})(\d{5})(\d{4})$/);
@@ -60,32 +97,55 @@ const SignupScreen: React.FC = () => {
     }
     return cleaned;
   };
+
   const handleCPFChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const {
-      value
-    } = e.target;
+    const { value } = e.target;
     const formattedValue = formatCPF(value);
     setFormData(prev => ({
       ...prev,
       cpf: formattedValue
     }));
   };
+
+  const handleCNPJChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { value } = e.target;
+    const formattedValue = formatCNPJ(value);
+    setFormData(prev => ({
+      ...prev,
+      cnpj: formattedValue
+    }));
+  };
+
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const {
-      value
-    } = e.target;
+    const { value } = e.target;
     const formattedValue = formatPhone(value);
     setFormData(prev => ({
       ...prev,
       telefone: formattedValue
     }));
   };
+
   const handleProfileTypeSelect = (tipo: ProfileType) => {
     setFormData(prev => ({
       ...prev,
-      tipo_perfil: tipo
+      tipo_perfil: tipo,
+      // Limpar campos quando trocar tipo
+      cpf: '',
+      cnpj: '',
+      especialidade_profissional: ''
     }));
   };
+
+  const validateCPF = (cpf: string) => {
+    const cleaned = cpf.replace(/\D/g, '');
+    return cleaned.length === 11;
+  };
+
+  const validateCNPJ = (cnpj: string) => {
+    const cleaned = cnpj.replace(/\D/g, '');
+    return cleaned.length === 14;
+  };
+
   const validateForm = () => {
     if (!formData.nome.trim()) {
       toast.error('Nome é obrigatório');
@@ -107,49 +167,90 @@ const SignupScreen: React.FC = () => {
       toast.error('Senhas não coincidem');
       return false;
     }
-    if (!formData.cpf.trim()) {
-      toast.error('CPF é obrigatório');
-      return false;
+
+    // Validação de documento baseada no tipo de perfil
+    if (formData.tipo_perfil === 'lojista') {
+      if (!formData.cnpj.trim()) {
+        toast.error('CNPJ é obrigatório para vendedores');
+        return false;
+      }
+      if (!validateCNPJ(formData.cnpj)) {
+        toast.error('CNPJ deve ter 14 dígitos');
+        return false;
+      }
+    } else {
+      if (!formData.cpf.trim()) {
+        toast.error('CPF é obrigatório');
+        return false;
+      }
+      if (!validateCPF(formData.cpf)) {
+        toast.error('CPF deve ter 11 dígitos');
+        return false;
+      }
     }
+
     if (!formData.telefone.trim()) {
       toast.error('Telefone é obrigatório');
       return false;
     }
+
+    // Validação de especialidade para profissionais
+    if (formData.tipo_perfil === 'profissional' && !formData.especialidade_profissional) {
+      toast.error('Especialidade é obrigatória para profissionais');
+      return false;
+    }
+
     return true;
   };
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
+
     setIsLoading(true);
     try {
-      console.log('🔄 [SignupScreen] Starting signup process v2.0');
+      console.log('🔄 [SignupScreen] Starting signup process v3.0');
+
+      // Preparar dados do usuário baseado no tipo de perfil
+      const userData: any = {
+        nome: formData.nome,
+        telefone: formData.telefone.replace(/\D/g, ''),
+        papel: formData.tipo_perfil,
+        tipo_perfil: formData.tipo_perfil,
+        status: 'ativo',
+        saldo_pontos: 0
+      };
+
+      // Adicionar documento correto baseado no tipo
+      if (formData.tipo_perfil === 'lojista') {
+        userData.cnpj = formData.cnpj.replace(/\D/g, '');
+      } else {
+        userData.cpf = formData.cpf.replace(/\D/g, '');
+      }
+
+      // Adicionar especialidade para profissionais
+      if (formData.tipo_perfil === 'profissional' && formData.especialidade_profissional) {
+        userData.especialidade_profissional = formData.especialidade_profissional;
+      }
 
       // Step 1: Create auth user
-      const {
-        data: authData,
-        error: authError
-      } = await supabase.auth.signUp({
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
-          data: {
-            nome: formData.nome,
-            cpf: formData.cpf.replace(/\D/g, ''),
-            telefone: formData.telefone.replace(/\D/g, ''),
-            papel: formData.tipo_perfil,
-            tipo_perfil: formData.tipo_perfil,
-            status: 'ativo',
-            saldo_pontos: 0
-          }
+          data: userData
         }
       });
+
       if (authError) {
         console.error('❌ [SignupScreen] Auth error:', authError);
         throw authError;
       }
+
       if (!authData.user) {
         throw new Error('Falha ao criar usuário');
       }
+
       console.log('✅ [SignupScreen] User created successfully:', authData.user.id);
 
       // Step 2: Process referral code if provided
@@ -175,9 +276,12 @@ const SignupScreen: React.FC = () => {
 
       // Step 4: Get user profile to show referral code
       try {
-        const {
-          data: profile
-        } = await supabase.from('profiles').select('codigo').eq('id', authData.user.id).single();
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('codigo')
+          .eq('id', authData.user.id)
+          .single();
+
         if (profile?.codigo) {
           console.log('🎯 [SignupScreen] User referral code:', profile.codigo);
           toast.success(`Cadastro realizado! Seu código de indicação é: ${profile.codigo}`);
@@ -189,6 +293,7 @@ const SignupScreen: React.FC = () => {
         console.warn('⚠️ [SignupScreen] Não foi possível obter código:', profileError);
         toast.success('Cadastro realizado com sucesso!');
       }
+
       if (authData.session) {
         console.log('✅ [SignupScreen] User logged in automatically');
 
@@ -218,6 +323,7 @@ const SignupScreen: React.FC = () => {
       setIsLoading(false);
     }
   };
+
   const clearReferralCode = () => {
     setFormData(prev => ({
       ...prev,
@@ -226,7 +332,9 @@ const SignupScreen: React.FC = () => {
     localStorage.removeItem('referralCode');
     toast.info('Código de referência removido');
   };
-  return <div className="flex flex-col min-h-screen bg-gray-100">
+
+  return (
+    <div className="flex flex-col min-h-screen bg-gray-100">
       {/* Header */}
       <div className="p-6 pt-12 bg-construPro-blue">
         <div className="flex items-center">
@@ -240,7 +348,8 @@ const SignupScreen: React.FC = () => {
       {/* Content */}
       <div className="flex-1 p-6">
         {/* Referral Code Display */}
-        {formData.referralCode && <Card className="p-4 mb-4 bg-green-50 border-green-200">
+        {formData.referralCode && (
+          <Card className="p-4 mb-4 bg-green-50 border-green-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <Gift size={20} className="text-green-600 mr-2" />
@@ -257,7 +366,8 @@ const SignupScreen: React.FC = () => {
                 Remover
               </button>
             </div>
-          </Card>}
+          </Card>
+        )}
 
         <form onSubmit={handleSignup} className="space-y-4">
           {/* Profile Type Selection */}
@@ -265,9 +375,21 @@ const SignupScreen: React.FC = () => {
             <h3 className="text-lg font-medium text-gray-800 mb-3">Escolha seu tipo de perfil</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Consumidor Card */}
-              <Card className={`p-4 cursor-pointer border-2 transition-all ${formData.tipo_perfil === 'consumidor' ? 'border-construPro-blue bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`} onClick={() => handleProfileTypeSelect('consumidor')}>
+              <Card
+                className={`p-4 cursor-pointer border-2 transition-all ${
+                  formData.tipo_perfil === 'consumidor'
+                    ? 'border-construPro-blue bg-blue-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+                onClick={() => handleProfileTypeSelect('consumidor')}
+              >
                 <div className="flex flex-col items-center text-center">
-                  <User size={40} className={`mb-3 ${formData.tipo_perfil === 'consumidor' ? 'text-construPro-blue' : 'text-gray-500'}`} />
+                  <User
+                    size={40}
+                    className={`mb-3 ${
+                      formData.tipo_perfil === 'consumidor' ? 'text-construPro-blue' : 'text-gray-500'
+                    }`}
+                  />
                   <h4 className="font-medium text-gray-800 mb-2">Consumidor</h4>
                   <p className="text-sm text-gray-600">
                     Para comprar produtos e acumular pontos
@@ -276,9 +398,21 @@ const SignupScreen: React.FC = () => {
               </Card>
 
               {/* Vendedor Card */}
-              <Card className={`p-4 cursor-pointer border-2 transition-all ${formData.tipo_perfil === 'lojista' ? 'border-construPro-blue bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`} onClick={() => handleProfileTypeSelect('lojista')}>
+              <Card
+                className={`p-4 cursor-pointer border-2 transition-all ${
+                  formData.tipo_perfil === 'lojista'
+                    ? 'border-construPro-blue bg-blue-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+                onClick={() => handleProfileTypeSelect('lojista')}
+              >
                 <div className="flex flex-col items-center text-center">
-                  <Store size={40} className={`mb-3 ${formData.tipo_perfil === 'lojista' ? 'text-construPro-blue' : 'text-gray-500'}`} />
+                  <Store
+                    size={40}
+                    className={`mb-3 ${
+                      formData.tipo_perfil === 'lojista' ? 'text-construPro-blue' : 'text-gray-500'
+                    }`}
+                  />
                   <h4 className="font-medium text-gray-800 mb-2">Vendedor</h4>
                   <p className="text-sm text-gray-600">
                     Para vender produtos e gerenciar sua loja
@@ -287,9 +421,21 @@ const SignupScreen: React.FC = () => {
               </Card>
 
               {/* Profissional Card */}
-              <Card className={`p-4 cursor-pointer border-2 transition-all ${formData.tipo_perfil === 'profissional' ? 'border-construPro-blue bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`} onClick={() => handleProfileTypeSelect('profissional')}>
+              <Card
+                className={`p-4 cursor-pointer border-2 transition-all ${
+                  formData.tipo_perfil === 'profissional'
+                    ? 'border-construPro-blue bg-blue-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+                onClick={() => handleProfileTypeSelect('profissional')}
+              >
                 <div className="flex flex-col items-center text-center">
-                  <Briefcase size={40} className={`mb-3 ${formData.tipo_perfil === 'profissional' ? 'text-construPro-blue' : 'text-gray-500'}`} />
+                  <Briefcase
+                    size={40}
+                    className={`mb-3 ${
+                      formData.tipo_perfil === 'profissional' ? 'text-construPro-blue' : 'text-gray-500'
+                    }`}
+                  />
                   <h4 className="font-medium text-gray-800 mb-2">Profissional</h4>
                   <p className="text-sm text-gray-600">
                     Para oferecer serviços especializados
@@ -299,32 +445,136 @@ const SignupScreen: React.FC = () => {
             </div>
           </div>
 
-          <CustomInput label="Nome completo" name="nome" value={formData.nome} onChange={handleInputChange} placeholder="Digite seu nome completo" required />
+          <CustomInput
+            label="Nome completo"
+            name="nome"
+            value={formData.nome}
+            onChange={handleInputChange}
+            placeholder="Digite seu nome completo"
+            required
+          />
 
-          <CustomInput label="Email" name="email" type="email" value={formData.email} onChange={handleInputChange} placeholder="Digite seu email" required />
+          <CustomInput
+            label="Email"
+            name="email"
+            type="email"
+            value={formData.email}
+            onChange={handleInputChange}
+            placeholder="Digite seu email"
+            required
+          />
 
-          <CustomInput label="CPF" name="cpf" value={formData.cpf} onChange={handleCPFChange} placeholder="000.000.000-00" maxLength={14} required />
+          {/* CPF ou CNPJ baseado no tipo de perfil */}
+          {formData.tipo_perfil === 'lojista' ? (
+            <CustomInput
+              label="CNPJ"
+              name="cnpj"
+              value={formData.cnpj}
+              onChange={handleCNPJChange}
+              placeholder="00.000.000/0000-00"
+              maxLength={18}
+              required
+            />
+          ) : (
+            <CustomInput
+              label="CPF"
+              name="cpf"
+              value={formData.cpf}
+              onChange={handleCPFChange}
+              placeholder="000.000.000-00"
+              maxLength={14}
+              required
+            />
+          )}
 
-          <CustomInput label="Telefone" name="telefone" value={formData.telefone} onChange={handlePhoneChange} placeholder="(00) 00000-0000" maxLength={15} required />
+          <CustomInput
+            label="Telefone"
+            name="telefone"
+            value={formData.telefone}
+            onChange={handlePhoneChange}
+            placeholder="(00) 00000-0000"
+            maxLength={15}
+            required
+          />
+
+          {/* Campo de Especialidade para Profissionais */}
+          {formData.tipo_perfil === 'profissional' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">
+                Especialidade *
+              </label>
+              <select
+                name="especialidade_profissional"
+                value={formData.especialidade_profissional}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-construPro-blue focus:border-transparent"
+                required
+              >
+                <option value="">Selecione sua especialidade</option>
+                {ESPECIALIDADES_PROFISSIONAIS.map((especialidade) => (
+                  <option key={especialidade} value={especialidade}>
+                    {especialidade}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Optional Referral Code Input */}
-          {!formData.referralCode && <CustomInput label="Código de referência (opcional)" name="referralCode" value={formData.referralCode} onChange={handleInputChange} placeholder="Digite o código de convite" />}
+          {!formData.referralCode && (
+            <CustomInput
+              label="Código de referência (opcional)"
+              name="referralCode"
+              value={formData.referralCode}
+              onChange={handleInputChange}
+              placeholder="Digite o código de convite"
+            />
+          )}
 
           <div className="relative">
-            <CustomInput label="Senha" name="password" type={showPassword ? 'text' : 'password'} value={formData.password} onChange={handleInputChange} placeholder="Digite sua senha" required />
-            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-9 text-gray-500">
+            <CustomInput
+              label="Senha"
+              name="password"
+              type={showPassword ? 'text' : 'password'}
+              value={formData.password}
+              onChange={handleInputChange}
+              placeholder="Digite sua senha"
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-9 text-gray-500"
+            >
               {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
           </div>
 
           <div className="relative">
-            <CustomInput label="Confirmar senha" name="confirmPassword" type={showConfirmPassword ? 'text' : 'password'} value={formData.confirmPassword} onChange={handleInputChange} placeholder="Confirme sua senha" required />
-            <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-9 text-gray-500">
+            <CustomInput
+              label="Confirmar senha"
+              name="confirmPassword"
+              type={showConfirmPassword ? 'text' : 'password'}
+              value={formData.confirmPassword}
+              onChange={handleInputChange}
+              placeholder="Confirme sua senha"
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-3 top-9 text-gray-500"
+            >
               {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
           </div>
 
-          <CustomButton type="submit" variant="primary" fullWidth disabled={isLoading}>
+          <CustomButton
+            type="submit"
+            variant="primary"
+            fullWidth
+            disabled={isLoading}
+          >
             {isLoading ? 'Criando conta...' : 'Criar Conta'}
           </CustomButton>
         </form>
@@ -344,6 +594,8 @@ const SignupScreen: React.FC = () => {
           </p>
         </div>
       </div>
-    </div>;
+    </div>
+  );
 };
+
 export default SignupScreen;
