@@ -1,12 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { Search, X, Check, Loader2, User } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { Button } from '@/components/ui/button';
 import Avatar from '../../common/Avatar';
 import CustomInput from '../../common/CustomInput';
-import { searchCustomers } from '@/services/vendor/customers';
-import { searchCustomerProfiles } from '@/services/vendor/points/customerManager';
+import { searchAllProfiles, ensureCustomerRelationship } from '@/services/vendor/customers/customerSearchService';
 
 export interface CustomerData {
   id: string;
@@ -17,6 +15,9 @@ export interface CustomerData {
   usuario_id: string;
   vendedor_id: string;
   total_gasto: number;
+  ultimo_pedido?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 interface CustomerSearchProps {
@@ -48,7 +49,7 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
     return phone;
   };
 
-  // Handle search for customers with debounce
+  // Enhanced search with debounce
   useEffect(() => {
     if (!searchTerm || searchTerm.length < 3) {
       setShowSearchResults(false);
@@ -56,49 +57,31 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
       return;
     }
     
-    const searchCustomersDebounced = async () => {
+    const searchUsersDebounced = async () => {
       setIsSearching(true);
       setNoResultsFound(false);
       
       try {
-        console.log('Searching for customers with term:', searchTerm);
+        console.log('Searching all users with term:', searchTerm);
         
-        // Try searching in vendor's customers first
-        let results = await searchCustomers(searchTerm);
+        // Use the enhanced search that looks in all profiles
+        const results = await searchAllProfiles(searchTerm);
         
-        // If no results, try searching in all profiles as a fallback
-        if (results.length === 0) {
-          console.log('No vendor customers found, searching all profiles');
-          const profileResults = await searchCustomerProfiles(searchTerm);
-          
-          // Map profile results to VendorCustomer format
-          results = profileResults.map(profile => ({
-            id: profile.id,
-            usuario_id: profile.id, // Use profile id as usuario_id
-            nome: profile.nome || 'Usuário',
-            telefone: profile.telefone,
-            email: profile.email,
-            cpf: profile.cpf,
-            vendedor_id: '', // Empty string for now
-            total_gasto: 0 // Default to 0
-          }));
-        }
-        
-        console.log('Combined search results:', results);
+        console.log('Enhanced search results:', results);
         
         setSearchResults(results || []);
         setShowSearchResults(true);
         setNoResultsFound(results.length === 0);
       } catch (error) {
-        console.error('Error searching customers:', error);
-        toast.error('Erro ao buscar clientes. Tente novamente.');
+        console.error('Error searching users:', error);
+        toast.error('Erro ao buscar usuários. Tente novamente.');
         setNoResultsFound(true);
       } finally {
         setIsSearching(false);
       }
     };
 
-    const timeoutId = setTimeout(searchCustomersDebounced, 400);
+    const timeoutId = setTimeout(searchUsersDebounced, 400);
     return () => clearTimeout(timeoutId);
   }, [searchTerm]);
 
@@ -116,7 +99,7 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
       setIsSearching(true);
       setNoResultsFound(false);
       
-      searchCustomers(searchTerm)
+      searchAllProfiles(searchTerm)
         .then(results => {
           setSearchResults(results || []);
           setShowSearchResults(true);
@@ -124,13 +107,13 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
           setIsSearching(false);
         })
         .catch(error => {
-          console.error('Error searching customers:', error);
-          toast.error('Erro ao buscar clientes. Tente novamente.');
+          console.error('Error searching users:', error);
+          toast.error('Erro ao buscar usuários. Tente novamente.');
           setNoResultsFound(true);
           setIsSearching(false);
         });
     } else {
-      toast.error('Digite pelo menos 3 caracteres para buscar');
+      toast.error('Digite pelo menos 3 caracteres para buscar todos os usuários');
     }
   };
 
@@ -140,26 +123,78 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
     }
   };
 
-  const handleSelectCustomer = (customer: CustomerData) => {
+  const handleSelectCustomer = async (customer: CustomerData) => {
     console.log('Selected customer:', customer);
-    console.log('DEBUG - Important IDs:', {
-      relation_id: customer.id,
-      usuario_id: customer.usuario_id,
-      vendedor_id: customer.vendedor_id
-    });
     
-    // Make sure we're passing the usuario_id, not the relation id
     if (!customer.usuario_id) {
-      console.error('WARNING: Selected customer has no usuario_id!', customer);
+      console.error('ERROR: Customer has no valid usuario_id!', customer);
       toast.error('Erro: Cliente sem ID de usuário válido');
       return;
     }
     
-    onSelectCustomer(customer);
+    // If this is a new customer (no existing relationship), create it
+    if (!customer.vendedor_id || !customer.id) {
+      try {
+        // Get current vendor ID
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          toast.error('Erro de autenticação');
+          return;
+        }
+        
+        const { data: vendorData } = await supabase
+          .from('vendedores')
+          .select('id')
+          .eq('usuario_id', user.id)
+          .single();
+          
+        if (!vendorData) {
+          toast.error('Vendedor não encontrado');
+          return;
+        }
+        
+        // Create customer relationship
+        const relationId = await ensureCustomerRelationship(
+          vendorData.id,
+          customer.usuario_id,
+          {
+            nome: customer.nome,
+            email: customer.email,
+            telefone: customer.telefone,
+            cpf: customer.cpf
+          }
+        );
+        
+        if (!relationId) {
+          toast.error('Erro ao criar relacionamento com cliente');
+          return;
+        }
+        
+        // Update customer data with new relationship info
+        const updatedCustomer: CustomerData = {
+          ...customer,
+          id: relationId,
+          vendedor_id: vendorData.id
+        };
+        
+        console.log('Updated customer with new relationship:', updatedCustomer);
+        onSelectCustomer(updatedCustomer);
+      } catch (error) {
+        console.error('Error creating customer relationship:', error);
+        toast.error('Erro ao selecionar cliente');
+        return;
+      }
+    } else {
+      // Existing customer, proceed normally
+      onSelectCustomer(customer);
+    }
+    
     setSearchTerm('');
     setSearchResults([]);
     setShowSearchResults(false);
     setNoResultsFound(false);
+    
+    toast.success(`Cliente ${customer.nome} selecionado`);
   };
 
   const handleClearSearch = () => {
@@ -169,12 +204,17 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
     setNoResultsFound(false);
   };
 
+  // Check if customer is frequent (has existing relationship)
+  const isFrequentCustomer = (customer: CustomerData) => {
+    return customer.vendedor_id && customer.id;
+  };
+
   return (
     <div className="p-4">
       <div className="flex gap-2 mb-1">
         <div className="relative flex-1">
           <CustomInput
-            placeholder="Nome, CPF, e-mail ou telefone"
+            placeholder="Nome, CPF, e-mail ou telefone (busca todos os usuários)"
             value={searchTerm}
             onChange={handleSearchChange}
             isSearch
@@ -202,14 +242,14 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
       
       {searchTerm && searchTerm.length < 3 && (
         <p className="text-xs text-gray-500 mt-1">
-          Digite pelo menos 3 caracteres para buscar
+          Digite pelo menos 3 caracteres para buscar todos os usuários
         </p>
       )}
       
       {isSearching && (
         <div className="mt-4 text-center py-2">
           <Loader2 className="animate-spin h-5 w-5 mx-auto text-blue-600" />
-          <p className="mt-2 text-sm text-gray-500">Buscando clientes...</p>
+          <p className="mt-2 text-sm text-gray-500">Buscando usuários...</p>
         </div>
       )}
       
@@ -219,7 +259,7 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
             <div className="divide-y divide-gray-100">
               {searchResults.map(customer => (
                 <div
-                  key={customer.id}
+                  key={customer.usuario_id}
                   className="py-3 px-3 flex items-center cursor-pointer hover:bg-gray-50 transition-colors"
                   onClick={() => handleSelectCustomer(customer)}
                 >
@@ -232,7 +272,7 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-sm text-gray-900 truncate">
                       {customer.nome || 'Usuário'}
-                      {customer.vendedor_id ? (
+                      {isFrequentCustomer(customer) ? (
                         <span className="ml-2 text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full">
                           Cliente frequente
                         </span>
@@ -247,6 +287,11 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
                       {customer.email && <span className="truncate">{customer.email}</span>}
                       {customer.telefone && <span className="truncate">{formatPhone(customer.telefone)}</span>}
                     </div>
+                    {isFrequentCustomer(customer) && customer.total_gasto > 0 && (
+                      <div className="text-xs text-gray-400 mt-1">
+                        Total gasto: R$ {customer.total_gasto.toFixed(2)}
+                      </div>
+                    )}
                   </div>
                   <Button size="sm" variant="ghost" className="ml-2 flex-shrink-0">
                     <Check size={16} />
@@ -259,7 +304,7 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
             <div className="text-center py-6">
               <User className="mx-auto h-8 w-8 text-gray-400" />
               <p className="mt-2 text-sm text-gray-500">
-                Nenhum cliente encontrado
+                Nenhum usuário encontrado
               </p>
               <p className="text-xs text-gray-400 mt-1">
                 Verifique os dados informados e tente novamente
@@ -273,7 +318,7 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
         <div className="mt-4 text-center py-6 bg-gray-50 rounded-lg border border-gray-200">
           <User className="mx-auto h-8 w-8 text-gray-400" />
           <p className="mt-2 text-sm text-gray-700 font-medium">
-            Nenhum cliente encontrado
+            Nenhum usuário encontrado
           </p>
           <p className="text-xs text-gray-500 mt-1 max-w-md mx-auto">
             Verifique se os dados informados estão corretos e tente novamente.
