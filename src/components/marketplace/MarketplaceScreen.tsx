@@ -47,6 +47,33 @@ const MarketplaceScreen: React.FC = () => {
     }));
   }, [products]);
   
+  // Enhanced product filter with optimized pagination
+  const {
+    selectedCategories,
+    selectedLojas,
+    selectedRatings,
+    selectedPriceRanges,
+    ratingOptions,
+    priceRangeOptions,
+    filteredProdutos,
+    displayedProducts,
+    hasMore,
+    isLoadingMore,
+    handleSearchChange,
+    handleLojaClick,
+    handleCategoryClick,
+    handleRatingClick,
+    handlePriceRangeClick,
+    loadMoreProducts,
+    clearFilters: originalClearFilters,
+    setSelectedLojas,
+    setPage
+  } = useProductFilter({ 
+    initialCategories, 
+    initialProducts: products,
+    initialSearch: searchQuery || '' 
+  });
+
   // Log debug info
   useEffect(() => {
     console.log('[MarketplaceScreen] URL parameters:', {
@@ -90,44 +117,6 @@ const MarketplaceScreen: React.FC = () => {
     
     fetchSegments();
   }, []);
-  
-  // Enhanced product filter with price range support
-  const {
-    selectedCategories,
-    selectedLojas,
-    selectedRatings,
-    selectedPriceRanges,
-    ratingOptions,
-    priceRangeOptions,
-    filteredProdutos,
-    displayedProducts,
-    hasMore,
-    handleSearchChange,
-    handleLojaClick,
-    handleCategoryClick,
-    handleRatingClick,
-    handlePriceRangeClick,
-    loadMoreProducts,
-    clearFilters: originalClearFilters,
-    setSelectedLojas,
-    setPage
-  } = useProductFilter({ 
-    initialCategories, 
-    initialProducts: products,
-    initialSearch: searchQuery || '' 
-  });
-
-  // Log filter debug info - Ensure products are accessible to ALL users
-  useEffect(() => {
-    if (products.length > 0) {
-      console.log('[MarketplaceScreen] Products loaded and accessible to ALL users:', products.length);
-      console.log('[MarketplaceScreen] Sample product for debugging:', products[0]);
-    }
-    
-    if (stores.length > 0) {
-      console.log('[MarketplaceScreen] Stores loaded:', stores.length);
-    }
-  }, [products, stores]);
 
   // Modified clearFilters function that preserves segment selection
   const clearFilters = () => {
@@ -175,10 +164,9 @@ const MarketplaceScreen: React.FC = () => {
     navigate(`${location.pathname}?${newSearchParams.toString()}`, { replace: true });
   };
 
-  // Enhanced search functionality - FIXED to handle empty search properly
+  // Enhanced search functionality
   const fetchProducts = (term: string) => {
     console.log('[MarketplaceScreen] Searching for:', term);
-    // CRUCIAL: Always call handleSearchChange, even with empty string
     handleSearchChange(term);
     
     const newSearchParams = new URLSearchParams(searchParams);
@@ -237,15 +225,6 @@ const MarketplaceScreen: React.FC = () => {
       setTerm(searchQuery);
     }
   }, [searchQuery]);
-
-  // Debug logging when products change
-  useEffect(() => {
-    if (selectedSegmentId) {
-      console.log(`[MarketplaceScreen] Products with segmento_id=${selectedSegmentId}:`, 
-                 products.filter(p => p.segmento_id === selectedSegmentId).length);
-      console.log('[MarketplaceScreen] Filtered products count:', filteredProdutos.length);
-    }
-  }, [products, selectedSegmentId, filteredProdutos]);
 
   // Current category name for display
   const getCurrentDisplayName = () => {
@@ -318,6 +297,7 @@ const MarketplaceScreen: React.FC = () => {
             displayedProducts={displayedProducts}
             filteredProdutos={filteredProdutos}
             hasMore={hasMore}
+            isLoadingMore={isLoadingMore}
             loadMoreProducts={loadMoreProducts}
             clearFilters={clearFilters}
             onLojaClick={handleLojaCardClick}

@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 
 export interface FilterOption {
   id: string;
@@ -27,6 +27,7 @@ export const useProductFilter = ({
   const [displayedProducts, setDisplayedProducts] = useState<any[]>([]);
   const [page, setPage] = useState<number>(1);
   const [hasMore, setHasMore] = useState<boolean>(true);
+  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
   const PRODUCTS_PER_PAGE = 10;
 
   // Update products when initialProducts changes (from API)
@@ -36,7 +37,7 @@ export const useProductFilter = ({
   }, [initialProducts]);
 
   // Helper function to check if product price is in selected range
-  const isPriceInRange = (preco: number, rangeId: string): boolean => {
+  const isPriceInRange = useCallback((preco: number, rangeId: string): boolean => {
     switch (rangeId) {
       case 'preco-1': return preco <= 50;
       case 'preco-2': return preco > 50 && preco <= 100;
@@ -45,24 +46,18 @@ export const useProductFilter = ({
       case 'preco-5': return preco > 500;
       default: return false;
     }
-  };
+  }, []);
 
-  // Filter products based on search term and filters
-  useEffect(() => {
-    console.log('[useProductFilter] Filtering products...');
-    console.log('[useProductFilter] Selected categories:', selectedCategories);
-    console.log('[useProductFilter] Selected lojas:', selectedLojas);
-    console.log('[useProductFilter] Selected price ranges:', selectedPriceRanges);
-    console.log('[useProductFilter] Total products to filter:', produtos.length);
-    
+  // Memoize filtered products to avoid unnecessary recalculations
+  const filteredProductsMemo = useMemo(() => {
+    console.log('[useProductFilter] Recalculating filtered products...');
     let filtered = [...produtos];
     
     // Filter by search term
-    if (searchTerm) {
+    if (searchTerm.trim()) {
       filtered = filtered.filter(produto => 
         produto.nome.toLowerCase().includes(searchTerm.toLowerCase())
       );
-      console.log('[useProductFilter] After search filter:', filtered.length);
     }
     
     // Filter by categories
@@ -70,23 +65,17 @@ export const useProductFilter = ({
       filtered = filtered.filter(produto => 
         selectedCategories.includes(produto.categoria)
       );
-      console.log('[useProductFilter] After category filter:', filtered.length);
     }
     
-    // Filter by stores/lojas - improved logic
+    // Filter by stores/lojas
     if (selectedLojas.length > 0) {
       filtered = filtered.filter(produto => {
-        // Check different possible store ID fields
         const storeId = produto.loja_id || 
                        produto.vendedor_id || 
                        produto.stores?.id ||
                        (produto.vendedores && produto.vendedores.id);
-        
-        const isMatch = selectedLojas.includes(storeId);
-        console.log(`[useProductFilter] Product ${produto.nome} - Store ID: ${storeId}, Match: ${isMatch}`);
-        return isMatch;
+        return selectedLojas.includes(storeId);
       });
-      console.log('[useProductFilter] After store filter:', filtered.length);
     }
     
     // Filter by price ranges
@@ -95,7 +84,6 @@ export const useProductFilter = ({
         const preco = produto.preco_normal || produto.preco || 0;
         return selectedPriceRanges.some(rangeId => isPriceInRange(preco, rangeId));
       });
-      console.log('[useProductFilter] After price filter:', filtered.length);
     }
     
     // Filter by ratings
@@ -107,116 +95,133 @@ export const useProductFilter = ({
           return !isNaN(minRating) && rating >= minRating;
         });
       });
-      console.log('[useProductFilter] After rating filter:', filtered.length);
     }
     
     console.log('[useProductFilter] Final filtered products:', filtered.length);
-    setFilteredProdutos(filtered);
+    return filtered;
+  }, [produtos, searchTerm, selectedCategories, selectedLojas, selectedRatings, selectedPriceRanges, isPriceInRange]);
+
+  // Update filtered products when memo changes
+  useEffect(() => {
+    setFilteredProdutos(filteredProductsMemo);
     setPage(1);
     
     // Reset displayed products
-    const initialDisplayed = filtered.slice(0, PRODUCTS_PER_PAGE);
+    const initialDisplayed = filteredProductsMemo.slice(0, PRODUCTS_PER_PAGE);
     setDisplayedProducts(initialDisplayed);
-    setHasMore(initialDisplayed.length < filtered.length);
-    
-  }, [produtos, searchTerm, selectedCategories, selectedLojas, selectedRatings, selectedPriceRanges]);
+    setHasMore(initialDisplayed.length < filteredProductsMemo.length);
+    setIsLoadingMore(false);
+  }, [filteredProductsMemo]);
 
   // Extract all available categories from products
-  const allCategories: FilterOption[] = Array.from(
-    new Set(produtos.map(p => p.categoria).filter(Boolean))
-  ).map(cat => ({
-    id: cat as string,
-    label: cat as string
-  }));
+  const allCategories: FilterOption[] = useMemo(() => 
+    Array.from(new Set(produtos.map(p => p.categoria).filter(Boolean)))
+      .map(cat => ({ id: cat as string, label: cat as string })),
+    [produtos]
+  );
 
-  // Rating filter options
-  const ratingOptions: FilterOption[] = [
+  // Static filter options
+  const ratingOptions: FilterOption[] = useMemo(() => [
     { id: "4", label: "4+ estrelas" },
     { id: "3", label: "3+ estrelas" },
     { id: "2", label: "2+ estrelas" },
     { id: "1", label: "1+ estrela" }
-  ];
+  ], []);
 
-  // Price range options
-  const priceRangeOptions: FilterOption[] = [
+  const priceRangeOptions: FilterOption[] = useMemo(() => [
     { id: "preco-1", label: "Até R$ 50" },
     { id: "preco-2", label: "R$ 50 a R$ 100" },
     { id: "preco-3", label: "R$ 100 a R$ 200" },
     { id: "preco-4", label: "R$ 200 a R$ 500" },
     { id: "preco-5", label: "Acima de R$ 500" }
-  ];
+  ], []);
 
-  // Handle search input change
-  const handleSearchChange = (term: string) => {
+  // Handle search input change with debounce effect
+  const handleSearchChange = useCallback((term: string) => {
     console.log('[useProductFilter] Search term changed to:', term);
     setSearchTerm(term);
-  };
+  }, []);
 
   // Toggle category filter
-  const handleCategoryClick = (categoryId: string) => {
+  const handleCategoryClick = useCallback((categoryId: string) => {
     console.log('[useProductFilter] Category clicked:', categoryId);
     setSelectedCategories(prev => 
       prev.includes(categoryId)
         ? prev.filter(id => id !== categoryId)
         : [...prev, categoryId]
     );
-  };
+  }, []);
 
-  // Toggle loja/store filter - REACTIVATED
-  const handleLojaClick = (lojaId: string) => {
+  // Toggle loja/store filter
+  const handleLojaClick = useCallback((lojaId: string) => {
     console.log('[useProductFilter] Loja clicked:', lojaId);
     setSelectedLojas(prev => 
       prev.includes(lojaId)
         ? prev.filter(id => id !== lojaId)
         : [...prev, lojaId]
     );
-  };
+  }, []);
 
-  // Toggle price range filter - NEW IMPLEMENTATION
-  const handlePriceRangeClick = (rangeId: string) => {
+  // Toggle price range filter
+  const handlePriceRangeClick = useCallback((rangeId: string) => {
     console.log('[useProductFilter] Price range clicked:', rangeId);
     setSelectedPriceRanges(prev => 
       prev.includes(rangeId)
         ? prev.filter(id => id !== rangeId)
         : [...prev, rangeId]
     );
-  };
+  }, []);
 
   // Toggle rating filter
-  const handleRatingClick = (ratingId: string) => {
+  const handleRatingClick = useCallback((ratingId: string) => {
     console.log('[useProductFilter] Rating clicked:', ratingId);
     setSelectedRatings(prev => 
       prev.includes(ratingId)
         ? prev.filter(id => id !== ratingId)
         : [...prev, ratingId]
     );
-  };
+  }, []);
 
-  // Load more products for infinite scroll
-  const loadMoreProducts = () => {
-    const nextPage = page + 1;
-    const startIndex = (nextPage - 1) * PRODUCTS_PER_PAGE;
-    const endIndex = nextPage * PRODUCTS_PER_PAGE;
-    const newProducts = filteredProdutos.slice(startIndex, endIndex);
-    
-    if (newProducts.length > 0) {
-      setDisplayedProducts(prev => [...prev, ...newProducts]);
-      setPage(nextPage);
-      setHasMore(endIndex < filteredProdutos.length);
-    } else {
-      setHasMore(false);
+  // Load more products for infinite scroll - OPTIMIZED
+  const loadMoreProducts = useCallback(() => {
+    if (isLoadingMore || !hasMore) {
+      console.log('[useProductFilter] Skipping load more - loading:', isLoadingMore, 'hasMore:', hasMore);
+      return;
     }
-  };
+
+    console.log('[useProductFilter] Loading more products...');
+    setIsLoadingMore(true);
+    
+    // Use setTimeout to prevent blocking
+    setTimeout(() => {
+      const nextPage = page + 1;
+      const startIndex = (nextPage - 1) * PRODUCTS_PER_PAGE;
+      const endIndex = nextPage * PRODUCTS_PER_PAGE;
+      const newProducts = filteredProdutos.slice(startIndex, endIndex);
+      
+      if (newProducts.length > 0) {
+        setDisplayedProducts(prev => [...prev, ...newProducts]);
+        setPage(nextPage);
+        setHasMore(endIndex < filteredProdutos.length);
+        console.log('[useProductFilter] Added', newProducts.length, 'more products');
+      } else {
+        setHasMore(false);
+        console.log('[useProductFilter] No more products to load');
+      }
+      
+      setIsLoadingMore(false);
+    }, 100);
+  }, [page, filteredProdutos, hasMore, isLoadingMore]);
 
   // Clear all filters
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     console.log('[useProductFilter] Clearing all filters');
     setSearchTerm("");
     setSelectedCategories([]);
     setSelectedLojas([]);
     setSelectedRatings([]);
     setSelectedPriceRanges([]);
-  };
+  }, []);
 
   return {
     searchTerm,
@@ -231,6 +236,7 @@ export const useProductFilter = ({
     filteredProdutos,
     displayedProducts,
     hasMore,
+    isLoadingMore,
     page,
     setPage,
     setProdutos,
