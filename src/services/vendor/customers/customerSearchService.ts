@@ -1,95 +1,45 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { VendorCustomer } from './types';
 
 /**
- * Enhanced customer search that looks in all profiles, not just existing customers
+ * Enhanced customer search using secure RPC function
  */
 export const searchAllProfiles = async (query: string): Promise<VendorCustomer[]> => {
   try {
     console.log('🔍 [searchAllProfiles] Starting search with query:', query);
     
-    // Get the vendor ID of the current logged in user
-    const authResult = await supabase.auth.getUser();
-    console.log('🔍 [searchAllProfiles] Auth result:', {
-      hasUser: !!authResult.data.user,
-      userId: authResult.data.user?.id,
-      email: authResult.data.user?.email,
-      error: authResult.error
-    });
-    
-    const userId = authResult.data.user?.id;
-    
-    if (!userId) {
-      console.error('❌ [searchAllProfiles] No authenticated user found');
-      toast.error('Usuário não autenticado');
+    // Validate query length
+    if (!query || query.length < 3) {
+      console.log('📭 [searchAllProfiles] Query too short:', query);
       return [];
     }
     
-    console.log('🔍 [searchAllProfiles] Looking for vendor with user ID:', userId);
-    
-    const { data: vendorData, error: vendorError } = await supabase
-      .from('vendedores')
-      .select('id, usuario_id, nome_loja, status')
-      .eq('usuario_id', userId)
-      .maybeSingle();
-    
-    console.log('🔍 [searchAllProfiles] Vendor query result:', {
-      vendorData,
-      vendorError,
-      hasVendor: !!vendorData
-    });
-      
-    if (vendorError) {
-      console.error('❌ [searchAllProfiles] Error fetching vendor:', vendorError);
-      toast.error('Erro ao buscar identificação do vendedor: ' + vendorError.message);
-      return [];
-    }
-    
-    if (!vendorData) {
-      console.error('❌ [searchAllProfiles] No vendor found for user:', userId);
-      toast.error('Usuário não está cadastrado como vendedor. Entre em contato com o suporte.');
-      return [];
-    }
-    
-    const vendorId = vendorData.id;
-    const vendorUserId = vendorData.usuario_id;
-    
-    console.log('✅ [searchAllProfiles] Vendor found:', {
-      vendorId,
-      vendorUserId,
-      vendorName: vendorData.nome_loja,
-      vendorStatus: vendorData.status
-    });
-    
-    // Check vendor status - aceitar tanto "ativo" quanto "aprovado"
-    const validStatuses = ['ativo', 'aprovado'];
-    if (!validStatuses.includes(vendorData.status)) {
-      console.warn('⚠️ [searchAllProfiles] Vendor is not active or approved:', vendorData.status);
-      toast.error(`Vendedor não está ativo (status: ${vendorData.status}). Entre em contato com o suporte.`);
-      return [];
-    }
-    
-    console.log('🔍 [searchAllProfiles] Searching profiles with query:', query);
-    
-    // Search in all profiles excluding the vendor themselves
+    // Use the secure RPC function to search profiles
     const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
-      .select('id, nome, email, telefone, cpf')
-      .neq('id', vendorUserId) // Exclude the vendor from results
-      .or(`nome.ilike.%${query}%,email.ilike.%${query}%,telefone.ilike.%${query}%,cpf.ilike.%${query}%`)
-      .limit(20);
+      .rpc('search_profiles_for_vendor', { search_query: query });
     
-    console.log('🔍 [searchAllProfiles] Profiles query result:', {
+    console.log('🔍 [searchAllProfiles] RPC search result:', {
       profilesCount: profiles?.length || 0,
       profilesError,
-      searchQuery: `nome.ilike.%${query}%,email.ilike.%${query}%,telefone.ilike.%${query}%,cpf.ilike.%${query}%`
+      searchQuery: query
     });
     
     if (profilesError) {
-      console.error('❌ [searchAllProfiles] Error searching profiles:', profilesError);
-      toast.error('Erro ao buscar usuários: ' + profilesError.message);
+      console.error('❌ [searchAllProfiles] Error in RPC search:', profilesError);
+      
+      // Handle specific error cases
+      if (profilesError.message.includes('not authenticated')) {
+        toast.error('Usuário não autenticado');
+      } else if (profilesError.message.includes('not a registered vendor')) {
+        toast.error('Usuário não está cadastrado como vendedor');
+      } else if (profilesError.message.includes('not active or approved')) {
+        toast.error('Vendedor não está ativo ou aprovado');
+      } else if (profilesError.message.includes('at least 3 characters')) {
+        toast.error('Digite pelo menos 3 caracteres para buscar');
+      } else {
+        toast.error('Erro ao buscar usuários: ' + profilesError.message);
+      }
       return [];
     }
     
@@ -103,6 +53,26 @@ export const searchAllProfiles = async (query: string): Promise<VendorCustomer[]
       nome: p.nome,
       email: p.email
     })));
+    
+    // Get current vendor ID for checking existing relationships
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.error('❌ [searchAllProfiles] No authenticated user found');
+      return [];
+    }
+    
+    const { data: vendorData } = await supabase
+      .from('vendedores')
+      .select('id')
+      .eq('usuario_id', user.id)
+      .single();
+    
+    if (!vendorData) {
+      console.error('❌ [searchAllProfiles] No vendor found for user');
+      return [];
+    }
+    
+    const vendorId = vendorData.id;
     
     // Get existing customer relationships for these profiles
     const profileIds = profiles.map(p => p.id);

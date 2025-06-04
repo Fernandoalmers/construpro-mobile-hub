@@ -2119,6 +2119,16 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
+      search_profiles_for_vendor: {
+        Args: { search_query: string }
+        Returns: {
+          id: string
+          nome: string
+          email: string
+          telefone: string
+          cpf: string
+        }[]
+      }
       secure_admin_promotion: {
         Args: { target_user_id: string; action: string; reason?: string }
         Returns: Json
