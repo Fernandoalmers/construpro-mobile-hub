@@ -179,6 +179,7 @@ const App = () => (
             <Route path="/vendor/orders/:id" element={<ProtectedRoute><VendorOrderDetailScreen /></ProtectedRoute>} />
             <Route path="/vendor/customers" element={<ProtectedRoute><ClientesVendorScreen /></ProtectedRoute>} />
             <Route path="/vendor/adjust-points" element={<ProtectedRoute><AjustePontosVendorScreen /></ProtectedRoute>} />
+            <Route path="/vendor/settings" element={<ProtectedRoute><ConfiguracoesVendorScreen /></ProtectedRoute>} />
             <Route path="/vendor/store-config" element={<ProtectedRoute><ConfiguracoesVendorScreen /></ProtectedRoute>} />
             
             {/* Portuguese aliases */}
