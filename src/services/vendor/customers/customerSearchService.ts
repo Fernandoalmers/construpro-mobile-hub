@@ -57,7 +57,7 @@ export const searchAllProfiles = async (query: string): Promise<VendorCustomer[]
     const profileIds = profiles.map(p => p.id);
     const { data: existingCustomers, error: customersError } = await supabase
       .from('clientes_vendedor')
-      .select('usuario_id, id, total_gasto, ultimo_pedido')
+      .select('usuario_id, id, total_gasto, ultimo_pedido, created_at, updated_at')
       .eq('vendedor_id', vendorId)
       .in('usuario_id', profileIds);
     

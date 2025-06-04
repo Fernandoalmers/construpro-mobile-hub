@@ -1,9 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { Search, X, Check, Loader2, User } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { Button } from '@/components/ui/button';
 import Avatar from '../../common/Avatar';
 import CustomInput from '../../common/CustomInput';
+import { supabase } from '@/integrations/supabase/client';
 import { searchAllProfiles, ensureCustomerRelationship } from '@/services/vendor/customers/customerSearchService';
 
 export interface CustomerData {

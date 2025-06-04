@@ -2,7 +2,7 @@
 // This file re-exports all customer-related services for the vendor
 import { getVendorCustomer, getVendorCustomers, searchCustomers, findCustomerByEmail } from './customerFetcher';
 import { getCustomerPoints } from './customerPointsService';
-import { addVendorCustomer, seedTestCustomers, migrateCustomersFromPointAdjustments, migrateCustomersFromOrders } from './customerManager';
+import { addVendorCustomer, seedTestCustomers, migrateCustomersFromPointAdjustments, migrateCustomersFromOrders } from './customerCreator';
 import { searchAllProfiles, ensureCustomerRelationship } from './customerSearchService';
 import { VendorCustomer } from './types';
 
