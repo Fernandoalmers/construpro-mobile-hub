@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { Search, X, Check, Loader2, User } from 'lucide-react';
+import { Search, X, Check, Loader2, User, AlertCircle } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { Button } from '@/components/ui/button';
 import Avatar from '../../common/Avatar';
@@ -32,6 +31,7 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
   const [searchResults, setSearchResults] = useState<CustomerData[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [noResultsFound, setNoResultsFound] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   // Format CPF with dots and dash
   const formatCPF = (cpf: string | undefined) => {
@@ -56,27 +56,33 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
     if (!searchTerm || searchTerm.length < 3) {
       setShowSearchResults(false);
       setNoResultsFound(false);
+      setSearchError(null);
       return;
     }
     
     const searchUsersDebounced = async () => {
       setIsSearching(true);
       setNoResultsFound(false);
+      setSearchError(null);
       
       try {
-        console.log('Searching all users with term:', searchTerm);
+        console.log('🔍 [CustomerSearch] Starting search for:', searchTerm);
         
         // Use the enhanced search that looks in all profiles
         const results = await searchAllProfiles(searchTerm);
         
-        console.log('Enhanced search results:', results);
+        console.log('✅ [CustomerSearch] Search completed with results:', results.length);
         
         setSearchResults(results || []);
         setShowSearchResults(true);
         setNoResultsFound(results.length === 0);
+        
+        if (results.length === 0) {
+          console.log('📭 [CustomerSearch] No results found for query:', searchTerm);
+        }
       } catch (error) {
-        console.error('Error searching users:', error);
-        toast.error('Erro ao buscar usuários. Tente novamente.');
+        console.error('❌ [CustomerSearch] Search failed:', error);
+        setSearchError('Erro ao buscar usuários. Tente novamente.');
         setNoResultsFound(true);
       } finally {
         setIsSearching(false);
@@ -93,6 +99,7 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
       setSearchResults([]);
       setShowSearchResults(false);
       setNoResultsFound(false);
+      setSearchError(null);
     }
   };
 
@@ -100,6 +107,7 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
     if (searchTerm.length >= 3) {
       setIsSearching(true);
       setNoResultsFound(false);
+      setSearchError(null);
       
       searchAllProfiles(searchTerm)
         .then(results => {
@@ -109,8 +117,8 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
           setIsSearching(false);
         })
         .catch(error => {
-          console.error('Error searching users:', error);
-          toast.error('Erro ao buscar usuários. Tente novamente.');
+          console.error('❌ [CustomerSearch] Search error:', error);
+          setSearchError('Erro ao buscar usuários. Tente novamente.');
           setNoResultsFound(true);
           setIsSearching(false);
         });
@@ -126,10 +134,10 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
   };
 
   const handleSelectCustomer = async (customer: CustomerData) => {
-    console.log('Selected customer:', customer);
+    console.log('🎯 [CustomerSearch] Selected customer:', customer);
     
     if (!customer.usuario_id) {
-      console.error('ERROR: Customer has no valid usuario_id!', customer);
+      console.error('❌ [CustomerSearch] Customer has no valid usuario_id!', customer);
       toast.error('Erro: Cliente sem ID de usuário válido');
       return;
     }
@@ -137,6 +145,8 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
     // If this is a new customer (no existing relationship), create it
     if (!customer.vendedor_id || !customer.id) {
       try {
+        console.log('🔗 [CustomerSearch] Creating new customer relationship for:', customer.usuario_id);
+        
         // Get current vendor ID
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
@@ -179,15 +189,16 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
           vendedor_id: vendorData.id
         };
         
-        console.log('Updated customer with new relationship:', updatedCustomer);
+        console.log('✅ [CustomerSearch] Updated customer with new relationship:', updatedCustomer);
         onSelectCustomer(updatedCustomer);
       } catch (error) {
-        console.error('Error creating customer relationship:', error);
+        console.error('❌ [CustomerSearch] Error creating customer relationship:', error);
         toast.error('Erro ao selecionar cliente');
         return;
       }
     } else {
       // Existing customer, proceed normally
+      console.log('✅ [CustomerSearch] Selecting existing customer:', customer);
       onSelectCustomer(customer);
     }
     
@@ -195,6 +206,7 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
     setSearchResults([]);
     setShowSearchResults(false);
     setNoResultsFound(false);
+    setSearchError(null);
     
     toast.success(`Cliente ${customer.nome} selecionado`);
   };
@@ -204,6 +216,7 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
     setSearchResults([]);
     setShowSearchResults(false);
     setNoResultsFound(false);
+    setSearchError(null);
   };
 
   // Check if customer is frequent (has existing relationship)
@@ -255,7 +268,20 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
         </div>
       )}
       
-      {showSearchResults && !isSearching && (
+      {searchError && (
+        <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-center gap-2 text-red-700">
+            <AlertCircle size={16} />
+            <span className="text-sm font-medium">Erro na busca</span>
+          </div>
+          <p className="text-xs text-red-600 mt-1">{searchError}</p>
+          <p className="text-xs text-red-500 mt-2">
+            Verifique o console do navegador (F12) para mais detalhes técnicos.
+          </p>
+        </div>
+      )}
+      
+      {showSearchResults && !isSearching && !searchError && (
         <div className="mt-2 max-h-60 overflow-y-auto rounded-md border border-gray-200">
           {searchResults.length > 0 ? (
             <div className="divide-y divide-gray-100">
@@ -316,7 +342,7 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
         </div>
       )}
       
-      {noResultsFound && !isSearching && searchTerm.length >= 3 && (
+      {noResultsFound && !isSearching && searchTerm.length >= 3 && !searchError && (
         <div className="mt-4 text-center py-6 bg-gray-50 rounded-lg border border-gray-200">
           <User className="mx-auto h-8 w-8 text-gray-400" />
           <p className="mt-2 text-sm text-gray-700 font-medium">

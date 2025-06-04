@@ -8,32 +8,69 @@ import { VendorCustomer } from './types';
  */
 export const searchAllProfiles = async (query: string): Promise<VendorCustomer[]> => {
   try {
-    console.log('Searching all profiles with query:', query);
+    console.log('🔍 [searchAllProfiles] Starting search with query:', query);
     
     // Get the vendor ID of the current logged in user
-    const authUser = await supabase.auth.getUser();
-    const userId = authUser.data.user?.id;
+    const authResult = await supabase.auth.getUser();
+    console.log('🔍 [searchAllProfiles] Auth result:', {
+      hasUser: !!authResult.data.user,
+      userId: authResult.data.user?.id,
+      email: authResult.data.user?.email,
+      error: authResult.error
+    });
+    
+    const userId = authResult.data.user?.id;
     
     if (!userId) {
-      console.error('No authenticated user found');
+      console.error('❌ [searchAllProfiles] No authenticated user found');
       toast.error('Usuário não autenticado');
       return [];
     }
     
+    console.log('🔍 [searchAllProfiles] Looking for vendor with user ID:', userId);
+    
     const { data: vendorData, error: vendorError } = await supabase
       .from('vendedores')
-      .select('id, usuario_id')
+      .select('id, usuario_id, nome_loja, status')
       .eq('usuario_id', userId)
       .maybeSingle();
+    
+    console.log('🔍 [searchAllProfiles] Vendor query result:', {
+      vendorData,
+      vendorError,
+      hasVendor: !!vendorData
+    });
       
-    if (vendorError || !vendorData) {
-      console.error('Error fetching vendor ID:', vendorError);
-      toast.error('Erro ao buscar identificação do vendedor');
+    if (vendorError) {
+      console.error('❌ [searchAllProfiles] Error fetching vendor:', vendorError);
+      toast.error('Erro ao buscar identificação do vendedor: ' + vendorError.message);
+      return [];
+    }
+    
+    if (!vendorData) {
+      console.error('❌ [searchAllProfiles] No vendor found for user:', userId);
+      toast.error('Usuário não está cadastrado como vendedor. Entre em contato com o suporte.');
       return [];
     }
     
     const vendorId = vendorData.id;
     const vendorUserId = vendorData.usuario_id;
+    
+    console.log('✅ [searchAllProfiles] Vendor found:', {
+      vendorId,
+      vendorUserId,
+      vendorName: vendorData.nome_loja,
+      vendorStatus: vendorData.status
+    });
+    
+    // Check vendor status
+    if (vendorData.status !== 'ativo') {
+      console.warn('⚠️ [searchAllProfiles] Vendor is not active:', vendorData.status);
+      toast.error(`Vendedor não está ativo (status: ${vendorData.status}). Entre em contato com o suporte.`);
+      return [];
+    }
+    
+    console.log('🔍 [searchAllProfiles] Searching profiles with query:', query);
     
     // Search in all profiles excluding the vendor themselves
     const { data: profiles, error: profilesError } = await supabase
@@ -43,33 +80,59 @@ export const searchAllProfiles = async (query: string): Promise<VendorCustomer[]
       .or(`nome.ilike.%${query}%,email.ilike.%${query}%,telefone.ilike.%${query}%,cpf.ilike.%${query}%`)
       .limit(20);
     
+    console.log('🔍 [searchAllProfiles] Profiles query result:', {
+      profilesCount: profiles?.length || 0,
+      profilesError,
+      searchQuery: `nome.ilike.%${query}%,email.ilike.%${query}%,telefone.ilike.%${query}%,cpf.ilike.%${query}%`
+    });
+    
     if (profilesError) {
-      console.error('Error searching profiles:', profilesError);
-      toast.error('Erro ao buscar usuários');
+      console.error('❌ [searchAllProfiles] Error searching profiles:', profilesError);
+      toast.error('Erro ao buscar usuários: ' + profilesError.message);
       return [];
     }
     
     if (!profiles || profiles.length === 0) {
+      console.log('📭 [searchAllProfiles] No profiles found for query:', query);
       return [];
     }
     
+    console.log('✅ [searchAllProfiles] Found profiles:', profiles.map(p => ({
+      id: p.id,
+      nome: p.nome,
+      email: p.email
+    })));
+    
     // Get existing customer relationships for these profiles
     const profileIds = profiles.map(p => p.id);
+    console.log('🔍 [searchAllProfiles] Looking for existing customer relationships for profile IDs:', profileIds);
+    
     const { data: existingCustomers, error: customersError } = await supabase
       .from('clientes_vendedor')
       .select('usuario_id, id, total_gasto, ultimo_pedido, created_at, updated_at')
       .eq('vendedor_id', vendorId)
       .in('usuario_id', profileIds);
     
+    console.log('🔍 [searchAllProfiles] Existing customers query result:', {
+      existingCustomersCount: existingCustomers?.length || 0,
+      customersError,
+      existingCustomers: existingCustomers?.map(c => ({
+        usuario_id: c.usuario_id,
+        id: c.id,
+        total_gasto: c.total_gasto
+      }))
+    });
+    
     if (customersError) {
-      console.error('Error fetching existing customers:', customersError);
+      console.error('❌ [searchAllProfiles] Error fetching existing customers:', customersError);
+      // Don't return early here, we can still show the results without customer data
     }
     
     // Map the results to include customer relationship info
     const results: VendorCustomer[] = profiles.map(profile => {
       const existingCustomer = existingCustomers?.find(c => c.usuario_id === profile.id);
       
-      return {
+      const result = {
         id: existingCustomer?.id || '', // Empty string for new customers
         usuario_id: profile.id,
         vendedor_id: existingCustomer ? vendorId : '', // Empty for new customers
@@ -82,13 +145,27 @@ export const searchAllProfiles = async (query: string): Promise<VendorCustomer[]
         created_at: existingCustomer?.created_at || null,
         updated_at: existingCustomer?.updated_at || null
       };
+      
+      console.log('🔗 [searchAllProfiles] Mapped result for profile:', {
+        profileId: profile.id,
+        profileName: profile.nome,
+        hasExistingRelation: !!existingCustomer,
+        relationId: existingCustomer?.id
+      });
+      
+      return result;
     });
     
-    console.log('Enhanced search results:', results);
+    console.log('✅ [searchAllProfiles] Final results:', {
+      totalResults: results.length,
+      newCustomers: results.filter(r => !r.vendedor_id).length,
+      existingCustomers: results.filter(r => r.vendedor_id).length
+    });
+    
     return results;
   } catch (error) {
-    console.error('Error in searchAllProfiles:', error);
-    toast.error('Erro ao buscar usuários');
+    console.error('💥 [searchAllProfiles] Unexpected error:', error);
+    toast.error('Erro inesperado ao buscar usuários. Verifique o console para mais detalhes.');
     return [];
   }
 };
@@ -107,7 +184,7 @@ export const ensureCustomerRelationship = async (
   }
 ): Promise<string | null> => {
   try {
-    console.log('Ensuring customer relationship exists:', { vendorId, userId, customerData });
+    console.log('🔗 [ensureCustomerRelationship] Creating relationship:', { vendorId, userId, customerData });
     
     // Check if relationship already exists
     const { data: existingRelation, error: checkError } = await supabase
@@ -118,13 +195,13 @@ export const ensureCustomerRelationship = async (
       .maybeSingle();
       
     if (checkError) {
-      console.error('Error checking existing relationship:', checkError);
+      console.error('❌ [ensureCustomerRelationship] Error checking existing relationship:', checkError);
       return null;
     }
     
     // If relationship exists, return the existing ID
     if (existingRelation) {
-      console.log('Customer relationship already exists:', existingRelation.id);
+      console.log('✅ [ensureCustomerRelationship] Customer relationship already exists:', existingRelation.id);
       return existingRelation.id;
     }
     
@@ -143,16 +220,16 @@ export const ensureCustomerRelationship = async (
       .single();
       
     if (createError) {
-      console.error('Error creating customer relationship:', createError);
-      toast.error('Erro ao criar relacionamento com cliente');
+      console.error('❌ [ensureCustomerRelationship] Error creating customer relationship:', createError);
+      toast.error('Erro ao criar relacionamento com cliente: ' + createError.message);
       return null;
     }
     
-    console.log('Created new customer relationship:', newRelation.id);
+    console.log('✅ [ensureCustomerRelationship] Created new customer relationship:', newRelation.id);
     toast.success('Cliente adicionado à sua lista');
     return newRelation.id;
   } catch (error) {
-    console.error('Error in ensureCustomerRelationship:', error);
+    console.error('💥 [ensureCustomerRelationship] Unexpected error:', error);
     return null;
   }
 };
