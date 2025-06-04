@@ -1,8 +1,7 @@
-
 /**
  * Safely extracts the first image URL from various image data formats
  * Handles: strings, arrays, nested arrays, and JSON strings
- * Enhanced version with better nested array handling
+ * Enhanced version with better validation and logging
  */
 export function safeFirstImage(imagens: any): string | null {
   if (!imagens) {
@@ -17,9 +16,7 @@ export function safeFirstImage(imagens: any): string | null {
     stringified: JSON.stringify(imagens).substring(0, 100)
   });
   
-  let imageArray: string[] = [];
-  
-  // Handle string (could be JSON or single URL)
+  // Handle string input
   if (typeof imagens === 'string') {
     // Skip if it's already a blob URL or looks like a single URL
     if (imagens.startsWith('blob:') || imagens.startsWith('http') || imagens.startsWith('data:')) {
@@ -32,7 +29,7 @@ export function safeFirstImage(imagens: any): string | null {
       console.log('[imageUtils] Parsed JSON string:', parsed);
       
       if (Array.isArray(parsed)) {
-        imageArray = parsed;
+        return safeFirstImage(parsed); // Recursively process the parsed array
       } else if (typeof parsed === 'string') {
         console.log('[imageUtils] ✅ Single URL from JSON string:', parsed.substring(0, 50) + '...');
         return parsed;
@@ -47,80 +44,74 @@ export function safeFirstImage(imagens: any): string | null {
       console.log('[imageUtils] ❌ Invalid string, skipping');
       return null;
     }
-  } 
-  // Handle array
-  else if (Array.isArray(imagens)) {
+  }
+  
+  // Handle array input
+  if (Array.isArray(imagens)) {
     console.log('[imageUtils] Processing array, length:', imagens.length);
-    imageArray = imagens;
-  }
-  // Handle other types
-  else {
-    console.log('[imageUtils] ❌ Unsupported type:', typeof imagens);
-    return null;
-  }
-  
-  // Enhanced nested array handling with depth protection and better flattening
-  let depth = 0;
-  let currentArray = imageArray;
-  
-  while (depth < 10) { // Increased depth limit for safety
-    // Check if we have any nested arrays
-    const hasNestedArrays = currentArray.some(item => Array.isArray(item));
     
-    if (!hasNestedArrays) {
-      break; // No more nested arrays to flatten
+    if (imagens.length === 0) {
+      console.log('[imageUtils] ❌ Empty array');
+      return null;
     }
     
-    console.log('[imageUtils] Flattening nested array at depth:', depth);
-    
-    // Flatten one level and filter out empty arrays
-    const newArray = [];
-    for (const item of currentArray) {
-      if (Array.isArray(item)) {
-        newArray.push(...item);
-      } else {
-        newArray.push(item);
+    // Process each item in the array
+    for (let i = 0; i < imagens.length; i++) {
+      const item = imagens[i];
+      
+      if (typeof item === 'string') {
+        const trimmed = item.trim();
+        if (trimmed && trimmed !== 'null' && trimmed !== 'undefined') {
+          // Enhanced URL validation
+          const isValidUrl = trimmed.match(/^(https?:\/\/|blob:|data:image\/|\/)/);
+          if (isValidUrl) {
+            console.log(`[imageUtils] ✅ Valid URL found at index ${i}:`, trimmed.substring(0, 50) + '...');
+            return trimmed;
+          } else {
+            console.log(`[imageUtils] ⚠️ Invalid URL format at index ${i}:`, trimmed.substring(0, 50));
+          }
+        }
+      } else if (Array.isArray(item)) {
+        // Handle nested arrays (should be rare after SQL fix, but keeping for safety)
+        console.log(`[imageUtils] ⚠️ Found nested array at index ${i}, processing recursively`);
+        const nestedResult = safeFirstImage(item);
+        if (nestedResult) {
+          console.log(`[imageUtils] ✅ Found URL in nested array:`, nestedResult.substring(0, 50) + '...');
+          return nestedResult;
+        }
+      } else if (item && typeof item === 'object') {
+        // Handle object with url property
+        const url = item.url || item.path || item.src;
+        if (url && typeof url === 'string') {
+          const trimmed = String(url).trim();
+          if (trimmed && trimmed !== 'null' && trimmed !== 'undefined') {
+            console.log(`[imageUtils] ✅ URL from object at index ${i}:`, trimmed.substring(0, 50) + '...');
+            return trimmed;
+          }
+        }
       }
     }
     
-    currentArray = newArray;
-    depth++;
-    
-    // Safety check to prevent infinite loops
-    if (depth >= 10) {
-      console.error('[imageUtils] ❌ Too many nested arrays, stopping to prevent infinite loop');
-      break;
-    }
+    console.log('[imageUtils] ❌ No valid URLs found in array');
+    return null;
   }
   
-  // Enhanced filtering with better validation
-  const validImages = currentArray.filter((img, index) => {
-    if (!img || typeof img !== 'string') {
-      console.log(`[imageUtils] Skipping invalid item at index ${index}:`, img);
-      return false;
+  // Handle object input
+  if (imagens && typeof imagens === 'object') {
+    const url = imagens.url || imagens.path || imagens.src;
+    if (url && typeof url === 'string') {
+      const trimmed = String(url).trim();
+      if (trimmed && trimmed !== 'null' && trimmed !== 'undefined') {
+        console.log('[imageUtils] ✅ URL from object:', trimmed.substring(0, 50) + '...');
+        return trimmed;
+      }
     }
-    
-    const trimmed = img.trim();
-    if (trimmed === '' || trimmed === 'null' || trimmed === 'undefined') {
-      console.log(`[imageUtils] Skipping empty/null item at index ${index}:`, trimmed);
-      return false;
-    }
-    
-    // Enhanced URL validation - more permissive for various URL formats
-    const isValidUrl = trimmed.match(/^(https?:\/\/|blob:|data:image\/|\/)/);
-    if (!isValidUrl) {
-      console.log(`[imageUtils] Skipping invalid URL format at index ${index}:`, trimmed.substring(0, 50) + '...');
-      return false;
-    }
-    
-    console.log(`[imageUtils] ✅ Valid image at index ${index}:`, trimmed.substring(0, 50) + '...');
-    return true;
-  });
+    console.log('[imageUtils] ❌ Object has no valid URL property');
+    return null;
+  }
   
-  const result = validImages.length > 0 ? validImages[0] : null;
-  console.log('[imageUtils] Final result:', result ? result.substring(0, 50) + '...' : 'null');
-  
-  return result;
+  console.log('[imageUtils] ❌ Unsupported type:', typeof imagens);
+  return null;
 }
 
 /**
@@ -154,12 +145,6 @@ export function debugImageData(productName: string, imageData: any, context: str
         console.log('First element:', imageData[0]);
         console.log('First element type:', typeof imageData[0]);
         console.log('Is first element array:', Array.isArray(imageData[0]));
-        
-        // Check for deeply nested arrays
-        if (Array.isArray(imageData[0]) && imageData[0].length > 0) {
-          console.log('Second level element:', imageData[0][0]);
-          console.log('Second level element type:', typeof imageData[0][0]);
-        }
       }
     }
     console.log('Stringified:', JSON.stringify(imageData));

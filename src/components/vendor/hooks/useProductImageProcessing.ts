@@ -12,15 +12,13 @@ export const useProductImageProcessing = () => {
       return [];
     }
 
-    // Use the enhanced safeFirstImage function to extract all valid URLs
     const result: string[] = [];
     
     try {
-      // If it's already an array, process each item
+      // Handle array input - process each element
       if (Array.isArray(rawImages)) {
         console.log('[useProductImageProcessing] Processing array, length:', rawImages.length);
         
-        // Process each element in the array
         rawImages.forEach((item, index) => {
           const extractedUrl = safeFirstImage(item);
           if (extractedUrl) {
@@ -31,7 +29,7 @@ export const useProductImageProcessing = () => {
           }
         });
       } else {
-        // For non-array inputs, try to extract a single URL
+        // For non-array inputs, try to extract URL(s)
         const extractedUrl = safeFirstImage(rawImages);
         if (extractedUrl) {
           console.log('[useProductImageProcessing] ✅ Extracted single URL:', extractedUrl.substring(0, 50) + '...');
@@ -41,12 +39,19 @@ export const useProductImageProcessing = () => {
         }
       }
       
-      console.log('[useProductImageProcessing] Final processed images count:', result.length);
-      result.forEach((img, index) => {
+      // Remove duplicates and validate URLs
+      const uniqueUrls = Array.from(new Set(result)).filter(url => {
+        if (!url || typeof url !== 'string') return false;
+        const trimmed = url.trim();
+        return trimmed.length > 0 && trimmed !== 'null' && trimmed !== 'undefined';
+      });
+      
+      console.log('[useProductImageProcessing] Final processed images count:', uniqueUrls.length);
+      uniqueUrls.forEach((img, index) => {
         console.log(`[useProductImageProcessing] Final image ${index}:`, img.substring(0, 80) + '...');
       });
       
-      return result;
+      return uniqueUrls;
       
     } catch (error) {
       console.error('[useProductImageProcessing] Error processing images:', error);
