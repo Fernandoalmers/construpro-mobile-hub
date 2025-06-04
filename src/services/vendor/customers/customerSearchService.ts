@@ -63,9 +63,10 @@ export const searchAllProfiles = async (query: string): Promise<VendorCustomer[]
       vendorStatus: vendorData.status
     });
     
-    // Check vendor status
-    if (vendorData.status !== 'ativo') {
-      console.warn('⚠️ [searchAllProfiles] Vendor is not active:', vendorData.status);
+    // Check vendor status - aceitar tanto "ativo" quanto "aprovado"
+    const validStatuses = ['ativo', 'aprovado'];
+    if (!validStatuses.includes(vendorData.status)) {
+      console.warn('⚠️ [searchAllProfiles] Vendor is not active or approved:', vendorData.status);
       toast.error(`Vendedor não está ativo (status: ${vendorData.status}). Entre em contato com o suporte.`);
       return [];
     }
