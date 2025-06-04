@@ -3,6 +3,7 @@
 import { getVendorCustomer, getVendorCustomers, searchCustomers, findCustomerByEmail } from './customerFetcher';
 import { getCustomerPoints } from './customerPointsService';
 import { addVendorCustomer } from './customerCreator';
+import { seedTestCustomers, migrateCustomersFromPointAdjustments, migrateCustomersFromOrders } from './customerDataService';
 import { searchAllProfiles, ensureCustomerRelationship } from './customerSearchService';
 import { VendorCustomer } from './types';
 
@@ -18,6 +19,11 @@ export {
   findCustomerByEmail,
   getCustomerPoints,
   addVendorCustomer,
+  
+  // Customer data functions
+  seedTestCustomers,
+  migrateCustomersFromPointAdjustments,
+  migrateCustomersFromOrders,
   
   // New enhanced search functions
   searchAllProfiles,
