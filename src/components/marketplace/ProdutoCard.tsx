@@ -138,7 +138,7 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
     >
       <div className="relative">
         {/* Product Image */}
-        <div className="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">
+        <div className="aspect-square bg-white flex items-center justify-center overflow-hidden">
           {displayImageUrl ? (
             <img
               src={displayImageUrl}
@@ -148,7 +148,7 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
               loading="lazy"
             />
           ) : (
-            <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+            <div className="w-full h-full bg-white flex items-center justify-center">
               <span className="text-gray-400 text-sm">Sem imagem</span>
             </div>
           )}
