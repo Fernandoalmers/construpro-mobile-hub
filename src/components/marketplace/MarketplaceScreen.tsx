@@ -243,7 +243,7 @@ const MarketplaceScreen: React.FC = () => {
 
   const currentCategoryName = getCurrentDisplayName();
 
-  // Calculate dynamic padding based on header visibility and height
+  // Calculate dynamic padding based on header visibility and height - FIXED LOGIC
   const dynamicPaddingTop = hideHeader ? 0 : headerHeight;
 
   // Handle header height changes
@@ -279,7 +279,7 @@ const MarketplaceScreen: React.FC = () => {
         onHeightChange={handleHeaderHeightChange}
       />
       
-      {/* Main Content with Dynamic Padding */}
+      {/* Main Content with Dynamic Padding and Smooth Transition */}
       <div 
         className="transition-all duration-300 ease-out"
         style={{ 
