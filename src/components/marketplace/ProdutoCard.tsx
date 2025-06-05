@@ -20,7 +20,7 @@ interface Product {
   preco_normal?: number;
   preco_promocional?: number;
   categoria: string;
-  imagem_url?: string;
+  imagens?: string[] | any[] | string;
   pontos?: number;
   pontos_consumidor?: number;
   pontos_profissional?: number;
@@ -130,8 +130,8 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
   const finalPrice = hasPromotion ? produto.preco_promocional : produto.preco;
   const originalPrice = hasPromotion ? (produto.preco_normal || produto.preco) : null;
 
-  // Use safe image extraction - fixes the ["url"] bug
-  const displayImageUrl = safeFirstImage(produto.imagem_url);
+  // FIXED: Use safe image extraction from imagens field only
+  const displayImageUrl = safeFirstImage(produto.imagens);
 
   return (
     <Card 
