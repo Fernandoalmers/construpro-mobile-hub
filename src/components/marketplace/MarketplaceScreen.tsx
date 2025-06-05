@@ -17,7 +17,6 @@ import SegmentCardsHeader from './components/SegmentCardsHeader';
 const MarketplaceScreen: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const headerRef = useRef<HTMLDivElement>(null);
   const [headerHeight, setHeaderHeight] = useState(0);
   
   // Parse query parameters on component mount
@@ -39,21 +38,6 @@ const MarketplaceScreen: React.FC = () => {
   // Use our custom hooks
   const { hideHeader } = useScrollBehavior();
   const { products, stores, isLoading, storesError } = useMarketplaceData(selectedSegmentId);
-  
-  // Calculate header height on mount and resize
-  useEffect(() => {
-    const calculateHeaderHeight = () => {
-      if (headerRef.current) {
-        const height = headerRef.current.offsetHeight;
-        setHeaderHeight(height);
-      }
-    };
-    
-    calculateHeaderHeight();
-    window.addEventListener('resize', calculateHeaderHeight);
-    
-    return () => window.removeEventListener('resize', calculateHeaderHeight);
-  }, []);
   
   // Extract all categories from products
   const categories = React.useMemo(() => {
@@ -259,44 +243,47 @@ const MarketplaceScreen: React.FC = () => {
 
   const currentCategoryName = getCurrentDisplayName();
 
-  // Calculate dynamic padding based on header visibility
+  // Calculate dynamic padding based on header visibility and height
   const dynamicPaddingTop = hideHeader ? 0 : headerHeight;
+
+  // Handle header height changes
+  const handleHeaderHeightChange = (height: number) => {
+    setHeaderHeight(height);
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 pb-20">
       {/* Search and Filter Header */}
-      <div ref={headerRef}>
-        <SearchAndFilterSection
-          hideHeader={hideHeader}
-          searchTerm={term}
-          setSearchTerm={setTerm}
-          selectedCategories={selectedCategories}
-          selectedLojas={selectedLojas}
-          selectedRatings={selectedRatings}
-          selectedSegments={selectedSegments}
-          selectedPriceRanges={selectedPriceRanges}
-          allCategories={categories}
-          ratingOptions={ratingOptions}
-          priceRangeOptions={priceRangeOptions}
-          segmentOptions={segmentOptions}
-          onLojaClick={handleLojaClick}
-          onCategoryClick={handleCategoryClick}
-          onRatingClick={handleRatingClick}
-          onPriceRangeClick={handlePriceRangeClick}
-          onSegmentClick={handleSegmentClick}
-          onSearch={handleSubmit}
-          clearFilters={clearFilters}
-          stores={stores}
-          handleSearchChange={(term) => setTerm(term)}
-        />
-      </div>
+      <SearchAndFilterSection
+        hideHeader={hideHeader}
+        searchTerm={term}
+        setSearchTerm={setTerm}
+        selectedCategories={selectedCategories}
+        selectedLojas={selectedLojas}
+        selectedRatings={selectedRatings}
+        selectedSegments={selectedSegments}
+        selectedPriceRanges={selectedPriceRanges}
+        allCategories={categories}
+        ratingOptions={ratingOptions}
+        priceRangeOptions={priceRangeOptions}
+        segmentOptions={segmentOptions}
+        onLojaClick={handleLojaClick}
+        onCategoryClick={handleCategoryClick}
+        onRatingClick={handleRatingClick}
+        onPriceRangeClick={handlePriceRangeClick}
+        onSegmentClick={handleSegmentClick}
+        onSearch={handleSubmit}
+        clearFilters={clearFilters}
+        stores={stores}
+        handleSearchChange={(term) => setTerm(term)}
+        onHeightChange={handleHeaderHeightChange}
+      />
       
       {/* Main Content with Dynamic Padding */}
       <div 
         className="transition-all duration-300 ease-out"
         style={{ 
-          paddingTop: `${dynamicPaddingTop}px`,
-          transform: hideHeader ? 'translateY(0)' : 'translateY(0)'
+          paddingTop: `${dynamicPaddingTop}px`
         }}
       >
         {/* Segment Cards Header */}

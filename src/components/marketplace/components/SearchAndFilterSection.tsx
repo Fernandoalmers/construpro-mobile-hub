@@ -26,6 +26,7 @@ interface SearchAndFilterSectionProps {
   clearFilters: () => void;
   stores: any[];
   handleSearchChange: (term: string) => void;
+  onHeightChange?: (height: number) => void;
 }
 
 const SearchAndFilterSection: React.FC<SearchAndFilterSectionProps> = ({
@@ -49,7 +50,8 @@ const SearchAndFilterSection: React.FC<SearchAndFilterSectionProps> = ({
   onSearch,
   clearFilters,
   stores,
-  handleSearchChange
+  handleSearchChange,
+  onHeightChange
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -122,6 +124,7 @@ const SearchAndFilterSection: React.FC<SearchAndFilterSectionProps> = ({
       onPriceRangeClick={onPriceRangeClick}
       clearFilters={clearFilters}
       stores={stores}
+      onHeightChange={onHeightChange}
     />
   );
 };

@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCart } from '@/hooks/use-cart';
 import { FilterOption } from '@/hooks/use-product-filter';
@@ -31,6 +31,7 @@ interface MarketplaceHeaderProps {
   onSegmentClick?: (segmentId: string) => void;
   onPriceRangeClick?: (rangeId: string) => void;
   clearFilters: () => void;
+  onHeightChange?: (height: number) => void;
 }
 
 const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
@@ -53,9 +54,26 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
   onRatingClick,
   onSegmentClick = () => {},
   onPriceRangeClick = () => {},
-  clearFilters
+  clearFilters,
+  onHeightChange
 }) => {
   const { cartCount } = useCart();
+  const headerRef = useRef<HTMLDivElement>(null);
+
+  // Calculate and report header height
+  useEffect(() => {
+    const calculateHeight = () => {
+      if (headerRef.current && onHeightChange) {
+        const height = headerRef.current.offsetHeight;
+        onHeightChange(height);
+      }
+    };
+
+    calculateHeight();
+    window.addEventListener('resize', calculateHeight);
+    
+    return () => window.removeEventListener('resize', calculateHeight);
+  }, [onHeightChange]);
 
   // Fix the store mapping to ensure proper format
   const lojasOptions = stores.map(store => ({
@@ -66,6 +84,7 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
   return (
     <div className="fixed top-0 left-0 right-0 z-30 bg-white border-b border-gray-200 shadow-sm">
       <motion.div 
+        ref={headerRef}
         initial={{ transform: 'translateY(0)' }}
         animate={{ 
           transform: hideHeader ? 'translateY(-100%)' : 'translateY(0)'
