@@ -75,10 +75,10 @@ const MarketplaceScreen: React.FC = () => {
     const timer = setTimeout(() => {
       if (term.trim().length >= 2) {
         console.log('[MarketplaceScreen] Auto-searching for:', term);
-        handleSubmit(term);
+        handleSubmit();
       } else if (term.trim().length === 0) {
         console.log('[MarketplaceScreen] Search cleared, showing all products');
-        handleSubmit('');
+        handleSubmit();
       }
     }, 300);
     
@@ -183,9 +183,9 @@ const MarketplaceScreen: React.FC = () => {
   const handleExplicitSearch = () => {
     console.log('[MarketplaceScreen] Explicit search with term:', term);
     if (term.trim().length >= 2) {
-      handleSubmit(term);
+      handleSubmit();
     } else if (term.trim().length === 0) {
-      handleSubmit('');
+      handleSubmit();
     }
   };
 
