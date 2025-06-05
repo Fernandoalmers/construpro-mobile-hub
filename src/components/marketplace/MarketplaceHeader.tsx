@@ -1,6 +1,6 @@
 
 import React, { useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useCart } from '@/hooks/use-cart';
 import { FilterOption } from '@/hooks/use-product-filter';
 
@@ -91,21 +91,19 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
   }));
 
   return (
-    <div 
+    <motion.div 
       ref={headerRef}
-      className="fixed top-0 left-0 right-0 z-30 bg-white border-b border-gray-200 shadow-sm"
+      className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 shadow-sm"
+      initial={{ transform: 'translateY(0)' }}
+      animate={{ 
+        transform: hideHeader ? 'translateY(-100%)' : 'translateY(0)'
+      }}
+      transition={{ 
+        duration: 0.4, 
+        ease: [0.25, 0.46, 0.45, 0.94] // easeOutQuart for smoother animation
+      }}
     >
-      <motion.div 
-        initial={{ transform: 'translateY(0)' }}
-        animate={{ 
-          transform: hideHeader ? 'translateY(-100%)' : 'translateY(0)'
-        }}
-        transition={{ 
-          duration: 0.3, 
-          ease: [0.25, 0.46, 0.45, 0.94] // easeOutQuart for smoother animation
-        }}
-        className="bg-construPro-blue"
-      >
+      <div className="bg-construPro-blue">
         <div className="p-4 pt-8">
           {/* Header Top with Back Button and Cart */}
           <MarketplaceHeaderTop cartCount={cartCount} />
@@ -162,8 +160,8 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
             onSegmentClick={onSegmentClick}
           />
         </div>
-      </motion.div>
-    </div>
+      </div>
+    </motion.div>
   );
 };
 

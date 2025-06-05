@@ -6,9 +6,9 @@ export function useScrollBehavior() {
   const [lastScrollY, setLastScrollY] = useState(0);
   const [scrollDirection, setScrollDirection] = useState<'up' | 'down'>('up');
   
-  // Threshold for how much scroll is needed to trigger hiding
-  const SCROLL_THRESHOLD = 10;
-  const HIDE_THRESHOLD = 80; // Only hide after scrolling this much from top
+  // Increased thresholds for more stable behavior
+  const SCROLL_THRESHOLD = 20;
+  const HIDE_THRESHOLD = 120; // Increased from 80 for more deliberate hiding
 
   // Debounced scroll handler
   const handleScroll = useCallback(() => {
@@ -42,7 +42,7 @@ export function useScrollBehavior() {
     
     const throttledScroll = () => {
       clearTimeout(timeoutId);
-      timeoutId = setTimeout(handleScroll, 10); // 10ms throttle
+      timeoutId = setTimeout(handleScroll, 16); // Increased from 10ms for smoother performance
     };
 
     window.addEventListener('scroll', throttledScroll, { passive: true });

@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useProductFilter } from '@/hooks/use-product-filter';
 import { useScrollBehavior } from '@/hooks/use-scroll-behavior';
 import { useMarketplaceData } from '@/hooks/useMarketplaceData';
-import SearchAndFilterSection from './components/SearchAndFilterSection';
+import MarketplaceHeader from './MarketplaceHeader';
 import MarketplaceContent from './components/MarketplaceContent';
 import { useMarketplaceParams } from './hooks/useMarketplaceParams';
 import { useMarketplaceSegments } from './hooks/useMarketplaceSegments';
@@ -11,6 +12,9 @@ import { useMarketplaceSearch } from './hooks/useMarketplaceSearch';
 
 const MarketplaceScreen: React.FC = () => {
   const [headerHeight, setHeaderHeight] = useState(0);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const searchParams = new URLSearchParams(location.search);
   
   // Custom hooks for managing different aspects
   const {
@@ -66,12 +70,36 @@ const MarketplaceScreen: React.FC = () => {
     initialSearch: term || '' 
   });
 
+  // Debounce effect for automatic search and reset
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (term.trim().length >= 2) {
+        console.log('[MarketplaceScreen] Auto-searching for:', term);
+        handleSubmit(term);
+      } else if (term.trim().length === 0) {
+        console.log('[MarketplaceScreen] Search cleared, showing all products');
+        handleSubmit('');
+      }
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [term, handleSubmit]);
+
+  // Update URL when search term changes
+  useEffect(() => {
+    const newSearchParams = new URLSearchParams(searchParams);
+    if (term && term.trim().length >= 2) {
+      newSearchParams.set('search', term);
+    } else {
+      newSearchParams.delete('search');
+    }
+    navigate(`${location.pathname}?${newSearchParams.toString()}`, { replace: true });
+  }, [term, location.pathname, navigate]);
+
   // Debug info logging
   useEffect(() => {
-    // Log products availability for debugging
     console.log('[MarketplaceScreen] Products loaded for ALL users:', products.length);
     
-    // If no products are showing, add additional debugging
     if (products.length === 0 && !isLoading) {
       console.warn('[MarketplaceScreen] NO PRODUCTS FOUND! This could indicate:');
       console.warn('1. No approved products in database');
@@ -115,7 +143,6 @@ const MarketplaceScreen: React.FC = () => {
     console.log('[MarketplaceScreen] Store card clicked:', lojaId);
     console.log('[MarketplaceScreen] Current selected lojas:', selectedLojas);
     
-    // Re-enable store filtering
     setSelectedLojas([lojaId]);
     setPage(1);
     
@@ -138,7 +165,7 @@ const MarketplaceScreen: React.FC = () => {
 
   const currentCategoryName = getCurrentDisplayName();
 
-  // Calculate dynamic padding based on header visibility and height - FIXED LOGIC
+  // Calculate dynamic padding based on header visibility and height
   const dynamicPaddingTop = hideHeader ? 0 : headerHeight;
 
   // Handle header height changes
@@ -146,13 +173,28 @@ const MarketplaceScreen: React.FC = () => {
     setHeaderHeight(height);
   };
 
+  // Adapter function to convert the event to string
+  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('[MarketplaceScreen] Input change event:', e.target.value);
+    setTerm(e.target.value);
+  };
+
+  // Explicit search functionality
+  const handleExplicitSearch = () => {
+    console.log('[MarketplaceScreen] Explicit search with term:', term);
+    if (term.trim().length >= 2) {
+      handleSubmit(term);
+    } else if (term.trim().length === 0) {
+      handleSubmit('');
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 pb-20">
-      {/* Search and Filter Header */}
-      <SearchAndFilterSection
+      {/* Fixed Header - completely outside layout flow */}
+      <MarketplaceHeader 
         hideHeader={hideHeader}
         searchTerm={term}
-        setSearchTerm={setTerm}
         selectedCategories={selectedCategories}
         selectedLojas={selectedLojas}
         selectedRatings={selectedRatings}
@@ -163,19 +205,19 @@ const MarketplaceScreen: React.FC = () => {
         ratingOptions={ratingOptions}
         priceRangeOptions={priceRangeOptions}
         segmentOptions={segmentOptions}
+        onSearchChange={handleSearchInputChange}
+        onSearch={handleExplicitSearch}
         onLojaClick={handleLojaClick}
         onCategoryClick={handleCategoryClick}
         onRatingClick={handleRatingClick}
-        onPriceRangeClick={handlePriceRangeClick}
         onSegmentClick={handleSegmentClick}
-        onSearch={handleSubmit}
+        onPriceRangeClick={handlePriceRangeClick}
         clearFilters={clearFilters}
         stores={stores}
-        handleSearchChange={(term) => setTerm(term)}
         onHeightChange={handleHeaderHeightChange}
       />
       
-      {/* Main Content */}
+      {/* Main Content with dynamic padding */}
       <MarketplaceContent
         dynamicPaddingTop={dynamicPaddingTop}
         stores={stores}
