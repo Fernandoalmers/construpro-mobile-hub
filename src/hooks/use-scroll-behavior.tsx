@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 export function useScrollBehavior() {
   const [hideHeader, setHideHeader] = useState(false);
@@ -7,33 +7,51 @@ export function useScrollBehavior() {
   const [scrollDirection, setScrollDirection] = useState<'up' | 'down'>('up');
   
   // Threshold for how much scroll is needed to trigger hiding
-  const SCROLL_THRESHOLD = 50;
+  const SCROLL_THRESHOLD = 10;
+  const HIDE_THRESHOLD = 80; // Only hide after scrolling this much from top
 
-  // Handle scroll events for showing/hiding header
-  useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      
-      // Determine scroll direction
-      if (currentScrollY > lastScrollY + 10) {
-        // Scrolling down
-        setScrollDirection('down');
-        if (currentScrollY > SCROLL_THRESHOLD) {
-          setHideHeader(true);
-        }
-      } else if (currentScrollY < lastScrollY - 10) {
-        // Scrolling up
-        setScrollDirection('up');
-        setHideHeader(false);
+  // Debounced scroll handler
+  const handleScroll = useCallback(() => {
+    const currentScrollY = window.scrollY;
+    
+    // Don't do anything if scroll difference is too small
+    if (Math.abs(currentScrollY - lastScrollY) < SCROLL_THRESHOLD) {
+      return;
+    }
+    
+    // Determine scroll direction
+    if (currentScrollY > lastScrollY) {
+      // Scrolling down
+      setScrollDirection('down');
+      // Only hide if we've scrolled enough from the top
+      if (currentScrollY > HIDE_THRESHOLD) {
+        setHideHeader(true);
       }
-      
-      // Update last scroll position
-      setLastScrollY(currentScrollY);
+    } else {
+      // Scrolling up
+      setScrollDirection('up');
+      setHideHeader(false);
+    }
+    
+    setLastScrollY(currentScrollY);
+  }, [lastScrollY]);
+
+  // Handle scroll events with passive listener for better performance
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
+    const throttledScroll = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(handleScroll, 10); // 10ms throttle
     };
 
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [lastScrollY]);
+    window.addEventListener('scroll', throttledScroll, { passive: true });
+    
+    return () => {
+      window.removeEventListener('scroll', throttledScroll);
+      clearTimeout(timeoutId);
+    };
+  }, [handleScroll]);
 
   return { hideHeader, scrollDirection, lastScrollY };
 }
