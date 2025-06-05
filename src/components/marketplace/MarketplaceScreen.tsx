@@ -1,39 +1,30 @@
 
-import React, { useState, useEffect, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
 import { useProductFilter } from '@/hooks/use-product-filter';
 import { useScrollBehavior } from '@/hooks/use-scroll-behavior';
 import { useMarketplaceData } from '@/hooks/useMarketplaceData';
-import { useProductSearch } from '@/hooks/useProductSearch';
-import ProductListSection from './ProductListSection';
-import CategoryHeader from './components/CategoryHeader';
 import SearchAndFilterSection from './components/SearchAndFilterSection';
-import { supabase } from '@/integrations/supabase/client';
-import LoadingState from '../common/LoadingState';
-import { getProductSegments } from '@/services/admin/productSegmentsService';
-import StoresSection from './components/StoresSection';
-import SegmentCardsHeader from './components/SegmentCardsHeader';
+import MarketplaceContent from './components/MarketplaceContent';
+import { useMarketplaceParams } from './hooks/useMarketplaceParams';
+import { useMarketplaceSegments } from './hooks/useMarketplaceSegments';
+import { useMarketplaceSearch } from './hooks/useMarketplaceSearch';
 
 const MarketplaceScreen: React.FC = () => {
-  const location = useLocation();
-  const navigate = useNavigate();
   const [headerHeight, setHeaderHeight] = useState(0);
   
-  // Parse query parameters on component mount
-  const searchParams = new URLSearchParams(location.search);
-  const categoryParam = searchParams.get('categoria');
-  const searchQuery = searchParams.get('search');
-  const segmentIdParam = searchParams.get('segmento_id');
+  // Custom hooks for managing different aspects
+  const {
+    categoryParam,
+    initialCategories,
+    selectedSegmentId,
+    setSelectedSegmentId,
+    selectedSegments,
+    setSelectedSegments,
+    updateSegmentURL
+  } = useMarketplaceParams();
   
-  // Only initialize categories from URL if we have a categoria param
-  const initialCategories = categoryParam ? [categoryParam] : [];
-  
-  // State for segment selection
-  const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(segmentIdParam);
-  const [selectedSegments, setSelectedSegments] = useState<string[]>(
-    segmentIdParam ? [segmentIdParam] : []
-  );
-  const [segmentOptions, setSegmentOptions] = useState<any[]>([]);
+  const { segmentOptions } = useMarketplaceSegments();
+  const { term, setTerm, handleSubmit, fetchProducts } = useMarketplaceSearch();
   
   // Use our custom hooks
   const { hideHeader } = useScrollBehavior();
@@ -72,21 +63,11 @@ const MarketplaceScreen: React.FC = () => {
   } = useProductFilter({ 
     initialCategories, 
     initialProducts: products,
-    initialSearch: searchQuery || '' 
+    initialSearch: term || '' 
   });
 
-  // Log debug info
+  // Debug info logging
   useEffect(() => {
-    console.log('[MarketplaceScreen] URL parameters:', {
-      categoria: categoryParam,
-      segmento_id: segmentIdParam,
-      search: searchQuery
-    });
-    
-    if (segmentIdParam) {
-      console.log(`[MarketplaceScreen] Initializing with segment_id: ${segmentIdParam}`);
-    }
-    
     // Log products availability for debugging
     console.log('[MarketplaceScreen] Products loaded for ALL users:', products.length);
     
@@ -98,26 +79,7 @@ const MarketplaceScreen: React.FC = () => {
       console.warn('3. Database connection issue');
       console.warn('4. RLS policy blocking access');
     }
-  }, [categoryParam, segmentIdParam, searchQuery, products.length, isLoading]);
-  
-  // Fetch segments for filter options
-  useEffect(() => {
-    const fetchSegments = async () => {
-      try {
-        const segmentsData = await getProductSegments();
-        console.log('[MarketplaceScreen] Fetched segments:', segmentsData);
-        const options = segmentsData.map(segment => ({
-          id: segment.id,
-          label: segment.nome
-        }));
-        setSegmentOptions(options);
-      } catch (error) {
-        console.error('[MarketplaceScreen] Error fetching segments:', error);
-      }
-    };
-    
-    fetchSegments();
-  }, []);
+  }, [products.length, isLoading]);
 
   // Modified clearFilters function that preserves segment selection
   const clearFilters = () => {
@@ -147,39 +109,6 @@ const MarketplaceScreen: React.FC = () => {
     updateSegmentURL(segmentId);
     setPage(1);
   };
-  
-  // Update URL with segment ID
-  const updateSegmentURL = (segmentId: string | null) => {
-    const newSearchParams = new URLSearchParams(searchParams);
-    
-    if (categoryParam) {
-      newSearchParams.delete('categoria');
-    }
-    
-    if (segmentId) {
-      newSearchParams.set('segmento_id', segmentId);
-    } else {
-      newSearchParams.delete('segmento_id');
-    }
-    
-    navigate(`${location.pathname}?${newSearchParams.toString()}`, { replace: true });
-  };
-
-  // Enhanced search functionality
-  const fetchProducts = (term: string) => {
-    console.log('[MarketplaceScreen] Searching for:', term);
-    handleSearchChange(term);
-    
-    const newSearchParams = new URLSearchParams(searchParams);
-    if (term && term.trim().length >= 2) {
-      newSearchParams.set('search', term);
-    } else {
-      newSearchParams.delete('search');
-    }
-    navigate(`${location.pathname}?${newSearchParams.toString()}`, { replace: true });
-  };
-  
-  const { term, setTerm, handleSubmit } = useProductSearch(fetchProducts);
 
   // Re-enabled loja click functionality with improved logging
   const handleLojaCardClick = (lojaId: string) => {
@@ -192,40 +121,6 @@ const MarketplaceScreen: React.FC = () => {
     
     console.log('[MarketplaceScreen] Store filter applied for:', lojaId);
   };
-
-  // Quick search functionality
-  const handleQuickSearch = async (term: string) => {
-    console.log('[MarketplaceScreen] Quick search for:', term);
-    if (!term || term.trim().length < 2) {
-      return;
-    }
-    
-    try {
-      const { data, error } = await supabase
-        .from('produtos')
-        .select('id')
-        .ilike('nome', `%${term}%`)
-        .eq('status', 'aprovado')
-        .limit(1)
-        .single();
-      
-      if (error || !data) {
-        console.error('[MarketplaceScreen] Quick search error:', error);
-        return;
-      }
-      
-      navigate(`/produto/${data.id}`);
-    } catch (error) {
-      console.error('[MarketplaceScreen] Error in quick search:', error);
-    }
-  };
-
-  // Initialize search term from URL
-  useEffect(() => {
-    if (searchQuery) {
-      setTerm(searchQuery);
-    }
-  }, [searchQuery]);
 
   // Current category name for display
   const getCurrentDisplayName = () => {
@@ -279,52 +174,23 @@ const MarketplaceScreen: React.FC = () => {
         onHeightChange={handleHeaderHeightChange}
       />
       
-      {/* Main Content with Dynamic Padding and Smooth Transition */}
-      <div 
-        className="transition-all duration-300 ease-out"
-        style={{ 
-          paddingTop: `${dynamicPaddingTop}px`
-        }}
-      >
-        {/* Segment Cards Header */}
-        <SegmentCardsHeader 
-          selectedSegment={selectedSegmentId}
-          onSegmentClick={handleSegmentClick}
-        />
-        
-        {/* Stores Section */}
-        <StoresSection 
-          stores={stores}
-          onLojaClick={handleLojaCardClick}
-          storesError={storesError}
-        />
-        
-        {/* Category Header */}
-        <CategoryHeader 
-          currentCategoryName={currentCategoryName || "Todos os Produtos"}
-          productCount={filteredProdutos.length}
-        />
-        
-        {/* Product List */}
-        <div className="px-2 py-2 flex-1">
-          {isLoading ? (
-            <LoadingState type="spinner" text="Carregando produtos..." count={3} />
-          ) : (
-            <ProductListSection 
-              displayedProducts={displayedProducts}
-              filteredProdutos={filteredProdutos}
-              hasMore={hasMore}
-              isLoadingMore={isLoadingMore}
-              loadMoreProducts={loadMoreProducts}
-              clearFilters={clearFilters}
-              onLojaClick={handleLojaCardClick}
-              isLoading={isLoading}
-              viewType="list"
-              showActions={true}
-            />
-          )}
-        </div>
-      </div>
+      {/* Main Content */}
+      <MarketplaceContent
+        dynamicPaddingTop={dynamicPaddingTop}
+        selectedSegmentId={selectedSegmentId}
+        onSegmentClick={handleSegmentClick}
+        stores={stores}
+        onLojaClick={handleLojaCardClick}
+        storesError={storesError}
+        currentCategoryName={currentCategoryName}
+        filteredProdutos={filteredProdutos}
+        isLoading={isLoading}
+        displayedProducts={displayedProducts}
+        hasMore={hasMore}
+        isLoadingMore={isLoadingMore}
+        loadMoreProducts={loadMoreProducts}
+        clearFilters={clearFilters}
+      />
     </div>
   );
 };
