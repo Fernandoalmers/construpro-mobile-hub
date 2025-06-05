@@ -70,6 +70,12 @@ const MarketplaceScreen: React.FC = () => {
     initialSearch: term || '' 
   });
 
+  // Sync search term between useMarketplaceSearch and useProductFilter
+  useEffect(() => {
+    console.log('[MarketplaceScreen] Syncing search term:', term);
+    handleSearchChange(term || '');
+  }, [term, handleSearchChange]);
+
   // Debounce effect for automatic search and reset
   useEffect(() => {
     const timer = setTimeout(() => {

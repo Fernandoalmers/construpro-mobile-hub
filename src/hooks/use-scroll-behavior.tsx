@@ -8,9 +8,18 @@ export function useScrollBehavior() {
   
   // Increased thresholds for more stable behavior
   const SCROLL_THRESHOLD = 20;
-  const HIDE_THRESHOLD = 120; // Increased from 80 for more deliberate hiding
+  const HIDE_THRESHOLD = 120;
+  const BOTTOM_THRESHOLD = 100; // Distance from bottom to consider "at bottom"
 
-  // Debounced scroll handler
+  // Helper function to check if user is near bottom of page
+  const isNearBottom = useCallback(() => {
+    const scrollHeight = document.documentElement.scrollHeight;
+    const scrollTop = window.scrollY;
+    const clientHeight = window.innerHeight;
+    return scrollHeight - scrollTop - clientHeight < BOTTOM_THRESHOLD;
+  }, []);
+
+  // Debounced scroll handler with bottom detection
   const handleScroll = useCallback(() => {
     const currentScrollY = window.scrollY;
     
@@ -19,22 +28,28 @@ export function useScrollBehavior() {
       return;
     }
     
+    const nearBottom = isNearBottom();
+    
     // Determine scroll direction
     if (currentScrollY > lastScrollY) {
       // Scrolling down
       setScrollDirection('down');
-      // Only hide if we've scrolled enough from the top
-      if (currentScrollY > HIDE_THRESHOLD) {
+      // Only hide if we've scrolled enough from the top and not near bottom
+      if (currentScrollY > HIDE_THRESHOLD && !nearBottom) {
         setHideHeader(true);
       }
     } else {
       // Scrolling up
       setScrollDirection('up');
-      setHideHeader(false);
+      // Only show header if user scrolled up significantly or not near bottom
+      const scrollUpDistance = lastScrollY - currentScrollY;
+      if (scrollUpDistance > SCROLL_THRESHOLD * 2 || !nearBottom) {
+        setHideHeader(false);
+      }
     }
     
     setLastScrollY(currentScrollY);
-  }, [lastScrollY]);
+  }, [lastScrollY, isNearBottom]);
 
   // Handle scroll events with passive listener for better performance
   useEffect(() => {
@@ -42,7 +57,7 @@ export function useScrollBehavior() {
     
     const throttledScroll = () => {
       clearTimeout(timeoutId);
-      timeoutId = setTimeout(handleScroll, 16); // Increased from 10ms for smoother performance
+      timeoutId = setTimeout(handleScroll, 16);
     };
 
     window.addEventListener('scroll', throttledScroll, { passive: true });

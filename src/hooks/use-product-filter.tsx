@@ -17,7 +17,7 @@ export const useProductFilter = ({
   initialProducts = [],
   initialSearch = ''
 }: ProductFilterProps = {}) => {
-  const [searchTerm, setSearchTerm] = useState<string>(initialSearch);
+  // Remove searchTerm state - will use external search term
   const [selectedCategories, setSelectedCategories] = useState<string[]>(initialCategories);
   const [selectedLojas, setSelectedLojas] = useState<string[]>([]);
   const [selectedRatings, setSelectedRatings] = useState<string[]>([]);
@@ -28,6 +28,7 @@ export const useProductFilter = ({
   const [page, setPage] = useState<number>(1);
   const [hasMore, setHasMore] = useState<boolean>(true);
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
+  const [externalSearchTerm, setExternalSearchTerm] = useState<string>(initialSearch);
   const PRODUCTS_PER_PAGE = 10;
 
   // Update products when initialProducts changes (from API)
@@ -48,16 +49,17 @@ export const useProductFilter = ({
     }
   }, []);
 
-  // Memoize filtered products to avoid unnecessary recalculations
+  // Memoize filtered products using external search term
   const filteredProductsMemo = useMemo(() => {
-    console.log('[useProductFilter] Recalculating filtered products...');
+    console.log('[useProductFilter] Recalculating filtered products with search term:', externalSearchTerm);
     let filtered = [...produtos];
     
-    // Filter by search term
-    if (searchTerm.trim()) {
+    // Filter by external search term (from useMarketplaceSearch)
+    if (externalSearchTerm && externalSearchTerm.trim()) {
       filtered = filtered.filter(produto => 
-        produto.nome.toLowerCase().includes(searchTerm.toLowerCase())
+        produto.nome.toLowerCase().includes(externalSearchTerm.toLowerCase())
       );
+      console.log('[useProductFilter] After search filter:', filtered.length, 'products');
     }
     
     // Filter by categories
@@ -99,7 +101,7 @@ export const useProductFilter = ({
     
     console.log('[useProductFilter] Final filtered products:', filtered.length);
     return filtered;
-  }, [produtos, searchTerm, selectedCategories, selectedLojas, selectedRatings, selectedPriceRanges, isPriceInRange]);
+  }, [produtos, externalSearchTerm, selectedCategories, selectedLojas, selectedRatings, selectedPriceRanges, isPriceInRange]);
 
   // Update filtered products when memo changes
   useEffect(() => {
@@ -136,10 +138,10 @@ export const useProductFilter = ({
     { id: "preco-5", label: "Acima de R$ 500" }
   ], []);
 
-  // Handle search input change with debounce effect
+  // Handle search input change - now updates external search term
   const handleSearchChange = useCallback((term: string) => {
-    console.log('[useProductFilter] Search term changed to:', term);
-    setSearchTerm(term);
+    console.log('[useProductFilter] External search term updated to:', term);
+    setExternalSearchTerm(term);
   }, []);
 
   // Toggle category filter
@@ -216,7 +218,7 @@ export const useProductFilter = ({
   // Clear all filters
   const clearFilters = useCallback(() => {
     console.log('[useProductFilter] Clearing all filters');
-    setSearchTerm("");
+    setExternalSearchTerm("");
     setSelectedCategories([]);
     setSelectedLojas([]);
     setSelectedRatings([]);
@@ -224,7 +226,7 @@ export const useProductFilter = ({
   }, []);
 
   return {
-    searchTerm,
+    searchTerm: externalSearchTerm, // Return current search term
     selectedCategories,
     selectedLojas,
     selectedRatings,
