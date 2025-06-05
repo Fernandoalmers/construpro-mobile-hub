@@ -143,7 +143,7 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
             <img
               src={displayImageUrl}
               alt={produto.nome}
-              className="w-full h-full object-cover transition-transform duration-200 hover:scale-105"
+              className="w-full h-full object-contain transition-transform duration-200 hover:scale-105"
               onError={handleImageError}
               loading="lazy"
             />
