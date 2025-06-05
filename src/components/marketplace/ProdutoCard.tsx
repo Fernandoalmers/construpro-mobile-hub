@@ -11,17 +11,15 @@ import { useFavorites } from '@/hooks/useFavorites';
 import { useAuth } from '@/context/AuthContext';
 import { getProductPoints } from '@/utils/pointsCalculations';
 import { safeFirstImage, handleImageError } from '@/utils/imageUtils';
-import { UserRole } from '@/context/AuthContext';
 
 interface Product {
   id: string;
   nome: string;
-  preco: number;
-  preco_normal?: number;
+  preco?: number; // Keep for backward compatibility
+  preco_normal: number;
   preco_promocional?: number;
   categoria: string;
   imagens?: string[] | any[] | string;
-  pontos?: number;
   pontos_consumidor?: number;
   pontos_profissional?: number;
   estoque?: number;
@@ -57,12 +55,11 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
   const [addingToCart, setAddingToCart] = useState(false);
   const [favorited, setFavorited] = useState(false);
 
-  // Get user type for correct points calculation with type guard
+  // FIXED: Calculate points correctly using specific fields
   const userType = profile?.tipo_perfil || 'consumidor';
-  const validUserType = (['consumidor', 'profissional', 'lojista', 'vendedor'].includes(userType)) 
-    ? userType as 'consumidor' | 'profissional' | 'lojista' | 'vendedor'
-    : 'consumidor';
-  const displayPoints = getProductPoints(produto, validUserType);
+  const displayPoints = userType === 'profissional' 
+    ? (produto.pontos_profissional || 0)
+    : (produto.pontos_consumidor || 0);
 
   // FIXED: Standardized store name logic - always use real store name
   const storeName = produto.stores?.nome_loja || 
@@ -126,9 +123,10 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
     });
   };
 
-  const hasPromotion = produto.preco_promocional && produto.preco_promocional < (produto.preco_normal || produto.preco);
-  const finalPrice = hasPromotion ? produto.preco_promocional : produto.preco;
-  const originalPrice = hasPromotion ? (produto.preco_normal || produto.preco) : null;
+  // FIXED: Use correct price fields
+  const hasPromotion = produto.preco_promocional && produto.preco_promocional < produto.preco_normal;
+  const finalPrice = hasPromotion ? produto.preco_promocional : produto.preco_normal;
+  const originalPrice = hasPromotion ? produto.preco_normal : null;
 
   // FIXED: Use safe image extraction from imagens field only
   const displayImageUrl = safeFirstImage(produto.imagens);
@@ -225,11 +223,11 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
           </div>
         )}
 
-        {/* Points */}
+        {/* Points - FIXED: Use correct points calculation */}
         {displayPoints > 0 && (
           <div className="mb-3">
             <span className="text-xs text-construPro-orange font-medium">
-              +{displayPoints} pontos {validUserType === 'profissional' ? '(profissional)' : ''}
+              +{displayPoints} pontos {userType === 'profissional' ? '(profissional)' : ''}
             </span>
           </div>
         )}
