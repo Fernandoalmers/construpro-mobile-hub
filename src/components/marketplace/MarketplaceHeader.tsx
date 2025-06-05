@@ -64,7 +64,7 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
   }));
 
   return (
-    <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
+    <div className="fixed top-0 left-0 right-0 z-30 bg-white border-b border-gray-200 shadow-sm">
       <motion.div 
         initial={{ transform: 'translateY(0)' }}
         animate={{ 
@@ -72,7 +72,7 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
         }}
         transition={{ 
           duration: 0.3, 
-          ease: [0.4, 0.0, 0.2, 1] // ease-in-out cubic bezier
+          ease: [0.25, 0.46, 0.45, 0.94] // easeOutQuart for smoother animation
         }}
         className="p-4 pt-8 bg-construPro-blue"
       >

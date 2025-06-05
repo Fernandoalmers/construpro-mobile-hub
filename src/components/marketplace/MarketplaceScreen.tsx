@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useProductFilter } from '@/hooks/use-product-filter';
 import { useScrollBehavior } from '@/hooks/use-scroll-behavior';
@@ -17,6 +17,8 @@ import SegmentCardsHeader from './components/SegmentCardsHeader';
 const MarketplaceScreen: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
   
   // Parse query parameters on component mount
   const searchParams = new URLSearchParams(location.search);
@@ -37,6 +39,21 @@ const MarketplaceScreen: React.FC = () => {
   // Use our custom hooks
   const { hideHeader } = useScrollBehavior();
   const { products, stores, isLoading, storesError } = useMarketplaceData(selectedSegmentId);
+  
+  // Calculate header height on mount and resize
+  useEffect(() => {
+    const calculateHeaderHeight = () => {
+      if (headerRef.current) {
+        const height = headerRef.current.offsetHeight;
+        setHeaderHeight(height);
+      }
+    };
+    
+    calculateHeaderHeight();
+    window.addEventListener('resize', calculateHeaderHeight);
+    
+    return () => window.removeEventListener('resize', calculateHeaderHeight);
+  }, []);
   
   // Extract all categories from products
   const categories = React.useMemo(() => {
@@ -242,70 +259,84 @@ const MarketplaceScreen: React.FC = () => {
 
   const currentCategoryName = getCurrentDisplayName();
 
+  // Calculate dynamic padding based on header visibility
+  const dynamicPaddingTop = hideHeader ? 0 : headerHeight;
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 pb-20">
       {/* Search and Filter Header */}
-      <SearchAndFilterSection
-        hideHeader={hideHeader}
-        searchTerm={term}
-        setSearchTerm={setTerm}
-        selectedCategories={selectedCategories}
-        selectedLojas={selectedLojas}
-        selectedRatings={selectedRatings}
-        selectedSegments={selectedSegments}
-        selectedPriceRanges={selectedPriceRanges}
-        allCategories={categories}
-        ratingOptions={ratingOptions}
-        priceRangeOptions={priceRangeOptions}
-        segmentOptions={segmentOptions}
-        onLojaClick={handleLojaClick}
-        onCategoryClick={handleCategoryClick}
-        onRatingClick={handleRatingClick}
-        onPriceRangeClick={handlePriceRangeClick}
-        onSegmentClick={handleSegmentClick}
-        onSearch={handleSubmit}
-        clearFilters={clearFilters}
-        stores={stores}
-        handleSearchChange={(term) => setTerm(term)}
-      />
+      <div ref={headerRef}>
+        <SearchAndFilterSection
+          hideHeader={hideHeader}
+          searchTerm={term}
+          setSearchTerm={setTerm}
+          selectedCategories={selectedCategories}
+          selectedLojas={selectedLojas}
+          selectedRatings={selectedRatings}
+          selectedSegments={selectedSegments}
+          selectedPriceRanges={selectedPriceRanges}
+          allCategories={categories}
+          ratingOptions={ratingOptions}
+          priceRangeOptions={priceRangeOptions}
+          segmentOptions={segmentOptions}
+          onLojaClick={handleLojaClick}
+          onCategoryClick={handleCategoryClick}
+          onRatingClick={handleRatingClick}
+          onPriceRangeClick={handlePriceRangeClick}
+          onSegmentClick={handleSegmentClick}
+          onSearch={handleSubmit}
+          clearFilters={clearFilters}
+          stores={stores}
+          handleSearchChange={(term) => setTerm(term)}
+        />
+      </div>
       
-      {/* Segment Cards Header */}
-      <SegmentCardsHeader 
-        selectedSegment={selectedSegmentId}
-        onSegmentClick={handleSegmentClick}
-      />
-      
-      {/* Stores Section */}
-      <StoresSection 
-        stores={stores}
-        onLojaClick={handleLojaCardClick}
-        storesError={storesError}
-      />
-      
-      {/* Category Header */}
-      <CategoryHeader 
-        currentCategoryName={currentCategoryName || "Todos os Produtos"}
-        productCount={filteredProdutos.length}
-      />
-      
-      {/* Product List */}
-      <div className="px-2 py-2 flex-1">
-        {isLoading ? (
-          <LoadingState type="spinner" text="Carregando produtos..." count={3} />
-        ) : (
-          <ProductListSection 
-            displayedProducts={displayedProducts}
-            filteredProdutos={filteredProdutos}
-            hasMore={hasMore}
-            isLoadingMore={isLoadingMore}
-            loadMoreProducts={loadMoreProducts}
-            clearFilters={clearFilters}
-            onLojaClick={handleLojaCardClick}
-            isLoading={isLoading}
-            viewType="list"
-            showActions={true}
-          />
-        )}
+      {/* Main Content with Dynamic Padding */}
+      <div 
+        className="transition-all duration-300 ease-out"
+        style={{ 
+          paddingTop: `${dynamicPaddingTop}px`,
+          transform: hideHeader ? 'translateY(0)' : 'translateY(0)'
+        }}
+      >
+        {/* Segment Cards Header */}
+        <SegmentCardsHeader 
+          selectedSegment={selectedSegmentId}
+          onSegmentClick={handleSegmentClick}
+        />
+        
+        {/* Stores Section */}
+        <StoresSection 
+          stores={stores}
+          onLojaClick={handleLojaCardClick}
+          storesError={storesError}
+        />
+        
+        {/* Category Header */}
+        <CategoryHeader 
+          currentCategoryName={currentCategoryName || "Todos os Produtos"}
+          productCount={filteredProdutos.length}
+        />
+        
+        {/* Product List */}
+        <div className="px-2 py-2 flex-1">
+          {isLoading ? (
+            <LoadingState type="spinner" text="Carregando produtos..." count={3} />
+          ) : (
+            <ProductListSection 
+              displayedProducts={displayedProducts}
+              filteredProdutos={filteredProdutos}
+              hasMore={hasMore}
+              isLoadingMore={isLoadingMore}
+              loadMoreProducts={loadMoreProducts}
+              clearFilters={clearFilters}
+              onLojaClick={handleLojaCardClick}
+              isLoading={isLoading}
+              viewType="list"
+              showActions={true}
+            />
+          )}
+        </div>
       </div>
     </div>
   );
