@@ -2,14 +2,11 @@
 import React from 'react';
 import CategoryHeader from './CategoryHeader';
 import StoresSection from './StoresSection';
-import SegmentCardsHeader from './SegmentCardsHeader';
 import ProductListSection from '../ProductListSection';
 import LoadingState from '../../common/LoadingState';
 
 interface MarketplaceContentProps {
   dynamicPaddingTop: number;
-  selectedSegmentId: string | null;
-  onSegmentClick: (segmentId: string) => void;
   stores: any[];
   onLojaClick: (lojaId: string) => void;
   storesError: string | null;
@@ -25,8 +22,6 @@ interface MarketplaceContentProps {
 
 const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
   dynamicPaddingTop,
-  selectedSegmentId,
-  onSegmentClick,
   stores,
   onLojaClick,
   storesError,
@@ -46,12 +41,6 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
         paddingTop: `${dynamicPaddingTop}px`
       }}
     >
-      {/* Segment Cards Header */}
-      <SegmentCardsHeader 
-        selectedSegment={selectedSegmentId}
-        onSegmentClick={onSegmentClick}
-      />
-      
       {/* Stores Section */}
       <StoresSection 
         stores={stores}

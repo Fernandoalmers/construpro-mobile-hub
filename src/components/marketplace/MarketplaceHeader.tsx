@@ -9,6 +9,7 @@ import MarketplaceHeaderTop from './components/MarketplaceHeaderTop';
 import SearchBar from './components/SearchBar';
 import FilterDialogs from './components/FilterDialogs';
 import FilterChips from './components/FilterChips';
+import SegmentCardsHeader from './components/SegmentCardsHeader';
 
 interface MarketplaceHeaderProps {
   hideHeader: boolean;
@@ -18,6 +19,7 @@ interface MarketplaceHeaderProps {
   selectedRatings: string[];
   selectedSegments?: string[];
   selectedPriceRanges?: string[];
+  selectedSegmentId?: string | null;
   allCategories: FilterOption[];
   ratingOptions: FilterOption[];
   priceRangeOptions?: FilterOption[];
@@ -42,6 +44,7 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
   selectedRatings,
   selectedSegments = [],
   selectedPriceRanges = [],
+  selectedSegmentId,
   allCategories,
   ratingOptions,
   priceRangeOptions = [],
@@ -101,54 +104,64 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
           duration: 0.3, 
           ease: [0.25, 0.46, 0.45, 0.94] // easeOutQuart for smoother animation
         }}
-        className="p-4 pt-8 bg-construPro-blue"
+        className="bg-construPro-blue"
       >
-        {/* Header Top with Back Button and Cart */}
-        <MarketplaceHeaderTop cartCount={cartCount} />
-        
-        {/* Search Bar - sem mostrar sugestões nesta tela */}
-        <SearchBar 
-          searchTerm={searchTerm} 
-          onSearchChange={onSearchChange} 
-          onSearch={onSearch} 
-          showSuggestions={false} 
-        />
+        <div className="p-4 pt-8">
+          {/* Header Top with Back Button and Cart */}
+          <MarketplaceHeaderTop cartCount={cartCount} />
+          
+          {/* Search Bar - sem mostrar sugestões nesta tela */}
+          <SearchBar 
+            searchTerm={searchTerm} 
+            onSearchChange={onSearchChange} 
+            onSearch={onSearch} 
+            showSuggestions={false} 
+          />
 
-        {/* Filter Dialogs */}
-        <FilterDialogs 
-          lojasOptions={lojasOptions} 
-          allCategories={allCategories} 
-          segmentOptions={segmentOptions} 
-          priceRangeOptions={priceRangeOptions} 
-          selectedLojas={selectedLojas} 
-          selectedCategories={selectedCategories} 
-          selectedSegments={selectedSegments} 
-          selectedPriceRanges={selectedPriceRanges} 
-          onLojaClick={onLojaClick} 
-          onCategoryClick={onCategoryClick} 
-          onSegmentClick={onSegmentClick} 
-          onPriceRangeClick={onPriceRangeClick} 
-        />
+          {/* Filter Dialogs */}
+          <FilterDialogs 
+            lojasOptions={lojasOptions} 
+            allCategories={allCategories} 
+            segmentOptions={segmentOptions} 
+            priceRangeOptions={priceRangeOptions} 
+            selectedLojas={selectedLojas} 
+            selectedCategories={selectedCategories} 
+            selectedSegments={selectedSegments} 
+            selectedPriceRanges={selectedPriceRanges} 
+            onLojaClick={onLojaClick} 
+            onCategoryClick={onCategoryClick} 
+            onSegmentClick={onSegmentClick} 
+            onPriceRangeClick={onPriceRangeClick} 
+          />
+          
+          {/* Selected Filter Chips */}
+          <FilterChips 
+            selectedCategories={selectedCategories} 
+            selectedLojas={selectedLojas} 
+            selectedRatings={selectedRatings} 
+            selectedSegments={selectedSegments} 
+            selectedPriceRanges={selectedPriceRanges} 
+            allCategories={allCategories} 
+            lojasOptions={lojasOptions} 
+            ratingOptions={ratingOptions} 
+            priceRangeOptions={priceRangeOptions} 
+            segmentOptions={segmentOptions} 
+            onCategoryClick={onCategoryClick} 
+            onLojaClick={onLojaClick} 
+            onRatingClick={onRatingClick} 
+            onSegmentClick={onSegmentClick} 
+            onPriceRangeClick={onPriceRangeClick} 
+            clearFilters={clearFilters} 
+          />
+        </div>
         
-        {/* Selected Filter Chips */}
-        <FilterChips 
-          selectedCategories={selectedCategories} 
-          selectedLojas={selectedLojas} 
-          selectedRatings={selectedRatings} 
-          selectedSegments={selectedSegments} 
-          selectedPriceRanges={selectedPriceRanges} 
-          allCategories={allCategories} 
-          lojasOptions={lojasOptions} 
-          ratingOptions={ratingOptions} 
-          priceRangeOptions={priceRangeOptions} 
-          segmentOptions={segmentOptions} 
-          onCategoryClick={onCategoryClick} 
-          onLojaClick={onLojaClick} 
-          onRatingClick={onRatingClick} 
-          onSegmentClick={onSegmentClick} 
-          onPriceRangeClick={onPriceRangeClick} 
-          clearFilters={clearFilters} 
-        />
+        {/* Segment Cards Header - now inside the animated header */}
+        <div className="bg-white">
+          <SegmentCardsHeader 
+            selectedSegment={selectedSegmentId}
+            onSegmentClick={onSegmentClick}
+          />
+        </div>
       </motion.div>
     </div>
   );

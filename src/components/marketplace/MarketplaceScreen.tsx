@@ -158,6 +158,7 @@ const MarketplaceScreen: React.FC = () => {
         selectedRatings={selectedRatings}
         selectedSegments={selectedSegments}
         selectedPriceRanges={selectedPriceRanges}
+        selectedSegmentId={selectedSegmentId}
         allCategories={categories}
         ratingOptions={ratingOptions}
         priceRangeOptions={priceRangeOptions}
@@ -177,8 +178,6 @@ const MarketplaceScreen: React.FC = () => {
       {/* Main Content */}
       <MarketplaceContent
         dynamicPaddingTop={dynamicPaddingTop}
-        selectedSegmentId={selectedSegmentId}
-        onSegmentClick={handleSegmentClick}
         stores={stores}
         onLojaClick={handleLojaCardClick}
         storesError={storesError}

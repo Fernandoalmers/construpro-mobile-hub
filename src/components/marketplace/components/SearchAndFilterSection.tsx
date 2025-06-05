@@ -13,6 +13,7 @@ interface SearchAndFilterSectionProps {
   selectedRatings: string[];
   selectedSegments?: string[];
   selectedPriceRanges?: string[];
+  selectedSegmentId?: string | null;
   allCategories: FilterOption[];
   ratingOptions: FilterOption[];
   priceRangeOptions?: FilterOption[];
@@ -38,6 +39,7 @@ const SearchAndFilterSection: React.FC<SearchAndFilterSectionProps> = ({
   selectedRatings,
   selectedSegments = [],
   selectedPriceRanges = [],
+  selectedSegmentId,
   allCategories,
   ratingOptions,
   priceRangeOptions = [],
@@ -111,6 +113,7 @@ const SearchAndFilterSection: React.FC<SearchAndFilterSectionProps> = ({
       selectedRatings={selectedRatings}
       selectedSegments={selectedSegments}
       selectedPriceRanges={selectedPriceRanges}
+      selectedSegmentId={selectedSegmentId}
       allCategories={allCategories}
       ratingOptions={ratingOptions}
       priceRangeOptions={priceRangeOptions}
