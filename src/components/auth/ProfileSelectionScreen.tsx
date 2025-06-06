@@ -19,7 +19,7 @@ interface ProfileOption {
 const ProfileSelectionScreen: React.FC = () => {
   const navigate = useNavigate();
   const { updateProfile, user, profile, isAuthenticated, isLoading } = useAuth();
-  const [selectedProfiles, setSelectedProfiles] = useState<UserRole[]>(['consumidor']);
+  const [selectedProfiles, setSelectedProfiles] = useState<UserRole[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Check if user is authenticated and redirect if not
@@ -53,9 +53,6 @@ const ProfileSelectionScreen: React.FC = () => {
 
   const handleProfileToggle = (profileId: UserRole) => {
     setSelectedProfiles(prev => {
-      // Always keep consumidor profile
-      if (profileId === 'consumidor') return prev;
-      
       return prev.includes(profileId)
         ? prev.filter(id => id !== profileId)
         : [...prev, profileId];
@@ -64,7 +61,7 @@ const ProfileSelectionScreen: React.FC = () => {
 
   const handleContinue = async () => {
     if (selectedProfiles.length === 0) {
-      toast.error("Selecione pelo menos um perfil");
+      toast.error("Por favor, selecione pelo menos um perfil para continuar");
       return;
     }
 
@@ -111,19 +108,30 @@ const ProfileSelectionScreen: React.FC = () => {
           <p className="text-white opacity-80 mt-2">
             Como deseja usar o aplicativo?
           </p>
+          <p className="text-white opacity-70 mt-1 text-sm">
+            * Selecione pelo menos uma opção para continuar
+          </p>
         </div>
       </div>
 
       <div className="flex-grow p-6">
         <div className="bg-white rounded-lg shadow-lg p-6">
+          {selectedProfiles.length === 0 && (
+            <div className="mb-6 p-4 bg-orange-50 border-l-4 border-orange-400 rounded">
+              <p className="text-orange-800 text-sm font-medium">
+                ⚠️ Por favor, selecione pelo menos um perfil para continuar
+              </p>
+            </div>
+          )}
+          
           <div className="space-y-4 mb-6">
             {profileOptions.map(option => (
               <div
                 key={option.id}
-                className={`p-4 border rounded-lg transition-all cursor-pointer ${
+                className={`p-4 border-2 rounded-lg transition-all cursor-pointer ${
                   selectedProfiles.includes(option.id)
-                    ? 'border-construPro-blue bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
+                    ? 'border-construPro-blue bg-blue-50 shadow-md'
+                    : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
                 }`}
                 onClick={() => handleProfileToggle(option.id)}
               >
@@ -132,21 +140,15 @@ const ProfileSelectionScreen: React.FC = () => {
                     {option.icon}
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-medium">{option.title}</h3>
+                    <h3 className="font-medium text-lg">{option.title}</h3>
                     <p className="text-sm text-gray-600">{option.description}</p>
                   </div>
                   <div className="ml-2">
-                    {option.id === 'consumidor' ? (
-                      <div className="h-5 w-5 rounded-sm border border-construPro-blue bg-construPro-blue flex items-center justify-center">
-                        <Check className="h-4 w-4 text-white" />
-                      </div>
-                    ) : (
-                      <Checkbox
-                        checked={selectedProfiles.includes(option.id)}
-                        className={selectedProfiles.includes(option.id) ? "text-construPro-blue" : ""}
-                        onCheckedChange={() => {}}
-                      />
-                    )}
+                    <Checkbox
+                      checked={selectedProfiles.includes(option.id)}
+                      className={selectedProfiles.includes(option.id) ? "text-construPro-blue border-construPro-blue" : ""}
+                      onCheckedChange={() => {}}
+                    />
                   </div>
                 </div>
               </div>
@@ -154,15 +156,20 @@ const ProfileSelectionScreen: React.FC = () => {
           </div>
 
           <p className="text-xs text-gray-500 mb-6">
-            Você pode selecionar mais de uma opção e alternar entre os perfis depois.
+            💡 Você pode selecionar mais de uma opção e alternar entre os perfis depois.
           </p>
 
           <Button 
             onClick={handleContinue}
-            className="w-full bg-construPro-orange hover:bg-orange-600 text-white"
-            disabled={isSubmitting}
+            className={`w-full text-white transition-all ${
+              selectedProfiles.length === 0
+                ? 'bg-gray-300 cursor-not-allowed'
+                : 'bg-construPro-orange hover:bg-orange-600'
+            }`}
+            disabled={isSubmitting || selectedProfiles.length === 0}
           >
-            {isSubmitting ? 'Processando...' : 'Continuar'}
+            {isSubmitting ? 'Processando...' : 
+             selectedProfiles.length === 0 ? 'Selecione um perfil para continuar' : 'Continuar'}
           </Button>
         </div>
       </div>
