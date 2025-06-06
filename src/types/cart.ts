@@ -33,7 +33,6 @@ export interface Cart {
   items: CartItem[];
   summary: {
     subtotal: number;
-    shipping: number;
     totalItems: number;
     totalPoints: number;
   };

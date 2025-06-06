@@ -34,7 +34,6 @@ export async function processCartItems(
         items: [],
         summary: {
           subtotal: 0,
-          shipping: 0,
           totalItems: 0,
           totalPoints: 0
         }
@@ -136,7 +135,7 @@ export async function processCartItems(
       };
     }).filter(Boolean) as CartItem[]; // Remove null items
 
-    // Calculate summary with user type
+    // Calculate summary with user type (no shipping)
     const summary = calculateCartSummary(cartItems, userType);
 
     const cart: Cart = {
