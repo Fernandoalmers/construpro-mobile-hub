@@ -1,3 +1,4 @@
+
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useCart } from '@/hooks/use-cart';
 import { useCoupon } from '@/hooks/cart/use-coupon';
@@ -67,8 +68,8 @@ export const useCartScreen = () => {
     return enhanced;
   }, [groupedItems, storeInfo]);
 
-  // Calculate totals - garantir que o desconto do cupom seja considerado
-  const { subtotal, shipping, discount, total, totalPoints } = useCartTotals(
+  // Calculate totals - sem shipping no carrinho
+  const { subtotal, discount, total, totalPoints } = useCartTotals(
     cartItems,
     Object.keys(enhancedGroupedItems).length,
     appliedCoupon?.discount || 0, // Passar o desconto do cupom aplicado
@@ -251,10 +252,9 @@ export const useCartScreen = () => {
     setCouponCode,
     isValidating,
     
-    // Totals
+    // Totals (sem shipping)
     subtotal,
     discount,
-    shipping,
     total,
     totalPoints,
     

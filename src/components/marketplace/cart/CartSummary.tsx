@@ -42,11 +42,6 @@ const CartSummary: React.FC<CartSummaryProps> = ({
           <span className="font-medium">R$ {subtotal.toFixed(2)}</span>
         </div>
         
-        <div className="flex justify-between text-xs">
-          <span className="text-gray-600">Frete</span>
-          <span className="font-medium text-green-600">Grátis</span>
-        </div>
-        
         {/* Linha de desconto - sempre mostrar quando há cupom aplicado */}
         {appliedCoupon && discount > 0 && (
           <div className="flex justify-between text-xs">

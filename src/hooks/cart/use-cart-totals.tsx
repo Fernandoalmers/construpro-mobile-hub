@@ -18,14 +18,11 @@ export const useCartTotals = (
     }, 0);
   }, [cartItems]);
   
-  // Set shipping to FREE regardless of store count
-  const shipping = 0;
-  
   // Calculate discount (if any)
   const discount = Math.min(discountAmount, subtotal); // Can't discount more than subtotal
   
-  // Calculate total
-  const total = subtotal + shipping - discount;
+  // Calculate total (no shipping in cart)
+  const total = subtotal - discount;
   
   // Calculate points using getProductPoints for correct user type calculation
   // ALWAYS calculate from items, never use totalCartPoints from backend
@@ -54,7 +51,6 @@ export const useCartTotals = (
   
   return {
     subtotal,
-    shipping,
     discount,
     total,
     totalPoints
