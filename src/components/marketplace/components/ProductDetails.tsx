@@ -134,7 +134,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({
             </div>
             <div>
               <h3 className="font-bold text-sm">Entrega rápida</h3>
-              <p className="text-xs text-gray-600">Enviamos para todo o Brasil</p>
+              <p className="text-xs text-gray-600">Enviamos para capelinha e cidades vizinhas</p>
             </div>
           </CardContent>
         </Card>
@@ -146,7 +146,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({
             </div>
             <div>
               <h3 className="font-bold text-sm">Compra Garantida</h3>
-              <p className="text-xs text-gray-600">Devolução em até 7 dias</p>
+              <p className="text-xs text-gray-600">Pague na entrega do produto</p>
             </div>
           </CardContent>
         </Card>
@@ -158,7 +158,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({
             </div>
             <div>
               <h3 className="font-bold text-sm">Ganhe Pontos</h3>
-              <p className="text-xs text-gray-600">Acumule e troque por produtos</p>
+              <p className="text-xs text-gray-600">Acumule e troque por recompensas</p>
             </div>
           </CardContent>
         </Card>
