@@ -65,7 +65,6 @@ export function useCartState(
           items: [],
           summary: {
             subtotal: 0,
-            shipping: 0,
             totalItems: 0,
             totalPoints: 0
           }
@@ -88,7 +87,6 @@ export function useCartState(
         items: [],
         summary: {
           subtotal: 0,
-          shipping: 0,
           totalItems: 0,
           totalPoints: 0
         }

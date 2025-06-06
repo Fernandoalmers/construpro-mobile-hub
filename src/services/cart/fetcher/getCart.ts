@@ -68,7 +68,6 @@ const createEmptyCart = (userId: string): Cart => {
     items: [],
     summary: {
       subtotal: 0,
-      shipping: 0,
       totalItems: 0,
       totalPoints: 0
     }
