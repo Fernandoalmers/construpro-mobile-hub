@@ -41,8 +41,8 @@ const CartItem: React.FC<CartItemProps> = ({ item, onUpdateQuantity, onRemoveIte
 
   return (
     <div className={`flex items-center p-2 bg-white rounded-md shadow-sm border border-gray-200 gap-2 transition-all duration-200 ${isProcessing ? 'opacity-70 pointer-events-none' : 'hover:shadow-md'}`}>
-      {/* Product image - menor */}
-      <div className="w-10 h-10 flex-shrink-0 bg-gray-50 rounded-md overflow-hidden border border-gray-100">
+      {/* Product image - increased size */}
+      <div className="w-16 h-16 flex-shrink-0 bg-gray-50 rounded-md overflow-hidden border border-gray-100">
         <ProductImage 
           imagemUrl={item.produto?.imagem_url}
           imagens={item.produto?.imagens}

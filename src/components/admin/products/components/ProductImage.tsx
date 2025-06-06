@@ -33,13 +33,13 @@ const ProductImage: React.FC<ProductImageProps> = ({
   
   // Size classes
   const sizeClasses = {
-    sm: 'w-14 h-14',
+    sm: 'w-16 h-16',
     lg: 'w-20 h-20',
     xl: 'w-32 h-32'
   };
 
   const iconSizes = {
-    sm: 16,
+    sm: 20,
     lg: 24,
     xl: 32
   };
@@ -50,7 +50,7 @@ const ProductImage: React.FC<ProductImageProps> = ({
         <img 
           src={imageUrl}
           alt={productName}
-          className="w-full h-full object-contain"
+          className="w-full h-full object-cover"
           onError={handleImageError}
         />
       ) : (
