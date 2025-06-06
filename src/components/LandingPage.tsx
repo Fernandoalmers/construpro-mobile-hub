@@ -1,8 +1,11 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Smartphone, Gift, Settings, CheckCircle, Star, ArrowRight, Users, TrendingUp, Award } from 'lucide-react';
+import LazyImage from '@/components/common/LazyImage';
+
 const LandingPage = () => {
   const navigate = useNavigate();
   const handleSignUp = () => {
@@ -56,7 +59,12 @@ const LandingPage = () => {
               </div>
             </div>
             <div className="relative">
-              <img alt="App Matershop" src="/lovable-uploads/2a4834bb-9836-4472-83f1-737a07c2d9c8.png" className="w-full max-w-md mx-auto rounded-2xl object-contain" />
+              <LazyImage 
+                src="/lovable-uploads/2a4834bb-9836-4472-83f1-737a07c2d9c8.png"
+                alt="App Matershop"
+                className="w-full max-w-md mx-auto rounded-2xl object-contain"
+                placeholderClassName="w-full max-w-md mx-auto rounded-2xl"
+              />
             </div>
           </div>
         </div>
