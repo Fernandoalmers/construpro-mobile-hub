@@ -53,7 +53,7 @@ const PaymentMethodSection: React.FC<PaymentMethodSectionProps> = ({
 
   return (
     <div>
-      <h2 className="font-bold mb-3">Forma de Pagamento</h2>
+      <h2 className="font-bold mb-3">Forma de pagamento na entrega?</h2>
       <Card className="p-4">
         {/* PROTECTION: Wrap in div instead of form to prevent accidental submission */}
         <div className="grid grid-cols-2 gap-3 mb-4">
@@ -74,7 +74,7 @@ const PaymentMethodSection: React.FC<PaymentMethodSectionProps> = ({
             <span className={cn(
               "font-medium",
               paymentMethod === 'credit' ? "text-construPro-blue" : "text-gray-700"
-            )}>Cartão de Crédito</span>
+            )}>Cartão de Credito 1x</span>
           </button>
           
           <button

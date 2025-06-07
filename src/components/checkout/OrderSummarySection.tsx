@@ -39,7 +39,7 @@ const OrderSummarySection: React.FC<OrderSummarySectionProps> = ({
           {storeGroups.map((store, index) => (
             <div key={index} className="border-b border-gray-100 pb-3 mb-3">
               <div className="flex items-center mb-2">
-                <span className="font-medium text-sm">Loja {index + 1}</span>
+                <span className="font-medium text-sm">{store.loja?.nome || `Loja ${index + 1}`}</span>
               </div>
               <div className="pl-7 space-y-1 text-sm">
                 <div className="flex justify-between">
