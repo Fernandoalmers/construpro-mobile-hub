@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { CartItem } from '@/types/cart';
 import { Address } from '@/services/addressService';
 import { useGroupItemsByStore, storeGroupsToArray, StoreGroup } from '@/hooks/cart/use-group-items-by-store';
+import { useStoreInfo } from '@/hooks/cart/use-store-info';
 import { validateCartStock, StockValidationResult } from '@/services/checkout/stockValidation';
 import { referralService } from '@/services/pointsService';
 
@@ -24,6 +25,10 @@ export function useCheckout() {
     isLoading: addressesLoading, 
     addAddress 
   } = useAddresses();
+  
+  // Extract store IDs from cart items for fetching store info
+  const storeIds = cartItems.map(item => item.produto?.loja_id).filter(Boolean) as string[];
+  const { storeInfo } = useStoreInfo(storeIds);
   
   // State management
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
@@ -74,10 +79,13 @@ export function useCheckout() {
   // Use the product-specific points directly from cart summary
   const totalPoints = cartSummary.totalPoints || 0;
   
-  // Group items by store
+  // Group items by store with store info
   const { groupedItems } = useGroupItemsByStore(cartItems);
-  // Convert record to array for components that expect an array
-  const storeGroupsArray = storeGroupsToArray(groupedItems);
+  // Convert record to array for components that expect an array and add store info
+  const storeGroupsArray = Object.values(groupedItems).map(group => ({
+    loja: storeInfo[group.loja.id] || group.loja,
+    items: group.items
+  })) as StoreGroup[];
   
   // Function to activate referral on first purchase (moved to background)
   const activateReferralInBackground = useCallback(async (userId: string) => {
