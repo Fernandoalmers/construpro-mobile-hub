@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Bookmark, Clock, ShoppingBag, ChevronRight, Star, Trash2 } from 'lucide-react';
@@ -16,10 +15,8 @@ interface Product {
   preco_normal: number;
   preco_promocional?: number;
   imagens: any;
-  avaliacao: number;
   categoria: string;
   descricao: string;
-  loja_id?: string;
   vendedor_id?: string;
   loja_nome?: string;
 }
@@ -65,7 +62,7 @@ const FavoritesScreen: React.FC = () => {
         .select(`
           *,
           produto:produto_id (
-            id, nome, preco_normal, preco_promocional, imagens, avaliacao, categoria, descricao,
+            id, nome, preco_normal, preco_promocional, imagens, categoria, descricao,
             vendedor_id
           )
         `)
@@ -78,16 +75,14 @@ const FavoritesScreen: React.FC = () => {
         throw error;
       }
       
-      // Fetch store names for products
-      const productsWithVendorId = data
+      // Fetch store names for products that have vendedor_id
+      const productsWithVendorId = (data || [])
         .filter(item => item.produto && item.produto.vendedor_id)
-        .map(item => ({ 
-          ...item, 
-          vendedor_id: item.produto.vendedor_id 
-        }));
+        .map(item => item.produto.vendedor_id)
+        .filter(Boolean);
       
       if (productsWithVendorId.length > 0) {
-        const vendedorIds = [...new Set(productsWithVendorId.map(item => item.vendedor_id))];
+        const vendedorIds = [...new Set(productsWithVendorId)];
         
         const { data: vendedores, error: vendedoresError } = await supabase
           .from('vendedores')
@@ -97,7 +92,7 @@ const FavoritesScreen: React.FC = () => {
         if (!vendedoresError && vendedores) {
           const vendedorMap = Object.fromEntries(vendedores.map(v => [v.id, v.nome_loja]));
           
-          return data.map(item => ({
+          return (data || []).map(item => ({
             ...item,
             produto: item.produto ? {
               ...item.produto,
@@ -107,7 +102,7 @@ const FavoritesScreen: React.FC = () => {
         }
       }
       
-      return data;
+      return data || [];
     },
     enabled: !!user?.id
   });
@@ -127,7 +122,7 @@ const FavoritesScreen: React.FC = () => {
         .select(`
           *,
           produto:produto_id (
-            id, nome, preco_normal, preco_promocional, imagens, avaliacao, categoria, descricao,
+            id, nome, preco_normal, preco_promocional, imagens, categoria, descricao,
             vendedor_id
           )
         `)
@@ -140,16 +135,14 @@ const FavoritesScreen: React.FC = () => {
       
       console.log('Raw favorites data:', data);
       
-      // Fetch store names for products
-      const productsWithVendorId = data
+      // Fetch store names for products that have vendedor_id
+      const productsWithVendorId = (data || [])
         .filter(item => item.produto && item.produto.vendedor_id)
-        .map(item => ({ 
-          ...item, 
-          vendedor_id: item.produto.vendedor_id 
-        }));
+        .map(item => item.produto.vendedor_id)
+        .filter(Boolean);
       
       if (productsWithVendorId.length > 0) {
-        const vendedorIds = [...new Set(productsWithVendorId.map(item => item.vendedor_id))];
+        const vendedorIds = [...new Set(productsWithVendorId)];
         
         const { data: vendedores, error: vendedoresError } = await supabase
           .from('vendedores')
@@ -159,7 +152,7 @@ const FavoritesScreen: React.FC = () => {
         if (!vendedoresError && vendedores) {
           const vendedorMap = Object.fromEntries(vendedores.map(v => [v.id, v.nome_loja]));
           
-          const result = data.map(item => ({
+          const result = (data || []).map(item => ({
             ...item,
             produto: item.produto ? {
               ...item.produto,
@@ -172,7 +165,7 @@ const FavoritesScreen: React.FC = () => {
         }
       }
       
-      return data;
+      return data || [];
     },
     enabled: !!user?.id
   });
@@ -222,7 +215,7 @@ const FavoritesScreen: React.FC = () => {
           const { data: products, error: productsError } = await supabase
             .from('produtos')
             .select(`
-              id, nome, preco_normal, preco_promocional, imagens, avaliacao, categoria, descricao, 
+              id, nome, preco_normal, preco_promocional, imagens, categoria, descricao, 
               vendedor_id
             `)
             .in('id', productIds);
@@ -230,7 +223,7 @@ const FavoritesScreen: React.FC = () => {
           if (productsError) throw productsError;
           
           const enrichedItems = topItems.map(item => {
-            const matchingProduct = products?.find(p => p.id === item.produto_id) || null;
+            const matchingProduct = (products || []).find(p => p.id === item.produto_id) || null;
             return {
               produto_id: item.produto_id,
               count: item.count,
@@ -421,7 +414,7 @@ const FavoritesScreen: React.FC = () => {
             <div className="flex items-center mt-1 mb-2">
               <div className="flex items-center">
                 <Star size={14} className="text-yellow-400 fill-yellow-400" />
-                <span className="text-xs ml-1">{product.avaliacao.toFixed(1)}</span>
+                <span className="text-xs ml-1">4.5</span>
               </div>
               <span className="text-xs ml-2 text-gray-500">Comprado {item.count}x</span>
             </div>
@@ -473,7 +466,7 @@ const FavoritesScreen: React.FC = () => {
           <div className="flex items-center mt-1 mb-2">
             <div className="flex items-center">
               <Star size={14} className="text-yellow-400 fill-yellow-400" />
-              <span className="text-xs ml-1">{product.avaliacao.toFixed(1)}</span>
+              <span className="text-xs ml-1">4.5</span>
             </div>
           </div>
           
