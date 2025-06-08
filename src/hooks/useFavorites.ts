@@ -6,10 +6,12 @@ import {
   removeFromFavorites as removeFromFavoritesService,
   isProductFavorited 
 } from '@/services/favoriteService';
+import { useQueryClient } from '@tanstack/react-query';
 
 export function useFavorites() {
   const { isAuthenticated } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const queryClient = useQueryClient();
 
   const addToFavorites = useCallback(async (productId: string) => {
     if (!isAuthenticated) return false;
@@ -17,6 +19,12 @@ export function useFavorites() {
     setIsLoading(true);
     try {
       const result = await addToFavoritesService(productId);
+      if (result) {
+        // Invalidate favorites queries to refresh the UI
+        queryClient.invalidateQueries({ queryKey: ['favorites'] });
+        queryClient.invalidateQueries({ queryKey: ['recentlyViewed'] });
+        queryClient.invalidateQueries({ queryKey: ['frequentlyBought'] });
+      }
       return result;
     } catch (error) {
       console.error('Error adding to favorites:', error);
@@ -24,7 +32,7 @@ export function useFavorites() {
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, queryClient]);
 
   const removeFromFavorites = useCallback(async (productId: string) => {
     if (!isAuthenticated) return false;
@@ -32,6 +40,12 @@ export function useFavorites() {
     setIsLoading(true);
     try {
       const result = await removeFromFavoritesService(productId);
+      if (result) {
+        // Invalidate favorites queries to refresh the UI
+        queryClient.invalidateQueries({ queryKey: ['favorites'] });
+        queryClient.invalidateQueries({ queryKey: ['recentlyViewed'] });
+        queryClient.invalidateQueries({ queryKey: ['frequentlyBought'] });
+      }
       return result;
     } catch (error) {
       console.error('Error removing from favorites:', error);
@@ -39,7 +53,7 @@ export function useFavorites() {
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, queryClient]);
 
   const isFavorite = useCallback(async (productId: string) => {
     if (!isAuthenticated) return false;

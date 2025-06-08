@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Heart, ShoppingCart, Star, Share2, Info, Store } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -23,10 +23,30 @@ const ProdutoContent: React.FC<ProdutoContentProps> = ({ produto }) => {
   const navigate = useNavigate();
   const { addToCart, isLoading } = useCart();
   const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
-  const { profile } = useAuth();
+  const { profile, isAuthenticated } = useAuth();
   const [quantity, setQuantity] = useState(1);
   const [addingToCart, setAddingToCart] = useState(false);
   const [favorited, setFavorited] = useState(false);
+  const [checkingFavorite, setCheckingFavorite] = useState(false);
+
+  // Check if product is favorited when component mounts
+  useEffect(() => {
+    const checkFavoriteStatus = async () => {
+      if (!isAuthenticated || !produto.id) return;
+      
+      setCheckingFavorite(true);
+      try {
+        const isCurrentlyFavorited = await isFavorite(produto.id);
+        setFavorited(isCurrentlyFavorited);
+      } catch (error) {
+        console.error('Error checking favorite status:', error);
+      } finally {
+        setCheckingFavorite(false);
+      }
+    };
+
+    checkFavoriteStatus();
+  }, [produto.id, isAuthenticated, isFavorite]);
 
   // Get user type for correct points calculation with type guard
   const userType = profile?.tipo_perfil || 'consumidor';
@@ -67,6 +87,11 @@ const ProdutoContent: React.FC<ProdutoContentProps> = ({ produto }) => {
   };
 
   const handleToggleFavorite = async () => {
+    if (!isAuthenticated) {
+      toast.error('Faça login para adicionar aos favoritos');
+      return;
+    }
+    
     try {
       if (favorited) {
         await removeFromFavorites(produto.id);
@@ -144,10 +169,11 @@ const ProdutoContent: React.FC<ProdutoContentProps> = ({ produto }) => {
               size="sm"
               onClick={handleToggleFavorite}
               className="p-2"
+              disabled={checkingFavorite}
             >
               <Heart 
                 size={20} 
-                className={`${favorited ? 'fill-red-500 text-red-500' : 'text-gray-600'}`}
+                className={`${favorited ? 'fill-red-500 text-red-500' : 'text-gray-600'} ${checkingFavorite ? 'animate-pulse' : ''}`}
               />
             </Button>
             

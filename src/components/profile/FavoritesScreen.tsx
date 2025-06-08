@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Bookmark, Clock, ShoppingBag, ChevronRight, Star, Trash2 } from 'lucide-react';
@@ -12,13 +13,15 @@ import { useAuth } from '../../context/AuthContext';
 interface Product {
   id: string;
   nome: string;
-  preco: number;
-  imagem_url: string;
+  preco_normal: number;
+  preco_promocional?: number;
+  imagens: any;
   avaliacao: number;
   categoria: string;
   descricao: string;
   loja_id?: string;
-  loja_nome?: string; // Added for display purposes
+  vendedor_id?: string;
+  loja_nome?: string;
 }
 
 interface RecentlyViewed {
@@ -26,7 +29,7 @@ interface RecentlyViewed {
   user_id: string;
   produto_id: string;
   data_visualizacao: string;
-  produto: Product; // Joined product data
+  produto: Product;
 }
 
 interface FavoriteItem {
@@ -34,14 +37,13 @@ interface FavoriteItem {
   user_id: string;
   produto_id: string;
   data_adicionado: string;
-  produto: Product; // Joined product data
+  produto: Product;
 }
 
-// Updated FrequentlyBoughtItem interface to match what we're getting from the database
 interface FrequentlyBoughtItem {
   produto_id: string;
   count: number;
-  produto: Product | null; // Making produto nullable since it might have an error
+  produto: Product | null;
 }
 
 const FavoritesScreen: React.FC = () => {
@@ -63,40 +65,43 @@ const FavoritesScreen: React.FC = () => {
         .select(`
           *,
           produto:produto_id (
-            id, nome, preco, imagem_url, avaliacao, categoria, descricao,
-            loja_id
+            id, nome, preco_normal, preco_promocional, imagens, avaliacao, categoria, descricao,
+            vendedor_id
           )
         `)
         .eq('user_id', user?.id || '')
         .order('data_visualizacao', { ascending: false })
         .limit(10);
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching recently viewed:', error);
+        throw error;
+      }
       
       // Fetch store names for products
-      const productsWithLojaId = data
-        .filter(item => item.produto && item.produto.loja_id)
+      const productsWithVendorId = data
+        .filter(item => item.produto && item.produto.vendedor_id)
         .map(item => ({ 
           ...item, 
-          loja_id: item.produto.loja_id 
+          vendedor_id: item.produto.vendedor_id 
         }));
       
-      if (productsWithLojaId.length > 0) {
-        const lojaIds = [...new Set(productsWithLojaId.map(item => item.loja_id))];
+      if (productsWithVendorId.length > 0) {
+        const vendedorIds = [...new Set(productsWithVendorId.map(item => item.vendedor_id))];
         
-        const { data: lojas, error: lojasError } = await supabase
-          .from('stores')
-          .select('id, nome')
-          .in('id', lojaIds);
+        const { data: vendedores, error: vendedoresError } = await supabase
+          .from('vendedores')
+          .select('id, nome_loja')
+          .in('id', vendedorIds);
         
-        if (!lojasError && lojas) {
-          const lojaMap = Object.fromEntries(lojas.map(loja => [loja.id, loja.nome]));
+        if (!vendedoresError && vendedores) {
+          const vendedorMap = Object.fromEntries(vendedores.map(v => [v.id, v.nome_loja]));
           
           return data.map(item => ({
             ...item,
             produto: item.produto ? {
               ...item.produto,
-              loja_nome: item.produto.loja_id ? lojaMap[item.produto.loja_id] : undefined
+              loja_nome: item.produto.vendedor_id ? vendedorMap[item.produto.vendedor_id] : undefined
             } : null
           }));
         }
@@ -115,45 +120,55 @@ const FavoritesScreen: React.FC = () => {
   } = useQuery({
     queryKey: ['favorites'],
     queryFn: async () => {
+      console.log('Fetching favorites for user:', user?.id);
+      
       const { data, error } = await supabase
         .from('favorites')
         .select(`
           *,
           produto:produto_id (
-            id, nome, preco, imagem_url, avaliacao, categoria, descricao,
-            loja_id
+            id, nome, preco_normal, preco_promocional, imagens, avaliacao, categoria, descricao,
+            vendedor_id
           )
         `)
         .eq('user_id', user?.id || '');
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching favorites:', error);
+        throw error;
+      }
+      
+      console.log('Raw favorites data:', data);
       
       // Fetch store names for products
-      const productsWithLojaId = data
-        .filter(item => item.produto && item.produto.loja_id)
+      const productsWithVendorId = data
+        .filter(item => item.produto && item.produto.vendedor_id)
         .map(item => ({ 
           ...item, 
-          loja_id: item.produto.loja_id 
+          vendedor_id: item.produto.vendedor_id 
         }));
       
-      if (productsWithLojaId.length > 0) {
-        const lojaIds = [...new Set(productsWithLojaId.map(item => item.loja_id))];
+      if (productsWithVendorId.length > 0) {
+        const vendedorIds = [...new Set(productsWithVendorId.map(item => item.vendedor_id))];
         
-        const { data: lojas, error: lojasError } = await supabase
-          .from('stores')
-          .select('id, nome')
-          .in('id', lojaIds);
+        const { data: vendedores, error: vendedoresError } = await supabase
+          .from('vendedores')
+          .select('id, nome_loja')
+          .in('id', vendedorIds);
         
-        if (!lojasError && lojas) {
-          const lojaMap = Object.fromEntries(lojas.map(loja => [loja.id, loja.nome]));
+        if (!vendedoresError && vendedores) {
+          const vendedorMap = Object.fromEntries(vendedores.map(v => [v.id, v.nome_loja]));
           
-          return data.map(item => ({
+          const result = data.map(item => ({
             ...item,
             produto: item.produto ? {
               ...item.produto,
-              loja_nome: item.produto.loja_id ? lojaMap[item.produto.loja_id] : undefined
+              loja_nome: item.produto.vendedor_id ? vendedorMap[item.produto.vendedor_id] : undefined
             } : null
           }));
+          
+          console.log('Processed favorites data:', result);
+          return result;
         }
       }
       
@@ -172,17 +187,14 @@ const FavoritesScreen: React.FC = () => {
     queryFn: async () => {
       try {
         // Fetch product IDs and counts from order items
-        // Fix: Use a different approach to count products in order items
         const { data: orderItems, error: orderItemsError } = await supabase
           .from('order_items')
-          .select('produto_id, quantidade') // Getting quantidade instead of using count(*)
+          .select('produto_id, quantidade')
           .eq('order_id', user?.id || '');
           
         if (orderItemsError) throw orderItemsError;
         
-        // If we have order items, aggregate them by produto_id
         if (orderItems && orderItems.length > 0) {
-          // Aggregate the items by produto_id and count them
           const productMap: Record<string, number> = {};
           
           orderItems.forEach(item => {
@@ -194,13 +206,11 @@ const FavoritesScreen: React.FC = () => {
             }
           });
           
-          // Convert to array of { produto_id, count }
           const aggregatedItems = Object.entries(productMap).map(([produto_id, count]) => ({
             produto_id,
             count
           }));
           
-          // Get the top 8 most frequently bought products
           const topItems = aggregatedItems
             .sort((a, b) => b.count - a.count)
             .slice(0, 8);
@@ -210,16 +220,15 @@ const FavoritesScreen: React.FC = () => {
           if (productIds.length === 0) return [];
           
           const { data: products, error: productsError } = await supabase
-            .from('products')
+            .from('produtos')
             .select(`
-              id, nome, preco, imagem_url, avaliacao, categoria, descricao, 
-              loja_id
+              id, nome, preco_normal, preco_promocional, imagens, avaliacao, categoria, descricao, 
+              vendedor_id
             `)
             .in('id', productIds);
           
           if (productsError) throw productsError;
           
-          // Map product details to order items
           const enrichedItems = topItems.map(item => {
             const matchingProduct = products?.find(p => p.id === item.produto_id) || null;
             return {
@@ -227,29 +236,27 @@ const FavoritesScreen: React.FC = () => {
               count: item.count,
               produto: matchingProduct
             };
-          }).filter(item => item.produto !== null); // Filter out items where product wasn't found
+          }).filter(item => item.produto !== null);
           
-          // Fetch store names for products with loja_id
-          const lojaIds = enrichedItems
-            .filter(item => item.produto && item.produto.loja_id)
-            .map(item => item.produto?.loja_id)
+          const vendedorIds = enrichedItems
+            .filter(item => item.produto && item.produto.vendedor_id)
+            .map(item => item.produto?.vendedor_id)
             .filter(Boolean) as string[];
           
-          if (lojaIds.length > 0) {
-            const { data: lojas, error: lojasError } = await supabase
-              .from('stores')
-              .select('id, nome')
-              .in('id', lojaIds);
+          if (vendedorIds.length > 0) {
+            const { data: vendedores, error: vendedoresError } = await supabase
+              .from('vendedores')
+              .select('id, nome_loja')
+              .in('id', vendedorIds);
             
-            if (!lojasError && lojas) {
-              const lojaMap = Object.fromEntries(lojas.map(loja => [loja.id, loja.nome]));
+            if (!vendedoresError && vendedores) {
+              const vendedorMap = Object.fromEntries(vendedores.map(v => [v.id, v.nome_loja]));
               
-              // Add store names to products
               return enrichedItems.map(item => ({
                 ...item,
                 produto: item.produto ? {
                   ...item.produto,
-                  loja_nome: item.produto.loja_id ? lojaMap[item.produto.loja_id] : undefined
+                  loja_nome: item.produto.vendedor_id ? vendedorMap[item.produto.vendedor_id] : undefined
                 } : null
               }));
             }
@@ -270,12 +277,17 @@ const FavoritesScreen: React.FC = () => {
   // Mutation to remove a favorite
   const removeFavoriteMutation = useMutation({
     mutationFn: async (favoriteId: string) => {
+      console.log('Removing favorite with ID:', favoriteId);
+      
       const { error } = await supabase
         .from('favorites')
         .delete()
         .eq('id', favoriteId);
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error removing favorite:', error);
+        throw error;
+      }
       return favoriteId;
     },
     onSuccess: () => {
@@ -283,13 +295,13 @@ const FavoritesScreen: React.FC = () => {
       toast.success('Produto removido dos favoritos');
     },
     onError: (error) => {
+      console.error('Remove favorite mutation error:', error);
       toast.error(`Erro ao remover favorito: ${error}`);
     }
   });
   
   const handleAddToCart = async (productId: string, productName: string) => {
     try {
-      // First, check if the user already has an active cart
       let { data: carts, error: cartsError } = await supabase
         .from('carts')
         .select('id')
@@ -299,7 +311,6 @@ const FavoritesScreen: React.FC = () => {
       
       let cartId: string;
       
-      // If no active cart exists, create one
       if (cartsError || !carts) {
         const { data: newCart, error: newCartError } = await supabase
           .from('carts')
@@ -313,16 +324,14 @@ const FavoritesScreen: React.FC = () => {
         cartId = carts.id;
       }
       
-      // Get product price
       const { data: product, error: productError } = await supabase
-        .from('products')
-        .select('preco')
+        .from('produtos')
+        .select('preco_normal, preco_promocional')
         .eq('id', productId)
         .single();
       
       if (productError) throw productError;
       
-      // Check if item already exists in cart
       const { data: existingItems, error: existingItemsError } = await supabase
         .from('cart_items')
         .select('id, quantity')
@@ -331,8 +340,9 @@ const FavoritesScreen: React.FC = () => {
       
       if (existingItemsError) throw existingItemsError;
       
+      const price = product?.preco_promocional || product?.preco_normal || 0;
+      
       if (existingItems && existingItems.length > 0) {
-        // Update existing cart item
         const { error: updateError } = await supabase
           .from('cart_items')
           .update({ 
@@ -342,22 +352,19 @@ const FavoritesScreen: React.FC = () => {
         
         if (updateError) throw updateError;
       } else {
-        // Add new cart item
         const { error: insertError } = await supabase
           .from('cart_items')
           .insert({
             cart_id: cartId,
             product_id: productId,
             quantity: 1,
-            price_at_add: product?.preco || 0
+            price_at_add: price
           });
         
         if (insertError) throw insertError;
       }
       
       toast.success(`${productName} adicionado ao carrinho`);
-      
-      // Signal that the cart was updated - useful for updating UI components
       queryClient.invalidateQueries({ queryKey: ['cart'] });
     } catch (error) {
       console.error('Error adding to cart:', error);
@@ -371,11 +378,30 @@ const FavoritesScreen: React.FC = () => {
     }
   };
   
+  const getProductPrice = (product: Product) => {
+    return product.preco_promocional || product.preco_normal;
+  };
+
+  const getProductImageUrl = (product: Product) => {
+    if (product.imagens) {
+      if (typeof product.imagens === 'string') {
+        try {
+          const parsed = JSON.parse(product.imagens);
+          return Array.isArray(parsed) && parsed.length > 0 ? parsed[0] : '/placeholder.svg';
+        } catch {
+          return product.imagens;
+        }
+      }
+      if (Array.isArray(product.imagens) && product.imagens.length > 0) {
+        return product.imagens[0];
+      }
+    }
+    return '/placeholder.svg';
+  };
+  
   // Render a product card
   const renderProductCard = (item: RecentlyViewed | FavoriteItem | FrequentlyBoughtItem) => {
-    // Check if it's a FrequentlyBoughtItem (doesn't have id field)
     if (!('id' in item)) {
-      // For FrequentlyBoughtItem, we need to handle it differently
       if (!item.produto) return null;
       
       const product = item.produto;
@@ -383,8 +409,8 @@ const FavoritesScreen: React.FC = () => {
       return (
         <Card key={`frequent-${item.produto_id}`} className="overflow-hidden">
           <div 
-            className="h-40 bg-center bg-cover"
-            style={{ backgroundImage: `url(${product.imagem_url || '/placeholder.svg'})` }}
+            className="h-40 bg-center bg-cover cursor-pointer"
+            style={{ backgroundImage: `url(${getProductImageUrl(product)})` }}
             onClick={() => navigate(`/marketplace/produto/${product.id}`)}
           />
           <div className="p-3">
@@ -402,7 +428,7 @@ const FavoritesScreen: React.FC = () => {
             
             <div className="flex justify-between items-center">
               <span className="font-bold text-construPro-blue">
-                R$ {product.preco.toFixed(2)}
+                R$ {getProductPrice(product).toFixed(2)}
               </span>
               
               <CustomButton
@@ -419,14 +445,13 @@ const FavoritesScreen: React.FC = () => {
       );
     }
     
-    // Original logic for RecentlyViewed and FavoriteItem
     if (!item.produto) return null;
     
     const product = item.produto;
     const isFavoriteTab = activeTab === "favorites";
     
     return (
-      <Card key={item.id} className="overflow-hidden">
+      <Card key={item.id} className="overflow-hidden relative">
         {isFavoriteTab && (
           <button 
             className="absolute top-2 right-2 z-10 bg-white rounded-full p-1 shadow-md"
@@ -436,8 +461,8 @@ const FavoritesScreen: React.FC = () => {
           </button>
         )}
         <div 
-          className="h-40 bg-center bg-cover"
-          style={{ backgroundImage: `url(${product.imagem_url || '/placeholder.svg'})` }}
+          className="h-40 bg-center bg-cover cursor-pointer"
+          style={{ backgroundImage: `url(${getProductImageUrl(product)})` }}
           onClick={() => navigate(`/marketplace/produto/${product.id}`)}
         />
         <div className="p-3">
@@ -454,7 +479,7 @@ const FavoritesScreen: React.FC = () => {
           
           <div className="flex justify-between items-center">
             <span className="font-bold text-construPro-blue">
-              R$ {product.preco.toFixed(2)}
+              R$ {getProductPrice(product).toFixed(2)}
             </span>
             
             <CustomButton
@@ -471,17 +496,20 @@ const FavoritesScreen: React.FC = () => {
     );
   };
 
-  // Loading states
   const isLoading = 
     (activeTab === "recent" && isLoadingRecent) || 
     (activeTab === "favorites" && isLoadingFavorites) || 
     (activeTab === "frequent" && isLoadingFrequent);
 
-  // Error handling
   if (recentError || favoritesError || frequentError) {
     const error = recentError || favoritesError || frequentError;
+    console.error('Query error:', error);
     toast.error(`Erro ao carregar dados: ${(error as Error).message}`);
   }
+
+  console.log('Current favorites data:', favorites);
+  console.log('Active tab:', activeTab);
+  console.log('Is loading favorites:', isLoadingFavorites);
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
@@ -561,7 +589,7 @@ const FavoritesScreen: React.FC = () => {
             {activeTab === "favorites" && (
               <>
                 <div className="flex justify-between items-center mb-4">
-                  <h2 className="font-medium">Produtos favoritos</h2>
+                  <h2 className="font-medium">Produtos favoritos ({favorites.length})</h2>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Heart, ShoppingCart, Star, Store } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -51,9 +51,29 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
   const navigate = useNavigate();
   const { addToCart, isLoading } = useCart();
   const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
-  const { profile } = useAuth();
+  const { profile, isAuthenticated } = useAuth();
   const [addingToCart, setAddingToCart] = useState(false);
   const [favorited, setFavorited] = useState(false);
+  const [checkingFavorite, setCheckingFavorite] = useState(false);
+
+  // Check if product is favorited when component mounts
+  useEffect(() => {
+    const checkFavoriteStatus = async () => {
+      if (!isAuthenticated || !produto.id) return;
+      
+      setCheckingFavorite(true);
+      try {
+        const isCurrentlyFavorited = await isFavorite(produto.id);
+        setFavorited(isCurrentlyFavorited);
+      } catch (error) {
+        console.error('Error checking favorite status:', error);
+      } finally {
+        setCheckingFavorite(false);
+      }
+    };
+
+    checkFavoriteStatus();
+  }, [produto.id, isAuthenticated, isFavorite]);
 
   // FIXED: Calculate points correctly using specific fields
   const userType = profile?.tipo_perfil || 'consumidor';
@@ -91,6 +111,11 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
 
   const handleToggleFavorite = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    
+    if (!isAuthenticated) {
+      toast.error('Faça login para adicionar aos favoritos');
+      return;
+    }
     
     try {
       if (favorited) {
@@ -160,10 +185,11 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
           size="sm"
           className="absolute top-2 right-2 p-2 bg-white/80 hover:bg-white rounded-full shadow-sm"
           onClick={handleToggleFavorite}
+          disabled={checkingFavorite}
         >
           <Heart 
             size={16} 
-            className={`${favorited ? 'fill-red-500 text-red-500' : 'text-gray-600'}`}
+            className={`${favorited ? 'fill-red-500 text-red-500' : 'text-gray-600'} ${checkingFavorite ? 'animate-pulse' : ''}`}
           />
         </Button>
 

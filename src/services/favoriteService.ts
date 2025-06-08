@@ -1,13 +1,12 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { Product, getProductById } from "./productService";
 
 export interface Favorite {
   id: string;
   user_id: string;
   produto_id: string;
   data_adicionado: string;
-  produto?: Product;
+  produto?: any;
 }
 
 // Get user favorites
@@ -19,13 +18,15 @@ export const getUserFavorites = async (): Promise<Favorite[]> => {
       return [];
     }
 
+    console.log('Fetching favorites for user:', userData.user.id);
+
     const { data, error } = await supabase
       .from('favorites')
       .select(`
         *,
-        products:produto_id (
+        produtos:produto_id (
           *,
-          stores:loja_id (nome, logo_url)
+          vendedores:vendedor_id (nome_loja, logo)
         )
       `)
       .eq('user_id', userData.user.id);
@@ -35,12 +36,13 @@ export const getUserFavorites = async (): Promise<Favorite[]> => {
       return [];
     }
 
+    console.log('Favorites fetched:', data);
     return data.map(fav => ({
       id: fav.id,
       user_id: fav.user_id,
       produto_id: fav.produto_id,
       data_adicionado: fav.data_adicionado,
-      produto: fav.products as unknown as Product
+      produto: fav.produtos
     }));
   } catch (error) {
     console.error('Error in getUserFavorites:', error);
@@ -57,6 +59,8 @@ export const addToFavorites = async (productId: string): Promise<boolean> => {
       return false;
     }
 
+    console.log('Adding to favorites - Product:', productId, 'User:', userData.user.id);
+
     // Check if already favorited
     const { data: existingFav } = await supabase
       .from('favorites')
@@ -66,6 +70,7 @@ export const addToFavorites = async (productId: string): Promise<boolean> => {
       .maybeSingle();
 
     if (existingFav) {
+      console.log('Product already favorited');
       return true; // Already favorited
     }
 
@@ -81,6 +86,7 @@ export const addToFavorites = async (productId: string): Promise<boolean> => {
       return false;
     }
 
+    console.log('Successfully added to favorites');
     return true;
   } catch (error) {
     console.error('Error in addToFavorites:', error);
@@ -89,18 +95,28 @@ export const addToFavorites = async (productId: string): Promise<boolean> => {
 };
 
 // Remove from favorites
-export const removeFromFavorites = async (favoriteId: string): Promise<boolean> => {
+export const removeFromFavorites = async (productId: string): Promise<boolean> => {
   try {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
+      console.error('User not authenticated');
+      return false;
+    }
+
+    console.log('Removing from favorites - Product:', productId, 'User:', userData.user.id);
+
     const { error } = await supabase
       .from('favorites')
       .delete()
-      .eq('id', favoriteId);
+      .eq('user_id', userData.user.id)
+      .eq('produto_id', productId);
 
     if (error) {
       console.error('Error removing from favorites:', error);
       return false;
     }
 
+    console.log('Successfully removed from favorites');
     return true;
   } catch (error) {
     console.error('Error in removeFromFavorites:', error);
