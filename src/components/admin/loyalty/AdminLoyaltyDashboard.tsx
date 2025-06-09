@@ -8,6 +8,7 @@ import UserRankingTable from './UserRankingTable';
 import RecentTransactionsTable from './RecentTransactionsTable';
 import VendorAdjustmentsTable from './VendorAdjustmentsTable';
 import VendorAdjustmentsSummaryTable from './VendorAdjustmentsSummaryTable';
+import DataIntegrityIndicator from './DataIntegrityIndicator';
 import RealtimeIndicator from './RealtimeIndicator';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 import { Button } from '@/components/ui/button';
@@ -303,6 +304,9 @@ const AdminLoyaltyDashboard: React.FC = () => {
             }} 
             isLoading={statsLoading} 
           />
+
+          {/* Data Integrity Indicator */}
+          <DataIntegrityIndicator />
 
           {/* Vendor Adjustments Summary */}
           <VendorAdjustmentsSummaryTable 
