@@ -8,8 +8,9 @@ import { AuthProvider } from './context/AuthContext.tsx'
 import { CartProvider } from './hooks/use-cart.tsx'
 import { Toaster } from './components/ui/sonner.tsx'
 import React from 'react'
+import { prefetchAdminData } from './utils/prefetchUtils'
 
-// Optimized QueryClient configuration for better performance
+// Enhanced QueryClient configuration for better performance
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -19,12 +20,18 @@ const queryClient = new QueryClient({
       refetchOnWindowFocus: false,
       refetchOnMount: false,
       refetchOnReconnect: 'always',
+      // Add network mode for better offline handling
+      networkMode: 'online',
     },
     mutations: {
       retry: 1,
+      networkMode: 'online',
     }
   }
 })
+
+// Prefetch critical data on app start
+prefetchAdminData(queryClient).catch(console.warn);
 
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

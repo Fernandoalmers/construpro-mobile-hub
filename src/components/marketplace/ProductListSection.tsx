@@ -1,147 +1,79 @@
 
-import React, { useRef, useState, useEffect, useCallback, memo } from 'react';
+import React, { memo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext'; 
-
-// Import our components
-import ViewTypeSelector from './components/ViewTypeSelector';
-import GridProductView from './components/GridProductView';
-import ListProductView from './components/ListProductView';
+import OptimizedProductCard from './components/OptimizedProductCard';
+import OptimizedSkeleton from '../common/OptimizedSkeleton';
 import EmptyProductState from './components/EmptyProductState';
-import ProductLoadingSkeleton from './components/ProductLoadingSkeleton';
+import LoadingIndicator from './components/LoadingIndicator';
 
 interface ProductListSectionProps {
   displayedProducts: any[];
   filteredProdutos: any[];
   hasMore: boolean;
-  isLoadingMore?: boolean;
+  isLoadingMore: boolean;
   loadMoreProducts: () => void;
   clearFilters: () => void;
-  onLojaClick?: (lojaId: string) => void;
-  isLoading?: boolean;
-  viewType?: 'grid' | 'list';
+  onLojaClick: (lojaId: string) => void;
+  isLoading: boolean;
+  viewType?: 'list' | 'grid';
   showActions?: boolean;
 }
 
-const LoadingIndicator = memo(({ loadMoreRef }: { loadMoreRef: React.RefObject<HTMLDivElement> }) => (
-  <div 
-    ref={loadMoreRef} 
-    className="flex justify-center items-center p-4 mt-4"
-  >
-    <div className="w-6 h-6 border-2 border-construPro-blue border-t-transparent rounded-full animate-spin"></div>
-    <span className="ml-2 text-sm text-gray-500">Carregando mais produtos...</span>
-  </div>
-));
-
-const ProductListSection: React.FC<ProductListSectionProps> = memo(({ 
-  displayedProducts, 
-  filteredProdutos, 
-  hasMore, 
-  isLoadingMore = false,
+const ProductListSection = memo<ProductListSectionProps>(({
+  displayedProducts,
+  filteredProdutos,
+  hasMore,
+  isLoadingMore,
   loadMoreProducts,
   clearFilters,
-  onLojaClick,
-  isLoading = false,
-  viewType: initialViewType = 'list',
+  isLoading,
+  viewType = 'grid'
 }) => {
   const navigate = useNavigate();
-  const loadMoreRef = useRef<HTMLDivElement>(null);
-  const { isAuthenticated } = useAuth();
-  const [isIntersecting, setIsIntersecting] = useState(false);
-  
-  // State for view type (grid or list)
-  const [viewType, setViewType] = useState<'grid' | 'list'>(initialViewType);
 
-  // Navigate to product details
-  const navigateToProduct = useCallback((productId: string) => {
+  const handleProductClick = useCallback((productId: string) => {
     navigate(`/produto/${productId}`);
   }, [navigate]);
 
-  // Optimized intersection observer for infinite scroll
-  useEffect(() => {
-    const currentRef = loadMoreRef.current;
-    if (!currentRef || !hasMore || isLoadingMore) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const [entry] = entries;
-        const isNowIntersecting = entry.isIntersecting;
-        
-        setIsIntersecting(isNowIntersecting);
-        
-        if (isNowIntersecting && hasMore && !isLoadingMore) {
-          console.log('[ProductListSection] Intersection detected - loading more products');
-          loadMoreProducts();
-        }
-      },
-      { 
-        threshold: 0.1,
-        rootMargin: '50px' // Start loading before reaching the exact bottom
-      }
-    );
-    
-    observer.observe(currentRef);
-    
-    return () => {
-      if (currentRef) {
-        observer.unobserve(currentRef);
-      }
-    };
-  }, [hasMore, isLoadingMore, loadMoreProducts]);
-
-  // Debug logging
-  useEffect(() => {
-    console.log('[ProductListSection] State:', {
-      displayedProducts: displayedProducts.length,
-      filteredTotal: filteredProdutos.length,
-      hasMore,
-      isLoadingMore,
-      isIntersecting
-    });
-  }, [displayedProducts.length, filteredProdutos.length, hasMore, isLoadingMore, isIntersecting]);
-
-  // Loading skeleton
+  // Show skeleton loading while initial load
   if (isLoading) {
-    return <ProductLoadingSkeleton />;
+    return <OptimizedSkeleton rows={6} className="px-4" />;
   }
 
-  // Empty state
-  if (displayedProducts.length === 0) {
-    return <EmptyProductState clearFilters={clearFilters} />;
+  // Show empty state if no products
+  if (filteredProdutos.length === 0) {
+    return <EmptyProductState onClearFilters={clearFilters} />;
   }
 
   return (
-    <>
-      {/* View type selector */}
-      <ViewTypeSelector viewType={viewType} setViewType={setViewType} />
-    
-      {/* Products display */}
-      {viewType === 'grid' ? (
-        <GridProductView 
-          products={displayedProducts} 
-          navigateToProduct={navigateToProduct}
-          onLojaClick={onLojaClick}
-        />
-      ) : (
-        <ListProductView 
-          products={displayedProducts} 
-          navigateToProduct={navigateToProduct}
-          onLojaClick={onLojaClick}
-        />
-      )}
-      
-      {/* Infinite scroll loading indicator - only show when there are more products */}
+    <div className="space-y-4">
+      {/* Products Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 px-4">
+        {displayedProducts.map((product) => (
+          <OptimizedProductCard
+            key={product.id}
+            product={product}
+            onClick={handleProductClick}
+          />
+        ))}
+      </div>
+
+      {/* Load More Button */}
       {hasMore && (
-        <LoadingIndicator loadMoreRef={loadMoreRef} />
-      )}
-      
-      {/* End of list indicator */}
-      {!hasMore && displayedProducts.length > 0 && (
-        <div className="text-center p-4 text-gray-500 text-sm">
-          Todos os produtos foram carregados
+        <div className="flex justify-center py-4">
+          <button
+            onClick={loadMoreProducts}
+            disabled={isLoadingMore}
+            className="bg-construPro-blue text-white px-6 py-2 rounded-lg disabled:opacity-50"
+          >
+            {isLoadingMore ? 'Carregando...' : 'Carregar mais produtos'}
+          </button>
         </div>
       )}
-    </>
+
+      {/* Loading indicator for infinite scroll */}
+      {isLoadingMore && <LoadingIndicator />}
+    </div>
   );
 });
 
