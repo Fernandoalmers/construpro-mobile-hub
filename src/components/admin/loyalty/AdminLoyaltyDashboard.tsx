@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import AdminLayout from '@/components/admin/AdminLayout';
@@ -20,7 +19,7 @@ const AdminLoyaltyDashboard: React.FC = () => {
   const [lastUpdate, setLastUpdate] = useState<Date>();
   const queryClient = useQueryClient();
 
-  console.log('AdminLoyaltyDashboard rendering with refreshKey:', refreshKey);
+  console.log('🎯 [Dashboard] Rendering with refreshKey:', refreshKey);
 
   const {
     data: stats,
@@ -95,25 +94,26 @@ const AdminLoyaltyDashboard: React.FC = () => {
     isLoading: summariesLoading,
     error: summariesError
   } = useQuery({
-    queryKey: ['vendor-adjustments-summary', refreshKey],
+    queryKey: ['vendor-adjustments-summary'],
     queryFn: () => {
-      console.log('Fetching vendor adjustments summary...');
+      console.log('🔍 [Dashboard] Executing vendor adjustments summary query...');
       return loyaltyService.getVendorAdjustmentsSummary();
     },
-    staleTime: 0,
+    staleTime: 30000, // 30 seconds cache
     refetchOnMount: true,
     refetchOnWindowFocus: false,
     meta: {
       onError: (error: any) => {
-        console.error('Error fetching vendor adjustments summary:', error);
+        console.error('❌ [Dashboard] Error fetching vendor adjustments summary:', error);
       }
     }
   });
 
-  console.log('🎯 [Dashboard] Vendor summaries:', {
+  console.log('🎯 [Dashboard] Vendor summaries state:', {
     count: vendorSummaries?.length || 0,
     loading: summariesLoading,
-    vendors: vendorSummaries?.map(v => v.vendedor_nome) || []
+    error: summariesError?.message || null,
+    vendors: vendorSummaries?.map(v => `${v.vendedor_nome} (${v.total_ajustes})`) || []
   });
 
   // Real-time subscription setup
@@ -157,7 +157,7 @@ const AdminLoyaltyDashboard: React.FC = () => {
   }, [queryClient]);
 
   const handleRefresh = () => {
-    console.log('Manual refresh triggered');
+    console.log('🔄 [Dashboard] Manual refresh triggered');
     
     // Clear all loyalty-related caches
     queryClient.removeQueries({ queryKey: ['loyalty-stats'] });

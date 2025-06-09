@@ -20,7 +20,12 @@ const VendorAdjustmentsSummaryTable: React.FC<VendorAdjustmentsSummaryTableProps
   console.log('🎯 [VendorSummaryTable] Rendering:', {
     count: summaries?.length || 0,
     isLoading,
-    vendors: summaries?.map(s => s.vendedor_nome) || []
+    summaries: summaries?.map(s => ({
+      vendor: s.vendedor_nome,
+      adjustments: s.total_ajustes,
+      added: s.pontos_adicionados,
+      removed: s.pontos_removidos
+    })) || []
   });
 
   if (isLoading) {
