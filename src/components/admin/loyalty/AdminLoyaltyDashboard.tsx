@@ -80,7 +80,7 @@ const AdminLoyaltyDashboard: React.FC = () => {
     queryKey: ['vendor-adjustments', refreshKey],
     queryFn: () => {
       console.log('Fetching vendor adjustments...');
-      return loyaltyService.getVendorAdjustments(20);
+      return loyaltyService.getVendorAdjustments(50); // Increased limit
     },
     meta: {
       onError: (error: any) => {
@@ -94,7 +94,7 @@ const AdminLoyaltyDashboard: React.FC = () => {
     isLoading: summariesLoading,
     error: summariesError
   } = useQuery({
-    queryKey: ['vendor-adjustments-summary'],
+    queryKey: ['vendor-adjustments-summary', refreshKey],
     queryFn: () => {
       console.log('🔍 [Dashboard] Executing vendor adjustments summary query...');
       return loyaltyService.getVendorAdjustmentsSummary();
@@ -115,6 +115,8 @@ const AdminLoyaltyDashboard: React.FC = () => {
     error: summariesError?.message || null,
     vendors: vendorSummaries?.map(v => `${v.vendedor_nome} (${v.total_ajustes})`) || []
   });
+
+  console.log('🔍 [Dashboard] Detailed vendor summaries data:', vendorSummaries);
 
   // Real-time subscription setup
   useEffect(() => {
