@@ -37,8 +37,7 @@ export const useAdminProducts = () => {
       const search = searchTerm.toLowerCase();
       filtered = filtered.filter(product =>
         product.nome?.toLowerCase().includes(search) ||
-        product.categoria?.toLowerCase().includes(search) ||
-        product.sku?.toLowerCase().includes(search)
+        product.categoria?.toLowerCase().includes(search)
       );
     }
 
