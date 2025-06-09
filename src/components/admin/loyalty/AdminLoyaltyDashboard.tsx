@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import AdminLayout from '@/components/admin/AdminLayout';
@@ -10,14 +11,13 @@ import VendorAdjustmentsSummaryTable from './VendorAdjustmentsSummaryTable';
 import RealtimeIndicator from './RealtimeIndicator';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Bug } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 
 const AdminLoyaltyDashboard: React.FC = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date>();
-  const [debugMode, setDebugMode] = useState(false);
   const queryClient = useQueryClient();
 
   console.log('AdminLoyaltyDashboard rendering with refreshKey:', refreshKey);
@@ -95,27 +95,25 @@ const AdminLoyaltyDashboard: React.FC = () => {
     isLoading: summariesLoading,
     error: summariesError
   } = useQuery({
-    queryKey: ['vendor-adjustments-summary', refreshKey, Date.now()], // Force fresh data with timestamp
+    queryKey: ['vendor-adjustments-summary', refreshKey],
     queryFn: () => {
-      console.log('🔄 [Dashboard] Fetching vendor adjustments summary with fresh cache...');
+      console.log('Fetching vendor adjustments summary...');
       return loyaltyService.getVendorAdjustmentsSummary();
     },
-    staleTime: 0, // Always consider data stale
-    gcTime: 0, // Don't cache data
+    staleTime: 0,
     refetchOnMount: true,
     refetchOnWindowFocus: false,
     meta: {
       onError: (error: any) => {
-        console.error('❌ [Dashboard] Error fetching vendor adjustments summary:', error);
+        console.error('Error fetching vendor adjustments summary:', error);
       }
     }
   });
 
-  console.log('🎯 [Dashboard] Vendor summaries state:', {
-    data: vendorSummaries,
+  console.log('🎯 [Dashboard] Vendor summaries:', {
+    count: vendorSummaries?.length || 0,
     loading: summariesLoading,
-    error: summariesError,
-    count: vendorSummaries?.length || 0
+    vendors: vendorSummaries?.map(v => v.vendedor_nome) || []
   });
 
   // Real-time subscription setup
@@ -139,8 +137,6 @@ const AdminLoyaltyDashboard: React.FC = () => {
         () => {
           console.log('Adjustments updated via real-time');
           setLastUpdate(new Date());
-          queryClient.removeQueries({ queryKey: ['vendor-adjustments'] });
-          queryClient.removeQueries({ queryKey: ['vendor-adjustments-summary'] });
           queryClient.invalidateQueries({ queryKey: ['vendor-adjustments'] });
           queryClient.invalidateQueries({ queryKey: ['vendor-adjustments-summary'] });
         }
@@ -161,7 +157,7 @@ const AdminLoyaltyDashboard: React.FC = () => {
   }, [queryClient]);
 
   const handleRefresh = () => {
-    console.log('🔄 [Dashboard] Manual refresh triggered - clearing ALL caches');
+    console.log('Manual refresh triggered');
     
     // Clear all loyalty-related caches
     queryClient.removeQueries({ queryKey: ['loyalty-stats'] });
@@ -170,36 +166,11 @@ const AdminLoyaltyDashboard: React.FC = () => {
     queryClient.removeQueries({ queryKey: ['vendor-adjustments'] });
     queryClient.removeQueries({ queryKey: ['vendor-adjustments-summary'] });
     
-    // Force refresh with new key AND timestamp
-    const newRefreshKey = Date.now();
-    setRefreshKey(newRefreshKey);
+    // Force refresh
+    setRefreshKey(prev => prev + 1);
     setLastUpdate(new Date());
     
-    console.log('🔄 [Dashboard] New refresh key:', newRefreshKey);
-    toast.success('Cache limpo e dados atualizados');
-  };
-
-  const handleForceDebug = async () => {
-    console.log('🐛 [Dashboard] Force debug triggered');
-    setDebugMode(true);
-    
-    try {
-      // Directly call the service to bypass React Query
-      const directResult = await loyaltyService.getVendorAdjustmentsSummary();
-      console.log('🐛 [Dashboard] Direct service call result:', directResult);
-      
-      // Show raw data in console and toast
-      console.table(directResult);
-      toast.success(`Debug: Encontrados ${directResult.length} vendedores diretamente`);
-      
-      // Force a complete refresh
-      handleRefresh();
-    } catch (error) {
-      console.error('🐛 [Dashboard] Debug error:', error);
-      toast.error('Erro no debug');
-    }
-    
-    setTimeout(() => setDebugMode(false), 3000);
+    toast.success('Dados atualizados');
   };
 
   // Handle all errors collectively
@@ -251,43 +222,18 @@ const AdminLoyaltyDashboard: React.FC = () => {
               <p className="text-gray-600 mt-1">
                 Acompanhe pontos, usuários e transações do programa de fidelidade
               </p>
-              {debugMode && (
-                <p className="text-orange-600 mt-1 font-medium">
-                  🐛 Modo debug ativo - Verifique o console
-                </p>
-              )}
             </div>
             <div className="flex items-center gap-4">
               <RealtimeIndicator 
                 isConnected={isRealtimeConnected} 
                 lastUpdate={lastUpdate} 
               />
-              <Button onClick={handleForceDebug} variant="outline" className="gap-2">
-                <Bug className="h-4 w-4" />
-                Debug
-              </Button>
               <Button onClick={handleRefresh} variant="outline" className="gap-2">
                 <RefreshCw className="h-4 w-4" />
                 Atualizar
               </Button>
             </div>
           </div>
-
-          {/* Debug Info */}
-          {debugMode && vendorSummaries && (
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-              <h3 className="font-medium text-orange-800 mb-2">Debug Info:</h3>
-              <p className="text-sm text-orange-700">
-                Dados carregados: {vendorSummaries.length} vendedores encontrados
-              </p>
-              <details className="mt-2">
-                <summary className="text-sm text-orange-700 cursor-pointer">Ver dados brutos</summary>
-                <pre className="text-xs mt-2 bg-white p-2 rounded border overflow-auto max-h-40">
-                  {JSON.stringify(vendorSummaries, null, 2)}
-                </pre>
-              </details>
-            </div>
-          )}
 
           {/* Stats Cards */}
           <LoyaltyStatsCards 

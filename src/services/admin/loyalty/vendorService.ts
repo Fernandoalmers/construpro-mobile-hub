@@ -22,15 +22,10 @@ export const vendorService = {
       const vendorIds = [...new Set(adjustments?.map(a => a.vendedor_id) || [])];
       const userIds = [...new Set(adjustments?.map(a => a.usuario_id) || [])];
 
-      console.log(`🏪 [vendorService] Found ${vendorIds.length} unique vendor IDs:`, vendorIds);
-
       const [vendorsData, usersData] = await Promise.all([
         supabase.from('vendedores').select('id, nome_loja, status').in('id', vendorIds),
         supabase.from('profiles').select('id, nome').in('id', userIds)
       ]);
-
-      console.log(`🏪 [vendorService] Vendors data:`, vendorsData.data);
-      console.log(`👥 [vendorService] Users data:`, usersData.data);
 
       const vendorMap = new Map(vendorsData.data?.map(v => [v.id, { nome: v.nome_loja, status: v.status }]) || []);
       const userMap = new Map(usersData.data?.map(u => [u.id, u.nome]) || []);
@@ -52,9 +47,7 @@ export const vendorService = {
 
   async getVendorAdjustmentsSummary(): Promise<VendorAdjustmentSummary[]> {
     try {
-      console.log('🔍 [DEBUG] Starting vendor adjustments summary fetch...');
-      const debugTimestamp = new Date().toISOString();
-      console.log(`⏰ [DEBUG] Timestamp: ${debugTimestamp}`);
+      console.log('🔍 [vendorService] Starting vendor adjustments summary fetch...');
 
       // Step 1: Get all adjustments
       const { data: allAdjustments, error: adjustmentsError } = await supabase
@@ -62,80 +55,48 @@ export const vendorService = {
         .select('vendedor_id, tipo, valor, created_at');
 
       if (adjustmentsError) {
-        console.error('❌ [DEBUG] Error fetching adjustments:', adjustmentsError);
+        console.error('❌ [vendorService] Error fetching adjustments:', adjustmentsError);
         throw adjustmentsError;
       }
 
-      console.log(`📊 [DEBUG] Raw adjustments found: ${allAdjustments?.length || 0}`);
-      console.log(`📊 [DEBUG] Adjustments data:`, allAdjustments);
+      console.log(`📊 [vendorService] Found ${allAdjustments?.length || 0} adjustments`);
 
       if (!allAdjustments || allAdjustments.length === 0) {
-        console.log('⚠️ [DEBUG] No adjustments found in database');
+        console.log('⚠️ [vendorService] No adjustments found');
         return [];
       }
 
-      // Step 2: Get all unique vendor IDs from adjustments
+      // Step 2: Get vendor data for active/approved vendors only
       const vendorIds = [...new Set(allAdjustments.map(a => a.vendedor_id))];
-      console.log(`🏪 [DEBUG] Unique vendor IDs from adjustments: ${vendorIds.length}`);
-      console.log(`🏪 [DEBUG] Vendor IDs list:`, vendorIds);
-
-      // Step 3: Get ALL vendor data (without filtering first)
-      const { data: allVendorsData, error: vendorsError } = await supabase
+      
+      const { data: vendorsData, error: vendorsError } = await supabase
         .from('vendedores')
         .select('id, nome_loja, status')
-        .in('id', vendorIds);
+        .in('id', vendorIds)
+        .in('status', ['ativo', 'aprovado']);
 
       if (vendorsError) {
-        console.error('❌ [DEBUG] Error fetching vendors:', vendorsError);
+        console.error('❌ [vendorService] Error fetching vendors:', vendorsError);
         throw vendorsError;
       }
 
-      console.log(`🏪 [DEBUG] All vendors data retrieved: ${allVendorsData?.length || 0}`);
-      console.log(`🏪 [DEBUG] All vendors details:`, allVendorsData?.map(v => ({
-        id: v.id,
-        nome: v.nome_loja,
-        status: v.status
-      })));
+      console.log(`🏪 [vendorService] Found ${vendorsData?.length || 0} active vendors`);
 
-      // Step 4: Filter active/approved vendors
-      const activeVendors = allVendorsData?.filter(v => 
-        v.status === 'ativo' || v.status === 'aprovado'
-      ) || [];
-
-      console.log(`✅ [DEBUG] Active/approved vendors after filter: ${activeVendors.length}`);
-      console.log(`✅ [DEBUG] Active vendors details:`, activeVendors.map(v => ({
-        id: v.id,
-        nome: v.nome_loja,
-        status: v.status
-      })));
-
-      if (activeVendors.length === 0) {
-        console.log('⚠️ [DEBUG] No active/approved vendors found after filtering');
-        console.log('📋 [DEBUG] Available statuses in data:', [...new Set(allVendorsData?.map(v => v.status))]);
+      if (!vendorsData || vendorsData.length === 0) {
+        console.log('⚠️ [vendorService] No active vendors found');
         return [];
       }
 
-      // Step 5: Filter adjustments for active vendors only
-      const activeVendorIds = new Set(activeVendors.map(v => v.id));
+      // Step 3: Filter adjustments for active vendors only
+      const activeVendorIds = new Set(vendorsData.map(v => v.id));
       const filteredAdjustments = allAdjustments.filter(adj => 
         activeVendorIds.has(adj.vendedor_id)
       );
 
-      console.log(`📊 [DEBUG] Adjustments for active vendors: ${filteredAdjustments.length}`);
-      console.log(`📊 [DEBUG] Filtered adjustments by vendor:`, 
-        Object.entries(
-          filteredAdjustments.reduce((acc, adj) => {
-            const vendorName = activeVendors.find(v => v.id === adj.vendedor_id)?.nome_loja || 'Unknown';
-            acc[vendorName] = (acc[vendorName] || 0) + 1;
-            return acc;
-          }, {} as Record<string, number>)
-        )
-      );
+      console.log(`📊 [vendorService] ${filteredAdjustments.length} adjustments for active vendors`);
 
-      // Step 6: Create vendor name map
-      const vendorNameMap = new Map(activeVendors.map(v => [v.id, v.nome_loja]));
-
-      // Step 7: Group and calculate statistics by vendor
+      // Step 4: Create vendor name map and calculate statistics
+      const vendorNameMap = new Map(vendorsData.map(v => [v.id, v.nome_loja]));
       const vendorStatsMap = new Map<string, {
         vendedor_nome: string;
         total_ajustes: number;
@@ -164,7 +125,6 @@ export const vendorService = {
           current.pontos_removidos += Math.abs(adjustment.valor);
         }
 
-        // Update last adjustment date if this one is more recent
         if (new Date(adjustment.created_at) > new Date(current.ultimo_ajuste)) {
           current.ultimo_ajuste = adjustment.created_at;
         }
@@ -172,16 +132,7 @@ export const vendorService = {
         vendorStatsMap.set(vendorId, current);
       });
 
-      console.log(`📊 [DEBUG] Vendor stats map size: ${vendorStatsMap.size}`);
-      console.log(`📊 [DEBUG] Vendor stats details:`, 
-        Array.from(vendorStatsMap.entries()).map(([id, stats]) => ({
-          id,
-          nome: stats.vendedor_nome,
-          ajustes: stats.total_ajustes
-        }))
-      );
-
-      // Step 8: Convert to array and sort by total adjustments
+      // Step 5: Convert to array and sort by total adjustments
       const result = Array.from(vendorStatsMap.entries()).map(([vendorId, stats]) => ({
         vendedor_id: vendorId,
         vendedor_nome: stats.vendedor_nome,
@@ -191,16 +142,13 @@ export const vendorService = {
         ultimo_ajuste: stats.ultimo_ajuste
       })).sort((a, b) => b.total_ajustes - a.total_ajustes);
 
-      console.log(`✅ [DEBUG] Final result array length: ${result.length}`);
-      console.log(`✅ [DEBUG] Final result summary:`, 
-        result.map(v => `${v.vendedor_nome}: ${v.total_ajustes} ajustes`)
-      );
-      console.log(`✅ [DEBUG] Complete final result:`, result);
+      console.log(`✅ [vendorService] Returning ${result.length} vendor summaries:`, 
+        result.map(v => `${v.vendedor_nome} (${v.total_ajustes} ajustes)`).join(', '));
 
       return result;
 
     } catch (error) {
-      console.error('❌ [DEBUG] Error in getVendorAdjustmentsSummary:', error);
+      console.error('❌ [vendorService] Error in getVendorAdjustmentsSummary:', error);
       toast.error('Erro ao buscar resumo de ajustes por vendedor');
       return [];
     }
