@@ -121,8 +121,32 @@ export const vendorService = {
       console.log('🔍 [vendorService] === STARTING VENDOR ADJUSTMENTS SUMMARY ===');
       console.log('🔍 [vendorService] Timestamp:', new Date().toISOString());
 
-      // Step 1: Get ALL adjustments without any limit
-      console.log('📊 [vendorService] Fetching ALL adjustments from database (no limit)...');
+      // CORREÇÃO: Usar a mesma lógica da página de stores
+      // Step 1: Buscar TODOS os vendedores primeiro (igual stores page)
+      console.log('🏪 [vendorService] CORREÇÃO: Buscando TODOS os vendedores primeiro (como stores page)...');
+      const { data: allVendors, error: vendorsError } = await supabase
+        .from('vendedores')
+        .select('id, nome_loja, status')
+        .order('nome_loja', { ascending: true });
+
+      if (vendorsError) {
+        console.error('❌ [vendorService] Error fetching all vendors:', vendorsError);
+        throw vendorsError;
+      }
+
+      console.log(`🏪 [vendorService] CORREÇÃO - Retrieved ${allVendors?.length || 0} vendors from database`);
+      console.log('🏪 [vendorService] CORREÇÃO - ALL vendor info:');
+      allVendors?.forEach((v, index) => {
+        console.log(`  ${index + 1}. ID: ${v.id} | Nome: ${v.nome_loja} | Status: ${v.status}`);
+      });
+
+      if (!allVendors || allVendors.length === 0) {
+        console.log('⚠️ [vendorService] CORREÇÃO - No vendors found');
+        return [];
+      }
+
+      // Step 2: Buscar TODOS os ajustes (sem filtro por vendedor)
+      console.log('📊 [vendorService] CORREÇÃO - Fetching ALL adjustments (no vendor filter)...');
       const { data: allAdjustments, error: adjustmentsError } = await supabase
         .from('pontos_ajustados')
         .select('vendedor_id, tipo, valor, created_at')
@@ -133,76 +157,23 @@ export const vendorService = {
         throw adjustmentsError;
       }
 
-      console.log(`📊 [vendorService] Retrieved ${allAdjustments?.length || 0} total adjustments from database`);
+      console.log(`📊 [vendorService] CORREÇÃO - Retrieved ${allAdjustments?.length || 0} total adjustments from database`);
 
       if (!allAdjustments || allAdjustments.length === 0) {
-        console.log('⚠️ [vendorService] No adjustments found in database');
-        return [];
+        console.log('⚠️ [vendorService] CORREÇÃO - No adjustments found, returning empty summaries for all vendors');
+        // Retornar vendedores com zero ajustes
+        return allVendors.map(vendor => ({
+          vendedor_id: vendor.id,
+          vendedor_nome: vendor.nome_loja,
+          total_ajustes: 0,
+          pontos_adicionados: 0,
+          pontos_removidos: 0,
+          ultimo_ajuste: new Date().toISOString()
+        }));
       }
 
-      // Get unique vendor IDs from adjustments
-      const vendorIdsInAdjustments = [...new Set(allAdjustments.map(adj => adj.vendedor_id))];
-      console.log('🔍 [vendorService] CRITICAL DEBUG - Unique vendor IDs in adjustments:', vendorIdsInAdjustments);
-      console.log('🔍 [vendorService] CRITICAL DEBUG - Number of unique vendors in adjustments:', vendorIdsInAdjustments.length);
-      console.log('🔍 [vendorService] CRITICAL DEBUG - Raw vendor IDs:', JSON.stringify(vendorIdsInAdjustments, null, 2));
-
-      // Step 2: Get ALL vendors regardless of status - CRITICAL FIX
-      console.log('🏪 [vendorService] Fetching ALL vendors from database (removed status filter completely)...');
-      const { data: allVendors, error: vendorsError } = await supabase
-        .from('vendedores')
-        .select('id, nome_loja, status')
-        .in('id', vendorIdsInAdjustments);
-
-      if (vendorsError) {
-        console.error('❌ [vendorService] Error fetching vendors:', vendorsError);
-        throw vendorsError;
-      }
-
-      console.log(`🏪 [vendorService] CRITICAL DEBUG - Retrieved ${allVendors?.length || 0} vendors from database`);
-      console.log('🏪 [vendorService] CRITICAL DEBUG - DETAILED vendor info for summary:');
-      allVendors?.forEach((v, index) => {
-        console.log(`  ${index + 1}. ID: ${v.id} | Nome: ${v.nome_loja} | Status: ${v.status}`);
-      });
-
-      if (!allVendors || allVendors.length === 0) {
-        console.log('⚠️ [vendorService] CRITICAL ERROR - No vendors found with the specified IDs');
-        console.log('🔍 [vendorService] CRITICAL ERROR - Expected vendor IDs:', vendorIdsInAdjustments);
-        return [];
-      }
-
-      // CRITICAL DEBUG: Validate vendor-adjustment mapping
-      console.log('🔍 [vendorService] CRITICAL DEBUG - Validating vendor-adjustment mapping:');
-      vendorIdsInAdjustments.forEach(vendorId => {
-        const vendor = allVendors.find(v => v.id === vendorId);
-        const adjustmentCount = allAdjustments.filter(adj => adj.vendedor_id === vendorId).length;
-        console.log(`  Vendor ID: ${vendorId} | Found: ${vendor ? 'YES' : 'NO'} | Name: ${vendor?.nome_loja || 'NOT FOUND'} | Adjustments: ${adjustmentCount}`);
-      });
-
-      // Step 3: Process adjustments for all found vendors
-      const vendorIds = new Set(allVendors.map(v => v.id));
-      const filteredAdjustments = allAdjustments.filter(adj => 
-        vendorIds.has(adj.vendedor_id)
-      );
-
-      console.log(`📊 [vendorService] CRITICAL DEBUG - ${filteredAdjustments.length} adjustments for found vendors`);
-      console.log(`📊 [vendorService] CRITICAL DEBUG - Expected vendors to show in summary: ${allVendors.length}`);
-      console.log(`📊 [vendorService] CRITICAL DEBUG - Vendor names: ${allVendors.map(v => v.nome_loja).join(', ')}`);
-      
-      // Group adjustments by vendor for detailed logging
-      const adjustmentsByVendor = new Map<string, number>();
-      filteredAdjustments.forEach(adj => {
-        const count = adjustmentsByVendor.get(adj.vendedor_id) || 0;
-        adjustmentsByVendor.set(adj.vendedor_id, count + 1);
-      });
-
-      console.log('📊 [vendorService] CRITICAL DEBUG - Adjustments per vendor (getVendorAdjustmentsSummary):');
-      Array.from(adjustmentsByVendor.entries()).forEach(([vendorId, count]) => {
-        const vendor = allVendors.find(v => v.id === vendorId);
-        console.log(`  - ${vendor?.nome_loja || vendorId} (${vendor?.status}): ${count} adjustments`);
-      });
-
-      // Step 4: Create vendor name map and calculate statistics
-      const vendorNameMap = new Map(allVendors.map(v => [v.id, v.nome_loja]));
+      // Step 3: Criar mapa de estatísticas por vendedor (incluindo TODOS os vendedores)
+      console.log('🔍 [vendorService] CORREÇÃO - Creating stats map for ALL vendors...');
       const vendorStatsMap = new Map<string, {
         vendedor_nome: string;
         total_ajustes: number;
@@ -211,38 +182,48 @@ export const vendorService = {
         ultimo_ajuste: string;
       }>();
 
-      console.log('🔍 [vendorService] CRITICAL DEBUG - Processing adjustments for statistics...');
-      filteredAdjustments.forEach((adjustment, index) => {
-        const vendorId = adjustment.vendedor_id;
-        const vendorName = vendorNameMap.get(vendorId) || 'Vendedor desconhecido';
-        
-        console.log(`  Processing adjustment ${index + 1}/${filteredAdjustments.length}: Vendor ${vendorName} (${vendorId})`);
-        
-        const current = vendorStatsMap.get(vendorId) || {
-          vendedor_nome: vendorName,
+      // Inicializar TODOS os vendedores com zero ajustes
+      allVendors.forEach(vendor => {
+        vendorStatsMap.set(vendor.id, {
+          vendedor_nome: vendor.nome_loja,
           total_ajustes: 0,
           pontos_adicionados: 0,
           pontos_removidos: 0,
-          ultimo_ajuste: adjustment.created_at
-        };
-
-        current.total_ajustes += 1;
-        
-        if (adjustment.tipo === 'adicao') {
-          current.pontos_adicionados += adjustment.valor;
-        } else {
-          current.pontos_removidos += Math.abs(adjustment.valor);
-        }
-
-        if (new Date(adjustment.created_at) > new Date(current.ultimo_ajuste)) {
-          current.ultimo_ajuste = adjustment.created_at;
-        }
-
-        vendorStatsMap.set(vendorId, current);
-        console.log(`    Updated stats for ${vendorName}: ${current.total_ajustes} adjustments`);
+          ultimo_ajuste: new Date().toISOString()
+        });
       });
 
-      // Step 5: Convert to array and sort by total adjustments
+      // Step 4: Processar ajustes para vendedores que os possuem
+      console.log('🔍 [vendorService] CORREÇÃO - Processing adjustments for vendors...');
+      allAdjustments.forEach((adjustment, index) => {
+        const vendorId = adjustment.vendedor_id;
+        
+        // Verificar se o vendedor existe na nossa lista
+        if (vendorStatsMap.has(vendorId)) {
+          const current = vendorStatsMap.get(vendorId)!;
+          
+          console.log(`  CORREÇÃO - Processing adjustment ${index + 1}/${allAdjustments.length}: Vendor ${current.vendedor_nome} (${vendorId})`);
+          
+          current.total_ajustes += 1;
+          
+          if (adjustment.tipo === 'adicao') {
+            current.pontos_adicionados += adjustment.valor;
+          } else {
+            current.pontos_removidos += Math.abs(adjustment.valor);
+          }
+
+          if (new Date(adjustment.created_at) > new Date(current.ultimo_ajuste)) {
+            current.ultimo_ajuste = adjustment.created_at;
+          }
+
+          vendorStatsMap.set(vendorId, current);
+          console.log(`    CORREÇÃO - Updated stats for ${current.vendedor_nome}: ${current.total_ajustes} adjustments`);
+        } else {
+          console.log(`  ⚠️ CORREÇÃO - Adjustment found for unknown vendor ID: ${vendorId}`);
+        }
+      });
+
+      // Step 5: Converter para array e ordenar
       const result = Array.from(vendorStatsMap.entries()).map(([vendorId, stats]) => ({
         vendedor_id: vendorId,
         vendedor_nome: stats.vendedor_nome,
@@ -252,22 +233,10 @@ export const vendorService = {
         ultimo_ajuste: stats.ultimo_ajuste
       })).sort((a, b) => b.total_ajustes - a.total_ajustes);
 
-      console.log(`✅ [vendorService] CRITICAL SUCCESS - FINAL SUMMARY RESULT - Returning ${result.length} vendor summaries:`);
+      console.log(`✅ [vendorService] CORREÇÃO - FINAL SUMMARY RESULT - Returning ${result.length} vendor summaries:`);
       result.forEach((v, index) => {
         console.log(`  ${index + 1}. ✓ ${v.vendedor_nome} (ID: ${v.vendedor_id}): ${v.total_ajustes} ajustes (+${v.pontos_adicionados}, -${v.pontos_removidos})`);
       });
-
-      if (result.length === 0) {
-        console.log('❌ [vendorService] CRITICAL ERROR - WARNING: No vendor summaries generated despite having adjustments!');
-        console.log('🔍 [vendorService] CRITICAL ERROR - Debug info:');
-        console.log(`    - Total adjustments: ${allAdjustments.length}`);
-        console.log(`    - Unique vendor IDs: ${vendorIdsInAdjustments.length}`);
-        console.log(`    - Vendors found: ${allVendors?.length || 0}`);
-        console.log(`    - Filtered adjustments: ${filteredAdjustments.length}`);
-        console.log(`    - Vendor stats map size: ${vendorStatsMap.size}`);
-      } else {
-        console.log('🎉 [vendorService] SUCCESS - Vendor summaries generated successfully!');
-      }
 
       console.log('🔍 [vendorService] === ENDING VENDOR ADJUSTMENTS SUMMARY ===');
       return result;
