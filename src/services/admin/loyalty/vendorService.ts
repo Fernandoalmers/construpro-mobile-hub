@@ -31,8 +31,8 @@ export const vendorService = {
       console.log('🔍 [vendorService] Unique vendor IDs in adjustments:', vendorIdsInAdjustments);
       console.log('🔍 [vendorService] Number of unique vendors in adjustments:', vendorIdsInAdjustments.length);
 
-      // Step 2: Get ALL vendors (no status filter) that have adjustments
-      console.log('🏪 [vendorService] Fetching ALL vendors from database (no status filter)...');
+      // Step 2: Get ALL vendors regardless of status - CRITICAL FIX
+      console.log('🏪 [vendorService] Fetching ALL vendors from database (removed status filter)...');
       const { data: allVendors, error: vendorsError } = await supabase
         .from('vendedores')
         .select('id, nome_loja, status')
@@ -44,11 +44,10 @@ export const vendorService = {
       }
 
       console.log(`🏪 [vendorService] Retrieved ${allVendors?.length || 0} vendors from database`);
-      console.log('🏪 [vendorService] All vendor details:', allVendors?.map(v => ({ 
-        id: v.id, 
-        nome: v.nome_loja, 
-        status: v.status 
-      })));
+      console.log('🏪 [vendorService] DETAILED vendor info:');
+      allVendors?.forEach(v => {
+        console.log(`  - ID: ${v.id} | Nome: ${v.nome_loja} | Status: ${v.status}`);
+      });
 
       if (!allVendors || allVendors.length === 0) {
         console.log('⚠️ [vendorService] No vendors found with the specified IDs');
@@ -145,8 +144,8 @@ export const vendorService = {
       console.log('🔍 [vendorService] Unique vendor IDs in adjustments:', vendorIdsInAdjustments);
       console.log('🔍 [vendorService] Number of unique vendors in adjustments:', vendorIdsInAdjustments.length);
 
-      // Step 2: Get ALL vendors (no status filter) that have adjustments
-      console.log('🏪 [vendorService] Fetching ALL vendors from database (no status filter)...');
+      // Step 2: Get ALL vendors regardless of status - CRITICAL FIX
+      console.log('🏪 [vendorService] Fetching ALL vendors from database (removed status filter completely)...');
       const { data: allVendors, error: vendorsError } = await supabase
         .from('vendedores')
         .select('id, nome_loja, status')
@@ -158,11 +157,10 @@ export const vendorService = {
       }
 
       console.log(`🏪 [vendorService] Retrieved ${allVendors?.length || 0} vendors from database`);
-      console.log('🏪 [vendorService] All vendor details:', allVendors?.map(v => ({ 
-        id: v.id, 
-        nome: v.nome_loja, 
-        status: v.status 
-      })));
+      console.log('🏪 [vendorService] DETAILED vendor info for summary:');
+      allVendors?.forEach(v => {
+        console.log(`  - ID: ${v.id} | Nome: ${v.nome_loja} | Status: ${v.status}`);
+      });
 
       if (!allVendors || allVendors.length === 0) {
         console.log('⚠️ [vendorService] No vendors found with the specified IDs');
@@ -239,10 +237,14 @@ export const vendorService = {
         ultimo_ajuste: stats.ultimo_ajuste
       })).sort((a, b) => b.total_ajustes - a.total_ajustes);
 
-      console.log(`✅ [vendorService] Returning ${result.length} vendor summaries:`);
+      console.log(`✅ [vendorService] FINAL SUMMARY RESULT - Returning ${result.length} vendor summaries:`);
       result.forEach(v => {
-        console.log(`  - ${v.vendedor_nome}: ${v.total_ajustes} ajustes (+${v.pontos_adicionados}, -${v.pontos_removidos})`);
+        console.log(`  ✓ ${v.vendedor_nome}: ${v.total_ajustes} ajustes (+${v.pontos_adicionados}, -${v.pontos_removidos})`);
       });
+
+      if (result.length === 0) {
+        console.log('❌ [vendorService] WARNING: No vendor summaries generated despite having adjustments!');
+      }
 
       return result;
 

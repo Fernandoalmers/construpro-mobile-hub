@@ -17,18 +17,26 @@ const VendorAdjustmentsSummaryTable: React.FC<VendorAdjustmentsSummaryTableProps
   summaries, 
   isLoading 
 }) => {
-  console.log('🎯 [VendorSummaryTable] Rendering with data:', {
-    count: summaries?.length || 0,
+  console.log('🎯 [VendorSummaryTable] === COMPONENT RENDER START ===');
+  console.log('🎯 [VendorSummaryTable] Props received:', {
+    summariesCount: summaries?.length || 0,
     isLoading,
-    summaries: summaries?.map(s => ({
-      vendor: s.vendedor_nome,
-      adjustments: s.total_ajustes,
-      added: s.pontos_adicionados,
-      removed: s.pontos_removidos
-    })) || []
+    summariesData: summaries
   });
 
-  console.log('🔍 [VendorSummaryTable] Full summaries data:', summaries);
+  // Enhanced debugging for each summary item
+  if (summaries && summaries.length > 0) {
+    console.log('🔍 [VendorSummaryTable] DETAILED SUMMARIES DATA:');
+    summaries.forEach((summary, index) => {
+      console.log(`  ${index + 1}. Vendor: "${summary.vendedor_nome}" | ID: ${summary.vendedor_id} | Adjustments: ${summary.total_ajustes}`);
+      console.log(`     Points: +${summary.pontos_adicionados} / -${summary.pontos_removidos} | Last: ${summary.ultimo_ajuste}`);
+    });
+  } else {
+    console.log('⚠️ [VendorSummaryTable] NO SUMMARIES DATA RECEIVED');
+    console.log('🔍 [VendorSummaryTable] summaries value:', summaries);
+    console.log('🔍 [VendorSummaryTable] summaries type:', typeof summaries);
+    console.log('🔍 [VendorSummaryTable] summaries length:', summaries?.length);
+  }
 
   if (isLoading) {
     console.log('⏳ [VendorSummaryTable] Showing loading state');
@@ -49,8 +57,11 @@ const VendorAdjustmentsSummaryTable: React.FC<VendorAdjustmentsSummaryTableProps
   }
 
   if (!summaries || summaries.length === 0) {
-    console.log('⚠️ [VendorSummaryTable] No summaries data, showing empty state');
+    console.log('❌ [VendorSummaryTable] No summaries data, showing empty state');
+    console.log('🔍 [VendorSummaryTable] Final check - summaries:', summaries);
   }
+
+  console.log('✅ [VendorSummaryTable] Rendering table with', summaries.length, 'vendors');
 
   return (
     <Card>
@@ -76,7 +87,7 @@ const VendorAdjustmentsSummaryTable: React.FC<VendorAdjustmentsSummaryTableProps
           </TableHeader>
           <TableBody>
             {summaries.map((summary) => {
-              console.log('🎯 [VendorSummaryTable] Rendering row for vendor:', summary.vendedor_nome);
+              console.log('🎯 [VendorSummaryTable] Rendering row for vendor:', summary.vendedor_nome, 'with', summary.total_ajustes, 'adjustments');
               return (
                 <TableRow key={summary.vendedor_id}>
                   <TableCell>
@@ -120,7 +131,10 @@ const VendorAdjustmentsSummaryTable: React.FC<VendorAdjustmentsSummaryTableProps
         {summaries.length === 0 && (
           <div className="text-center py-8 text-gray-500">
             <p>Nenhum ajuste de pontos encontrado</p>
-            <p className="text-sm mt-1">Verifique se existem vendedores ativos com ajustes</p>
+            <p className="text-sm mt-1">Verifique se existem vendedores com ajustes</p>
+            <div className="text-xs text-red-500 mt-2 font-mono">
+              DEBUG: summaries.length = {summaries.length} | isLoading = {isLoading.toString()}
+            </div>
           </div>
         )}
       </CardContent>
