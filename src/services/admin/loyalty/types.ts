@@ -14,6 +14,7 @@ export interface UserRanking {
   nome: string;
   email: string;
   saldo_pontos: number;
+  pontos_mensais: number; // Novo campo para pontos do mês atual
   nivel: string;
   total_transacoes: number;
   ultima_atividade: string;

@@ -3,8 +3,9 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, Medal, Award } from 'lucide-react';
+import { Trophy, Medal, Award, Calendar } from 'lucide-react';
 import { UserRanking } from '@/services/admin/loyaltyService';
+import { getCurrentMonthName } from '@/utils/pointsCalculations';
 
 interface UserRankingTableProps {
   users: UserRanking[];
@@ -12,6 +13,8 @@ interface UserRankingTableProps {
 }
 
 const UserRankingTable: React.FC<UserRankingTableProps> = ({ users, isLoading }) => {
+  const currentMonth = getCurrentMonthName();
+
   const getLevelIcon = (nivel: string, position: number) => {
     if (position === 0) return <Trophy className="h-4 w-4 text-yellow-500" />;
     if (position === 1) return <Medal className="h-4 w-4 text-gray-400" />;
@@ -51,6 +54,10 @@ const UserRankingTable: React.FC<UserRankingTableProps> = ({ users, isLoading })
         <CardTitle className="flex items-center gap-2">
           <Trophy className="h-5 w-5 text-yellow-500" />
           Ranking de Usuários
+          <Badge variant="outline" className="ml-2 flex items-center gap-1">
+            <Calendar className="h-3 w-3" />
+            {currentMonth}
+          </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -60,7 +67,8 @@ const UserRankingTable: React.FC<UserRankingTableProps> = ({ users, isLoading })
               <TableHead className="w-12">#</TableHead>
               <TableHead>Usuário</TableHead>
               <TableHead>Nível</TableHead>
-              <TableHead className="text-right">Pontos</TableHead>
+              <TableHead className="text-right">Pontos {currentMonth}</TableHead>
+              <TableHead className="text-right">Total Pontos</TableHead>
               <TableHead className="text-right">Transações</TableHead>
             </TableRow>
           </TableHeader>
@@ -84,7 +92,10 @@ const UserRankingTable: React.FC<UserRankingTableProps> = ({ users, isLoading })
                     {user.nivel}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-right font-bold">
+                <TableCell className="text-right font-bold text-blue-600">
+                  {user.pontos_mensais.toLocaleString()}
+                </TableCell>
+                <TableCell className="text-right">
                   {user.saldo_pontos.toLocaleString()}
                 </TableCell>
                 <TableCell className="text-right">
