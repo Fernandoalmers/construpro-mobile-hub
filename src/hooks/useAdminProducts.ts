@@ -1,102 +1,63 @@
 
-import { useState, useEffect } from 'react';
-import { 
-  fetchAdminProducts, 
-  subscribeToAdminProductUpdates, 
-  unsubscribeFromChannel 
-} from '@/services/admin/products';
-import { AdminProduct } from '@/types/admin';
-import { toast } from '@/components/ui/sonner';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { fetchProducts } from '@/services/admin/products';
 
-export const useAdminProducts = (initialFilter: string = 'all') => {
-  const [products, setProducts] = useState<AdminProduct[]>([]);
-  const [filteredProducts, setFilteredProducts] = useState<AdminProduct[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState(initialFilter);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [realtimeChannel, setRealtimeChannel] = useState<RealtimeChannel | null>(null);
+export const useAdminProducts = () => {
+  const [filter, setFilter] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const queryClient = useQueryClient();
 
-  const loadProducts = async () => {
-    try {
-      setLoading(true);
-      console.log('[useAdminProducts] Loading admin products...');
-      const productsData = await fetchAdminProducts();
-      console.log('[useAdminProducts] Admin products loaded:', productsData);
-      console.log('[useAdminProducts] Verificando nomes de lojas:', productsData.map(p => ({
-        id: p.id, 
-        vendedor_id: p.vendedor_id, 
-        lojaNome: p.lojaNome
-      })));
-      setProducts(productsData);
-      applyFilters(productsData, filter, searchTerm);
-    } catch (error) {
-      console.error('[useAdminProducts] Error loading products:', error);
-      toast.error('Erro ao carregar produtos');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Optimized query with better caching
+  const { 
+    data: allProducts = [], 
+    isLoading: loading, 
+    error,
+    refetch 
+  } = useQuery({
+    queryKey: ['admin-products'],
+    queryFn: fetchProducts,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    gcTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
+  });
 
-  const applyFilters = (products: AdminProduct[], statusFilter: string, search: string) => {
-    let filtered = [...products];
-    
+  // Memoized filtered products for better performance
+  const products = useMemo(() => {
+    let filtered = allProducts;
+
     // Apply status filter
-    if (statusFilter !== 'all') {
-      console.log(`[useAdminProducts] Filtrando por status: ${statusFilter}`);
-      filtered = filtered.filter(product => product.status === statusFilter);
+    if (filter !== 'all') {
+      filtered = filtered.filter(product => product.status === filter);
     }
-    
+
     // Apply search filter
-    if (search) {
-      const lowerSearch = search.toLowerCase();
-      console.log(`[useAdminProducts] Filtrando por termo: ${search}`);
-      filtered = filtered.filter(
-        product => 
-          product.nome.toLowerCase().includes(lowerSearch) ||
-          product.descricao.toLowerCase().includes(lowerSearch) ||
-          product.categoria.toLowerCase().includes(lowerSearch) ||
-          (product.lojaNome && product.lojaNome.toLowerCase().includes(lowerSearch))
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase();
+      filtered = filtered.filter(product =>
+        product.nome?.toLowerCase().includes(search) ||
+        product.categoria?.toLowerCase().includes(search) ||
+        product.sku?.toLowerCase().includes(search)
       );
     }
-    
-    console.log('[useAdminProducts] Filtered products:', filtered.length);
-    setFilteredProducts(filtered);
-  };
 
-  // Initial load and realtime setup
-  useEffect(() => {
-    loadProducts();
-    
-    // Set up realtime subscription for products
-    const channel = subscribeToAdminProductUpdates((product, eventType) => {
-      if (eventType === 'INSERT' || eventType === 'UPDATE' || eventType === 'DELETE') {
-        // Reload products when changes occur
-        console.log('[useAdminProducts] Realtime product update detected, reloading products...');
-        console.log('[useAdminProducts] Event:', eventType, 'Product:', product);
-        loadProducts();
-      }
-    });
-    
-    setRealtimeChannel(channel);
-      
-    return () => {
-      unsubscribeFromChannel(channel);
-    };
-  }, []);
+    return filtered;
+  }, [allProducts, filter, searchTerm]);
 
-  // Apply filters when filter or search changes
-  useEffect(() => {
-    applyFilters(products, filter, searchTerm);
-  }, [filter, searchTerm, products]);
+  // Optimized refresh function
+  const refreshProducts = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+    return refetch();
+  }, [queryClient, refetch]);
 
   return {
-    products: filteredProducts,
+    products,
     loading,
+    error,
     filter,
     setFilter,
     searchTerm,
     setSearchTerm,
-    refreshProducts: loadProducts
+    refreshProducts
   };
 };
