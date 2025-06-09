@@ -50,20 +50,38 @@ export const fetchProductCategories = async (): Promise<ProductCategory[]> => {
     
     console.log('[CategoriesService] Raw categories data:', data);
     
-    // Transform the data to match ProductCategory interface
-    const transformedData = data.map(item => ({
-      id: item.id,
-      nome: item.nome,
-      segmento_id: item.segmento_id,
-      status: item.status,
-      segment_name: item.product_segments?.nome || 'N/A',
-      produtos_count: 0, // Will be calculated separately if needed
-      created_at: item.created_at,
-      updated_at: item.updated_at
-    }));
+    // Buscar contagem de produtos para cada categoria
+    const categoriesWithCount = await Promise.all(
+      data.map(async (item) => {
+        // Buscar produtos tanto na tabela products quanto produtos
+        const [productsCount, produtosCount] = await Promise.all([
+          supabase
+            .from('products')
+            .select('id', { count: 'exact', head: true })
+            .eq('categoria', item.nome),
+          supabase
+            .from('produtos')
+            .select('id', { count: 'exact', head: true })
+            .eq('categoria', item.nome)
+        ]);
+        
+        const totalCount = (productsCount.count || 0) + (produtosCount.count || 0);
+        
+        return {
+          id: item.id,
+          nome: item.nome,
+          segmento_id: item.segmento_id,
+          status: item.status,
+          segment_name: item.product_segments?.nome || 'N/A',
+          produtos_count: totalCount,
+          created_at: item.created_at,
+          updated_at: item.updated_at
+        };
+      })
+    );
     
-    console.log('[CategoriesService] Transformed categories:', transformedData);
-    return transformedData;
+    console.log('[CategoriesService] Categories with product count:', categoriesWithCount);
+    return categoriesWithCount;
   } catch (error) {
     console.error('[CategoriesService] Error in fetchProductCategories:', error);
     throw error;

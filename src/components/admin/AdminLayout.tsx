@@ -57,7 +57,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentSection }) =
       {/* Sidebar */}
       <div className="w-64 bg-white shadow-md">
         <div className="p-4 bg-construPro-blue text-white">
-          <h2 className="text-xl font-bold">ConstruPro Admin</h2>
+          <h2 className="text-xl font-bold">Matershop Admin</h2>
           <p className="text-sm opacity-80">Painel Administrativo</p>
         </div>
         

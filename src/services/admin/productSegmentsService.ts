@@ -21,10 +21,23 @@ export const getProductSegments = async (): Promise<ProductSegment[]> => {
     
     if (error) throw error;
     
-    return data.map(segment => ({
-      ...segment,
-      categorias_count: 0 // Will be calculated separately if needed
-    }));
+    // Buscar contagem de categorias para cada segmento
+    const segmentsWithCount = await Promise.all(
+      data.map(async (segment) => {
+        const { count } = await supabase
+          .from('product_categories')
+          .select('id', { count: 'exact', head: true })
+          .eq('segmento_id', segment.id);
+        
+        return {
+          ...segment,
+          categorias_count: count || 0
+        };
+      })
+    );
+    
+    console.log('[SegmentsService] Segments with category count:', segmentsWithCount);
+    return segmentsWithCount;
   } catch (error) {
     console.error('Error fetching segments:', error);
     throw error;

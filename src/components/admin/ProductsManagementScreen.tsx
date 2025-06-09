@@ -14,7 +14,7 @@ import { approveProduct, rejectProduct } from '@/services/admin/products/product
 import { supabase } from '@/integrations/supabase/client';
 
 const ProductsManagementScreen: React.FC = () => {
-  useTitle('ConstruPro Admin - Produtos');
+  useTitle('Matershop Admin - Produtos');
   
   const {
     products,

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { useTitle } from '@/hooks/use-title';
@@ -52,7 +51,7 @@ interface AdminSegment {
 }
 
 const AdminCategoriesScreen: React.FC = () => {
-  useTitle('ConstruPro Admin - Categorias');
+  useTitle('Matershop Admin - Categorias');
   const [categories, setCategories] = useState<AdminCategory[]>([]);
   const [segments, setSegments] = useState<AdminSegment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
