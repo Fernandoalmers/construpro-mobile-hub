@@ -7,7 +7,7 @@ import { calculateMonthlyPoints, calculateLevelInfo } from '@/utils/pointsCalcul
 export const userService = {
   async getUserRanking(limit = 10): Promise<UserRanking[]> {
     try {
-      console.log('📊 [userService] Fetching user ranking with monthly points calculation');
+      console.log('📊 [userService] Fetching user ranking with monthly points calculation (including adjustments)');
 
       // Buscar todos os profiles
       const { data: profiles, error: profilesError } = await supabase
@@ -35,43 +35,78 @@ export const userService = {
         console.error('⚠️ [userService] Error fetching transactions:', transactionsError);
       }
 
-      // Agrupar transações por usuário
+      // Buscar todos os ajustes de pontos
+      const { data: allAdjustments, error: adjustmentsError } = await supabase
+        .from('pontos_ajustados')
+        .select('usuario_id, valor, tipo, created_at')
+        .in('usuario_id', profiles.map(p => p.id));
+
+      if (adjustmentsError) {
+        console.error('⚠️ [userService] Error fetching adjustments:', adjustmentsError);
+      }
+
+      console.log(`📊 [userService] Found ${allTransactions?.length || 0} transactions and ${allAdjustments?.length || 0} adjustments`);
+
+      // Agrupar transações e ajustes por usuário
       const transactionsByUser = new Map<string, any[]>();
       const transactionCountMap = new Map<string, number>();
       
+      // Processar transações normais
       allTransactions?.forEach(transaction => {
         const userId = transaction.user_id;
         
-        // Agrupar transações por usuário
         if (!transactionsByUser.has(userId)) {
           transactionsByUser.set(userId, []);
         }
         transactionsByUser.get(userId)!.push({
-          id: `${userId}-${transaction.data}`,
+          id: `trans-${userId}-${transaction.data}`,
           tipo: transaction.tipo,
           pontos: transaction.pontos,
           data: transaction.data,
           descricao: transaction.tipo
         });
         
-        // Contar total de transações
         const count = transactionCountMap.get(userId) || 0;
         transactionCountMap.set(userId, count + 1);
       });
 
-      console.log(`📊 [userService] Grouped transactions for ${transactionsByUser.size} users`);
+      // Processar ajustes de pontos
+      allAdjustments?.forEach(adjustment => {
+        const userId = adjustment.usuario_id;
+        
+        if (!transactionsByUser.has(userId)) {
+          transactionsByUser.set(userId, []);
+        }
+        
+        // Converter ajuste para formato de transação
+        // Se for "adicao", pontos positivos; se for "remocao", pontos negativos
+        const pontos = adjustment.tipo === 'adicao' ? adjustment.valor : -adjustment.valor;
+        
+        transactionsByUser.get(userId)!.push({
+          id: `adj-${userId}-${adjustment.created_at}`,
+          tipo: 'ajuste',
+          pontos: pontos,
+          data: adjustment.created_at,
+          descricao: `Ajuste de pontos (${adjustment.tipo})`
+        });
+        
+        const count = transactionCountMap.get(userId) || 0;
+        transactionCountMap.set(userId, count + 1);
+      });
+
+      console.log(`📊 [userService] Grouped transactions and adjustments for ${transactionsByUser.size} users`);
 
       // Processar cada usuário para calcular pontos mensais e nível correto
       const userRanking: UserRanking[] = profiles.map(profile => {
         const userTransactions = transactionsByUser.get(profile.id) || [];
         
-        // Calcular pontos mensais usando a função do sistema
+        // Calcular pontos mensais usando a função do sistema (agora inclui ajustes)
         const pontosMensais = calculateMonthlyPoints(userTransactions);
         
         // Calcular nível baseado nos pontos mensais
         const levelInfo = calculateLevelInfo(pontosMensais);
         
-        console.log(`👤 [userService] User ${profile.nome}: Total=${profile.saldo_pontos}, Monthly=${pontosMensais}, Level=${levelInfo.levelName}`);
+        console.log(`👤 [userService] User ${profile.nome}: Total=${profile.saldo_pontos}, Monthly=${pontosMensais} (including adjustments), Level=${levelInfo.levelName}`);
         
         return {
           id: profile.id,
@@ -90,7 +125,7 @@ export const userService = {
         .sort((a, b) => b.pontos_mensais - a.pontos_mensais)
         .slice(0, limit);
 
-      console.log(`✅ [userService] Ranking created with ${sortedRanking.length} users based on monthly points`);
+      console.log(`✅ [userService] Ranking created with ${sortedRanking.length} users based on monthly points (including adjustments)`);
       
       return sortedRanking;
 
