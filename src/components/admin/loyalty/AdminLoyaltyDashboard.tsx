@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import AdminLayout from '@/components/admin/AdminLayout';
@@ -17,6 +18,7 @@ const AdminLoyaltyDashboard: React.FC = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date>();
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
   const queryClient = useQueryClient();
 
   console.log('🎯 [Dashboard] Rendering with refreshKey:', refreshKey);
@@ -99,7 +101,7 @@ const AdminLoyaltyDashboard: React.FC = () => {
       console.log('🔍 [Dashboard] Executing vendor adjustments summary query...');
       return loyaltyService.getVendorAdjustmentsSummary();
     },
-    staleTime: 30000, // 30 seconds cache
+    staleTime: 0, // Force fresh data every time
     refetchOnMount: true,
     refetchOnWindowFocus: false,
     meta: {
@@ -191,21 +193,30 @@ const AdminLoyaltyDashboard: React.FC = () => {
     }
   }, [queryClient]);
 
-  const handleRefresh = () => {
-    console.log('🔄 [Dashboard] Manual refresh triggered');
+  const handleRefresh = async () => {
+    console.log('🔄 [Dashboard] Manual refresh triggered - FORCING cache clear');
+    setIsManualRefreshing(true);
     
-    // Clear all loyalty-related caches
-    queryClient.removeQueries({ queryKey: ['loyalty-stats'] });
-    queryClient.removeQueries({ queryKey: ['user-ranking'] });
-    queryClient.removeQueries({ queryKey: ['recent-transactions'] });
-    queryClient.removeQueries({ queryKey: ['vendor-adjustments'] });
-    queryClient.removeQueries({ queryKey: ['vendor-adjustments-summary'] });
-    
-    // Force refresh
-    setRefreshKey(prev => prev + 1);
-    setLastUpdate(new Date());
-    
-    toast.success('Dados atualizados');
+    try {
+      // Clear ALL loyalty-related caches completely
+      await queryClient.removeQueries({ queryKey: ['loyalty-stats'] });
+      await queryClient.removeQueries({ queryKey: ['user-ranking'] });
+      await queryClient.removeQueries({ queryKey: ['recent-transactions'] });
+      await queryClient.removeQueries({ queryKey: ['vendor-adjustments'] });
+      await queryClient.removeQueries({ queryKey: ['vendor-adjustments-summary'] });
+      
+      // Force immediate refresh with new key
+      setRefreshKey(prev => prev + 1);
+      setLastUpdate(new Date());
+      
+      console.log('🔄 [Dashboard] Cache cleared, forcing fresh data fetch...');
+      toast.success('Dados atualizados - cache limpo');
+    } catch (error) {
+      console.error('Error during manual refresh:', error);
+      toast.error('Erro ao atualizar dados');
+    } finally {
+      setIsManualRefreshing(false);
+    }
   };
 
   // Handle all errors collectively
@@ -257,15 +268,24 @@ const AdminLoyaltyDashboard: React.FC = () => {
               <p className="text-gray-600 mt-1">
                 Acompanhe pontos, usuários e transações do programa de fidelidade
               </p>
+              {/* Debug info for admin */}
+              <div className="text-xs text-gray-500 mt-2 font-mono">
+                Debug: {vendorSummaries?.length || 0} vendedores | {vendorAdjustments?.length || 0} ajustes | Refresh: {refreshKey}
+              </div>
             </div>
             <div className="flex items-center gap-4">
               <RealtimeIndicator 
                 isConnected={isRealtimeConnected} 
                 lastUpdate={lastUpdate} 
               />
-              <Button onClick={handleRefresh} variant="outline" className="gap-2">
-                <RefreshCw className="h-4 w-4" />
-                Atualizar
+              <Button 
+                onClick={handleRefresh} 
+                variant="outline" 
+                className="gap-2"
+                disabled={isManualRefreshing}
+              >
+                <RefreshCw className={`h-4 w-4 ${isManualRefreshing ? 'animate-spin' : ''}`} />
+                {isManualRefreshing ? 'Atualizando...' : 'Atualizar'}
               </Button>
             </div>
           </div>
