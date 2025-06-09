@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Users, TrendingUp, TrendingDown, Clock, AlertTriangle } from 'lucide-react';
+import { Users, TrendingUp, TrendingDown, Clock, AlertTriangle, Bug } from 'lucide-react';
 import { VendorAdjustmentSummary } from '@/services/admin/loyaltyService';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -17,28 +17,47 @@ const VendorAdjustmentsSummaryTable: React.FC<VendorAdjustmentsSummaryTableProps
   summaries, 
   isLoading 
 }) => {
-  console.log('🎯 [VendorSummaryTable] === COMPONENT RENDER START ===');
+  console.log('🎯 [VendorSummaryTable] === ENHANCED COMPONENT RENDER ===');
   console.log('🎯 [VendorSummaryTable] Timestamp:', new Date().toISOString());
-  console.log('🎯 [VendorSummaryTable] Props received:', {
+  console.log('🎯 [VendorSummaryTable] Props analysis:', {
     summariesCount: summaries?.length || 0,
     isLoading,
-    summariesData: summaries
+    summariesType: typeof summaries,
+    isArray: Array.isArray(summaries),
+    summariesDefined: summaries !== undefined && summaries !== null
   });
 
-  // CRITICAL DEBUG: Enhanced debugging for each summary item
+  // ENHANCED DEBUG: Detailed analysis of summaries data
   if (summaries && summaries.length > 0) {
-    console.log('🔍 [VendorSummaryTable] CRITICAL SUCCESS - DETAILED SUMMARIES DATA:');
+    console.log('🔍 [VendorSummaryTable] DETAILED SUMMARIES ANALYSIS:');
     summaries.forEach((summary, index) => {
-      console.log(`  ${index + 1}. ✓ Vendor: "${summary.vendedor_nome}" | ID: ${summary.vendedor_id} | Adjustments: ${summary.total_ajustes}`);
+      console.log(`  ${index + 1}. "${summary.vendedor_nome}" | ID: ${summary.vendedor_id} | Adjustments: ${summary.total_ajustes}`);
       console.log(`     Points: +${summary.pontos_adicionados} / -${summary.pontos_removidos} | Last: ${summary.ultimo_ajuste}`);
+      
+      // Special check for Mais Real
+      if (summary.vendedor_nome.includes('Mais Real')) {
+        console.log(`    🎯 MAIS REAL FOUND IN COMPONENT DATA! ${summary.total_ajustes} adjustments, +${summary.pontos_adicionados} points`);
+      }
     });
+    
+    // Check specifically for Mais Real
+    const maisRealSummary = summaries.find(s => s.vendedor_nome.includes('Mais Real'));
+    if (maisRealSummary) {
+      console.log(`🎉 [VendorSummaryTable] MAIS REAL SUMMARY FOUND: ${maisRealSummary.vendedor_nome} with ${maisRealSummary.total_ajustes} adjustments`);
+    } else {
+      console.log('❌ [VendorSummaryTable] MAIS REAL NOT FOUND in component data!');
+      console.log('🔍 [VendorSummaryTable] Available vendor names:', summaries.map(s => s.vendedor_nome));
+    }
+    
     console.log(`🎉 [VendorSummaryTable] TOTAL VENDORS TO RENDER: ${summaries.length}`);
   } else {
-    console.log('❌ [VendorSummaryTable] CRITICAL ERROR - NO SUMMARIES DATA RECEIVED');
-    console.log('🔍 [VendorSummaryTable] summaries value:', summaries);
-    console.log('🔍 [VendorSummaryTable] summaries type:', typeof summaries);
-    console.log('🔍 [VendorSummaryTable] summaries length:', summaries?.length);
-    console.log('🔍 [VendorSummaryTable] isLoading:', isLoading);
+    console.log('❌ [VendorSummaryTable] NO SUMMARIES DATA RECEIVED');
+    console.log('🔍 [VendorSummaryTable] Debug details:', {
+      summaries: summaries,
+      summariesLength: summaries?.length,
+      isLoading: isLoading,
+      summariesString: JSON.stringify(summaries)
+    });
   }
 
   if (isLoading) {
@@ -65,13 +84,14 @@ const VendorAdjustmentsSummaryTable: React.FC<VendorAdjustmentsSummaryTableProps
     );
   }
 
-  // CRITICAL DEBUG: Final validation before render
-  const hasData = summaries && summaries.length > 0;
+  // ENHANCED VALIDATION: Final validation before render
+  const hasData = summaries && Array.isArray(summaries) && summaries.length > 0;
   console.log('🔍 [VendorSummaryTable] FINAL RENDER DECISION:', {
     hasData,
     summariesLength: summaries?.length || 0,
     willShowTable: hasData,
-    willShowEmptyState: !hasData
+    willShowEmptyState: !hasData,
+    dataIntegrity: summaries ? 'OK' : 'FAILED'
   });
 
   return (
@@ -83,15 +103,23 @@ const VendorAdjustmentsSummaryTable: React.FC<VendorAdjustmentsSummaryTableProps
           <Badge variant="outline" className="ml-2">
             {summaries?.length || 0} vendedores
           </Badge>
-          {/* CRITICAL DEBUG: Visual indicator */}
-          {summaries && summaries.length > 0 && (
+          
+          {/* ENHANCED DEBUG INDICATORS */}
+          {hasData && (
             <Badge variant="default" className="ml-2 bg-green-100 text-green-800">
-              ✓ Dados carregados
+              ✓ {summaries.length} vendedores carregados
             </Badge>
           )}
-          {(!summaries || summaries.length === 0) && (
+          {!hasData && (
             <Badge variant="destructive" className="ml-2">
-              ⚠️ Sem dados
+              ⚠️ Nenhum dado encontrado
+            </Badge>
+          )}
+          
+          {/* Special indicator for Mais Real */}
+          {hasData && summaries.find(s => s.vendedor_nome.includes('Mais Real')) && (
+            <Badge variant="default" className="ml-2 bg-blue-100 text-blue-800">
+              🎯 Mais Real detectado
             </Badge>
           )}
         </CardTitle>
@@ -99,13 +127,16 @@ const VendorAdjustmentsSummaryTable: React.FC<VendorAdjustmentsSummaryTableProps
       <CardContent>
         {hasData ? (
           <>
+            {/* ENHANCED DEBUG PANEL */}
             <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <div className="flex items-center gap-2 text-blue-800 text-sm font-medium">
-                <Users className="h-4 w-4" />
-                DEBUG: Renderizando {summaries.length} vendedores
+                <Bug className="h-4 w-4" />
+                Debug: Renderizando {summaries.length} vendedores
               </div>
-              <div className="text-xs text-blue-600 mt-1">
-                {summaries.map(s => s.vendedor_nome).join(', ')}
+              <div className="text-xs text-blue-600 mt-1 space-y-1">
+                <div>Vendedores: {summaries.map(s => s.vendedor_nome).join(', ')}</div>
+                <div>Mais Real encontrado: {summaries.find(s => s.vendedor_nome.includes('Mais Real')) ? 'SIM' : 'NÃO'}</div>
+                <div>Timestamp: {new Date().toISOString()}</div>
               </div>
             </div>
             
@@ -121,11 +152,27 @@ const VendorAdjustmentsSummaryTable: React.FC<VendorAdjustmentsSummaryTableProps
               </TableHeader>
               <TableBody>
                 {summaries.map((summary, index) => {
-                  console.log(`🎯 [VendorSummaryTable] RENDERING ROW ${index + 1}: ${summary.vendedor_nome} with ${summary.total_ajustes} adjustments`);
+                  console.log(`🎯 [VendorSummaryTable] RENDERING ROW ${index + 1}: "${summary.vendedor_nome}" with ${summary.total_ajustes} adjustments`);
+                  
+                  // Special logging for Mais Real
+                  if (summary.vendedor_nome.includes('Mais Real')) {
+                    console.log(`🎯 [VendorSummaryTable] RENDERING MAIS REAL ROW: ${summary.total_ajustes} adjustments, +${summary.pontos_adicionados} points`);
+                  }
+                  
                   return (
-                    <TableRow key={summary.vendedor_id} className="hover:bg-gray-50">
+                    <TableRow 
+                      key={summary.vendedor_id} 
+                      className={`hover:bg-gray-50 ${summary.vendedor_nome.includes('Mais Real') ? 'bg-yellow-50 border-l-4 border-yellow-400' : ''}`}
+                    >
                       <TableCell>
-                        <div className="font-medium">{summary.vendedor_nome}</div>
+                        <div className="font-medium flex items-center gap-2">
+                          {summary.vendedor_nome}
+                          {summary.vendedor_nome.includes('Mais Real') && (
+                            <Badge variant="outline" className="bg-yellow-100 text-yellow-800 text-xs">
+                              🎯 Mais Real
+                            </Badge>
+                          )}
+                        </div>
                         <div className="text-xs text-gray-500">ID: {summary.vendedor_id}</div>
                       </TableCell>
                       <TableCell className="text-center">
@@ -171,11 +218,18 @@ const VendorAdjustmentsSummaryTable: React.FC<VendorAdjustmentsSummaryTableProps
                 <p className="text-gray-500 font-medium">Nenhum ajuste de pontos encontrado</p>
                 <p className="text-sm text-gray-400 mt-1">Verifique se existem vendedores com ajustes</p>
               </div>
-              <div className="text-xs text-red-600 bg-red-50 p-3 rounded border font-mono">
-                <div>DEBUG INFO:</div>
+              
+              {/* ENHANCED DEBUG INFO */}
+              <div className="text-xs text-red-600 bg-red-50 p-4 rounded border font-mono max-w-md">
+                <div className="font-bold mb-2">DEBUG DETALHADO:</div>
+                <div>summaries = {JSON.stringify(summaries)}</div>
                 <div>summaries.length = {summaries?.length || 0}</div>
                 <div>isLoading = {isLoading.toString()}</div>
-                <div>summaries = {JSON.stringify(summaries)}</div>
+                <div>Array.isArray(summaries) = {Array.isArray(summaries).toString()}</div>
+                <div>typeof summaries = {typeof summaries}</div>
+                <div>summaries === null = {(summaries === null).toString()}</div>
+                <div>summaries === undefined = {(summaries === undefined).toString()}</div>
+                <div>Timestamp = {new Date().toISOString()}</div>
               </div>
             </div>
           </div>
