@@ -61,7 +61,7 @@ const FavoritesScreen: React.FC = () => {
         .from('recently_viewed')
         .select(`
           *,
-          produtos!inner (
+          produtos:produto_id (
             id, nome, preco_normal, preco_promocional, imagens, categoria, descricao,
             vendedor_id
           )
@@ -121,7 +121,7 @@ const FavoritesScreen: React.FC = () => {
         .from('favorites')
         .select(`
           *,
-          produtos!inner (
+          produtos:produto_id (
             id, nome, preco_normal, preco_promocional, imagens, categoria, descricao,
             vendedor_id
           )
