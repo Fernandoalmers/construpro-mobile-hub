@@ -22,7 +22,7 @@ export const vendorService = {
       // Get unique vendor IDs from adjustments
       const vendorIdsInAdjustments = [...new Set(allAdjustments.map(adj => adj.vendedor_id))];
       
-      // Step 2: Get ALL vendors
+      // Step 2: Get ALL vendors (no status filter)
       const allVendors = await fetchVendorsForAdjustments(vendorIdsInAdjustments);
       
       if (!allVendors || allVendors.length === 0) {

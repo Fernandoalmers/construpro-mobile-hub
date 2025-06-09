@@ -29,6 +29,17 @@ export const getVendorAdjustmentsSummary = async (): Promise<VendorAdjustmentSum
       return [];
     }
 
+    // CRITICAL DEBUG: Log the mapping
+    console.log('🔍 [vendorSummaryService] VENDOR MAPPING CHECK:');
+    uniqueVendorIds.forEach(vendorId => {
+      const vendor = vendorsData.find(v => v.id === vendorId);
+      if (vendor) {
+        console.log(`  ✓ ${vendorId} -> ${vendor.nome_loja} (${vendor.status})`);
+      } else {
+        console.log(`  ❌ ${vendorId} -> NOT FOUND`);
+      }
+    });
+
     // Step 3: Process data
     const result = processVendorAdjustmentsSummary(allAdjustments, vendorsData);
 

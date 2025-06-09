@@ -37,7 +37,10 @@ export const fetchVendorAdjustments = async (limit?: number): Promise<RawVendorA
 };
 
 export const fetchVendorsForAdjustments = async (vendorIds: string[]) => {
-  console.log('🏪 [vendorAdjustmentsFetcher] Fetching ALL vendors from database (removed status filter)...');
+  console.log('🏪 [vendorAdjustmentsFetcher] Fetching ALL vendors from database (REMOVED status filter)...');
+  console.log('🏪 [vendorAdjustmentsFetcher] Vendor IDs to fetch:', vendorIds);
+  
+  // CRITICAL FIX: Remove ALL status filters to include all vendors
   const { data: allVendors, error: vendorsError } = await supabase
     .from('vendedores')
     .select('id, nome_loja, status')

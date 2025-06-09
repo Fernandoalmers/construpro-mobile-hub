@@ -13,7 +13,7 @@ export const processVendorAdjustments = (
   console.log('🔍 [vendorDataProcessor] Unique vendor IDs in adjustments:', vendorIdsInAdjustments);
   console.log('🔍 [vendorDataProcessor] Number of unique vendors in adjustments:', vendorIdsInAdjustments.length);
 
-  // Process adjustments for all found vendors
+  // CRITICAL FIX: Process adjustments for ALL found vendors regardless of status
   const vendorIds = new Set(vendors.map(v => v.id));
   const filteredAdjustments = adjustments.filter(adj => 
     vendorIds.has(adj.vendedor_id)
@@ -61,9 +61,17 @@ export const processVendorAdjustmentsSummary = (
   vendors: any[]
 ): VendorAdjustmentSummary[] => {
   console.log('🔍 [vendorDataProcessor] Processing adjustments data for summary...');
+  console.log(`🔍 [vendorDataProcessor] Total adjustments to process: ${adjustments.length}`);
+  console.log(`🔍 [vendorDataProcessor] Total vendors available: ${vendors.length}`);
   
   // Create vendor lookup map
   const vendorMap = new Map(vendors.map(v => [v.id, v]));
+
+  // CRITICAL DEBUG: Log all vendors
+  console.log('🏪 [vendorDataProcessor] Available vendors:');
+  vendors.forEach(vendor => {
+    console.log(`  - ${vendor.nome_loja} (ID: ${vendor.id}, Status: ${vendor.status})`);
+  });
 
   // Process and aggregate adjustments by vendor
   const vendorStatsMap = new Map<string, {
