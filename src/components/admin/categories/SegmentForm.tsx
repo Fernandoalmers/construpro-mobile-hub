@@ -12,7 +12,7 @@ import {
 import CustomInput from '@/components/common/CustomInput';
 import CustomSelect from '@/components/common/CustomSelect';
 import CustomButton from '@/components/common/CustomButton';
-import { Upload, X } from 'lucide-react';
+import { Upload, X, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Image } from 'lucide-react';
 import { uploadSegmentImage, deleteSegmentImage } from '@/services/admin/productSegmentsService';
@@ -41,7 +41,7 @@ const SegmentForm: React.FC<SegmentFormProps> = ({
   const [previewImage, setPreviewImage] = useState<string | null>(initialData?.image_url || null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imageLoading, setImageLoading] = useState<boolean>(false);
-  const [imageError, setImageError] = useState<boolean>(false);
+  const [imageError, setImageError] = useState<string | null>(null);
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
 
   const form = useForm({
@@ -69,43 +69,65 @@ const SegmentForm: React.FC<SegmentFormProps> = ({
     if (file) {
       console.log(`[SegmentForm] Selected file: ${file.name}, type: ${file.type}, size: ${file.size}`);
       
+      // Reset previous errors
+      setImageError(null);
+      
       // Validate file type
-      if (!file.type.startsWith('image/')) {
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+      if (!allowedTypes.includes(file.type)) {
+        const errorMsg = `Tipo de arquivo não suportado. Use apenas: ${allowedTypes.join(', ')}`;
         console.error(`[SegmentForm] Invalid file type: ${file.type}`);
-        setImageError(true);
-        toast.error('Por favor, selecione apenas arquivos de imagem');
+        setImageError(errorMsg);
+        toast.error(errorMsg);
         return;
       }
       
-      // Size validation (5MB max)
-      if (file.size > 5 * 1024 * 1024) {
+      // Size validation (10MB max - matching storage bucket limit)
+      if (file.size > 10 * 1024 * 1024) {
+        const errorMsg = 'A imagem deve ter no máximo 10MB';
         console.error(`[SegmentForm] File too large: ${file.size} bytes`);
-        setImageError(true);
-        toast.error('A imagem deve ter no máximo 5MB');
+        setImageError(errorMsg);
+        toast.error(errorMsg);
         return;
       }
       
-      setImageError(false);
       setImageFile(file);
       setImageLoading(true);
       
       try {
-        // Upload image immediately
+        console.log('[SegmentForm] Starting image upload...');
+        
+        // Upload image immediately for better UX
         const uploadedUrl = await uploadSegmentImage(file);
         
         if (uploadedUrl) {
+          console.log('[SegmentForm] Image uploaded successfully:', uploadedUrl);
           setUploadedImageUrl(uploadedUrl);
           setPreviewImage(uploadedUrl);
           form.setValue('image_url', uploadedUrl);
           toast.success('Imagem carregada com sucesso!');
         } else {
-          setImageError(true);
-          toast.error('Erro ao carregar imagem');
+          throw new Error('Upload failed - no URL returned');
         }
       } catch (error) {
         console.error('[SegmentForm] Error uploading image:', error);
-        setImageError(true);
-        toast.error('Erro ao carregar imagem');
+        
+        // More specific error handling
+        let errorMessage = 'Erro ao carregar imagem';
+        if (error instanceof Error) {
+          if (error.message.includes('bucket')) {
+            errorMessage = 'Erro de configuração do storage. Contate o suporte.';
+          } else if (error.message.includes('size')) {
+            errorMessage = 'Arquivo muito grande. Máximo 10MB.';
+          } else if (error.message.includes('type')) {
+            errorMessage = 'Tipo de arquivo não suportado.';
+          } else {
+            errorMessage = `Erro ao carregar imagem: ${error.message}`;
+          }
+        }
+        
+        setImageError(errorMessage);
+        toast.error(errorMessage);
       } finally {
         setImageLoading(false);
       }
@@ -114,28 +136,38 @@ const SegmentForm: React.FC<SegmentFormProps> = ({
 
   const handleImageLoad = () => {
     console.log('[SegmentForm] Image loaded successfully');
+    setImageError(null);
   };
 
   const handleImageError = () => {
-    console.error('[SegmentForm] Error loading image');
-    setImageError(true);
+    console.error('[SegmentForm] Error loading image preview');
+    setImageError('Erro ao carregar preview da imagem');
   };
 
   const removeImage = async () => {
-    // If there's an uploaded image, try to delete it
-    if (uploadedImageUrl) {
-      const deleted = await deleteSegmentImage(uploadedImageUrl);
-      if (deleted) {
-        toast.success('Imagem removida com sucesso!');
+    try {
+      // If there's an uploaded image, try to delete it
+      if (uploadedImageUrl) {
+        console.log('[SegmentForm] Deleting uploaded image:', uploadedImageUrl);
+        const deleted = await deleteSegmentImage(uploadedImageUrl);
+        if (deleted) {
+          toast.success('Imagem removida com sucesso!');
+        } else {
+          console.warn('[SegmentForm] Failed to delete image from storage');
+        }
       }
+    } catch (error) {
+      console.error('[SegmentForm] Error deleting image:', error);
+      // Don't show error to user for deletion failures, just log them
     }
     
+    // Reset all image-related state
     setImageFile(null);
     setPreviewImage(null);
-    setImageError(false);
+    setImageError(null);
     setUploadedImageUrl(null);
     form.setValue('image_url', null);
-    console.log('[SegmentForm] Image removed');
+    console.log('[SegmentForm] Image removed from form');
   };
 
   const statusOptions = [
@@ -169,6 +201,14 @@ const SegmentForm: React.FC<SegmentFormProps> = ({
             {imageLoading && (
               <div className="w-full max-w-[200px] h-[120px] flex items-center justify-center bg-gray-100 rounded-lg">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-construPro-blue"></div>
+                <span className="ml-2 text-sm text-gray-600">Carregando...</span>
+              </div>
+            )}
+            
+            {imageError && (
+              <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <AlertCircle className="h-4 w-4 text-red-500" />
+                <span className="text-sm text-red-700">{imageError}</span>
               </div>
             )}
             
@@ -187,6 +227,7 @@ const SegmentForm: React.FC<SegmentFormProps> = ({
                   size="sm"
                   className="absolute top-1 right-1 rounded-full w-6 h-6 p-0"
                   onClick={removeImage}
+                  disabled={imageLoading}
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -195,18 +236,15 @@ const SegmentForm: React.FC<SegmentFormProps> = ({
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center">
                 <Image className="h-10 w-10 text-gray-400" />
                 <p className="mt-2 text-sm text-gray-500">Carregar imagem para o segmento</p>
-                <p className="text-xs text-gray-400">Recomendado: 800x600px, máximo 5MB</p>
-                {imageError && (
-                  <p className="text-xs text-red-500 mt-1">
-                    Erro ao carregar imagem. Verifique o formato e tamanho.
-                  </p>
-                )}
+                <p className="text-xs text-gray-400">
+                  Formatos aceitos: JPEG, PNG, WebP, GIF | Máximo: 10MB
+                </p>
                 <div className="mt-4">
                   <input
                     id="segment-image"
                     name="segment-image"
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
                     className="sr-only"
                     onChange={handleImageChange}
                     disabled={imageLoading}
