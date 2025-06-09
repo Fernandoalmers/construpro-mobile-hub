@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import AdminLayout from '@/components/admin/AdminLayout';
@@ -91,8 +90,10 @@ const AdminLoyaltyDashboard: React.FC = () => {
   } = useQuery({
     queryKey: ['vendor-adjustments', refreshKey],
     queryFn: () => {
-      console.log('🔧 [Dashboard] Fetching vendor adjustments WITHOUT limit...');
-      return loyaltyService.getVendorAdjustments();
+      console.log('🔧 [Dashboard] === FETCHING VENDOR ADJUSTMENTS WITH EXPLICIT LIMIT ===');
+      console.log('🔧 [Dashboard] Using limit: 20 for display table');
+      // Apply limit only for the display table, not for data processing
+      return loyaltyService.getVendorAdjustments(20);
     },
     staleTime: 0,
     refetchOnMount: true,
@@ -112,6 +113,7 @@ const AdminLoyaltyDashboard: React.FC = () => {
     queryKey: ['vendor-adjustments-summary', refreshKey],
     queryFn: () => {
       console.log('🏪 [Dashboard] === EXECUTING VENDOR ADJUSTMENTS SUMMARY QUERY ===');
+      console.log('🏪 [Dashboard] Summary processes ALL data without limits');
       console.log('🏪 [Dashboard] Query timestamp:', new Date().toISOString());
       return loyaltyService.getVendorAdjustmentsSummary();
     },
@@ -126,6 +128,44 @@ const AdminLoyaltyDashboard: React.FC = () => {
       }
     }
   });
+
+  // ENHANCED DEBUG: Compare data between both queries
+  console.log('🎯 [Dashboard] === VENDOR DATA ANALYSIS ===');
+  console.log('🎯 [Dashboard] Vendor summaries state:', {
+    count: vendorSummaries?.length || 0,
+    loading: summariesLoading,
+    error: summariesError?.message || null,
+    vendors: vendorSummaries?.map(v => `${v.vendedor_nome} (${v.total_ajustes} adjustments)`) || []
+  });
+
+  console.log('🎯 [Dashboard] Vendor adjustments state:', {
+    count: vendorAdjustments?.length || 0,
+    loading: adjustmentsLoading,
+    error: adjustmentsError?.message || null,
+    uniqueVendors: vendorAdjustments ? [...new Set(vendorAdjustments.map(adj => adj.vendedor_nome))].length : 0
+  });
+
+  // CRITICAL: Check for data consistency
+  if (vendorSummaries && vendorAdjustments) {
+    const summaryVendors = vendorSummaries.map(v => v.vendedor_nome).sort();
+    const adjustmentVendors = [...new Set(vendorAdjustments.map(adj => adj.vendedor_nome))].sort();
+    
+    console.log('📊 [Dashboard] === DATA CONSISTENCY CHECK ===');
+    console.log('  Summary vendors:', summaryVendors);
+    console.log('  Adjustment vendors:', adjustmentVendors);
+    console.log('  Vendors in summary but not in adjustments:', summaryVendors.filter(v => !adjustmentVendors.includes(v)));
+    console.log('  Vendors in adjustments but not in summary:', adjustmentVendors.filter(v => !summaryVendors.includes(v)));
+    
+    // Check specifically for Mais Real
+    const maisRealInSummary = vendorSummaries.find(v => v.vendedor_nome.includes('Mais Real'));
+    const maisRealInAdjustments = vendorAdjustments.find(adj => adj.vendedor_nome.includes('Mais Real'));
+    
+    if (maisRealInSummary && !maisRealInAdjustments) {
+      console.log('🚨 [Dashboard] CRITICAL: Mais Real found in summary but NOT in adjustments table - limit issue confirmed!');
+    } else if (maisRealInSummary && maisRealInAdjustments) {
+      console.log('✅ [Dashboard] SUCCESS: Mais Real found in both summary and adjustments');
+    }
+  }
 
   // CRITICAL DEBUG: Enhanced logging
   console.log('🎯 [Dashboard] === VENDOR SUMMARIES STATE ANALYSIS ===');
@@ -314,10 +354,11 @@ const AdminLoyaltyDashboard: React.FC = () => {
               <p className="text-gray-600 mt-1">
                 Acompanhe pontos, usuários e transações do programa de fidelidade
               </p>
-              {/* CRITICAL DEBUG: Enhanced debug info */}
+              {/* ENHANCED DEBUG INFO */}
               <div className="text-xs text-gray-500 mt-2 font-mono bg-gray-100 p-2 rounded">
-                <div>Debug: {vendorSummaries?.length || 0} vendedores | {vendorAdjustments?.length || 0} ajustes | Refresh: {refreshKey}</div>
+                <div>Debug: {vendorSummaries?.length || 0} vendedores no resumo | {vendorAdjustments?.length || 0} ajustes (limit: 20) | Refresh: {refreshKey}</div>
                 <div>Loading: Summaries={summariesLoading.toString()} | Adjustments={adjustmentsLoading.toString()}</div>
+                <div>Data consistency: {vendorSummaries && vendorAdjustments ? 'Both loaded' : 'Partial data'}</div>
                 <div>Timestamp: {new Date().toISOString()}</div>
               </div>
             </div>
@@ -360,10 +401,11 @@ const AdminLoyaltyDashboard: React.FC = () => {
               <h3 className="font-medium text-yellow-800 mb-2">🐛 Debug Information</h3>
               <div className="text-xs text-yellow-700 space-y-1 font-mono">
                 <div>Vendor Summaries: {vendorSummaries?.length || 0} items | Loading: {summariesLoading.toString()}</div>
-                <div>Vendor Adjustments: {vendorAdjustments?.length || 0} items | Loading: {adjustmentsLoading.toString()}</div>
+                <div>Vendor Adjustments: {vendorAdjustments?.length || 0} items (with 20 limit) | Loading: {adjustmentsLoading.toString()}</div>
                 <div>Refresh Key: {refreshKey}</div>
                 <div>Last Update: {lastUpdate?.toISOString() || 'Never'}</div>
-                <div>Summary Data: {JSON.stringify(vendorSummaries?.map(v => ({name: v.vendedor_nome, adjustments: v.total_ajustes})) || [])}</div>
+                <div>Summary vendors: {vendorSummaries?.map(v => v.vendedor_nome).join(', ') || 'None'}</div>
+                <div>Adjustment vendors: {vendorAdjustments ? [...new Set(vendorAdjustments.map(adj => adj.vendedor_nome))].join(', ') : 'None'}</div>
               </div>
             </div>
           )}
