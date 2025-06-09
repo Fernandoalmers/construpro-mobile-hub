@@ -33,9 +33,9 @@ export const loyaltyService = {
     return transactionsService.getRecentTransactions(limit);
   },
 
-  // Vendor adjustments
-  getVendorAdjustments: (limit = 20) => {
-    return vendorService.getVendorAdjustments(limit);
+  // Vendor adjustments - removed limit parameter since vendorService.getVendorAdjustments() no longer accepts it
+  getVendorAdjustments: () => {
+    return vendorService.getVendorAdjustments();
   },
 
   getVendorAdjustmentsSummary: () => {
