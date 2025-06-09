@@ -30,13 +30,13 @@ export const vendorService = {
       const vendorIdsInAdjustments = [...new Set(allAdjustments.map(adj => adj.vendedor_id))];
       console.log('🔍 [vendorService] Unique vendor IDs in adjustments:', vendorIdsInAdjustments);
 
-      // Step 2: Get vendors with normalized status filtering at database level
+      // Step 2: Get vendors with exact status filtering at database level
       console.log('🏪 [vendorService] Fetching active/approved vendors from database...');
       const { data: activeVendors, error: vendorsError } = await supabase
         .from('vendedores')
         .select('id, nome_loja, status')
         .in('id', vendorIdsInAdjustments)
-        .or('status.ilike.%ativo%,status.ilike.%aprovado%');
+        .or('status.eq.ativo,status.eq.aprovado');
 
       if (vendorsError) {
         console.error('❌ [vendorService] Error fetching vendors:', vendorsError);
@@ -137,13 +137,13 @@ export const vendorService = {
       const vendorIdsInAdjustments = [...new Set(allAdjustments.map(adj => adj.vendedor_id))];
       console.log('🔍 [vendorService] Unique vendor IDs in adjustments:', vendorIdsInAdjustments);
 
-      // Step 2: Get vendors with normalized status filtering at database level
+      // Step 2: Get vendors with exact status filtering at database level
       console.log('🏪 [vendorService] Fetching active/approved vendors from database...');
       const { data: activeVendors, error: vendorsError } = await supabase
         .from('vendedores')
         .select('id, nome_loja, status')
         .in('id', vendorIdsInAdjustments)
-        .or('status.ilike.%ativo%,status.ilike.%aprovado%');
+        .or('status.eq.ativo,status.eq.aprovado');
 
       if (vendorsError) {
         console.error('❌ [vendorService] Error fetching vendors:', vendorsError);
