@@ -204,7 +204,7 @@ export const loyaltyService = {
       const userIds = [...new Set(adjustments?.map(a => a.usuario_id) || [])];
 
       const [vendorsData, usersData] = await Promise.all([
-        supabase.from('vendedores').select('id, nome_loja').in('id', vendorIds),
+        supabase.from('vendedores').select('id, nome_loja').in('id', vendorIds).in('status', ['ativo', 'aprovado']),
         supabase.from('profiles').select('id, nome').in('id', userIds)
       ]);
 
@@ -241,17 +241,17 @@ export const loyaltyService = {
             status
           )
         `)
-        .eq('vendedores.status', 'ativo');
+        .in('vendedores.status', ['ativo', 'aprovado']);
 
       if (error) {
         console.error('Error fetching vendor adjustments with vendors:', error);
         throw error;
       }
 
-      console.log(`Found ${adjustmentsWithVendors?.length || 0} adjustments from active vendors`);
+      console.log(`Found ${adjustmentsWithVendors?.length || 0} adjustments from active/approved vendors`);
 
       if (!adjustmentsWithVendors || adjustmentsWithVendors.length === 0) {
-        console.log('No adjustments found for active vendors');
+        console.log('No adjustments found for active/approved vendors');
         return [];
       }
 
