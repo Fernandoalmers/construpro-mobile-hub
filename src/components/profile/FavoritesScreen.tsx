@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Bookmark, Clock, ShoppingBag, ChevronRight, Star, Trash2 } from 'lucide-react';
@@ -62,7 +61,7 @@ const FavoritesScreen: React.FC = () => {
         .from('recently_viewed')
         .select(`
           *,
-          produtos:produto_id (
+          produtos!inner (
             id, nome, preco_normal, preco_promocional, imagens, categoria, descricao,
             vendedor_id
           )
@@ -122,7 +121,7 @@ const FavoritesScreen: React.FC = () => {
         .from('favorites')
         .select(`
           *,
-          produtos:produto_id (
+          produtos!inner (
             id, nome, preco_normal, preco_promocional, imagens, categoria, descricao,
             vendedor_id
           )
