@@ -4,26 +4,26 @@ import { toast } from '@/components/ui/sonner';
 import { VendorAdjustment, VendorAdjustmentSummary } from './types';
 
 export const vendorService = {
-  async getVendorAdjustments(limit = 50): Promise<VendorAdjustment[]> {
+  async getVendorAdjustments(limit?: number): Promise<VendorAdjustment[]> {
     try {
-      console.log('🔍 [vendorService] Fetching vendor adjustments with limit:', limit);
+      console.log('🔍 [vendorService] Fetching ALL vendor adjustments (no limit applied)');
       
+      // Remove the limit completely to fetch all adjustments like getVendorAdjustmentsSummary does
       const { data: adjustments, error } = await supabase
         .from('pontos_ajustados')
         .select('*')
-        .order('created_at', { ascending: false })
-        .limit(limit);
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      console.log(`📊 [vendorService] Found ${adjustments?.length || 0} total adjustments`);
+      console.log(`📊 [vendorService] Found ${adjustments?.length || 0} total adjustments from database`);
 
       // Buscar nomes dos vendedores e usuários
       const vendorIds = [...new Set(adjustments?.map(a => a.vendedor_id) || [])];
       const userIds = [...new Set(adjustments?.map(a => a.usuario_id) || [])];
 
-      console.log('🏪 [vendorService] Unique vendor IDs in adjustments:', vendorIds);
-      console.log('👥 [vendorService] Unique user IDs in adjustments:', userIds);
+      console.log('🏪 [vendorService] Unique vendor IDs in ALL adjustments:', vendorIds);
+      console.log('👥 [vendorService] Unique user IDs in ALL adjustments:', userIds);
 
       const [vendorsData, usersData] = await Promise.all([
         supabase.from('vendedores').select('id, nome_loja, status').in('id', vendorIds),
@@ -41,8 +41,13 @@ export const vendorService = {
         usuario_nome: userMap.get(adjustment.usuario_id) || 'Usuário desconhecido'
       })) || [];
 
-      console.log(`✅ [vendorService] Returning ${result.length} processed adjustments`);
-      return result;
+      console.log(`✅ [vendorService] Returning ${result.length} processed adjustments from getVendorAdjustments`);
+      
+      // Apply limit only for display purposes if specified
+      const finalResult = limit ? result.slice(0, limit) : result;
+      console.log(`📋 [vendorService] Final result after limit (${limit || 'no limit'}): ${finalResult.length} adjustments`);
+      
+      return finalResult;
     } catch (error) {
       console.error('❌ [vendorService] Error fetching vendor adjustments:', error);
       toast.error('Erro ao buscar ajustes de vendedores');
