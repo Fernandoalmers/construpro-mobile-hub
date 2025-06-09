@@ -1,5 +1,5 @@
 
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import OptimizedProductCard from './components/OptimizedProductCard';
 import OptimizedSkeleton from '../common/OptimizedSkeleton';
@@ -30,6 +30,7 @@ const ProductListSection = memo<ProductListSectionProps>(({
   viewType = 'grid'
 }) => {
   const navigate = useNavigate();
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
   const handleProductClick = useCallback((productId: string) => {
     navigate(`/produto/${productId}`);
@@ -42,7 +43,7 @@ const ProductListSection = memo<ProductListSectionProps>(({
 
   // Show empty state if no products
   if (filteredProdutos.length === 0) {
-    return <EmptyProductState onClearFilters={clearFilters} />;
+    return <EmptyProductState clearFilters={clearFilters} />;
   }
 
   return (
@@ -72,7 +73,7 @@ const ProductListSection = memo<ProductListSectionProps>(({
       )}
 
       {/* Loading indicator for infinite scroll */}
-      {isLoadingMore && <LoadingIndicator />}
+      {isLoadingMore && <LoadingIndicator loadMoreRef={loadMoreRef} />}
     </div>
   );
 });
