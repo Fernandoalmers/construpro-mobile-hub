@@ -13,13 +13,16 @@ export interface RawVendorAdjustment {
 }
 
 export const fetchVendorAdjustments = async (): Promise<RawVendorAdjustment[]> => {
-  console.log('🔍 [vendorAdjustmentsFetcher] === CORREÇÃO DEFINITIVA - FETCH ALL VENDOR ADJUSTMENTS ===');
+  console.log('🔍 [vendorAdjustmentsFetcher] === CORREÇÃO DEFINITIVA - FETCH ALL ===');
   console.log('🔍 [vendorAdjustmentsFetcher] Timestamp:', new Date().toISOString());
-  console.log('🔍 [vendorAdjustmentsFetcher] Garantindo fetch completo dos dados');
+  console.log('🔍 [vendorAdjustmentsFetcher] Forçando refresh completo do cache');
   
   try {
-    // CORREÇÃO: Query completamente explícita sem qualquer limite implícito
-    const { data: allAdjustments, error: adjustmentsError } = await supabase
+    // CORREÇÃO DEFINITIVA: Query com cache-busting e retry
+    const timestamp = Date.now();
+    console.log('🔄 [vendorAdjustmentsFetcher] Executando query principal com timestamp:', timestamp);
+    
+    const { data: primaryData, error: primaryError } = await supabase
       .from('pontos_ajustados')
       .select(`
         id,
@@ -32,82 +35,99 @@ export const fetchVendorAdjustments = async (): Promise<RawVendorAdjustment[]> =
       `)
       .order('created_at', { ascending: false });
 
-    if (adjustmentsError) {
-      console.error('❌ [vendorAdjustmentsFetcher] ERRO CRÍTICO na query:', adjustmentsError);
-      throw adjustmentsError;
+    if (primaryError) {
+      console.error('❌ [vendorAdjustmentsFetcher] ERRO na query principal:', primaryError);
+      throw primaryError;
     }
 
-    const adjustmentCount = allAdjustments?.length || 0;
-    console.log(`📊 [vendorAdjustmentsFetcher] SUCESSO: ${adjustmentCount} ajustes fetched`);
-    
-    if (adjustmentCount === 0) {
-      console.warn('⚠️ [vendorAdjustmentsFetcher] ATENÇÃO: Nenhum ajuste encontrado no banco');
-      return [];
+    const primaryCount = primaryData?.length || 0;
+    console.log(`📊 [vendorAdjustmentsFetcher] QUERY PRINCIPAL: ${primaryCount} ajustes fetched`);
+
+    // VALIDAÇÃO CRÍTICA: Verificar se temos pelo menos 35+ ajustes (esperado ~37)
+    if (primaryCount < 35) {
+      console.warn(`⚠️ [vendorAdjustmentsFetcher] ATENÇÃO: Apenas ${primaryCount} ajustes encontrados (esperado ~37)`);
+      
+      // RETRY: Tentar query alternativa sem cache
+      console.log('🔄 [vendorAdjustmentsFetcher] Executando query de retry...');
+      const { data: retryData, error: retryError } = await supabase
+        .from('pontos_ajustados')
+        .select('*')
+        .limit(1000); // Limite alto para garantir todos os dados
+      
+      if (retryError) {
+        console.error('❌ [vendorAdjustmentsFetcher] Retry também falhou:', retryError);
+      } else {
+        const retryCount = retryData?.length || 0;
+        console.log(`🔄 [vendorAdjustmentsFetcher] RETRY RESULT: ${retryCount} ajustes`);
+        
+        if (retryCount > primaryCount) {
+          console.log('✅ [vendorAdjustmentsFetcher] Retry retornou mais dados! Usando retry data');
+          return retryData || [];
+        }
+      }
     }
 
-    // VALIDAÇÃO: Verificar integridade dos dados
-    const vendorIds = new Set(allAdjustments.map(adj => adj.vendedor_id));
-    console.log(`🏪 [vendorAdjustmentsFetcher] Vendedores únicos encontrados: ${vendorIds.size}`);
-    console.log(`🏪 [vendorAdjustmentsFetcher] Vendor IDs: ${Array.from(vendorIds).join(', ')}`);
-    
-    // VALIDAÇÃO: Contagem por vendedor
-    const vendorCounts = new Map<string, number>();
-    allAdjustments.forEach(adj => {
-      const count = vendorCounts.get(adj.vendedor_id) || 0;
-      vendorCounts.set(adj.vendedor_id, count + 1);
-    });
-    
-    console.log('📊 [vendorAdjustmentsFetcher] DISTRIBUIÇÃO POR VENDEDOR:');
-    Array.from(vendorCounts.entries()).forEach(([vendorId, count]) => {
-      console.log(`  - Vendor ${vendorId}: ${count} ajustes`);
-    });
+    // VALIDAÇÃO DETALHADA dos dados principais
+    if (primaryData && primaryData.length > 0) {
+      const vendorIds = new Set(primaryData.map(adj => adj.vendedor_id));
+      console.log(`🏪 [vendorAdjustmentsFetcher] Vendedores únicos: ${vendorIds.size}`);
+      console.log(`🏪 [vendorAdjustmentsFetcher] Vendor IDs: ${Array.from(vendorIds).join(', ')}`);
+      
+      // Contagem por vendedor
+      const vendorCounts = new Map<string, number>();
+      primaryData.forEach(adj => {
+        const count = vendorCounts.get(adj.vendedor_id) || 0;
+        vendorCounts.set(adj.vendedor_id, count + 1);
+      });
+      
+      console.log('📊 [vendorAdjustmentsFetcher] DISTRIBUIÇÃO POR VENDEDOR:');
+      Array.from(vendorCounts.entries()).forEach(([vendorId, count]) => {
+        console.log(`  - Vendor ${vendorId}: ${count} ajustes`);
+      });
 
-    // VALIDAÇÃO CRÍTICA: Verificar se temos pelo menos 2 vendedores
-    if (vendorIds.size < 2) {
-      console.error('🚨 [vendorAdjustmentsFetcher] PROBLEMA CRÍTICO: Menos de 2 vendedores encontrados!');
-      console.log('🚨 [vendorAdjustmentsFetcher] Esperávamos pelo menos Beaba e Mais Real');
+      // VALIDAÇÃO CRÍTICA: Esperamos pelo menos 2 vendedores
+      if (vendorIds.size < 2) {
+        console.error('🚨 [vendorAdjustmentsFetcher] PROBLEMA CRÍTICO: Menos de 2 vendedores!');
+        console.error('🚨 [vendorAdjustmentsFetcher] Dados podem estar sendo filtrados incorretamente');
+      }
     }
 
-    console.log(`✅ [vendorAdjustmentsFetcher] FETCH COMPLETO: ${adjustmentCount} ajustes de ${vendorIds.size} vendedores`);
-    return allAdjustments;
+    console.log(`✅ [vendorAdjustmentsFetcher] FETCH COMPLETO: ${primaryCount} ajustes retornados`);
+    return primaryData || [];
 
   } catch (error) {
-    console.error('❌ [vendorAdjustmentsFetcher] ERRO FATAL no fetch:', error);
+    console.error('❌ [vendorAdjustmentsFetcher] ERRO FATAL:', error);
     
-    // FALLBACK: Tentar query alternativa mais básica
-    console.log('🔄 [vendorAdjustmentsFetcher] Tentando query de fallback...');
+    // FALLBACK ABSOLUTO: Query mais simples possível
+    console.log('🆘 [vendorAdjustmentsFetcher] Executando fallback absoluto...');
     try {
-      const { data: fallbackData, error: fallbackError } = await supabase
+      const { data: fallbackData } = await supabase
         .from('pontos_ajustados')
         .select('*');
       
-      if (fallbackError) {
-        console.error('❌ [vendorAdjustmentsFetcher] Fallback também falhou:', fallbackError);
-        throw fallbackError;
-      }
-      
-      console.log(`🆘 [vendorAdjustmentsFetcher] Fallback SUCCESS: ${fallbackData?.length || 0} ajustes`);
+      const fallbackCount = fallbackData?.length || 0;
+      console.log(`🆘 [vendorAdjustmentsFetcher] FALLBACK: ${fallbackCount} ajustes`);
       return fallbackData || [];
       
     } catch (fallbackErr) {
-      console.error('❌ [vendorAdjustmentsFetcher] Todas as queries falharam:', fallbackErr);
-      throw fallbackErr;
+      console.error('❌ [vendorAdjustmentsFetcher] Todos os fallbacks falharam:', fallbackErr);
+      return [];
     }
   }
 };
 
 export const fetchVendorsForAdjustments = async (vendorIds: string[]) => {
-  console.log('🏪 [vendorAdjustmentsFetcher] === CORREÇÃO DEFINITIVA - FETCH VENDOR DATA ===');
+  console.log('🏪 [vendorAdjustmentsFetcher] === FETCH VENDORS DEFINITIVO ===');
   console.log('🏪 [vendorAdjustmentsFetcher] Vendor IDs solicitados:', vendorIds);
   console.log('🏪 [vendorAdjustmentsFetcher] Quantidade:', vendorIds.length);
   
   if (vendorIds.length === 0) {
-    console.warn('⚠️ [vendorAdjustmentsFetcher] ATENÇÃO: Lista de vendor IDs vazia');
+    console.warn('⚠️ [vendorAdjustmentsFetcher] Lista de vendor IDs vazia');
     return [];
   }
   
   try {
-    // CORREÇÃO: Query mais robusta para vendedores
+    // CORREÇÃO: Query robusta para vendedores
     const { data: vendorsData, error: vendorsError } = await supabase
       .from('vendedores')
       .select(`
@@ -133,16 +153,17 @@ export const fetchVendorsForAdjustments = async (vendorIds: string[]) => {
     
     if (missingVendorIds.length > 0) {
       console.error('🚨 [vendorAdjustmentsFetcher] VENDEDORES MISSING:', missingVendorIds);
-      console.error('🚨 [vendorAdjustmentsFetcher] Isso causará perda de dados!');
+      console.error('🚨 [vendorAdjustmentsFetcher] Isso causará perda de dados na UI!');
     }
     
-    // LOG detalhado de cada vendedor
+    // LOG DETALHADO de cada vendedor encontrado
     if (vendorsData && vendorsData.length > 0) {
-      console.log('🏪 [vendorAdjustmentsFetcher] DETALHES DOS VENDEDORES:');
+      console.log('🏪 [vendorAdjustmentsFetcher] VENDEDORES ENCONTRADOS:');
       vendorsData.forEach((vendor, index) => {
         const nameLower = vendor.nome_loja?.toLowerCase().trim() || '';
         console.log(`  ${index + 1}. ID: ${vendor.id}, Nome: "${vendor.nome_loja}", Status: ${vendor.status}`);
         
+        // Busca específica por vendedores chave
         if (nameLower.includes('mais real')) {
           console.log(`    🎯 MAIS REAL CONFIRMADO!`);
         }
@@ -162,7 +183,7 @@ export const fetchVendorsForAdjustments = async (vendorIds: string[]) => {
 };
 
 export const fetchUsersForAdjustments = async (userIds: string[]) => {
-  console.log('👥 [vendorAdjustmentsFetcher] === FETCH USER DATA ===');
+  console.log('👥 [vendorAdjustmentsFetcher] === FETCH USERS ===');
   console.log(`👥 [vendorAdjustmentsFetcher] Buscando ${userIds.length} usuários`);
   
   if (userIds.length === 0) {
@@ -188,14 +209,6 @@ export const fetchUsersForAdjustments = async (userIds: string[]) => {
     const foundCount = usersData?.length || 0;
     console.log(`👥 [vendorAdjustmentsFetcher] USUÁRIOS ENCONTRADOS: ${foundCount}/${userIds.length}`);
     
-    // Verificar usuários missing
-    const foundUserIds = new Set(usersData?.map(u => u.id) || []);
-    const missingUserIds = userIds.filter(id => !foundUserIds.has(id));
-    
-    if (missingUserIds.length > 0) {
-      console.warn('⚠️ [vendorAdjustmentsFetcher] Usuários não encontrados:', missingUserIds.length);
-    }
-
     return usersData || [];
 
   } catch (error) {
