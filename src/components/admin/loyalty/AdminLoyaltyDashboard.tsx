@@ -54,10 +54,13 @@ const AdminLoyaltyDashboard: React.FC = () => {
 
   const {
     data: vendorSummaries,
-    isLoading: summariesLoading
+    isLoading: summariesLoading,
+    error: summariesError
   } = useQuery({
     queryKey: ['vendor-adjustments-summary', refreshKey],
-    queryFn: loyaltyService.getVendorAdjustmentsSummary
+    queryFn: loyaltyService.getVendorAdjustmentsSummary,
+    staleTime: 0, // Always fetch fresh data
+    cacheTime: 0 // Don't cache the results
   });
 
   // Real-time subscription setup
@@ -80,6 +83,9 @@ const AdminLoyaltyDashboard: React.FC = () => {
       () => {
         console.log('Adjustments updated via real-time');
         setLastUpdate(new Date());
+        // Force fresh data by invalidating and removing from cache
+        queryClient.removeQueries({ queryKey: ['vendor-adjustments'] });
+        queryClient.removeQueries({ queryKey: ['vendor-adjustments-summary'] });
         queryClient.invalidateQueries({ queryKey: ['vendor-adjustments'] });
         queryClient.invalidateQueries({ queryKey: ['vendor-adjustments-summary'] });
       }
@@ -93,6 +99,16 @@ const AdminLoyaltyDashboard: React.FC = () => {
   }, [queryClient]);
 
   const handleRefresh = () => {
+    console.log('Manual refresh triggered - clearing all caches');
+    
+    // Clear all loyalty-related caches
+    queryClient.removeQueries({ queryKey: ['loyalty-stats'] });
+    queryClient.removeQueries({ queryKey: ['user-ranking'] });
+    queryClient.removeQueries({ queryKey: ['recent-transactions'] });
+    queryClient.removeQueries({ queryKey: ['vendor-adjustments'] });
+    queryClient.removeQueries({ queryKey: ['vendor-adjustments-summary'] });
+    
+    // Force refresh with new key
     setRefreshKey(prev => prev + 1);
     setLastUpdate(new Date());
     toast.success('Dados atualizados');
@@ -104,6 +120,13 @@ const AdminLoyaltyDashboard: React.FC = () => {
       toast.error('Erro ao carregar dashboard de fidelidade');
     }
   }, [statsError]);
+
+  useEffect(() => {
+    if (summariesError) {
+      console.error('Error loading vendor summaries:', summariesError);
+      toast.error('Erro ao carregar resumo de vendedores');
+    }
+  }, [summariesError]);
 
   return (
     <AdminLayout currentSection="Fidelidade">
