@@ -749,6 +749,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_pontos_ajustados_vendedor"
+            columns: ["vendedor_id"]
+            isOneToOne: false
+            referencedRelation: "vendedores"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "pontos_ajustados_vendedor_id_fkey"
             columns: ["vendedor_id"]
             isOneToOne: false
