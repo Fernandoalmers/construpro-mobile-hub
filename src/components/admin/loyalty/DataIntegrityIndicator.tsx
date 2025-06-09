@@ -50,9 +50,10 @@ const DataIntegrityIndicator: React.FC = () => {
           `
         });
 
-      const foreignKeyActive = !constraintError && constraintData?.status === 'success';
+      // Process the results properly
+      const foreignKeyActive = !constraintError && constraintData !== null;
       const totalAdjustments = adjustmentsData ? (adjustmentsData as any).count || 0 : 0;
-      const vendorIntegrityCheck = !integrityError && integrityData?.status === 'success';
+      const vendorIntegrityCheck = !integrityError && integrityData !== null;
 
       setStatus({
         foreignKeyActive,
