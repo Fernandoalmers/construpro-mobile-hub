@@ -11,7 +11,7 @@ import DataIntegrityIndicator from './DataIntegrityIndicator';
 import RealtimeIndicator from './RealtimeIndicator';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Bug } from 'lucide-react';
+import { RefreshCw, Bug, Search } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 
 const AdminLoyaltyDashboard: React.FC = () => {
@@ -20,11 +20,13 @@ const AdminLoyaltyDashboard: React.FC = () => {
   const [lastUpdate, setLastUpdate] = useState<Date>();
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
   const [debugMode, setDebugMode] = useState(false);
+  const [investigationMode, setInvestigationMode] = useState(false);
   const queryClient = useQueryClient();
 
-  console.log('🎯 [Dashboard] === DASHBOARD RENDER START ===');
-  console.log('🎯 [Dashboard] Timestamp:', new Date().toISOString());
-  console.log('🎯 [Dashboard] Rendering with refreshKey:', refreshKey);
+  console.log('🚨 [Dashboard] === INVESTIGAÇÃO CRÍTICA DO DASHBOARD ===');
+  console.log('🚨 [Dashboard] Timestamp:', new Date().toISOString());
+  console.log('🚨 [Dashboard] Refresh key:', refreshKey);
+  console.log('🚨 [Dashboard] Investigation mode:', investigationMode);
 
   const {
     data: stats,
@@ -108,14 +110,46 @@ const AdminLoyaltyDashboard: React.FC = () => {
     data: vendorSummaries,
     isLoading: summariesLoading,
     error: summariesError,
-    refetch: refetchSummaries
+    refetch: refetchSummaries,
+    dataUpdatedAt: summariesUpdatedAt,
+    isFetching: summariesFetching
   } = useQuery({
     queryKey: ['vendor-adjustments-summary', refreshKey],
     queryFn: () => {
-      console.log('🏪 [Dashboard] === EXECUTING VENDOR ADJUSTMENTS SUMMARY QUERY ===');
-      console.log('🏪 [Dashboard] Summary processes ALL data without limits');
-      console.log('🏪 [Dashboard] Query timestamp:', new Date().toISOString());
-      return loyaltyService.getVendorAdjustmentsSummary();
+      console.log('🚨 [Dashboard] === INVESTIGAÇÃO CRÍTICA DO SUMMARY QUERY ===');
+      console.log('🚨 [Dashboard] Executando query para vendor adjustments summary');
+      console.log('🚨 [Dashboard] Query timestamp:', new Date().toISOString());
+      console.log('🚨 [Dashboard] Refresh key na query:', refreshKey);
+      
+      const startTime = Date.now();
+      const result = loyaltyService.getVendorAdjustmentsSummary();
+      
+      result.then(data => {
+        const endTime = Date.now();
+        console.log('🚨 [Dashboard] === RESULTADO DA QUERY RECEBIDO ===');
+        console.log(`🚨 [Dashboard] Tempo de execução: ${endTime - startTime}ms`);
+        console.log('🚨 [Dashboard] Dados retornados pela query:', data);
+        console.log('🚨 [Dashboard] Tipo dos dados:', typeof data);
+        console.log('🚨 [Dashboard] É array:', Array.isArray(data));
+        console.log('🚨 [Dashboard] Length:', data?.length || 0);
+        
+        if (data && Array.isArray(data) && data.length > 0) {
+          console.log('🚨 [Dashboard] Nomes dos vendedores na query:', data.map(v => v.vendedor_nome));
+          
+          const maisReal = data.find(v => v.vendedor_nome?.toLowerCase().includes('mais real'));
+          const beaba = data.find(v => v.vendedor_nome?.toLowerCase().includes('beaba'));
+          
+          console.log('🚨 [Dashboard] BUSCA POR VENDEDORES ESPECÍFICOS:');
+          console.log('  - Mais Real encontrado:', !!maisReal, maisReal || 'não encontrado');
+          console.log('  - Beaba encontrado:', !!beaba, beaba || 'não encontrado');
+        } else {
+          console.log('🚨 [Dashboard] PROBLEMA: Query retornou dados inválidos!');
+        }
+      }).catch(error => {
+        console.error('🚨 [Dashboard] ERRO NA QUERY:', error);
+      });
+      
+      return result;
     },
     staleTime: 0,
     refetchOnMount: true,
@@ -124,12 +158,62 @@ const AdminLoyaltyDashboard: React.FC = () => {
     retryDelay: 1000,
     meta: {
       onError: (error: any) => {
-        console.error('❌ [Dashboard] Error fetching vendor adjustments summary:', error);
+        console.error('🚨 [Dashboard] ERRO NO META DA QUERY:', error);
       }
     }
   });
 
-  // ENHANCED DEBUG: Compare data between both queries
+  // INVESTIGAÇÃO CRÍTICA DOS DADOS RECEBIDOS
+  console.log('🚨 [Dashboard] === INVESTIGAÇÃO DO ESTADO DOS DADOS ===');
+  console.log('🚨 [Dashboard] Vendor summaries state:', {
+    data: vendorSummaries,
+    dataType: typeof vendorSummaries,
+    isArray: Array.isArray(vendorSummaries),
+    length: vendorSummaries?.length || 0,
+    isLoading: summariesLoading,
+    isFetching: summariesFetching,
+    error: summariesError?.message || null,
+    dataUpdatedAt: summariesUpdatedAt ? new Date(summariesUpdatedAt).toISOString() : 'never',
+    hasData: !!vendorSummaries && Array.isArray(vendorSummaries) && vendorSummaries.length > 0
+  });
+
+  // ANÁLISE ESPECÍFICA DOS DADOS
+  if (vendorSummaries) {
+    console.log('🚨 [Dashboard] === ANÁLISE DETALHADA DOS DADOS RECEBIDOS ===');
+    if (Array.isArray(vendorSummaries)) {
+      console.log(`🚨 [Dashboard] Array válido com ${vendorSummaries.length} elementos`);
+      
+      vendorSummaries.forEach((summary, index) => {
+        console.log(`🚨 [Dashboard] Elemento ${index + 1}:`, {
+          vendedor_id: summary.vendedor_id,
+          vendedor_nome: summary.vendedor_nome,
+          total_ajustes: summary.total_ajustes
+        });
+        
+        if (summary.vendedor_nome?.toLowerCase().includes('mais real')) {
+          console.log('🎯 [Dashboard] *** MAIS REAL ENCONTRADO NO DASHBOARD! ***', summary);
+        }
+      });
+      
+      const maisRealInDashboard = vendorSummaries.find(v => v.vendedor_nome?.toLowerCase().includes('mais real'));
+      const beabaInDashboard = vendorSummaries.find(v => v.vendedor_nome?.toLowerCase().includes('beaba'));
+      
+      console.log('🚨 [Dashboard] RESULTADO DA VERIFICAÇÃO NO DASHBOARD:');
+      console.log(`  - Mais Real no dashboard: ${!!maisRealInDashboard}`);
+      console.log(`  - Beaba no dashboard: ${!!beabaInDashboard}`);
+      
+      if (!maisRealInDashboard) {
+        console.log('❌ [Dashboard] PROBLEMA CRÍTICO: Mais Real não está nos dados do dashboard!');
+        console.log('🚨 [Dashboard] Vendedores disponíveis:', vendorSummaries.map(v => v.vendedor_nome));
+      }
+    } else {
+      console.log('❌ [Dashboard] PROBLEMA: vendorSummaries não é um array!', vendorSummaries);
+    }
+  } else {
+    console.log('❌ [Dashboard] PROBLEMA: vendorSummaries é null/undefined');
+  }
+
+  // CRITICAL DEBUG: Compare data between both queries
   console.log('🎯 [Dashboard] === VENDOR DATA ANALYSIS ===');
   console.log('🎯 [Dashboard] Vendor summaries state:', {
     count: vendorSummaries?.length || 0,
@@ -144,34 +228,6 @@ const AdminLoyaltyDashboard: React.FC = () => {
     error: adjustmentsError?.message || null,
     uniqueVendors: vendorAdjustments ? [...new Set(vendorAdjustments.map(adj => adj.vendedor_nome))].length : 0
   });
-
-  // CRITICAL: Check for data consistency
-  if (vendorSummaries && vendorAdjustments) {
-    const summaryVendors = vendorSummaries.map(v => v.vendedor_nome).sort();
-    const adjustmentVendors = [...new Set(vendorAdjustments.map(adj => adj.vendedor_nome))].sort();
-    
-    console.log('📊 [Dashboard] === DATA CONSISTENCY CHECK ===');
-    console.log('  Summary vendors:', summaryVendors);
-    console.log('  Adjustment vendors:', adjustmentVendors);
-    console.log('  Vendors in summary but not in adjustments:', summaryVendors.filter(v => !adjustmentVendors.includes(v)));
-    console.log('  Vendors in adjustments but not in summary:', adjustmentVendors.filter(v => !summaryVendors.includes(v)));
-    
-    // Check specifically for both key vendors
-    const maisRealInSummary = vendorSummaries.find(v => v.vendedor_nome.includes('Mais Real'));
-    const maisRealInAdjustments = vendorAdjustments.find(adj => adj.vendedor_nome.includes('Mais Real'));
-    const beabaInSummary = vendorSummaries.find(v => v.vendedor_nome.includes('Beaba'));
-    const beabaInAdjustments = vendorAdjustments.find(adj => adj.vendedor_nome.includes('Beaba'));
-    
-    console.log('🎯 [Dashboard] KEY VENDORS CHECK:');
-    console.log(`  - Mais Real: Summary=${!!maisRealInSummary}, Adjustments=${!!maisRealInAdjustments}`);
-    console.log(`  - Beaba: Summary=${!!beabaInSummary}, Adjustments=${!!beabaInAdjustments}`);
-    
-    if (maisRealInSummary && beabaInSummary && maisRealInAdjustments && beabaInAdjustments) {
-      console.log('✅ [Dashboard] SUCCESS: Both vendors found in both datasets');
-    } else {
-      console.log('❌ [Dashboard] ISSUE: Missing vendors detected');
-    }
-  }
 
   // CRITICAL DEBUG: Enhanced logging
   console.log('🎯 [Dashboard] === VENDOR SUMMARIES STATE ANALYSIS ===');
@@ -261,50 +317,43 @@ const AdminLoyaltyDashboard: React.FC = () => {
   }, [queryClient]);
 
   const handleRefresh = async () => {
-    console.log('🔄 [Dashboard] === MANUAL REFRESH TRIGGERED ===');
-    console.log('🔄 [Dashboard] Refresh timestamp:', new Date().toISOString());
+    console.log('🚨 [Dashboard] === REFRESH MANUAL COM INVESTIGAÇÃO ===');
     setIsManualRefreshing(true);
     
     try {
-      console.log('🗑️ [Dashboard] Clearing ALL loyalty-related caches completely...');
-      
-      // Clear ALL loyalty-related caches completely
-      await queryClient.removeQueries({ queryKey: ['loyalty-stats'] });
-      await queryClient.removeQueries({ queryKey: ['user-ranking'] });
-      await queryClient.removeQueries({ queryKey: ['recent-transactions'] });
-      await queryClient.removeQueries({ queryKey: ['vendor-adjustments'] });
+      console.log('🚨 [Dashboard] Limpando cache...');
       await queryClient.removeQueries({ queryKey: ['vendor-adjustments-summary'] });
       
-      console.log('🆔 [Dashboard] Incrementing refresh key to force fresh data fetch...');
-      // Force immediate refresh with new key
+      console.log('🚨 [Dashboard] Forçando refresh...');
       setRefreshKey(prev => {
         const newKey = prev + 1;
-        console.log(`🔑 [Dashboard] Refresh key updated: ${prev} -> ${newKey}`);
+        console.log(`🚨 [Dashboard] Novo refresh key: ${newKey}`);
         return newKey;
       });
       
       setLastUpdate(new Date());
-      
-      console.log('✅ [Dashboard] Cache cleared, forcing fresh data fetch...');
-      toast.success('Dados atualizados - cache limpo e recarregando');
+      toast.success('🔍 Refresh com investigação ativado');
     } catch (error) {
-      console.error('❌ [Dashboard] Error during manual refresh:', error);
-      toast.error('Erro ao atualizar dados');
+      console.error('🚨 [Dashboard] Erro no refresh:', error);
+      toast.error('Erro no refresh');
     } finally {
       setIsManualRefreshing(false);
     }
   };
 
-  const handleDebugRefresh = async () => {
-    console.log('🐛 [Dashboard] === DEBUG REFRESH TRIGGERED ===');
+  const handleInvestigationRefresh = async () => {
+    console.log('🚨 [Dashboard] === REFRESH DE INVESTIGAÇÃO CRÍTICA ===');
+    setInvestigationMode(true);
+    
     try {
-      console.log('🐛 [Dashboard] Forcing vendor summaries refetch...');
+      console.log('🚨 [Dashboard] Executando refresh investigativo...');
       const result = await refetchSummaries();
-      console.log('🐛 [Dashboard] Debug refetch result:', result);
-      toast.success('Debug refresh concluído - verifique o console');
+      console.log('🚨 [Dashboard] Resultado do refresh investigativo:', result);
+      
+      toast.success('🔍 Investigação completa - verifique o console');
     } catch (error) {
-      console.error('❌ [Dashboard] Debug refresh error:', error);
-      toast.error('Erro no debug refresh');
+      console.error('🚨 [Dashboard] Erro na investigação:', error);
+      toast.error('Erro na investigação');
     }
   };
 
@@ -351,7 +400,7 @@ const AdminLoyaltyDashboard: React.FC = () => {
     <ErrorBoundary>
       <AdminLayout currentSection="Fidelidade">
         <div className="space-y-6">
-          {/* Header */}
+          {/* Header com investigação */}
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
@@ -360,12 +409,17 @@ const AdminLoyaltyDashboard: React.FC = () => {
               <p className="text-gray-600 mt-1">
                 Acompanhe pontos, usuários e transações do programa de fidelidade
               </p>
-              {/* ENHANCED DEBUG INFO */}
-              <div className="text-xs text-gray-500 mt-2 font-mono bg-gray-100 p-2 rounded">
-                <div>Debug: {vendorSummaries?.length || 0} vendedores no resumo | {vendorAdjustments?.length || 0} ajustes (sem limite) | Refresh: {refreshKey}</div>
-                <div>Loading: Summaries={summariesLoading.toString()} | Adjustments={adjustmentsLoading.toString()}</div>
-                <div>Data consistency: {vendorSummaries && vendorAdjustments ? 'Both loaded' : 'Partial data'}</div>
-                <div>Timestamp: {new Date().toISOString()}</div>
+              
+              {/* PAINEL DE INVESTIGAÇÃO CRÍTICA */}
+              <div className="text-xs text-gray-500 mt-3 font-mono bg-red-50 border border-red-200 p-3 rounded">
+                <div className="font-bold text-red-800 mb-2">🚨 INVESTIGAÇÃO CRÍTICA ATIVA</div>
+                <div className="space-y-1 text-red-700">
+                  <div>Summaries: {vendorSummaries?.length || 0} | Loading: {summariesLoading.toString()} | Fetching: {summariesFetching.toString()}</div>
+                  <div>Refresh key: {refreshKey} | Investigation: {investigationMode.toString()}</div>
+                  <div>Data updated: {summariesUpdatedAt ? new Date(summariesUpdatedAt).toLocaleTimeString() : 'never'}</div>
+                  <div>Mais Real presente: {vendorSummaries?.find(v => v.vendedor_nome?.toLowerCase().includes('mais real')) ? 'SIM ✅' : 'NÃO ❌'}</div>
+                  <div>Timestamp: {new Date().toISOString()}</div>
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-4">
@@ -382,12 +436,20 @@ const AdminLoyaltyDashboard: React.FC = () => {
                 Debug: {debugMode ? 'ON' : 'OFF'}
               </Button>
               <Button 
-                onClick={handleDebugRefresh} 
+                onClick={() => setInvestigationMode(!investigationMode)}
+                variant="outline" 
+                className="gap-2 bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+              >
+                <Search className="h-4 w-4" />
+                Investigação: {investigationMode ? 'ON' : 'OFF'}
+              </Button>
+              <Button 
+                onClick={handleInvestigationRefresh} 
                 variant="outline" 
                 className="gap-2 bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100"
               >
                 <RefreshCw className="h-4 w-4" />
-                Debug Refresh
+                🔍 Investigar
               </Button>
               <Button 
                 onClick={handleRefresh} 
@@ -401,17 +463,23 @@ const AdminLoyaltyDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Debug Panel */}
-          {debugMode && (
+          {/* Debug Panel estendido */}
+          {(debugMode || investigationMode) && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <h3 className="font-medium text-yellow-800 mb-2">🐛 Debug Information</h3>
-              <div className="text-xs text-yellow-700 space-y-1 font-mono">
-                <div>Vendor Summaries: {vendorSummaries?.length || 0} items | Loading: {summariesLoading.toString()}</div>
-                <div>Vendor Adjustments: {vendorAdjustments?.length || 0} items (sem limite) | Loading: {adjustmentsLoading.toString()}</div>
-                <div>Refresh Key: {refreshKey}</div>
-                <div>Last Update: {lastUpdate?.toISOString() || 'Never'}</div>
-                <div>Summary vendors: {vendorSummaries?.map(v => v.vendedor_nome).join(', ') || 'None'}</div>
-                <div>Adjustment vendors: {vendorAdjustments ? [...new Set(vendorAdjustments.map(adj => adj.vendedor_nome))].join(', ') : 'None'}</div>
+              <h3 className="font-medium text-yellow-800 mb-2">🔍 Informações de Investigação</h3>
+              <div className="text-xs text-yellow-700 space-y-2 font-mono">
+                <div><strong>Vendor Summaries:</strong> {vendorSummaries?.length || 0} items | Loading: {summariesLoading.toString()} | Fetching: {summariesFetching.toString()}</div>
+                <div><strong>Query State:</strong> Error: {summariesError?.message || 'none'} | Updated: {summariesUpdatedAt ? new Date(summariesUpdatedAt).toLocaleString() : 'never'}</div>
+                <div><strong>Data Type:</strong> {typeof vendorSummaries} | Is Array: {Array.isArray(vendorSummaries).toString()}</div>
+                <div><strong>Refresh Key:</strong> {refreshKey} | Investigation Mode: {investigationMode.toString()}</div>
+                
+                {vendorSummaries && (
+                  <>
+                    <div><strong>Vendor Names:</strong> {vendorSummaries.map(v => `"${v.vendedor_nome}"`).join(', ')}</div>
+                    <div><strong>Mais Real Check:</strong> {vendorSummaries.find(v => v.vendedor_nome?.toLowerCase().includes('mais real')) ? 'FOUND ✅' : 'MISSING ❌'}</div>
+                    <div><strong>Beaba Check:</strong> {vendorSummaries.find(v => v.vendedor_nome?.toLowerCase().includes('beaba')) ? 'FOUND ✅' : 'MISSING ❌'}</div>
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -436,7 +504,7 @@ const AdminLoyaltyDashboard: React.FC = () => {
           {/* Vendor Adjustments Summary */}
           <VendorAdjustmentsSummaryTable 
             summaries={vendorSummaries || []} 
-            isLoading={summariesLoading} 
+            isLoading={summariesLoading || summariesFetching} 
           />
 
           {/* Tables Grid */}
