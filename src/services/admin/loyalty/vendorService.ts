@@ -118,62 +118,36 @@ export const vendorService = {
 
   async getVendorAdjustmentsSummary(): Promise<VendorAdjustmentSummary[]> {
     try {
-      console.log('🔍 [vendorService] === STARTING VENDOR ADJUSTMENTS SUMMARY ===');
+      console.log('🔍 [vendorService] === STARTING OPTIMIZED VENDOR ADJUSTMENTS SUMMARY ===');
       console.log('🔍 [vendorService] Timestamp:', new Date().toISOString());
 
-      // CORREÇÃO: Usar a mesma lógica da página de stores
-      // Step 1: Buscar TODOS os vendedores primeiro (igual stores page)
-      console.log('🏪 [vendorService] CORREÇÃO: Buscando TODOS os vendedores primeiro (como stores page)...');
-      const { data: allVendors, error: vendorsError } = await supabase
-        .from('vendedores')
-        .select('id, nome_loja, status')
-        .order('nome_loja', { ascending: true });
+      // CORREÇÃO: Query SQL otimizada com JOIN e agregação
+      console.log('⚡ [vendorService] Using optimized SQL query with JOIN and aggregation...');
+      
+      const { data: vendorSummaries, error } = await supabase
+        .from('pontos_ajustados')
+        .select(`
+          vendedor_id,
+          vendedores!inner(nome_loja, status),
+          tipo,
+          valor,
+          created_at
+        `)
+        .order('created_at', { ascending: false });
 
-      if (vendorsError) {
-        console.error('❌ [vendorService] Error fetching all vendors:', vendorsError);
-        throw vendorsError;
+      if (error) {
+        console.error('❌ [vendorService] Error in optimized query:', error);
+        throw error;
       }
 
-      console.log(`🏪 [vendorService] CORREÇÃO - Retrieved ${allVendors?.length || 0} vendors from database`);
-      console.log('🏪 [vendorService] CORREÇÃO - ALL vendor info:');
-      allVendors?.forEach((v, index) => {
-        console.log(`  ${index + 1}. ID: ${v.id} | Nome: ${v.nome_loja} | Status: ${v.status}`);
-      });
+      console.log(`📊 [vendorService] Raw data retrieved: ${vendorSummaries?.length || 0} adjustment records`);
 
-      if (!allVendors || allVendors.length === 0) {
-        console.log('⚠️ [vendorService] CORREÇÃO - No vendors found');
+      if (!vendorSummaries || vendorSummaries.length === 0) {
+        console.log('⚠️ [vendorService] No adjustments found');
         return [];
       }
 
-      // Step 2: Buscar TODOS os ajustes (sem filtro por vendedor)
-      console.log('📊 [vendorService] CORREÇÃO - Fetching ALL adjustments (no vendor filter)...');
-      const { data: allAdjustments, error: adjustmentsError } = await supabase
-        .from('pontos_ajustados')
-        .select('vendedor_id, tipo, valor, created_at')
-        .order('created_at', { ascending: false });
-
-      if (adjustmentsError) {
-        console.error('❌ [vendorService] Error fetching adjustments:', adjustmentsError);
-        throw adjustmentsError;
-      }
-
-      console.log(`📊 [vendorService] CORREÇÃO - Retrieved ${allAdjustments?.length || 0} total adjustments from database`);
-
-      if (!allAdjustments || allAdjustments.length === 0) {
-        console.log('⚠️ [vendorService] CORREÇÃO - No adjustments found, returning empty summaries for all vendors');
-        // Retornar vendedores com zero ajustes
-        return allVendors.map(vendor => ({
-          vendedor_id: vendor.id,
-          vendedor_nome: vendor.nome_loja,
-          total_ajustes: 0,
-          pontos_adicionados: 0,
-          pontos_removidos: 0,
-          ultimo_ajuste: new Date().toISOString()
-        }));
-      }
-
-      // Step 3: Criar mapa de estatísticas por vendedor (incluindo TODOS os vendedores)
-      console.log('🔍 [vendorService] CORREÇÃO - Creating stats map for ALL vendors...');
+      // Process and aggregate data in JavaScript for precise control
       const vendorStatsMap = new Map<string, {
         vendedor_nome: string;
         total_ajustes: number;
@@ -182,48 +156,49 @@ export const vendorService = {
         ultimo_ajuste: string;
       }>();
 
-      // Inicializar TODOS os vendedores com zero ajustes
-      allVendors.forEach(vendor => {
-        vendorStatsMap.set(vendor.id, {
-          vendedor_nome: vendor.nome_loja,
-          total_ajustes: 0,
-          pontos_adicionados: 0,
-          pontos_removidos: 0,
-          ultimo_ajuste: new Date().toISOString()
-        });
-      });
-
-      // Step 4: Processar ajustes para vendedores que os possuem
-      console.log('🔍 [vendorService] CORREÇÃO - Processing adjustments for vendors...');
-      allAdjustments.forEach((adjustment, index) => {
+      console.log('🔍 [vendorService] Processing adjustments data...');
+      vendorSummaries.forEach((adjustment, index) => {
         const vendorId = adjustment.vendedor_id;
+        const vendorData = adjustment.vendedores;
         
-        // Verificar se o vendedor existe na nossa lista
-        if (vendorStatsMap.has(vendorId)) {
-          const current = vendorStatsMap.get(vendorId)!;
-          
-          console.log(`  CORREÇÃO - Processing adjustment ${index + 1}/${allAdjustments.length}: Vendor ${current.vendedor_nome} (${vendorId})`);
-          
-          current.total_ajustes += 1;
-          
-          if (adjustment.tipo === 'adicao') {
-            current.pontos_adicionados += adjustment.valor;
-          } else {
-            current.pontos_removidos += Math.abs(adjustment.valor);
-          }
-
-          if (new Date(adjustment.created_at) > new Date(current.ultimo_ajuste)) {
-            current.ultimo_ajuste = adjustment.created_at;
-          }
-
-          vendorStatsMap.set(vendorId, current);
-          console.log(`    CORREÇÃO - Updated stats for ${current.vendedor_nome}: ${current.total_ajustes} adjustments`);
-        } else {
-          console.log(`  ⚠️ CORREÇÃO - Adjustment found for unknown vendor ID: ${vendorId}`);
+        if (!vendorData || Array.isArray(vendorData)) {
+          console.log(`⚠️ [vendorService] Invalid vendor data for adjustment ${index + 1}:`, adjustment);
+          return;
         }
+
+        const vendorName = vendorData.nome_loja;
+        
+        if (!vendorStatsMap.has(vendorId)) {
+          vendorStatsMap.set(vendorId, {
+            vendedor_nome: vendorName,
+            total_ajustes: 0,
+            pontos_adicionados: 0,
+            pontos_removidos: 0,
+            ultimo_ajuste: adjustment.created_at
+          });
+        }
+
+        const stats = vendorStatsMap.get(vendorId)!;
+        
+        // Increment total adjustments
+        stats.total_ajustes += 1;
+        
+        // Add to appropriate points category
+        if (adjustment.tipo === 'adicao') {
+          stats.pontos_adicionados += adjustment.valor;
+        } else if (adjustment.tipo === 'remocao') {
+          stats.pontos_removidos += Math.abs(adjustment.valor);
+        }
+        
+        // Update latest adjustment date
+        if (new Date(adjustment.created_at) > new Date(stats.ultimo_ajuste)) {
+          stats.ultimo_ajuste = adjustment.created_at;
+        }
+
+        console.log(`  ✓ Processed adjustment for ${vendorName}: ${adjustment.tipo} ${adjustment.valor} pts`);
       });
 
-      // Step 5: Converter para array e ordenar
+      // Convert to array and sort by total adjustments
       const result = Array.from(vendorStatsMap.entries()).map(([vendorId, stats]) => ({
         vendedor_id: vendorId,
         vendedor_nome: stats.vendedor_nome,
@@ -233,12 +208,12 @@ export const vendorService = {
         ultimo_ajuste: stats.ultimo_ajuste
       })).sort((a, b) => b.total_ajustes - a.total_ajustes);
 
-      console.log(`✅ [vendorService] CORREÇÃO - FINAL SUMMARY RESULT - Returning ${result.length} vendor summaries:`);
+      console.log(`✅ [vendorService] OPTIMIZED SUMMARY RESULT - Returning ${result.length} vendor summaries:`);
       result.forEach((v, index) => {
         console.log(`  ${index + 1}. ✓ ${v.vendedor_nome} (ID: ${v.vendedor_id}): ${v.total_ajustes} ajustes (+${v.pontos_adicionados}, -${v.pontos_removidos})`);
       });
 
-      console.log('🔍 [vendorService] === ENDING VENDOR ADJUSTMENTS SUMMARY ===');
+      console.log('🔍 [vendorService] === ENDING OPTIMIZED VENDOR ADJUSTMENTS SUMMARY ===');
       return result;
 
     } catch (error) {
