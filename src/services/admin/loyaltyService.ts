@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 
@@ -44,6 +43,15 @@ export interface VendorAdjustment {
   tipo: string;
   motivo: string;
   created_at: string;
+}
+
+export interface VendorAdjustmentSummary {
+  vendedor_id: string;
+  vendedor_nome: string;
+  total_ajustes: number;
+  pontos_adicionados: number;
+  pontos_removidos: number;
+  ultimo_ajuste: string;
 }
 
 export const loyaltyService = {
@@ -212,5 +220,128 @@ export const loyaltyService = {
       toast.error('Erro ao buscar ajustes de vendedores');
       return [];
     }
+  },
+
+  async getVendorAdjustmentsSummary(): Promise<VendorAdjustmentSummary[]> {
+    try {
+      const { data: adjustments, error } = await supabase
+        .from('pontos_ajustados')
+        .select('vendedor_id, tipo, valor, created_at');
+
+      if (error) throw error;
+
+      // Get vendor names
+      const vendorIds = [...new Set(adjustments?.map(a => a.vendedor_id) || [])];
+      const { data: vendors } = await supabase
+        .from('vendedores')
+        .select('id, nome_loja')
+        .in('id', vendorIds);
+
+      const vendorMap = new Map(vendors?.map(v => [v.id, v.nome_loja]) || []);
+
+      // Group and calculate statistics
+      const vendorStats = new Map<string, {
+        total_ajustes: number;
+        pontos_adicionados: number;
+        pontos_removidos: number;
+        ultimo_ajuste: string;
+      }>();
+
+      adjustments?.forEach(adjustment => {
+        const current = vendorStats.get(adjustment.vendedor_id) || {
+          total_ajustes: 0,
+          pontos_adicionados: 0,
+          pontos_removidos: 0,
+          ultimo_ajuste: adjustment.created_at
+        };
+
+        current.total_ajustes += 1;
+        if (adjustment.tipo === 'adicao') {
+          current.pontos_adicionados += adjustment.valor;
+        } else {
+          current.pontos_removidos += Math.abs(adjustment.valor);
+        }
+
+        if (new Date(adjustment.created_at) > new Date(current.ultimo_ajuste)) {
+          current.ultimo_ajuste = adjustment.created_at;
+        }
+
+        vendorStats.set(adjustment.vendedor_id, current);
+      });
+
+      return Array.from(vendorStats.entries()).map(([vendorId, stats]) => ({
+        vendedor_id: vendorId,
+        vendedor_nome: vendorMap.get(vendorId) || 'Vendedor desconhecido',
+        ...stats
+      })).sort((a, b) => b.total_ajustes - a.total_ajustes);
+
+    } catch (error) {
+      console.error('Error fetching vendor adjustments summary:', error);
+      toast.error('Erro ao buscar resumo de ajustes por vendedor');
+      return [];
+    }
+  },
+
+  // Real-time subscription setup
+  subscribeToLoyaltyUpdates(
+    onStatsUpdate: () => void,
+    onTransactionsUpdate: () => void,
+    onAdjustmentsUpdate: () => void
+  ) {
+    const profilesChannel = supabase
+      .channel('profiles-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'profiles'
+        },
+        () => {
+          console.log('Profile updated, refreshing stats');
+          onStatsUpdate();
+        }
+      )
+      .subscribe();
+
+    const transactionsChannel = supabase
+      .channel('transactions-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'points_transactions'
+        },
+        () => {
+          console.log('Transaction updated, refreshing data');
+          onStatsUpdate();
+          onTransactionsUpdate();
+        }
+      )
+      .subscribe();
+
+    const adjustmentsChannel = supabase
+      .channel('adjustments-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'pontos_ajustados'
+        },
+        () => {
+          console.log('Adjustment updated, refreshing data');
+          onStatsUpdate();
+          onAdjustmentsUpdate();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(profilesChannel);
+      supabase.removeChannel(transactionsChannel);
+      supabase.removeChannel(adjustmentsChannel);
+    };
   }
 };

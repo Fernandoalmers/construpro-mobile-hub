@@ -1,18 +1,23 @@
 
 import React, { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { loyaltyService } from '@/services/admin/loyaltyService';
 import LoyaltyStatsCards from './LoyaltyStatsCards';
 import UserRankingTable from './UserRankingTable';
 import RecentTransactionsTable from './RecentTransactionsTable';
 import VendorAdjustmentsTable from './VendorAdjustmentsTable';
+import VendorAdjustmentsSummaryTable from './VendorAdjustmentsSummaryTable';
+import RealtimeIndicator from './RealtimeIndicator';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 
 const AdminLoyaltyDashboard: React.FC = () => {
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState<Date>();
+  const queryClient = useQueryClient();
 
   const {
     data: stats,
@@ -47,8 +52,49 @@ const AdminLoyaltyDashboard: React.FC = () => {
     queryFn: () => loyaltyService.getVendorAdjustments(20)
   });
 
+  const {
+    data: vendorSummaries,
+    isLoading: summariesLoading
+  } = useQuery({
+    queryKey: ['vendor-adjustments-summary', refreshKey],
+    queryFn: loyaltyService.getVendorAdjustmentsSummary
+  });
+
+  // Real-time subscription setup
+  useEffect(() => {
+    console.log('Setting up real-time subscriptions...');
+    setIsRealtimeConnected(true);
+
+    const unsubscribe = loyaltyService.subscribeToLoyaltyUpdates(
+      () => {
+        console.log('Stats updated via real-time');
+        setLastUpdate(new Date());
+        queryClient.invalidateQueries({ queryKey: ['loyalty-stats'] });
+        queryClient.invalidateQueries({ queryKey: ['user-ranking'] });
+      },
+      () => {
+        console.log('Transactions updated via real-time');
+        setLastUpdate(new Date());
+        queryClient.invalidateQueries({ queryKey: ['recent-transactions'] });
+      },
+      () => {
+        console.log('Adjustments updated via real-time');
+        setLastUpdate(new Date());
+        queryClient.invalidateQueries({ queryKey: ['vendor-adjustments'] });
+        queryClient.invalidateQueries({ queryKey: ['vendor-adjustments-summary'] });
+      }
+    );
+
+    return () => {
+      console.log('Cleaning up real-time subscriptions...');
+      unsubscribe();
+      setIsRealtimeConnected(false);
+    };
+  }, [queryClient]);
+
   const handleRefresh = () => {
     setRefreshKey(prev => prev + 1);
+    setLastUpdate(new Date());
     toast.success('Dados atualizados');
   };
 
@@ -72,10 +118,16 @@ const AdminLoyaltyDashboard: React.FC = () => {
               Acompanhe pontos, usuários e transações do programa de fidelidade
             </p>
           </div>
-          <Button onClick={handleRefresh} variant="outline" className="gap-2">
-            <RefreshCw className="h-4 w-4" />
-            Atualizar
-          </Button>
+          <div className="flex items-center gap-4">
+            <RealtimeIndicator 
+              isConnected={isRealtimeConnected} 
+              lastUpdate={lastUpdate} 
+            />
+            <Button onClick={handleRefresh} variant="outline" className="gap-2">
+              <RefreshCw className="h-4 w-4" />
+              Atualizar
+            </Button>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -90,6 +142,12 @@ const AdminLoyaltyDashboard: React.FC = () => {
             totalAdjustments: 0
           }} 
           isLoading={statsLoading} 
+        />
+
+        {/* Vendor Adjustments Summary */}
+        <VendorAdjustmentsSummaryTable 
+          summaries={vendorSummaries || []} 
+          isLoading={summariesLoading} 
         />
 
         {/* Tables Grid */}
