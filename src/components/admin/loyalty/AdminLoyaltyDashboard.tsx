@@ -12,7 +12,7 @@ import DataIntegrityIndicator from './DataIntegrityIndicator';
 import RealtimeIndicator from './RealtimeIndicator';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 import { Button } from '@/components/ui/button';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Bug } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 
 const AdminLoyaltyDashboard: React.FC = () => {
@@ -20,8 +20,11 @@ const AdminLoyaltyDashboard: React.FC = () => {
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date>();
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
+  const [debugMode, setDebugMode] = useState(false);
   const queryClient = useQueryClient();
 
+  console.log('🎯 [Dashboard] === DASHBOARD RENDER START ===');
+  console.log('🎯 [Dashboard] Timestamp:', new Date().toISOString());
   console.log('🎯 [Dashboard] Rendering with refreshKey:', refreshKey);
 
   const {
@@ -31,12 +34,14 @@ const AdminLoyaltyDashboard: React.FC = () => {
   } = useQuery({
     queryKey: ['loyalty-stats', refreshKey],
     queryFn: () => {
-      console.log('Fetching loyalty stats...');
+      console.log('📊 [Dashboard] Fetching loyalty stats...');
       return loyaltyService.getLoyaltyStats();
     },
+    staleTime: 0,
+    refetchOnMount: true,
     meta: {
       onError: (error: any) => {
-        console.error('Error fetching loyalty stats:', error);
+        console.error('❌ [Dashboard] Error fetching loyalty stats:', error);
       }
     }
   });
@@ -48,12 +53,14 @@ const AdminLoyaltyDashboard: React.FC = () => {
   } = useQuery({
     queryKey: ['user-ranking', refreshKey],
     queryFn: () => {
-      console.log('Fetching user ranking...');
+      console.log('👥 [Dashboard] Fetching user ranking...');
       return loyaltyService.getUserRanking(10);
     },
+    staleTime: 0,
+    refetchOnMount: true,
     meta: {
       onError: (error: any) => {
-        console.error('Error fetching user ranking:', error);
+        console.error('❌ [Dashboard] Error fetching user ranking:', error);
       }
     }
   });
@@ -65,12 +72,14 @@ const AdminLoyaltyDashboard: React.FC = () => {
   } = useQuery({
     queryKey: ['recent-transactions', refreshKey],
     queryFn: () => {
-      console.log('Fetching recent transactions...');
+      console.log('💳 [Dashboard] Fetching recent transactions...');
       return loyaltyService.getRecentTransactions(20);
     },
+    staleTime: 0,
+    refetchOnMount: true,
     meta: {
       onError: (error: any) => {
-        console.error('Error fetching recent transactions:', error);
+        console.error('❌ [Dashboard] Error fetching recent transactions:', error);
       }
     }
   });
@@ -82,12 +91,14 @@ const AdminLoyaltyDashboard: React.FC = () => {
   } = useQuery({
     queryKey: ['vendor-adjustments', refreshKey],
     queryFn: () => {
-      console.log('🔍 [Dashboard] Fetching vendor adjustments WITHOUT limit...');
-      return loyaltyService.getVendorAdjustments(); // Remove the limit completely
+      console.log('🔧 [Dashboard] Fetching vendor adjustments WITHOUT limit...');
+      return loyaltyService.getVendorAdjustments();
     },
+    staleTime: 0,
+    refetchOnMount: true,
     meta: {
       onError: (error: any) => {
-        console.error('Error fetching vendor adjustments:', error);
+        console.error('❌ [Dashboard] Error fetching vendor adjustments:', error);
       }
     }
   });
@@ -95,16 +106,20 @@ const AdminLoyaltyDashboard: React.FC = () => {
   const {
     data: vendorSummaries,
     isLoading: summariesLoading,
-    error: summariesError
+    error: summariesError,
+    refetch: refetchSummaries
   } = useQuery({
     queryKey: ['vendor-adjustments-summary', refreshKey],
     queryFn: () => {
-      console.log('🔍 [Dashboard] Executing vendor adjustments summary query...');
+      console.log('🏪 [Dashboard] === EXECUTING VENDOR ADJUSTMENTS SUMMARY QUERY ===');
+      console.log('🏪 [Dashboard] Query timestamp:', new Date().toISOString());
       return loyaltyService.getVendorAdjustmentsSummary();
     },
-    staleTime: 0, // Force fresh data every time
+    staleTime: 0,
     refetchOnMount: true,
     refetchOnWindowFocus: false,
+    retry: 3,
+    retryDelay: 1000,
     meta: {
       onError: (error: any) => {
         console.error('❌ [Dashboard] Error fetching vendor adjustments summary:', error);
@@ -112,13 +127,17 @@ const AdminLoyaltyDashboard: React.FC = () => {
     }
   });
 
+  // CRITICAL DEBUG: Enhanced logging
+  console.log('🎯 [Dashboard] === VENDOR SUMMARIES STATE ANALYSIS ===');
   console.log('🎯 [Dashboard] Vendor summaries state:', {
     count: vendorSummaries?.length || 0,
     loading: summariesLoading,
     error: summariesError?.message || null,
-    vendors: vendorSummaries?.map(v => `${v.vendedor_nome} (${v.total_ajustes})`) || []
+    hasData: !!vendorSummaries && vendorSummaries.length > 0,
+    vendors: vendorSummaries?.map(v => `${v.vendedor_nome} (${v.total_ajustes} adjustments)`) || []
   });
 
+  console.log('🎯 [Dashboard] === VENDOR ADJUSTMENTS STATE ANALYSIS ===');
   console.log('🎯 [Dashboard] Vendor adjustments state:', {
     count: vendorAdjustments?.length || 0,
     loading: adjustmentsLoading,
@@ -126,11 +145,12 @@ const AdminLoyaltyDashboard: React.FC = () => {
     adjustments: vendorAdjustments?.length || 0
   });
 
+  console.log('🔍 [Dashboard] === DETAILED DATA INSPECTION ===');
   console.log('🔍 [Dashboard] Detailed vendor summaries data:', vendorSummaries);
-  console.log('🔍 [Dashboard] Detailed vendor adjustments data:', vendorAdjustments?.slice(0, 5) || []); // Show first 5 for comparison
+  console.log('🔍 [Dashboard] Detailed vendor adjustments data (first 3):', vendorAdjustments?.slice(0, 3) || []);
 
-  // Compare data between both queries
-  console.log('📊 [Dashboard] DATA COMPARISON:');
+  // CRITICAL DEBUG: Compare data between both queries
+  console.log('📊 [Dashboard] === DATA COMPARISON ANALYSIS ===');
   console.log(`  - getVendorAdjustments returned: ${vendorAdjustments?.length || 0} adjustments`);
   console.log(`  - getVendorAdjustmentsSummary returned: ${vendorSummaries?.length || 0} vendor summaries`);
   
@@ -156,24 +176,24 @@ const AdminLoyaltyDashboard: React.FC = () => {
 
   // Real-time subscription setup
   useEffect(() => {
-    console.log('Setting up real-time subscriptions...');
+    console.log('🔄 [Dashboard] Setting up real-time subscriptions...');
     setIsRealtimeConnected(true);
 
     try {
       const unsubscribe = loyaltyService.subscribeToLoyaltyUpdates(
         () => {
-          console.log('Stats updated via real-time');
+          console.log('📊 [Dashboard] Stats updated via real-time');
           setLastUpdate(new Date());
           queryClient.invalidateQueries({ queryKey: ['loyalty-stats'] });
           queryClient.invalidateQueries({ queryKey: ['user-ranking'] });
         },
         () => {
-          console.log('Transactions updated via real-time');
+          console.log('💳 [Dashboard] Transactions updated via real-time');
           setLastUpdate(new Date());
           queryClient.invalidateQueries({ queryKey: ['recent-transactions'] });
         },
         () => {
-          console.log('Adjustments updated via real-time');
+          console.log('🔧 [Dashboard] Adjustments updated via real-time');
           setLastUpdate(new Date());
           queryClient.invalidateQueries({ queryKey: ['vendor-adjustments'] });
           queryClient.invalidateQueries({ queryKey: ['vendor-adjustments-summary'] });
@@ -181,24 +201,27 @@ const AdminLoyaltyDashboard: React.FC = () => {
       );
 
       return () => {
-        console.log('Cleaning up real-time subscriptions...');
+        console.log('🔄 [Dashboard] Cleaning up real-time subscriptions...');
         if (unsubscribe && typeof unsubscribe === 'function') {
           unsubscribe();
         }
         setIsRealtimeConnected(false);
       };
     } catch (error) {
-      console.error('Error setting up real-time subscriptions:', error);
+      console.error('❌ [Dashboard] Error setting up real-time subscriptions:', error);
       setIsRealtimeConnected(false);
       toast.error('Erro ao configurar atualizações em tempo real');
     }
   }, [queryClient]);
 
   const handleRefresh = async () => {
-    console.log('🔄 [Dashboard] Manual refresh triggered - FORCING cache clear');
+    console.log('🔄 [Dashboard] === MANUAL REFRESH TRIGGERED ===');
+    console.log('🔄 [Dashboard] Refresh timestamp:', new Date().toISOString());
     setIsManualRefreshing(true);
     
     try {
+      console.log('🗑️ [Dashboard] Clearing ALL loyalty-related caches completely...');
+      
       // Clear ALL loyalty-related caches completely
       await queryClient.removeQueries({ queryKey: ['loyalty-stats'] });
       await queryClient.removeQueries({ queryKey: ['user-ranking'] });
@@ -206,46 +229,66 @@ const AdminLoyaltyDashboard: React.FC = () => {
       await queryClient.removeQueries({ queryKey: ['vendor-adjustments'] });
       await queryClient.removeQueries({ queryKey: ['vendor-adjustments-summary'] });
       
+      console.log('🆔 [Dashboard] Incrementing refresh key to force fresh data fetch...');
       // Force immediate refresh with new key
-      setRefreshKey(prev => prev + 1);
+      setRefreshKey(prev => {
+        const newKey = prev + 1;
+        console.log(`🔑 [Dashboard] Refresh key updated: ${prev} -> ${newKey}`);
+        return newKey;
+      });
+      
       setLastUpdate(new Date());
       
-      console.log('🔄 [Dashboard] Cache cleared, forcing fresh data fetch...');
-      toast.success('Dados atualizados - cache limpo');
+      console.log('✅ [Dashboard] Cache cleared, forcing fresh data fetch...');
+      toast.success('Dados atualizados - cache limpo e recarregando');
     } catch (error) {
-      console.error('Error during manual refresh:', error);
+      console.error('❌ [Dashboard] Error during manual refresh:', error);
       toast.error('Erro ao atualizar dados');
     } finally {
       setIsManualRefreshing(false);
     }
   };
 
+  const handleDebugRefresh = async () => {
+    console.log('🐛 [Dashboard] === DEBUG REFRESH TRIGGERED ===');
+    try {
+      console.log('🐛 [Dashboard] Forcing vendor summaries refetch...');
+      const result = await refetchSummaries();
+      console.log('🐛 [Dashboard] Debug refetch result:', result);
+      toast.success('Debug refresh concluído - verifique o console');
+    } catch (error) {
+      console.error('❌ [Dashboard] Debug refresh error:', error);
+      toast.error('Erro no debug refresh');
+    }
+  };
+
   // Handle all errors collectively
   useEffect(() => {
     if (statsError) {
-      console.error('Stats error:', statsError);
+      console.error('❌ [Dashboard] Stats error:', statsError);
       toast.error('Erro ao carregar estatísticas de fidelidade');
     }
     if (rankingError) {
-      console.error('Ranking error:', rankingError);
+      console.error('❌ [Dashboard] Ranking error:', rankingError);
       toast.error('Erro ao carregar ranking de usuários');
     }
     if (transactionsError) {
-      console.error('Transactions error:', transactionsError);
+      console.error('❌ [Dashboard] Transactions error:', transactionsError);
       toast.error('Erro ao carregar transações recentes');
     }
     if (adjustmentsError) {
-      console.error('Adjustments error:', adjustmentsError);
+      console.error('❌ [Dashboard] Adjustments error:', adjustmentsError);
       toast.error('Erro ao carregar ajustes de vendedores');
     }
     if (summariesError) {
-      console.error('Summaries error:', summariesError);
+      console.error('❌ [Dashboard] Summaries error:', summariesError);
       toast.error('Erro ao carregar resumo de vendedores');
     }
   }, [statsError, rankingError, transactionsError, adjustmentsError, summariesError]);
 
   // Show loading state if any critical data is loading
   if (statsLoading) {
+    console.log('⏳ [Dashboard] Showing loading state for stats');
     return (
       <AdminLayout currentSection="Fidelidade">
         <div className="flex items-center justify-center h-64">
@@ -255,6 +298,8 @@ const AdminLoyaltyDashboard: React.FC = () => {
       </AdminLayout>
     );
   }
+
+  console.log('🎯 [Dashboard] === DASHBOARD RENDER END ===');
 
   return (
     <ErrorBoundary>
@@ -269,9 +314,11 @@ const AdminLoyaltyDashboard: React.FC = () => {
               <p className="text-gray-600 mt-1">
                 Acompanhe pontos, usuários e transações do programa de fidelidade
               </p>
-              {/* Debug info for admin */}
-              <div className="text-xs text-gray-500 mt-2 font-mono">
-                Debug: {vendorSummaries?.length || 0} vendedores | {vendorAdjustments?.length || 0} ajustes | Refresh: {refreshKey}
+              {/* CRITICAL DEBUG: Enhanced debug info */}
+              <div className="text-xs text-gray-500 mt-2 font-mono bg-gray-100 p-2 rounded">
+                <div>Debug: {vendorSummaries?.length || 0} vendedores | {vendorAdjustments?.length || 0} ajustes | Refresh: {refreshKey}</div>
+                <div>Loading: Summaries={summariesLoading.toString()} | Adjustments={adjustmentsLoading.toString()}</div>
+                <div>Timestamp: {new Date().toISOString()}</div>
               </div>
             </div>
             <div className="flex items-center gap-4">
@@ -279,6 +326,22 @@ const AdminLoyaltyDashboard: React.FC = () => {
                 isConnected={isRealtimeConnected} 
                 lastUpdate={lastUpdate} 
               />
+              <Button 
+                onClick={() => setDebugMode(!debugMode)}
+                variant="outline" 
+                className="gap-2"
+              >
+                <Bug className="h-4 w-4" />
+                Debug: {debugMode ? 'ON' : 'OFF'}
+              </Button>
+              <Button 
+                onClick={handleDebugRefresh} 
+                variant="outline" 
+                className="gap-2 bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Debug Refresh
+              </Button>
               <Button 
                 onClick={handleRefresh} 
                 variant="outline" 
@@ -290,6 +353,20 @@ const AdminLoyaltyDashboard: React.FC = () => {
               </Button>
             </div>
           </div>
+
+          {/* Debug Panel */}
+          {debugMode && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <h3 className="font-medium text-yellow-800 mb-2">🐛 Debug Information</h3>
+              <div className="text-xs text-yellow-700 space-y-1 font-mono">
+                <div>Vendor Summaries: {vendorSummaries?.length || 0} items | Loading: {summariesLoading.toString()}</div>
+                <div>Vendor Adjustments: {vendorAdjustments?.length || 0} items | Loading: {adjustmentsLoading.toString()}</div>
+                <div>Refresh Key: {refreshKey}</div>
+                <div>Last Update: {lastUpdate?.toISOString() || 'Never'}</div>
+                <div>Summary Data: {JSON.stringify(vendorSummaries?.map(v => ({name: v.vendedor_nome, adjustments: v.total_ajustes})) || [])}</div>
+              </div>
+            </div>
+          )}
 
           {/* Stats Cards */}
           <LoyaltyStatsCards 
