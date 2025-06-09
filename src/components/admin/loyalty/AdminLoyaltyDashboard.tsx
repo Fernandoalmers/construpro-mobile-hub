@@ -90,10 +90,10 @@ const AdminLoyaltyDashboard: React.FC = () => {
   } = useQuery({
     queryKey: ['vendor-adjustments', refreshKey],
     queryFn: () => {
-      console.log('🔧 [Dashboard] === FETCHING VENDOR ADJUSTMENTS WITH EXPLICIT LIMIT ===');
-      console.log('🔧 [Dashboard] Using limit: 20 for display table');
-      // Apply limit only for the display table, not for data processing
-      return loyaltyService.getVendorAdjustments(20);
+      console.log('🔧 [Dashboard] === FETCHING VENDOR ADJUSTMENTS (NO LIMIT) ===');
+      console.log('🔧 [Dashboard] Getting ALL data for consistency with summary');
+      // Get ALL data, apply UI limit later if needed
+      return loyaltyService.getVendorAdjustments();
     },
     staleTime: 0,
     refetchOnMount: true,
@@ -156,14 +156,20 @@ const AdminLoyaltyDashboard: React.FC = () => {
     console.log('  Vendors in summary but not in adjustments:', summaryVendors.filter(v => !adjustmentVendors.includes(v)));
     console.log('  Vendors in adjustments but not in summary:', adjustmentVendors.filter(v => !summaryVendors.includes(v)));
     
-    // Check specifically for Mais Real
+    // Check specifically for both key vendors
     const maisRealInSummary = vendorSummaries.find(v => v.vendedor_nome.includes('Mais Real'));
     const maisRealInAdjustments = vendorAdjustments.find(adj => adj.vendedor_nome.includes('Mais Real'));
+    const beabaInSummary = vendorSummaries.find(v => v.vendedor_nome.includes('Beaba'));
+    const beabaInAdjustments = vendorAdjustments.find(adj => adj.vendedor_nome.includes('Beaba'));
     
-    if (maisRealInSummary && !maisRealInAdjustments) {
-      console.log('🚨 [Dashboard] CRITICAL: Mais Real found in summary but NOT in adjustments table - limit issue confirmed!');
-    } else if (maisRealInSummary && maisRealInAdjustments) {
-      console.log('✅ [Dashboard] SUCCESS: Mais Real found in both summary and adjustments');
+    console.log('🎯 [Dashboard] KEY VENDORS CHECK:');
+    console.log(`  - Mais Real: Summary=${!!maisRealInSummary}, Adjustments=${!!maisRealInAdjustments}`);
+    console.log(`  - Beaba: Summary=${!!beabaInSummary}, Adjustments=${!!beabaInAdjustments}`);
+    
+    if (maisRealInSummary && beabaInSummary && maisRealInAdjustments && beabaInAdjustments) {
+      console.log('✅ [Dashboard] SUCCESS: Both vendors found in both datasets');
+    } else {
+      console.log('❌ [Dashboard] ISSUE: Missing vendors detected');
     }
   }
 
@@ -356,7 +362,7 @@ const AdminLoyaltyDashboard: React.FC = () => {
               </p>
               {/* ENHANCED DEBUG INFO */}
               <div className="text-xs text-gray-500 mt-2 font-mono bg-gray-100 p-2 rounded">
-                <div>Debug: {vendorSummaries?.length || 0} vendedores no resumo | {vendorAdjustments?.length || 0} ajustes (limit: 20) | Refresh: {refreshKey}</div>
+                <div>Debug: {vendorSummaries?.length || 0} vendedores no resumo | {vendorAdjustments?.length || 0} ajustes (sem limite) | Refresh: {refreshKey}</div>
                 <div>Loading: Summaries={summariesLoading.toString()} | Adjustments={adjustmentsLoading.toString()}</div>
                 <div>Data consistency: {vendorSummaries && vendorAdjustments ? 'Both loaded' : 'Partial data'}</div>
                 <div>Timestamp: {new Date().toISOString()}</div>
@@ -401,7 +407,7 @@ const AdminLoyaltyDashboard: React.FC = () => {
               <h3 className="font-medium text-yellow-800 mb-2">🐛 Debug Information</h3>
               <div className="text-xs text-yellow-700 space-y-1 font-mono">
                 <div>Vendor Summaries: {vendorSummaries?.length || 0} items | Loading: {summariesLoading.toString()}</div>
-                <div>Vendor Adjustments: {vendorAdjustments?.length || 0} items (with 20 limit) | Loading: {adjustmentsLoading.toString()}</div>
+                <div>Vendor Adjustments: {vendorAdjustments?.length || 0} items (sem limite) | Loading: {adjustmentsLoading.toString()}</div>
                 <div>Refresh Key: {refreshKey}</div>
                 <div>Last Update: {lastUpdate?.toISOString() || 'Never'}</div>
                 <div>Summary vendors: {vendorSummaries?.map(v => v.vendedor_nome).join(', ') || 'None'}</div>
@@ -450,7 +456,7 @@ const AdminLoyaltyDashboard: React.FC = () => {
 
           {/* Vendor Adjustments */}
           <VendorAdjustmentsTable 
-            adjustments={vendorAdjustments || []} 
+            adjustments={vendorAdjustments ? vendorAdjustments.slice(0, 20) : []} 
             isLoading={adjustmentsLoading} 
           />
         </div>

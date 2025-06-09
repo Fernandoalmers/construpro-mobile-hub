@@ -10,12 +10,12 @@ import { processVendorAdjustments } from './vendor/vendorDataProcessor';
 import { getVendorAdjustmentsSummary } from './vendor/vendorSummaryService';
 
 export const vendorService = {
-  async getVendorAdjustments(limit?: number): Promise<VendorAdjustment[]> {
+  async getVendorAdjustments(): Promise<VendorAdjustment[]> {
     try {
-      console.log(`🔍 [vendorService] === ENHANCED getVendorAdjustments CALL ===`);
-      console.log(`🔍 [vendorService] Requested limit: ${limit || 'NO LIMIT'}`);
+      console.log(`🔍 [vendorService] === FIXED getVendorAdjustments CALL ===`);
+      console.log(`🔍 [vendorService] NO LIMITS - Processing ALL data for consistency`);
       
-      // Step 1: Get ALL adjustments without any limit initially
+      // Step 1: Get ALL adjustments without any limit
       const allAdjustments = await fetchVendorAdjustments();
       
       if (!allAdjustments || allAdjustments.length === 0) {
@@ -28,6 +28,7 @@ export const vendorService = {
       // Get unique vendor IDs from adjustments
       const vendorIdsInAdjustments = [...new Set(allAdjustments.map(adj => adj.vendedor_id))];
       console.log(`🏪 [vendorService] Unique vendors in adjustments: ${vendorIdsInAdjustments.length}`);
+      console.log(`🏪 [vendorService] Vendor IDs: ${vendorIdsInAdjustments.join(', ')}`);
       
       // Step 2: Get ALL vendors (no status filter)
       const allVendors = await fetchVendorsForAdjustments(vendorIdsInAdjustments);
@@ -44,30 +45,25 @@ export const vendorService = {
       const userIds = [...new Set(allAdjustments.map(a => a.usuario_id))];
       const usersData = await fetchUsersForAdjustments(userIds);
 
-      // Step 4: Process ALL data first (no limit in processing)
+      // Step 4: Process ALL data (no limit in processing)
       const processedAdjustments = processVendorAdjustments(allAdjustments, allVendors, usersData);
       
       console.log(`✅ [vendorService] Processed ${processedAdjustments.length} total adjustments`);
       console.log(`🏪 [vendorService] Unique vendors in processed data: ${[...new Set(processedAdjustments.map(adj => adj.vendedor_nome))].join(', ')}`);
       
-      // Step 5: Apply limit ONLY for display purposes if specified
-      const finalResult = limit ? processedAdjustments.slice(0, limit) : processedAdjustments;
-      console.log(`📋 [vendorService] Final result after limit (${limit || 'no limit'}): ${finalResult.length} adjustments`);
+      // CRITICAL: Check if both key vendors are in the result
+      const maisRealInResult = processedAdjustments.find(adj => adj.vendedor_nome.includes('Mais Real'));
+      const beabaInResult = processedAdjustments.find(adj => adj.vendedor_nome.includes('Beaba'));
       
-      // CRITICAL: Check if Mais Real is in the final result
-      const maisRealInResult = finalResult.find(adj => adj.vendedor_nome.includes('Mais Real'));
-      if (maisRealInResult) {
-        console.log(`🎉 [vendorService] SUCCESS! Mais Real found in final result`);
+      if (maisRealInResult && beabaInResult) {
+        console.log(`🎉 [vendorService] SUCCESS! Both vendors found in result`);
       } else {
-        console.log('❌ [vendorService] WARNING: Mais Real NOT found in final result');
-        // Check if it was in the processed data before limit
-        const maisRealInProcessed = processedAdjustments.find(adj => adj.vendedor_nome.includes('Mais Real'));
-        if (maisRealInProcessed) {
-          console.log(`⚠️ [vendorService] Mais Real was REMOVED by limit (${limit}). Consider increasing limit or removing it.`);
-        }
+        console.log('❌ [vendorService] WARNING: Missing vendors in result');
+        console.log(`  - Mais Real found: ${!!maisRealInResult}`);
+        console.log(`  - Beaba found: ${!!beabaInResult}`);
       }
       
-      return finalResult;
+      return processedAdjustments;
       
     } catch (error) {
       console.error('❌ [vendorService] Error fetching vendor adjustments:', error);
