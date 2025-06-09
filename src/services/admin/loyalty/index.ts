@@ -9,34 +9,36 @@ export { transactionsService } from './transactionsService';
 export { vendorService } from './vendorService';
 export { realtimeService } from './realtimeService';
 
+// Import services statically
+import { statsService } from './statsService';
+import { userService } from './userService';
+import { transactionsService } from './transactionsService';
+import { vendorService } from './vendorService';
+import { realtimeService } from './realtimeService';
+
 // Main loyaltyService that combines all functionality for backward compatibility
 export const loyaltyService = {
   // Stats
-  getLoyaltyStats: async () => {
-    const { statsService } = await import('./statsService');
+  getLoyaltyStats: () => {
     return statsService.getLoyaltyStats();
   },
 
   // Users
-  getUserRanking: async (limit = 10) => {
-    const { userService } = await import('./userService');
+  getUserRanking: (limit = 10) => {
     return userService.getUserRanking(limit);
   },
 
   // Transactions
-  getRecentTransactions: async (limit = 20) => {
-    const { transactionsService } = await import('./transactionsService');
+  getRecentTransactions: (limit = 20) => {
     return transactionsService.getRecentTransactions(limit);
   },
 
   // Vendor adjustments
-  getVendorAdjustments: async (limit = 20) => {
-    const { vendorService } = await import('./vendorService');
+  getVendorAdjustments: (limit = 20) => {
     return vendorService.getVendorAdjustments(limit);
   },
 
-  getVendorAdjustmentsSummary: async () => {
-    const { vendorService } = await import('./vendorService');
+  getVendorAdjustmentsSummary: () => {
     return vendorService.getVendorAdjustmentsSummary();
   },
 
@@ -46,7 +48,6 @@ export const loyaltyService = {
     onTransactionsUpdate: () => void,
     onAdjustmentsUpdate: () => void
   ) => {
-    const { realtimeService } = require('./realtimeService');
     return realtimeService.subscribeToLoyaltyUpdates(
       onStatsUpdate,
       onTransactionsUpdate,
