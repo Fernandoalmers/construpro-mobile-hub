@@ -130,12 +130,25 @@ const AdminLoyaltyDashboard: React.FC = () => {
   console.log('📊 [Dashboard] DATA COMPARISON:');
   console.log(`  - getVendorAdjustments returned: ${vendorAdjustments?.length || 0} adjustments`);
   console.log(`  - getVendorAdjustmentsSummary returned: ${vendorSummaries?.length || 0} vendor summaries`);
-  console.log(`  - Expected: Both functions should process the same data (37 adjustments, 2 vendors)`);
+  
+  // Total adjustments from summaries
+  const totalAdjustmentsFromSummary = vendorSummaries?.reduce((sum, v) => sum + v.total_ajustes, 0) || 0;
+  console.log(`  - Total adjustments calculated from summaries: ${totalAdjustmentsFromSummary}`);
+  console.log(`  - Expected: Both functions should process ALL data consistently`);
 
   // Log unique vendors in adjustments data
   if (vendorAdjustments && vendorAdjustments.length > 0) {
     const uniqueVendorsInAdjustments = [...new Set(vendorAdjustments.map(adj => adj.vendedor_nome))];
     console.log('🏪 [Dashboard] Unique vendors in adjustments data:', uniqueVendorsInAdjustments);
+  }
+
+  // Log vendor breakdown from adjustments
+  if (vendorAdjustments && vendorAdjustments.length > 0) {
+    const vendorCounts = vendorAdjustments.reduce((acc, adj) => {
+      acc[adj.vendedor_nome] = (acc[adj.vendedor_nome] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    console.log('📊 [Dashboard] Vendor breakdown from adjustments:', vendorCounts);
   }
 
   // Real-time subscription setup

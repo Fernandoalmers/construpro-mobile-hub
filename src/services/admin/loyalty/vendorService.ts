@@ -8,7 +8,7 @@ export const vendorService = {
     try {
       console.log('🔍 [vendorService] Starting getVendorAdjustments - fetching ALL adjustments...');
       
-      // Step 1: Get ALL adjustments without any limit (same as getVendorAdjustmentsSummary)
+      // Step 1: Get ALL adjustments without any limit
       const { data: allAdjustments, error: adjustmentsError } = await supabase
         .from('pontos_ajustados')
         .select('vendedor_id, usuario_id, tipo, valor, motivo, created_at, id')
@@ -30,42 +30,29 @@ export const vendorService = {
       const vendorIdsInAdjustments = [...new Set(allAdjustments.map(adj => adj.vendedor_id))];
       console.log('🔍 [vendorService] Unique vendor IDs in adjustments:', vendorIdsInAdjustments);
 
-      // Step 2: Get ALL vendor data and filter for active/approved vendors (same logic as summary)
-      console.log('🏪 [vendorService] Fetching ALL vendors from database...');
-      const { data: allVendors, error: allVendorsError } = await supabase
+      // Step 2: Get vendors with normalized status filtering at database level
+      console.log('🏪 [vendorService] Fetching active/approved vendors from database...');
+      const { data: activeVendors, error: vendorsError } = await supabase
         .from('vendedores')
-        .select('id, nome_loja, status');
+        .select('id, nome_loja, status')
+        .in('id', vendorIdsInAdjustments)
+        .or('status.ilike.%ativo%,status.ilike.%aprovado%');
 
-      if (allVendorsError) {
-        console.error('❌ [vendorService] Error fetching all vendors:', allVendorsError);
-        throw allVendorsError;
+      if (vendorsError) {
+        console.error('❌ [vendorService] Error fetching vendors:', vendorsError);
+        throw vendorsError;
       }
 
-      console.log(`🏪 [vendorService] Retrieved ${allVendors?.length || 0} total vendors from database`);
-      console.log('🏪 [vendorService] All vendor statuses:', allVendors?.map(v => ({ id: v.id, nome: v.nome_loja, status: v.status })));
+      console.log(`🏪 [vendorService] Retrieved ${activeVendors?.length || 0} active/approved vendors from database`);
+      console.log('🏪 [vendorService] Active vendor statuses:', activeVendors?.map(v => ({ id: v.id, nome: v.nome_loja, status: v.status })));
 
-      // Filter for active/approved vendors that also have adjustments (same logic as summary)
-      const vendorsWithAdjustments = allVendors?.filter(v => {
-        const hasAdjustments = vendorIdsInAdjustments.includes(v.id);
-        const isActiveOrApproved = v.status === 'ativo' || v.status === 'aprovado';
-        
-        console.log(`🔍 [vendorService] Vendor ${v.nome_loja} (${v.id}): status=${v.status}, hasAdjustments=${hasAdjustments}, isActiveOrApproved=${isActiveOrApproved}`);
-        
-        return hasAdjustments && isActiveOrApproved;
-      }) || [];
-
-      console.log(`🏪 [vendorService] Found ${vendorsWithAdjustments.length} vendors with adjustments and active/approved status:`);
-      vendorsWithAdjustments.forEach(v => {
-        console.log(`  - ${v.nome_loja} (${v.id}) - Status: ${v.status}`);
-      });
-
-      if (vendorsWithAdjustments.length === 0) {
-        console.log('⚠️ [vendorService] No active/approved vendors with adjustments found');
+      if (!activeVendors || activeVendors.length === 0) {
+        console.log('⚠️ [vendorService] No active/approved vendors found');
         return [];
       }
 
-      // Step 3: Filter adjustments for active vendors only (same logic as summary)
-      const activeVendorIds = new Set(vendorsWithAdjustments.map(v => v.id));
+      // Step 3: Filter adjustments for active vendors only
+      const activeVendorIds = new Set(activeVendors.map(v => v.id));
       const filteredAdjustments = allAdjustments.filter(adj => 
         activeVendorIds.has(adj.vendedor_id)
       );
@@ -81,7 +68,7 @@ export const vendorService = {
 
       console.log('📊 [vendorService] Adjustments per vendor (getVendorAdjustments):');
       Array.from(adjustmentsByVendor.entries()).forEach(([vendorId, count]) => {
-        const vendor = vendorsWithAdjustments.find(v => v.id === vendorId);
+        const vendor = activeVendors.find(v => v.id === vendorId);
         console.log(`  - ${vendor?.nome_loja || vendorId}: ${count} adjustments`);
       });
 
@@ -100,7 +87,7 @@ export const vendorService = {
       }
 
       // Step 5: Create lookup maps and process results
-      const vendorNameMap = new Map(vendorsWithAdjustments.map(v => [v.id, v.nome_loja]));
+      const vendorNameMap = new Map(activeVendors.map(v => [v.id, v.nome_loja]));
       const userMap = new Map(usersData?.map(u => [u.id, u.nome]) || []);
 
       const result = filteredAdjustments.map(adjustment => ({
@@ -150,42 +137,29 @@ export const vendorService = {
       const vendorIdsInAdjustments = [...new Set(allAdjustments.map(adj => adj.vendedor_id))];
       console.log('🔍 [vendorService] Unique vendor IDs in adjustments:', vendorIdsInAdjustments);
 
-      // Step 2: Get ALL vendor data and filter for active/approved vendors
-      console.log('🏪 [vendorService] Fetching ALL vendors from database...');
-      const { data: allVendors, error: allVendorsError } = await supabase
+      // Step 2: Get vendors with normalized status filtering at database level
+      console.log('🏪 [vendorService] Fetching active/approved vendors from database...');
+      const { data: activeVendors, error: vendorsError } = await supabase
         .from('vendedores')
-        .select('id, nome_loja, status');
+        .select('id, nome_loja, status')
+        .in('id', vendorIdsInAdjustments)
+        .or('status.ilike.%ativo%,status.ilike.%aprovado%');
 
-      if (allVendorsError) {
-        console.error('❌ [vendorService] Error fetching all vendors:', allVendorsError);
-        throw allVendorsError;
+      if (vendorsError) {
+        console.error('❌ [vendorService] Error fetching vendors:', vendorsError);
+        throw vendorsError;
       }
 
-      console.log(`🏪 [vendorService] Retrieved ${allVendors?.length || 0} total vendors from database`);
-      console.log('🏪 [vendorService] All vendor statuses:', allVendors?.map(v => ({ id: v.id, nome: v.nome_loja, status: v.status })));
+      console.log(`🏪 [vendorService] Retrieved ${activeVendors?.length || 0} active/approved vendors from database`);
+      console.log('🏪 [vendorService] Active vendor statuses:', activeVendors?.map(v => ({ id: v.id, nome: v.nome_loja, status: v.status })));
 
-      // Filter for active/approved vendors that also have adjustments
-      const vendorsWithAdjustments = allVendors?.filter(v => {
-        const hasAdjustments = vendorIdsInAdjustments.includes(v.id);
-        const isActiveOrApproved = v.status === 'ativo' || v.status === 'aprovado';
-        
-        console.log(`🔍 [vendorService] Vendor ${v.nome_loja} (${v.id}): status=${v.status}, hasAdjustments=${hasAdjustments}, isActiveOrApproved=${isActiveOrApproved}`);
-        
-        return hasAdjustments && isActiveOrApproved;
-      }) || [];
-
-      console.log(`🏪 [vendorService] Found ${vendorsWithAdjustments.length} vendors with adjustments and active/approved status:`);
-      vendorsWithAdjustments.forEach(v => {
-        console.log(`  - ${v.nome_loja} (${v.id}) - Status: ${v.status}`);
-      });
-
-      if (vendorsWithAdjustments.length === 0) {
-        console.log('⚠️ [vendorService] No active/approved vendors with adjustments found');
+      if (!activeVendors || activeVendors.length === 0) {
+        console.log('⚠️ [vendorService] No active/approved vendors found');
         return [];
       }
 
       // Step 3: Filter adjustments for active vendors only
-      const activeVendorIds = new Set(vendorsWithAdjustments.map(v => v.id));
+      const activeVendorIds = new Set(activeVendors.map(v => v.id));
       const filteredAdjustments = allAdjustments.filter(adj => 
         activeVendorIds.has(adj.vendedor_id)
       );
@@ -201,12 +175,12 @@ export const vendorService = {
 
       console.log('📊 [vendorService] Adjustments per vendor (getVendorAdjustmentsSummary):');
       Array.from(adjustmentsByVendor.entries()).forEach(([vendorId, count]) => {
-        const vendor = vendorsWithAdjustments.find(v => v.id === vendorId);
+        const vendor = activeVendors.find(v => v.id === vendorId);
         console.log(`  - ${vendor?.nome_loja || vendorId}: ${count} adjustments`);
       });
 
       // Step 4: Create vendor name map and calculate statistics
-      const vendorNameMap = new Map(vendorsWithAdjustments.map(v => [v.id, v.nome_loja]));
+      const vendorNameMap = new Map(activeVendors.map(v => [v.id, v.nome_loja]));
       const vendorStatsMap = new Map<string, {
         vendedor_nome: string;
         total_ajustes: number;
