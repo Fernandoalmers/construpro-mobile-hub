@@ -1,8 +1,9 @@
 
 import { VendorAdjustment, VendorAdjustmentSummary } from '../types';
+import { RawVendorAdjustment } from './vendorAdjustmentsFetcher';
 
 export const processVendorAdjustments = (
-  adjustments: any[],
+  adjustments: RawVendorAdjustment[],
   vendors: any[],
   users: any[],
   limit?: number
@@ -39,7 +40,7 @@ export const processVendorAdjustments = (
   const vendorNameMap = new Map(vendors.map(v => [v.id, v.nome_loja]));
   const userMap = new Map(users.map(u => [u.id, u.nome]) || []);
 
-  const result = filteredAdjustments.map(adjustment => ({
+  const result: VendorAdjustment[] = filteredAdjustments.map(adjustment => ({
     ...adjustment,
     vendedor_nome: vendorNameMap.get(adjustment.vendedor_id) || 'Vendedor desconhecido',
     usuario_nome: userMap.get(adjustment.usuario_id) || 'Usuário desconhecido'
@@ -56,7 +57,7 @@ export const processVendorAdjustments = (
 };
 
 export const processVendorAdjustmentsSummary = (
-  adjustments: any[],
+  adjustments: RawVendorAdjustment[],
   vendors: any[]
 ): VendorAdjustmentSummary[] => {
   console.log('🔍 [vendorDataProcessor] Processing adjustments data for summary...');

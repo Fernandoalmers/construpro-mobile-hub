@@ -1,8 +1,18 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { VendorAdjustment } from '../types';
 
-export const fetchVendorAdjustments = async (limit?: number): Promise<VendorAdjustment[]> => {
+// Raw adjustment data from database (without vendor/user names)
+export interface RawVendorAdjustment {
+  id: string;
+  vendedor_id: string;
+  usuario_id: string;
+  valor: number;
+  tipo: string;
+  motivo: string;
+  created_at: string;
+}
+
+export const fetchVendorAdjustments = async (limit?: number): Promise<RawVendorAdjustment[]> => {
   console.log('🔍 [vendorAdjustmentsFetcher] Starting fetchVendorAdjustments - fetching ALL adjustments...');
   
   // Step 1: Get ALL adjustments without any limit
