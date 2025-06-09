@@ -57,52 +57,69 @@ const FavoritesScreen: React.FC = () => {
   } = useQuery({
     queryKey: ['recentlyViewed'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('recently_viewed')
-        .select(`
-          *,
-          produtos:produto_id (
-            id, nome, preco_normal, preco_promocional, imagens, categoria, descricao,
-            vendedor_id
-          )
-        `)
-        .eq('user_id', user?.id || '')
-        .order('data_visualizacao', { ascending: false })
-        .limit(10);
-      
-      if (error) {
-        console.error('Error fetching recently viewed:', error);
-        throw error;
-      }
-      
-      // Fetch store names for products that have vendedor_id
-      const productsWithVendorId = (data || [])
-        .filter(item => item.produtos && item.produtos.vendedor_id)
-        .map(item => item.produtos.vendedor_id)
-        .filter(Boolean);
-      
-      if (productsWithVendorId.length > 0) {
-        const vendedorIds = [...new Set(productsWithVendorId)];
+      try {
+        // First get the recently viewed records
+        const { data: recentData, error: recentError } = await supabase
+          .from('recently_viewed')
+          .select('*')
+          .eq('user_id', user?.id || '')
+          .order('data_visualizacao', { ascending: false })
+          .limit(10);
         
-        const { data: vendedores, error: vendedoresError } = await supabase
-          .from('vendedores')
-          .select('id, nome_loja')
-          .in('id', vendedorIds);
-        
-        if (!vendedoresError && vendedores) {
-          const vendedorMap = Object.fromEntries(vendedores.map(v => [v.id, v.nome_loja]));
-          
-          return (data || []).map(item => ({
-            ...item,
-            produtos: item.produtos ? {
-              ...item.produtos,
-              loja_nome: item.produtos.vendedor_id ? vendedorMap[item.produtos.vendedor_id] : undefined
-            } : null
-          }));
+        if (recentError) {
+          console.error('Error fetching recently viewed:', recentError);
+          throw recentError;
         }
+        
+        if (!recentData || recentData.length === 0) {
+          return [];
+        }
+
+        // Get unique product IDs
+        const productIds = recentData.map(item => item.produto_id);
+        
+        // Fetch products separately
+        const { data: productsData, error: productsError } = await supabase
+          .from('produtos')
+          .select('id, nome, preco_normal, preco_promocional, imagens, categoria, descricao, vendedor_id')
+          .in('id', productIds);
+        
+        if (productsError) {
+          console.error('Error fetching products:', productsError);
+          throw productsError;
+        }
+        
+        // Get vendor IDs for store names
+        const vendorIds = (productsData || [])
+          .map(p => p.vendedor_id)
+          .filter(Boolean);
+        
+        let vendorMap: Record<string, string> = {};
+        if (vendorIds.length > 0) {
+          const { data: vendedores, error: vendedoresError } = await supabase
+            .from('vendedores')
+            .select('id, nome_loja')
+            .in('id', vendorIds);
+          
+          if (!vendedoresError && vendedores) {
+            vendorMap = Object.fromEntries(vendedores.map(v => [v.id, v.nome_loja]));
+          }
+        }
+        
+        // Combine the data
+        return recentData.map(recentItem => ({
+          ...recentItem,
+          produtos: productsData?.find(p => p.id === recentItem.produto_id) ? {
+            ...productsData.find(p => p.id === recentItem.produto_id)!,
+            loja_nome: productsData.find(p => p.id === recentItem.produto_id)?.vendedor_id 
+              ? vendorMap[productsData.find(p => p.id === recentItem.produto_id)!.vendedor_id!] 
+              : undefined
+          } : null
+        })).filter(item => item.produtos !== null);
+      } catch (error) {
+        console.error('Error in recentlyViewed query:', error);
+        return [];
       }
-      
-      return data || [];
     },
     enabled: !!user?.id
   });
@@ -115,57 +132,74 @@ const FavoritesScreen: React.FC = () => {
   } = useQuery({
     queryKey: ['favorites'],
     queryFn: async () => {
-      console.log('Fetching favorites for user:', user?.id);
-      
-      const { data, error } = await supabase
-        .from('favorites')
-        .select(`
-          *,
-          produtos:produto_id (
-            id, nome, preco_normal, preco_promocional, imagens, categoria, descricao,
-            vendedor_id
-          )
-        `)
-        .eq('user_id', user?.id || '');
-      
-      if (error) {
-        console.error('Error fetching favorites:', error);
-        throw error;
-      }
-      
-      console.log('Raw favorites data:', data);
-      
-      // Fetch store names for products that have vendedor_id
-      const productsWithVendorId = (data || [])
-        .filter(item => item.produtos && item.produtos.vendedor_id)
-        .map(item => item.produtos.vendedor_id)
-        .filter(Boolean);
-      
-      if (productsWithVendorId.length > 0) {
-        const vendedorIds = [...new Set(productsWithVendorId)];
+      try {
+        console.log('Fetching favorites for user:', user?.id);
         
-        const { data: vendedores, error: vendedoresError } = await supabase
-          .from('vendedores')
-          .select('id, nome_loja')
-          .in('id', vendedorIds);
+        // First get the favorites records
+        const { data: favoritesData, error: favoritesError } = await supabase
+          .from('favorites')
+          .select('*')
+          .eq('user_id', user?.id || '');
         
-        if (!vendedoresError && vendedores) {
-          const vendedorMap = Object.fromEntries(vendedores.map(v => [v.id, v.nome_loja]));
-          
-          const result = (data || []).map(item => ({
-            ...item,
-            produtos: item.produtos ? {
-              ...item.produtos,
-              loja_nome: item.produtos.vendedor_id ? vendedorMap[item.produtos.vendedor_id] : undefined
-            } : null
-          }));
-          
-          console.log('Processed favorites data:', result);
-          return result;
+        if (favoritesError) {
+          console.error('Error fetching favorites:', favoritesError);
+          throw favoritesError;
         }
+        
+        console.log('Raw favorites data:', favoritesData);
+        
+        if (!favoritesData || favoritesData.length === 0) {
+          return [];
+        }
+
+        // Get unique product IDs
+        const productIds = favoritesData.map(item => item.produto_id);
+        
+        // Fetch products separately
+        const { data: productsData, error: productsError } = await supabase
+          .from('produtos')
+          .select('id, nome, preco_normal, preco_promocional, imagens, categoria, descricao, vendedor_id')
+          .in('id', productIds);
+        
+        if (productsError) {
+          console.error('Error fetching products:', productsError);
+          throw productsError;
+        }
+        
+        // Get vendor IDs for store names
+        const vendorIds = (productsData || [])
+          .map(p => p.vendedor_id)
+          .filter(Boolean);
+        
+        let vendorMap: Record<string, string> = {};
+        if (vendorIds.length > 0) {
+          const { data: vendedores, error: vendedoresError } = await supabase
+            .from('vendedores')
+            .select('id, nome_loja')
+            .in('id', vendorIds);
+          
+          if (!vendedoresError && vendedores) {
+            vendorMap = Object.fromEntries(vendedores.map(v => [v.id, v.nome_loja]));
+          }
+        }
+        
+        // Combine the data
+        const result = favoritesData.map(favoriteItem => ({
+          ...favoriteItem,
+          produtos: productsData?.find(p => p.id === favoriteItem.produto_id) ? {
+            ...productsData.find(p => p.id === favoriteItem.produto_id)!,
+            loja_nome: productsData.find(p => p.id === favoriteItem.produto_id)?.vendedor_id 
+              ? vendorMap[productsData.find(p => p.id === favoriteItem.produto_id)!.vendedor_id!] 
+              : undefined
+          } : null
+        })).filter(item => item.produtos !== null);
+        
+        console.log('Processed favorites data:', result);
+        return result;
+      } catch (error) {
+        console.error('Error in favorites query:', error);
+        return [];
       }
-      
-      return data || [];
     },
     enabled: !!user?.id
   });
@@ -214,10 +248,7 @@ const FavoritesScreen: React.FC = () => {
           
           const { data: products, error: productsError } = await supabase
             .from('produtos')
-            .select(`
-              id, nome, preco_normal, preco_promocional, imagens, categoria, descricao, 
-              vendedor_id
-            `)
+            .select('id, nome, preco_normal, preco_promocional, imagens, categoria, descricao, vendedor_id')
             .in('id', productIds);
           
           if (productsError) throw productsError;
