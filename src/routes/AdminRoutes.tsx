@@ -15,6 +15,7 @@ import {
   AdminCategoriesScreen
 } from '../imports';
 import AdminCouponsScreen from '../components/admin/coupons/AdminCouponsScreen';
+import AdminLoyaltyDashboard from '../components/admin/loyalty/AdminLoyaltyDashboard';
 
 const AdminRoutes: React.FC = () => {
   return (
@@ -26,6 +27,7 @@ const AdminRoutes: React.FC = () => {
       <Route path="/admin/redemptions" element={<ProtectedRoute requireAdmin={true}><RedemptionsManagementScreen /></ProtectedRoute>} />
       <Route path="/admin/orders" element={<ProtectedRoute requireAdmin={true}><OrdersManagementScreen /></ProtectedRoute>} />
       <Route path="/admin/coupons" element={<ProtectedRoute requireAdmin={true}><AdminCouponsScreen /></ProtectedRoute>} />
+      <Route path="/admin/loyalty" element={<ProtectedRoute requireAdmin={true}><AdminLoyaltyDashboard /></ProtectedRoute>} />
       <Route path="/admin/logs" element={<ProtectedRoute requireAdmin={true}><AdminLogsScreen /></ProtectedRoute>} />
       <Route path="/admin/settings" element={<ProtectedRoute requireAdmin={true}><AdminSettingsScreen /></ProtectedRoute>} />
       <Route path="/admin/rewards" element={<ProtectedRoute requireAdmin={true}><AdminRewardsScreen /></ProtectedRoute>} />
