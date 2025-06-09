@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Bookmark, Clock, ShoppingBag, ChevronRight, Star, Trash2 } from 'lucide-react';
@@ -26,7 +27,7 @@ interface RecentlyViewed {
   user_id: string;
   produto_id: string;
   data_visualizacao: string;
-  produto: Product;
+  produtos: Product;
 }
 
 interface FavoriteItem {
@@ -34,13 +35,13 @@ interface FavoriteItem {
   user_id: string;
   produto_id: string;
   data_adicionado: string;
-  produto: Product;
+  produtos: Product;
 }
 
 interface FrequentlyBoughtItem {
   produto_id: string;
   count: number;
-  produto: Product | null;
+  produtos: Product | null;
 }
 
 const FavoritesScreen: React.FC = () => {
@@ -61,7 +62,7 @@ const FavoritesScreen: React.FC = () => {
         .from('recently_viewed')
         .select(`
           *,
-          produto:produto_id (
+          produtos:produto_id (
             id, nome, preco_normal, preco_promocional, imagens, categoria, descricao,
             vendedor_id
           )
@@ -77,8 +78,8 @@ const FavoritesScreen: React.FC = () => {
       
       // Fetch store names for products that have vendedor_id
       const productsWithVendorId = (data || [])
-        .filter(item => item.produto && item.produto.vendedor_id)
-        .map(item => item.produto.vendedor_id)
+        .filter(item => item.produtos && item.produtos.vendedor_id)
+        .map(item => item.produtos.vendedor_id)
         .filter(Boolean);
       
       if (productsWithVendorId.length > 0) {
@@ -94,9 +95,9 @@ const FavoritesScreen: React.FC = () => {
           
           return (data || []).map(item => ({
             ...item,
-            produto: item.produto ? {
-              ...item.produto,
-              loja_nome: item.produto.vendedor_id ? vendedorMap[item.produto.vendedor_id] : undefined
+            produtos: item.produtos ? {
+              ...item.produtos,
+              loja_nome: item.produtos.vendedor_id ? vendedorMap[item.produtos.vendedor_id] : undefined
             } : null
           }));
         }
@@ -121,7 +122,7 @@ const FavoritesScreen: React.FC = () => {
         .from('favorites')
         .select(`
           *,
-          produto:produto_id (
+          produtos:produto_id (
             id, nome, preco_normal, preco_promocional, imagens, categoria, descricao,
             vendedor_id
           )
@@ -137,8 +138,8 @@ const FavoritesScreen: React.FC = () => {
       
       // Fetch store names for products that have vendedor_id
       const productsWithVendorId = (data || [])
-        .filter(item => item.produto && item.produto.vendedor_id)
-        .map(item => item.produto.vendedor_id)
+        .filter(item => item.produtos && item.produtos.vendedor_id)
+        .map(item => item.produtos.vendedor_id)
         .filter(Boolean);
       
       if (productsWithVendorId.length > 0) {
@@ -154,9 +155,9 @@ const FavoritesScreen: React.FC = () => {
           
           const result = (data || []).map(item => ({
             ...item,
-            produto: item.produto ? {
-              ...item.produto,
-              loja_nome: item.produto.vendedor_id ? vendedorMap[item.produto.vendedor_id] : undefined
+            produtos: item.produtos ? {
+              ...item.produtos,
+              loja_nome: item.produtos.vendedor_id ? vendedorMap[item.produtos.vendedor_id] : undefined
             } : null
           }));
           
@@ -227,13 +228,13 @@ const FavoritesScreen: React.FC = () => {
             return {
               produto_id: item.produto_id,
               count: item.count,
-              produto: matchingProduct
+              produtos: matchingProduct
             };
-          }).filter(item => item.produto !== null);
+          }).filter(item => item.produtos !== null);
           
           const vendedorIds = enrichedItems
-            .filter(item => item.produto && item.produto.vendedor_id)
-            .map(item => item.produto?.vendedor_id)
+            .filter(item => item.produtos && item.produtos.vendedor_id)
+            .map(item => item.produtos?.vendedor_id)
             .filter(Boolean) as string[];
           
           if (vendedorIds.length > 0) {
@@ -247,9 +248,9 @@ const FavoritesScreen: React.FC = () => {
               
               return enrichedItems.map(item => ({
                 ...item,
-                produto: item.produto ? {
-                  ...item.produto,
-                  loja_nome: item.produto.vendedor_id ? vendedorMap[item.produto.vendedor_id] : undefined
+                produtos: item.produtos ? {
+                  ...item.produtos,
+                  loja_nome: item.produtos.vendedor_id ? vendedorMap[item.produtos.vendedor_id] : undefined
                 } : null
               }));
             }
@@ -395,9 +396,9 @@ const FavoritesScreen: React.FC = () => {
   // Render a product card
   const renderProductCard = (item: RecentlyViewed | FavoriteItem | FrequentlyBoughtItem) => {
     if (!('id' in item)) {
-      if (!item.produto) return null;
+      if (!item.produtos) return null;
       
-      const product = item.produto;
+      const product = item.produtos;
       
       return (
         <Card key={`frequent-${item.produto_id}`} className="overflow-hidden">
@@ -438,9 +439,9 @@ const FavoritesScreen: React.FC = () => {
       );
     }
     
-    if (!item.produto) return null;
+    if (!item.produtos) return null;
     
-    const product = item.produto;
+    const product = item.produtos;
     const isFavoriteTab = activeTab === "favorites";
     
     return (
@@ -614,7 +615,7 @@ const FavoritesScreen: React.FC = () => {
                 
                 <div className="grid grid-cols-2 gap-4">
                   {frequentlyBought.length > 0 ? (
-                    frequentlyBought.filter(item => item.produto !== null).map(item => renderProductCard(item))
+                    frequentlyBought.filter(item => item.produtos !== null).map(item => renderProductCard(item))
                   ) : (
                     <div className="col-span-2 text-center py-10">
                       <ShoppingBag className="mx-auto text-gray-400 mb-3" size={40} />
