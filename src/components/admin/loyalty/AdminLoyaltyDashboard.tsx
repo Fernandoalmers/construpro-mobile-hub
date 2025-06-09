@@ -126,6 +126,18 @@ const AdminLoyaltyDashboard: React.FC = () => {
   console.log('🔍 [Dashboard] Detailed vendor summaries data:', vendorSummaries);
   console.log('🔍 [Dashboard] Detailed vendor adjustments data:', vendorAdjustments?.slice(0, 5) || []); // Show first 5 for comparison
 
+  // Compare data between both queries
+  console.log('📊 [Dashboard] DATA COMPARISON:');
+  console.log(`  - getVendorAdjustments returned: ${vendorAdjustments?.length || 0} adjustments`);
+  console.log(`  - getVendorAdjustmentsSummary returned: ${vendorSummaries?.length || 0} vendor summaries`);
+  console.log(`  - Expected: Both functions should process the same data (37 adjustments, 2 vendors)`);
+
+  // Log unique vendors in adjustments data
+  if (vendorAdjustments && vendorAdjustments.length > 0) {
+    const uniqueVendorsInAdjustments = [...new Set(vendorAdjustments.map(adj => adj.vendedor_nome))];
+    console.log('🏪 [Dashboard] Unique vendors in adjustments data:', uniqueVendorsInAdjustments);
+  }
+
   // Real-time subscription setup
   useEffect(() => {
     console.log('Setting up real-time subscriptions...');
