@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import AdminLayout from '@/components/admin/AdminLayout';
@@ -60,7 +59,7 @@ const AdminLoyaltyDashboard: React.FC = () => {
     queryKey: ['vendor-adjustments-summary', refreshKey],
     queryFn: loyaltyService.getVendorAdjustmentsSummary,
     staleTime: 0, // Always fetch fresh data
-    cacheTime: 0 // Don't cache the results
+    gcTime: 0 // Don't cache the results (renamed from cacheTime)
   });
 
   // Real-time subscription setup
