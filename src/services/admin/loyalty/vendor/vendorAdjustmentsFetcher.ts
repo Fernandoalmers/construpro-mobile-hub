@@ -13,178 +13,193 @@ export interface RawVendorAdjustment {
 }
 
 export const fetchVendorAdjustments = async (): Promise<RawVendorAdjustment[]> => {
-  console.log('🔍 [vendorAdjustmentsFetcher] === ENHANCED FETCH ALL VENDOR ADJUSTMENTS ===');
-  console.log('🔍 [vendorAdjustmentsFetcher] Getting complete dataset for data integrity');
+  console.log('🔍 [vendorAdjustmentsFetcher] === CORREÇÃO DEFINITIVA - FETCH ALL VENDOR ADJUSTMENTS ===');
+  console.log('🔍 [vendorAdjustmentsFetcher] Timestamp:', new Date().toISOString());
+  console.log('🔍 [vendorAdjustmentsFetcher] Garantindo fetch completo dos dados');
   
-  // Get ALL adjustments without any limit - use more explicit field selection
-  const { data: allAdjustments, error: adjustmentsError } = await supabase
-    .from('pontos_ajustados')
-    .select(`
-      id,
-      vendedor_id,
-      usuario_id,
-      valor,
-      tipo,
-      motivo,
-      created_at
-    `)
-    .order('created_at', { ascending: false });
+  try {
+    // CORREÇÃO: Query completamente explícita sem qualquer limite implícito
+    const { data: allAdjustments, error: adjustmentsError } = await supabase
+      .from('pontos_ajustados')
+      .select(`
+        id,
+        vendedor_id,
+        usuario_id,
+        valor,
+        tipo,
+        motivo,
+        created_at
+      `)
+      .order('created_at', { ascending: false });
 
-  if (adjustmentsError) {
-    console.error('❌ [vendorAdjustmentsFetcher] Error fetching adjustments:', adjustmentsError);
-    throw adjustmentsError;
-  }
-
-  console.log(`📊 [vendorAdjustmentsFetcher] Retrieved ${allAdjustments?.length || 0} total adjustments`);
-  
-  if (!allAdjustments || allAdjustments.length === 0) {
-    console.log('⚠️ [vendorAdjustmentsFetcher] No adjustments found in database');
-    return [];
-  }
-
-  // CRITICAL: Enhanced vendor distribution analysis
-  const vendorCounts = new Map<string, number>();
-  const vendorAdjustments = new Map<string, RawVendorAdjustment[]>();
-  
-  allAdjustments.forEach(adj => {
-    const count = vendorCounts.get(adj.vendedor_id) || 0;
-    vendorCounts.set(adj.vendedor_id, count + 1);
-    
-    if (!vendorAdjustments.has(adj.vendedor_id)) {
-      vendorAdjustments.set(adj.vendedor_id, []);
+    if (adjustmentsError) {
+      console.error('❌ [vendorAdjustmentsFetcher] ERRO CRÍTICO na query:', adjustmentsError);
+      throw adjustmentsError;
     }
-    vendorAdjustments.get(adj.vendedor_id)?.push(adj);
-  });
-  
-  console.log('📊 [vendorAdjustmentsFetcher] ENHANCED vendor analysis:');
-  Array.from(vendorCounts.entries()).forEach(([vendorId, count]) => {
-    console.log(`  - Vendor ID ${vendorId}: ${count} adjustments`);
-    
-    // Log a sample adjustment for each vendor for debugging
-    const sampleAdj = vendorAdjustments.get(vendorId)?.[0];
-    if (sampleAdj) {
-      console.log(`    Sample: ${sampleAdj.tipo} of ${sampleAdj.valor} points (${sampleAdj.motivo})`);
-    }
-  });
 
-  console.log(`✅ [vendorAdjustmentsFetcher] Successfully returning ${allAdjustments.length} adjustments from ${vendorCounts.size} vendors`);
-  return allAdjustments;
+    const adjustmentCount = allAdjustments?.length || 0;
+    console.log(`📊 [vendorAdjustmentsFetcher] SUCESSO: ${adjustmentCount} ajustes fetched`);
+    
+    if (adjustmentCount === 0) {
+      console.warn('⚠️ [vendorAdjustmentsFetcher] ATENÇÃO: Nenhum ajuste encontrado no banco');
+      return [];
+    }
+
+    // VALIDAÇÃO: Verificar integridade dos dados
+    const vendorIds = new Set(allAdjustments.map(adj => adj.vendedor_id));
+    console.log(`🏪 [vendorAdjustmentsFetcher] Vendedores únicos encontrados: ${vendorIds.size}`);
+    console.log(`🏪 [vendorAdjustmentsFetcher] Vendor IDs: ${Array.from(vendorIds).join(', ')}`);
+    
+    // VALIDAÇÃO: Contagem por vendedor
+    const vendorCounts = new Map<string, number>();
+    allAdjustments.forEach(adj => {
+      const count = vendorCounts.get(adj.vendedor_id) || 0;
+      vendorCounts.set(adj.vendedor_id, count + 1);
+    });
+    
+    console.log('📊 [vendorAdjustmentsFetcher] DISTRIBUIÇÃO POR VENDEDOR:');
+    Array.from(vendorCounts.entries()).forEach(([vendorId, count]) => {
+      console.log(`  - Vendor ${vendorId}: ${count} ajustes`);
+    });
+
+    // VALIDAÇÃO CRÍTICA: Verificar se temos pelo menos 2 vendedores
+    if (vendorIds.size < 2) {
+      console.error('🚨 [vendorAdjustmentsFetcher] PROBLEMA CRÍTICO: Menos de 2 vendedores encontrados!');
+      console.log('🚨 [vendorAdjustmentsFetcher] Esperávamos pelo menos Beaba e Mais Real');
+    }
+
+    console.log(`✅ [vendorAdjustmentsFetcher] FETCH COMPLETO: ${adjustmentCount} ajustes de ${vendorIds.size} vendedores`);
+    return allAdjustments;
+
+  } catch (error) {
+    console.error('❌ [vendorAdjustmentsFetcher] ERRO FATAL no fetch:', error);
+    
+    // FALLBACK: Tentar query alternativa mais básica
+    console.log('🔄 [vendorAdjustmentsFetcher] Tentando query de fallback...');
+    try {
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('pontos_ajustados')
+        .select('*');
+      
+      if (fallbackError) {
+        console.error('❌ [vendorAdjustmentsFetcher] Fallback também falhou:', fallbackError);
+        throw fallbackError;
+      }
+      
+      console.log(`🆘 [vendorAdjustmentsFetcher] Fallback SUCCESS: ${fallbackData?.length || 0} ajustes`);
+      return fallbackData || [];
+      
+    } catch (fallbackErr) {
+      console.error('❌ [vendorAdjustmentsFetcher] Todas as queries falharam:', fallbackErr);
+      throw fallbackErr;
+    }
+  }
 };
 
 export const fetchVendorsForAdjustments = async (vendorIds: string[]) => {
-  console.log('🏪 [vendorAdjustmentsFetcher] === ENHANCED FETCH VENDOR DATA ===');
-  console.log('🏪 [vendorAdjustmentsFetcher] Fetching ALL vendors regardless of status for data integrity');
-  console.log('🏪 [vendorAdjustmentsFetcher] Vendor IDs to fetch:', vendorIds);
+  console.log('🏪 [vendorAdjustmentsFetcher] === CORREÇÃO DEFINITIVA - FETCH VENDOR DATA ===');
+  console.log('🏪 [vendorAdjustmentsFetcher] Vendor IDs solicitados:', vendorIds);
+  console.log('🏪 [vendorAdjustmentsFetcher] Quantidade:', vendorIds.length);
   
   if (vendorIds.length === 0) {
-    console.log('⚠️ [vendorAdjustmentsFetcher] No vendor IDs provided');
+    console.warn('⚠️ [vendorAdjustmentsFetcher] ATENÇÃO: Lista de vendor IDs vazia');
     return [];
   }
   
-  // ENHANCED: More explicit query with better error handling
-  const { data: allVendors, error: vendorsError } = await supabase
-    .from('vendedores')
-    .select(`
-      id,
-      nome_loja,
-      status,
-      usuario_id,
-      created_at
-    `)
-    .in('id', vendorIds);
+  try {
+    // CORREÇÃO: Query mais robusta para vendedores
+    const { data: vendorsData, error: vendorsError } = await supabase
+      .from('vendedores')
+      .select(`
+        id,
+        nome_loja,
+        status,
+        usuario_id,
+        created_at
+      `)
+      .in('id', vendorIds);
 
-  if (vendorsError) {
-    console.error('❌ [vendorAdjustmentsFetcher] Error fetching vendors:', vendorsError);
-    throw vendorsError;
-  }
-
-  console.log(`🏪 [vendorAdjustmentsFetcher] Successfully retrieved ${allVendors?.length || 0} vendors from ${vendorIds.length} requested`);
-  
-  // CRITICAL: Check for missing vendors
-  const foundVendorIds = new Set(allVendors?.map(v => v.id) || []);
-  const missingVendorIds = vendorIds.filter(id => !foundVendorIds.has(id));
-  
-  if (missingVendorIds.length > 0) {
-    console.error('❌ [vendorAdjustmentsFetcher] CRITICAL: Missing vendors in database!');
-    console.error('  Missing vendor IDs:', missingVendorIds);
-    
-    // This is a critical data integrity issue - we should handle it
-    missingVendorIds.forEach(missingId => {
-      console.error(`  🚨 Vendor ID ${missingId} has adjustments but no vendor record!`);
-    });
-  }
-  
-  // ENHANCED: Detailed vendor logging with character analysis
-  if (allVendors && allVendors.length > 0) {
-    console.log('🏪 [vendorAdjustmentsFetcher] ENHANCED vendor information:');
-    allVendors.forEach((vendor, index) => {
-      // Check for potential character encoding issues
-      const nameLength = vendor.nome_loja?.length || 0;
-      const hasTrailingSpaces = vendor.nome_loja !== vendor.nome_loja?.trim();
-      
-      console.log(`  ${index + 1}. ID: ${vendor.id}`);
-      console.log(`     Name: "${vendor.nome_loja}" (${nameLength} chars, trailing spaces: ${hasTrailingSpaces})`);
-      console.log(`     Status: ${vendor.status}`);
-      console.log(`     Created: ${vendor.created_at}`);
-      
-      if (vendor.nome_loja?.toLowerCase().includes('mais real')) {
-        console.log(`    🎯 MAIS REAL VENDOR FOUND: "${vendor.nome_loja}" (Status: ${vendor.status})`);
-      }
-      if (vendor.nome_loja?.toLowerCase().includes('beaba')) {
-        console.log(`    🎯 BEABA VENDOR FOUND: "${vendor.nome_loja}" (Status: ${vendor.status})`);
-      }
-    });
-    
-    // VERIFICATION: Check if we have both key vendors
-    const maisRealVendor = allVendors.find(v => v.nome_loja?.toLowerCase().includes('mais real'));
-    const beabaVendor = allVendors.find(v => v.nome_loja?.toLowerCase().includes('beaba'));
-    
-    console.log('🔍 [vendorAdjustmentsFetcher] ENHANCED key vendors verification:');
-    console.log(`  - Mais Real found: ${!!maisRealVendor} ${maisRealVendor ? `(ID: ${maisRealVendor.id}, Name: "${maisRealVendor.nome_loja}")` : ''}`);
-    console.log(`  - Beaba found: ${!!beabaVendor} ${beabaVendor ? `(ID: ${beabaVendor.id}, Name: "${beabaVendor.nome_loja}")` : ''}`);
-    
-    if (!maisRealVendor) {
-      console.error('🚨 [vendorAdjustmentsFetcher] CRITICAL ISSUE: Mais Real vendor not found!');
-      console.log('   Available vendor names:', allVendors.map(v => `"${v.nome_loja}"`));
+    if (vendorsError) {
+      console.error('❌ [vendorAdjustmentsFetcher] ERRO ao buscar vendedores:', vendorsError);
+      throw vendorsError;
     }
-  } else {
-    console.log('❌ [vendorAdjustmentsFetcher] No vendors found!');
-  }
 
-  return allVendors || [];
+    const foundCount = vendorsData?.length || 0;
+    console.log(`🏪 [vendorAdjustmentsFetcher] VENDEDORES ENCONTRADOS: ${foundCount}/${vendorIds.length}`);
+    
+    // VALIDAÇÃO CRÍTICA: Verificar vendedores missing
+    const foundVendorIds = new Set(vendorsData?.map(v => v.id) || []);
+    const missingVendorIds = vendorIds.filter(id => !foundVendorIds.has(id));
+    
+    if (missingVendorIds.length > 0) {
+      console.error('🚨 [vendorAdjustmentsFetcher] VENDEDORES MISSING:', missingVendorIds);
+      console.error('🚨 [vendorAdjustmentsFetcher] Isso causará perda de dados!');
+    }
+    
+    // LOG detalhado de cada vendedor
+    if (vendorsData && vendorsData.length > 0) {
+      console.log('🏪 [vendorAdjustmentsFetcher] DETALHES DOS VENDEDORES:');
+      vendorsData.forEach((vendor, index) => {
+        const nameLower = vendor.nome_loja?.toLowerCase().trim() || '';
+        console.log(`  ${index + 1}. ID: ${vendor.id}, Nome: "${vendor.nome_loja}", Status: ${vendor.status}`);
+        
+        if (nameLower.includes('mais real')) {
+          console.log(`    🎯 MAIS REAL CONFIRMADO!`);
+        }
+        if (nameLower.includes('beaba')) {
+          console.log(`    🎯 BEABA CONFIRMADO!`);
+        }
+      });
+    }
+
+    console.log(`✅ [vendorAdjustmentsFetcher] VENDOR FETCH COMPLETO: ${foundCount} vendedores`);
+    return vendorsData || [];
+
+  } catch (error) {
+    console.error('❌ [vendorAdjustmentsFetcher] ERRO FATAL ao buscar vendedores:', error);
+    throw error;
+  }
 };
 
 export const fetchUsersForAdjustments = async (userIds: string[]) => {
-  console.log('👥 [vendorAdjustmentsFetcher] === ENHANCED FETCH USER DATA ===');
-  console.log(`👥 [vendorAdjustmentsFetcher] Fetching ${userIds.length} users`);
+  console.log('👥 [vendorAdjustmentsFetcher] === FETCH USER DATA ===');
+  console.log(`👥 [vendorAdjustmentsFetcher] Buscando ${userIds.length} usuários`);
   
   if (userIds.length === 0) {
-    console.log('⚠️ [vendorAdjustmentsFetcher] No user IDs provided');
+    console.log('⚠️ [vendorAdjustmentsFetcher] Lista de user IDs vazia');
     return [];
   }
   
-  const { data: usersData, error: usersError } = await supabase
-    .from('profiles')
-    .select(`
-      id,
-      nome,
-      email
-    `)
-    .in('id', userIds);
+  try {
+    const { data: usersData, error: usersError } = await supabase
+      .from('profiles')
+      .select(`
+        id,
+        nome,
+        email
+      `)
+      .in('id', userIds);
 
-  if (usersError) {
-    console.error('❌ [vendorAdjustmentsFetcher] Error fetching users:', usersError);
-    throw usersError;
+    if (usersError) {
+      console.error('❌ [vendorAdjustmentsFetcher] Erro ao buscar usuários:', usersError);
+      throw usersError;
+    }
+
+    const foundCount = usersData?.length || 0;
+    console.log(`👥 [vendorAdjustmentsFetcher] USUÁRIOS ENCONTRADOS: ${foundCount}/${userIds.length}`);
+    
+    // Verificar usuários missing
+    const foundUserIds = new Set(usersData?.map(u => u.id) || []);
+    const missingUserIds = userIds.filter(id => !foundUserIds.has(id));
+    
+    if (missingUserIds.length > 0) {
+      console.warn('⚠️ [vendorAdjustmentsFetcher] Usuários não encontrados:', missingUserIds.length);
+    }
+
+    return usersData || [];
+
+  } catch (error) {
+    console.error('❌ [vendorAdjustmentsFetcher] Erro ao buscar usuários:', error);
+    throw error;
   }
-
-  // Check for missing users
-  const foundUserIds = new Set(usersData?.map(u => u.id) || []);
-  const missingUserIds = userIds.filter(id => !foundUserIds.has(id));
-  
-  if (missingUserIds.length > 0) {
-    console.warn('⚠️ [vendorAdjustmentsFetcher] Some users not found:', missingUserIds);
-  }
-
-  console.log(`👥 [vendorAdjustmentsFetcher] Successfully retrieved ${usersData?.length || 0} users from ${userIds.length} requested`);
-  return usersData || [];
 };

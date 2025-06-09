@@ -7,46 +7,44 @@ export const processVendorAdjustments = (
   vendors: any[],
   users: any[]
 ): VendorAdjustment[] => {
-  console.log('🔍 [vendorDataProcessor] === ENHANCED PROCESSING START ===');
-  console.log(`📊 [vendorDataProcessor] Input: ${adjustments.length} adjustments, ${vendors.length} vendors, ${users.length} users`);
+  console.log('🔍 [vendorDataProcessor] === CORREÇÃO DEFINITIVA - PROCESSING START ===');
+  console.log(`📊 Input: ${adjustments.length} adjustments, ${vendors.length} vendors, ${users.length} users`);
   
-  // ENHANCED: Create robust vendor and user lookup maps with detailed logging
+  // Criar mapas robustos com validação
   const vendorNameMap = new Map<string, string>();
   const userMap = new Map<string, string>();
   
-  // Build vendor map with enhanced logging and error detection
+  // Build vendor map com validação robusta
   vendors.forEach((vendor, index) => {
     if (!vendor.id || !vendor.nome_loja) {
-      console.error(`❌ [vendorDataProcessor] Invalid vendor at index ${index}:`, vendor);
+      console.error(`❌ Vendor inválido no índice ${index}:`, vendor);
       return;
     }
     
     vendorNameMap.set(vendor.id, vendor.nome_loja);
-    console.log(`🏪 [vendorDataProcessor] Vendor ${index + 1}: ID=${vendor.id} -> "${vendor.nome_loja}" (Status: ${vendor.status})`);
+    console.log(`🏪 Vendor mapeado: ${vendor.id} -> "${vendor.nome_loja}"`);
     
-    // Enhanced detection for key vendors
     const nameLower = vendor.nome_loja.toLowerCase().trim();
     if (nameLower.includes('mais real')) {
-      console.log(`🎯 [vendorDataProcessor] MAIS REAL VENDOR MAPPED: ${vendor.id} -> "${vendor.nome_loja}"`);
+      console.log(`🎯 MAIS REAL MAPEADO: ${vendor.id} -> "${vendor.nome_loja}"`);
     }
     if (nameLower.includes('beaba')) {
-      console.log(`🎯 [vendorDataProcessor] BEABA VENDOR MAPPED: ${vendor.id} -> "${vendor.nome_loja}"`);
+      console.log(`🎯 BEABA MAPEADO: ${vendor.id} -> "${vendor.nome_loja}"`);
     }
   });
   
-  // Build user map with error detection
+  // Build user map
   users.forEach((user, index) => {
     if (!user.id) {
-      console.error(`❌ [vendorDataProcessor] Invalid user at index ${index}:`, user);
+      console.error(`❌ User inválido no índice ${index}:`, user);
       return;
     }
     userMap.set(user.id, user.nome || 'Usuário sem nome');
   });
   
-  console.log(`🗺️ [vendorDataProcessor] Created vendor map with ${vendorNameMap.size} entries`);
-  console.log(`🗺️ [vendorDataProcessor] Created user map with ${userMap.size} entries`);
+  console.log(`🗺️ Maps criados: ${vendorNameMap.size} vendors, ${userMap.size} users`);
 
-  // ENHANCED: Process ALL adjustments with comprehensive error handling and tracking
+  // Process adjustments com validação robusta
   const result: VendorAdjustment[] = [];
   const processingStats = {
     processed: 0,
@@ -56,43 +54,36 @@ export const processVendorAdjustments = (
     maisRealProcessed: 0,
     beabaProcessed: 0
   };
-  
-  const vendorProcessingCounts = new Map<string, number>();
 
   adjustments.forEach((adjustment, index) => {
-    console.log(`🔄 [vendorDataProcessor] Processing adjustment ${index + 1}/${adjustments.length}:`);
-    console.log(`    ID: ${adjustment.id}, Vendor: ${adjustment.vendedor_id}, User: ${adjustment.usuario_id}`);
-    console.log(`    Type: ${adjustment.tipo}, Value: ${adjustment.valor}, Reason: ${adjustment.motivo}`);
+    console.log(`🔄 Processing adjustment ${index + 1}/${adjustments.length}: ${adjustment.id}`);
+    console.log(`    Vendor: ${adjustment.vendedor_id}, User: ${adjustment.usuario_id}`);
     
     const vendorName = vendorNameMap.get(adjustment.vendedor_id);
     const userName = userMap.get(adjustment.usuario_id);
     
     if (!vendorName) {
-      console.error(`❌ [vendorDataProcessor] CRITICAL: No vendor found for ID ${adjustment.vendedor_id} - SKIPPING`);
-      console.log(`🔍 [vendorDataProcessor] Available vendor IDs: ${Array.from(vendorNameMap.keys()).join(', ')}`);
+      console.error(`❌ CRÍTICO: Vendor não encontrado para ID ${adjustment.vendedor_id}`);
+      console.log(`🔍 Vendor IDs disponíveis: ${Array.from(vendorNameMap.keys()).join(', ')}`);
       processingStats.skipped++;
       processingStats.missingVendor++;
       return;
     }
     
     if (!userName) {
-      console.warn(`⚠️ [vendorDataProcessor] No user found for ID ${adjustment.usuario_id} - using fallback`);
+      console.warn(`⚠️ User não encontrado para ID ${adjustment.usuario_id}`);
       processingStats.missingUser++;
     }
     
-    // Track vendor processing
-    const currentCount = vendorProcessingCounts.get(adjustment.vendedor_id) || 0;
-    vendorProcessingCounts.set(adjustment.vendedor_id, currentCount + 1);
-    
-    // Enhanced tracking for key vendors
+    // Track vendor específico
     const vendorNameLower = vendorName.toLowerCase().trim();
     if (vendorNameLower.includes('mais real')) {
       processingStats.maisRealProcessed++;
-      console.log(`🎯 [vendorDataProcessor] Processing Mais Real adjustment ${processingStats.maisRealProcessed}: ${adjustment.tipo} ${adjustment.valor} pts`);
+      console.log(`🎯 Processing Mais Real adjustment ${processingStats.maisRealProcessed}: ${adjustment.tipo} ${adjustment.valor} pts`);
     }
     if (vendorNameLower.includes('beaba')) {
       processingStats.beabaProcessed++;
-      console.log(`🎯 [vendorDataProcessor] Processing Beaba adjustment ${processingStats.beabaProcessed}: ${adjustment.tipo} ${adjustment.valor} pts`);
+      console.log(`🎯 Processing Beaba adjustment ${processingStats.beabaProcessed}: ${adjustment.tipo} ${adjustment.valor} pts`);
     }
     
     const processedAdjustment: VendorAdjustment = {
@@ -104,52 +95,26 @@ export const processVendorAdjustments = (
     result.push(processedAdjustment);
     processingStats.processed++;
     
-    console.log(`✅ [vendorDataProcessor] Successfully processed: "${vendorName}" (${adjustment.tipo}: ${adjustment.valor})`);
+    console.log(`✅ Processed: "${vendorName}" (${adjustment.tipo}: ${adjustment.valor})`);
   });
 
-  console.log(`✅ [vendorDataProcessor] === ENHANCED PROCESSING COMPLETE ===`);
-  console.log(`📊 [vendorDataProcessor] Statistics:`, processingStats);
+  console.log(`✅ === PROCESSING COMPLETO ===`);
+  console.log(`📊 Stats:`, processingStats);
   
-  // Enhanced vendor processing analysis
-  console.log(`📊 [vendorDataProcessor] Vendor processing breakdown:`);
-  Array.from(vendorProcessingCounts.entries()).forEach(([vendorId, count]) => {
-    const vendorName = vendorNameMap.get(vendorId);
-    console.log(`  - ${vendorName} (${vendorId}): ${count} adjustments processed`);
-  });
-  
-  // FINAL VERIFICATION: Ensure data integrity with detailed analysis
+  // Validação final
   const uniqueVendorsInResult = [...new Set(result.map(r => r.vendedor_nome))];
-  console.log(`🏪 [vendorDataProcessor] Unique vendors in final result (${uniqueVendorsInResult.length}): ${uniqueVendorsInResult.join(', ')}`);
+  console.log(`🏪 Unique vendors no resultado (${uniqueVendorsInResult.length}): ${uniqueVendorsInResult.join(', ')}`);
   
-  // CRITICAL: Verify both key vendors are present with detailed analysis
+  // Verificação crítica dos vendedores chave
   const maisRealInResult = result.filter(r => r.vendedor_nome.toLowerCase().includes('mais real'));
   const beabaInResult = result.filter(r => r.vendedor_nome.toLowerCase().includes('beaba'));
   
-  console.log(`🎯 [vendorDataProcessor] ENHANCED final verification:`);
-  console.log(`  - Mais Real: ${maisRealInResult.length} adjustments (Expected: ${processingStats.maisRealProcessed})`);
-  console.log(`  - Beaba: ${beabaInResult.length} adjustments (Expected: ${processingStats.beabaProcessed})`);
+  console.log(`🎯 VERIFICAÇÃO FINAL:`);
+  console.log(`  - Mais Real: ${maisRealInResult.length} adjustments`);
+  console.log(`  - Beaba: ${beabaInResult.length} adjustments`);
   
-  if (maisRealInResult.length === 0 && processingStats.maisRealProcessed === 0) {
-    console.log('⚠️ [vendorDataProcessor] Mais Real has no adjustments in the dataset');
-  } else if (maisRealInResult.length === 0) {
-    console.error('❌ [vendorDataProcessor] CRITICAL ERROR: Mais Real data lost during processing!');
-    console.log('🔍 [vendorDataProcessor] Debug info for Mais Real:');
-    
-    // Find Mais Real vendor ID and check for adjustments
-    const maisRealVendor = vendors.find(v => v.nome_loja?.toLowerCase().includes('mais real'));
-    if (maisRealVendor) {
-      const maisRealAdjustments = adjustments.filter(adj => adj.vendedor_id === maisRealVendor.id);
-      console.log(`  - Mais Real vendor: ${maisRealVendor.id} -> "${maisRealVendor.nome_loja}"`);
-      console.log(`  - Mais Real adjustments in input: ${maisRealAdjustments.length}`);
-      
-      if (maisRealAdjustments.length > 0) {
-        console.log(`  - Sample Mais Real adjustment:`, maisRealAdjustments[0]);
-      }
-    } else {
-      console.log(`  - Mais Real vendor not found in vendors list`);
-    }
-  } else {
-    console.log(`🎉 [vendorDataProcessor] SUCCESS: Mais Real data preserved!`);
+  if (maisRealInResult.length === 0 && processingStats.maisRealProcessed > 0) {
+    console.error('❌ ERRO CRÍTICO: Mais Real data perdida durante processing!');
   }
   
   return result;
@@ -159,33 +124,31 @@ export const processVendorAdjustmentsSummary = (
   adjustments: RawVendorAdjustment[],
   vendors: any[]
 ): VendorAdjustmentSummary[] => {
-  console.log('🔍 [vendorDataProcessor] === ENHANCED SUMMARY PROCESSING START ===');
-  console.log(`📊 [vendorDataProcessor] Input: ${adjustments.length} adjustments, ${vendors.length} vendors`);
+  console.log('🔍 [vendorDataProcessor] === CORREÇÃO DEFINITIVA - SUMMARY PROCESSING ===');
+  console.log(`📊 Input: ${adjustments.length} adjustments, ${vendors.length} vendors`);
   
-  // ENHANCED: Create robust vendor lookup map with detailed error detection
+  // Criar vendor map robusto
   const vendorMap = new Map<string, any>();
-  const vendorIdToName = new Map<string, string>();
   
   vendors.forEach((vendor, index) => {
     if (!vendor.id || !vendor.nome_loja) {
-      console.error(`❌ [vendorDataProcessor] Invalid vendor for summary at index ${index}:`, vendor);
+      console.error(`❌ Vendor inválido para summary no índice ${index}:`, vendor);
       return;
     }
     
     vendorMap.set(vendor.id, vendor);
-    vendorIdToName.set(vendor.id, vendor.nome_loja);
-    console.log(`🏪 [vendorDataProcessor] Summary vendor mapped: ${vendor.id} -> "${vendor.nome_loja}" (Status: ${vendor.status})`);
+    console.log(`🏪 Summary vendor mapeado: ${vendor.id} -> "${vendor.nome_loja}"`);
     
     const nameLower = vendor.nome_loja.toLowerCase().trim();
     if (nameLower.includes('mais real')) {
-      console.log(`🎯 [vendorDataProcessor] MAIS REAL VENDOR MAPPED FOR SUMMARY: ${vendor.id} -> "${vendor.nome_loja}"`);
+      console.log(`🎯 MAIS REAL MAPEADO PARA SUMMARY: ${vendor.id} -> "${vendor.nome_loja}"`);
     }
     if (nameLower.includes('beaba')) {
-      console.log(`🎯 [vendorDataProcessor] BEABA VENDOR MAPPED FOR SUMMARY: ${vendor.id} -> "${vendor.nome_loja}"`);
+      console.log(`🎯 BEABA MAPEADO PARA SUMMARY: ${vendor.id} -> "${vendor.nome_loja}"`);
     }
   });
 
-  // ENHANCED: Process and aggregate with comprehensive tracking
+  // Process e aggregate com tracking robusto
   const vendorStatsMap = new Map<string, {
     vendedor_nome: string;
     total_ajustes: number;
@@ -202,35 +165,35 @@ export const processVendorAdjustmentsSummary = (
     beabaAdjustments: 0
   };
   
-  console.log('🔄 [vendorDataProcessor] Processing adjustments for summary...');
+  console.log('🔄 Processing adjustments para summary...');
   
   adjustments.forEach((adjustment, index) => {
     const vendorId = adjustment.vendedor_id;
     const vendor = vendorMap.get(vendorId);
     
-    console.log(`🔄 [vendorDataProcessor] Summary processing adjustment ${index + 1}: vendedor_id=${vendorId}`);
+    console.log(`🔄 Summary processing adjustment ${index + 1}: vendorId=${vendorId}`);
     
     if (!vendor) {
-      console.error(`❌ [vendorDataProcessor] CRITICAL: Vendor not found for vendorId: ${vendorId}`);
-      console.log(`🔍 [vendorDataProcessor] Available vendor IDs: ${Array.from(vendorMap.keys()).join(', ')}`);
-      console.log(`🔍 [vendorDataProcessor] This adjustment will be LOST:`, adjustment);
+      console.error(`❌ CRÍTICO: Vendor não encontrado para vendorId: ${vendorId}`);
+      console.log(`🔍 Vendor IDs disponíveis: ${Array.from(vendorMap.keys()).join(', ')}`);
+      console.log(`🔍 Este adjustment será PERDIDO:`, adjustment);
       processingStats.skipped++;
       processingStats.missingVendor++;
       return;
     }
 
-    // Enhanced tracking for key vendors
+    // Track vendor específico
     const vendorNameLower = vendor.nome_loja.toLowerCase().trim();
     if (vendorNameLower.includes('mais real')) {
       processingStats.maisRealAdjustments++;
-      console.log(`🎯 [vendorDataProcessor] Processing Mais Real summary adjustment ${processingStats.maisRealAdjustments}: ${adjustment.tipo} ${adjustment.valor} pts`);
+      console.log(`🎯 Processing Mais Real summary adjustment ${processingStats.maisRealAdjustments}: ${adjustment.tipo} ${adjustment.valor} pts`);
     }
     if (vendorNameLower.includes('beaba')) {
       processingStats.beabaAdjustments++;
-      console.log(`🎯 [vendorDataProcessor] Processing Beaba summary adjustment ${processingStats.beabaAdjustments}: ${adjustment.tipo} ${adjustment.valor} pts`);
+      console.log(`🎯 Processing Beaba summary adjustment ${processingStats.beabaAdjustments}: ${adjustment.tipo} ${adjustment.valor} pts`);
     }
 
-    // Initialize or update vendor stats
+    // Initialize ou update vendor stats
     if (!vendorStatsMap.has(vendorId)) {
       vendorStatsMap.set(vendorId, {
         vendedor_nome: vendor.nome_loja,
@@ -239,7 +202,7 @@ export const processVendorAdjustmentsSummary = (
         pontos_removidos: 0,
         ultimo_ajuste: adjustment.created_at
       });
-      console.log(`📝 [vendorDataProcessor] Created new summary stats entry for: "${vendor.nome_loja}"`);
+      console.log(`📝 Created summary stats para: "${vendor.nome_loja}"`);
     }
 
     const stats = vendorStatsMap.get(vendorId)!;
@@ -261,16 +224,16 @@ export const processVendorAdjustmentsSummary = (
     processingStats.processed++;
     
     if (vendorNameLower.includes('mais real')) {
-      console.log(`🎯 [vendorDataProcessor] Mais Real summary stats updated: ${stats.total_ajustes} total, +${stats.pontos_adicionados}, -${stats.pontos_removidos}`);
+      console.log(`🎯 Mais Real summary stats updated: ${stats.total_ajustes} total, +${stats.pontos_adicionados}, -${stats.pontos_removidos}`);
     }
     if (vendorNameLower.includes('beaba')) {
-      console.log(`🎯 [vendorDataProcessor] Beaba summary stats updated: ${stats.total_ajustes} total, +${stats.pontos_adicionados}, -${stats.pontos_removidos}`);
+      console.log(`🎯 Beaba summary stats updated: ${stats.total_ajustes} total, +${stats.pontos_adicionados}, -${stats.pontos_removidos}`);
     }
   });
 
-  console.log(`✅ [vendorDataProcessor] Summary processing complete:`, processingStats);
+  console.log(`✅ Summary processing completo:`, processingStats);
 
-  // Convert to array and sort
+  // Convert para array e sort
   const result = Array.from(vendorStatsMap.entries()).map(([vendorId, stats]) => ({
     vendedor_id: vendorId,
     vendedor_nome: stats.vendedor_nome,
@@ -280,54 +243,42 @@ export const processVendorAdjustmentsSummary = (
     ultimo_ajuste: stats.ultimo_ajuste
   })).sort((a, b) => b.total_ajustes - a.total_ajustes);
 
-  console.log(`✅ [vendorDataProcessor] === ENHANCED SUMMARY RESULT ===`);
-  console.log(`📊 [vendorDataProcessor] Returning ${result.length} vendor summaries:`);
+  console.log(`✅ === SUMMARY RESULT FINAL ===`);
+  console.log(`📊 Retornando ${result.length} vendor summaries:`);
   
   result.forEach((summary, index) => {
     console.log(`  ${index + 1}. "${summary.vendedor_nome}" (ID: ${summary.vendedor_id}): ${summary.total_ajustes} adjustments (+${summary.pontos_adicionados}, -${summary.pontos_removidos})`);
     
     const nameLower = summary.vendedor_nome.toLowerCase().trim();
     if (nameLower.includes('mais real')) {
-      console.log(`    🎉 MAIS REAL IN FINAL SUMMARY: ${summary.total_ajustes} adjustments, +${summary.pontos_adicionados} points`);
+      console.log(`    🎉 MAIS REAL NO SUMMARY FINAL: ${summary.total_ajustes} adjustments`);
     }
     if (nameLower.includes('beaba')) {
-      console.log(`    🎉 BEABA IN FINAL SUMMARY: ${summary.total_ajustes} adjustments, +${summary.pontos_adicionados} points`);
+      console.log(`    🎉 BEABA NO SUMMARY FINAL: ${summary.total_ajustes} adjustments`);
     }
   });
 
-  // ENHANCED FINAL VERIFICATION with detailed error reporting
+  // VALIDAÇÃO FINAL CRÍTICA
   const maisRealInResult = result.find(v => v.vendedor_nome.toLowerCase().includes('mais real'));
   const beabaInResult = result.find(v => v.vendedor_nome.toLowerCase().includes('beaba'));
   
-  console.log(`🎯 [vendorDataProcessor] ENHANCED summary verification:`);
-  console.log(`  - Mais Real in result: ${!!maisRealInResult}`);
-  console.log(`  - Beaba in result: ${!!beabaInResult}`);
+  console.log(`🎯 VALIDAÇÃO FINAL CRÍTICA:`);
+  console.log(`  - Mais Real no resultado: ${!!maisRealInResult ? 'SIM ✅' : 'NÃO ❌'}`);
+  console.log(`  - Beaba no resultado: ${!!beabaInResult ? 'SIM ✅' : 'NÃO ❌'}`);
   
-  if (maisRealInResult) {
-    console.log(`🎉 [vendorDataProcessor] SUCCESS: Mais Real found in summary result: ${maisRealInResult.total_ajustes} adjustments`);
-  } else {
-    console.error('❌ [vendorDataProcessor] CRITICAL ERROR: Mais Real NOT found in summary result!');
+  if (!maisRealInResult && processingStats.maisRealAdjustments > 0) {
+    console.error('❌ ERRO CRÍTICO: Mais Real foi perdido durante o summary processing!');
+    console.log('🔍 Debug para Mais Real:');
     
-    // Enhanced debugging information
-    console.log('🔍 [vendorDataProcessor] Enhanced debug - vendorStatsMap contents:');
+    // Enhanced debugging
+    console.log('🔍 vendorStatsMap contents:');
     Array.from(vendorStatsMap.entries()).forEach(([id, stats]) => {
       console.log(`  - ${id}: ${stats.vendedor_nome} (${stats.total_ajustes} adjustments)`);
     });
     
-    console.log('🔍 [vendorDataProcessor] Enhanced debug - original vendors:');
+    console.log('🔍 Original vendors:');
     vendors.forEach(v => {
       console.log(`  - ${v.id}: "${v.nome_loja}" (includes mais real: ${v.nome_loja?.toLowerCase().includes('mais real')})`);
-    });
-    
-    console.log('🔍 [vendorDataProcessor] Enhanced debug - adjustments by vendor:');
-    const adjustmentsByVendor = new Map<string, number>();
-    adjustments.forEach(adj => {
-      const count = adjustmentsByVendor.get(adj.vendedor_id) || 0;
-      adjustmentsByVendor.set(adj.vendedor_id, count + 1);
-    });
-    Array.from(adjustmentsByVendor.entries()).forEach(([vendorId, count]) => {
-      const vendorName = vendorIdToName.get(vendorId) || 'UNKNOWN';
-      console.log(`  - ${vendorId} (${vendorName}): ${count} adjustments`);
     });
   }
 
