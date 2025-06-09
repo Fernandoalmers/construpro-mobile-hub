@@ -17,7 +17,14 @@ const VendorAdjustmentsSummaryTable: React.FC<VendorAdjustmentsSummaryTableProps
   summaries, 
   isLoading 
 }) => {
+  console.log('🎯 [VendorSummaryTable] Rendering with:', {
+    summariesCount: summaries?.length || 0,
+    isLoading,
+    summariesData: summaries
+  });
+
   if (isLoading) {
+    console.log('⏳ [VendorSummaryTable] Showing loading state');
     return (
       <Card>
         <CardHeader>
@@ -34,12 +41,17 @@ const VendorAdjustmentsSummaryTable: React.FC<VendorAdjustmentsSummaryTableProps
     );
   }
 
+  console.log('✅ [VendorSummaryTable] Rendering data for', summaries.length, 'vendors');
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Users className="h-5 w-5" />
           Resumo de Ajustes por Vendedor
+          <Badge variant="outline" className="ml-2">
+            {summaries.length} vendedores
+          </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -54,47 +66,52 @@ const VendorAdjustmentsSummaryTable: React.FC<VendorAdjustmentsSummaryTableProps
             </TableRow>
           </TableHeader>
           <TableBody>
-            {summaries.map((summary) => (
-              <TableRow key={summary.vendedor_id}>
-                <TableCell>
-                  <div className="font-medium">{summary.vendedor_nome}</div>
-                </TableCell>
-                <TableCell className="text-center">
-                  <Badge variant="outline" className="font-mono">
-                    {summary.total_ajustes}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-center">
-                  <div className="flex items-center justify-center gap-1">
-                    <TrendingUp className="h-4 w-4 text-green-600" />
-                    <span className="text-green-600 font-bold">
-                      +{summary.pontos_adicionados.toLocaleString()}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell className="text-center">
-                  <div className="flex items-center justify-center gap-1">
-                    <TrendingDown className="h-4 w-4 text-red-600" />
-                    <span className="text-red-600 font-bold">
-                      -{summary.pontos_removidos.toLocaleString()}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-gray-400" />
-                    <span className="text-sm">
-                      {format(new Date(summary.ultimo_ajuste), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
-                    </span>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+            {summaries.map((summary, index) => {
+              console.log(`🎯 [VendorSummaryTable] Rendering vendor ${index + 1}:`, summary.vendedor_nome);
+              return (
+                <TableRow key={summary.vendedor_id}>
+                  <TableCell>
+                    <div className="font-medium">{summary.vendedor_nome}</div>
+                    <div className="text-xs text-gray-500">ID: {summary.vendedor_id}</div>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Badge variant="outline" className="font-mono">
+                      {summary.total_ajustes}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <TrendingUp className="h-4 w-4 text-green-600" />
+                      <span className="text-green-600 font-bold">
+                        +{summary.pontos_adicionados.toLocaleString()}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <TrendingDown className="h-4 w-4 text-red-600" />
+                      <span className="text-red-600 font-bold">
+                        -{summary.pontos_removidos.toLocaleString()}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-gray-400" />
+                      <span className="text-sm">
+                        {format(new Date(summary.ultimo_ajuste), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                      </span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
         {summaries.length === 0 && (
           <div className="text-center py-8 text-gray-500">
-            Nenhum ajuste de pontos encontrado
+            <p>Nenhum ajuste de pontos encontrado</p>
+            <p className="text-sm mt-1">Verifique se existem vendedores ativos com ajustes</p>
           </div>
         )}
       </CardContent>
