@@ -1,7 +1,8 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { fetchProducts } from '@/services/admin/products';
+import { getAdminProducts } from '@/services/admin/products';
+import { AdminProduct } from '@/types/admin';
 
 export const useAdminProducts = () => {
   const [filter, setFilter] = useState<string>('all');
@@ -16,7 +17,7 @@ export const useAdminProducts = () => {
     refetch 
   } = useQuery({
     queryKey: ['admin-products'],
-    queryFn: fetchProducts,
+    queryFn: () => getAdminProducts(),
     staleTime: 2 * 60 * 1000, // 2 minutes
     gcTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
@@ -24,7 +25,7 @@ export const useAdminProducts = () => {
 
   // Memoized filtered products for better performance
   const products = useMemo(() => {
-    let filtered = allProducts;
+    let filtered: AdminProduct[] = allProducts || [];
 
     // Apply status filter
     if (filter !== 'all') {

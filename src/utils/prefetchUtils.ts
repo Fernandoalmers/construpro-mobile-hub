@@ -1,6 +1,6 @@
 
 import { QueryClient } from '@tanstack/react-query';
-import { fetchProducts } from '@/services/admin/products';
+import { getAdminProducts } from '@/services/admin/products';
 import { fetchProductCategories } from '@/services/admin/categories';
 import { getProductSegments } from '@/services/admin/productSegmentsService';
 
@@ -10,7 +10,7 @@ export const prefetchAdminData = async (queryClient: QueryClient) => {
     // Prefetch admin products
     await queryClient.prefetchQuery({
       queryKey: ['admin-products'],
-      queryFn: fetchProducts,
+      queryFn: () => getAdminProducts(),
       staleTime: 2 * 60 * 1000,
     });
 
