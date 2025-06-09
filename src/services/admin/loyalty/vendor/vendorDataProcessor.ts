@@ -7,55 +7,55 @@ export const processVendorAdjustments = (
   vendors: any[],
   users: any[]
 ): VendorAdjustment[] => {
-  console.log('🔍 [vendorDataProcessor] === ENHANCED PROCESSING START ===');
+  console.log('🔍 [vendorDataProcessor] === FIXED PROCESSING START ===');
   console.log(`📊 [vendorDataProcessor] Input: ${adjustments.length} adjustments, ${vendors.length} vendors, ${users.length} users`);
   
-  // Enhanced debugging: Log all input data
-  console.log('🏪 [vendorDataProcessor] Available vendors:');
+  // CRITICAL FIX: Create robust vendor and user lookup maps
+  const vendorNameMap = new Map<string, string>();
+  const userMap = new Map<string, string>();
+  
+  // Build vendor map with detailed logging
   vendors.forEach((vendor, index) => {
-    console.log(`  ${index + 1}. "${vendor.nome_loja}" (ID: ${vendor.id}, Status: ${vendor.status})`);
+    vendorNameMap.set(vendor.id, vendor.nome_loja);
+    console.log(`🏪 [vendorDataProcessor] Vendor ${index + 1}: ID=${vendor.id} -> "${vendor.nome_loja}" (Status: ${vendor.status})`);
+    
+    if (vendor.nome_loja.includes('Mais Real')) {
+      console.log(`🎯 [vendorDataProcessor] MAIS REAL VENDOR MAPPED: ${vendor.id} -> "${vendor.nome_loja}"`);
+    }
   });
   
-  console.log('📋 [vendorDataProcessor] Adjustments breakdown by vendor_id:');
-  const adjustmentsByVendorId = new Map<string, number>();
-  adjustments.forEach(adj => {
-    const count = adjustmentsByVendorId.get(adj.vendedor_id) || 0;
-    adjustmentsByVendorId.set(adj.vendedor_id, count + 1);
+  // Build user map
+  users.forEach(user => {
+    userMap.set(user.id, user.nome);
   });
   
-  Array.from(adjustmentsByVendorId.entries()).forEach(([vendorId, count]) => {
-    const vendor = vendors.find(v => v.id === vendorId);
-    console.log(`  - ${vendorId}: ${count} adjustments ${vendor ? `(${vendor.nome_loja})` : '(VENDOR NOT FOUND)'}`);
-  });
+  console.log(`🗺️ [vendorDataProcessor] Created vendor map with ${vendorNameMap.size} entries`);
+  console.log(`🗺️ [vendorDataProcessor] Created user map with ${userMap.size} entries`);
 
-  // CRITICAL FIX: Create vendor and user lookup maps FIRST
-  const vendorNameMap = new Map(vendors.map(v => [v.id, v.nome_loja]));
-  const userMap = new Map(users.map(u => [u.id, u.nome]) || []);
-  
-  console.log('🗺️ [vendorDataProcessor] Vendor mapping created:');
-  Array.from(vendorNameMap.entries()).forEach(([id, name]) => {
-    console.log(`  - ${id} -> "${name}"`);
-  });
-
-  // CRITICAL FIX: Process ALL adjustments without filtering first
-  console.log('🔄 [vendorDataProcessor] Processing ALL adjustments...');
+  // CRITICAL FIX: Process ALL adjustments with better error handling
   const result: VendorAdjustment[] = [];
   let processedCount = 0;
   let skippedCount = 0;
+  let maisRealProcessed = 0;
 
   adjustments.forEach((adjustment, index) => {
     const vendorName = vendorNameMap.get(adjustment.vendedor_id);
     const userName = userMap.get(adjustment.usuario_id);
     
+    // ENHANCED: Log each processing step for debugging
+    console.log(`🔄 [vendorDataProcessor] Processing adjustment ${index + 1}/${adjustments.length}: vendedor_id=${adjustment.vendedor_id}`);
+    
     if (!vendorName) {
-      console.log(`⚠️ [vendorDataProcessor] Adjustment ${index + 1}: No vendor found for ID ${adjustment.vendedor_id}`);
+      console.log(`❌ [vendorDataProcessor] CRITICAL: No vendor found for ID ${adjustment.vendedor_id} - SKIPPING`);
+      console.log(`🔍 [vendorDataProcessor] Available vendor IDs: ${Array.from(vendorNameMap.keys()).join(', ')}`);
       skippedCount++;
       return;
     }
     
-    if (!userName) {
-      console.log(`⚠️ [vendorDataProcessor] Adjustment ${index + 1}: No user found for ID ${adjustment.usuario_id}`);
-      // Still process but with fallback name
+    // Track Mais Real specifically
+    if (vendorName.includes('Mais Real')) {
+      maisRealProcessed++;
+      console.log(`🎯 [vendorDataProcessor] Processing Mais Real adjustment ${maisRealProcessed}: ${adjustment.tipo} ${adjustment.valor} pts`);
     }
     
     const processedAdjustment: VendorAdjustment = {
@@ -67,27 +67,37 @@ export const processVendorAdjustments = (
     result.push(processedAdjustment);
     processedCount++;
     
-    // Log progress for key vendors
-    if (vendorName.includes('Mais Real') || vendorName.includes('Beaba')) {
-      console.log(`✅ [vendorDataProcessor] Processed adjustment ${index + 1} for "${vendorName}": ${adjustment.tipo} ${adjustment.valor} pts`);
-    }
+    console.log(`✅ [vendorDataProcessor] Successfully processed: "${vendorName}" (${adjustment.tipo}: ${adjustment.valor})`);
   });
 
   console.log(`✅ [vendorDataProcessor] === PROCESSING COMPLETE ===`);
-  console.log(`📊 [vendorDataProcessor] Processed: ${processedCount}, Skipped: ${skippedCount}, Total result: ${result.length}`);
+  console.log(`📊 [vendorDataProcessor] Total processed: ${processedCount}, Skipped: ${skippedCount}`);
+  console.log(`🎯 [vendorDataProcessor] Mais Real adjustments processed: ${maisRealProcessed}`);
   
-  // Final verification: Check unique vendors in result
+  // FINAL VERIFICATION: Ensure data integrity
   const uniqueVendorsInResult = [...new Set(result.map(r => r.vendedor_nome))];
-  console.log(`🏪 [vendorDataProcessor] Unique vendors in final result: ${uniqueVendorsInResult.join(', ')}`);
+  console.log(`🏪 [vendorDataProcessor] Unique vendors in final result (${uniqueVendorsInResult.length}): ${uniqueVendorsInResult.join(', ')}`);
   
-  // Special check for both key vendors
-  const maisRealCount = result.filter(r => r.vendedor_nome.includes('Mais Real')).length;
-  const beabaCount = result.filter(r => r.vendedor_nome.includes('Beaba')).length;
-  console.log(`🎯 [vendorDataProcessor] Mais Real adjustments in result: ${maisRealCount}`);
-  console.log(`🎯 [vendorDataProcessor] Beaba adjustments in result: ${beabaCount}`);
+  // CRITICAL: Verify both key vendors are present
+  const maisRealInResult = result.filter(r => r.vendedor_nome.includes('Mais Real'));
+  const beabaInResult = result.filter(r => r.vendedor_nome.includes('Beaba'));
   
-  if (maisRealCount === 0) {
-    console.error('❌ [vendorDataProcessor] CRITICAL: Mais Real adjustments lost during processing!');
+  console.log(`🎯 [vendorDataProcessor] Final verification:`);
+  console.log(`  - Mais Real: ${maisRealInResult.length} adjustments`);
+  console.log(`  - Beaba: ${beabaInResult.length} adjustments`);
+  
+  if (maisRealInResult.length === 0) {
+    console.error('❌ [vendorDataProcessor] CRITICAL ERROR: Mais Real data lost!');
+    console.log('🔍 [vendorDataProcessor] Debug info:');
+    console.log('  - Original adjustments with Mais Real vendor_id:');
+    adjustments.forEach(adj => {
+      const vendor = vendors.find(v => v.id === adj.vendedor_id);
+      if (vendor && vendor.nome_loja.includes('Mais Real')) {
+        console.log(`    * Adjustment: ${adj.id} -> vendedor_id: ${adj.vendedor_id} (${vendor.nome_loja})`);
+      }
+    });
+  } else {
+    console.log(`🎉 [vendorDataProcessor] SUCCESS: Mais Real data preserved!`);
   }
   
   return result;
@@ -97,22 +107,21 @@ export const processVendorAdjustmentsSummary = (
   adjustments: RawVendorAdjustment[],
   vendors: any[]
 ): VendorAdjustmentSummary[] => {
-  console.log('🔍 [vendorDataProcessor] === STARTING ENHANCED SUMMARY PROCESSING ===');
-  console.log(`🔍 [vendorDataProcessor] Input: ${adjustments.length} adjustments, ${vendors.length} vendors`);
+  console.log('🔍 [vendorDataProcessor] === FIXED SUMMARY PROCESSING START ===');
+  console.log(`📊 [vendorDataProcessor] Input: ${adjustments.length} adjustments, ${vendors.length} vendors`);
   
-  // Create vendor lookup map
-  const vendorMap = new Map(vendors.map(v => [v.id, v]));
-
-  // ENHANCED DEBUG: Log all vendors with detailed info
-  console.log('🏪 [vendorDataProcessor] DETAILED VENDOR INFO:');
-  vendors.forEach((vendor, index) => {
-    console.log(`  ${index + 1}. "${vendor.nome_loja}" (ID: ${vendor.id}, Status: ${vendor.status})`);
+  // CRITICAL FIX: Create robust vendor lookup map
+  const vendorMap = new Map<string, any>();
+  vendors.forEach(vendor => {
+    vendorMap.set(vendor.id, vendor);
+    console.log(`🏪 [vendorDataProcessor] Vendor mapped: ${vendor.id} -> "${vendor.nome_loja}" (Status: ${vendor.status})`);
+    
     if (vendor.nome_loja.includes('Mais Real')) {
-      console.log(`    🎯 MAIS REAL VENDOR FOUND: ID=${vendor.id}, Status=${vendor.status}`);
+      console.log(`🎯 [vendorDataProcessor] MAIS REAL VENDOR MAPPED FOR SUMMARY: ${vendor.id} -> "${vendor.nome_loja}"`);
     }
   });
 
-  // Process and aggregate adjustments by vendor
+  // ENHANCED: Process and aggregate with better tracking
   const vendorStatsMap = new Map<string, {
     vendedor_nome: string;
     total_ajustes: number;
@@ -121,25 +130,29 @@ export const processVendorAdjustmentsSummary = (
     ultimo_ajuste: string;
   }>();
 
-  console.log('🔄 [vendorDataProcessor] Processing each adjustment...');
+  console.log('🔄 [vendorDataProcessor] Processing adjustments for summary...');
   let processedCount = 0;
-  let maisRealProcessedCount = 0;
+  let maisRealAdjustments = 0;
 
   adjustments.forEach((adjustment, index) => {
     const vendorId = adjustment.vendedor_id;
     const vendor = vendorMap.get(vendorId);
     
+    console.log(`🔄 [vendorDataProcessor] Processing adjustment ${index + 1}: vendedor_id=${vendorId}`);
+    
     if (!vendor) {
-      console.log(`⚠️ [vendorDataProcessor] Adjustment ${index + 1}: Vendor not found for vendorId: ${vendorId}`);
+      console.log(`❌ [vendorDataProcessor] CRITICAL: Vendor not found for vendorId: ${vendorId}`);
+      console.log(`🔍 [vendorDataProcessor] Available vendor IDs: ${Array.from(vendorMap.keys()).join(', ')}`);
       return;
     }
 
     // Track Mais Real specifically
     if (vendor.nome_loja.includes('Mais Real')) {
-      maisRealProcessedCount++;
-      console.log(`🎯 [vendorDataProcessor] Processing Mais Real adjustment ${maisRealProcessedCount}: ${adjustment.tipo} ${adjustment.valor} pts`);
+      maisRealAdjustments++;
+      console.log(`🎯 [vendorDataProcessor] Processing Mais Real summary adjustment ${maisRealAdjustments}: ${adjustment.tipo} ${adjustment.valor} pts`);
     }
 
+    // Initialize or update vendor stats
     if (!vendorStatsMap.has(vendorId)) {
       vendorStatsMap.set(vendorId, {
         vendedor_nome: vendor.nome_loja,
@@ -148,15 +161,14 @@ export const processVendorAdjustmentsSummary = (
         pontos_removidos: 0,
         ultimo_ajuste: adjustment.created_at
       });
-      console.log(`📝 [vendorDataProcessor] Created new stats entry for: ${vendor.nome_loja}`);
+      console.log(`📝 [vendorDataProcessor] Created new stats entry for: "${vendor.nome_loja}"`);
     }
 
     const stats = vendorStatsMap.get(vendorId)!;
     
-    // Increment total adjustments
+    // Update stats
     stats.total_ajustes += 1;
     
-    // Add to appropriate points category
     if (adjustment.tipo === 'adicao') {
       stats.pontos_adicionados += adjustment.valor;
     } else if (adjustment.tipo === 'remocao') {
@@ -175,10 +187,10 @@ export const processVendorAdjustmentsSummary = (
     }
   });
 
-  console.log(`✅ [vendorDataProcessor] Processed ${processedCount} adjustments total`);
-  console.log(`🎯 [vendorDataProcessor] Processed ${maisRealProcessedCount} Mais Real adjustments`);
+  console.log(`✅ [vendorDataProcessor] Summary processing complete: ${processedCount} adjustments processed`);
+  console.log(`🎯 [vendorDataProcessor] Mais Real adjustments in summary: ${maisRealAdjustments}`);
 
-  // Convert to array and sort by total adjustments
+  // Convert to array and sort
   const result = Array.from(vendorStatsMap.entries()).map(([vendorId, stats]) => ({
     vendedor_id: vendorId,
     vendedor_nome: stats.vendedor_nome,
@@ -188,22 +200,26 @@ export const processVendorAdjustmentsSummary = (
     ultimo_ajuste: stats.ultimo_ajuste
   })).sort((a, b) => b.total_ajustes - a.total_ajustes);
 
-  console.log(`✅ [vendorDataProcessor] === FINAL PROCESSING RESULT ===`);
+  console.log(`✅ [vendorDataProcessor] === SUMMARY RESULT ===`);
   console.log(`📊 [vendorDataProcessor] Returning ${result.length} vendor summaries:`);
-  result.forEach((v, index) => {
-    console.log(`  ${index + 1}. "${v.vendedor_nome}" (ID: ${v.vendedor_id}): ${v.total_ajustes} adjustments (+${v.pontos_adicionados}, -${v.pontos_removidos})`);
-    if (v.vendedor_nome.includes('Mais Real')) {
-      console.log(`    🎉 MAIS REAL IN FINAL RESULT: ${v.total_ajustes} adjustments, +${v.pontos_adicionados} points`);
+  
+  result.forEach((summary, index) => {
+    console.log(`  ${index + 1}. "${summary.vendedor_nome}" (ID: ${summary.vendedor_id}): ${summary.total_ajustes} adjustments (+${summary.pontos_adicionados}, -${summary.pontos_removidos})`);
+    
+    if (summary.vendedor_nome.includes('Mais Real')) {
+      console.log(`    🎉 MAIS REAL IN FINAL SUMMARY: ${summary.total_ajustes} adjustments, +${summary.pontos_adicionados} points`);
     }
   });
 
-  // FINAL VERIFICATION: Check if Mais Real is in the result
+  // FINAL VERIFICATION
   const maisRealInResult = result.find(v => v.vendedor_nome.includes('Mais Real'));
   if (maisRealInResult) {
-    console.log(`🎉 [vendorDataProcessor] SUCCESS! Mais Real found in final result: ${maisRealInResult.total_ajustes} adjustments`);
+    console.log(`🎉 [vendorDataProcessor] SUCCESS: Mais Real found in summary result: ${maisRealInResult.total_ajustes} adjustments`);
   } else {
-    console.log('❌ [vendorDataProcessor] CRITICAL ERROR: Mais Real NOT found in final result!');
-    console.log('🔍 [vendorDataProcessor] Debugging: vendorStatsMap contents:');
+    console.error('❌ [vendorDataProcessor] CRITICAL ERROR: Mais Real NOT found in summary result!');
+    
+    // Debug information
+    console.log('🔍 [vendorDataProcessor] Debug - vendorStatsMap contents:');
     Array.from(vendorStatsMap.entries()).forEach(([id, stats]) => {
       console.log(`  - ${id}: ${stats.vendedor_nome} (${stats.total_ajustes} adjustments)`);
     });

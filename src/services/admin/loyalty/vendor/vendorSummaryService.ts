@@ -7,10 +7,10 @@ import { processVendorAdjustmentsSummary } from './vendorDataProcessor';
 
 export const getVendorAdjustmentsSummary = async (): Promise<VendorAdjustmentSummary[]> => {
   try {
-    console.log('🔍 [vendorSummaryService] === STARTING ENHANCED VENDOR ADJUSTMENTS SUMMARY ===');
+    console.log('🔍 [vendorSummaryService] === FIXED VENDOR ADJUSTMENTS SUMMARY ===');
     console.log('🔍 [vendorSummaryService] Timestamp:', new Date().toISOString());
 
-    // Step 1: Get ALL adjustments first
+    // Step 1: Get ALL adjustments
     const allAdjustments = await fetchVendorAdjustments();
     
     if (!allAdjustments || allAdjustments.length === 0) {
@@ -18,23 +18,23 @@ export const getVendorAdjustmentsSummary = async (): Promise<VendorAdjustmentSum
       return [];
     }
 
-    console.log(`📊 [vendorSummaryService] Total adjustments found: ${allAdjustments.length}`);
+    console.log(`📊 [vendorSummaryService] Found ${allAdjustments.length} total adjustments`);
     
-    // CRITICAL DEBUG: Log all adjustments with vendor info
-    console.log('🔍 [vendorSummaryService] ALL ADJUSTMENTS BREAKDOWN:');
+    // ENHANCED: Log adjustment distribution by vendor
     const vendorAdjustmentCounts = new Map<string, number>();
-    allAdjustments.forEach((adj, index) => {
+    allAdjustments.forEach(adj => {
       const count = vendorAdjustmentCounts.get(adj.vendedor_id) || 0;
       vendorAdjustmentCounts.set(adj.vendedor_id, count + 1);
-      if (index < 5) { // Log first 5 for debugging
-        console.log(`  ${index + 1}. Vendor ID: ${adj.vendedor_id} | Points: ${adj.valor} | Type: ${adj.tipo}`);
-      }
     });
 
-    // Step 2: Get unique vendor IDs and fetch vendor data separately
+    console.log('🔍 [vendorSummaryService] Adjustments by vendor ID:');
+    Array.from(vendorAdjustmentCounts.entries()).forEach(([vendorId, count]) => {
+      console.log(`  - ${vendorId}: ${count} adjustments`);
+    });
+
+    // Step 2: Get unique vendor IDs and fetch vendor data
     const uniqueVendorIds = [...new Set(allAdjustments.map(adj => adj.vendedor_id))];
-    console.log('🔍 [vendorSummaryService] Unique vendor IDs from adjustments:', uniqueVendorIds);
-    console.log('🔍 [vendorSummaryService] Vendor adjustment counts:', Object.fromEntries(vendorAdjustmentCounts));
+    console.log(`🔍 [vendorSummaryService] Unique vendor IDs (${uniqueVendorIds.length}): ${uniqueVendorIds.join(', ')}`);
 
     const vendorsData = await fetchVendorsForAdjustments(uniqueVendorIds);
     
@@ -43,65 +43,72 @@ export const getVendorAdjustmentsSummary = async (): Promise<VendorAdjustmentSum
       return [];
     }
 
-    console.log(`🏪 [vendorSummaryService] Vendors data retrieved: ${vendorsData.length}`);
+    console.log(`🏪 [vendorSummaryService] Retrieved ${vendorsData.length} vendors`);
 
-    // CRITICAL DEBUG: Enhanced vendor mapping check
-    console.log('🔍 [vendorSummaryService] DETAILED VENDOR MAPPING CHECK:');
+    // CRITICAL: Verify vendor mapping before processing
+    console.log('🔍 [vendorSummaryService] VENDOR MAPPING VERIFICATION:');
     uniqueVendorIds.forEach(vendorId => {
       const vendor = vendorsData.find(v => v.id === vendorId);
       const adjustmentCount = vendorAdjustmentCounts.get(vendorId) || 0;
+      
       if (vendor) {
         console.log(`  ✅ ${vendorId} -> "${vendor.nome_loja}" (Status: ${vendor.status}) | ${adjustmentCount} adjustments`);
+        
         if (vendor.nome_loja.includes('Mais Real')) {
-          console.log(`  🎯 FOUND MAIS REAL: ID=${vendorId}, Name="${vendor.nome_loja}", Adjustments=${adjustmentCount}`);
+          console.log(`    🎯 MAIS REAL CONFIRMED: ID=${vendorId}, Name="${vendor.nome_loja}", Adjustments=${adjustmentCount}`);
+        }
+        if (vendor.nome_loja.includes('Beaba')) {
+          console.log(`    🎯 BEABA CONFIRMED: ID=${vendorId}, Name="${vendor.nome_loja}", Adjustments=${adjustmentCount}`);
         }
       } else {
-        console.log(`  ❌ ${vendorId} -> NOT FOUND IN VENDORS DATA | ${adjustmentCount} adjustments`);
+        console.log(`  ❌ ${vendorId} -> NOT FOUND | ${adjustmentCount} adjustments WILL BE LOST`);
       }
     });
 
-    // CRITICAL: Check specifically for "Mais Real"
-    const maisRealVendor = vendorsData.find(v => v.nome_loja.includes('Mais Real'));
-    if (maisRealVendor) {
-      const maisRealAdjustments = allAdjustments.filter(adj => adj.vendedor_id === maisRealVendor.id);
-      console.log(`🎉 [vendorSummaryService] MAIS REAL FOUND! ID: ${maisRealVendor.id}, Name: "${maisRealVendor.nome_loja}", Status: ${maisRealVendor.status}`);
-      console.log(`🎉 [vendorSummaryService] MAIS REAL has ${maisRealAdjustments.length} adjustments`);
-    } else {
-      console.log('❌ [vendorSummaryService] MAIS REAL NOT FOUND IN VENDORS DATA!');
-      console.log('🔍 [vendorSummaryService] Available vendor names:', vendorsData.map(v => v.nome_loja));
-    }
-
-    // Step 3: Process data with enhanced logging
-    console.log('🔄 [vendorSummaryService] Starting data processing...');
+    // Step 3: Process data with enhanced error handling
+    console.log('🔄 [vendorSummaryService] Starting enhanced data processing...');
     const result = processVendorAdjustmentsSummary(allAdjustments, vendorsData);
 
     // FINAL VERIFICATION
     console.log('🔍 [vendorSummaryService] === FINAL RESULT VERIFICATION ===');
-    console.log(`📊 [vendorSummaryService] Final result contains ${result.length} vendor summaries:`);
+    console.log(`📊 [vendorSummaryService] Result contains ${result.length} vendor summaries`);
+    
     result.forEach((summary, index) => {
       console.log(`  ${index + 1}. "${summary.vendedor_nome}" (ID: ${summary.vendedor_id}): ${summary.total_ajustes} adjustments`);
+      
       if (summary.vendedor_nome.includes('Mais Real')) {
-        console.log(`  🎯 MAIS REAL IN FINAL RESULT: ${summary.total_ajustes} adjustments, +${summary.pontos_adicionados} points`);
+        console.log(`    🎉 MAIS REAL IN FINAL RESULT: ${summary.total_ajustes} adjustments, +${summary.pontos_adicionados} points`);
+      }
+      if (summary.vendedor_nome.includes('Beaba')) {
+        console.log(`    🎉 BEABA IN FINAL RESULT: ${summary.total_ajustes} adjustments, +${summary.pontos_adicionados} points`);
       }
     });
 
-    // CRITICAL: Double-check if Mais Real is in the final result
+    // CRITICAL: Verify both key vendors are present
     const maisRealInResult = result.find(r => r.vendedor_nome.includes('Mais Real'));
-    if (maisRealInResult) {
-      console.log(`🎉 [vendorSummaryService] SUCCESS! Mais Real found in final result with ${maisRealInResult.total_ajustes} adjustments`);
+    const beabaInResult = result.find(r => r.vendedor_nome.includes('Beaba'));
+    
+    if (maisRealInResult && beabaInResult) {
+      console.log(`🎉 [vendorSummaryService] SUCCESS: Both key vendors found in result`);
+      console.log(`  - Mais Real: ${maisRealInResult.total_ajustes} adjustments`);
+      console.log(`  - Beaba: ${beabaInResult.total_ajustes} adjustments`);
     } else {
-      console.log('❌ [vendorSummaryService] CRITICAL ERROR: Mais Real NOT found in final result despite having adjustments!');
+      console.log('❌ [vendorSummaryService] WARNING: Missing key vendors in result');
+      console.log(`  - Mais Real found: ${!!maisRealInResult}`);
+      console.log(`  - Beaba found: ${!!beabaInResult}`);
       
-      // Emergency debugging: Show what happened to Mais Real
-      const maisRealVendorId = vendorsData.find(v => v.nome_loja.includes('Mais Real'))?.id;
-      if (maisRealVendorId) {
-        const maisRealAdjustments = allAdjustments.filter(adj => adj.vendedor_id === maisRealVendorId);
-        console.log(`🔍 [vendorSummaryService] EMERGENCY DEBUG: Mais Real ID ${maisRealVendorId} has ${maisRealAdjustments.length} adjustments`);
-        console.log('🔍 [vendorSummaryService] Mais Real adjustments:', maisRealAdjustments.slice(0, 3));
+      if (!maisRealInResult) {
+        console.log('🔍 [vendorSummaryService] DEBUGGING: Why is Mais Real missing?');
+        const maisRealVendor = vendorsData.find(v => v.nome_loja.includes('Mais Real'));
+        if (maisRealVendor) {
+          const maisRealAdjustments = allAdjustments.filter(adj => adj.vendedor_id === maisRealVendor.id);
+          console.log(`  - Mais Real vendor found: ${maisRealVendor.id} -> "${maisRealVendor.nome_loja}"`);
+          console.log(`  - Mais Real adjustments found: ${maisRealAdjustments.length}`);
+        }
       }
     }
 
-    console.log('🔍 [vendorSummaryService] === ENDING ENHANCED VENDOR ADJUSTMENTS SUMMARY ===');
+    console.log('🔍 [vendorSummaryService] === SUMMARY COMPLETE ===');
     return result;
 
   } catch (error) {
