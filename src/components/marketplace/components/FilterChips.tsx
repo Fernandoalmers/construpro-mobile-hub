@@ -21,7 +21,6 @@ interface FilterChipsProps {
   onSegmentClick: (segmentId: string) => void;
   onPriceRangeClick?: (rangeId: string) => void;
   clearFilters: () => void;
-  showSegmentChips?: boolean; // Nova prop para controlar a exibição dos chips de segmentos
 }
 
 const FilterChips: React.FC<FilterChipsProps> = ({
@@ -40,10 +39,8 @@ const FilterChips: React.FC<FilterChipsProps> = ({
   onRatingClick,
   onSegmentClick,
   onPriceRangeClick = () => {},
-  clearFilters,
-  showSegmentChips = true // Valor padrão true para compatibilidade
+  clearFilters
 }) => {
-  // Calcular se há filtros, mantendo selectedSegments para que o "Limpar tudo" funcione corretamente
   const hasFilters = selectedCategories.length > 0 || 
                    selectedLojas.length > 0 || 
                    selectedRatings.length > 0 || 
@@ -147,8 +144,8 @@ const FilterChips: React.FC<FilterChipsProps> = ({
         );
       })}
 
-      {/* Segment chips - Condicionalmente renderizados baseado na prop showSegmentChips */}
-      {showSegmentChips && selectedSegments.map(segmentId => {
+      {/* Segment chips */}
+      {selectedSegments.map(segmentId => {
         const segment = segmentOptions.find(seg => seg.id === segmentId);
         return (
           <motion.div
