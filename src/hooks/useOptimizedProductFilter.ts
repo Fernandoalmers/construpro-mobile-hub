@@ -64,7 +64,7 @@ function filterReducer(state: FilterState, action: FilterAction): FilterState {
     case 'SET_PAGE':
       return { ...state, page: action.payload };
     case 'SET_LOJAS':
-      return { ...state, selectedLojas: action.payload, page: 1 };
+      return { ...state, selectedLojas: action.payload || [], page: 1 };
     case 'CLEAR_FILTERS':
       return { ...initialState };
     default:
@@ -78,6 +78,12 @@ export const useOptimizedProductFilter = (products: any[] = []) => {
   const [state, dispatch] = useReducer(filterReducer, initialState);
   const [displayedProducts, setDisplayedProducts] = useState<any[]>([]);
 
+  // Ensure products is always an array with safety check
+  const safeProducts = useMemo(() => {
+    console.log('[useOptimizedProductFilter] Input products:', products);
+    return Array.isArray(products) ? products : [];
+  }, [products]);
+
   // Price range checker
   const isPriceInRange = useCallback((preco: number, rangeId: string): boolean => {
     switch (rangeId) {
@@ -90,47 +96,54 @@ export const useOptimizedProductFilter = (products: any[] = []) => {
     }
   }, []);
 
-  // Memoized filtered products with optimized filtering
+  // Memoized filtered products with safety checks
   const filteredProducts = useMemo(() => {
-    let filtered = products;
+    console.log('[useOptimizedProductFilter] Starting filter with products:', safeProducts?.length || 0);
+    
+    if (!safeProducts || safeProducts.length === 0) {
+      console.log('[useOptimizedProductFilter] No products to filter');
+      return [];
+    }
+
+    let filtered = [...safeProducts];
 
     // Search filter
-    if (state.searchTerm.trim()) {
+    if (state.searchTerm?.trim()) {
       const searchLower = state.searchTerm.toLowerCase();
       filtered = filtered.filter(produto => 
-        produto.nome?.toLowerCase().includes(searchLower) ||
-        produto.categoria?.toLowerCase().includes(searchLower)
+        produto?.nome?.toLowerCase().includes(searchLower) ||
+        produto?.categoria?.toLowerCase().includes(searchLower)
       );
     }
 
     // Category filter
-    if (state.selectedCategories.length > 0) {
+    if (state.selectedCategories?.length > 0) {
       filtered = filtered.filter(produto => 
-        state.selectedCategories.includes(produto.categoria)
+        produto?.categoria && state.selectedCategories.includes(produto.categoria)
       );
     }
 
     // Store filter
-    if (state.selectedLojas.length > 0) {
+    if (state.selectedLojas?.length > 0) {
       filtered = filtered.filter(produto => {
-        const storeId = produto.loja_id || produto.vendedor_id || 
-                       produto.stores?.id || (produto.vendedores && produto.vendedores.id);
-        return state.selectedLojas.includes(storeId);
+        const storeId = produto?.loja_id || produto?.vendedor_id || 
+                       produto?.stores?.id || produto?.vendedores?.id;
+        return storeId && state.selectedLojas.includes(storeId);
       });
     }
 
     // Price range filter
-    if (state.selectedPriceRanges.length > 0) {
+    if (state.selectedPriceRanges?.length > 0) {
       filtered = filtered.filter(produto => {
-        const preco = produto.preco_normal || produto.preco || 0;
+        const preco = produto?.preco_normal || produto?.preco || 0;
         return state.selectedPriceRanges.some(rangeId => isPriceInRange(preco, rangeId));
       });
     }
 
     // Rating filter
-    if (state.selectedRatings.length > 0) {
+    if (state.selectedRatings?.length > 0) {
       filtered = filtered.filter(produto => {
-        const rating = parseFloat(produto.avaliacao);
+        const rating = parseFloat(produto?.avaliacao || '0');
         return state.selectedRatings.some(r => {
           const minRating = parseFloat(r);
           return !isNaN(minRating) && rating >= minRating;
@@ -139,45 +152,68 @@ export const useOptimizedProductFilter = (products: any[] = []) => {
     }
 
     // Segment filter
-    if (state.selectedSegments.length > 0) {
+    if (state.selectedSegments?.length > 0) {
       filtered = filtered.filter(produto => 
-        state.selectedSegments.includes(produto.segmento_id)
+        produto?.segmento_id && state.selectedSegments.includes(produto.segmento_id)
       );
     }
 
-    return filtered;
-  }, [products, state, isPriceInRange]);
+    console.log('[useOptimizedProductFilter] Filtered products:', filtered?.length || 0);
+    return filtered || [];
+  }, [safeProducts, state, isPriceInRange]);
 
-  // Update displayed products based on pagination
+  // Update displayed products based on pagination with safety checks
   useEffect(() => {
+    if (!Array.isArray(filteredProducts)) {
+      console.warn('[useOptimizedProductFilter] filteredProducts is not an array:', filteredProducts);
+      setDisplayedProducts([]);
+      return;
+    }
+
     const startIndex = 0;
     const endIndex = state.page * PRODUCTS_PER_PAGE;
-    setDisplayedProducts(filteredProducts.slice(startIndex, endIndex));
+    const newDisplayedProducts = filteredProducts.slice(startIndex, endIndex);
+    
+    console.log('[useOptimizedProductFilter] Setting displayed products:', newDisplayedProducts?.length || 0);
+    setDisplayedProducts(newDisplayedProducts || []);
   }, [filteredProducts, state.page]);
 
-  // Action creators
+  // Action creators with safety checks
   const actions = useMemo(() => ({
-    setSearchTerm: (term: string) => dispatch({ type: 'SET_SEARCH', payload: term }),
-    toggleCategory: (categoryId: string) => dispatch({ type: 'TOGGLE_CATEGORY', payload: categoryId }),
-    toggleLoja: (lojaId: string) => dispatch({ type: 'TOGGLE_LOJA', payload: lojaId }),
-    toggleRating: (ratingId: string) => dispatch({ type: 'TOGGLE_RATING', payload: ratingId }),
-    togglePriceRange: (rangeId: string) => dispatch({ type: 'TOGGLE_PRICE_RANGE', payload: rangeId }),
-    toggleSegment: (segmentId: string) => dispatch({ type: 'TOGGLE_SEGMENT', payload: segmentId }),
-    setPage: (page: number) => dispatch({ type: 'SET_PAGE', payload: page }),
-    setLojas: (lojas: string[]) => dispatch({ type: 'SET_LOJAS', payload: lojas }),
+    setSearchTerm: (term: string) => dispatch({ type: 'SET_SEARCH', payload: term || '' }),
+    toggleCategory: (categoryId: string) => {
+      if (categoryId) dispatch({ type: 'TOGGLE_CATEGORY', payload: categoryId });
+    },
+    toggleLoja: (lojaId: string) => {
+      if (lojaId) dispatch({ type: 'TOGGLE_LOJA', payload: lojaId });
+    },
+    toggleRating: (ratingId: string) => {
+      if (ratingId) dispatch({ type: 'TOGGLE_RATING', payload: ratingId });
+    },
+    togglePriceRange: (rangeId: string) => {
+      if (rangeId) dispatch({ type: 'TOGGLE_PRICE_RANGE', payload: rangeId });
+    },
+    toggleSegment: (segmentId: string) => {
+      if (segmentId) dispatch({ type: 'TOGGLE_SEGMENT', payload: segmentId });
+    },
+    setPage: (page: number) => dispatch({ type: 'SET_PAGE', payload: Math.max(1, page || 1) }),
+    setLojas: (lojas: string[]) => dispatch({ type: 'SET_LOJAS', payload: Array.isArray(lojas) ? lojas : [] }),
     clearFilters: () => dispatch({ type: 'CLEAR_FILTERS' }),
     loadMore: useCallback(() => {
-      if (displayedProducts.length < filteredProducts.length) {
+      const currentDisplayed = Array.isArray(displayedProducts) ? displayedProducts.length : 0;
+      const totalFiltered = Array.isArray(filteredProducts) ? filteredProducts.length : 0;
+      
+      if (currentDisplayed < totalFiltered) {
         dispatch({ type: 'SET_PAGE', payload: state.page + 1 });
       }
-    }, [displayedProducts.length, filteredProducts.length, state.page])
-  }), [displayedProducts.length, filteredProducts.length, state.page]);
+    }, [displayedProducts, filteredProducts, state.page])
+  }), [displayedProducts, filteredProducts, state.page]);
 
   return {
     ...state,
-    filteredProducts,
-    displayedProducts,
-    hasMore: displayedProducts.length < filteredProducts.length,
+    filteredProducts: Array.isArray(filteredProducts) ? filteredProducts : [],
+    displayedProducts: Array.isArray(displayedProducts) ? displayedProducts : [],
+    hasMore: (Array.isArray(displayedProducts) ? displayedProducts.length : 0) < (Array.isArray(filteredProducts) ? filteredProducts.length : 0),
     isLoadingMore: false,
     actions
   };

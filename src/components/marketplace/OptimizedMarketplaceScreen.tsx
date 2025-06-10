@@ -19,6 +19,22 @@ const OptimizedMarketplaceScreen: React.FC = () => {
   // Use optimized marketplace data hook
   const { products, stores, segments, isLoading, error } = useOptimizedMarketplace();
   
+  // Ensure data safety with default values
+  const safeProducts = useMemo(() => {
+    console.log('[OptimizedMarketplaceScreen] Products received:', products?.length || 0);
+    return Array.isArray(products) ? products : [];
+  }, [products]);
+  
+  const safeStores = useMemo(() => {
+    console.log('[OptimizedMarketplaceScreen] Stores received:', stores?.length || 0);
+    return Array.isArray(stores) ? stores : [];
+  }, [stores]);
+  
+  const safeSegments = useMemo(() => {
+    console.log('[OptimizedMarketplaceScreen] Segments received:', segments?.length || 0);
+    return Array.isArray(segments) ? segments : [];
+  }, [segments]);
+  
   // Custom hooks for managing different aspects
   const {
     categoryParam,
@@ -36,15 +52,22 @@ const OptimizedMarketplaceScreen: React.FC = () => {
   // Use optimized scroll behavior
   const { hideHeader } = useScrollBehavior();
   
-  // Filter products by selected segment
+  // Filter products by selected segment with safety checks
   const segmentFilteredProducts = useMemo(() => {
     if (!selectedSegmentId || selectedSegmentId === 'all') {
-      return products;
+      console.log('[OptimizedMarketplaceScreen] No segment filter - returning all products:', safeProducts.length);
+      return safeProducts;
     }
-    return products.filter(product => product.segmento_id === selectedSegmentId);
-  }, [products, selectedSegmentId]);
+    
+    const filtered = safeProducts.filter(product => 
+      product?.segmento_id === selectedSegmentId
+    );
+    
+    console.log('[OptimizedMarketplaceScreen] Segment filtered products:', filtered.length, 'from', safeProducts.length);
+    return filtered;
+  }, [safeProducts, selectedSegmentId]);
   
-  // Use optimized product filter
+  // Use optimized product filter with safety checks
   const {
     searchTerm,
     selectedCategories,
@@ -58,24 +81,36 @@ const OptimizedMarketplaceScreen: React.FC = () => {
     actions
   } = useOptimizedProductFilter(segmentFilteredProducts);
   
-  // Extract categories from products
+  // Extract categories from products with safety checks
   const categories = useMemo(() => {
-    const uniqueCategories = new Set(products.map(product => product.categoria));
+    if (!Array.isArray(safeProducts) || safeProducts.length === 0) {
+      return [];
+    }
+    
+    const uniqueCategories = new Set(
+      safeProducts
+        .filter(product => product?.categoria)
+        .map(product => product.categoria)
+    );
+    
     return Array.from(uniqueCategories).map(cat => ({
       id: cat,
       label: cat
     }));
-  }, [products]);
+  }, [safeProducts]);
   
-  // Sync search term
+  // Sync search term with safety check
   useEffect(() => {
-    actions.setSearchTerm(term || '');
-  }, [term, actions.setSearchTerm]);
+    if (actions?.setSearchTerm) {
+      actions.setSearchTerm(term || '');
+    }
+  }, [term, actions]);
   
-  // Auto-search with debounce
+  // Auto-search with debounce and safety checks
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (term.trim().length >= 2 || term.trim().length === 0) {
+      const trimmedTerm = (term || '').trim();
+      if (trimmedTerm.length >= 2 || trimmedTerm.length === 0) {
         handleSubmit();
       }
     }, 300);
@@ -99,7 +134,7 @@ const OptimizedMarketplaceScreen: React.FC = () => {
     { id: "preco-5", label: "Acima de R$ 500" }
   ], []);
   
-  // Handle segment clicks
+  // Handle segment clicks with safety checks
   const handleSegmentClick = (segmentId: string) => {
     if (segmentId === "all") {
       setSelectedSegmentId(null);
@@ -108,25 +143,30 @@ const OptimizedMarketplaceScreen: React.FC = () => {
       return;
     }
     
-    setSelectedSegments([segmentId]);
-    setSelectedSegmentId(segmentId);
-    updateSegmentURL(segmentId);
+    if (segmentId) {
+      setSelectedSegments([segmentId]);
+      setSelectedSegmentId(segmentId);
+      updateSegmentURL(segmentId);
+    }
   };
   
-  // Handle store clicks
+  // Handle store clicks with safety checks
   const handleLojaCardClick = (lojaId: string) => {
-    actions.setLojas([lojaId]);
+    if (lojaId && actions?.setLojas) {
+      actions.setLojas([lojaId]);
+    }
   };
   
-  // Get current display name
+  // Get current display name with safety checks
   const getCurrentDisplayName = () => {
-    if (selectedSegmentId) {
-      const segmentName = segmentOptions.find(s => s.id === selectedSegmentId)?.label;
+    if (selectedSegmentId && Array.isArray(segmentOptions)) {
+      const segmentName = segmentOptions.find(s => s?.id === selectedSegmentId)?.label;
       if (segmentName) return segmentName;
     }
     
-    if (selectedCategories.length === 1) {
-      return categories.find(cat => cat.id === selectedCategories[0])?.label;
+    if (Array.isArray(selectedCategories) && selectedCategories.length === 1 && Array.isArray(categories)) {
+      const categoryName = categories.find(cat => cat?.id === selectedCategories[0])?.label;
+      if (categoryName) return categoryName;
     }
     
     return "Todos os Produtos";
@@ -135,9 +175,10 @@ const OptimizedMarketplaceScreen: React.FC = () => {
   const currentCategoryName = getCurrentDisplayName();
   const dynamicPaddingTop = hideHeader ? 0 : headerHeight;
   
-  // Handle search input change
+  // Handle search input change with safety check
   const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setTerm(e.target.value);
+    const value = e?.target?.value || '';
+    setTerm(value);
   };
   
   // Show loading state
@@ -166,42 +207,42 @@ const OptimizedMarketplaceScreen: React.FC = () => {
     <div className="flex flex-col min-h-screen bg-gray-50 pb-20">
       <MarketplaceHeader 
         hideHeader={hideHeader}
-        searchTerm={term}
-        selectedCategories={selectedCategories}
-        selectedLojas={selectedLojas}
-        selectedRatings={selectedRatings}
-        selectedSegments={selectedSegments}
-        selectedPriceRanges={selectedPriceRanges}
+        searchTerm={term || ''}
+        selectedCategories={Array.isArray(selectedCategories) ? selectedCategories : []}
+        selectedLojas={Array.isArray(selectedLojas) ? selectedLojas : []}
+        selectedRatings={Array.isArray(selectedRatings) ? selectedRatings : []}
+        selectedSegments={Array.isArray(selectedSegments) ? selectedSegments : []}
+        selectedPriceRanges={Array.isArray(selectedPriceRanges) ? selectedPriceRanges : []}
         selectedSegmentId={selectedSegmentId}
-        allCategories={categories}
+        allCategories={Array.isArray(categories) ? categories : []}
         ratingOptions={ratingOptions}
         priceRangeOptions={priceRangeOptions}
-        segmentOptions={segmentOptions}
+        segmentOptions={Array.isArray(segmentOptions) ? segmentOptions : []}
         onSearchChange={handleSearchInputChange}
         onSearch={handleSubmit}
-        onLojaClick={actions.toggleLoja}
-        onCategoryClick={actions.toggleCategory}
-        onRatingClick={actions.toggleRating}
+        onLojaClick={actions?.toggleLoja || (() => {})}
+        onCategoryClick={actions?.toggleCategory || (() => {})}
+        onRatingClick={actions?.toggleRating || (() => {})}
         onSegmentClick={handleSegmentClick}
-        onPriceRangeClick={actions.togglePriceRange}
-        clearFilters={actions.clearFilters}
-        stores={stores}
+        onPriceRangeClick={actions?.togglePriceRange || (() => {})}
+        clearFilters={actions?.clearFilters || (() => {})}
+        stores={safeStores}
         onHeightChange={setHeaderHeight}
       />
       
       <MarketplaceContent
         dynamicPaddingTop={dynamicPaddingTop}
-        stores={stores}
+        stores={safeStores}
         onLojaClick={handleLojaCardClick}
         storesError={null}
         currentCategoryName={currentCategoryName}
-        filteredProdutos={filteredProducts}
+        filteredProdutos={Array.isArray(filteredProducts) ? filteredProducts : []}
         isLoading={isLoading}
-        displayedProducts={displayedProducts}
+        displayedProducts={Array.isArray(displayedProducts) ? displayedProducts : []}
         hasMore={hasMore}
         isLoadingMore={isLoadingMore}
-        loadMoreProducts={actions.loadMore}
-        clearFilters={actions.clearFilters}
+        loadMoreProducts={actions?.loadMore || (() => {})}
+        clearFilters={actions?.clearFilters || (() => {})}
       />
     </div>
   );

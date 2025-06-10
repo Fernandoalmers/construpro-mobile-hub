@@ -33,8 +33,22 @@ const ProductListSection = memo<ProductListSectionProps>(({
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   const handleProductClick = useCallback((productId: string) => {
-    navigate(`/produto/${productId}`);
+    if (productId) {
+      navigate(`/produto/${productId}`);
+    }
   }, [navigate]);
+
+  // Ensure arrays are safe to use
+  const safeDisplayedProducts = Array.isArray(displayedProducts) ? displayedProducts : [];
+  const safeFilteredProducts = Array.isArray(filteredProdutos) ? filteredProdutos : [];
+
+  console.log('[ProductListSection] Rendering with:', {
+    displayedCount: safeDisplayedProducts.length,
+    filteredCount: safeFilteredProducts.length,
+    isLoading,
+    hasMore,
+    isLoadingMore
+  });
 
   // Show skeleton loading while initial load
   if (isLoading) {
@@ -42,7 +56,7 @@ const ProductListSection = memo<ProductListSectionProps>(({
   }
 
   // Show empty state if no products
-  if (filteredProdutos.length === 0) {
+  if (safeFilteredProducts.length === 0) {
     return <EmptyProductState clearFilters={clearFilters} />;
   }
 
@@ -50,9 +64,9 @@ const ProductListSection = memo<ProductListSectionProps>(({
     <div className="space-y-4">
       {/* Products Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 px-4">
-        {displayedProducts.map((product) => (
+        {safeDisplayedProducts.map((product) => (
           <OptimizedProductCard
-            key={product.id}
+            key={product?.id || Math.random()}
             product={product}
             onClick={handleProductClick}
           />
@@ -60,7 +74,7 @@ const ProductListSection = memo<ProductListSectionProps>(({
       </div>
 
       {/* Load More Button */}
-      {hasMore && (
+      {hasMore && safeDisplayedProducts.length > 0 && (
         <div className="flex justify-center py-4">
           <button
             onClick={loadMoreProducts}
