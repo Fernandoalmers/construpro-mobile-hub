@@ -13,6 +13,7 @@ import LoadingState from '../common/LoadingState';
 
 const MarketplaceScreen: React.FC = () => {
   const [headerHeight, setHeaderHeight] = useState(0);
+  const [viewType, setViewType] = useState<'grid' | 'list'>('grid');
   const location = useLocation();
   const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
@@ -287,6 +288,8 @@ const MarketplaceScreen: React.FC = () => {
         clearFilters={clearFilters}
         stores={safeStores}
         onHeightChange={handleHeaderHeightChange}
+        viewType={viewType}
+        setViewType={setViewType}
       />
       
       {/* Main Content with dynamic padding */}
@@ -303,6 +306,7 @@ const MarketplaceScreen: React.FC = () => {
         isLoadingMore={isLoadingMore || false}
         loadMoreProducts={loadMoreProducts || (() => {})}
         clearFilters={clearFilters}
+        viewType={viewType}
       />
     </div>
   );

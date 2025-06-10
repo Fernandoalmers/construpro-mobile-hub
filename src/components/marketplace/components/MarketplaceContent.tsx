@@ -1,9 +1,11 @@
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import StoresSection from './StoresSection';
 import CategoryHeader from './CategoryHeader';
-import ProductListSection from '../ProductListSection';
 import ProdutoCard from '../ProdutoCard';
+import GridProductView from './GridProductView';
+import ListProductView from './ListProductView';
 
 interface MarketplaceContentProps {
   dynamicPaddingTop: number;
@@ -18,6 +20,7 @@ interface MarketplaceContentProps {
   isLoadingMore: boolean;
   loadMoreProducts: () => void;
   clearFilters: () => void;
+  viewType: 'grid' | 'list';
 }
 
 const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
@@ -32,12 +35,20 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
   hasMore,
   isLoadingMore,
   loadMoreProducts,
-  clearFilters
+  clearFilters,
+  viewType
 }) => {
+  const navigate = useNavigate();
+  
   // Ensure arrays are safe to use
   const safeStores = Array.isArray(stores) ? stores : [];
   const safeFilteredProducts = Array.isArray(filteredProdutos) ? filteredProdutos : [];
   const safeDisplayedProducts = Array.isArray(displayedProducts) ? displayedProducts : [];
+
+  // Navigate to product function
+  const navigateToProduct = (productId: string) => {
+    navigate(`/produto/${productId}`);
+  };
 
   return (
     <main 
@@ -58,7 +69,7 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
           productCount={safeFilteredProducts.length}
         />
         
-        {/* Products Section using ProdutoCard for original layout */}
+        {/* Products Section */}
         <div className="bg-white min-h-screen">
           {isLoading ? (
             <div className="flex justify-center items-center py-20">
@@ -82,14 +93,21 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
             </div>
           ) : (
             <>
-              {/* Products Grid using original ProdutoCard */}
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
-                {safeDisplayedProducts.map((produto) => (
-                  <ProdutoCard
-                    key={produto?.id || Math.random()}
-                    produto={produto}
+              {/* Products Display based on viewType */}
+              <div className="p-4">
+                {viewType === 'grid' ? (
+                  <GridProductView
+                    products={safeDisplayedProducts}
+                    navigateToProduct={navigateToProduct}
+                    onLojaClick={onLojaClick}
                   />
-                ))}
+                ) : (
+                  <ListProductView
+                    products={safeDisplayedProducts}
+                    navigateToProduct={navigateToProduct}
+                    onLojaClick={onLojaClick}
+                  />
+                )}
               </div>
 
               {/* Load More Button */}
