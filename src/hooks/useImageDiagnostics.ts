@@ -27,11 +27,16 @@ export const useImageDiagnostics = () => {
     const startTime = Date.now();
     
     try {
+      // Create AbortController for timeout functionality
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
       const response = await fetch(url, { 
         method: 'HEAD',
-        timeout: 10000 // 10 second timeout
+        signal: controller.signal
       });
       
+      clearTimeout(timeoutId);
       const responseTime = Date.now() - startTime;
       
       if (!response.ok) {
@@ -54,6 +59,15 @@ export const useImageDiagnostics = () => {
       return { isValid: true, responseTime };
     } catch (error) {
       const responseTime = Date.now() - startTime;
+      
+      if (error instanceof Error && error.name === 'AbortError') {
+        return { 
+          isValid: false, 
+          errorMessage: 'Timeout - imagem demorou muito para responder',
+          responseTime 
+        };
+      }
+      
       return { 
         isValid: false, 
         errorMessage: error instanceof Error ? error.message : 'Erro desconhecido',
