@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Package, AlertTriangle, RefreshCw } from 'lucide-react';
-import { safeFirstImage, handleImageError } from '@/utils/imageUtils';
+import { parseImageData } from '@/utils/imageParser';
 
 interface ProductImageProps {
   imagemUrl?: string | null;
@@ -26,15 +26,26 @@ const ProductImage: React.FC<ProductImageProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [retryCount, setRetryCount] = useState(0);
   
-  // Use utility function to safely extract image URL
+  // Use enhanced parser to safely extract image URL
   const getImageUrl = (): string | null => {
     // Priority 1: Use imagemUrl if available and valid
     if (imagemUrl && typeof imagemUrl === 'string' && imagemUrl.trim() !== '') {
       return imagemUrl;
     }
 
-    // Priority 2: Extract from imagens using safe utility
-    return safeFirstImage(imagens);
+    // Priority 2: Parse imagens using enhanced parser
+    const parseResult = parseImageData(imagens);
+    
+    if (showDiagnostics) {
+      console.log(`[ProductImage] Parse result for "${productName}":`, {
+        urls: parseResult.urls,
+        errors: parseResult.errors,
+        originalFormat: parseResult.originalFormat,
+        needsCorrection: parseResult.errors.length > 0
+      });
+    }
+    
+    return parseResult.urls.length > 0 ? parseResult.urls[0] : null;
   };
 
   const imageUrl = getImageUrl();
@@ -56,9 +67,6 @@ const ProductImage: React.FC<ProductImageProps> = ({
     setImageError(true);
     setIsLoading(false);
     
-    // Call original error handler
-    handleImageError(event);
-    
     // Notify parent component if callback provided
     if (onImageError) {
       onImageError(`Failed to load image: ${originalSrc}`);
@@ -78,7 +86,10 @@ const ProductImage: React.FC<ProductImageProps> = ({
   const handleImageLoad = () => {
     setIsLoading(false);
     setImageError(false);
-    console.log(`[ProductImage] ✅ Image loaded successfully for product "${productName}":`, imageUrl);
+    
+    if (showDiagnostics) {
+      console.log(`[ProductImage] ✅ Image loaded successfully for product "${productName}":`, imageUrl);
+    }
   };
 
   // Manual retry function
@@ -101,12 +112,14 @@ const ProductImage: React.FC<ProductImageProps> = ({
     xl: 32
   };
 
-  // Log diagnostic information
+  // Enhanced diagnostic information
   if (showDiagnostics) {
+    const parseResult = parseImageData(imagens);
     console.log(`[ProductImage Diagnostics] Product: "${productName}"`, {
       imageUrl,
       imagemUrl,
       imagens,
+      parseResult,
       imageError,
       isLoading,
       retryCount
@@ -156,10 +169,16 @@ const ProductImage: React.FC<ProductImageProps> = ({
         </div>
       )}
       
-      {/* Diagnostic overlay for admin */}
-      {showDiagnostics && imageError && (
-        <div className="absolute top-0 right-0 bg-red-500 text-white text-xs px-1 rounded-bl">
-          !
+      {/* Enhanced diagnostic overlay */}
+      {showDiagnostics && (
+        <div className="absolute top-0 right-0 text-white text-xs px-1 rounded-bl">
+          {imageError ? (
+            <div className="bg-red-500">!</div>
+          ) : imageUrl ? (
+            <div className="bg-green-500">✓</div>
+          ) : (
+            <div className="bg-yellow-500">?</div>
+          )}
         </div>
       )}
     </div>

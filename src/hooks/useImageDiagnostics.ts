@@ -1,5 +1,6 @@
 
 import { useState, useCallback } from 'react';
+import { parseImageData } from '@/utils/imageParser';
 
 interface ImageDiagnostic {
   productId: string;
@@ -8,6 +9,9 @@ interface ImageDiagnostic {
   isValid: boolean;
   errorMessage?: string;
   responseTime?: number;
+  parseErrors?: string[];
+  needsCorrection?: boolean;
+  originalFormat?: string;
 }
 
 export const useImageDiagnostics = () => {
@@ -83,28 +87,39 @@ export const useImageDiagnostics = () => {
     const results: ImageDiagnostic[] = [];
 
     for (const product of products) {
-      const imageUrl = product.imagemUrl || (Array.isArray(product.imagens) && product.imagens.length > 0 ? product.imagens[0] : null);
+      console.log(`[Diagnostics] Processing product ${product.id}: ${product.nome}`);
       
-      if (!imageUrl) {
+      // Use the enhanced parser to analyze image data
+      const parseResult = parseImageData(product.imagens);
+      
+      if (parseResult.urls.length === 0) {
         results.push({
           productId: product.id,
           productName: product.nome,
           imageUrl: null,
           isValid: false,
-          errorMessage: 'Nenhuma imagem definida'
+          errorMessage: 'Nenhuma imagem válida encontrada',
+          parseErrors: parseResult.errors,
+          needsCorrection: parseResult.errors.length > 0,
+          originalFormat: parseResult.originalFormat
         });
         continue;
       }
 
-      const { isValid, errorMessage, responseTime } = await checkImageValidity(imageUrl);
+      // Test the first available URL
+      const firstUrl = parseResult.urls[0];
+      const { isValid, errorMessage, responseTime } = await checkImageValidity(firstUrl);
       
       results.push({
         productId: product.id,
         productName: product.nome,
-        imageUrl,
+        imageUrl: firstUrl,
         isValid,
         errorMessage,
-        responseTime
+        responseTime,
+        parseErrors: parseResult.errors,
+        needsCorrection: parseResult.errors.length > 0,
+        originalFormat: parseResult.originalFormat
       });
     }
 
@@ -116,10 +131,17 @@ export const useImageDiagnostics = () => {
     return diagnostics.filter(d => !d.isValid);
   }, [diagnostics]);
 
+  const getImagesThatNeedCorrection = useCallback(() => {
+    return diagnostics.filter(d => d.needsCorrection);
+  }, [diagnostics]);
+
   const getStatistics = useCallback(() => {
     const total = diagnostics.length;
     const valid = diagnostics.filter(d => d.isValid).length;
     const invalid = total - valid;
+    const needsCorrection = diagnostics.filter(d => d.needsCorrection).length;
+    const parseErrors = diagnostics.filter(d => d.parseErrors && d.parseErrors.length > 0).length;
+    
     const avgResponseTime = diagnostics
       .filter(d => d.responseTime && d.responseTime > 0)
       .reduce((acc, d) => acc + (d.responseTime || 0), 0) / total;
@@ -128,6 +150,8 @@ export const useImageDiagnostics = () => {
       total,
       valid,
       invalid,
+      needsCorrection,
+      parseErrors,
       validPercentage: total > 0 ? Math.round((valid / total) * 100) : 0,
       avgResponseTime: Math.round(avgResponseTime)
     };
@@ -138,6 +162,7 @@ export const useImageDiagnostics = () => {
     isRunning,
     runDiagnostics,
     getProblematicImages,
+    getImagesThatNeedCorrection,
     getStatistics,
     checkImageValidity
   };
