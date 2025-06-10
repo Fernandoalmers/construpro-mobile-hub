@@ -1,9 +1,9 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useInfiniteScroll } from '@/hooks/use-infinite-scroll';
 import StoresSection from './StoresSection';
 import CategoryHeader from './CategoryHeader';
-import ProdutoCard from '../ProdutoCard';
 import GridProductView from './GridProductView';
 import ListProductView from './ListProductView';
 
@@ -21,7 +21,6 @@ interface MarketplaceContentProps {
   loadMoreProducts: () => void;
   clearFilters: () => void;
   viewType: 'grid' | 'list';
-  setViewType: (type: 'grid' | 'list') => void;
 }
 
 const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
@@ -37,8 +36,7 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
   isLoadingMore,
   loadMoreProducts,
   clearFilters,
-  viewType,
-  setViewType
+  viewType
 }) => {
   const navigate = useNavigate();
   
@@ -46,6 +44,14 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
   const safeStores = Array.isArray(stores) ? stores : [];
   const safeFilteredProducts = Array.isArray(filteredProdutos) ? filteredProdutos : [];
   const safeDisplayedProducts = Array.isArray(displayedProducts) ? displayedProducts : [];
+
+  // Use infinite scroll hook
+  const { observerRef } = useInfiniteScroll({
+    hasMore,
+    isLoading: isLoadingMore,
+    onLoadMore: loadMoreProducts,
+    threshold: 200
+  });
 
   // Navigate to product function
   const navigateToProduct = (productId: string) => {
@@ -65,12 +71,10 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
           storesError={storesError}
         />
         
-        {/* Category Header with ViewType Selector */}
+        {/* Category Header */}
         <CategoryHeader 
           currentCategoryName={currentCategoryName}
           productCount={safeFilteredProducts.length}
-          viewType={viewType}
-          setViewType={setViewType}
         />
         
         {/* Products Section */}
@@ -114,24 +118,15 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
                 )}
               </div>
 
-              {/* Load More Button */}
+              {/* Infinite Scroll Observer */}
               {hasMore && safeDisplayedProducts.length > 0 && (
-                <div className="flex justify-center py-6">
-                  <button
-                    onClick={loadMoreProducts}
-                    disabled={isLoadingMore}
-                    className="bg-construPro-blue text-white px-6 py-2 rounded-lg disabled:opacity-50 hover:bg-blue-600 transition-colors"
-                  >
-                    {isLoadingMore ? 'Carregando...' : 'Carregar mais produtos'}
-                  </button>
-                </div>
-              )}
-
-              {/* Loading indicator */}
-              {isLoadingMore && (
-                <div className="flex justify-center items-center py-4">
-                  <div className="w-6 h-6 border-2 border-construPro-blue border-t-transparent rounded-full animate-spin"></div>
-                  <span className="ml-3 text-sm text-gray-500">Carregando mais produtos...</span>
+                <div ref={observerRef} className="w-full h-10 flex items-center justify-center">
+                  {isLoadingMore && (
+                    <div className="flex items-center">
+                      <div className="w-6 h-6 border-2 border-construPro-blue border-t-transparent rounded-full animate-spin"></div>
+                      <span className="ml-3 text-sm text-gray-500">Carregando mais produtos...</span>
+                    </div>
+                  )}
                 </div>
               )}
             </>

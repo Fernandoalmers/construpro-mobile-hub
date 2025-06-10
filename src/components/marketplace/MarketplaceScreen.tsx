@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useProductFilter } from '@/hooks/use-product-filter';
@@ -277,6 +278,8 @@ const MarketplaceScreen: React.FC = () => {
         ratingOptions={Array.isArray(ratingOptions) ? ratingOptions : []}
         priceRangeOptions={Array.isArray(priceRangeOptions) ? priceRangeOptions : []}
         segmentOptions={Array.isArray(segmentOptions) ? segmentOptions : []}
+        viewType={viewType}
+        setViewType={setViewType}
         onSearchChange={handleSearchInputChange}
         onSearch={handleExplicitSearch}
         onLojaClick={handleLojaClick || (() => {})}
@@ -304,7 +307,6 @@ const MarketplaceScreen: React.FC = () => {
         loadMoreProducts={loadMoreProducts || (() => {})}
         clearFilters={clearFilters}
         viewType={viewType}
-        setViewType={setViewType}
       />
     </div>
   );

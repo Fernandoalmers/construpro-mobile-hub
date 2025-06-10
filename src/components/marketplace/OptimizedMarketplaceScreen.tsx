@@ -218,6 +218,8 @@ const OptimizedMarketplaceScreen: React.FC = () => {
         ratingOptions={ratingOptions}
         priceRangeOptions={priceRangeOptions}
         segmentOptions={Array.isArray(segmentOptions) ? segmentOptions : []}
+        viewType={viewType}
+        setViewType={setViewType}
         onSearchChange={handleSearchInputChange}
         onSearch={handleSubmit}
         onLojaClick={actions?.toggleLoja || (() => {})}
@@ -244,7 +246,6 @@ const OptimizedMarketplaceScreen: React.FC = () => {
         loadMoreProducts={actions?.loadMore || (() => {})}
         clearFilters={actions?.clearFilters || (() => {})}
         viewType={viewType}
-        setViewType={setViewType}
       />
     </div>
   );
