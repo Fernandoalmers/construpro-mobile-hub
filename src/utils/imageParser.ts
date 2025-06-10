@@ -12,7 +12,7 @@ export interface ImageParseResult {
 }
 
 /**
- * Robust image parser that handles various malformed formats
+ * Robust image parser that handles various malformed formats including escaped JSON strings
  */
 export function parseImageData(imageData: any): ImageParseResult {
   const result: ImageParseResult = {
@@ -62,7 +62,25 @@ function parseStringImageData(imageData: string, result: ImageParseResult): Imag
     return result;
   }
 
-  // Try to parse as JSON
+  // FIXED: Enhanced handling for escaped JSON strings like "[\"url\"]"
+  if (imageData.startsWith('["') && imageData.endsWith('"]')) {
+    try {
+      // This handles the escaped JSON format
+      const parsed = JSON.parse(imageData);
+      if (Array.isArray(parsed)) {
+        result.urls = parsed.filter(url => isValidUrl(url));
+        result.isValid = result.urls.length > 0;
+        if (result.urls.length > 0) {
+          result.errors.push('Converted from escaped JSON string format');
+        }
+        return result;
+      }
+    } catch (error) {
+      result.errors.push('Failed to parse escaped JSON string: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    }
+  }
+
+  // Try to parse as regular JSON
   try {
     const parsed = JSON.parse(imageData);
     if (Array.isArray(parsed)) {
@@ -78,7 +96,7 @@ function parseStringImageData(imageData: string, result: ImageParseResult): Imag
     if (extractedUrls.length > 0) {
       result.urls.push(...extractedUrls);
       result.isValid = true;
-      result.errors.push('Extracted URLs from malformed JSON string');
+      result.errors.push('Extracted URLs from malformed string');
       return result;
     }
     result.errors.push(`Failed to parse JSON: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -178,7 +196,7 @@ function isValidUrl(url: string): boolean {
 }
 
 /**
- * Generate corrected JSON string from malformed data
+ * ENHANCED: Generate corrected JSON string from malformed data
  */
 export function generateCorrectedImageData(originalData: any): string | null {
   const parseResult = parseImageData(originalData);
@@ -187,7 +205,7 @@ export function generateCorrectedImageData(originalData: any): string | null {
     return null;
   }
 
-  // Return properly formatted JSON array
+  // Return properly formatted JSON array (not escaped string)
   return JSON.stringify(parseResult.urls);
 }
 
@@ -196,6 +214,11 @@ export function generateCorrectedImageData(originalData: any): string | null {
  */
 export function needsCorrection(imageData: any): boolean {
   if (!imageData) return false;
+  
+  // Check for escaped JSON string format
+  if (typeof imageData === 'string' && imageData.startsWith('["') && imageData.endsWith('"]')) {
+    return true;
+  }
   
   const parseResult = parseImageData(imageData);
   return parseResult.errors.length > 0 && parseResult.urls.length > 0;

@@ -37,20 +37,19 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
       productData.categoria = 'Geral'; // Default category if none provided
     }
     
-    // Properly handle images array - FIXED: avoid double array
-    let imagensJson = '[]';
+    // FIXED: Properly handle images array - save as proper JSON array, not escaped string
+    let imagensArray: string[] = [];
     if (productData.imagens && Array.isArray(productData.imagens)) {
-      // Filter out empty strings and blob URLs
-      const validImages = productData.imagens.filter(img => 
-        img && typeof img === 'string' && img.trim() !== '' && !img.startsWith('blob:')
+      // Filter out empty strings, blob URLs, and invalid URLs
+      imagensArray = productData.imagens.filter(img => 
+        img && 
+        typeof img === 'string' && 
+        img.trim() !== '' && 
+        !img.startsWith('blob:') &&
+        (img.startsWith('http') || img.startsWith('/'))
       );
       
-      console.log('[productSaver] Valid images before JSON.stringify:', validImages);
-      
-      // FIXED: Save as simple array, not double array
-      imagensJson = JSON.stringify(validImages);
-      
-      console.log('[productSaver] Images JSON string:', imagensJson);
+      console.log('[productSaver] Filtered valid images:', imagensArray);
     }
     
     // Validate SKU and barcode uniqueness
@@ -63,8 +62,8 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
       // When updating, set status to 'pendente' to require re-approval
       status: isUpdate ? 'pendente' as const : 'pendente' as const,
       updated_at: new Date().toISOString(),
-      // Ensure imagens is stored as proper JSON string (simple array)
-      imagens: imagensJson,
+      // FIXED: Store as proper JSON array (not escaped string)
+      imagens: imagensArray, // Direct array, not stringified
       // Clean and format SKU and barcode
       sku: productData.sku?.trim() || null,
       codigo_barras: productData.codigo_barras?.trim() || null
@@ -72,7 +71,8 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
     
     console.log('[productSaver] Database data to save:', {
       ...dbData,
-      imagens: `JSON string: ${imagensJson}`
+      imagens: `Array with ${imagensArray.length} images:`,
+      imagensArray
     });
     
     // Remove id when creating a new product
@@ -117,29 +117,25 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
     
     console.log(`[productSaver] Product ${isUpdate ? 'updated' : 'created'} successfully:`, data);
     
-    // Parse images back to array for return - FIXED: handle both simple and double arrays
+    // FIXED: Return images as proper array
     let returnedImages = [];
     if (data.imagens) {
-      try {
-        const parsed = JSON.parse(data.imagens);
-        console.log('[productSaver] Parsed images from DB:', parsed);
-        
-        // Handle both simple array ["url"] and double array [["url"]]
-        if (Array.isArray(parsed)) {
-          if (parsed.length > 0 && Array.isArray(parsed[0])) {
-            // Double array format [["url"]] - flatten it
-            returnedImages = parsed.flat();
-            console.log('[productSaver] Flattened double array to:', returnedImages);
-          } else {
-            // Simple array format ["url"] - use as is
-            returnedImages = parsed;
-          }
+      if (Array.isArray(data.imagens)) {
+        // Already an array - use as is
+        returnedImages = data.imagens;
+      } else if (typeof data.imagens === 'string') {
+        // If it's a string, try to parse it
+        try {
+          const parsed = JSON.parse(data.imagens);
+          returnedImages = Array.isArray(parsed) ? parsed : [parsed];
+        } catch (e) {
+          console.warn('[productSaver] Error parsing returned images:', e);
+          returnedImages = [];
         }
-      } catch (e) {
-        console.warn('[productSaver] Error parsing returned images:', e);
-        returnedImages = [];
       }
     }
+    
+    console.log('[productSaver] Final returned images:', returnedImages);
     
     return {
       ...data,

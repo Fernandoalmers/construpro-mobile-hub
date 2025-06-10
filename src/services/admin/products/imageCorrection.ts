@@ -21,7 +21,7 @@ export interface ProductImageIssue {
 }
 
 /**
- * Scan all products for image data issues
+ * Scan all products for image data issues including escaped JSON strings
  */
 export async function scanProductImageIssues(): Promise<ProductImageIssue[]> {
   try {
@@ -40,9 +40,26 @@ export async function scanProductImageIssues(): Promise<ProductImageIssue[]> {
     const issues: ProductImageIssue[] = [];
 
     for (const product of products || []) {
-      const parseResult = parseImageData(product.imagens);
+      let hasIssue = false;
+      let errorType = '';
+      let canAutoFix = false;
       
-      if (parseResult.errors.length > 0) {
+      // ENHANCED: Check for escaped JSON string format
+      if (typeof product.imagens === 'string' && product.imagens.startsWith('["') && product.imagens.endsWith('"]')) {
+        hasIssue = true;
+        errorType = 'Escaped JSON string format detected';
+        canAutoFix = true;
+      } else {
+        // Regular parse result check
+        const parseResult = parseImageData(product.imagens);
+        if (parseResult.errors.length > 0) {
+          hasIssue = true;
+          errorType = parseResult.errors.join(', ');
+          canAutoFix = parseResult.urls.length > 0;
+        }
+      }
+      
+      if (hasIssue) {
         const suggestedData = generateCorrectedImageData(product.imagens);
         
         issues.push({
@@ -50,8 +67,8 @@ export async function scanProductImageIssues(): Promise<ProductImageIssue[]> {
           nome: product.nome,
           currentData: product.imagens,
           suggestedData: suggestedData || '[]',
-          errorType: parseResult.errors.join(', '),
-          canAutoFix: suggestedData !== null
+          errorType,
+          canAutoFix: canAutoFix && suggestedData !== null
         });
       }
     }
@@ -65,7 +82,7 @@ export async function scanProductImageIssues(): Promise<ProductImageIssue[]> {
 }
 
 /**
- * Auto-correct image data for all products with issues
+ * ENHANCED: Auto-correct image data for all products with issues
  */
 export async function autoCorrectProductImages(): Promise<ImageCorrectionResult> {
   const result: ImageCorrectionResult = {
@@ -90,10 +107,13 @@ export async function autoCorrectProductImages(): Promise<ImageCorrectionResult>
       }
 
       try {
+        // Parse the suggested data to ensure it's a proper array
+        const correctedArray = JSON.parse(issue.suggestedData);
+        
         const { error } = await supabase
           .from('produtos')
           .update({ 
-            imagens: JSON.parse(issue.suggestedData),
+            imagens: correctedArray, // Store as proper JSON array
             updated_at: new Date().toISOString()
           })
           .eq('id', issue.id);
@@ -104,7 +124,7 @@ export async function autoCorrectProductImages(): Promise<ImageCorrectionResult>
           console.error(`[ImageCorrection] Failed to update product ${issue.id}:`, error);
         } else {
           result.corrected++;
-          console.log(`[ImageCorrection] ✅ Corrected product ${issue.nome}`);
+          console.log(`[ImageCorrection] ✅ Corrected product ${issue.nome} - converted escaped JSON to proper array`);
         }
       } catch (updateError) {
         result.failed++;
@@ -121,14 +141,17 @@ export async function autoCorrectProductImages(): Promise<ImageCorrectionResult>
 }
 
 /**
- * Correct specific product image data
+ * ENHANCED: Correct specific product image data
  */
 export async function correctProductImage(productId: string, correctedData: string): Promise<boolean> {
   try {
+    // Parse the corrected data to ensure it's a proper array
+    const correctedArray = JSON.parse(correctedData);
+    
     const { error } = await supabase
       .from('produtos')
       .update({ 
-        imagens: JSON.parse(correctedData),
+        imagens: correctedArray, // Store as proper JSON array
         updated_at: new Date().toISOString()
       })
       .eq('id', productId);
@@ -138,7 +161,7 @@ export async function correctProductImage(productId: string, correctedData: stri
       return false;
     }
 
-    console.log(`[ImageCorrection] ✅ Successfully corrected product ${productId}`);
+    console.log(`[ImageCorrection] ✅ Successfully corrected product ${productId} - converted to proper array format`);
     return true;
   } catch (error) {
     console.error(`[ImageCorrection] Error correcting product ${productId}:`, error);
