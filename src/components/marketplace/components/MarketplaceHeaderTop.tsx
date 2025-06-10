@@ -2,12 +2,19 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ShoppingBag } from 'lucide-react';
+import ViewTypeSelector from './ViewTypeSelector';
 
 interface MarketplaceHeaderTopProps {
   cartCount: number;
+  viewType?: 'grid' | 'list';
+  setViewType?: (type: 'grid' | 'list') => void;
 }
 
-const MarketplaceHeaderTop: React.FC<MarketplaceHeaderTopProps> = ({ cartCount }) => {
+const MarketplaceHeaderTop: React.FC<MarketplaceHeaderTopProps> = ({ 
+  cartCount, 
+  viewType = 'grid', 
+  setViewType = () => {} 
+}) => {
   const navigate = useNavigate();
 
   const handleBackClick = () => {
@@ -19,7 +26,7 @@ const MarketplaceHeaderTop: React.FC<MarketplaceHeaderTopProps> = ({ cartCount }
   };
 
   return (
-    <div className="flex items-center justify-between mb-4">
+    <div className="flex items-center justify-between mb-2">
       {/* Left side - Back button and title */}
       <div className="flex items-center">
         <button 
@@ -32,8 +39,15 @@ const MarketplaceHeaderTop: React.FC<MarketplaceHeaderTopProps> = ({ cartCount }
         <h1 className="text-2xl font-bold text-white">Produtos</h1>
       </div>
       
-      {/* Right side - Cart button with improved styling */}
-      <div className="flex items-center">
+      {/* Right side - View selector and Cart button */}
+      <div className="flex items-center space-x-2">
+        {/* Posição 1 - Seletor de grade/lista */}
+        <ViewTypeSelector 
+          viewType={viewType}
+          setViewType={setViewType}
+        />
+        
+        {/* Posição 2 - Sacolinha */}
         <button 
           onClick={handleCartClick}
           className="relative p-3 text-white hover:bg-white/10 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-white/30"

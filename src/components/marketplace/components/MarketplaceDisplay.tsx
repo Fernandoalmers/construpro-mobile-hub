@@ -95,6 +95,8 @@ export const MarketplaceDisplay: React.FC<MarketplaceDisplayProps> = ({
         selectedSegments={Array.isArray(selectedSegments) ? selectedSegments : []}
         selectedPriceRanges={Array.isArray(selectedPriceRanges) ? selectedPriceRanges : []}
         selectedSegmentId={selectedSegmentId}
+        viewType={viewType}
+        setViewType={setViewType}
         allCategories={Array.isArray(categories) ? categories : []}
         ratingOptions={Array.isArray(ratingOptions) ? ratingOptions : []}
         priceRangeOptions={Array.isArray(priceRangeOptions) ? priceRangeOptions : []}
@@ -126,7 +128,6 @@ export const MarketplaceDisplay: React.FC<MarketplaceDisplayProps> = ({
         loadMoreProducts={loadMoreProducts || (() => {})}
         clearFilters={clearFilters}
         viewType={viewType}
-        setViewType={setViewType}
       />
     </div>
   );

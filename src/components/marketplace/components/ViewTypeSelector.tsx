@@ -9,23 +9,29 @@ interface ViewTypeSelectorProps {
 
 const ViewTypeSelector: React.FC<ViewTypeSelectorProps> = ({ viewType, setViewType }) => {
   return (
-    <div className="flex justify-end mb-3">
-      <div className="bg-white rounded-md border border-gray-200 inline-flex">
-        <button 
-          className={`p-1.5 ${viewType === 'grid' ? 'bg-gray-100 text-gray-700' : 'text-gray-400'}`}
-          onClick={() => setViewType('grid')}
-          title="Visualização em grade"
-        >
-          <Grid size={18} />
-        </button>
-        <button 
-          className={`p-1.5 ${viewType === 'list' ? 'bg-gray-100 text-gray-700' : 'text-gray-400'}`}
-          onClick={() => setViewType('list')}
-          title="Visualização em lista"
-        >
-          <List size={18} />
-        </button>
-      </div>
+    <div className="bg-white/20 rounded-md border border-white/30 inline-flex">
+      <button 
+        className={`p-1.5 rounded-l-md transition-colors ${
+          viewType === 'grid' 
+            ? 'bg-white text-construPro-blue' 
+            : 'text-white/80 hover:text-white hover:bg-white/10'
+        }`}
+        onClick={() => setViewType('grid')}
+        title="Visualização em grade"
+      >
+        <Grid size={18} />
+      </button>
+      <button 
+        className={`p-1.5 rounded-r-md transition-colors ${
+          viewType === 'list' 
+            ? 'bg-white text-construPro-blue' 
+            : 'text-white/80 hover:text-white hover:bg-white/10'
+        }`}
+        onClick={() => setViewType('list')}
+        title="Visualização em lista"
+      >
+        <List size={18} />
+      </button>
     </div>
   );
 };

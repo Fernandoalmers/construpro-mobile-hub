@@ -20,6 +20,8 @@ interface MarketplaceHeaderProps {
   selectedSegments?: string[];
   selectedPriceRanges?: string[];
   selectedSegmentId?: string | null;
+  viewType?: 'grid' | 'list';
+  setViewType?: (type: 'grid' | 'list') => void;
   allCategories: FilterOption[];
   ratingOptions: FilterOption[];
   priceRangeOptions?: FilterOption[];
@@ -45,6 +47,8 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
   selectedSegments = [],
   selectedPriceRanges = [],
   selectedSegmentId,
+  viewType = 'grid',
+  setViewType = () => {},
   allCategories,
   ratingOptions,
   priceRangeOptions = [],
@@ -105,18 +109,22 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
     >
       <div className="bg-construPro-blue">
         <div className="p-4 pt-8">
-          {/* Header Top with Back Button and Cart */}
-          <div className="flex items-center justify-between mb-4">
-            <MarketplaceHeaderTop cartCount={cartCount} />
-          </div>
-          
-          {/* Search Bar - sem mostrar sugestões nesta tela */}
-          <SearchBar 
-            searchTerm={searchTerm} 
-            onSearchChange={onSearchChange} 
-            onSearch={onSearch} 
-            showSuggestions={false} 
+          {/* Header Top with Back Button, Title, View Selector and Cart */}
+          <MarketplaceHeaderTop 
+            cartCount={cartCount} 
+            viewType={viewType}
+            setViewType={setViewType}
           />
+          
+          {/* Search Bar - com espaçamento reduzido */}
+          <div className="mt-3">
+            <SearchBar 
+              searchTerm={searchTerm} 
+              onSearchChange={onSearchChange} 
+              onSearch={onSearch} 
+              showSuggestions={false} 
+            />
+          </div>
 
           {/* Filter Dialogs */}
           <FilterDialogs 
