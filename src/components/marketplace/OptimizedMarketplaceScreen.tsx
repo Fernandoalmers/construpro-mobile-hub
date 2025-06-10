@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useScrollBehavior } from '@/hooks/use-scroll-behavior';
@@ -218,8 +219,6 @@ const OptimizedMarketplaceScreen: React.FC = () => {
         ratingOptions={ratingOptions}
         priceRangeOptions={priceRangeOptions}
         segmentOptions={Array.isArray(segmentOptions) ? segmentOptions : []}
-        viewType={viewType}
-        setViewType={setViewType}
         onSearchChange={handleSearchInputChange}
         onSearch={handleSubmit}
         onLojaClick={actions?.toggleLoja || (() => {})}
