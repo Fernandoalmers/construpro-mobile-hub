@@ -21,6 +21,7 @@ interface MarketplaceContentProps {
   loadMoreProducts: () => void;
   clearFilters: () => void;
   viewType: 'grid' | 'list';
+  setViewType: (type: 'grid' | 'list') => void;
 }
 
 const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
@@ -36,7 +37,8 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
   isLoadingMore,
   loadMoreProducts,
   clearFilters,
-  viewType
+  viewType,
+  setViewType
 }) => {
   const navigate = useNavigate();
   
@@ -63,10 +65,12 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
           storesError={storesError}
         />
         
-        {/* Category Header */}
+        {/* Category Header with ViewType Selector */}
         <CategoryHeader 
           currentCategoryName={currentCategoryName}
           productCount={safeFilteredProducts.length}
+          viewType={viewType}
+          setViewType={setViewType}
         />
         
         {/* Products Section */}

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useProductFilter } from '@/hooks/use-product-filter';
@@ -288,8 +287,6 @@ const MarketplaceScreen: React.FC = () => {
         clearFilters={clearFilters}
         stores={safeStores}
         onHeightChange={handleHeaderHeightChange}
-        viewType={viewType}
-        setViewType={setViewType}
       />
       
       {/* Main Content with dynamic padding */}
@@ -307,6 +304,7 @@ const MarketplaceScreen: React.FC = () => {
         loadMoreProducts={loadMoreProducts || (() => {})}
         clearFilters={clearFilters}
         viewType={viewType}
+        setViewType={setViewType}
       />
     </div>
   );

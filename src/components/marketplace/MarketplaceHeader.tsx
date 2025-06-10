@@ -10,7 +10,6 @@ import SearchBar from './components/SearchBar';
 import FilterDialogs from './components/FilterDialogs';
 import FilterChips from './components/FilterChips';
 import SegmentCardsHeader from './components/SegmentCardsHeader';
-import ViewTypeSelector from './components/ViewTypeSelector';
 
 interface MarketplaceHeaderProps {
   hideHeader: boolean;
@@ -35,8 +34,6 @@ interface MarketplaceHeaderProps {
   onPriceRangeClick?: (rangeId: string) => void;
   clearFilters: () => void;
   onHeightChange?: (height: number) => void;
-  viewType: 'grid' | 'list';
-  setViewType: (type: 'grid' | 'list') => void;
 }
 
 const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
@@ -61,9 +58,7 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
   onSegmentClick = () => {},
   onPriceRangeClick = () => {},
   clearFilters,
-  onHeightChange,
-  viewType,
-  setViewType
+  onHeightChange
 }) => {
   const { cartCount } = useCart();
   const headerRef = useRef<HTMLDivElement>(null);
@@ -135,12 +130,6 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
             onCategoryClick={onCategoryClick} 
             onSegmentClick={onSegmentClick} 
             onPriceRangeClick={onPriceRangeClick} 
-          />
-          
-          {/* View Type Selector */}
-          <ViewTypeSelector 
-            viewType={viewType}
-            setViewType={setViewType}
           />
           
           {/* Selected Filter Chips */}

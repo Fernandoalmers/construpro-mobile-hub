@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useScrollBehavior } from '@/hooks/use-scroll-behavior';
@@ -229,8 +228,6 @@ const OptimizedMarketplaceScreen: React.FC = () => {
         clearFilters={actions?.clearFilters || (() => {})}
         stores={safeStores}
         onHeightChange={setHeaderHeight}
-        viewType={viewType}
-        setViewType={setViewType}
       />
       
       <MarketplaceContent
@@ -247,6 +244,7 @@ const OptimizedMarketplaceScreen: React.FC = () => {
         loadMoreProducts={actions?.loadMore || (() => {})}
         clearFilters={actions?.clearFilters || (() => {})}
         viewType={viewType}
+        setViewType={setViewType}
       />
     </div>
   );
