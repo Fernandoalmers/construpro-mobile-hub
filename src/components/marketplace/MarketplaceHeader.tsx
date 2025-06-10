@@ -155,11 +155,12 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
           />
         </div>
         
-        {/* Segment Cards Header - now inside the animated header */}
+        {/* Segment Cards Header - now hidden but logic preserved */}
         <div className="bg-white">
           <SegmentCardsHeader 
             selectedSegment={selectedSegmentId}
             onSegmentClick={onSegmentClick}
+            showSegmentCards={false}
           />
         </div>
       </div>

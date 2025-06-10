@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Construction, Zap, GlassWater, Square, Truck, Wrench, ShoppingBag } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -91,11 +92,13 @@ const SegmentCard: React.FC<SegmentCardProps> = ({
 interface SegmentCardsHeaderProps {
   selectedSegment: string | null;
   onSegmentClick: (segmentId: string) => void;
+  showSegmentCards?: boolean;
 }
 
 const SegmentCardsHeader: React.FC<SegmentCardsHeaderProps> = ({
   selectedSegment,
-  onSegmentClick
+  onSegmentClick,
+  showSegmentCards = true
 }) => {
   const [segments, setSegments] = useState<ProductSegment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -146,6 +149,11 @@ const SegmentCardsHeader: React.FC<SegmentCardsHeaderProps> = ({
       return <ShoppingBag size={24} />;
     }
   };
+
+  // Se showSegmentCards for false, não renderizar nada
+  if (!showSegmentCards) {
+    return null;
+  }
 
   if (loading) {
     return (
