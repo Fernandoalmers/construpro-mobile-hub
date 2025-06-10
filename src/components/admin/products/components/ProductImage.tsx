@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Package, AlertTriangle, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import { Package, AlertTriangle, RefreshCw } from 'lucide-react';
 import { parseImageData } from '@/utils/imageParser';
 
 interface ProductImageProps {
@@ -19,7 +19,7 @@ const ProductImage: React.FC<ProductImageProps> = ({
   productName,
   size = 'lg',
   className = '',
-  showDiagnostics = true, // Ativado por padrão temporariamente
+  showDiagnostics = false, // Desativado por padrão
   onImageError
 }) => {
   const [imageError, setImageError] = useState(false);
@@ -64,9 +64,9 @@ const ProductImage: React.FC<ProductImageProps> = ({
 
   const imageUrl = getImageUrl();
   
-  // Test URL connectivity with timeout
+  // Test URL connectivity with timeout (only if diagnostics enabled)
   const testUrlConnectivity = async (url: string): Promise<void> => {
-    if (!url) return;
+    if (!url || !showDiagnostics) return;
     
     setUrlStatus('testing');
     const startTime = Date.now();
@@ -114,7 +114,7 @@ const ProductImage: React.FC<ProductImageProps> = ({
     }
   };
 
-  // Test URL on mount and when URL changes
+  // Test URL on mount and when URL changes (only if diagnostics enabled)
   useEffect(() => {
     if (imageUrl && showDiagnostics) {
       testUrlConnectivity(imageUrl);
@@ -172,8 +172,8 @@ const ProductImage: React.FC<ProductImageProps> = ({
     setIsLoading(true);
     setRetryCount(prev => prev + 1);
     
-    // Re-test URL connectivity
-    if (imageUrl) {
+    // Re-test URL connectivity if diagnostics enabled
+    if (imageUrl && showDiagnostics) {
       testUrlConnectivity(imageUrl);
     }
   };
@@ -190,18 +190,6 @@ const ProductImage: React.FC<ProductImageProps> = ({
     lg: 24,
     xl: 32
   };
-
-  // Enhanced diagnostic status indicator
-  const getDiagnosticStatus = () => {
-    if (!imageUrl) return { color: 'bg-gray-500', icon: '?' };
-    if (urlStatus === 'testing') return { color: 'bg-blue-500', icon: '...' };
-    if (urlStatus === 'valid' && !imageError) return { color: 'bg-green-500', icon: '✓' };
-    if (urlStatus === 'timeout') return { color: 'bg-yellow-500', icon: '⏰' };
-    if (urlStatus === 'invalid' || imageError) return { color: 'bg-red-500', icon: '!' };
-    return { color: 'bg-gray-500', icon: '?' };
-  };
-
-  const diagnosticStatus = getDiagnosticStatus();
 
   return (
     <div className={`${sizeClasses[size]} flex-shrink-0 bg-gray-50 rounded overflow-hidden border border-gray-200 flex items-center justify-center relative ${className}`}>
@@ -244,33 +232,6 @@ const ProductImage: React.FC<ProductImageProps> = ({
               <Package size={iconSizes[size]} />
               <span className="text-xs mt-1">Sem imagem</span>
             </>
-          )}
-        </div>
-      )}
-      
-      {/* Enhanced diagnostic overlay with detailed status */}
-      {showDiagnostics && (
-        <div className="absolute top-0 right-0 flex flex-col gap-1">
-          <div 
-            className={`${diagnosticStatus.color} text-white text-xs px-1 rounded-bl flex items-center`}
-            title={`Status: ${urlStatus}, Load time: ${loadTime}ms, Retries: ${retryCount}`}
-          >
-            {diagnosticStatus.icon}
-          </div>
-          {urlStatus === 'testing' && (
-            <div className="bg-blue-500 text-white text-xs px-1 rounded-bl">
-              <RefreshCw size={8} className="animate-spin" />
-            </div>
-          )}
-          {urlStatus === 'valid' && (
-            <div className="bg-green-100 text-green-600 text-xs px-1 rounded-bl" title={`${loadTime}ms`}>
-              <Wifi size={8} />
-            </div>
-          )}
-          {(urlStatus === 'invalid' || urlStatus === 'timeout') && (
-            <div className="bg-red-100 text-red-600 text-xs px-1 rounded-bl" title={`Error: ${urlStatus}`}>
-              <WifiOff size={8} />
-            </div>
           )}
         </div>
       )}

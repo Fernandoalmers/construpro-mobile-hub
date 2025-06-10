@@ -27,6 +27,7 @@ const ProductImageDisplay: React.FC<ProductImageDisplayProps> = ({
       alt={productName}
       className={`${className} object-cover rounded-md`}
       onError={(e) => {
+        console.log(`[ProductImageDisplay] Image load error for "${productName}":`, imageUrl);
         // Fallback para caso a imagem falhe ao carregar
         const target = e.target as HTMLImageElement;
         target.style.display = 'none';

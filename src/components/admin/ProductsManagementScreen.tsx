@@ -19,7 +19,7 @@ import { Bug, Package, AlertTriangle } from 'lucide-react';
 const ProductsManagementScreen: React.FC = () => {
   useTitle('Matershop Admin - Produtos');
   
-  const [showImageDiagnostics, setShowImageDiagnostics] = useState(true); // Ativado por padrão
+  const [showImageDiagnostics, setShowImageDiagnostics] = useState(false); // Desativado por padrão
   
   const {
     products,

@@ -21,7 +21,7 @@ const ProductTableRow: React.FC<ProductTableRowProps> = ({
   product,
   handleApproveProduct,
   handleRejectProduct,
-  showImageDiagnostics = false
+  showImageDiagnostics = false // Desativado por padrão
 }) => {
   const [showDetails, setShowDetails] = React.useState(false);
 
