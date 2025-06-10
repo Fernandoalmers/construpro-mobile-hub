@@ -134,7 +134,7 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
             onPriceRangeClick={onPriceRangeClick} 
           />
           
-          {/* Selected Filter Chips */}
+          {/* Selected Filter Chips - com showSegmentChips={false} para ocultar chips de segmentos */}
           <FilterChips 
             selectedCategories={selectedCategories} 
             selectedLojas={selectedLojas} 
@@ -151,7 +151,8 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
             onRatingClick={onRatingClick} 
             onSegmentClick={onSegmentClick} 
             onPriceRangeClick={onPriceRangeClick} 
-            clearFilters={clearFilters} 
+            clearFilters={clearFilters}
+            showSegmentChips={false}
           />
         </div>
         
