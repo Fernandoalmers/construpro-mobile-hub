@@ -13,6 +13,7 @@ import LoadingState from '../common/LoadingState';
 
 const OptimizedMarketplaceScreen: React.FC = () => {
   const [headerHeight, setHeaderHeight] = useState(0);
+  const [viewType, setViewType] = useState<'grid' | 'list'>('grid');
   const location = useLocation();
   const navigate = useNavigate();
   
@@ -228,6 +229,8 @@ const OptimizedMarketplaceScreen: React.FC = () => {
         clearFilters={actions?.clearFilters || (() => {})}
         stores={safeStores}
         onHeightChange={setHeaderHeight}
+        viewType={viewType}
+        setViewType={setViewType}
       />
       
       <MarketplaceContent
@@ -243,6 +246,7 @@ const OptimizedMarketplaceScreen: React.FC = () => {
         isLoadingMore={isLoadingMore}
         loadMoreProducts={actions?.loadMore || (() => {})}
         clearFilters={actions?.clearFilters || (() => {})}
+        viewType={viewType}
       />
     </div>
   );
