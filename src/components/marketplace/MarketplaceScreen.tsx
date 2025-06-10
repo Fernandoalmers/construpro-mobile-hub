@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useProductFilter } from '@/hooks/use-product-filter';
@@ -307,6 +306,7 @@ const MarketplaceScreen: React.FC = () => {
         loadMoreProducts={loadMoreProducts || (() => {})}
         clearFilters={clearFilters}
         viewType={viewType}
+        setViewType={setViewType}
       />
     </div>
   );

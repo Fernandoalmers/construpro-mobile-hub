@@ -10,7 +10,6 @@ import SearchBar from './components/SearchBar';
 import FilterDialogs from './components/FilterDialogs';
 import FilterChips from './components/FilterChips';
 import SegmentCardsHeader from './components/SegmentCardsHeader';
-import ViewTypeSelector from './components/ViewTypeSelector';
 
 interface MarketplaceHeaderProps {
   hideHeader: boolean;
@@ -26,8 +25,6 @@ interface MarketplaceHeaderProps {
   priceRangeOptions?: FilterOption[];
   segmentOptions?: FilterOption[];
   stores?: any[];
-  viewType: 'grid' | 'list';
-  setViewType: (type: 'grid' | 'list') => void;
   onSearchChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSearch?: (term: string) => void;
   onLojaClick: (lojaId: string) => void;
@@ -53,8 +50,6 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
   priceRangeOptions = [],
   segmentOptions = [],
   stores = [],
-  viewType,
-  setViewType,
   onSearchChange,
   onSearch,
   onLojaClick,
@@ -110,15 +105,9 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
     >
       <div className="bg-construPro-blue">
         <div className="p-4 pt-8">
-          {/* Header Top with Back Button, Cart, and View Type Selector */}
+          {/* Header Top with Back Button and Cart */}
           <div className="flex items-center justify-between mb-4">
             <MarketplaceHeaderTop cartCount={cartCount} />
-            
-            {/* View Type Selector positioned in top right */}
-            <ViewTypeSelector 
-              viewType={viewType}
-              setViewType={setViewType}
-            />
           </div>
           
           {/* Search Bar - sem mostrar sugestões nesta tela */}

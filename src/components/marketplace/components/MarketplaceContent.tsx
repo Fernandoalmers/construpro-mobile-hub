@@ -6,6 +6,7 @@ import StoresSection from './StoresSection';
 import CategoryHeader from './CategoryHeader';
 import GridProductView from './GridProductView';
 import ListProductView from './ListProductView';
+import ViewTypeSelector from './ViewTypeSelector';
 
 interface MarketplaceContentProps {
   dynamicPaddingTop: number;
@@ -21,6 +22,7 @@ interface MarketplaceContentProps {
   loadMoreProducts: () => void;
   clearFilters: () => void;
   viewType: 'grid' | 'list';
+  setViewType: (type: 'grid' | 'list') => void;
 }
 
 const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
@@ -36,7 +38,8 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
   isLoadingMore,
   loadMoreProducts,
   clearFilters,
-  viewType
+  viewType,
+  setViewType
 }) => {
   const navigate = useNavigate();
   
@@ -101,8 +104,18 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
             </div>
           ) : (
             <>
+              {/* Products Header with View Type Toggle */}
+              <div className="p-4 pb-0">
+                <div className="flex justify-end mb-3">
+                  <ViewTypeSelector 
+                    viewType={viewType}
+                    setViewType={setViewType}
+                  />
+                </div>
+              </div>
+
               {/* Products Display based on viewType */}
-              <div className="p-4">
+              <div className="p-4 pt-0">
                 {viewType === 'grid' ? (
                   <GridProductView
                     products={safeDisplayedProducts}

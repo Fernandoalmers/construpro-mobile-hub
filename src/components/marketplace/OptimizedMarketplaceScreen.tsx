@@ -246,6 +246,7 @@ const OptimizedMarketplaceScreen: React.FC = () => {
         loadMoreProducts={actions?.loadMore || (() => {})}
         clearFilters={actions?.clearFilters || (() => {})}
         viewType={viewType}
+        setViewType={setViewType}
       />
     </div>
   );
