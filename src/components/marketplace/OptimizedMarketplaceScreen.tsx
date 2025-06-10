@@ -215,6 +215,8 @@ const OptimizedMarketplaceScreen: React.FC = () => {
         selectedSegments={Array.isArray(selectedSegments) ? selectedSegments : []}
         selectedPriceRanges={Array.isArray(selectedPriceRanges) ? selectedPriceRanges : []}
         selectedSegmentId={selectedSegmentId}
+        viewType={viewType}
+        setViewType={setViewType}
         allCategories={Array.isArray(categories) ? categories : []}
         ratingOptions={ratingOptions}
         priceRangeOptions={priceRangeOptions}
@@ -245,7 +247,6 @@ const OptimizedMarketplaceScreen: React.FC = () => {
         loadMoreProducts={actions?.loadMore || (() => {})}
         clearFilters={actions?.clearFilters || (() => {})}
         viewType={viewType}
-        setViewType={setViewType}
       />
     </div>
   );
