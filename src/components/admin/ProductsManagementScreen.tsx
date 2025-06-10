@@ -14,12 +14,12 @@ import ImageDiagnosticsPanel from './products/ImageDiagnosticsPanel';
 import { debugFetchProducts } from '@/services/admin/products';
 import { toast } from '@/components/ui/sonner';
 import { approveProduct, rejectProduct } from '@/services/admin/products/productApproval/statusUpdates';
-import { Bug, Package } from 'lucide-react';
+import { Bug, Package, AlertTriangle } from 'lucide-react';
 
 const ProductsManagementScreen: React.FC = () => {
   useTitle('Matershop Admin - Produtos');
   
-  const [showImageDiagnostics, setShowImageDiagnostics] = useState(false);
+  const [showImageDiagnostics, setShowImageDiagnostics] = useState(true); // Ativado por padrão
   
   const {
     products,
@@ -33,8 +33,23 @@ const ProductsManagementScreen: React.FC = () => {
 
   // Debug function to help troubleshoot data issues
   const debugData = async () => {
+    console.log('[ProductsManagement] Debug data requested');
     const result = await debugFetchProducts();
     console.log('Debug result:', result);
+    
+    // Log sample of products for image analysis
+    if (products.length > 0) {
+      console.group('[ProductsManagement] Sample product image data:');
+      products.slice(0, 3).forEach(product => {
+        console.log(`Product "${product.nome}":`, {
+          id: product.id,
+          imagemUrl: product.imagemUrl,
+          imagens: product.imagens,
+          status: product.status
+        });
+      });
+      console.groupEnd();
+    }
   };
 
   // Implementation for approve product handler using the productApproval service
@@ -88,9 +103,22 @@ const ProductsManagementScreen: React.FC = () => {
   }
 
   useEffect(() => {
-    // Log the number of products loaded
-    console.log(`ProductsManagement rendered with ${products.length} products`);
-    console.log('Products data:', products);
+    // Enhanced logging for product data analysis
+    console.group(`[ProductsManagement] Loaded ${products.length} products`);
+    console.log('Products with images:', products.filter(p => p.imagens || p.imagemUrl).length);
+    console.log('Products without images:', products.filter(p => !p.imagens && !p.imagemUrl).length);
+    
+    // Sample analysis of image data formats
+    const sampleProducts = products.slice(0, 5);
+    sampleProducts.forEach(product => {
+      console.log(`Product "${product.nome}" image data:`, {
+        imagemUrl: product.imagemUrl,
+        imagens: product.imagens,
+        imagensType: typeof product.imagens,
+        imagensStringified: JSON.stringify(product.imagens)
+      });
+    });
+    console.groupEnd();
   }, [products]);
 
   return (
@@ -112,6 +140,19 @@ const ProductsManagementScreen: React.FC = () => {
             </Button>
           </div>
         </div>
+
+        {/* Alert sobre diagnósticos ativados */}
+        {showImageDiagnostics && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center gap-3">
+            <AlertTriangle size={20} className="text-blue-600" />
+            <div>
+              <div className="font-medium text-blue-800">Modo Diagnóstico Ativo</div>
+              <div className="text-sm text-blue-600">
+                As imagens estão sendo testadas em tempo real. Indicadores visuais mostram o status de cada imagem.
+              </div>
+            </div>
+          </div>
+        )}
         
         <Tabs defaultValue="products" className="w-full">
           <TabsList>

@@ -18,7 +18,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({
   products,
   handleApproveProduct,
   handleRejectProduct,
-  showImageDiagnostics = false
+  showImageDiagnostics = true // Ativado por padrão temporariamente para diagnóstico
 }) => {
   return (
     <div className="overflow-x-auto">
