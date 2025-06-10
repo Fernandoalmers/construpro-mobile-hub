@@ -14,20 +14,32 @@ interface ProductTableRowProps {
   product: AdminProduct;
   handleApproveProduct: (id: string) => void;
   handleRejectProduct: (id: string) => void;
+  showImageDiagnostics?: boolean;
 }
 
 const ProductTableRow: React.FC<ProductTableRowProps> = ({
   product,
   handleApproveProduct,
-  handleRejectProduct
+  handleRejectProduct,
+  showImageDiagnostics = false
 }) => {
   const [showDetails, setShowDetails] = React.useState(false);
+
+  const handleImageError = (error: string) => {
+    console.warn(`[ProductTableRow] Image error for product ${product.id} (${product.nome}):`, error);
+  };
 
   return (
     <TableRow>
       <TableCell>
         <div className="flex items-center space-x-3">
-          <ProductImage imagemUrl={product.imagemUrl} productName={product.nome} />
+          <ProductImage 
+            imagemUrl={product.imagemUrl} 
+            imagens={product.imagens}
+            productName={product.nome}
+            showDiagnostics={showImageDiagnostics}
+            onImageError={handleImageError}
+          />
           <div>
             <div className="font-medium">{product.nome}</div>
             <div className="text-xs text-gray-500">{product.categoria}</div>

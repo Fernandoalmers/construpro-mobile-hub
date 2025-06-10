@@ -11,12 +11,14 @@ interface ProductsTableProps {
   products: AdminProduct[];
   handleApproveProduct: (id: string) => void;
   handleRejectProduct: (id: string) => void;
+  showImageDiagnostics?: boolean;
 }
 
 const ProductsTable: React.FC<ProductsTableProps> = ({ 
   products,
   handleApproveProduct,
-  handleRejectProduct 
+  handleRejectProduct,
+  showImageDiagnostics = false
 }) => {
   return (
     <div className="overflow-x-auto">
@@ -39,6 +41,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({
               product={product} 
               handleApproveProduct={handleApproveProduct}
               handleRejectProduct={handleRejectProduct}
+              showImageDiagnostics={showImageDiagnostics}
             />
           ))}
         </TableBody>

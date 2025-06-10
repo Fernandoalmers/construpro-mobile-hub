@@ -1,20 +1,25 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import AdminLayout from './AdminLayout';
 import { useAdminProducts } from '@/hooks/useAdminProducts';
 import { useTitle } from '@/hooks/use-title';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import LoadingState from '@/components/common/LoadingState';
 import ProductFilters from './products/ProductFilters';
 import ProductsTable from './products/ProductsTable';
 import ProductsHeader from './products/ProductsHeader';
+import ImageDiagnosticsPanel from './products/ImageDiagnosticsPanel';
 import { debugFetchProducts } from '@/services/admin/products';
 import { toast } from '@/components/ui/sonner';
 import { approveProduct, rejectProduct } from '@/services/admin/products/productApproval/statusUpdates';
-import { supabase } from '@/integrations/supabase/client';
+import { Bug, Package } from 'lucide-react';
 
 const ProductsManagementScreen: React.FC = () => {
   useTitle('Matershop Admin - Produtos');
+  
+  const [showImageDiagnostics, setShowImageDiagnostics] = useState(false);
   
   const {
     products,
@@ -91,39 +96,74 @@ const ProductsManagementScreen: React.FC = () => {
   return (
     <AdminLayout currentSection="produtos">
       <div className="space-y-6">
-        <ProductsHeader 
-          productCount={products.length} 
-          debugData={debugData} 
-        />
+        <div className="flex items-center justify-between">
+          <ProductsHeader 
+            productCount={products.length} 
+            debugData={debugData} 
+          />
+          <div className="flex gap-2">
+            <Button
+              variant={showImageDiagnostics ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowImageDiagnostics(!showImageDiagnostics)}
+            >
+              <Bug size={16} className="mr-2" />
+              {showImageDiagnostics ? 'Ocultar' : 'Mostrar'} Diagnósticos
+            </Button>
+          </div>
+        </div>
         
-        <ProductFilters 
-          filter={filter}
-          setFilter={setFilter}
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          products={products}
-        />
-        
-        <Card>
-          {loading ? (
-            <div className="p-6">
-              <LoadingState text="Carregando produtos..." />
-            </div>
-          ) : products.length === 0 ? (
-            <div className="p-6 text-center">
-              <p className="text-gray-500">Nenhum produto encontrado.</p>
-              <p className="text-sm text-gray-400 mt-1">
-                {filter !== 'all' ? 'Tente selecionar outro filtro acima.' : 'Verifique as configurações de conexão com o banco de dados.'}
-              </p>
-            </div>
-          ) : (
-            <ProductsTable 
+        <Tabs defaultValue="products" className="w-full">
+          <TabsList>
+            <TabsTrigger value="products" className="flex items-center gap-2">
+              <Package size={16} />
+              Produtos ({products.length})
+            </TabsTrigger>
+            <TabsTrigger value="diagnostics" className="flex items-center gap-2">
+              <Bug size={16} />
+              Diagnóstico de Imagens
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="products" className="space-y-6">
+            <ProductFilters 
+              filter={filter}
+              setFilter={setFilter}
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
               products={products}
-              handleApproveProduct={handleApproveProduct}
-              handleRejectProduct={handleRejectProduct}
             />
-          )}
-        </Card>
+            
+            <Card>
+              {loading ? (
+                <div className="p-6">
+                  <LoadingState text="Carregando produtos..." />
+                </div>
+              ) : products.length === 0 ? (
+                <div className="p-6 text-center">
+                  <p className="text-gray-500">Nenhum produto encontrado.</p>
+                  <p className="text-sm text-gray-400 mt-1">
+                    {filter !== 'all' ? 'Tente selecionar outro filtro acima.' : 'Verifique as configurações de conexão com o banco de dados.'}
+                  </p>
+                </div>
+              ) : (
+                <ProductsTable 
+                  products={products}
+                  handleApproveProduct={handleApproveProduct}
+                  handleRejectProduct={handleRejectProduct}
+                  showImageDiagnostics={showImageDiagnostics}
+                />
+              )}
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="diagnostics">
+            <ImageDiagnosticsPanel 
+              products={products}
+              onRefresh={refreshProducts}
+            />
+          </TabsContent>
+        </Tabs>
       </div>
     </AdminLayout>
   );
