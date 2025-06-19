@@ -82,10 +82,35 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
     console.log('[getUserProfile] Profile fetched successfully:', profile);
     
     // Parse endereco_principal safely
-    const parsedProfile: UserProfile = {
+    let parsedProfile: UserProfile = {
       ...profile,
       endereco_principal: parseEnderecosPrincipal(profile.endereco_principal)
     };
+
+    // Se não há endereco_principal no perfil, buscar da tabela user_addresses como fallback
+    if (!parsedProfile.endereco_principal) {
+      console.log('[getUserProfile] No endereco_principal found, checking user_addresses');
+      
+      const { data: principalAddress, error: addressError } = await supabase
+        .from('user_addresses')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('principal', true)
+        .single();
+
+      if (!addressError && principalAddress) {
+        console.log('[getUserProfile] Found principal address in user_addresses:', principalAddress);
+        parsedProfile.endereco_principal = {
+          logradouro: principalAddress.logradouro,
+          numero: principalAddress.numero,
+          complemento: principalAddress.complemento,
+          bairro: principalAddress.bairro,
+          cidade: principalAddress.cidade,
+          estado: principalAddress.estado,
+          cep: principalAddress.cep
+        };
+      }
+    }
     
     return parsedProfile;
   } catch (error) {

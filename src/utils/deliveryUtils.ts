@@ -280,7 +280,7 @@ export async function getDeliveryInfo(
 }
 
 /**
- * Busca informações da loja do vendedor
+ * Busca informações da loja do vendedor com fallback melhorado
  */
 export async function getStoreLocationInfo(storeId?: string, vendorId?: string) {
   try {
