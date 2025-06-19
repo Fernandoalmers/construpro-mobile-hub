@@ -50,32 +50,108 @@ export async function checkCepInZone(customerCep: string, zoneType: string, zone
 
 async function checkCepRange(customerCep: string, rangeValue: string): Promise<boolean> {
   try {
-    const [startCep, endCep] = rangeValue.split('-').map(cep => cep.replace(/\D/g, ''));
-    if (!startCep || !endCep) {
-      logWithTimestamp('[checkCepRange] Invalid range format:', rangeValue);
+    logWithTimestamp('[checkCepRange] 🔍 Starting CEP range validation:', {
+      customerCep,
+      rangeValue,
+      customerCepLength: customerCep.length
+    });
+
+    // Split the range and clean both values
+    const rangeParts = rangeValue.split('-');
+    if (rangeParts.length !== 2) {
+      logWithTimestamp('[checkCepRange] ❌ Invalid range format - should contain exactly one dash:', {
+        rangeValue,
+        parts: rangeParts
+      });
+      return false;
+    }
+
+    const startCep = rangeParts[0].replace(/\D/g, '').trim();
+    const endCep = rangeParts[1].replace(/\D/g, '').trim();
+    
+    logWithTimestamp('[checkCepRange] 🧹 Cleaned range parts:', {
+      originalRange: rangeValue,
+      startCep,
+      endCep,
+      startCepLength: startCep.length,
+      endCepLength: endCep.length
+    });
+
+    // Validate that both CEPs are 8 digits
+    if (startCep.length !== 8 || endCep.length !== 8) {
+      logWithTimestamp('[checkCepRange] ❌ Invalid CEP length in range:', {
+        startCep,
+        endCep,
+        startCepLength: startCep.length,
+        endCepLength: endCep.length
+      });
+      return false;
+    }
+
+    // Validate customer CEP length
+    if (customerCep.length !== 8) {
+      logWithTimestamp('[checkCepRange] ❌ Invalid customer CEP length:', {
+        customerCep,
+        length: customerCep.length
+      });
       return false;
     }
     
-    const customerCepNum = parseInt(customerCep);
-    const startCepNum = parseInt(startCep);
-    const endCepNum = parseInt(endCep);
+    // Convert to numbers for comparison
+    const customerCepNum = parseInt(customerCep, 10);
+    const startCepNum = parseInt(startCep, 10);
+    const endCepNum = parseInt(endCep, 10);
     
-    if (isNaN(customerCepNum) || isNaN(startCepNum) || isNaN(endCepNum)) {
-      logWithTimestamp('[checkCepRange] Invalid CEP numbers:', { customerCep, startCep, endCep });
-      return false;
-    }
-    
-    const rangeResult = customerCepNum >= startCepNum && customerCepNum <= endCepNum;
-    logWithTimestamp('[checkCepRange] CEP range check:', {
+    logWithTimestamp('[checkCepRange] 🔢 Numeric conversion:', {
       customerCepNum,
       startCepNum,
       endCepNum,
-      result: rangeResult
+      customerCepValid: !isNaN(customerCepNum),
+      startCepValid: !isNaN(startCepNum),
+      endCepValid: !isNaN(endCepNum)
     });
     
-    return rangeResult;
+    if (isNaN(customerCepNum) || isNaN(startCepNum) || isNaN(endCepNum)) {
+      logWithTimestamp('[checkCepRange] ❌ Failed to convert CEPs to numbers:', {
+        customerCep,
+        startCep,
+        endCep,
+        customerCepNum,
+        startCepNum,
+        endCepNum
+      });
+      return false;
+    }
+
+    // Validate range logic
+    if (startCepNum > endCepNum) {
+      logWithTimestamp('[checkCepRange] ❌ Invalid range - start CEP is greater than end CEP:', {
+        startCepNum,
+        endCepNum
+      });
+      return false;
+    }
+    
+    // Perform the range check
+    const isInRange = customerCepNum >= startCepNum && customerCepNum <= endCepNum;
+    
+    logWithTimestamp('[checkCepRange] 🎯 Final range validation:', {
+      customerCepNum,
+      startCepNum,
+      endCepNum,
+      isGreaterOrEqualToStart: customerCepNum >= startCepNum,
+      isLessOrEqualToEnd: customerCepNum <= endCepNum,
+      isInRange,
+      calculation: `${customerCepNum} >= ${startCepNum} && ${customerCepNum} <= ${endCepNum} = ${isInRange}`
+    });
+    
+    return isInRange;
   } catch (error) {
-    logWithTimestamp('[checkCepRange] Error:', error);
+    logWithTimestamp('[checkCepRange] ❌ Exception during CEP range check:', {
+      error: error.message || error,
+      customerCep,
+      rangeValue
+    });
     return false;
   }
 }

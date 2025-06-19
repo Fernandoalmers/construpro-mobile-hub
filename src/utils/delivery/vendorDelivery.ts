@@ -12,13 +12,13 @@ export async function getVendorDeliveryInfo(
   customerCep?: string
 ): Promise<DeliveryInfo> {
   const startTime = Date.now();
-  logWithTimestamp('[getVendorDeliveryInfo] Starting delivery check for vendor:', {
+  logWithTimestamp('[getVendorDeliveryInfo] 🚀 Starting delivery check for vendor:', {
     vendorId,
     customerCep
   });
 
   if (!customerCep) {
-    logWithTimestamp('[getVendorDeliveryInfo] No customer CEP provided');
+    logWithTimestamp('[getVendorDeliveryInfo] ❌ No customer CEP provided');
     return {
       isLocal: false,
       message: 'Informe seu CEP para calcular o frete',
@@ -26,11 +26,11 @@ export async function getVendorDeliveryInfo(
   }
 
   const cleanCustomerCep = customerCep.replace(/\D/g, '');
-  logWithTimestamp('[getVendorDeliveryInfo] Clean customer CEP:', cleanCustomerCep);
+  logWithTimestamp('[getVendorDeliveryInfo] 🧹 Clean customer CEP:', cleanCustomerCep);
 
   try {
     // Buscar zonas de entrega com timeout aumentado e retry
-    logWithTimestamp('[getVendorDeliveryInfo] Fetching vendor delivery zones...');
+    logWithTimestamp('[getVendorDeliveryInfo] 🔍 Fetching vendor delivery zones...');
     
     const deliveryZones = await withRetry(async () => {
       const queryPromise = Promise.resolve(
@@ -53,12 +53,19 @@ export async function getVendorDeliveryInfo(
     }, 2, 1000, 'vendor delivery zones fetch');
 
     const fetchElapsed = Date.now() - startTime;
-    logWithTimestamp(`[getVendorDeliveryInfo] Delivery zones query completed in ${fetchElapsed}ms:`, { 
-      zonesCount: deliveryZones.length 
+    logWithTimestamp(`[getVendorDeliveryInfo] ✅ Delivery zones query completed in ${fetchElapsed}ms:`, { 
+      zonesCount: deliveryZones.length,
+      zones: deliveryZones.map(z => ({
+        name: z.zone_name,
+        type: z.zone_type,
+        value: z.zone_value,
+        fee: z.delivery_fee,
+        time: z.delivery_time
+      }))
     });
 
     if (deliveryZones.length === 0) {
-      logWithTimestamp('[getVendorDeliveryInfo] No delivery zones configured, using fallback');
+      logWithTimestamp('[getVendorDeliveryInfo] ❌ No delivery zones configured, using fallback');
       return {
         isLocal: false,
         message: 'Frete calculado no checkout',
@@ -66,32 +73,46 @@ export async function getVendorDeliveryInfo(
       };
     }
 
-    logWithTimestamp('[getVendorDeliveryInfo] Found delivery zones:', deliveryZones.length);
+    logWithTimestamp('[getVendorDeliveryInfo] 🎯 Found delivery zones:', deliveryZones.length);
 
     // Verificar cada zona configurada com timeout individual
-    for (const zone of deliveryZones) {
-      logWithTimestamp('[getVendorDeliveryInfo] Checking zone:', {
+    for (let i = 0; i < deliveryZones.length; i++) {
+      const zone = deliveryZones[i];
+      logWithTimestamp(`[getVendorDeliveryInfo] 🔍 Checking zone ${i + 1}/${deliveryZones.length}:`, {
         zoneName: zone.zone_name,
         zoneType: zone.zone_type,
         zoneValue: zone.zone_value,
-        deliveryFee: zone.delivery_fee
+        deliveryFee: zone.delivery_fee,
+        deliveryTime: zone.delivery_time
       });
       
       try {
+        logWithTimestamp(`[getVendorDeliveryInfo] 🚀 Starting zone validation for "${zone.zone_name}"...`);
+        
         const isInZone = await withTimeout(
           checkCepInZone(cleanCustomerCep, zone.zone_type, zone.zone_value),
           6000, // Aumentado de 2s para 6s
           `Zone check for ${zone.zone_name}`
         );
         
-        logWithTimestamp('[getVendorDeliveryInfo] Zone check result:', { 
-          zoneName: zone.zone_name, 
+        logWithTimestamp(`[getVendorDeliveryInfo] 🎯 Zone "${zone.zone_name}" validation result:`, { 
+          zoneName: zone.zone_name,
+          zoneType: zone.zone_type,
+          zoneValue: zone.zone_value,
+          customerCep: cleanCustomerCep,
           isInZone,
           elapsedTime: Date.now() - startTime
         });
         
         if (isInZone) {
-          logWithTimestamp('[getVendorDeliveryInfo] ✅ Customer in configured zone:', zone.zone_name);
+          logWithTimestamp('[getVendorDeliveryInfo] 🎉 ✅ Customer IS in configured zone:', {
+            zoneName: zone.zone_name,
+            zoneType: zone.zone_type,
+            zoneValue: zone.zone_value,
+            deliveryFee: zone.delivery_fee,
+            deliveryTime: zone.delivery_time,
+            customerCep: cleanCustomerCep
+          });
           
           const result = {
             isLocal: zone.delivery_fee === 0,
@@ -101,13 +122,15 @@ export async function getVendorDeliveryInfo(
           };
           
           const totalElapsed = Date.now() - startTime;
-          logWithTimestamp(`[getVendorDeliveryInfo] ✅ Completed successfully in ${totalElapsed}ms`, result);
+          logWithTimestamp(`[getVendorDeliveryInfo] 🏆 ✅ SUCCESS! Completed in ${totalElapsed}ms with result:`, result);
           return result;
+        } else {
+          logWithTimestamp(`[getVendorDeliveryInfo] ❌ Customer NOT in zone "${zone.zone_name}", continuing to next zone...`);
         }
       } catch (zoneError) {
         logWithTimestamp('[getVendorDeliveryInfo] ⚠️ Zone check failed, continuing to next zone:', { 
           zone: zone.zone_name, 
-          error: zoneError 
+          error: zoneError?.message || zoneError
         });
         // Continue to next zone instead of failing completely
         continue;
@@ -115,7 +138,7 @@ export async function getVendorDeliveryInfo(
     }
 
     // Se não está em nenhuma zona configurada
-    logWithTimestamp('[getVendorDeliveryInfo] Customer not in any configured zone');
+    logWithTimestamp('[getVendorDeliveryInfo] ❌ Customer not in ANY configured zone after checking all zones');
     const result = {
       isLocal: false,
       message: 'Frete calculado no checkout',
@@ -123,12 +146,16 @@ export async function getVendorDeliveryInfo(
     };
     
     const totalElapsed = Date.now() - startTime;
-    logWithTimestamp(`[getVendorDeliveryInfo] Completed with default message in ${totalElapsed}ms`);
+    logWithTimestamp(`[getVendorDeliveryInfo] ⏱️ Completed with default message in ${totalElapsed}ms`);
     return result;
 
   } catch (error) {
     const elapsed = Date.now() - startTime;
-    logWithTimestamp(`[getVendorDeliveryInfo] ❌ Error after ${elapsed}ms:`, error);
+    logWithTimestamp(`[getVendorDeliveryInfo] 💥 ❌ CRITICAL ERROR after ${elapsed}ms:`, {
+      error: error?.message || error,
+      vendorId,
+      customerCep: cleanCustomerCep
+    });
     
     // Fallback melhorado - ainda tenta fornecer informação útil
     return {
