@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Star, Clock, AlertCircle, CheckCircle, MapPin, Plus } from 'lucide-react';
@@ -5,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Product } from '@/services/productService';
 import { getPromotionInfo } from '@/utils/promotionUtils';
-import { getProductDeliveryInfo, getStoreLocationInfo } from '@/utils/deliveryUtils';
+import { getProductDeliveryInfo, getStoreLocationInfo } from '@/utils/delivery';
 import { useAuth } from '@/context/AuthContext';
 import OfferCountdown from '@/components/common/OfferCountdown';
 import QuickAddressModal from './QuickAddressModal';
@@ -85,7 +86,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
               logradouro: mainAddress.logradouro,
               numero: mainAddress.numero,
               complemento: mainAddress.complemento,
-              bairro: mainAddress.bairro,
+              bairro: mainAddress.b   
               cidade: mainAddress.cidade,
               estado: mainAddress.estado,
               cep: mainAddress.cep
