@@ -9,6 +9,7 @@ export interface DeliveryInfo {
   hasRestrictions?: boolean;
   restrictionType?: string;
   deliveryAvailable?: boolean;
+  deliveryFee?: number;
 }
 
 export interface ProductDeliveryInfo extends DeliveryInfo {
@@ -60,11 +61,11 @@ export async function getProductDeliveryInfo(
     }
   }
 
-  // If no restrictions, use general delivery logic
-  const generalInfo = await getDeliveryInfo(storeCep, storeIbge, customerCep, customerIbge);
+  // If no restrictions, check vendor delivery zones
+  const deliveryInfo = await getVendorDeliveryInfo(vendorId, customerCep, storeCep, storeIbge, customerIbge);
   
   return {
-    ...generalInfo,
+    ...deliveryInfo,
     productId,
     vendorId,
     hasRestrictions: false,
@@ -73,9 +74,128 @@ export async function getProductDeliveryInfo(
 }
 
 /**
- * Compara a localização da loja com a do cliente para determinar o tipo de entrega
+ * Verifica as zonas de entrega configuradas pelo vendedor
  */
-export async function getDeliveryInfo(
+export async function getVendorDeliveryInfo(
+  vendorId: string,
+  customerCep?: string,
+  storeCep?: string,
+  storeIbge?: string,
+  customerIbge?: string
+): Promise<DeliveryInfo> {
+  console.log('[getVendorDeliveryInfo] Checking vendor zones for:', {
+    vendorId,
+    customerCep
+  });
+
+  if (!customerCep) {
+    return {
+      isLocal: false,
+      message: 'Frete a combinar (informado após o fechamento do pedido)',
+    };
+  }
+
+  const cleanCustomerCep = customerCep.replace(/\D/g, '');
+
+  try {
+    // Buscar zonas de entrega configuradas pelo vendedor
+    const { data: deliveryZones, error } = await supabase
+      .from('vendor_delivery_zones')
+      .select('*')
+      .eq('vendor_id', vendorId)
+      .eq('active', true);
+
+    if (error) {
+      console.error('[getVendorDeliveryInfo] Error fetching zones:', error);
+      return fallbackDeliveryInfo(storeCep, storeIbge, customerCep, customerIbge);
+    }
+
+    if (!deliveryZones || deliveryZones.length === 0) {
+      console.log('[getVendorDeliveryInfo] No delivery zones configured, using fallback');
+      return fallbackDeliveryInfo(storeCep, storeIbge, customerCep, customerIbge);
+    }
+
+    // Verificar cada zona configurada
+    for (const zone of deliveryZones) {
+      const isInZone = await checkCepInZone(cleanCustomerCep, zone.zone_type, zone.zone_value);
+      
+      if (isInZone) {
+        console.log('[getVendorDeliveryInfo] Customer in configured zone:', zone.zone_name);
+        
+        return {
+          isLocal: zone.delivery_fee === 0,
+          message: zone.delivery_fee === 0 ? 'Entrega local gratuita' : `Entrega: R$ ${zone.delivery_fee.toFixed(2)}`,
+          estimatedTime: zone.delivery_time,
+          deliveryFee: zone.delivery_fee
+        };
+      }
+    }
+
+    // Se não está em nenhuma zona configurada
+    console.log('[getVendorDeliveryInfo] Customer not in any configured zone');
+    return {
+      isLocal: false,
+      message: 'Frete a combinar (informado após o fechamento do pedido)',
+    };
+
+  } catch (error) {
+    console.error('[getVendorDeliveryInfo] Error:', error);
+    return fallbackDeliveryInfo(storeCep, storeIbge, customerCep, customerIbge);
+  }
+}
+
+/**
+ * Verifica se um CEP está dentro de uma zona configurada
+ */
+async function checkCepInZone(customerCep: string, zoneType: string, zoneValue: string): Promise<boolean> {
+  switch (zoneType) {
+    case 'cep_specific':
+      return customerCep === zoneValue.replace(/\D/g, '');
+    
+    case 'cep_range':
+      const [startCep, endCep] = zoneValue.split('-').map(cep => cep.replace(/\D/g, ''));
+      const customerCepNum = parseInt(customerCep);
+      const startCepNum = parseInt(startCep);
+      const endCepNum = parseInt(endCep);
+      return customerCepNum >= startCepNum && customerCepNum <= endCepNum;
+    
+    case 'ibge':
+      try {
+        const { data: cepData } = await supabase
+          .from('zip_cache')
+          .select('ibge')
+          .eq('cep', customerCep)
+          .single();
+        
+        return cepData?.ibge === zoneValue;
+      } catch (error) {
+        console.error('[checkCepInZone] Error checking IBGE:', error);
+        return false;
+      }
+    
+    case 'cidade':
+      try {
+        const { data: cepData } = await supabase
+          .from('zip_cache')
+          .select('localidade')
+          .eq('cep', customerCep)
+          .single();
+        
+        return cepData?.localidade?.toLowerCase() === zoneValue.toLowerCase();
+      } catch (error) {
+        console.error('[checkCepInZone] Error checking city:', error);
+        return false;
+      }
+    
+    default:
+      return false;
+  }
+}
+
+/**
+ * Lógica de fallback quando não há zonas configuradas
+ */
+async function fallbackDeliveryInfo(
   storeCep?: string,
   storeIbge?: string,
   customerCep?: string,
@@ -143,6 +263,20 @@ export async function getDeliveryInfo(
     isLocal: false,
     message: 'Frete a combinar (informado após o fechamento do pedido)',
   };
+}
+
+/**
+ * Compara a localização da loja com a do cliente para determinar o tipo de entrega
+ * @deprecated Use getVendorDeliveryInfo instead
+ */
+export async function getDeliveryInfo(
+  storeCep?: string,
+  storeIbge?: string,
+  customerCep?: string,
+  customerIbge?: string
+): Promise<DeliveryInfo> {
+  console.warn('[getDeliveryInfo] This function is deprecated. Use getVendorDeliveryInfo instead.');
+  return fallbackDeliveryInfo(storeCep, storeIbge, customerCep, customerIbge);
 }
 
 /**

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Star, Clock, AlertCircle, CheckCircle, MapPin, Plus } from 'lucide-react';
@@ -6,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Product } from '@/services/productService';
 import { getPromotionInfo } from '@/utils/promotionUtils';
-import { getDeliveryInfo, getStoreLocationInfo } from '@/utils/deliveryUtils';
+import { getProductDeliveryInfo, getStoreLocationInfo } from '@/utils/deliveryUtils';
 import { useAuth } from '@/context/AuthContext';
 import OfferCountdown from '@/components/common/OfferCountdown';
 import QuickAddressModal from './QuickAddressModal';
@@ -26,6 +25,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
     isLocal: boolean;
     message: string;
     estimatedTime?: string;
+    deliveryFee?: number;
   }>({
     isLocal: false,
     message: 'Frete a combinar (informado após o fechamento do pedido)',
@@ -47,7 +47,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
     produto.num_avaliacoes || 0
   , [produto.id, produto.num_avaliacoes]);
 
-  // Calculate delivery info based on store and customer location
+  // Calculate delivery info based on vendor delivery zones and customer location
   useEffect(() => {
     const calculateDeliveryInfo = async () => {
       try {
@@ -66,23 +66,32 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
           // Note: We would need to lookup IBGE from CEP if not stored
         }
 
-        // Calculate delivery info
-        const info = await getDeliveryInfo(
+        // Use the corrected delivery calculation that considers vendor zones
+        const info = await getProductDeliveryInfo(
+          produto.vendedor_id,
+          produto.id,
+          customerCep,
           storeLocationInfo?.cep,
           storeLocationInfo?.ibge,
-          customerCep,
           customerIbge
         );
 
-        setDeliveryInfo(info);
+        setDeliveryInfo({
+          isLocal: info.isLocal,
+          message: info.message,
+          estimatedTime: info.estimatedTime,
+          deliveryFee: info.deliveryFee
+        });
       } catch (error) {
         console.error('Erro ao calcular informações de entrega:', error);
         // Keep default delivery info on error
       }
     };
 
-    calculateDeliveryInfo();
-  }, [produto.stores?.id, produto.vendedor_id, profile?.endereco_principal]);
+    if (produto.vendedor_id) {
+      calculateDeliveryInfo();
+    }
+  }, [produto.vendedor_id, produto.id, profile?.endereco_principal]);
 
   const handleAddressAdded = () => {
     refreshProfile();
@@ -213,7 +222,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
         </div>
       </div>
       
-      {/* Shipping info - UPDATED WITH INTELLIGENT DELIVERY SYSTEM */}
+      {/* Shipping info - UPDATED WITH CORRECTED DELIVERY SYSTEM */}
       <div className="p-3 bg-gray-50 rounded-md border border-gray-200 mb-4">
         <p className="text-sm text-gray-600 flex items-center mb-2">
           <Clock className="h-4 w-4 mr-2 text-green-600" />
@@ -234,7 +243,8 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
                 <div className="flex items-center">
                   <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
                   <span>
-                    <strong>Entrega local:</strong> {deliveryInfo.estimatedTime}
+                    <strong>{deliveryInfo.message}</strong>
+                    {deliveryInfo.estimatedTime && ` - ${deliveryInfo.estimatedTime}`}
                   </span>
                 </div>
               ) : (
