@@ -84,11 +84,15 @@ export function useProductFetch(id: string | undefined) {
       try {
         setState(prev => ({ ...prev, loading: true, error: null }));
         
-        // ENHANCED: Query to get product with vendor information
+        // ENHANCED: Query to get product with vendor information AND PROMOTION FIELDS
         const { data, error } = await supabase
           .from('produtos')
           .select(`
             *,
+            promocao_ativa,
+            promocao_inicio,
+            promocao_fim,
+            preco_promocional,
             vendedores:vendedor_id (
               id, 
               nome_loja, 
@@ -112,10 +116,14 @@ export function useProductFetch(id: string | undefined) {
           return;
         }
 
-        console.log("[useProductFetch] Raw product data with vendor:", {
+        console.log("[useProductFetch] Raw product data with vendor and promotions:", {
           id: data.id,
           nome: data.nome,
           vendedor_id: data.vendedor_id,
+          promocao_ativa: data.promocao_ativa,
+          promocao_inicio: data.promocao_inicio,
+          promocao_fim: data.promocao_fim,
+          preco_promocional: data.preco_promocional,
           vendedores: data.vendedores
         });
         
@@ -123,7 +131,7 @@ export function useProductFetch(id: string | undefined) {
         const extractedImages = extractImageUrls(data.imagens);
         console.log("[useProductFetch] Extracted images:", extractedImages);
         
-        // Process product data safely with type checking
+        // Process product data safely with type checking INCLUDING PROMOTION FIELDS
         const productData: Product = {
           id: data.id,
           nome: data.nome,
@@ -131,6 +139,9 @@ export function useProductFetch(id: string | undefined) {
           preco: data.preco_promocional || data.preco_normal || 0,
           preco_normal: data.preco_normal || 0,
           preco_promocional: data.preco_promocional,
+          promocao_ativa: data.promocao_ativa,
+          promocao_inicio: data.promocao_inicio,
+          promocao_fim: data.promocao_fim,
           categoria: data.categoria,
           segmento: data.segmento || '',
           imagem_url: extractedImages.length > 0 ? extractedImages[0] : undefined,
