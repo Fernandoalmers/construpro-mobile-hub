@@ -85,8 +85,6 @@ export async function getDeliveryInfo(
  */
 export async function getStoreLocationInfo(storeId?: string, vendorId?: string) {
   try {
-    let storeData = null;
-
     // Tentar buscar pela loja primeiro
     if (storeId) {
       const { data } = await supabase
@@ -96,9 +94,11 @@ export async function getStoreLocationInfo(storeId?: string, vendorId?: string) 
         .single();
       
       if (data?.endereco) {
+        // Tratar endereco como objeto JSON
+        const endereco = data.endereco as any;
         return {
-          cep: data.endereco.cep,
-          ibge: data.endereco.ibge,
+          cep: endereco?.cep,
+          ibge: endereco?.ibge,
         };
       }
     }
