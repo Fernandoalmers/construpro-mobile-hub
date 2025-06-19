@@ -63,60 +63,35 @@ const PriceStockSection: React.FC<PriceStockSectionProps> = ({ form }) => {
             
             <FormField
               control={form.control}
-              name="precoPromocional"
+              name="estoque"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Preço promocional</FormLabel>
+                  <FormLabel>Estoque disponível*</FormLabel>
                   <FormControl>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                    <div className="flex items-center space-x-2">
                       <Input 
                         type="number"
-                        step="0.01"
+                        step="1"
                         min="0"
-                        onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
-                        value={field.value !== null ? field.value : ''}
-                        className="pl-9"
-                        placeholder="0,00"
+                        onChange={e => field.onChange(parseInt(e.target.value))}
+                        value={field.value || ''}
+                        className="w-full"
                       />
+                      <span className="bg-gray-100 px-3 py-2 rounded border text-gray-600 whitespace-nowrap">
+                        {watchUnidadeVenda === 'm2' ? 'm²' : watchUnidadeVenda === 'unidade' ? 'un.' : watchUnidadeVenda}
+                      </span>
                     </div>
                   </FormControl>
                   <FormMessage />
+                  {form.getValues('estoque') === 0 && (
+                    <p className="text-xs text-amber-600 mt-1">
+                      Produto ficará indisponível para compra com estoque zero.
+                    </p>
+                  )}
                 </FormItem>
               )}
             />
           </div>
-          
-          <FormField
-            control={form.control}
-            name="estoque"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Estoque disponível*</FormLabel>
-                <FormControl>
-                  <div className="flex items-center space-x-2">
-                    <Input 
-                      type="number"
-                      step="1"
-                      min="0"
-                      onChange={e => field.onChange(parseInt(e.target.value))}
-                      value={field.value || ''}
-                      className="w-full"
-                    />
-                    <span className="bg-gray-100 px-3 py-2 rounded border text-gray-600 whitespace-nowrap">
-                      {watchUnidadeVenda === 'm2' ? 'm²' : watchUnidadeVenda === 'unidade' ? 'un.' : watchUnidadeVenda}
-                    </span>
-                  </div>
-                </FormControl>
-                <FormMessage />
-                {form.getValues('estoque') === 0 && (
-                  <p className="text-xs text-amber-600 mt-1">
-                    Produto ficará indisponível para compra com estoque zero.
-                  </p>
-                )}
-              </FormItem>
-            )}
-          />
         </div>
       </AccordionContent>
     </AccordionItem>

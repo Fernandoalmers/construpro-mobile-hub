@@ -20,6 +20,10 @@ const PromotionSection: React.FC<PromotionSectionProps> = ({ formData, onInputCh
     ? Math.round(((watchPreco - watchPrecoPromocional) / watchPreco) * 100)
     : 0;
 
+  // Validation for promotional price
+  const hasValidPromotionalPrice = watchPrecoPromocional && watchPreco && watchPrecoPromocional < watchPreco;
+  const promotionalPriceError = watchPromocaoAtiva && watchPrecoPromocional && watchPreco && watchPrecoPromocional >= watchPreco;
+
   return (
     <Card>
       <CardHeader>
@@ -53,7 +57,15 @@ const PromotionSection: React.FC<PromotionSectionProps> = ({ formData, onInputCh
         <div className="flex items-center space-x-2">
           <Checkbox
             checked={watchPromocaoAtiva}
-            onCheckedChange={(checked) => onInputChange('promocaoAtiva', checked)}
+            onCheckedChange={(checked) => {
+              onInputChange('promocaoAtiva', checked);
+              // Reset promotional price when deactivating promotion
+              if (!checked) {
+                onInputChange('precoPromocional', null);
+                onInputChange('promocaoInicio', '');
+                onInputChange('promocaoFim', '');
+              }
+            }}
           />
           <label className="font-medium text-sm">
             Ativar promoção com temporizador
@@ -71,20 +83,26 @@ const PromotionSection: React.FC<PromotionSectionProps> = ({ formData, onInputCh
                     type="number"
                     step="0.01"
                     min="0"
+                    max={watchPreco ? watchPreco - 0.01 : undefined}
                     onChange={(e) => onInputChange('precoPromocional', e.target.value ? parseFloat(e.target.value) : null)}
                     value={watchPrecoPromocional || ''}
-                    className="pl-9"
+                    className={`pl-9 ${promotionalPriceError ? 'border-red-500' : ''}`}
                     placeholder="0,00"
                   />
                 </div>
-                {discountPercentage > 0 && (
+                {promotionalPriceError && (
+                  <p className="text-xs text-red-600 mt-1">
+                    O preço promocional deve ser menor que o preço normal (R$ {watchPreco?.toFixed(2)})
+                  </p>
+                )}
+                {discountPercentage > 0 && !promotionalPriceError && (
                   <p className="text-xs text-green-600 font-medium mt-1">
                     Desconto de {discountPercentage}% aplicado
                   </p>
                 )}
               </div>
 
-              {discountPercentage > 0 && (
+              {discountPercentage > 0 && !promotionalPriceError && (
                 <div className="flex items-center justify-center">
                   <div className="bg-red-500 text-white px-3 py-2 rounded-lg text-center">
                     <div className="text-lg font-bold">-{discountPercentage}%</div>
@@ -104,6 +122,7 @@ const PromotionSection: React.FC<PromotionSectionProps> = ({ formData, onInputCh
                   type="datetime-local"
                   value={formData.promocaoInicio || ''}
                   onChange={(e) => onInputChange('promocaoInicio', e.target.value)}
+                  min={new Date().toISOString().slice(0, 16)}
                 />
               </div>
 
@@ -116,11 +135,12 @@ const PromotionSection: React.FC<PromotionSectionProps> = ({ formData, onInputCh
                   type="datetime-local"
                   value={formData.promocaoFim || ''}
                   onChange={(e) => onInputChange('promocaoFim', e.target.value)}
+                  min={formData.promocaoInicio || new Date().toISOString().slice(0, 16)}
                 />
               </div>
             </div>
 
-            {watchPromocaoAtiva && watchPrecoPromocional && (
+            {watchPromocaoAtiva && hasValidPromotionalPrice && (
               <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
                 <h4 className="font-medium text-blue-900 mb-2">Preview da Oferta:</h4>
                 <div className="flex items-center gap-3">
@@ -136,6 +156,9 @@ const PromotionSection: React.FC<PromotionSectionProps> = ({ formData, onInputCh
                     </div>
                   )}
                 </div>
+                <p className="text-xs text-blue-700 mt-1">
+                  Economia de R$ {(watchPreco - watchPrecoPromocional)?.toFixed(2)}
+                </p>
               </div>
             )}
           </div>

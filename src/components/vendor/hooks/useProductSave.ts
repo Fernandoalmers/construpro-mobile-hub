@@ -38,14 +38,34 @@ export const useProductSave = ({
       setLoading(true);
       console.log('[useProductSave] Starting save process:', { isEditing, formData });
 
+      // Validation for promotion
+      if (formData.promocaoAtiva) {
+        if (!formData.precoPromocional || formData.precoPromocional >= formData.preco) {
+          toast.error('O preço promocional deve ser menor que o preço normal');
+          return;
+        }
+        if (!formData.promocaoInicio || !formData.promocaoFim) {
+          toast.error('Defina as datas de início e fim da promoção');
+          return;
+        }
+        if (new Date(formData.promocaoInicio) >= new Date(formData.promocaoFim)) {
+          toast.error('A data de fim deve ser posterior à data de início');
+          return;
+        }
+        if (new Date(formData.promocaoInicio) <= new Date()) {
+          toast.error('A data de início deve ser futura');
+          return;
+        }
+      }
+
       // Prepare product data with existing images and proper field mapping
       const productData = {
         ...formData,
         preco_normal: formData.preco,
-        preco_promocional: formData.precoPromocional,
+        preco_promocional: formData.promocaoAtiva ? formData.precoPromocional : null,
         promocao_ativa: formData.promocaoAtiva,
-        promocao_inicio: formData.promocaoInicio,
-        promocao_fim: formData.promocaoFim,
+        promocao_inicio: formData.promocaoAtiva ? formData.promocaoInicio : null,
+        promocao_fim: formData.promocaoAtiva ? formData.promocaoFim : null,
         pontos_consumidor: formData.pontosConsumidor,
         pontos_profissional: formData.pontosProfissional,
         imagens: [...existingImages] // Start with existing images
@@ -119,7 +139,12 @@ export const useProductSave = ({
       setImageFiles([]);
 
       console.log('[useProductSave] Save completed successfully');
-      toast.success(isEditing ? 'Produto atualizado com sucesso!' : 'Produto criado com sucesso!');
+      
+      const successMessage = formData.promocaoAtiva 
+        ? 'Produto salvo com promoção ativa!' 
+        : (isEditing ? 'Produto atualizado com sucesso!' : 'Produto criado com sucesso!');
+      
+      toast.success(successMessage);
       navigate('/vendor/products');
 
     } catch (error) {
