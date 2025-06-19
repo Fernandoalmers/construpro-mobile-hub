@@ -81,8 +81,10 @@ const HomeScreenWrapper: React.FC = () => {
     setError(null);
     
     try {
-      await refreshProfile();
-      toast.success("Dados atualizados com sucesso");
+      const result = await refreshProfile();
+      if (result) {
+        toast.success("Dados atualizados com sucesso");
+      }
     } catch (error) {
       console.error("Error refreshing profile:", error);
       setError(error instanceof Error ? error : new Error('Failed to refresh profile'));
