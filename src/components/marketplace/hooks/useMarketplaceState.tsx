@@ -35,18 +35,37 @@ export const useMarketplaceState = () => {
   const { segmentOptions } = useMarketplaceSegments();
   const { term, setTerm, handleSubmit } = useMarketplaceSearch();
   
-  // Filter products by selected segment with safety checks
+  // CORRECTED: Filter products by selected segment with proper null segmento_id handling
   const segmentFilteredProducts = useMemo(() => {
+    console.log('[MarketplaceState] Starting segment filtering with selectedSegmentId:', selectedSegmentId);
+    
     if (!selectedSegmentId || selectedSegmentId === 'all') {
-      console.log('[MarketplaceState] No segment filter - returning all products:', safeProducts.length);
+      console.log('[MarketplaceState] No segment filter - returning ALL products (including those without segmento_id):', safeProducts.length);
+      
+      // Log breakdown for debugging
+      const withSegment = safeProducts.filter(p => p?.segmento_id);
+      const withoutSegment = safeProducts.filter(p => !p?.segmento_id);
+      console.log(`[MarketplaceState] Breakdown - With segment: ${withSegment.length}, Without segment: ${withoutSegment.length}`);
+      
       return safeProducts;
     }
     
-    const filtered = safeProducts.filter(product => 
-      product?.segmento_id === selectedSegmentId
-    );
+    const filtered = safeProducts.filter(product => {
+      if (!product) return false;
+      
+      // Direct match by segment ID
+      return product.segmento_id === selectedSegmentId;
+    });
     
     console.log('[MarketplaceState] Segment filtered products:', filtered.length, 'from', safeProducts.length);
+    
+    // Debug empty results
+    if (filtered.length === 0 && safeProducts.length > 0) {
+      console.warn('[MarketplaceState] ⚠️ No products matched segment filter!');
+      console.warn('Requested segment ID:', selectedSegmentId);
+      console.warn('Available segment IDs:', [...new Set(safeProducts.map(p => p?.segmento_id))]);
+    }
+    
     return filtered;
   }, [safeProducts, selectedSegmentId]);
   
@@ -67,6 +86,17 @@ export const useMarketplaceState = () => {
       label: cat
     }));
   }, [safeProducts]);
+
+  // Debug logging for TRINCHA ATLAS specifically
+  useEffect(() => {
+    const trinchaInOriginal = safeProducts.find(p => p?.nome?.includes('TRINCHA ATLAS'));
+    const trinchaInFiltered = segmentFilteredProducts.find(p => p?.nome?.includes('TRINCHA ATLAS'));
+    
+    if (trinchaInOriginal && !trinchaInFiltered && !selectedSegmentId) {
+      console.error('[MarketplaceState] 🚨 TRINCHA ATLAS found in original but missing in filtered when showing "all"!');
+      console.error('Original product:', trinchaInOriginal);
+    }
+  }, [safeProducts, segmentFilteredProducts, selectedSegmentId]);
 
   return {
     // State

@@ -31,20 +31,52 @@ export const useMarketplaceDataProcessor = ({
     return Array.isArray(segments) ? segments : [];
   }, [segments]);
   
-  // Filter products by selected segment with safety checks
+  // CORRECTED: Filter products by selected segment with proper null handling
   const segmentFilteredProducts = useMemo(() => {
+    console.log('[MarketplaceDataProcessor] Starting segment filtering with selectedSegmentId:', selectedSegmentId);
+    
     if (!selectedSegmentId || selectedSegmentId === 'all') {
-      console.log('[MarketplaceDataProcessor] No segment filter - returning all products:', safeProducts.length);
+      console.log('[MarketplaceDataProcessor] No segment filter - returning ALL products (including null segmento_id):', safeProducts.length);
+      
+      // Log breakdown of products
+      const productsWithSegment = safeProducts.filter(p => p?.segmento_id);
+      const productsWithoutSegment = safeProducts.filter(p => !p?.segmento_id);
+      console.log(`[MarketplaceDataProcessor] Products with segment: ${productsWithSegment.length}, without segment: ${productsWithoutSegment.length}`);
+      
       return safeProducts;
     }
     
-    const filtered = safeProducts.filter(product => 
-      product?.segmento_id === selectedSegmentId
-    );
+    const filtered = safeProducts.filter(product => {
+      if (!product) return false;
+      
+      // Direct match by segment ID
+      if (product.segmento_id === selectedSegmentId) {
+        return true;
+      }
+      
+      // Fallback: match by segment name if segmento_id is null but segmento name matches
+      if (!product.segmento_id && product.segmento) {
+        const matchingSegment = safeSegments.find(s => s.id === selectedSegmentId);
+        if (matchingSegment && product.segmento.toLowerCase() === matchingSegment.nome?.toLowerCase()) {
+          console.log(`[MarketplaceDataProcessor] Product "${product.nome}" matched by segment name fallback`);
+          return true;
+        }
+      }
+      
+      return false;
+    });
     
     console.log('[MarketplaceDataProcessor] Segment filtered products:', filtered.length, 'from', safeProducts.length);
+    
+    // Debug logging for empty results
+    if (filtered.length === 0 && safeProducts.length > 0) {
+      console.warn('[MarketplaceDataProcessor] ⚠️ No products matched segment filter!');
+      console.warn('Available segment IDs in products:', [...new Set(safeProducts.map(p => p?.segmento_id))]);
+      console.warn('Products without segmento_id:', safeProducts.filter(p => !p?.segmento_id).length);
+    }
+    
     return filtered;
-  }, [safeProducts, selectedSegmentId]);
+  }, [safeProducts, selectedSegmentId, safeSegments]);
   
   // Extract categories from products with safety checks
   const categories = useMemo(() => {
@@ -58,10 +90,13 @@ export const useMarketplaceDataProcessor = ({
         .map(product => product.categoria)
     );
     
-    return Array.from(uniqueCategories).map(cat => ({
+    const categoryList = Array.from(uniqueCategories).map(cat => ({
       id: cat,
       label: cat
     }));
+    
+    console.log('[MarketplaceDataProcessor] Extracted categories:', categoryList.length);
+    return categoryList;
   }, [safeProducts]);
 
   return {

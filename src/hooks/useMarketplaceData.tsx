@@ -14,7 +14,7 @@ export interface MarketplaceData {
 }
 
 /**
- * Custom hook for fetching marketplace data with improved promotion handling
+ * Custom hook for fetching marketplace data with corrected segment filtering
  * @returns Products and stores data, loading states and error states
  */
 export function useMarketplaceData(selectedSegmentId: string | null): MarketplaceData {
@@ -55,7 +55,7 @@ export function useMarketplaceData(selectedSegmentId: string | null): Marketplac
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        console.log('[useMarketplaceData] 🚀 Starting data fetch with improved promotion logic');
+        console.log('[useMarketplaceData] 🚀 Starting data fetch with corrected segment filtering');
         
         // Fetch products using improved marketplace service
         console.log('[useMarketplaceData] 📦 Fetching products...');
@@ -66,6 +66,21 @@ export function useMarketplaceData(selectedSegmentId: string | null): Marketplac
         const promotionProducts = productsData.filter(p => p.promocao_ativa);
         console.log(`[useMarketplaceData] 🎯 Found ${promotionProducts.length} products with active promotions`);
         
+        // Log products without segments
+        const productsWithoutSegment = productsData.filter(p => !p.segmento_id);
+        console.log(`[useMarketplaceData] 📊 Found ${productsWithoutSegment.length} products WITHOUT segmento_id`);
+        
+        if (productsWithoutSegment.length > 0) {
+          console.log('[useMarketplaceData] 🔍 Products without segmento_id:', 
+            productsWithoutSegment.map(p => ({ 
+              id: p.id, 
+              nome: p.nome, 
+              segmento: p.segmento, 
+              categoria: p.categoria 
+            }))
+          );
+        }
+        
         // Special logging for TRINCHA ATLAS product
         const trinchaProduct = productsData.find(p => 
           p.nome && p.nome.includes('TRINCHA ATLAS')
@@ -75,6 +90,9 @@ export function useMarketplaceData(selectedSegmentId: string | null): Marketplac
           console.log('[useMarketplaceData] 🔍 TRINCHA ATLAS product found:', {
             id: trinchaProduct.id,
             nome: trinchaProduct.nome,
+            segmento_id: trinchaProduct.segmento_id,
+            segmento: trinchaProduct.segmento,
+            categoria: trinchaProduct.categoria,
             promocao_ativa: trinchaProduct.promocao_ativa,
             promocao_fim: trinchaProduct.promocao_fim,
             preco_promocional: trinchaProduct.preco_promocional,
@@ -82,11 +100,6 @@ export function useMarketplaceData(selectedSegmentId: string | null): Marketplac
           });
         } else {
           console.warn('[useMarketplaceData] ⚠️ TRINCHA ATLAS product NOT FOUND in marketplace products!');
-          
-          // Log available product names for debugging
-          console.log('[useMarketplaceData] Available products:', 
-            productsData.slice(0, 10).map(p => p.nome)
-          );
         }
         
         setProducts(productsData);
@@ -116,15 +129,18 @@ export function useMarketplaceData(selectedSegmentId: string | null): Marketplac
     fetchData();
   }, []);
   
-  // Enhanced product filtering for segments with detailed logging
+  // CORRECTED: Enhanced product filtering for segments with proper handling of null segmento_id
   const filteredProducts = useMemo(() => {
+    console.log(`[useMarketplaceData] 🔍 Starting filter with selectedSegmentId: "${selectedSegmentId}"`);
+    
     if (!selectedSegmentId || selectedSegmentId === 'all') {
-      console.log('[useMarketplaceData] 🔍 No segment filter - returning all products:', products.length);
+      console.log('[useMarketplaceData] 🔍 No segment filter - returning ALL products (including those without segmento_id):', products.length);
       
       // Log promotion products in unfiltered view
       const activePromotions = products.filter(p => p.promocao_ativa);
       console.log(`[useMarketplaceData] Active promotions in all products: ${activePromotions.length}`);
       
+      // CORRECTED: When showing "all", include ALL products, even those without segmento_id
       return products;
     }
     
@@ -134,12 +150,12 @@ export function useMarketplaceData(selectedSegmentId: string | null): Marketplac
     console.log(`[useMarketplaceData] 🔍 Filtering by segment: ID="${selectedSegmentId}", Name="${selectedSegmentName}"`);
     
     const filtered = products.filter(product => {
-      // Direct match by segment ID (primary way)
+      // CORRECTED: Direct match by segment ID (primary way)
       if (product.segmento_id === selectedSegmentId) {
         return true;
       }
       
-      // Match by segment name if available
+      // Match by segment name if available (fallback)
       if (product.segmento && selectedSegmentName && 
           product.segmento.toLowerCase() === selectedSegmentName.toLowerCase()) {
         return true;
@@ -159,6 +175,9 @@ export function useMarketplaceData(selectedSegmentId: string | null): Marketplac
       console.warn('[useMarketplaceData] 📊 Available segments in products:', 
         [...new Set(products.map(p => p.segmento_id))].filter(Boolean)
       );
+      console.warn('[useMarketplaceData] 📊 Products without segmento_id:', 
+        products.filter(p => !p.segmento_id).length
+      );
     }
     
     return filtered;
@@ -166,19 +185,29 @@ export function useMarketplaceData(selectedSegmentId: string | null): Marketplac
   
   // Add detailed logging to help debug filtering and promotions
   useEffect(() => {
-    if (selectedSegmentId && selectedSegmentId !== 'all') {
-      const selectedSegment = segments.find(s => s.id === selectedSegmentId);
-      const activePromotions = filteredProducts.filter(p => p.promocao_ativa);
-      
-      console.log(
-        `[useMarketplaceData] 📈 Filtering summary: ` +
-        `Total products: ${products.length}, ` +
-        `Filtered products: ${filteredProducts.length}, ` +
-        `Active promotions: ${activePromotions.length}, ` +
-        `Selected segment: "${selectedSegment?.nome || 'Unknown'}" (${selectedSegmentId})`
-      );
+    const productsWithoutSegment = filteredProducts.filter(p => !p.segmento_id);
+    const activePromotions = filteredProducts.filter(p => p.promocao_ativa);
+    
+    console.log(
+      `[useMarketplaceData] 📈 Final filtering summary: ` +
+      `Total products: ${products.length}, ` +
+      `Filtered products: ${filteredProducts.length}, ` +
+      `Products without segment: ${productsWithoutSegment.length}, ` +
+      `Active promotions: ${activePromotions.length}, ` +
+      `Selected segment: "${selectedSegmentId || 'all'}"`
+    );
+    
+    // Special check for TRINCHA ATLAS
+    const trinchaInFiltered = filteredProducts.find(p => 
+      p.nome && p.nome.includes('TRINCHA ATLAS')
+    );
+    
+    if (!trinchaInFiltered && selectedSegmentId === null) {
+      console.error('[useMarketplaceData] 🚨 TRINCHA ATLAS should be visible in "all" but is not in filtered results!');
+    } else if (trinchaInFiltered) {
+      console.log('[useMarketplaceData] ✅ TRINCHA ATLAS is correctly included in filtered results');
     }
-  }, [selectedSegmentId, filteredProducts.length, products.length, segments]);
+  }, [selectedSegmentId, filteredProducts.length, products.length]);
   
   return {
     products: filteredProducts,
