@@ -112,6 +112,20 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
     return getVariantOptions(watchTipoVariante || '');
   };
 
+  // Create formData object for PromotionSection
+  const formData = {
+    promocaoAtiva: form.watch('promocaoAtiva'),
+    precoPromocional: form.watch('precoPromocional'),
+    promocaoInicio: form.watch('promocaoInicio'),
+    promocaoFim: form.watch('promocaoFim'),
+    preco: form.watch('preco')
+  };
+
+  // Handle input change for PromotionSection
+  const handleInputChange = (field: string, value: any) => {
+    form.setValue(field as any, value);
+  };
+
   if (isLoading) {
     return (
       <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
@@ -160,7 +174,10 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
               
               <PriceStockSection form={form} />
               
-              <PromotionSection form={form} />
+              <PromotionSection
+                formData={formData}
+                onInputChange={handleInputChange}
+              />
               
               {/* Images Section */}
               <AccordionItem value="item-5">

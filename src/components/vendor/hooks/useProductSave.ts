@@ -38,9 +38,16 @@ export const useProductSave = ({
       setLoading(true);
       console.log('[useProductSave] Starting save process:', { isEditing, formData });
 
-      // Prepare product data with existing images
+      // Prepare product data with existing images and proper field mapping
       const productData = {
         ...formData,
+        preco_normal: formData.preco,
+        preco_promocional: formData.precoPromocional,
+        promocao_ativa: formData.promocaoAtiva,
+        promocao_inicio: formData.promocaoInicio,
+        promocao_fim: formData.promocaoFim,
+        pontos_consumidor: formData.pontosConsumidor,
+        pontos_profissional: formData.pontosProfissional,
         imagens: [...existingImages] // Start with existing images
       };
 
