@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { checkProductDeliveryRestriction } from '@/services/vendor/deliveryZones';
 
@@ -118,7 +117,7 @@ export async function getProductDeliveryInfo(
   
   try {
     const deliveryInfo = await withTimeout(
-      getVendorDeliveryInfo(vendorId, customerCep, storeCep, storeIbge, customerIbge),
+      getVendorDeliveryInfo(vendorId, customerCep),
       10000 // 10 second timeout for delivery zones
     );
     
@@ -155,18 +154,12 @@ export async function getProductDeliveryInfo(
  */
 export async function getVendorDeliveryInfo(
   vendorId: string,
-  customerCep?: string,
-  storeCep?: string,
-  storeIbge?: string,
-  customerIbge?: string
+  customerCep?: string
 ): Promise<DeliveryInfo> {
   const startTime = Date.now();
   logWithTimestamp('[getVendorDeliveryInfo] Checking vendor zones for:', {
     vendorId,
-    customerCep,
-    storeCep,
-    storeIbge,
-    customerIbge
+    customerCep
   });
 
   if (!customerCep) {
@@ -195,12 +188,18 @@ export async function getVendorDeliveryInfo(
 
     if (error) {
       logWithTimestamp('[getVendorDeliveryInfo] Error fetching zones:', error);
-      return fallbackDeliveryInfo(storeCep, storeIbge, customerCep, customerIbge);
+      return {
+        isLocal: false,
+        message: 'Frete a combinar (informado após o fechamento do pedido)',
+      };
     }
 
     if (!deliveryZones || deliveryZones.length === 0) {
       logWithTimestamp('[getVendorDeliveryInfo] No delivery zones configured, using fallback');
-      return fallbackDeliveryInfo(storeCep, storeIbge, customerCep, customerIbge);
+      return {
+        isLocal: false,
+        message: 'Frete a combinar (informado após o fechamento do pedido)',
+      };
     }
 
     logWithTimestamp('[getVendorDeliveryInfo] Found delivery zones:', deliveryZones.length);
@@ -252,7 +251,10 @@ export async function getVendorDeliveryInfo(
   } catch (error) {
     const elapsed = Date.now() - startTime;
     logWithTimestamp(`[getVendorDeliveryInfo] Error after ${elapsed}ms:`, error);
-    return fallbackDeliveryInfo(storeCep, storeIbge, customerCep, customerIbge);
+    return {
+      isLocal: false,
+      message: 'Frete a combinar (informado após o fechamento do pedido)',
+    };
   }
 }
 
