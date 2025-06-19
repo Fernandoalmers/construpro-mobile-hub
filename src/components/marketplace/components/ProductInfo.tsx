@@ -32,17 +32,6 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
     produto.num_avaliacoes || 0
   , [produto.id, produto.num_avaliacoes]);
 
-  // Format delivery estimate text
-  const getDeliveryText = () => {
-    if (deliveryEstimate.minDays === 0) {
-      return 'Entrega hoje';
-    } else if (deliveryEstimate.minDays === deliveryEstimate.maxDays) {
-      return `Entrega em ${deliveryEstimate.minDays} dias úteis`;
-    } else {
-      return `Chegará entre ${deliveryEstimate.minDays}-${deliveryEstimate.maxDays} dias úteis`;
-    }
-  };
-
   return (
     <div>
       <div className="flex items-center space-x-1 mb-2">
@@ -157,20 +146,26 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
         </div>
       </div>
       
-      {/* Shipping info */}
+      {/* Shipping info - ATUALIZADO conforme solicitado */}
       <div className="p-3 bg-gray-50 rounded-md border border-gray-200 mb-4">
-        <p className="text-sm text-gray-600 flex items-center">
+        <p className="text-sm text-gray-600 flex items-center mb-2">
           <Clock className="h-4 w-4 mr-2 text-green-600" />
-          <span className="font-medium">Entrega: </span>
-          <span className="ml-1">{getDeliveryText()}</span>
+          <span className="font-medium">Prazo de entrega</span>
         </p>
         
-        {/* Rural delivery warning */}
-        <div className="mt-2 pt-2 border-t border-gray-200 flex items-start">
-          <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 mr-2 flex-shrink-0" />
-          <p className="text-xs text-gray-600">
-            <span className="font-medium">Aviso:</span> Entrega em zona rural favor combinar o frete com a loja após fechar o pedido.
-          </p>
+        <div className="text-sm text-gray-700 space-y-1 ml-6">
+          <div className="flex items-center">
+            <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+            <span><strong>Capelinha/MG:</strong> até 24h</span>
+          </div>
+          <div className="flex items-center">
+            <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+            <span><strong>Cidades vizinhas:</strong> até 7 dias úteis</span>
+          </div>
+          <div className="flex items-center">
+            <span className="w-2 h-2 bg-gray-500 rounded-full mr-2"></span>
+            <span><strong>Demais localidades:</strong> frete a combinar (informado após o fechamento do pedido)</span>
+          </div>
         </div>
       </div>
       

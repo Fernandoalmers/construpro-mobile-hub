@@ -11,8 +11,10 @@ import { useFavorites } from '@/hooks/useFavorites';
 import { useAuth } from '@/context/AuthContext';
 import { getProductPoints } from '@/utils/pointsCalculations';
 import { safeFirstImage } from '@/utils/imageUtils';
+import { getPromotionInfo } from '@/utils/promotionUtils';
 import ProductImageGallery from './components/ProductImageGallery';
 import QuantitySelector from './components/QuantitySelector';
+import OfferCountdown from '@/components/common/OfferCountdown';
 import { Product } from '@/services/productService';
 
 interface ProdutoContentProps {
@@ -28,6 +30,9 @@ const ProdutoContent: React.FC<ProdutoContentProps> = ({ produto }) => {
   const [addingToCart, setAddingToCart] = useState(false);
   const [favorited, setFavorited] = useState(false);
   const [checkingFavorite, setCheckingFavorite] = useState(false);
+
+  // Get promotion info using the centralized utility
+  const promotionInfo = getPromotionInfo(produto);
 
   // Check if product is favorited when component mounts
   useEffect(() => {
@@ -132,14 +137,9 @@ const ProdutoContent: React.FC<ProdutoContentProps> = ({ produto }) => {
     });
   };
 
-  const hasPromotion = produto.preco_promocional && produto.preco_promocional < produto.preco_normal;
-  const finalPrice = hasPromotion ? produto.preco_promocional : produto.preco_normal;
-  const originalPrice = hasPromotion ? produto.preco_normal : null;
-  
-  // Calculate discount percentage
-  const discountPercentage = originalPrice && hasPromotion 
-    ? Math.round(((originalPrice - finalPrice) / originalPrice) * 100)
-    : 0;
+  // Use promotion info for prices
+  const finalPrice = promotionInfo.hasActivePromotion ? promotionInfo.promotionalPrice! : promotionInfo.originalPrice;
+  const originalPrice = promotionInfo.hasActivePromotion ? promotionInfo.originalPrice : null;
 
   // Use safe image extraction for gallery
   const mainImage = safeFirstImage(produto.imagem_url) || '';
@@ -194,8 +194,8 @@ const ProdutoContent: React.FC<ProdutoContentProps> = ({ produto }) => {
         mainImage={mainImage}
         images={images}
         productName={produto.nome}
-        hasDiscount={hasPromotion}
-        discountPercentage={discountPercentage}
+        hasDiscount={promotionInfo.hasActivePromotion}
+        discountPercentage={promotionInfo.discountPercentage}
       />
 
       {/* Product Info */}
@@ -225,13 +225,19 @@ const ProdutoContent: React.FC<ProdutoContentProps> = ({ produto }) => {
           </div>
         )}
 
-        {/* Price Section */}
+        {/* Price Section - CORRIGIDA para usar promotionInfo */}
         <div className="mb-4">
-          {hasPromotion && (
+          {promotionInfo.hasActivePromotion && (
             <div className="flex items-center gap-2 mb-1">
               <Badge className="bg-red-500 hover:bg-red-600 text-xs">
-                {discountPercentage}% OFF
+                {promotionInfo.discountPercentage}% OFF
               </Badge>
+              <OfferCountdown 
+                endDate={promotionInfo.promotionEndDate}
+                isActive={promotionInfo.hasActivePromotion}
+                size="sm"
+                variant="compact"
+              />
             </div>
           )}
           

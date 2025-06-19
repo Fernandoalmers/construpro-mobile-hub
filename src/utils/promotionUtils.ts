@@ -15,16 +15,33 @@ export const getPromotionInfo = (product: any): PromotionInfo => {
   const promotionEndDate = product.promocao_fim;
   const promotionActive = product.promocao_ativa;
   
-  // CORRECTED: Improved promotion validation with proper margin for timing issues
+  // CORRIGIDO: Melhor validação de promoção ativa
   const isPromotionExpired = promotionEndDate ? 
-    new Date(promotionEndDate).getTime() + (2 * 60 * 1000) < now.getTime() : false; // 2 minute grace period
+    new Date(promotionEndDate).getTime() < now.getTime() : false;
   
-  const hasValidPromotionalPrice = promotionalPrice && promotionalPrice < originalPrice;
-  const hasActivePromotion = promotionActive && hasValidPromotionalPrice && !isPromotionExpired;
+  const hasValidPromotionalPrice = promotionalPrice && promotionalPrice > 0 && promotionalPrice < originalPrice;
   
-  const discountPercentage = hasActivePromotion 
+  // CORRIGIDO: Verificar explicitamente o campo promocao_ativa e se não expirou
+  const hasActivePromotion = Boolean(promotionActive) && hasValidPromotionalPrice && !isPromotionExpired;
+  
+  const discountPercentage = hasActivePromotion && promotionalPrice
     ? Math.round(((originalPrice - promotionalPrice) / originalPrice) * 100)
     : 0;
+
+  // Debug log para o produto específico
+  if (product.nome?.includes('TRINCHA ATLAS')) {
+    console.log('[getPromotionInfo] TRINCHA ATLAS analysis:', {
+      nome: product.nome,
+      promocao_ativa: promotionActive,
+      preco_normal: originalPrice,
+      preco_promocional: promotionalPrice,
+      promocao_fim: promotionEndDate,
+      isPromotionExpired,
+      hasValidPromotionalPrice,
+      hasActivePromotion,
+      discountPercentage
+    });
+  }
 
   return {
     hasActivePromotion,
@@ -48,7 +65,7 @@ export const shouldShowPromotion = (product: any): boolean => {
 };
 
 /**
- * CORRECTED: Validates if a promotion should be considered active with proper timing
+ * CORRIGIDO: Valida se uma promoção deve ser considerada ativa
  */
 export const validatePromotionStatus = (
   isActive: boolean,
@@ -57,29 +74,28 @@ export const validatePromotionStatus = (
   promotionalPrice?: number | null,
   normalPrice?: number
 ): boolean => {
-  // If not marked as active, it's not active
+  // Se não está marcada como ativa, não é ativa
   if (!isActive) return false;
   
-  // Must have valid promotional price
+  // Deve ter preço promocional válido
   if (!promotionalPrice || !normalPrice) return false;
   if (promotionalPrice >= normalPrice) return false;
   
   const now = new Date();
-  const gracePeriod = 2 * 60 * 1000; // 2 minutes grace period
   
-  // Check start date if provided
+  // Verificar data de início se fornecida
   if (startDate) {
     const start = new Date(startDate);
     if (start.getTime() > now.getTime()) {
-      return false; // Promotion hasn't started yet
+      return false; // Promoção ainda não começou
     }
   }
   
-  // CORRECTED: Check end date with proper grace period
+  // Verificar data de fim se fornecida
   if (endDate) {
     const end = new Date(endDate);
-    if ((end.getTime() + gracePeriod) < now.getTime()) {
-      return false; // Promotion has ended (with grace period)
+    if (end.getTime() < now.getTime()) {
+      return false; // Promoção já terminou
     }
   }
   
