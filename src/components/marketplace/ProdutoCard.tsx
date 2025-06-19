@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Heart, ShoppingCart, Star, Store } from 'lucide-react';
@@ -11,6 +10,8 @@ import { useFavorites } from '@/hooks/useFavorites';
 import { useAuth } from '@/context/AuthContext';
 import { getProductPoints } from '@/utils/pointsCalculations';
 import { safeFirstImage, handleImageError } from '@/utils/imageUtils';
+import { getPromotionInfo } from '@/utils/promotionUtils';
+import OfferCountdown from '@/components/common/OfferCountdown';
 
 interface Product {
   id: string;
@@ -18,6 +19,8 @@ interface Product {
   preco?: number; // Keep for backward compatibility
   preco_normal: number;
   preco_promocional?: number;
+  promocao_ativa?: boolean;
+  promocao_fim?: string;
   categoria: string;
   imagens?: string[] | any[] | string;
   pontos_consumidor?: number;
@@ -55,6 +58,9 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
   const [addingToCart, setAddingToCart] = useState(false);
   const [favorited, setFavorited] = useState(false);
   const [checkingFavorite, setCheckingFavorite] = useState(false);
+
+  // Get promotion info
+  const promotionInfo = getPromotionInfo(produto);
 
   // Check if product is favorited when component mounts
   useEffect(() => {
@@ -149,9 +155,9 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
   };
 
   // FIXED: Use correct price fields
-  const hasPromotion = produto.preco_promocional && produto.preco_promocional < produto.preco_normal;
-  const finalPrice = hasPromotion ? produto.preco_promocional : produto.preco_normal;
-  const originalPrice = hasPromotion ? produto.preco_normal : null;
+  const hasPromotion = promotionInfo.hasActivePromotion;
+  const finalPrice = hasPromotion ? promotionInfo.promotionalPrice! : promotionInfo.originalPrice;
+  const originalPrice = hasPromotion ? promotionInfo.originalPrice : null;
 
   // FIXED: Use safe image extraction from imagens field only
   const displayImageUrl = safeFirstImage(produto.imagens);
@@ -193,11 +199,19 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
           />
         </Button>
 
-        {/* Promotion Badge */}
-        {hasPromotion && (
-          <Badge className="absolute top-2 left-2 bg-red-500 hover:bg-red-600">
-            Promoção
-          </Badge>
+        {/* Promotion Badge and Countdown */}
+        {promotionInfo.hasActivePromotion && (
+          <div className="absolute top-2 left-2 flex flex-col gap-1">
+            <Badge className="bg-red-500 hover:bg-red-600">
+              {promotionInfo.discountPercentage}% OFF
+            </Badge>
+            <OfferCountdown 
+              endDate={promotionInfo.promotionEndDate}
+              isActive={promotionInfo.hasActivePromotion}
+              size="sm"
+              variant="compact"
+            />
+          </div>
         )}
 
         {/* Out of Stock Badge */}
@@ -239,7 +253,7 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
           </div>
         </div>
 
-        {/* Store Name - STANDARDIZED - Always show when available */}
+        {/* Store Name */}
         {shouldShowStoreInfo && (
           <div className="mb-2 flex items-center gap-1">
             <Store size={12} className="text-gray-500" />
@@ -249,7 +263,7 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
           </div>
         )}
 
-        {/* Points - FIXED: Use correct points calculation */}
+        {/* Points */}
         {displayPoints > 0 && (
           <div className="mb-3">
             <span className="text-xs text-construPro-orange font-medium">

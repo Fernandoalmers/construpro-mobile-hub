@@ -2,6 +2,8 @@
 import React, { memo } from 'react';
 import { Star, MapPin } from 'lucide-react';
 import LazyImage from '@/components/common/LazyImage';
+import { getPromotionInfo } from '@/utils/promotionUtils';
+import OfferCountdown from '@/components/common/OfferCountdown';
 
 interface OptimizedProductCardProps {
   product: {
@@ -9,6 +11,8 @@ interface OptimizedProductCardProps {
     nome: string;
     preco_normal: number;
     preco_promocional?: number;
+    promocao_ativa?: boolean;
+    promocao_fim?: string;
     imagens?: string[];
     avaliacao: number;
     categoria: string;
@@ -23,7 +27,6 @@ interface OptimizedProductCardProps {
 }
 
 const OptimizedProductCard = memo<OptimizedProductCardProps>(({ product, onClick }) => {
-  // Safety checks for product data
   if (!product || !product.id) {
     console.warn('[OptimizedProductCard] Invalid product data:', product);
     return null;
@@ -40,13 +43,7 @@ const OptimizedProductCard = memo<OptimizedProductCardProps>(({ product, onClick
     ? product.imagens[0] 
     : '/img/placeholder.png';
   
-  const precoNormal = product.preco_normal || 0;
-  const precoPromocional = product.preco_promocional;
-  const hasDiscount = precoPromocional && precoPromocional < precoNormal;
-  const discountPercent = hasDiscount 
-    ? Math.round(((precoNormal - precoPromocional) / precoNormal) * 100)
-    : 0;
-
+  const promotionInfo = getPromotionInfo(product);
   const avaliacao = product.avaliacao || 0;
   const nome = product.nome || 'Produto sem nome';
   const categoria = product.categoria || '';
@@ -63,9 +60,17 @@ const OptimizedProductCard = memo<OptimizedProductCardProps>(({ product, onClick
           className="w-full h-48 object-cover rounded-t-lg"
           placeholderClassName="w-full h-48 rounded-t-lg"
         />
-        {hasDiscount && (
-          <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded text-xs font-semibold">
-            -{discountPercent}%
+        {promotionInfo.hasActivePromotion && (
+          <div className="absolute top-2 left-2 flex flex-col gap-1">
+            <div className="bg-red-500 text-white px-2 py-1 rounded text-xs font-semibold">
+              -{promotionInfo.discountPercentage}%
+            </div>
+            <OfferCountdown 
+              endDate={promotionInfo.promotionEndDate}
+              isActive={promotionInfo.hasActivePromotion}
+              size="sm"
+              variant="compact"
+            />
           </div>
         )}
       </div>
@@ -86,13 +91,13 @@ const OptimizedProductCard = memo<OptimizedProductCardProps>(({ product, onClick
         </div>
         
         <div className="space-y-1">
-          {hasDiscount && (
+          {promotionInfo.hasActivePromotion && (
             <div className="text-xs text-gray-500 line-through">
-              R$ {precoNormal.toFixed(2)}
+              R$ {promotionInfo.originalPrice.toFixed(2)}
             </div>
           )}
           <div className="text-sm font-semibold text-construPro-blue">
-            R$ {(precoPromocional || precoNormal).toFixed(2)}
+            R$ {(promotionInfo.hasActivePromotion ? promotionInfo.promotionalPrice! : promotionInfo.originalPrice).toFixed(2)}
           </div>
         </div>
       </div>

@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 
@@ -9,6 +8,9 @@ export interface MarketplaceProduct {
   categoria: string;
   preco_normal: number;
   preco_promocional?: number;
+  promocao_ativa?: boolean;
+  promocao_inicio?: string;
+  promocao_fim?: string;
   estoque: number;
   imagens?: string[];
   status: 'pendente' | 'aprovado' | 'rejeitado';
@@ -33,18 +35,18 @@ export interface MarketplaceProduct {
 }
 
 /**
- * Get all approved products for marketplace - accessible to ALL users
- * This service ensures products are visible to all authenticated users
+ * Get all approved products for marketplace with active promotions only
  */
 export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> => {
   try {
-    console.log('[marketplaceProductsService] 🔍 Fetching ALL approved products for marketplace');
+    console.log('[marketplaceProductsService] 🔍 Fetching approved products with promotion filtering');
     
-    // Check user authentication status for debugging
+    // First, update expired promotions
+    await updateExpiredPromotions();
+    
     const { data: authData } = await supabase.auth.getUser();
     console.log('[marketplaceProductsService] 👤 Current user:', authData.user?.id || 'anonymous');
     
-    // FIXED: Enhanced query to properly get vendor information
     const { data, error } = await supabase
       .from('produtos')
       .select(`
@@ -57,35 +59,18 @@ export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> =>
           email
         )
       `)
-      .eq('status', 'aprovado') // Only approved products
+      .eq('status', 'aprovado')
       .order('created_at', { ascending: false });
     
     if (error) {
       console.error('[marketplaceProductsService] ❌ Error fetching products:', error);
-      console.error('[marketplaceProductsService] 📊 Error details:', error.details);
-      console.error('[marketplaceProductsService] 💡 Error hint:', error.hint);
       toast.error('Erro ao carregar produtos');
       return [];
     }
     
     console.log(`[marketplaceProductsService] ✅ Successfully fetched ${data?.length || 0} approved products`);
     
-    if (data && data.length > 0) {
-      console.log('[marketplaceProductsService] 📋 Raw data sample with vendor info:', 
-                  data.slice(0, 2).map(p => ({
-                    id: p.id,
-                    nome: p.nome,
-                    vendedor_id: p.vendedor_id,
-                    vendedores: p.vendedores
-                  })));
-    } else {
-      console.warn('[marketplaceProductsService] ⚠️ No products found! Possible causes:');
-      console.warn('1. No approved products in database');
-      console.warn('2. RLS policy blocking access');
-      console.warn('3. Database connection issue');
-    }
-    
-    // Transform data to match interface - ENHANCED PROCESSING
+    // Transform data and filter products with valid promotions
     const products: MarketplaceProduct[] = (data || []).map(product => {
       // Debug vendor data processing with enhanced logging
       console.log('[marketplaceProductsService] Processing vendor data for product:', {
@@ -145,6 +130,9 @@ export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> =>
         categoria: product.categoria,
         preco_normal: product.preco_normal,
         preco_promocional: product.preco_promocional,
+        promocao_ativa: product.promocao_ativa,
+        promocao_inicio: product.promocao_inicio,
+        promocao_fim: product.promocao_fim,
         estoque: product.estoque,
         imagens: processedImages,
         status: product.status as 'pendente' | 'aprovado' | 'rejeitado',
@@ -177,6 +165,23 @@ export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> =>
     console.error('[marketplaceProductsService] 💥 Unexpected error:', error);
     toast.error('Erro inesperado ao carregar produtos');
     return [];
+  }
+};
+
+/**
+ * Update expired promotions in the database
+ */
+const updateExpiredPromotions = async (): Promise<void> => {
+  try {
+    const { error } = await supabase.rpc('update_expired_promotions');
+    
+    if (error) {
+      console.error('[marketplaceProductsService] Error updating expired promotions:', error);
+    } else {
+      console.log('[marketplaceProductsService] ✅ Updated expired promotions');
+    }
+  } catch (error) {
+    console.error('[marketplaceProductsService] Error calling update_expired_promotions:', error);
   }
 };
 
@@ -249,6 +254,9 @@ export const getProductsBySegment = async (segmentId: string): Promise<Marketpla
         categoria: product.categoria,
         preco_normal: product.preco_normal,
         preco_promocional: product.preco_promocional,
+        promocao_ativa: product.promocao_ativa,
+        promocao_inicio: product.promocao_inicio,
+        promocao_fim: product.promocao_fim,
         estoque: product.estoque,
         imagens: processedImages,
         status: product.status as 'pendente' | 'aprovado' | 'rejeitado',
