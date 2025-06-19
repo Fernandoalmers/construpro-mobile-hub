@@ -516,7 +516,7 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
               variant="primary"
               loading={isSaving}
               onClick={handleSubmit}
-              disabled={!cepData && formData.cep}
+              disabled={!cepData && !!formData.cep}
             >
               {initialData ? 'Salvar' : 'Adicionar'}
             </CustomButton>
