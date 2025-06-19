@@ -5,12 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-interface PromotionSectionProps {
+interface ProductPromotionProps {
   formData: any;
   onInputChange: (field: string, value: any) => void;
 }
 
-const PromotionSection: React.FC<PromotionSectionProps> = ({ formData, onInputChange }) => {
+const ProductPromotion: React.FC<ProductPromotionProps> = ({ formData, onInputChange }) => {
   const watchPromocaoAtiva = formData.promocaoAtiva || false;
   const watchPrecoPromocional = formData.precoPromocional || null;
   const watchPreco = formData.preco || 0;
@@ -44,7 +44,6 @@ const PromotionSection: React.FC<PromotionSectionProps> = ({ formData, onInputCh
                 <li>• Defina o período da promoção (início e fim)</li>
                 <li>• O countdown será exibido automaticamente no marketplace</li>
                 <li>• A promoção será desativada automaticamente quando expirar</li>
-                <li>• Produtos com promoções expiradas são removidos automaticamente do carrinho</li>
               </ul>
             </div>
           </div>
@@ -145,4 +144,4 @@ const PromotionSection: React.FC<PromotionSectionProps> = ({ formData, onInputCh
   );
 };
 
-export default PromotionSection;
+export default ProductPromotion;

@@ -2,44 +2,49 @@
 import { useState, useCallback } from 'react';
 
 export interface ProductFormData {
-  id: string;
   nome: string;
   descricao: string;
   categoria: string;
   segmento: string;
-  segmento_id: string;
-  preco_normal: number;
-  preco_promocional: number | null;
-  pontos_consumidor: number;
-  pontos_profissional: number;
+  preco: number;
   estoque: number;
-  sku: string;
-  codigo_barras: string;
+  precoPromocional?: number | null;
+  promocaoAtiva: boolean;
+  promocaoInicio?: string;
+  promocaoFim?: string;
+  pontosConsumidor: number;
+  pontosProfissional: number;
+  sku?: string;
+  codigoBarras?: string;
   imagens: string[];
 }
 
+interface UseProductFormDataProps {
+  initialData?: any;
+}
+
 export const useProductFormData = (initialData?: any) => {
-  const [currentSegmentId, setCurrentSegmentId] = useState<string>('');
-  
   const [formData, setFormData] = useState<ProductFormData>({
-    id: '',
     nome: '',
     descricao: '',
     categoria: '',
     segmento: '',
-    segmento_id: '',
-    preco_normal: 0,
-    preco_promocional: null,
-    pontos_consumidor: 0,
-    pontos_profissional: 0,
+    preco: 0,
     estoque: 0,
+    precoPromocional: null,
+    promocaoAtiva: false,
+    promocaoInicio: '',
+    promocaoFim: '',
+    pontosConsumidor: 0,
+    pontosProfissional: 0,
     sku: '',
-    codigo_barras: '',
+    codigoBarras: '',
     imagens: []
   });
 
+  const [currentSegmentId, setCurrentSegmentId] = useState<string | null>(null);
+
   const handleInputChange = useCallback((field: string, value: any) => {
-    console.log(`[useProductFormData] handleInputChange: ${field} =`, value);
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -47,55 +52,38 @@ export const useProductFormData = (initialData?: any) => {
   }, []);
 
   const handleSegmentIdChange = useCallback((segmentId: string) => {
-    console.log('[useProductFormData] Segment ID changing to:', segmentId);
-    
-    if (segmentId !== currentSegmentId) {
-      setCurrentSegmentId(segmentId);
-      setFormData(prev => ({
-        ...prev,
-        segmento_id: segmentId,
-        categoria: ''
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        segmento_id: segmentId
-      }));
-    }
-  }, [currentSegmentId]);
+    setCurrentSegmentId(segmentId);
+  }, []);
 
   const handleSegmentNameChange = useCallback((segmentName: string) => {
     handleInputChange('segmento', segmentName);
   }, [handleInputChange]);
 
-  const handleCategoryChange = useCallback((categoryName: string) => {
-    handleInputChange('categoria', categoryName);
+  const handleCategoryChange = useCallback((category: string) => {
+    handleInputChange('categoria', category);
   }, [handleInputChange]);
 
-  const initializeFormData = useCallback((data: any, processedImages: string[]) => {
-    console.log('[useProductFormData] Initializing form data with:', { data, processedImages });
-    
-    const newFormData = {
-      id: data.id || '',
+  const initializeFormData = useCallback((data: any, processedImages: string[] = []) => {
+    const initialFormData: ProductFormData = {
       nome: data.nome || '',
       descricao: data.descricao || '',
       categoria: data.categoria || '',
       segmento: data.segmento || '',
-      segmento_id: data.segmento_id || '',
-      preco_normal: data.preco_normal || 0,
-      preco_promocional: data.preco_promocional || null,
-      pontos_consumidor: data.pontos_consumidor || 0,
-      pontos_profissional: data.pontos_profissional || 0,
+      preco: data.preco_normal || data.preco || 0,
       estoque: data.estoque || 0,
+      precoPromocional: data.preco_promocional || null,
+      promocaoAtiva: data.promocao_ativa || false,
+      promocaoInicio: data.promocao_inicio ? new Date(data.promocao_inicio).toISOString().slice(0, 16) : '',
+      promocaoFim: data.promocao_fim ? new Date(data.promocao_fim).toISOString().slice(0, 16) : '',
+      pontosConsumidor: data.pontos_consumidor || 0,
+      pontosProfissional: data.pontos_profissional || 0,
       sku: data.sku || '',
-      codigo_barras: data.codigo_barras || '',
-      imagens: [...processedImages]
+      codigoBarras: data.codigo_barras || '',
+      imagens: processedImages
     };
     
-    setFormData(newFormData);
-    setCurrentSegmentId(data.segmento_id || '');
-    
-    console.log('[useProductFormData] Form data initialized:', newFormData);
+    setFormData(initialFormData);
+    setCurrentSegmentId(data.segmento_id || null);
   }, []);
 
   return {

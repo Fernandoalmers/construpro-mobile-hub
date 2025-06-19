@@ -9,6 +9,7 @@ import ProductFormHeader from './components/ProductFormHeader';
 import ProductBasicInformation from './components/ProductBasicInformation';
 import ProductIdentification from './components/ProductIdentification';
 import ProductPricing from './components/ProductPricing';
+import PromotionSection from './form-sections/PromotionSection';
 import ProductImages from './components/ProductImages';
 import ProductPoints from './components/ProductPoints';
 
@@ -125,6 +126,11 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
         />
 
         <ProductPricing
+          formData={formData}
+          onInputChange={handleInputChange}
+        />
+
+        <PromotionSection
           formData={formData}
           onInputChange={handleInputChange}
         />

@@ -8,6 +8,7 @@ import { useCartTotals } from '@/hooks/cart/use-cart-totals';
 import { useStoreInfo } from '@/hooks/cart/use-store-info';
 import { useAuth } from '@/context/AuthContext';
 import { validateCartStock } from '@/services/checkout/stockValidation';
+import { useCartPromotionValidator } from '@/hooks/cart/useCartPromotionValidator';
 import { toast } from '@/components/ui/sonner';
 
 export const useCartScreen = () => {
@@ -76,6 +77,26 @@ export const useCartScreen = () => {
     0,
     (user as any)?.tipo_perfil || 'consumidor'
   );
+
+  // Handle removing expired promotion items
+  const handleRemoveExpiredItems = useCallback(async (expiredItems: any[]) => {
+    console.log('[useCartScreen] Removing expired promotion items:', expiredItems.length);
+    
+    for (const item of expiredItems) {
+      try {
+        await removeItem(item.id);
+      } catch (error) {
+        console.error('[useCartScreen] Error removing expired item:', error);
+      }
+    }
+  }, [removeItem]);
+
+  // Set up promotion validation
+  useCartPromotionValidator({
+    cartItems,
+    onRemoveExpiredItems: handleRemoveExpiredItems,
+    enabled: isAuthenticated && cartItems.length > 0
+  });
 
   // Derived states
   const cartIsEmpty = cartItems.length === 0;
