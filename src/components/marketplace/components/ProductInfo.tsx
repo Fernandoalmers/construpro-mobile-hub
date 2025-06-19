@@ -26,6 +26,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
   const { profile, isAuthenticated, refreshProfile } = useAuth();
   const { tempCep, isLoading: tempCepLoading, setIsLoading: setTempCepLoading, setTemporaryCep } = useTempCep();
   const [showAddressModal, setShowAddressModal] = useState(false);
+  const [currentUserCep, setCurrentUserCep] = useState<string | null>(null);
   const [deliveryInfo, setDeliveryInfo] = useState<{
     isLocal: boolean;
     message: string;
@@ -54,96 +55,111 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
     produto.num_avaliacoes || 0
   , [produto.id, produto.num_avaliacoes]);
 
-  // Enhanced function to get user's main address with better fallback
+  // Enhanced function to get user's main address with better prioritization
   const getUserMainAddress = async () => {
     const timestamp = new Date().toISOString();
-    console.log(`[${timestamp}] [ProductInfo] Getting user main address...`);
-    console.log(`[${timestamp}] [ProductInfo] Profile endereco_principal:`, profile?.endereco_principal);
+    console.log(`[${timestamp}] [ProductInfo] Getting user main address for user:`, profile?.id);
     
-    // First try to use profile's main address
-    if (profile?.endereco_principal && profile.endereco_principal.cep) {
-      console.log(`[${timestamp}] [ProductInfo] Using profile endereco_principal:`, profile.endereco_principal);
-      return profile.endereco_principal;
+    // Only proceed if user is authenticated
+    if (!isAuthenticated || !profile?.id) {
+      console.log(`[${timestamp}] [ProductInfo] User not authenticated or no profile ID`);
+      return null;
     }
-    
-    // Enhanced fallback: get main address directly from user_addresses table with retry
-    if (isAuthenticated && profile?.id) {
-      try {
-        console.log(`[${timestamp}] [ProductInfo] Fallback: fetching from user_addresses table`);
+
+    try {
+      // FIRST: Try to get main address directly from user_addresses table (most reliable)
+      console.log(`[${timestamp}] [ProductInfo] Step 1: Fetching main address from user_addresses table`);
+      
+      const { data: mainAddress, error: mainError } = await supabase
+        .from('user_addresses')
+        .select('*')
+        .eq('user_id', profile.id)
+        .eq('principal', true)
+        .maybeSingle();
+
+      if (!mainError && mainAddress && mainAddress.cep) {
+        console.log(`[${timestamp}] [ProductInfo] ✅ Found main address from user_addresses:`, {
+          cep: mainAddress.cep,
+          cidade: mainAddress.cidade,
+          estado: mainAddress.estado
+        });
         
-        // First try to get the main address with retry
-        for (let attempt = 0; attempt < 3; attempt++) {
-          const { data: mainAddress, error } = await supabase
-            .from('user_addresses')
-            .select('*')
-            .eq('user_id', profile.id)
-            .eq('principal', true)
-            .single();
-
-          if (!error && mainAddress) {
-            console.log(`[${timestamp}] [ProductInfo] Found main address from user_addresses:`, mainAddress);
-            return {
-              logradouro: mainAddress.logradouro,
-              numero: mainAddress.numero,
-              complemento: mainAddress.complemento,
-              bairro: mainAddress.bairro,
-              cidade: mainAddress.cidade,
-              estado: mainAddress.estado,
-              cep: mainAddress.cep
-            };
-          }
-          
-          if (attempt < 2) {
-            console.log(`[${timestamp}] [ProductInfo] Attempt ${attempt + 1} failed, retrying...`);
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          }
-        }
-
-        console.log(`[${timestamp}] [ProductInfo] No main address found, trying first available address`);
+        const addressData = {
+          logradouro: mainAddress.logradouro,
+          numero: mainAddress.numero,
+          complemento: mainAddress.complemento,
+          bairro: mainAddress.bairro,
+          cidade: mainAddress.cidade,
+          estado: mainAddress.estado,
+          cep: mainAddress.cep
+        };
         
-        // If no main address, try to get the first available address with retry
-        for (let attempt = 0; attempt < 3; attempt++) {
-          const { data: firstAddress, error: firstError } = await supabase
-            .from('user_addresses')
-            .select('*')
-            .eq('user_id', profile.id)
-            .order('created_at', { ascending: true })
-            .limit(1)
-            .single();
-
-          if (!firstError && firstAddress) {
-            console.log(`[${timestamp}] [ProductInfo] Using first available address:`, firstAddress);
-            return {
-              logradouro: firstAddress.logradouro,
-              numero: firstAddress.numero,
-              complemento: firstAddress.complemento,
-              bairro: firstAddress.bairro,
-              cidade: firstAddress.cidade,
-              estado: firstAddress.estado,
-              cep: firstAddress.cep
-            };
-          }
-          
-          if (attempt < 2) {
-            console.log(`[${timestamp}] [ProductInfo] Attempt ${attempt + 1} failed, retrying...`);
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          }
-        }
-
-      } catch (error) {
-        console.error(`[${timestamp}] [ProductInfo] Exception fetching user address:`, error);
+        setCurrentUserCep(mainAddress.cep);
+        return addressData;
       }
+
+      // SECOND: If no main address, try to get first available address
+      console.log(`[${timestamp}] [ProductInfo] Step 2: No main address found, trying first available address`);
+      
+      const { data: firstAddress, error: firstError } = await supabase
+        .from('user_addresses')
+        .select('*')
+        .eq('user_id', profile.id)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (!firstError && firstAddress && firstAddress.cep) {
+        console.log(`[${timestamp}] [ProductInfo] ✅ Using first available address:`, {
+          cep: firstAddress.cep,
+          cidade: firstAddress.cidade,
+          estado: firstAddress.estado
+        });
+        
+        const addressData = {
+          logradouro: firstAddress.logradouro,
+          numero: firstAddress.numero,
+          complemento: firstAddress.complemento,
+          bairro: firstAddress.bairro,
+          cidade: firstAddress.cidade,
+          estado: firstAddress.estado,
+          cep: firstAddress.cep
+        };
+        
+        setCurrentUserCep(firstAddress.cep);
+        return addressData;
+      }
+
+      // THIRD: Fallback to profile endereco_principal (less reliable)
+      console.log(`[${timestamp}] [ProductInfo] Step 3: Fallback to profile endereco_principal`);
+      
+      if (profile?.endereco_principal && profile.endereco_principal.cep) {
+        console.log(`[${timestamp}] [ProductInfo] ⚠️ Using profile endereco_principal as fallback:`, {
+          cep: profile.endereco_principal.cep,
+          cidade: profile.endereco_principal.cidade,
+          estado: profile.endereco_principal.estado
+        });
+        
+        setCurrentUserCep(profile.endereco_principal.cep);
+        return profile.endereco_principal;
+      }
+
+      console.log(`[${timestamp}] [ProductInfo] ❌ No address found anywhere`);
+      setCurrentUserCep(null);
+      return null;
+
+    } catch (error) {
+      console.error(`[${timestamp}] [ProductInfo] Exception fetching user address:`, error);
+      setCurrentUserCep(null);
+      return null;
     }
-    
-    console.log(`[${timestamp}] [ProductInfo] No address found`);
-    return null;
   };
 
-  // Enhanced delivery calculation with temp CEP support
+  // Enhanced delivery calculation with improved CEP handling
   const calculateDeliveryInfo = async (forceRecalculate = false) => {
     const startTime = Date.now();
     const timestamp = new Date().toISOString();
-    console.log(`[${timestamp}] [ProductInfo] Starting delivery calculation for product:`, produto.id);
+    console.log(`[${timestamp}] [ProductInfo] 🚚 Starting delivery calculation for product:`, produto.id);
     console.log(`[${timestamp}] [ProductInfo] Product vendor ID:`, produto.vendedor_id);
     
     try {
@@ -151,36 +167,39 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
 
       // Get user's main address
       console.log(`[${timestamp}] [ProductInfo] Getting user main address...`);
-      const addressPromise = getUserMainAddress();
-      const userMainAddress = await Promise.race([
-        addressPromise,
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Address lookup timeout')), 5000)
-        )
-      ]) as any;
-
+      const userMainAddress = await getUserMainAddress();
+      
       const addressTime = Date.now() - startTime;
-      console.log(`[${timestamp}] [ProductInfo] User main address result (${addressTime}ms):`, userMainAddress);
+      console.log(`[${timestamp}] [ProductInfo] User address lookup completed (${addressTime}ms)`);
 
       // Get store location info
       console.log(`[${timestamp}] [ProductInfo] Getting store location info...`);
-      const storePromise = getStoreLocationInfo(produto.stores?.id, produto.vendedor_id);
-      const storeLocationInfo = await Promise.race([
-        storePromise,
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Store info timeout')), 5000)
-        )
-      ]) as any;
-
+      const storeLocationInfo = await getStoreLocationInfo(produto.stores?.id, produto.vendedor_id);
+      
       const storeTime = Date.now() - startTime;
       console.log(`[${timestamp}] [ProductInfo] Store location info (${storeTime}ms):`, storeLocationInfo);
 
       // Determine which CEP to use (priority: temp > user registered > none)
       const customerCep = tempCep || userMainAddress?.cep;
-      console.log(`[${timestamp}] [ProductInfo] Customer CEP (temp: ${tempCep}, user: ${userMainAddress?.cep}, final: ${customerCep})`);
+      console.log(`[${timestamp}] [ProductInfo] 📍 CEP Selection:`, {
+        tempCep,
+        userCep: userMainAddress?.cep,
+        finalCep: customerCep,
+        source: tempCep ? 'temporary' : userMainAddress?.cep ? 'user_address' : 'none'
+      });
+
+      if (!customerCep) {
+        console.log(`[${timestamp}] [ProductInfo] ❌ No CEP available for delivery calculation`);
+        setDeliveryInfo({
+          isLocal: false,
+          message: 'Informe seu CEP para calcular o frete',
+          loading: false
+        });
+        return;
+      }
 
       // Use the enhanced delivery calculation
-      console.log(`[${timestamp}] [ProductInfo] Calling getProductDeliveryInfo with:`, {
+      console.log(`[${timestamp}] [ProductInfo] 🔄 Calling getProductDeliveryInfo with:`, {
         vendorId: produto.vendedor_id,
         productId: produto.id,
         customerCep,
@@ -188,7 +207,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
         storeIbge: storeLocationInfo?.ibge
       });
       
-      const deliveryPromise = getProductDeliveryInfo(
+      const info = await getProductDeliveryInfo(
         produto.vendedor_id,
         produto.id,
         customerCep,
@@ -196,15 +215,8 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
         storeLocationInfo?.ibge
       );
       
-      const info = await Promise.race([
-        deliveryPromise,
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Delivery calculation timeout')), 8000)
-        )
-      ]) as any;
-      
       const totalTime = Date.now() - startTime;
-      console.log(`[${timestamp}] [ProductInfo] Delivery calculation result (${totalTime}ms):`, info);
+      console.log(`[${timestamp}] [ProductInfo] ✅ Delivery calculation result (${totalTime}ms):`, info);
 
       setDeliveryInfo({
         isLocal: info.isLocal,
@@ -216,19 +228,12 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
 
     } catch (error) {
       const totalTime = Date.now() - startTime;
-      console.error(`[${timestamp}] [ProductInfo] Error calculating delivery info (${totalTime}ms):`, error);
-      
-      // Enhanced fallback messaging
-      const hasAnyAddress = tempCep || profile?.endereco_principal;
-      
-      const fallbackMessage = hasAnyAddress 
-        ? 'Frete calculado no checkout'
-        : 'Consulte o frete informando seu CEP';
+      console.error(`[${timestamp}] [ProductInfo] ❌ Error calculating delivery info (${totalTime}ms):`, error);
       
       setDeliveryInfo({
         isLocal: false,
-        message: fallbackMessage,
-        estimatedTime: hasAnyAddress ? 'Prazo informado após fechamento do pedido' : undefined,
+        message: 'Erro ao calcular informações de entrega',
+        estimatedTime: undefined,
         loading: false
       });
     }
@@ -268,6 +273,14 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
     }, 1000);
   };
 
+  // Clear temporary CEP
+  const handleClearTempCep = () => {
+    setTemporaryCep('');
+    setTimeout(() => {
+      calculateDeliveryInfo(true);
+    }, 100);
+  };
+
   // Debug log for promotion display
   console.log('[ProductInfo] Promotion display for', produto.nome, {
     hasActivePromotion: promotionInfo.hasActivePromotion,
@@ -277,6 +290,9 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
     promotionEndDate: promotionInfo.promotionEndDate
   });
 
+  // Determine if CEP input should be shown
+  const shouldShowCepInput = !isAuthenticated || (!currentUserCep && !profile?.endereco_principal);
+  
   return (
     <div>
       <div className="flex items-center space-x-1 mb-2">
@@ -393,7 +409,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
         </div>
       </div>
       
-      {/* Enhanced shipping info with temp CEP input */}
+      {/* Enhanced shipping info with improved CEP handling */}
       <div className="p-3 bg-gray-50 rounded-md border border-gray-200 mb-4">
         <p className="text-sm text-gray-600 flex items-center mb-2">
           <Clock className="h-4 w-4 mr-2 text-green-600" />
@@ -408,15 +424,25 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
             </div>
           ) : (
             <>
-              {/* Show current address being used */}
-              {(profile?.endereco_principal || tempCep) && (
+              {/* Show current address/CEP being used */}
+              {(currentUserCep || tempCep) && (
                 <div className="flex items-center mb-2">
                   <MapPin className="w-4 h-4 text-blue-500 mr-2" />
                   <span className="text-xs text-gray-600">
                     {tempCep ? (
-                      `CEP temporário: ${tempCep.replace(/(\d{5})(\d{3})/, '$1-$2')}`
-                    ) : profile?.endereco_principal ? (
-                      `${profile.endereco_principal.cidade} - ${profile.endereco_principal.estado}${profile.endereco_principal.cep ? ` (CEP: ${profile.endereco_principal.cep})` : ''}`
+                      <>
+                        CEP temporário: <strong>{tempCep.replace(/(\d{5})(\d{3})/, '$1-$2')}</strong>
+                        <button 
+                          onClick={handleClearTempCep}
+                          className="ml-2 text-blue-600 hover:underline"
+                        >
+                          (usar meu endereço)
+                        </button>
+                      </>
+                    ) : currentUserCep ? (
+                      <>
+                        Meu endereço: <strong>{currentUserCep.replace(/(\d{5})(\d{3})/, '$1-$2')}</strong>
+                      </>
                     ) : (
                       'Endereço carregado'
                     )}
@@ -437,8 +463,8 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
                 </span>
               </div>
               
-              {/* Temp CEP input for guests or when user wants to check different CEP */}
-              {(!isAuthenticated || !profile?.endereco_principal) && (
+              {/* CEP input - only show if user has no address */}
+              {shouldShowCepInput && (
                 <div className="space-y-2">
                   <p className="text-xs text-gray-500">
                     {isAuthenticated ? 'Consulte o frete para seu CEP:' : 'Faça login ou consulte o frete:'}
@@ -452,8 +478,8 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
               
               {/* Options for authenticated users */}
               {isAuthenticated && (
-                <div className="flex gap-2 mt-2">
-                  {!profile?.endereco_principal && (
+                <div className="flex flex-col gap-2 mt-2">
+                  {!currentUserCep && !profile?.endereco_principal && (
                     <Button
                       onClick={() => setShowAddressModal(true)}
                       className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
@@ -464,15 +490,13 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
                     </Button>
                   )}
                   
-                  {profile?.endereco_principal && !tempCep && (
+                  {(currentUserCep || profile?.endereco_principal) && !tempCep && (
                     <div className="text-xs text-gray-600">
-                      <p>Quer consultar para outro CEP?</p>
-                      <div className="mt-1">
-                        <TempCepInput 
-                          onCepSubmit={handleTempCepSubmit}
-                          loading={tempCepLoading}
-                        />
-                      </div>
+                      <p className="mb-1">Quer consultar para outro CEP?</p>
+                      <TempCepInput 
+                        onCepSubmit={handleTempCepSubmit}
+                        loading={tempCepLoading}
+                      />
                     </div>
                   )}
                 </div>
