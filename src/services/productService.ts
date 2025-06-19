@@ -29,6 +29,9 @@ export interface Product {
   preco_normal: number;
   preco_promocional?: number;
   preco_anterior?: number;
+  promocao_ativa?: boolean;
+  promocao_inicio?: string;
+  promocao_fim?: string;
   categoria: string;
   segmento?: string;
   segmento_id?: string;
@@ -58,6 +61,9 @@ interface ProductDatabaseRecord {
   preco_normal: number;
   preco_promocional?: number | null;
   preco_anterior?: number | null;
+  promocao_ativa?: boolean | null;
+  promocao_inicio?: string | null;
+  promocao_fim?: string | null;
   categoria: string;
   segmento?: string | null;
   segmento_id?: string | null;
@@ -111,6 +117,9 @@ const transformToProduct = (record: ProductDatabaseRecord): Product => {
     preco_normal: record.preco_normal,
     preco_promocional: record.preco_promocional || undefined,
     preco_anterior: record.preco_anterior || undefined,
+    promocao_ativa: record.promocao_ativa || undefined,
+    promocao_inicio: record.promocao_inicio || undefined,
+    promocao_fim: record.promocao_fim || undefined,
     categoria: record.categoria,
     segmento: record.segmento || undefined,
     segmento_id: record.segmento_id || undefined,
@@ -164,6 +173,9 @@ export const getProducts = async (filters = {}): Promise<Product[]> => {
         preco_normal: rawRecord.preco_normal,
         preco_promocional: rawRecord.preco_promocional,
         preco_anterior: rawRecord.preco_anterior,
+        promocao_ativa: rawRecord.promocao_ativa,
+        promocao_inicio: rawRecord.promocao_inicio,
+        promocao_fim: rawRecord.promocao_fim,
         categoria: rawRecord.categoria,
         segmento: rawRecord.segmento,
         segmento_id: rawRecord.segmento_id,
@@ -222,6 +234,9 @@ export const getProductById = async (id: string): Promise<Product | null> => {
       preco_normal: rawRecord.preco_normal,
       preco_promocional: rawRecord.preco_promocional,
       preco_anterior: rawRecord.preco_anterior,
+      promocao_ativa: rawRecord.promocao_ativa,
+      promocao_inicio: rawRecord.promocao_inicio,
+      promocao_fim: rawRecord.promocao_fim,
       categoria: rawRecord.categoria,
       segmento: rawRecord.segmento,
       segmento_id: rawRecord.segmento_id,
