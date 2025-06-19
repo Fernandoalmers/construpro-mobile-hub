@@ -33,16 +33,18 @@ export async function getVendorDeliveryInfo(
     logWithTimestamp('[getVendorDeliveryInfo] Fetching vendor delivery zones...');
     
     const deliveryZones = await withRetry(async () => {
+      const queryPromise = supabase
+        .from('vendor_delivery_zones')
+        .select('*')
+        .eq('vendor_id', vendorId)
+        .eq('active', true)
+        .then(({ data, error }) => {
+          if (error) throw error;
+          return data || [];
+        });
+      
       return await withTimeout(
-        supabase
-          .from('vendor_delivery_zones')
-          .select('*')
-          .eq('vendor_id', vendorId)
-          .eq('active', true)
-          .then(({ data, error }) => {
-            if (error) throw error;
-            return data || [];
-          }),
+        queryPromise,
         8000, // Aumentado de 3s para 8s
         'Vendor delivery zones fetch'
       );

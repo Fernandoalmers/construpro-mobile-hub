@@ -13,6 +13,33 @@ interface DeliveryInfo {
   loading: boolean;
 }
 
+interface UserAddress {
+  logradouro: string;
+  numero: string;
+  complemento?: string;
+  bairro: string;
+  cidade: string;
+  estado: string;
+  cep: string;
+}
+
+interface StoreLocationInfo {
+  cep?: string;
+  ibge?: string;
+  zona?: string;
+}
+
+interface ProductDeliveryInfo {
+  isLocal: boolean;
+  message: string;
+  estimatedTime?: string;
+  deliveryFee?: number;
+  productId: string;
+  vendorId: string;
+  hasRestrictions: boolean;
+  deliveryAvailable: boolean;
+}
+
 export function useProductDelivery(produto: Product) {
   const { getUserMainAddress, currentUserCep } = useUserAddress();
   const { tempCep } = useTempCep();
@@ -36,8 +63,8 @@ export function useProductDelivery(produto: Product) {
       // Get user's main address with increased patience
       console.log(`[${timestamp}] [useProductDelivery] Getting user main address...`);
       const userMainAddress = await Promise.race([
-        getUserMainAddress(),
-        new Promise((_, reject) => 
+        getUserMainAddress() as Promise<UserAddress | null>,
+        new Promise<null>((_, reject) => 
           setTimeout(() => reject(new Error('Address fetch timeout')), 8000) // Aumentado de 5s para 8s
         )
       ]);
@@ -48,8 +75,8 @@ export function useProductDelivery(produto: Product) {
       // Get store location info with increased timeout
       console.log(`[${timestamp}] [useProductDelivery] Getting store location info...`);
       const storeLocationInfo = await Promise.race([
-        getStoreLocationInfo(produto.stores?.id, produto.vendedor_id),
-        new Promise((_, reject) => 
+        getStoreLocationInfo(produto.stores?.id, produto.vendedor_id) as Promise<StoreLocationInfo>,
+        new Promise<StoreLocationInfo>((_, reject) => 
           setTimeout(() => reject(new Error('Store location timeout')), 6000) // Aumentado de 4s para 6s
         )
       ]);
@@ -92,8 +119,8 @@ export function useProductDelivery(produto: Product) {
           customerCep,
           storeLocationInfo?.cep,
           storeLocationInfo?.ibge
-        ),
-        new Promise((_, reject) => 
+        ) as Promise<ProductDeliveryInfo>,
+        new Promise<ProductDeliveryInfo>((_, reject) => 
           setTimeout(() => reject(new Error('Delivery info timeout')), 15000) // Aumentado de 8s para 15s
         )
       ]);
