@@ -46,7 +46,20 @@ const VendorProfileScreen: React.FC = () => {
   const handleSave = async () => {
     try {
       setSaving(true);
-      await updateVendorProfile(formData);
+      // Include all required fields for UpdateVendorProfileParams
+      const updateData = {
+        // Required basic fields from existing profile
+        nome_loja: vendorProfile?.nome_loja || '',
+        descricao: vendorProfile?.descricao || '',
+        telefone: vendorProfile?.telefone || '',
+        whatsapp: vendorProfile?.whatsapp || '',
+        email: vendorProfile?.email || '',
+        segmento: vendorProfile?.segmento || '',
+        // Address fields from form
+        ...formData
+      };
+      
+      await updateVendorProfile(updateData);
       toast.success('Perfil do vendedor salvo com sucesso!');
       navigate('/vendor/settings');
     } catch (error) {
