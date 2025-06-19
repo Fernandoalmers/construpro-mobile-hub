@@ -1936,6 +1936,53 @@ export type Database = {
         }
         Relationships: []
       }
+      vendor_delivery_zones: {
+        Row: {
+          active: boolean
+          created_at: string
+          delivery_fee: number | null
+          delivery_time: string
+          id: string
+          updated_at: string
+          vendor_id: string
+          zone_name: string
+          zone_type: string
+          zone_value: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          delivery_fee?: number | null
+          delivery_time?: string
+          id?: string
+          updated_at?: string
+          vendor_id: string
+          zone_name: string
+          zone_type: string
+          zone_value: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          delivery_fee?: number | null
+          delivery_time?: string
+          id?: string
+          updated_at?: string
+          vendor_id?: string
+          zone_name?: string
+          zone_type?: string
+          zone_value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_delivery_zones_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendedores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendor_orders_log: {
         Row: {
           created_at: string
@@ -1956,6 +2003,70 @@ export type Database = {
           order_id?: string
         }
         Relationships: []
+      }
+      vendor_product_restrictions: {
+        Row: {
+          active: boolean
+          created_at: string
+          delivery_zone_id: string | null
+          id: string
+          product_id: string
+          restriction_message: string | null
+          restriction_type: string
+          updated_at: string
+          vendor_id: string
+          zone_type: string
+          zone_value: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          delivery_zone_id?: string | null
+          id?: string
+          product_id: string
+          restriction_message?: string | null
+          restriction_type?: string
+          updated_at?: string
+          vendor_id: string
+          zone_type: string
+          zone_value: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          delivery_zone_id?: string | null
+          id?: string
+          product_id?: string
+          restriction_message?: string | null
+          restriction_type?: string
+          updated_at?: string
+          vendor_id?: string
+          zone_type?: string
+          zone_value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_product_restrictions_delivery_zone_id_fkey"
+            columns: ["delivery_zone_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_delivery_zones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_product_restrictions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_product_restrictions_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendedores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       zip_cache: {
         Row: {
@@ -2053,6 +2164,19 @@ export type Database = {
       can_vendor_access_order: {
         Args: { order_id: string; vendor_id: string }
         Returns: boolean
+      }
+      check_product_delivery_restriction: {
+        Args: {
+          p_vendor_id: string
+          p_product_id: string
+          p_customer_cep: string
+        }
+        Returns: {
+          has_restriction: boolean
+          restriction_type: string
+          restriction_message: string
+          delivery_available: boolean
+        }[]
       }
       check_product_stock: {
         Args: { p_produto_id: string; p_quantidade: number }

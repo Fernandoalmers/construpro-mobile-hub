@@ -44,7 +44,9 @@ import {
   ClientesVendorScreen,
   ConfiguracoesVendorScreen,
   AjustePontosVendorScreen,
-  VendorOrderDetailScreen
+  VendorOrderDetailScreen,
+  VendorDeliveryZonesScreen,
+  ProductRestrictionsScreen
 } from './routes/RouteImports';
 import ConviteScreen from './components/referral/ConviteScreen';
 import AutoFixCodesPage from './pages/AutoFixCodes';
@@ -181,6 +183,10 @@ const App = () => (
           <Route path="/vendor/adjust-points" element={<ProtectedRoute><AjustePontosVendorScreen /></ProtectedRoute>} />
           <Route path="/vendor/settings" element={<ProtectedRoute><ConfiguracoesVendorScreen /></ProtectedRoute>} />
           <Route path="/vendor/store-config" element={<ProtectedRoute><ConfiguracoesVendorScreen /></ProtectedRoute>} />
+          
+          {/* New delivery management routes */}
+          <Route path="/vendor/delivery-zones" element={<ProtectedRoute><VendorDeliveryZonesScreen /></ProtectedRoute>} />
+          <Route path="/vendor/product-restrictions" element={<ProtectedRoute><ProductRestrictionsScreen /></ProtectedRoute>} />
           
           {/* Portuguese aliases */}
           <Route path="/vendor/produtos" element={<ProtectedRoute><ProductManagementScreen /></ProtectedRoute>} />

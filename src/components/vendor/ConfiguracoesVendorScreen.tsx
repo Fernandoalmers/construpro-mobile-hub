@@ -1,369 +1,151 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Building2, User, MapPin, Package, Truck, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Separator } from '@/components/ui/separator';
-import { toast } from '@/components/ui/sonner';
-import { ArrowLeft, Save, Upload } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
 import { useVendorProfile } from '@/hooks/useVendorProfile';
-import { getCoordinates } from '@/lib/cep';
 import LoadingState from '@/components/common/LoadingState';
-import AddressSection from './form-sections/AddressSection';
 
-const ConfiguracoesVendorScreen = () => {
+const ConfiguracoesVendorScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { vendorProfile, isLoading, updateVendorProfile } = useVendorProfile();
-  const [formData, setFormData] = useState({
-    nome_loja: '',
-    descricao: '',
-    telefone: '',
-    whatsapp: '',
-    email: '',
-    segmento: '',
-    // Novos campos de endereço
-    endereco_cep: '',
-    endereco_logradouro: '',
-    endereco_numero: '',
-    endereco_complemento: '',
-    endereco_bairro: '',
-    endereco_cidade: '',
-    endereco_estado: '',
-    zona_entrega: '',
-  });
-  const [logoPreview, setLogoPreview] = useState<string | null>(null);
-  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [bannerFile, setBannerFile] = useState<File | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const { user } = useAuth();
+  const { vendorProfile, loading } = useVendorProfile();
 
-  // Load vendor profile data
-  useEffect(() => {
-    if (vendorProfile) {
-      console.log('[ConfiguracoesVendorScreen] Loading vendor profile data:', vendorProfile);
-      
-      setFormData({
-        nome_loja: vendorProfile.nome_loja || '',
-        descricao: vendorProfile.descricao || '',
-        telefone: vendorProfile.telefone || '',
-        whatsapp: vendorProfile.whatsapp || '',
-        email: vendorProfile.email || '',
-        segmento: vendorProfile.segmento || '',
-        // Carregar campos de endereço com logs para debug
-        endereco_cep: vendorProfile.endereco_cep || '',
-        endereco_logradouro: vendorProfile.endereco_logradouro || '',
-        endereco_numero: vendorProfile.endereco_numero || '',
-        endereco_complemento: vendorProfile.endereco_complemento || '',
-        endereco_bairro: vendorProfile.endereco_bairro || '',
-        endereco_cidade: vendorProfile.endereco_cidade || '',
-        endereco_estado: vendorProfile.endereco_estado || '',
-        zona_entrega: vendorProfile.zona_entrega || '',
-      });
-      
-      console.log('[ConfiguracoesVendorScreen] CEP loaded:', vendorProfile.endereco_cep);
-      
-      if (vendorProfile.logo) {
-        setLogoPreview(vendorProfile.logo);
-      }
-      
-      if (vendorProfile.banner) {
-        setBannerPreview(vendorProfile.banner);
-      }
+  const configurationSections = [
+    {
+      title: 'Informações da Loja',
+      description: 'Nome, logo, descrição e dados de contato',
+      icon: Building2,
+      action: () => navigate('/vendor/store-config'),
+      color: 'bg-blue-50 text-blue-600'
+    },
+    {
+      title: 'Perfil do Vendedor',
+      description: 'Dados pessoais e informações de conta',
+      icon: User,
+      action: () => navigate('/vendor/profile'),
+      color: 'bg-green-50 text-green-600'
+    },
+    {
+      title: 'Zonas de Entrega',
+      description: 'Configure as regiões onde você faz entregas',
+      icon: MapPin,
+      action: () => navigate('/vendor/delivery-zones'),
+      color: 'bg-purple-50 text-purple-600'
+    },
+    {
+      title: 'Restrições de Produtos',
+      description: 'Defina produtos que não entregam em certas regiões',
+      icon: Package,
+      action: () => navigate('/vendor/product-restrictions'),
+      color: 'bg-orange-50 text-orange-600'
+    },
+    {
+      title: 'Configurações de Entrega',
+      description: 'Métodos de entrega e taxas',
+      icon: Truck,
+      action: () => navigate('/vendor/delivery-settings'),
+      color: 'bg-teal-50 text-teal-600'
+    },
+    {
+      title: 'Configurações Gerais',
+      description: 'Outras configurações da conta',
+      icon: Settings,
+      action: () => navigate('/vendor/general-settings'),
+      color: 'bg-gray-50 text-gray-600'
     }
-  }, [vendorProfile]);
+  ];
 
-  // Handle form input changes
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  // Handle address field changes
-  const handleAddressChange = (field: string, value: string) => {
-    console.log('[ConfiguracoesVendorScreen] Address field changed:', field, '=', value);
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  // Handle logo file selection
-  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setLogoFile(file);
-      setLogoPreview(URL.createObjectURL(file));
-    }
-  };
-
-  // Handle banner file selection
-  const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setBannerFile(file);
-      setBannerPreview(URL.createObjectURL(file));
-    }
-  };
-
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSaving(true);
-    
-    try {
-      console.log('[ConfiguracoesVendorScreen] Saving form data:', formData);
-      
-      // Get coordinates if address is complete
-      let coordinates = {};
-      if (formData.endereco_logradouro && formData.endereco_cidade && formData.endereco_estado) {
-        const fullAddress = `${formData.endereco_logradouro}, ${formData.endereco_numero || ''}, ${formData.endereco_bairro}, ${formData.endereco_cidade}, ${formData.endereco_estado}, ${formData.endereco_cep}`;
-        console.log('[ConfiguracoesVendorScreen] Getting coordinates for:', fullAddress);
-        
-        const coords = await getCoordinates(fullAddress);
-        if (coords) {
-          coordinates = {
-            endereco_latitude: coords.latitude,
-            endereco_longitude: coords.longitude,
-          };
-          console.log('[ConfiguracoesVendorScreen] Coordinates found:', coordinates);
-        }
-      }
-
-      const updatedProfile = await updateVendorProfile({
-        ...formData,
-        ...coordinates,
-        logoFile,
-        bannerFile
-      });
-      
-      if (updatedProfile) {
-        toast.success('Configurações salvas com sucesso!');
-        console.log('[ConfiguracoesVendorScreen] Profile updated successfully');
-      } else {
-        toast.error('Erro ao salvar configurações');
-        console.error('[ConfiguracoesVendorScreen] Failed to update profile');
-      }
-    } catch (error) {
-      toast.error('Erro ao salvar configurações');
-      console.error('[ConfiguracoesVendorScreen] Error saving vendor profile:', error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  if (isLoading) {
+  if (loading) {
     return <LoadingState text="Carregando configurações..." />;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white p-4 flex items-center shadow-sm sticky top-0 z-10">
-        <Button 
-          variant="ghost" 
-          onClick={() => navigate('/vendor')}
-          className="flex items-center gap-1 mr-4"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <h1 className="text-xl font-bold">Configurações da Loja</h1>
-      </div>
-      
-      <div className="p-4 space-y-6">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Informações Básicas</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="nome_loja">Nome da Loja*</Label>
-                <Input
-                  id="nome_loja"
-                  name="nome_loja"
-                  value={formData.nome_loja}
-                  onChange={handleChange}
-                  required
-                  className="mt-1"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="descricao">Descrição</Label>
-                <Textarea
-                  id="descricao"
-                  name="descricao"
-                  value={formData.descricao}
-                  onChange={handleChange}
-                  rows={4}
-                  className="mt-1"
-                  placeholder="Descreva sua loja..."
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="segmento">Segmento</Label>
-                <Input
-                  id="segmento"
-                  name="segmento"
-                  value={formData.segmento}
-                  onChange={handleChange}
-                  className="mt-1"
-                  placeholder="Ex: Material de Construção, Ferragens..."
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Nova Seção de Endereço */}
-          <AddressSection 
-            formData={formData}
-            onInputChange={handleAddressChange}
-          />
-          
-          <Card>
-            <CardHeader>
-              <CardTitle>Contato</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="mt-1"
-                  placeholder="seu@email.com"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="telefone">Telefone</Label>
-                <Input
-                  id="telefone"
-                  name="telefone"
-                  value={formData.telefone}
-                  onChange={handleChange}
-                  className="mt-1"
-                  placeholder="(11) 99999-9999"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="whatsapp">WhatsApp</Label>
-                <Input
-                  id="whatsapp"
-                  name="whatsapp"
-                  value={formData.whatsapp}
-                  onChange={handleChange}
-                  className="mt-1"
-                  placeholder="(11) 99999-9999"
-                />
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader>
-              <CardTitle>Imagens</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <Label htmlFor="logo">Logo</Label>
-                <div className="mt-2 flex items-center space-x-4">
-                  {logoPreview && (
-                    <div className="relative w-24 h-24 bg-gray-100 rounded-md overflow-hidden border">
-                      <img 
-                        src={logoPreview} 
-                        alt="Logo Preview" 
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
-                  )}
-                  <div className="flex-1">
-                    <Label 
-                      htmlFor="logo-upload" 
-                      className="inline-flex cursor-pointer items-center px-4 py-2 bg-gray-100 border border-gray-200 rounded-md text-gray-700 hover:bg-gray-200 transition-colors"
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      {logoPreview ? 'Alterar Logo' : 'Selecionar Logo'}
-                    </Label>
-                    <Input
-                      id="logo-upload"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleLogoChange}
-                      className="hidden"
-                    />
-                    <p className="text-sm text-gray-500 mt-1">
-                      Recomendado: 512x512px. JPG, PNG ou GIF.
-                    </p>
-                  </div>
-                </div>
-              </div>
-              
-              <Separator />
-              
-              <div>
-                <Label htmlFor="banner">Banner</Label>
-                <div className="mt-2 space-y-4">
-                  {bannerPreview && (
-                    <div className="relative w-full h-32 bg-gray-100 rounded-md overflow-hidden border">
-                      <img 
-                        src={bannerPreview} 
-                        alt="Banner Preview" 
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  )}
-                  <div>
-                    <Label 
-                      htmlFor="banner-upload" 
-                      className="inline-flex cursor-pointer items-center px-4 py-2 bg-gray-100 border border-gray-200 rounded-md text-gray-700 hover:bg-gray-200 transition-colors"
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      {bannerPreview ? 'Alterar Banner' : 'Selecionar Banner'}
-                    </Label>
-                    <Input
-                      id="banner-upload"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleBannerChange}
-                      className="hidden"
-                    />
-                    <p className="text-sm text-gray-500 mt-1">
-                      Recomendado: 1200x300px. JPG, PNG ou GIF.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          {/* Botão de Salvar - Agora mais destacado */}
-          <div className="sticky bottom-4 bg-white p-4 rounded-lg shadow-lg border">
-            <div className="flex gap-3">
-              <Button 
-                type="button"
-                variant="outline"
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => navigate('/vendor')}
-                className="flex-1"
+                className="flex items-center"
               >
-                Cancelar
+                <ArrowLeft size={16} className="mr-2" />
+                Voltar
               </Button>
-              <Button 
-                type="submit" 
-                disabled={isSaving}
-                className="flex-1 bg-construPro-orange hover:bg-orange-600 text-white"
-              >
-                <Save className="h-4 w-4 mr-2" />
-                {isSaving ? 'Salvando...' : 'Salvar Configurações'}
-              </Button>
+              <div>
+                <h1 className="text-xl font-semibold text-gray-900">Configurações</h1>
+                <p className="text-sm text-gray-500">Gerencie as configurações da sua loja</p>
+              </div>
             </div>
           </div>
-        </form>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Store Info */}
+        <div className="mb-8">
+          <Card className="p-6">
+            <div className="flex items-center space-x-4">
+              <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
+                {vendorProfile?.logo ? (
+                  <img
+                    src={vendorProfile.logo}
+                    alt="Logo"
+                    className="w-full h-full object-cover rounded-lg"
+                  />
+                ) : (
+                  <Building2 size={24} className="text-gray-400" />
+                )}
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">
+                  {vendorProfile?.nome_loja || 'Nome da Loja'}
+                </h2>
+                <p className="text-gray-500">
+                  {vendorProfile?.email || user?.email || 'Email não informado'}
+                </p>
+                <p className="text-sm text-gray-400">
+                  Status: <span className="capitalize">{vendorProfile?.status || 'pendente'}</span>
+                </p>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* Configuration Sections */}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {configurationSections.map((section, index) => (
+            <Card
+              key={index}
+              className="p-6 hover:shadow-md transition-shadow cursor-pointer"
+              onClick={section.action}
+            >
+              <div className="flex items-start space-x-4">
+                <div className={`p-3 rounded-lg ${section.color}`}>
+                  <section.icon size={24} />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    {section.title}
+                  </h3>
+                  <p className="text-sm text-gray-500 mb-4">
+                    {section.description}
+                  </p>
+                  <Button variant="outline" size="sm">
+                    Configurar
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
       </div>
     </div>
   );
