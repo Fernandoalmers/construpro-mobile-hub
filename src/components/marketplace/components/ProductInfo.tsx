@@ -9,6 +9,8 @@ import { getProductDeliveryInfo, getStoreLocationInfo } from '@/utils/deliveryUt
 import { useAuth } from '@/context/AuthContext';
 import OfferCountdown from '@/components/common/OfferCountdown';
 import QuickAddressModal from './QuickAddressModal';
+import TempCepInput from './TempCepInput';
+import { useTempCep } from '@/hooks/useTempCep';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ProductInfoProps {
@@ -21,6 +23,7 @@ interface ProductInfoProps {
 
 const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) => {
   const { profile, isAuthenticated, refreshProfile } = useAuth();
+  const { tempCep, isLoading: tempCepLoading, setIsLoading: setTempCepLoading, setTemporaryCep } = useTempCep();
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [deliveryInfo, setDeliveryInfo] = useState<{
     isLocal: boolean;
@@ -135,132 +138,132 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
     return null;
   };
 
-  // Enhanced delivery calculation with better error handling and robust fallbacks
-  useEffect(() => {
-    const calculateDeliveryInfo = async () => {
-      const startTime = Date.now();
-      const timestamp = new Date().toISOString();
-      console.log(`[${timestamp}] [ProductInfo] Starting delivery calculation for product:`, produto.id);
-      console.log(`[${timestamp}] [ProductInfo] Product vendor ID:`, produto.vendedor_id);
+  // Enhanced delivery calculation with temp CEP support
+  const calculateDeliveryInfo = async (forceRecalculate = false) => {
+    const startTime = Date.now();
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] [ProductInfo] Starting delivery calculation for product:`, produto.id);
+    console.log(`[${timestamp}] [ProductInfo] Product vendor ID:`, produto.vendedor_id);
+    
+    try {
+      setDeliveryInfo(prev => ({ ...prev, loading: true }));
+
+      // Get user's main address
+      console.log(`[${timestamp}] [ProductInfo] Getting user main address...`);
+      const addressPromise = getUserMainAddress();
+      const userMainAddress = await Promise.race([
+        addressPromise,
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Address lookup timeout')), 5000)
+        )
+      ]) as any;
+
+      const addressTime = Date.now() - startTime;
+      console.log(`[${timestamp}] [ProductInfo] User main address result (${addressTime}ms):`, userMainAddress);
+
+      // Get store location info
+      console.log(`[${timestamp}] [ProductInfo] Getting store location info...`);
+      const storePromise = getStoreLocationInfo(produto.stores?.id, produto.vendedor_id);
+      const storeLocationInfo = await Promise.race([
+        storePromise,
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Store info timeout')), 5000)
+        )
+      ]) as any;
+
+      const storeTime = Date.now() - startTime;
+      console.log(`[${timestamp}] [ProductInfo] Store location info (${storeTime}ms):`, storeLocationInfo);
+
+      // Determine which CEP to use (priority: temp > user registered > none)
+      const customerCep = tempCep || userMainAddress?.cep;
+      console.log(`[${timestamp}] [ProductInfo] Customer CEP (temp: ${tempCep}, user: ${userMainAddress?.cep}, final: ${customerCep})`);
+
+      // Use the enhanced delivery calculation
+      console.log(`[${timestamp}] [ProductInfo] Calling getProductDeliveryInfo with:`, {
+        vendorId: produto.vendedor_id,
+        productId: produto.id,
+        customerCep,
+        storeCep: storeLocationInfo?.cep,
+        storeIbge: storeLocationInfo?.ibge
+      });
       
-      try {
-        setDeliveryInfo(prev => ({ ...prev, loading: true }));
+      const deliveryPromise = getProductDeliveryInfo(
+        produto.vendedor_id,
+        produto.id,
+        customerCep,
+        storeLocationInfo?.cep,
+        storeLocationInfo?.ibge
+      );
+      
+      const info = await Promise.race([
+        deliveryPromise,
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Delivery calculation timeout')), 8000)
+        )
+      ]) as any;
+      
+      const totalTime = Date.now() - startTime;
+      console.log(`[${timestamp}] [ProductInfo] Delivery calculation result (${totalTime}ms):`, info);
 
-        // Get user's main address with enhanced timeout
-        console.log(`[${timestamp}] [ProductInfo] Getting user main address...`);
-        const addressPromise = getUserMainAddress();
-        const userMainAddress = await Promise.race([
-          addressPromise,
-          new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Address lookup timeout')), 5000)
-          )
-        ]) as any;
+      setDeliveryInfo({
+        isLocal: info.isLocal,
+        message: info.message,
+        estimatedTime: info.estimatedTime,
+        deliveryFee: info.deliveryFee,
+        loading: false
+      });
 
-        const addressTime = Date.now() - startTime;
-        console.log(`[${timestamp}] [ProductInfo] User main address result (${addressTime}ms):`, userMainAddress);
+    } catch (error) {
+      const totalTime = Date.now() - startTime;
+      console.error(`[${timestamp}] [ProductInfo] Error calculating delivery info (${totalTime}ms):`, error);
+      
+      // Enhanced fallback messaging
+      const hasAnyAddress = userMainAddress || tempCep;
+      
+      const fallbackMessage = hasAnyAddress 
+        ? 'Frete calculado no checkout'
+        : 'Consulte o frete informando seu CEP';
+      
+      setDeliveryInfo({
+        isLocal: false,
+        message: fallbackMessage,
+        estimatedTime: hasAnyAddress ? 'Prazo informado após fechamento do pedido' : undefined,
+        loading: false
+      });
+    }
+  };
 
-        // Get store location info with enhanced timeout
-        console.log(`[${timestamp}] [ProductInfo] Getting store location info...`);
-        const storePromise = getStoreLocationInfo(produto.stores?.id, produto.vendedor_id);
-        const storeLocationInfo = await Promise.race([
-          storePromise,
-          new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Store info timeout')), 5000)
-          )
-        ]) as any;
-
-        const storeTime = Date.now() - startTime;
-        console.log(`[${timestamp}] [ProductInfo] Store location info (${storeTime}ms):`, storeLocationInfo);
-
-        // Extract customer CEP
-        const customerCep = userMainAddress?.cep;
-        console.log(`[${timestamp}] [ProductInfo] Customer CEP:`, customerCep);
-
-        if (!customerCep) {
-          console.log(`[${timestamp}] [ProductInfo] No customer CEP available`);
-          setDeliveryInfo({
-            isLocal: false,
-            message: 'Adicione seu endereço para ver informações de entrega',
-            loading: false
-          });
-          return;
-        }
-
-        // Use the enhanced delivery calculation
-        console.log(`[${timestamp}] [ProductInfo] Calling getProductDeliveryInfo with:`, {
-          vendorId: produto.vendedor_id,
-          productId: produto.id,
-          customerCep,
-          storeCep: storeLocationInfo?.cep,
-          storeIbge: storeLocationInfo?.ibge
-        });
-        
-        // Enhanced delivery calculation with timeout
-        const deliveryPromise = getProductDeliveryInfo(
-          produto.vendedor_id,
-          produto.id,
-          customerCep,
-          storeLocationInfo?.cep,
-          storeLocationInfo?.ibge
-        );
-        
-        const info = await Promise.race([
-          deliveryPromise,
-          new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Delivery calculation timeout')), 8000)
-          )
-        ]) as any;
-        
-        const totalTime = Date.now() - startTime;
-        console.log(`[${timestamp}] [ProductInfo] Delivery calculation result (${totalTime}ms):`, info);
-
-        setDeliveryInfo({
-          isLocal: info.isLocal,
-          message: info.message,
-          estimatedTime: info.estimatedTime,
-          deliveryFee: info.deliveryFee,
-          loading: false
-        });
-
-      } catch (error) {
-        const totalTime = Date.now() - startTime;
-        console.error(`[${timestamp}] [ProductInfo] Error calculating delivery info (${totalTime}ms):`, error);
-        
-        // Enhanced fallback with more robust messaging  
-        const userMainAddress = await getUserMainAddress().catch(() => null);
-        
-        const fallbackMessage = userMainAddress 
-          ? 'Frete calculado no checkout'
-          : 'Adicione seu endereço para ver informações de entrega';
-        
-        setDeliveryInfo({
-          isLocal: false,
-          message: fallbackMessage,
-          estimatedTime: userMainAddress ? 'Prazo informado após fechamento do pedido' : undefined,
-          loading: false
-        });
-      }
-    };
-
+  // Calculate delivery info when component mounts or dependencies change
+  useEffect(() => {
     if (produto.vendedor_id) {
       calculateDeliveryInfo();
     } else {
-      // If no vendor ID, set fallback immediately
       setDeliveryInfo({
         isLocal: false,
         message: 'Informações de entrega não disponíveis',
         loading: false
       });
     }
-  }, [produto.vendedor_id, produto.id, profile?.endereco_principal, profile?.id, isAuthenticated]);
+  }, [produto.vendedor_id, produto.id, profile?.endereco_principal, profile?.id, isAuthenticated, tempCep]);
+
+  // Handle temporary CEP submission
+  const handleTempCepSubmit = async (cep: string) => {
+    setTempCepLoading(true);
+    setTemporaryCep(cep);
+    
+    // Wait a bit for the tempCep state to update, then recalculate
+    setTimeout(() => {
+      calculateDeliveryInfo(true);
+      setTempCepLoading(false);
+    }, 100);
+  };
 
   const handleAddressAdded = async () => {
     console.log('[ProductInfo] Address added, refreshing profile...');
     await refreshProfile();
     // Force recalculation after address is added
     setTimeout(() => {
-      const event = new Event('addressUpdated');
-      window.dispatchEvent(event);
+      calculateDeliveryInfo(true);
     }, 1000);
   };
 
@@ -389,7 +392,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
         </div>
       </div>
       
-      {/* Enhanced shipping info with robust error handling */}
+      {/* Enhanced shipping info with temp CEP input */}
       <div className="p-3 bg-gray-50 rounded-md border border-gray-200 mb-4">
         <p className="text-sm text-gray-600 flex items-center mb-2">
           <Clock className="h-4 w-4 mr-2 text-green-600" />
@@ -397,72 +400,92 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
         </p>
         
         <div className="text-sm text-gray-700 ml-6">
-          {deliveryInfo.loading ? (
+          {deliveryInfo.loading || tempCepLoading ? (
             <div className="flex items-center">
               <div className="w-4 h-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent mr-2"></div>
               <span>Calculando frete...</span>
             </div>
-          ) : isAuthenticated ? (
+          ) : (
             <>
-              {profile?.endereco_principal || deliveryInfo.message !== 'Adicione seu endereço para ver informações de entrega' ? (
-                <>
-                  <div className="flex items-center mb-2">
-                    <MapPin className="w-4 h-4 text-blue-500 mr-2" />
-                    <span className="text-xs text-gray-600">
-                      {profile?.endereco_principal ? (
-                        `${profile.endereco_principal.cidade} - ${profile.endereco_principal.estado}${profile.endereco_principal.cep ? ` (CEP: ${profile.endereco_principal.cep})` : ''}`
-                      ) : (
-                        'Endereço carregado'
-                      )}
-                    </span>
-                  </div>
+              {/* Show current address being used */}
+              {(profile?.endereco_principal || tempCep) && (
+                <div className="flex items-center mb-2">
+                  <MapPin className="w-4 h-4 text-blue-500 mr-2" />
+                  <span className="text-xs text-gray-600">
+                    {tempCep ? (
+                      `CEP temporário: ${tempCep.replace(/(\d{5})(\d{3})/, '$1-$2')}`
+                    ) : profile?.endereco_principal ? (
+                      `${profile.endereco_principal.cidade} - ${profile.endereco_principal.estado}${profile.endereco_principal.cep ? ` (CEP: ${profile.endereco_principal.cep})` : ''}`
+                    ) : (
+                      'Endereço carregado'
+                    )}
+                  </span>
+                </div>
+              )}
+              
+              {/* Delivery info */}
+              <div className="flex items-center mb-3">
+                {deliveryInfo.isLocal ? (
+                  <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-gray-500 mr-2" />
+                )}
+                <span>
+                  <strong>{deliveryInfo.message}</strong>
+                  {deliveryInfo.estimatedTime && ` - ${deliveryInfo.estimatedTime}`}
+                </span>
+              </div>
+              
+              {/* Temp CEP input for guests or when user wants to check different CEP */}
+              {(!isAuthenticated || !profile?.endereco_principal) && (
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-500">
+                    {isAuthenticated ? 'Consulte o frete para seu CEP:' : 'Faça login ou consulte o frete:'}
+                  </p>
+                  <TempCepInput 
+                    onCepSubmit={handleTempCepSubmit}
+                    loading={tempCepLoading}
+                  />
+                </div>
+              )}
+              
+              {/* Options for authenticated users */}
+              {isAuthenticated && (
+                <div className="flex gap-2 mt-2">
+                  {!profile?.endereco_principal && (
+                    <Button
+                      onClick={() => setShowAddressModal(true)}
+                      className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+                      size="sm"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Cadastrar Endereço
+                    </Button>
+                  )}
                   
-                  {deliveryInfo.isLocal ? (
-                    <div className="flex items-center">
-                      <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
-                      <span>
-                        <strong>{deliveryInfo.message}</strong>
-                        {deliveryInfo.estimatedTime && ` - ${deliveryInfo.estimatedTime}`}
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center">
-                      <AlertCircle className="w-4 h-4 text-gray-500 mr-2" />
-                      <span>{deliveryInfo.message}</span>
+                  {profile?.endereco_principal && !tempCep && (
+                    <div className="text-xs text-gray-600">
+                      <p>Quer consultar para outro CEP?</p>
+                      <div className="mt-1">
+                        <TempCepInput 
+                          onCepSubmit={handleTempCepSubmit}
+                          loading={tempCepLoading}
+                        />
+                      </div>
                     </div>
                   )}
-                </>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center">
-                    <AlertCircle className="w-4 h-4 text-gray-500 mr-2" />
-                    <span>Adicione seu endereço para ver informações de entrega</span>
-                  </div>
-                  
-                  <Button
-                    onClick={() => setShowAddressModal(true)}
-                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
-                    size="sm"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Cadastrar Endereço
-                  </Button>
+                </div>
+              )}
+              
+              {/* Login suggestion for guests */}
+              {!isAuthenticated && (
+                <div className="text-xs text-blue-600 mt-2">
+                  <Link to="/login" className="underline">
+                    Faça login para salvar seu endereço
+                  </Link>
                 </div>
               )}
             </>
-          ) : (
-            <div className="space-y-3">
-              <div className="flex items-center">
-                <AlertCircle className="w-4 h-4 text-gray-500 mr-2" />
-                <span>Faça login para ver informações de entrega</span>
-              </div>
-              
-              <div className="text-xs text-blue-600">
-                <Link to="/login" className="underline">
-                  Faça login para ver opções de entrega
-                </Link>
-              </div>
-            </div>
           )}
         </div>
       </div>
