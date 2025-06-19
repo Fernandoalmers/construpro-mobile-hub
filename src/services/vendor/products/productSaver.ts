@@ -14,7 +14,7 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
     
     if (!user) {
       console.error('[productSaver] No authenticated user found');
-      return null;
+      throw new Error('Usuário não autenticado');
     }
     
     // Get the vendor profile
@@ -26,11 +26,16 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
     
     if (vendorError || !vendor) {
       console.error('[productSaver] Error getting vendor ID:', vendorError);
-      return null;
+      throw new Error('Perfil de vendedor não encontrado');
     }
     
     const isUpdate = !!productData.id;
     console.log(`[productSaver] ${isUpdate ? 'Updating' : 'Creating'} product for vendor ID:`, vendor.id);
+    
+    // Validate required fields
+    if (!productData.nome || !productData.categoria) {
+      throw new Error('Nome e categoria são obrigatórios');
+    }
     
     // Ensure categoria is not undefined before saving
     if (!productData.categoria) {
@@ -52,27 +57,61 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
       console.log('[productSaver] Filtered valid images:', imagensArray);
     }
     
-    // Validate SKU and barcode uniqueness
+    // Validate SKU and barcode uniqueness (only if updating, exclude current product)
     await validateProductUniqueness(productData);
     
-    // Process promotion dates
+    // Process promotion dates with better validation
     let promocaoInicio = null;
     let promocaoFim = null;
     
-    if (productData.promocao_ativa && productData.promocao_inicio && productData.promocao_fim) {
-      promocaoInicio = new Date(productData.promocao_inicio).toISOString();
-      promocaoFim = new Date(productData.promocao_fim).toISOString();
-      
-      console.log('[productSaver] Processing promotion dates:', {
-        inicio: promocaoInicio,
-        fim: promocaoFim,
-        ativa: productData.promocao_ativa
+    if (productData.promocao_ativa) {
+      console.log('[productSaver] Processing promotion data:', {
+        ativa: productData.promocao_ativa,
+        inicio: productData.promocao_inicio,
+        fim: productData.promocao_fim,
+        preco_promocional: productData.preco_promocional
       });
+      
+      // Validate promotion fields
+      if (!productData.preco_promocional || productData.preco_promocional <= 0) {
+        throw new Error('Preço promocional deve ser maior que zero');
+      }
+      
+      if (productData.preco_promocional >= productData.preco_normal) {
+        throw new Error('Preço promocional deve ser menor que o preço normal');
+      }
+      
+      if (!productData.promocao_inicio || !productData.promocao_fim) {
+        throw new Error('Datas de início e fim da promoção são obrigatórias');
+      }
+      
+      try {
+        promocaoInicio = new Date(productData.promocao_inicio).toISOString();
+        promocaoFim = new Date(productData.promocao_fim).toISOString();
+        
+        // Validate date logic
+        if (new Date(promocaoInicio) >= new Date(promocaoFim)) {
+          throw new Error('Data de fim deve ser posterior à data de início');
+        }
+        
+        console.log('[productSaver] Processed promotion dates:', {
+          inicio: promocaoInicio,
+          fim: promocaoFim
+        });
+      } catch (dateError) {
+        console.error('[productSaver] Error processing promotion dates:', dateError);
+        throw new Error('Formato de data inválido para promoção');
+      }
     }
     
-    // Prepare data for insert/update
+    // Prepare data for insert/update with proper field mapping
     const dbData = {
-      ...productData,
+      nome: productData.nome.trim(),
+      descricao: productData.descricao?.trim() || '',
+      categoria: productData.categoria,
+      segmento: productData.segmento || '',
+      preco_normal: productData.preco_normal,
+      estoque: productData.estoque || 0,
       vendedor_id: vendor.id,
       // When updating, set status to 'pendente' to require re-approval
       status: isUpdate ? 'pendente' as const : 'pendente' as const,
@@ -84,8 +123,14 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
       codigo_barras: productData.codigo_barras?.trim() || null,
       // Process promotion fields
       promocao_ativa: productData.promocao_ativa || false,
+      preco_promocional: productData.promocao_ativa ? productData.preco_promocional : null,
       promocao_inicio: promocaoInicio,
       promocao_fim: promocaoFim,
+      // Points mapping
+      pontos_consumidor: productData.pontos_consumidor || 0,
+      pontos_profissional: productData.pontos_profissional || 0,
+      // Segment mapping
+      segmento_id: productData.segmento_id || null
     };
     
     console.log('[productSaver] Database data to save:', {
@@ -96,7 +141,7 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
     
     // Remove id when creating a new product
     if (!isUpdate) {
-      delete dbData.id;
+      delete (dbData as any).id;
     }
     
     // Insert new or update existing product
@@ -121,8 +166,9 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
     const { data, error } = result;
     
     if (error) {
-      console.error('[productSaver] Error saving product:', error);
-      // Handle specific database errors
+      console.error('[productSaver] Database error:', error);
+      
+      // Handle specific database errors with user-friendly messages
       if (error.code === '23505') {
         if (error.message.includes('sku')) {
           throw new Error('SKU já existe no sistema. Escolha um SKU único.');
@@ -130,8 +176,23 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
         if (error.message.includes('codigo_barras')) {
           throw new Error('Código de barras já existe no sistema. Escolha um código único.');
         }
+        throw new Error('Dados duplicados encontrados. Verifique SKU e código de barras.');
       }
-      throw error;
+      
+      if (error.code === '23503') {
+        throw new Error('Erro de referência: verifique se categoria e segmento existem.');
+      }
+      
+      if (error.code === '23514') {
+        throw new Error('Dados inválidos: verifique preços e quantidades.');
+      }
+      
+      // Generic database error
+      throw new Error(`Erro no banco de dados: ${error.message}`);
+    }
+    
+    if (!data) {
+      throw new Error('Nenhum dado retornado após salvamento');
     }
     
     console.log(`[productSaver] Product ${isUpdate ? 'updated' : 'created'} successfully:`, data);

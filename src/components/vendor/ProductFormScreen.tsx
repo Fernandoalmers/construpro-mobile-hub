@@ -90,12 +90,45 @@ const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
   });
 
   const onSave = async () => {
+    console.log('[ProductFormScreen] Starting save with form data:', formData);
+    
+    // Enhanced validation with better error messages
     const validationError = validateForm(formData, existingImages, imageFiles);
     if (validationError) {
+      console.error('[ProductFormScreen] Validation error:', validationError);
       toast.error(validationError);
       return;
     }
 
+    // Additional promotion validation
+    if (formData.promocaoAtiva) {
+      if (!formData.precoPromocional || formData.precoPromocional <= 0) {
+        toast.error('Preço promocional deve ser maior que zero');
+        return;
+      }
+      
+      if (formData.precoPromocional >= formData.preco) {
+        toast.error('Preço promocional deve ser menor que o preço normal');
+        return;
+      }
+      
+      if (!formData.promocaoInicio || !formData.promocaoFim) {
+        toast.error('Datas de promoção são obrigatórias');
+        return;
+      }
+      
+      const startDate = new Date(formData.promocaoInicio);
+      const endDate = new Date(formData.promocaoFim);
+      
+      if (startDate >= endDate) {
+        toast.error('Data de fim deve ser posterior à data de início');
+        return;
+      }
+      
+      console.log('[ProductFormScreen] Promotion validation passed');
+    }
+
+    console.log('[ProductFormScreen] Validation passed, proceeding with save');
     await handleSave(formData);
   };
 

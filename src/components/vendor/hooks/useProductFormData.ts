@@ -46,10 +46,22 @@ export const useProductFormData = (initialData?: any) => {
   const [currentSegmentId, setCurrentSegmentId] = useState<string | null>(null);
 
   const handleInputChange = useCallback((field: string, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    console.log('[useProductFormData] Input change:', { field, value });
+    
+    setFormData(prev => {
+      const newData = { ...prev, [field]: value };
+      
+      // Clear promotional data when promotion is deactivated
+      if (field === 'promocaoAtiva' && !value) {
+        newData.precoPromocional = null;
+        newData.promocaoInicio = '';
+        newData.promocaoFim = '';
+        console.log('[useProductFormData] Cleared promotional data');
+      }
+      
+      console.log('[useProductFormData] Updated form data:', newData);
+      return newData;
+    });
   }, []);
 
   const handleSegmentIdChange = useCallback((segmentId: string) => {
@@ -65,6 +77,30 @@ export const useProductFormData = (initialData?: any) => {
   }, [handleInputChange]);
 
   const initializeFormData = useCallback((data: any, processedImages: string[] = []) => {
+    console.log('[useProductFormData] Initializing with data:', data);
+    
+    // Process promotion dates - handle both ISO strings and Date objects
+    let promocaoInicio = '';
+    let promocaoFim = '';
+    
+    if (data.promocao_inicio) {
+      try {
+        const startDate = new Date(data.promocao_inicio);
+        promocaoInicio = startDate.toISOString().slice(0, 16);
+      } catch (error) {
+        console.warn('[useProductFormData] Error parsing promocao_inicio:', error);
+      }
+    }
+    
+    if (data.promocao_fim) {
+      try {
+        const endDate = new Date(data.promocao_fim);
+        promocaoFim = endDate.toISOString().slice(0, 16);
+      } catch (error) {
+        console.warn('[useProductFormData] Error parsing promocao_fim:', error);
+      }
+    }
+    
     const initialFormData: ProductFormData = {
       id: data.id || undefined, // Include the product ID for editing
       nome: data.nome || '',
@@ -75,8 +111,8 @@ export const useProductFormData = (initialData?: any) => {
       estoque: data.estoque || 0,
       precoPromocional: data.preco_promocional || null,
       promocaoAtiva: data.promocao_ativa || false,
-      promocaoInicio: data.promocao_inicio ? new Date(data.promocao_inicio).toISOString().slice(0, 16) : '',
-      promocaoFim: data.promocao_fim ? new Date(data.promocao_fim).toISOString().slice(0, 16) : '',
+      promocaoInicio,
+      promocaoFim,
       pontosConsumidor: data.pontos_consumidor || 0,
       pontosProfissional: data.pontos_profissional || 0,
       sku: data.sku || '',
@@ -84,6 +120,7 @@ export const useProductFormData = (initialData?: any) => {
       imagens: processedImages
     };
     
+    console.log('[useProductFormData] Initialized form data:', initialFormData);
     setFormData(initialFormData);
     setCurrentSegmentId(data.segmento_id || null);
   }, []);

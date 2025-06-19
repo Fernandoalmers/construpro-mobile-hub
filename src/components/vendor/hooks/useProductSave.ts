@@ -38,40 +38,66 @@ export const useProductSave = ({
       setLoading(true);
       console.log('[useProductSave] Starting save process:', { isEditing, formData });
 
-      // Validation for promotion
+      // Improved promotion validation - more flexible for editing
       if (formData.promocaoAtiva) {
-        if (!formData.precoPromocional || formData.precoPromocional >= formData.preco) {
+        if (!formData.precoPromocional || formData.precoPromocional <= 0) {
+          toast.error('O preço promocional deve ser maior que zero');
+          return;
+        }
+        
+        if (formData.precoPromocional >= formData.preco) {
           toast.error('O preço promocional deve ser menor que o preço normal');
           return;
         }
+        
         if (!formData.promocaoInicio || !formData.promocaoFim) {
           toast.error('Defina as datas de início e fim da promoção');
           return;
         }
-        if (new Date(formData.promocaoInicio) >= new Date(formData.promocaoFim)) {
+        
+        const startDate = new Date(formData.promocaoInicio);
+        const endDate = new Date(formData.promocaoFim);
+        const now = new Date();
+        
+        if (startDate >= endDate) {
           toast.error('A data de fim deve ser posterior à data de início');
           return;
         }
-        if (new Date(formData.promocaoInicio) <= new Date()) {
-          toast.error('A data de início deve ser futura');
+        
+        // Allow editing of active promotions - only check if it's a new promotion
+        if (!isEditing && startDate <= now) {
+          toast.error('A data de início deve ser futura para novas promoções');
+          return;
+        }
+        
+        // For editing, just ensure the promotion hasn't already ended
+        if (isEditing && endDate <= now) {
+          toast.error('Não é possível editar uma promoção que já terminou');
           return;
         }
       }
 
-      // Prepare product data with existing images and proper field mapping
+      // Prepare product data with correct field mapping (frontend camelCase -> backend snake_case)
       const productData = {
-        ...formData,
-        preco_normal: formData.preco,
+        id: formData.id, // Important: include ID for updates
+        nome: formData.nome,
+        descricao: formData.descricao,
+        categoria: formData.categoria,
+        segmento: formData.segmento,
+        preco_normal: formData.preco, // Map preco -> preco_normal
         preco_promocional: formData.promocaoAtiva ? formData.precoPromocional : null,
         promocao_ativa: formData.promocaoAtiva,
-        promocao_inicio: formData.promocaoAtiva ? formData.promocaoInicio : null,
-        promocao_fim: formData.promocaoAtiva ? formData.promocaoFim : null,
-        pontos_consumidor: formData.pontosConsumidor,
-        pontos_profissional: formData.pontosProfissional,
+        promocao_inicio: formData.promocaoAtiva && formData.promocaoInicio ? formData.promocaoInicio : null,
+        promocao_fim: formData.promocaoAtiva && formData.promocaoFim ? formData.promocaoFim : null,
+        pontos_consumidor: formData.pontosConsumidor, // Map pontosConsumidor -> pontos_consumidor
+        pontos_profissional: formData.pontosProfissional, // Map pontosProfissional -> pontos_profissional
+        sku: formData.sku,
+        codigo_barras: formData.codigoBarras, // Map codigoBarras -> codigo_barras
+        estoque: formData.estoque,
         imagens: [...existingImages] // Start with existing images
       };
 
-      console.log('[useProductSave] Initial product data:', productData);
+      console.log('[useProductSave] Mapped product data for save:', productData);
 
       // Save the product first - função detecta automaticamente se é update pelo id
       const savedProduct = await saveVendorProduct(productData);
@@ -126,11 +152,17 @@ export const useProductSave = ({
         }
       }
 
-      // Update form state
+      // Update form state with saved data (map back from snake_case to camelCase)
       setFormData(prev => ({
         ...prev,
         id: savedProduct.id,
-        imagens: allImageUrls
+        imagens: allImageUrls,
+        // Update with actual saved values to ensure consistency
+        preco: savedProduct.preco_normal || prev.preco,
+        precoPromocional: savedProduct.preco_promocional,
+        promocaoAtiva: savedProduct.promocao_ativa || false,
+        pontosConsumidor: savedProduct.pontos_consumidor || prev.pontosConsumidor,
+        pontosProfissional: savedProduct.pontos_profissional || prev.pontosProfissional
       }));
 
       // Update image states
@@ -141,7 +173,7 @@ export const useProductSave = ({
       console.log('[useProductSave] Save completed successfully');
       
       const successMessage = formData.promocaoAtiva 
-        ? 'Produto salvo com promoção ativa!' 
+        ? (isEditing ? 'Produto e promoção atualizados com sucesso!' : 'Produto salvo com promoção ativa!') 
         : (isEditing ? 'Produto atualizado com sucesso!' : 'Produto criado com sucesso!');
       
       toast.success(successMessage);
@@ -149,7 +181,26 @@ export const useProductSave = ({
 
     } catch (error) {
       console.error('[useProductSave] Error saving product:', error);
-      toast.error('Erro ao salvar produto: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
+      
+      // Improved error handling with specific messages
+      let errorMessage = 'Erro desconhecido';
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error && typeof error === 'object') {
+        // Handle Supabase errors
+        const supabaseError = error as any;
+        if (supabaseError.message) {
+          errorMessage = supabaseError.message;
+        } else if (supabaseError.error_description) {
+          errorMessage = supabaseError.error_description;
+        }
+      }
+      
+      console.error('[useProductSave] Processed error message:', errorMessage);
+      toast.error('Erro ao salvar produto: ' + errorMessage);
     } finally {
       setLoading(false);
       setUploadingImages(false);
