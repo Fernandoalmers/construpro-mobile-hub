@@ -28,20 +28,26 @@ export async function getProductDeliveryInfo(
   storeIbge?: string,
   customerIbge?: string
 ): Promise<ProductDeliveryInfo> {
-  console.log('[getProductDeliveryInfo] Checking delivery for product:', {
+  console.log('[getProductDeliveryInfo] Starting delivery check for product:', {
     vendorId,
     productId,
-    customerCep
+    customerCep,
+    storeCep,
+    storeIbge,
+    customerIbge
   });
 
   // Check for product-specific restrictions first
   if (customerCep && vendorId && productId) {
     try {
+      console.log('[getProductDeliveryInfo] Checking product restrictions...');
       const restrictionCheck = await checkProductDeliveryRestriction(
         vendorId,
         productId,
         customerCep
       );
+
+      console.log('[getProductDeliveryInfo] Restriction check result:', restrictionCheck);
 
       if (restrictionCheck.has_restriction) {
         console.log('[getProductDeliveryInfo] Product restriction found:', restrictionCheck);
@@ -62,6 +68,7 @@ export async function getProductDeliveryInfo(
   }
 
   // If no restrictions, check vendor delivery zones
+  console.log('[getProductDeliveryInfo] No restrictions found, checking vendor delivery zones...');
   const deliveryInfo = await getVendorDeliveryInfo(vendorId, customerCep, storeCep, storeIbge, customerIbge);
   
   return {
@@ -85,10 +92,14 @@ export async function getVendorDeliveryInfo(
 ): Promise<DeliveryInfo> {
   console.log('[getVendorDeliveryInfo] Checking vendor zones for:', {
     vendorId,
-    customerCep
+    customerCep,
+    storeCep,
+    storeIbge,
+    customerIbge
   });
 
   if (!customerCep) {
+    console.log('[getVendorDeliveryInfo] No customer CEP provided');
     return {
       isLocal: false,
       message: 'Frete a combinar (informado após o fechamento do pedido)',
@@ -96,14 +107,18 @@ export async function getVendorDeliveryInfo(
   }
 
   const cleanCustomerCep = customerCep.replace(/\D/g, '');
+  console.log('[getVendorDeliveryInfo] Clean customer CEP:', cleanCustomerCep);
 
   try {
     // Buscar zonas de entrega configuradas pelo vendedor
+    console.log('[getVendorDeliveryInfo] Fetching vendor delivery zones...');
     const { data: deliveryZones, error } = await supabase
       .from('vendor_delivery_zones')
       .select('*')
       .eq('vendor_id', vendorId)
       .eq('active', true);
+
+    console.log('[getVendorDeliveryInfo] Delivery zones query result:', { deliveryZones, error });
 
     if (error) {
       console.error('[getVendorDeliveryInfo] Error fetching zones:', error);
@@ -115,9 +130,14 @@ export async function getVendorDeliveryInfo(
       return fallbackDeliveryInfo(storeCep, storeIbge, customerCep, customerIbge);
     }
 
+    console.log('[getVendorDeliveryInfo] Found', deliveryZones.length, 'delivery zones');
+
     // Verificar cada zona configurada
     for (const zone of deliveryZones) {
+      console.log('[getVendorDeliveryInfo] Checking zone:', zone.zone_name, zone);
       const isInZone = await checkCepInZone(cleanCustomerCep, zone.zone_type, zone.zone_value);
+      
+      console.log('[getVendorDeliveryInfo] Is customer in zone', zone.zone_name, '?', isInZone);
       
       if (isInZone) {
         console.log('[getVendorDeliveryInfo] Customer in configured zone:', zone.zone_name);
@@ -148,25 +168,38 @@ export async function getVendorDeliveryInfo(
  * Verifica se um CEP está dentro de uma zona configurada
  */
 async function checkCepInZone(customerCep: string, zoneType: string, zoneValue: string): Promise<boolean> {
+  console.log('[checkCepInZone] Checking if CEP', customerCep, 'is in zone type', zoneType, 'with value', zoneValue);
+  
   switch (zoneType) {
     case 'cep_specific':
-      return customerCep === zoneValue.replace(/\D/g, '');
+      const result = customerCep === zoneValue.replace(/\D/g, '');
+      console.log('[checkCepInZone] CEP specific check:', result);
+      return result;
     
     case 'cep_range':
       const [startCep, endCep] = zoneValue.split('-').map(cep => cep.replace(/\D/g, ''));
       const customerCepNum = parseInt(customerCep);
       const startCepNum = parseInt(startCep);
       const endCepNum = parseInt(endCep);
-      return customerCepNum >= startCepNum && customerCepNum <= endCepNum;
+      const rangeResult = customerCepNum >= startCepNum && customerCepNum <= endCepNum;
+      console.log('[checkCepInZone] CEP range check:', {
+        customerCepNum,
+        startCepNum,
+        endCepNum,
+        result: rangeResult
+      });
+      return rangeResult;
     
     case 'ibge':
       try {
-        const { data: cepData } = await supabase
+        console.log('[checkCepInZone] Checking IBGE for CEP:', customerCep);
+        const { data: cepData, error } = await supabase
           .from('zip_cache')
           .select('ibge')
           .eq('cep', customerCep)
           .single();
         
+        console.log('[checkCepInZone] IBGE check result:', { cepData, error });
         return cepData?.ibge === zoneValue;
       } catch (error) {
         console.error('[checkCepInZone] Error checking IBGE:', error);
@@ -175,12 +208,14 @@ async function checkCepInZone(customerCep: string, zoneType: string, zoneValue: 
     
     case 'cidade':
       try {
-        const { data: cepData } = await supabase
+        console.log('[checkCepInZone] Checking city for CEP:', customerCep);
+        const { data: cepData, error } = await supabase
           .from('zip_cache')
           .select('localidade')
           .eq('cep', customerCep)
           .single();
         
+        console.log('[checkCepInZone] City check result:', { cepData, error });
         return cepData?.localidade?.toLowerCase() === zoneValue.toLowerCase();
       } catch (error) {
         console.error('[checkCepInZone] Error checking city:', error);
@@ -188,6 +223,7 @@ async function checkCepInZone(customerCep: string, zoneType: string, zoneValue: 
       }
     
     default:
+      console.log('[checkCepInZone] Unknown zone type:', zoneType);
       return false;
   }
 }
@@ -201,8 +237,16 @@ async function fallbackDeliveryInfo(
   customerCep?: string,
   customerIbge?: string
 ): Promise<DeliveryInfo> {
+  console.log('[fallbackDeliveryInfo] Using fallback logic with:', {
+    storeCep,
+    storeIbge,
+    customerCep,
+    customerIbge
+  });
+
   // Se não temos informações suficientes, retorna padrão
   if (!storeCep && !storeIbge) {
+    console.log('[fallbackDeliveryInfo] Insufficient store info, returning default');
     return {
       isLocal: false,
       message: 'Frete a combinar (informado após o fechamento do pedido)',
@@ -212,6 +256,11 @@ async function fallbackDeliveryInfo(
   // Se temos IBGE de ambos, comparar diretamente
   if (storeIbge && customerIbge) {
     const isLocal = storeIbge === customerIbge;
+    console.log('[fallbackDeliveryInfo] Comparing IBGE codes:', {
+      storeIbge,
+      customerIbge,
+      isLocal
+    });
     
     if (isLocal) {
       return {
@@ -230,6 +279,7 @@ async function fallbackDeliveryInfo(
   // Se temos CEPs, buscar informações de zona de entrega
   if (storeCep && customerCep) {
     try {
+      console.log('[fallbackDeliveryInfo] Looking up IBGE codes for CEPs');
       const { data: storeZone } = await supabase
         .from('zip_cache')
         .select('ibge')
@@ -242,8 +292,14 @@ async function fallbackDeliveryInfo(
         .eq('cep', customerCep.replace(/\D/g, ''))
         .single();
 
+      console.log('[fallbackDeliveryInfo] IBGE lookup results:', {
+        storeZone,
+        customerZone
+      });
+
       if (storeZone?.ibge && customerZone?.ibge) {
         const isLocal = storeZone.ibge === customerZone.ibge;
+        console.log('[fallbackDeliveryInfo] IBGE comparison result:', isLocal);
         
         if (isLocal) {
           return {
@@ -254,11 +310,12 @@ async function fallbackDeliveryInfo(
         }
       }
     } catch (error) {
-      console.error('Erro ao buscar informações de zona:', error);
+      console.error('[fallbackDeliveryInfo] Erro ao buscar informações de zona:', error);
     }
   }
 
   // Default: frete a combinar
+  console.log('[fallbackDeliveryInfo] Using default frete a combinar');
   return {
     isLocal: false,
     message: 'Frete a combinar (informado após o fechamento do pedido)',
@@ -283,18 +340,24 @@ export async function getDeliveryInfo(
  * Busca informações da loja do vendedor com fallback melhorado
  */
 export async function getStoreLocationInfo(storeId?: string, vendorId?: string) {
+  console.log('[getStoreLocationInfo] Looking up store location for:', { storeId, vendorId });
+  
   try {
     // Tentar buscar pela loja primeiro
     if (storeId) {
-      const { data } = await supabase
+      console.log('[getStoreLocationInfo] Trying to fetch store by ID:', storeId);
+      const { data, error } = await supabase
         .from('stores')
         .select('endereco')
         .eq('id', storeId)
         .single();
       
+      console.log('[getStoreLocationInfo] Store query result:', { data, error });
+      
       if (data?.endereco) {
         // Tratar endereco como objeto JSON
         const endereco = data.endereco as any;
+        console.log('[getStoreLocationInfo] Found store address:', endereco);
         return {
           cep: endereco?.cep,
           ibge: endereco?.ibge,
@@ -304,36 +367,44 @@ export async function getStoreLocationInfo(storeId?: string, vendorId?: string) 
 
     // Se não encontrou pela loja, buscar pelo vendedor
     if (vendorId) {
-      const { data } = await supabase
+      console.log('[getStoreLocationInfo] Trying to fetch vendor by ID:', vendorId);
+      const { data, error } = await supabase
         .from('vendedores')
         .select('endereco_cep, zona_entrega')
         .eq('id', vendorId)
         .single();
 
+      console.log('[getStoreLocationInfo] Vendor query result:', { data, error });
+
       if (data) {
         // Buscar IBGE do CEP se disponível
         let ibge = null;
         if (data.endereco_cep) {
-          const { data: cepData } = await supabase
+          console.log('[getStoreLocationInfo] Looking up IBGE for vendor CEP:', data.endereco_cep);
+          const { data: cepData, error: cepError } = await supabase
             .from('zip_cache')
             .select('ibge')
             .eq('cep', data.endereco_cep)
             .single();
           
+          console.log('[getStoreLocationInfo] CEP lookup result:', { cepData, cepError });
           ibge = cepData?.ibge;
         }
 
-        return {
+        const result = {
           cep: data.endereco_cep,
           ibge: ibge,
           zona: data.zona_entrega,
         };
+        console.log('[getStoreLocationInfo] Returning vendor info:', result);
+        return result;
       }
     }
 
+    console.log('[getStoreLocationInfo] No store or vendor info found');
     return null;
   } catch (error) {
-    console.error('Erro ao buscar informações da loja:', error);
+    console.error('[getStoreLocationInfo] Erro ao buscar informações da loja:', error);
     return null;
   }
 }

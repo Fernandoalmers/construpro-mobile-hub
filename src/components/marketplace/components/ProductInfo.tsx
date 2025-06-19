@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Star, Clock, AlertCircle, CheckCircle, MapPin, Plus } from 'lucide-react';
@@ -26,9 +27,11 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
     message: string;
     estimatedTime?: string;
     deliveryFee?: number;
+    loading: boolean;
   }>({
     isLocal: false,
-    message: 'Frete a combinar (informado após o fechamento do pedido)',
+    message: 'Calculando informações de entrega...',
+    loading: true
   });
 
   // Use promotion utils for consistent promotion handling
@@ -50,12 +53,20 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
   // Calculate delivery info based on vendor delivery zones and customer location
   useEffect(() => {
     const calculateDeliveryInfo = async () => {
+      console.log('[ProductInfo] Starting delivery calculation for product:', produto.id);
+      console.log('[ProductInfo] User profile:', profile);
+      console.log('[ProductInfo] Product vendor ID:', produto.vendedor_id);
+      
       try {
+        setDeliveryInfo(prev => ({ ...prev, loading: true }));
+
         // Get store location info
+        console.log('[ProductInfo] Getting store location info...');
         const storeLocationInfo = await getStoreLocationInfo(
           produto.stores?.id, 
           produto.vendedor_id
         );
+        console.log('[ProductInfo] Store location info:', storeLocationInfo);
 
         // Get customer location info (from profile's main address)
         let customerCep = null;
@@ -63,10 +74,21 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
         
         if (profile?.endereco_principal) {
           customerCep = profile.endereco_principal.cep;
+          console.log('[ProductInfo] Customer CEP from profile:', customerCep);
           // Note: We would need to lookup IBGE from CEP if not stored
+        } else {
+          console.log('[ProductInfo] No endereco_principal found in profile');
         }
 
         // Use the corrected delivery calculation that considers vendor zones
+        console.log('[ProductInfo] Calling getProductDeliveryInfo with:', {
+          vendorId: produto.vendedor_id,
+          productId: produto.id,
+          customerCep,
+          storeCep: storeLocationInfo?.cep,
+          storeIbge: storeLocationInfo?.ibge
+        });
+        
         const info = await getProductDeliveryInfo(
           produto.vendedor_id,
           produto.id,
@@ -75,16 +97,23 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
           storeLocationInfo?.ibge,
           customerIbge
         );
+        
+        console.log('[ProductInfo] Delivery calculation result:', info);
 
         setDeliveryInfo({
           isLocal: info.isLocal,
           message: info.message,
           estimatedTime: info.estimatedTime,
-          deliveryFee: info.deliveryFee
+          deliveryFee: info.deliveryFee,
+          loading: false
         });
       } catch (error) {
-        console.error('Erro ao calcular informações de entrega:', error);
-        // Keep default delivery info on error
+        console.error('[ProductInfo] Erro ao calcular informações de entrega:', error);
+        setDeliveryInfo({
+          isLocal: false,
+          message: 'Frete a combinar (informado após o fechamento do pedido)',
+          loading: false
+        });
       }
     };
 
@@ -94,6 +123,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
   }, [produto.vendedor_id, produto.id, profile?.endereco_principal]);
 
   const handleAddressAdded = () => {
+    console.log('[ProductInfo] Address added, refreshing profile...');
     refreshProfile();
   };
 
@@ -165,7 +195,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
         </span>
       </div>
       
-      {/* Price section - UPDATED FOR UNIVERSAL PROMOTION DISPLAY */}
+      {/* Price section */}
       <div className="mb-4">
         {/* Promotion badges and countdown */}
         {promotionInfo.hasActivePromotion && (
@@ -222,7 +252,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
         </div>
       </div>
       
-      {/* Shipping info - UPDATED WITH CORRECTED DELIVERY SYSTEM */}
+      {/* Shipping info - ENHANCED WITH BETTER DEBUG AND ERROR HANDLING */}
       <div className="p-3 bg-gray-50 rounded-md border border-gray-200 mb-4">
         <p className="text-sm text-gray-600 flex items-center mb-2">
           <Clock className="h-4 w-4 mr-2 text-green-600" />
@@ -236,10 +266,16 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
                 <MapPin className="w-4 h-4 text-blue-500 mr-2" />
                 <span className="text-xs text-gray-600">
                   {profile.endereco_principal.cidade} - {profile.endereco_principal.estado}
+                  {profile.endereco_principal.cep && ` (CEP: ${profile.endereco_principal.cep})`}
                 </span>
               </div>
               
-              {deliveryInfo.isLocal ? (
+              {deliveryInfo.loading ? (
+                <div className="flex items-center">
+                  <div className="w-4 h-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent mr-2"></div>
+                  <span>Calculando frete...</span>
+                </div>
+              ) : deliveryInfo.isLocal ? (
                 <div className="flex items-center">
                   <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
                   <span>
