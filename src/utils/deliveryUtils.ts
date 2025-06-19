@@ -37,34 +37,45 @@ export async function getProductDeliveryInfo(
     customerIbge
   });
 
+  // Early return if no customer CEP
+  if (!customerCep) {
+    console.log('[getProductDeliveryInfo] No customer CEP provided');
+    return {
+      productId,
+      vendorId,
+      isLocal: false,
+      message: 'Endereço não encontrado',
+      hasRestrictions: false,
+      deliveryAvailable: false
+    };
+  }
+
   // Check for product-specific restrictions first
-  if (customerCep && vendorId && productId) {
-    try {
-      console.log('[getProductDeliveryInfo] Checking product restrictions...');
-      const restrictionCheck = await checkProductDeliveryRestriction(
-        vendorId,
+  try {
+    console.log('[getProductDeliveryInfo] Checking product restrictions...');
+    const restrictionCheck = await checkProductDeliveryRestriction(
+      vendorId,
+      productId,
+      customerCep
+    );
+
+    console.log('[getProductDeliveryInfo] Restriction check result:', restrictionCheck);
+
+    if (restrictionCheck.has_restriction) {
+      console.log('[getProductDeliveryInfo] Product restriction found:', restrictionCheck);
+      
+      return {
         productId,
-        customerCep
-      );
-
-      console.log('[getProductDeliveryInfo] Restriction check result:', restrictionCheck);
-
-      if (restrictionCheck.has_restriction) {
-        console.log('[getProductDeliveryInfo] Product restriction found:', restrictionCheck);
-        
-        return {
-          productId,
-          vendorId,
-          isLocal: false,
-          message: restrictionCheck.restriction_message || 'Restrição de entrega para esta região',
-          hasRestrictions: true,
-          restrictionType: restrictionCheck.restriction_type,
-          deliveryAvailable: restrictionCheck.delivery_available
-        };
-      }
-    } catch (error) {
-      console.error('[getProductDeliveryInfo] Error checking restrictions:', error);
+        vendorId,
+        isLocal: false,
+        message: restrictionCheck.restriction_message || 'Restrição de entrega para esta região',
+        hasRestrictions: true,
+        restrictionType: restrictionCheck.restriction_type,
+        deliveryAvailable: restrictionCheck.delivery_available
+      };
     }
+  } catch (error) {
+    console.error('[getProductDeliveryInfo] Error checking restrictions:', error);
   }
 
   // If no restrictions, check vendor delivery zones
@@ -102,7 +113,7 @@ export async function getVendorDeliveryInfo(
     console.log('[getVendorDeliveryInfo] No customer CEP provided');
     return {
       isLocal: false,
-      message: 'Frete a combinar (informado após o fechamento do pedido)',
+      message: 'CEP do cliente não encontrado',
     };
   }
 

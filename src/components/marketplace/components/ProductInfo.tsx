@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Star, Clock, AlertCircle, CheckCircle, MapPin, Plus } from 'lucide-react';
@@ -10,6 +9,7 @@ import { getProductDeliveryInfo, getStoreLocationInfo } from '@/utils/deliveryUt
 import { useAuth } from '@/context/AuthContext';
 import OfferCountdown from '@/components/common/OfferCountdown';
 import QuickAddressModal from './QuickAddressModal';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProductInfoProps {
   produto: Product;
@@ -50,15 +50,92 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
     produto.num_avaliacoes || 0
   , [produto.id, produto.num_avaliacoes]);
 
+  // Function to get user's main address with fallback
+  const getUserMainAddress = async () => {
+    console.log('[ProductInfo] Getting user main address...');
+    console.log('[ProductInfo] Profile endereco_principal:', profile?.endereco_principal);
+    
+    // First try to use profile's main address
+    if (profile?.endereco_principal && profile.endereco_principal.cep) {
+      console.log('[ProductInfo] Using profile endereco_principal:', profile.endereco_principal);
+      return profile.endereco_principal;
+    }
+    
+    // Fallback: get main address directly from user_addresses table
+    if (isAuthenticated) {
+      try {
+        console.log('[ProductInfo] Fallback: fetching from user_addresses table');
+        const { data: mainAddress, error } = await supabase
+          .from('user_addresses')
+          .select('*')
+          .eq('user_id', profile?.id)
+          .eq('principal', true)
+          .single();
+
+        if (error) {
+          console.error('[ProductInfo] Error fetching main address:', error);
+          
+          // If no main address, try to get the first available address
+          const { data: firstAddress, error: firstError } = await supabase
+            .from('user_addresses')
+            .select('*')
+            .eq('user_id', profile?.id)
+            .order('created_at', { ascending: true })
+            .limit(1)
+            .single();
+
+          if (firstError) {
+            console.error('[ProductInfo] Error fetching first address:', firstError);
+            return null;
+          }
+
+          if (firstAddress) {
+            console.log('[ProductInfo] Using first available address:', firstAddress);
+            return {
+              logradouro: firstAddress.logradouro,
+              numero: firstAddress.numero,
+              complemento: firstAddress.complemento,
+              bairro: firstAddress.bairro,
+              cidade: firstAddress.cidade,
+              estado: firstAddress.estado,
+              cep: firstAddress.cep
+            };
+          }
+        }
+
+        if (mainAddress) {
+          console.log('[ProductInfo] Found main address from user_addresses:', mainAddress);
+          return {
+            logradouro: mainAddress.logradouro,
+            numero: mainAddress.numero,
+            complemento: mainAddress.complemento,
+            bairro: mainAddress.bairro,
+            cidade: mainAddress.cidade,
+            estado: mainAddress.estado,
+            cep: mainAddress.cep
+          };
+        }
+      } catch (error) {
+        console.error('[ProductInfo] Exception fetching user address:', error);
+      }
+    }
+    
+    console.log('[ProductInfo] No address found');
+    return null;
+  };
+
   // Calculate delivery info based on vendor delivery zones and customer location
   useEffect(() => {
     const calculateDeliveryInfo = async () => {
       console.log('[ProductInfo] Starting delivery calculation for product:', produto.id);
-      console.log('[ProductInfo] User profile:', profile);
       console.log('[ProductInfo] Product vendor ID:', produto.vendedor_id);
       
       try {
         setDeliveryInfo(prev => ({ ...prev, loading: true }));
+
+        // Get user's main address
+        const userMainAddress = await getUserMainAddress();
+        console.log('[ProductInfo] User main address result:', userMainAddress);
 
         // Get store location info
         console.log('[ProductInfo] Getting store location info...');
@@ -68,16 +145,18 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
         );
         console.log('[ProductInfo] Store location info:', storeLocationInfo);
 
-        // Get customer location info (from profile's main address)
-        let customerCep = null;
-        let customerIbge = null;
-        
-        if (profile?.endereco_principal) {
-          customerCep = profile.endereco_principal.cep;
-          console.log('[ProductInfo] Customer CEP from profile:', customerCep);
-          // Note: We would need to lookup IBGE from CEP if not stored
-        } else {
-          console.log('[ProductInfo] No endereco_principal found in profile');
+        // Extract customer CEP
+        const customerCep = userMainAddress?.cep;
+        console.log('[ProductInfo] Customer CEP:', customerCep);
+
+        if (!customerCep) {
+          console.log('[ProductInfo] No customer CEP available');
+          setDeliveryInfo({
+            isLocal: false,
+            message: 'Adicione seu endereço para ver informações de entrega',
+            loading: false
+          });
+          return;
         }
 
         // Use the corrected delivery calculation that considers vendor zones
@@ -94,8 +173,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
           produto.id,
           customerCep,
           storeLocationInfo?.cep,
-          storeLocationInfo?.ibge,
-          customerIbge
+          storeLocationInfo?.ibge
         );
         
         console.log('[ProductInfo] Delivery calculation result:', info);
@@ -120,11 +198,16 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
     if (produto.vendedor_id) {
       calculateDeliveryInfo();
     }
-  }, [produto.vendedor_id, produto.id, profile?.endereco_principal]);
+  }, [produto.vendedor_id, produto.id, profile?.endereco_principal, profile?.id, isAuthenticated]);
 
-  const handleAddressAdded = () => {
+  const handleAddressAdded = async () => {
     console.log('[ProductInfo] Address added, refreshing profile...');
-    refreshProfile();
+    await refreshProfile();
+    // Force recalculation after address is added
+    setTimeout(() => {
+      const event = new Event('addressUpdated');
+      window.dispatchEvent(event);
+    }, 1000);
   };
 
   // Debug log for promotion display
@@ -260,33 +343,56 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
         </p>
         
         <div className="text-sm text-gray-700 ml-6">
-          {profile?.endereco_principal ? (
+          {deliveryInfo.loading ? (
+            <div className="flex items-center">
+              <div className="w-4 h-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent mr-2"></div>
+              <span>Calculando frete...</span>
+            </div>
+          ) : isAuthenticated ? (
             <>
-              <div className="flex items-center mb-2">
-                <MapPin className="w-4 h-4 text-blue-500 mr-2" />
-                <span className="text-xs text-gray-600">
-                  {profile.endereco_principal.cidade} - {profile.endereco_principal.estado}
-                  {profile.endereco_principal.cep && ` (CEP: ${profile.endereco_principal.cep})`}
-                </span>
-              </div>
-              
-              {deliveryInfo.loading ? (
-                <div className="flex items-center">
-                  <div className="w-4 h-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent mr-2"></div>
-                  <span>Calculando frete...</span>
-                </div>
-              ) : deliveryInfo.isLocal ? (
-                <div className="flex items-center">
-                  <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
-                  <span>
-                    <strong>{deliveryInfo.message}</strong>
-                    {deliveryInfo.estimatedTime && ` - ${deliveryInfo.estimatedTime}`}
-                  </span>
-                </div>
+              {profile?.endereco_principal || deliveryInfo.message !== 'Adicione seu endereço para ver informações de entrega' ? (
+                <>
+                  <div className="flex items-center mb-2">
+                    <MapPin className="w-4 h-4 text-blue-500 mr-2" />
+                    <span className="text-xs text-gray-600">
+                      {profile?.endereco_principal ? (
+                        `${profile.endereco_principal.cidade} - ${profile.endereco_principal.estado}${profile.endereco_principal.cep ? ` (CEP: ${profile.endereco_principal.cep})` : ''}`
+                      ) : (
+                        'Endereço carregado'
+                      )}
+                    </span>
+                  </div>
+                  
+                  {deliveryInfo.isLocal ? (
+                    <div className="flex items-center">
+                      <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
+                      <span>
+                        <strong>{deliveryInfo.message}</strong>
+                        {deliveryInfo.estimatedTime && ` - ${deliveryInfo.estimatedTime}`}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center">
+                      <AlertCircle className="w-4 h-4 text-gray-500 mr-2" />
+                      <span>{deliveryInfo.message}</span>
+                    </div>
+                  )}
+                </>
               ) : (
-                <div className="flex items-center">
-                  <AlertCircle className="w-4 h-4 text-gray-500 mr-2" />
-                  <span>{deliveryInfo.message}</span>
+                <div className="space-y-3">
+                  <div className="flex items-center">
+                    <AlertCircle className="w-4 h-4 text-gray-500 mr-2" />
+                    <span>Adicione seu endereço para ver informações de entrega</span>
+                  </div>
+                  
+                  <Button
+                    onClick={() => setShowAddressModal(true)}
+                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+                    size="sm"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Cadastrar Endereço
+                  </Button>
                 </div>
               )}
             </>
@@ -294,30 +400,20 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
             <div className="space-y-3">
               <div className="flex items-center">
                 <AlertCircle className="w-4 h-4 text-gray-500 mr-2" />
-                <span>Adicione seu endereço para ver informações de entrega</span>
+                <span>Faça login para ver informações de entrega</span>
               </div>
               
-              {isAuthenticated ? (
-                <Button
-                  onClick={() => setShowAddressModal(true)}
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
-                  size="sm"
-                >
-                  <Plus className="w-4 h-4" />
-                  Cadastrar Endereço
-                </Button>
-              ) : (
-                <div className="text-xs text-blue-600">
-                  <Link to="/login" className="underline">
-                    Faça login para adicionar seu endereço
-                  </Link>
-                </div>
-              )}
+              <div className="text-xs text-blue-600">
+                <Link to="/login" className="underline">
+                  Faça login para ver opções de entrega
+                </Link>
+              </div>
             </div>
           )}
         </div>
       </div>
       
+      {/* Unit of measurement note */}
       {produto.unidade_medida && produto.unidade_medida !== 'unidade' && (
         <div className="text-xs bg-yellow-50 p-2 rounded-md border border-yellow-100 mb-4">
           <span className="font-bold">Nota: </span>

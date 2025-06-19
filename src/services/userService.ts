@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface UserProfile {
@@ -87,7 +86,8 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
       endereco_principal: parseEnderecosPrincipal(profile.endereco_principal)
     };
 
-    // Se não há endereco_principal no perfil, buscar da tabela user_addresses como fallback
+    // Enhanced fallback: Se não há endereco_principal no perfil, buscar da tabela user_addresses
+    // e também verificar se há discrepância que precisa ser sincronizada
     if (!parsedProfile.endereco_principal) {
       console.log('[getUserProfile] No endereco_principal found, checking user_addresses');
       
@@ -100,7 +100,7 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
 
       if (!addressError && principalAddress) {
         console.log('[getUserProfile] Found principal address in user_addresses:', principalAddress);
-        parsedProfile.endereco_principal = {
+        const addressData = {
           logradouro: principalAddress.logradouro,
           numero: principalAddress.numero,
           complemento: principalAddress.complemento,
@@ -109,6 +109,38 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
           estado: principalAddress.estado,
           cep: principalAddress.cep
         };
+        
+        parsedProfile.endereco_principal = addressData;
+        
+        // Também atualizar o profile na base de dados para sincronizar
+        try {
+          console.log('[getUserProfile] Syncing endereco_principal to profile');
+          await supabase
+            .from('profiles')
+            .update({
+              endereco_principal: addressData,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', user.id);
+        } catch (syncError) {
+          console.error('[getUserProfile] Error syncing endereco_principal:', syncError);
+        }
+      } else {
+        // Se não tem endereço principal, verificar se há algum endereço disponível
+        console.log('[getUserProfile] No principal address found, checking for any address');
+        const { data: firstAddress, error: firstError } = await supabase
+          .from('user_addresses')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .single();
+
+        if (!firstError && firstAddress) {
+          console.log('[getUserProfile] Found first address, will use as fallback');
+          // Não vamos marcar como principal automaticamente aqui,
+          // mas o ProductInfo poderá usar este endereço como fallback
+        }
       }
     }
     
