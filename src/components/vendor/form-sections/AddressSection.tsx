@@ -56,7 +56,7 @@ const AddressSection: React.FC<AddressSectionProps> = ({ formData, onInputChange
     if (!formData.zona_entrega) return null;
     
     const zoneConfig = {
-      local: { label: 'Zona Local', color: 'bg-green-500', text: 'até 48h' },
+      local: { label: 'Zona Local', color: 'bg-green-500', text: 'entrega em até 48h' },
       regional: { label: 'Zona Regional', color: 'bg-blue-500', text: 'até 7 dias úteis' },
       outras: { label: 'Outras Localidades', color: 'bg-gray-500', text: 'frete a combinar' },
     };
@@ -86,8 +86,8 @@ const AddressSection: React.FC<AddressSectionProps> = ({ formData, onInputChange
             <div className="text-sm text-blue-800">
               <p className="font-medium mb-1">Endereço da sua loja:</p>
               <p className="text-xs">
-                Este endereço será usado para calcular fretes e prazos de entrega automaticamente.
-                O CEP determina se a entrega é local (Capelinha - até 48h) ou outras localidades (frete a combinar).
+                Este endereço será usado para determinar automaticamente se a entrega é local ou se precisa calcular frete.
+                Clientes da mesma cidade terão entrega local (até 48h), demais localidades terão frete a combinar.
               </p>
             </div>
           </div>
@@ -218,7 +218,7 @@ const AddressSection: React.FC<AddressSectionProps> = ({ formData, onInputChange
               {getZoneBadge()}
             </div>
             <p className="text-xs text-gray-600 mt-2">
-              Esta zona será usada automaticamente para calcular fretes e prazos de entrega.
+              Esta informação será usada para determinar automaticamente se a entrega é local para seus clientes.
             </p>
           </div>
         )}

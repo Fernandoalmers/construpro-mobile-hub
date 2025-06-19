@@ -1,10 +1,11 @@
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Star, Clock, AlertCircle } from 'lucide-react';
+import { Star, Clock, AlertCircle, CheckCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Product } from '@/services/productService';
 import { getPromotionInfo } from '@/utils/promotionUtils';
+import { getDeliveryInfo, getStoreLocationInfo } from '@/utils/deliveryUtils';
+import { useAuth } from '@/context/AuthContext';
 import OfferCountdown from '@/components/common/OfferCountdown';
 
 interface ProductInfoProps {
@@ -16,6 +17,16 @@ interface ProductInfoProps {
 }
 
 const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) => {
+  const { profile } = useAuth();
+  const [deliveryInfo, setDeliveryInfo] = useState<{
+    isLocal: boolean;
+    message: string;
+    estimatedTime?: string;
+  }>({
+    isLocal: false,
+    message: 'Frete a combinar (informado após o fechamento do pedido)',
+  });
+
   // Use promotion utils for consistent promotion handling
   const promotionInfo = getPromotionInfo(produto);
   
@@ -31,6 +42,43 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
   const reviewCount = React.useMemo(() => 
     produto.num_avaliacoes || 0
   , [produto.id, produto.num_avaliacoes]);
+
+  // Calculate delivery info based on store and customer location
+  useEffect(() => {
+    const calculateDeliveryInfo = async () => {
+      try {
+        // Get store location info
+        const storeLocationInfo = await getStoreLocationInfo(
+          produto.stores?.id, 
+          produto.vendedor_id
+        );
+
+        // Get customer location info (from profile's main address)
+        let customerCep = null;
+        let customerIbge = null;
+        
+        if (profile?.endereco_principal) {
+          customerCep = profile.endereco_principal.cep;
+          // Note: We would need to lookup IBGE from CEP if not stored
+        }
+
+        // Calculate delivery info
+        const info = await getDeliveryInfo(
+          storeLocationInfo?.cep,
+          storeLocationInfo?.ibge,
+          customerCep,
+          customerIbge
+        );
+
+        setDeliveryInfo(info);
+      } catch (error) {
+        console.error('Erro ao calcular informações de entrega:', error);
+        // Keep default delivery info on error
+      }
+    };
+
+    calculateDeliveryInfo();
+  }, [produto.stores?.id, produto.vendedor_id, profile?.endereco_principal]);
 
   // Debug log for promotion display
   console.log('[ProductInfo] Promotion display for', produto.nome, {
@@ -157,22 +205,35 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
         </div>
       </div>
       
-      {/* Shipping info - UPDATED AS REQUESTED */}
+      {/* Shipping info - UPDATED WITH INTELLIGENT DELIVERY SYSTEM */}
       <div className="p-3 bg-gray-50 rounded-md border border-gray-200 mb-4">
         <p className="text-sm text-gray-600 flex items-center mb-2">
           <Clock className="h-4 w-4 mr-2 text-green-600" />
-          <span className="font-medium">Prazo de entrega</span>
+          <span className="font-medium">Informações de entrega</span>
         </p>
         
-        <div className="text-sm text-gray-700 space-y-1 ml-6">
-          <div className="flex items-center">
-            <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-            <span><strong>Capelinha/MG:</strong> até 48h</span>
-          </div>
-          <div className="flex items-center">
-            <span className="w-2 h-2 bg-gray-500 rounded-full mr-2"></span>
-            <span><strong>Demais localidades:</strong> frete a combinar (informado após o fechamento do pedido)</span>
-          </div>
+        <div className="text-sm text-gray-700 ml-6">
+          {deliveryInfo.isLocal ? (
+            <div className="flex items-center">
+              <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
+              <span>
+                <strong>Entrega local:</strong> {deliveryInfo.estimatedTime}
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center">
+              <AlertCircle className="w-4 h-4 text-gray-500 mr-2" />
+              <span>{deliveryInfo.message}</span>
+            </div>
+          )}
+          
+          {!profile?.endereco_principal && (
+            <div className="mt-2 text-xs text-blue-600">
+              <Link to="/profile/addresses" className="underline">
+                Adicione seu endereço para ver informações de entrega mais precisas
+              </Link>
+            </div>
+          )}
         </div>
       </div>
       
