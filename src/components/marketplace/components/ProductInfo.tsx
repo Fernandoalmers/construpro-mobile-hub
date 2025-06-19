@@ -157,7 +157,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
         </div>
       </div>
       
-      {/* Shipping info */}
+      {/* Shipping info - UPDATED AS REQUESTED */}
       <div className="p-3 bg-gray-50 rounded-md border border-gray-200 mb-4">
         <p className="text-sm text-gray-600 flex items-center mb-2">
           <Clock className="h-4 w-4 mr-2 text-green-600" />
@@ -167,11 +167,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
         <div className="text-sm text-gray-700 space-y-1 ml-6">
           <div className="flex items-center">
             <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-            <span><strong>Capelinha/MG:</strong> até 24h</span>
-          </div>
-          <div className="flex items-center">
-            <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
-            <span><strong>Cidades vizinhas:</strong> até 7 dias úteis</span>
+            <span><strong>Capelinha/MG:</strong> até 48h</span>
           </div>
           <div className="flex items-center">
             <span className="w-2 h-2 bg-gray-500 rounded-full mr-2"></span>
