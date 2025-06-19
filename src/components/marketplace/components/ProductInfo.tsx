@@ -17,7 +17,7 @@ interface ProductInfoProps {
 
 const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) => {
   // Use promotion utils for consistent promotion handling
-  const promotionInfo = getProm"otionInfo(produto);
+  const promotionInfo = getPromotionInfo(produto);
   
   // Get correct prices
   const regularPrice = produto.preco_normal || produto.preco;
