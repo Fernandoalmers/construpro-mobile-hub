@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Routes, Route, Navigate } from "react-router-dom";
@@ -46,7 +47,11 @@ import {
   AjustePontosVendorScreen,
   VendorOrderDetailScreen,
   VendorDeliveryZonesScreen,
-  ProductRestrictionsScreen
+  ProductRestrictionsScreen,
+  VendorStoreConfigScreen,
+  VendorProfileScreen,
+  VendorGeneralSettingsScreen,
+  VendorDeliverySettingsScreen
 } from './routes/RouteImports';
 import ConviteScreen from './components/referral/ConviteScreen';
 import AutoFixCodesPage from './pages/AutoFixCodes';
@@ -182,9 +187,14 @@ const App = () => (
           <Route path="/vendor/customers" element={<ProtectedRoute><ClientesVendorScreen /></ProtectedRoute>} />
           <Route path="/vendor/adjust-points" element={<ProtectedRoute><AjustePontosVendorScreen /></ProtectedRoute>} />
           <Route path="/vendor/settings" element={<ProtectedRoute><ConfiguracoesVendorScreen /></ProtectedRoute>} />
-          <Route path="/vendor/store-config" element={<ProtectedRoute><ConfiguracoesVendorScreen /></ProtectedRoute>} />
           
-          {/* New delivery management routes */}
+          {/* New vendor configuration routes */}
+          <Route path="/vendor/store-config" element={<ProtectedRoute><VendorStoreConfigScreen /></ProtectedRoute>} />
+          <Route path="/vendor/profile" element={<ProtectedRoute><VendorProfileScreen /></ProtectedRoute>} />
+          <Route path="/vendor/general-settings" element={<ProtectedRoute><VendorGeneralSettingsScreen /></ProtectedRoute>} />
+          <Route path="/vendor/delivery-settings" element={<ProtectedRoute><VendorDeliverySettingsScreen /></ProtectedRoute>} />
+          
+          {/* Delivery management routes */}
           <Route path="/vendor/delivery-zones" element={<ProtectedRoute><VendorDeliveryZonesScreen /></ProtectedRoute>} />
           <Route path="/vendor/product-restrictions" element={<ProtectedRoute><ProductRestrictionsScreen /></ProtectedRoute>} />
           

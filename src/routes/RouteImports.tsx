@@ -1,3 +1,4 @@
+
 // Public route components
 export { default as LoginScreen } from '../components/LoginScreen';
 export { default as SignUpScreen } from '../components/SignupScreen';
@@ -51,6 +52,12 @@ export { default as ClientesVendorScreen } from '../components/vendor/ClientesVe
 export { default as ConfiguracoesVendorScreen } from '../components/vendor/ConfiguracoesVendorScreen';
 export { default as AjustePontosVendorScreen } from '../components/vendor/AjustePontosVendorScreen';
 export { default as VendorOrderDetailScreen } from '../components/vendor/VendorOrderDetailScreen';
+
+// New vendor configuration screens
+export { default as VendorStoreConfigScreen } from '../components/vendor/VendorStoreConfigScreen';
+export { default as VendorProfileScreen } from '../components/vendor/VendorProfileScreen';
+export { default as VendorGeneralSettingsScreen } from '../components/vendor/VendorGeneralSettingsScreen';
+export { default as VendorDeliverySettingsScreen } from '../components/vendor/VendorDeliverySettingsScreen';
 
 // Marketplace screens
 export { default as MarketplaceScreenWrapper } from '../components/marketplace/MarketplaceScreenWrapper';
