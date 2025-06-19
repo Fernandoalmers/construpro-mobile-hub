@@ -2,6 +2,7 @@
 import { useState, useCallback } from 'react';
 
 export interface ProductFormData {
+  id?: string; // Added id field for product editing
   nome: string;
   descricao: string;
   categoria: string;
@@ -65,6 +66,7 @@ export const useProductFormData = (initialData?: any) => {
 
   const initializeFormData = useCallback((data: any, processedImages: string[] = []) => {
     const initialFormData: ProductFormData = {
+      id: data.id || undefined, // Include the product ID for editing
       nome: data.nome || '',
       descricao: data.descricao || '',
       categoria: data.categoria || '',
