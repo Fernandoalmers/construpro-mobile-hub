@@ -16,21 +16,25 @@ export const useCepLookup = (): UseCepLookupReturn => {
   const [cepData, setCepData] = useState<CepData | null>(null);
 
   const lookupAddress = useCallback(async (cep: string): Promise<CepData | null> => {
-    if (!cep.trim()) {
-      setError(null);
+    const sanitizedCep = cep.replace(/\D/g, '');
+    
+    if (!sanitizedCep || sanitizedCep.length !== 8) {
+      setError('CEP deve ter 8 dígitos');
       setCepData(null);
       return null;
     }
 
+    console.log('[useCepLookup] Looking up CEP:', sanitizedCep);
     setIsLoading(true);
     setError(null);
 
     try {
-      const data = await lookupCep(cep);
+      const data = await lookupCep(sanitizedCep);
       
       if (data) {
         setCepData(data);
         setError(null);
+        console.log('[useCepLookup] CEP found:', data);
         return data;
       } else {
         setError('CEP não encontrado. Verifique o número digitado.');
@@ -39,7 +43,7 @@ export const useCepLookup = (): UseCepLookupReturn => {
       }
     } catch (err) {
       console.error('[useCepLookup] Error:', err);
-      setError('Erro ao buscar CEP. Tente novamente.');
+      setError('Erro ao buscar CEP. Verifique sua conexão e tente novamente.');
       setCepData(null);
       return null;
     } finally {
@@ -50,6 +54,7 @@ export const useCepLookup = (): UseCepLookupReturn => {
   const clearData = useCallback(() => {
     setCepData(null);
     setError(null);
+    console.log('[useCepLookup] Data cleared');
   }, []);
 
   return {

@@ -24,32 +24,63 @@ interface AddressSectionProps {
 }
 
 const AddressSection: React.FC<AddressSectionProps> = ({ formData, onInputChange }) => {
-  const { isLoading, error, cepData, lookupAddress } = useCepLookup();
-  const [cepInput, setCepInput] = useState(formData.endereco_cep || '');
+  const { isLoading, error, cepData, lookupAddress, clearData } = useCepLookup();
+  const [cepInput, setCepInput] = useState('');
+
+  // Sincronizar cepInput com formData.endereco_cep quando os dados são carregados
+  useEffect(() => {
+    if (formData.endereco_cep && formData.endereco_cep !== cepInput.replace(/\D/g, '')) {
+      setCepInput(formData.endereco_cep);
+      console.log('[AddressSection] Syncing CEP input with form data:', formData.endereco_cep);
+    }
+  }, [formData.endereco_cep]);
 
   // Auto-fill fields when CEP data is found
   useEffect(() => {
     if (cepData) {
-      onInputChange('endereco_logradouro', cepData.logradouro);
-      onInputChange('endereco_bairro', cepData.bairro);
-      onInputChange('endereco_cidade', cepData.localidade);
-      onInputChange('endereco_estado', cepData.uf);
+      console.log('[AddressSection] Auto-filling address fields:', cepData);
+      onInputChange('endereco_logradouro', cepData.logradouro || '');
+      onInputChange('endereco_bairro', cepData.bairro || '');
+      onInputChange('endereco_cidade', cepData.localidade || '');
+      onInputChange('endereco_estado', cepData.uf || '');
       onInputChange('zona_entrega', cepData.zona_entrega || 'outras');
     }
   }, [cepData, onInputChange]);
 
   const handleCepSearch = async () => {
-    if (!cepInput.trim()) return;
+    if (!cepInput.trim()) {
+      console.warn('[AddressSection] Empty CEP input');
+      return;
+    }
     
-    const data = await lookupAddress(cepInput);
+    console.log('[AddressSection] Searching CEP:', cepInput);
+    const sanitizedCep = cepInput.replace(/\D/g, '');
+    
+    if (sanitizedCep.length !== 8) {
+      console.warn('[AddressSection] Invalid CEP length:', sanitizedCep.length);
+      return;
+    }
+
+    const data = await lookupAddress(sanitizedCep);
     if (data) {
-      onInputChange('endereco_cep', cepInput.replace(/\D/g, ''));
+      onInputChange('endereco_cep', sanitizedCep);
+      console.log('[AddressSection] CEP found and saved:', sanitizedCep);
     }
   };
 
   const handleCepInputChange = (value: string) => {
     setCepInput(value);
-    onInputChange('endereco_cep', value.replace(/\D/g, ''));
+    const sanitizedCep = value.replace(/\D/g, '');
+    
+    // Sempre atualizar o formData com o valor sanitizado
+    onInputChange('endereco_cep', sanitizedCep);
+    
+    // Limpar dados anteriores se o CEP foi modificado significativamente
+    if (sanitizedCep.length < 8) {
+      clearData();
+    }
+    
+    console.log('[AddressSection] CEP input changed:', value, '-> sanitized:', sanitizedCep);
   };
 
   const getZoneBadge = () => {
@@ -108,7 +139,7 @@ const AddressSection: React.FC<AddressSectionProps> = ({ formData, onInputChange
             <Button
               type="button"
               onClick={handleCepSearch}
-              disabled={isLoading || !cepInput.trim()}
+              disabled={isLoading || !cepInput.trim() || cepInput.replace(/\D/g, '').length !== 8}
               className="flex items-center gap-2"
             >
               {isLoading ? (
@@ -130,7 +161,7 @@ const AddressSection: React.FC<AddressSectionProps> = ({ formData, onInputChange
           {cepData && (
             <div className="flex items-center gap-2">
               <CheckCircle size={14} className="text-green-600" />
-              <span className="text-sm text-green-600">CEP encontrado!</span>
+              <span className="text-sm text-green-600">CEP encontrado e dados preenchidos automaticamente!</span>
               {getZoneBadge()}
             </div>
           )}

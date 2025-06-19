@@ -43,6 +43,8 @@ const ConfiguracoesVendorScreen = () => {
   // Load vendor profile data
   useEffect(() => {
     if (vendorProfile) {
+      console.log('[ConfiguracoesVendorScreen] Loading vendor profile data:', vendorProfile);
+      
       setFormData({
         nome_loja: vendorProfile.nome_loja || '',
         descricao: vendorProfile.descricao || '',
@@ -50,7 +52,7 @@ const ConfiguracoesVendorScreen = () => {
         whatsapp: vendorProfile.whatsapp || '',
         email: vendorProfile.email || '',
         segmento: vendorProfile.segmento || '',
-        // Carregar campos de endereço
+        // Carregar campos de endereço com logs para debug
         endereco_cep: vendorProfile.endereco_cep || '',
         endereco_logradouro: vendorProfile.endereco_logradouro || '',
         endereco_numero: vendorProfile.endereco_numero || '',
@@ -60,6 +62,8 @@ const ConfiguracoesVendorScreen = () => {
         endereco_estado: vendorProfile.endereco_estado || '',
         zona_entrega: vendorProfile.zona_entrega || '',
       });
+      
+      console.log('[ConfiguracoesVendorScreen] CEP loaded:', vendorProfile.endereco_cep);
       
       if (vendorProfile.logo) {
         setLogoPreview(vendorProfile.logo);
@@ -79,6 +83,7 @@ const ConfiguracoesVendorScreen = () => {
 
   // Handle address field changes
   const handleAddressChange = (field: string, value: string) => {
+    console.log('[ConfiguracoesVendorScreen] Address field changed:', field, '=', value);
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -106,16 +111,21 @@ const ConfiguracoesVendorScreen = () => {
     setIsSaving(true);
     
     try {
+      console.log('[ConfiguracoesVendorScreen] Saving form data:', formData);
+      
       // Get coordinates if address is complete
       let coordinates = {};
       if (formData.endereco_logradouro && formData.endereco_cidade && formData.endereco_estado) {
         const fullAddress = `${formData.endereco_logradouro}, ${formData.endereco_numero || ''}, ${formData.endereco_bairro}, ${formData.endereco_cidade}, ${formData.endereco_estado}, ${formData.endereco_cep}`;
+        console.log('[ConfiguracoesVendorScreen] Getting coordinates for:', fullAddress);
+        
         const coords = await getCoordinates(fullAddress);
         if (coords) {
           coordinates = {
             endereco_latitude: coords.latitude,
             endereco_longitude: coords.longitude,
           };
+          console.log('[ConfiguracoesVendorScreen] Coordinates found:', coordinates);
         }
       }
 
@@ -128,12 +138,14 @@ const ConfiguracoesVendorScreen = () => {
       
       if (updatedProfile) {
         toast.success('Configurações salvas com sucesso!');
+        console.log('[ConfiguracoesVendorScreen] Profile updated successfully');
       } else {
         toast.error('Erro ao salvar configurações');
+        console.error('[ConfiguracoesVendorScreen] Failed to update profile');
       }
     } catch (error) {
       toast.error('Erro ao salvar configurações');
-      console.error('Error saving vendor profile:', error);
+      console.error('[ConfiguracoesVendorScreen] Error saving vendor profile:', error);
     } finally {
       setIsSaving(false);
     }
