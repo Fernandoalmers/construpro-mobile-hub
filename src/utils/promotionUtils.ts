@@ -1,4 +1,6 @@
 
+import { getBrazilNow } from '@/utils/brazilTimezone';
+
 export interface PromotionInfo {
   hasActivePromotion: boolean;
   isPromotionExpired: boolean;
@@ -9,28 +11,28 @@ export interface PromotionInfo {
 }
 
 export const getPromotionInfo = (product: any): PromotionInfo => {
-  const now = new Date();
+  const now = getBrazilNow(); // Use Brazil timezone
   const originalPrice = product.preco_normal || product.preco || 0;
   const promotionalPrice = product.preco_promocional;
   const promotionEndDate = product.promocao_fim;
   const promotionActive = product.promocao_ativa;
   
-  // CORRIGIDO: Melhor validação de promoção ativa
+  // Check if promotion is expired using Brazil timezone
   const isPromotionExpired = promotionEndDate ? 
     new Date(promotionEndDate).getTime() < now.getTime() : false;
   
   const hasValidPromotionalPrice = promotionalPrice && promotionalPrice > 0 && promotionalPrice < originalPrice;
   
-  // CORRIGIDO: Verificar explicitamente o campo promocao_ativa e se não expirou
+  // Check if promotion is explicitly active and not expired
   const hasActivePromotion = Boolean(promotionActive) && hasValidPromotionalPrice && !isPromotionExpired;
   
   const discountPercentage = hasActivePromotion && promotionalPrice
     ? Math.round(((originalPrice - promotionalPrice) / originalPrice) * 100)
     : 0;
 
-  // Debug log para o produto específico
-  if (product.nome?.includes('TRINCHA ATLAS')) {
-    console.log('[getPromotionInfo] TRINCHA ATLAS analysis:', {
+  // Debug log for ALL products with promotion data
+  if (hasActivePromotion || promotionActive) {
+    console.log('[getPromotionInfo] Promotion analysis:', {
       nome: product.nome,
       promocao_ativa: promotionActive,
       preco_normal: originalPrice,
@@ -39,7 +41,8 @@ export const getPromotionInfo = (product: any): PromotionInfo => {
       isPromotionExpired,
       hasValidPromotionalPrice,
       hasActivePromotion,
-      discountPercentage
+      discountPercentage,
+      brazilNow: now.toISOString()
     });
   }
 
@@ -65,7 +68,7 @@ export const shouldShowPromotion = (product: any): boolean => {
 };
 
 /**
- * CORRIGIDO: Valida se uma promoção deve ser considerada ativa
+ * Validate if a promotion should be considered active using Brazil timezone
  */
 export const validatePromotionStatus = (
   isActive: boolean,
@@ -74,28 +77,28 @@ export const validatePromotionStatus = (
   promotionalPrice?: number | null,
   normalPrice?: number
 ): boolean => {
-  // Se não está marcada como ativa, não é ativa
+  // If not marked as active, not active
   if (!isActive) return false;
   
-  // Deve ter preço promocional válido
+  // Must have valid promotional price
   if (!promotionalPrice || !normalPrice) return false;
   if (promotionalPrice >= normalPrice) return false;
   
-  const now = new Date();
+  const now = getBrazilNow();
   
-  // Verificar data de início se fornecida
+  // Check start date if provided
   if (startDate) {
     const start = new Date(startDate);
     if (start.getTime() > now.getTime()) {
-      return false; // Promoção ainda não começou
+      return false; // Promotion hasn't started yet
     }
   }
   
-  // Verificar data de fim se fornecida
+  // Check end date if provided
   if (endDate) {
     const end = new Date(endDate);
     if (end.getTime() < now.getTime()) {
-      return false; // Promoção já terminou
+      return false; // Promotion has ended
     }
   }
   

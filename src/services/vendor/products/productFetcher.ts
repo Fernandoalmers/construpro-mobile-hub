@@ -32,10 +32,16 @@ export const getVendorProducts = async (): Promise<VendorProduct[]> => {
       return [];
     }
     
-    // Get the products for this vendor
+    // Get the products for this vendor - INCLUDING ALL PROMOTION FIELDS
     const { data, error } = await supabase
       .from('produtos')
-      .select('*')
+      .select(`
+        *,
+        promocao_ativa,
+        promocao_inicio,
+        promocao_fim,
+        preco_promocional
+      `)
       .eq('vendedor_id', vendor.id)
       .order('created_at', { ascending: false });
     
@@ -44,7 +50,7 @@ export const getVendorProducts = async (): Promise<VendorProduct[]> => {
       return [];
     }
     
-    console.log(`[productFetcher] Found ${data?.length || 0} products`);
+    console.log(`[productFetcher] Found ${data?.length || 0} products with promotion data`);
     return data as VendorProduct[];
   } catch (error) {
     console.error('[productFetcher] Error in getVendorProducts:', error);
@@ -53,7 +59,7 @@ export const getVendorProducts = async (): Promise<VendorProduct[]> => {
 };
 
 /**
- * Get a specific product by ID
+ * Get a specific product by ID - WITH ALL PROMOTION FIELDS
  */
 export const getVendorProduct = async (id: string): Promise<VendorProduct | null> => {
   try {
@@ -84,10 +90,16 @@ export const getVendorProduct = async (id: string): Promise<VendorProduct | null
       return null;
     }
     
-    // Fetch the product
+    // Fetch the product WITH ALL PROMOTION FIELDS
     const { data, error } = await supabase
       .from('produtos')
-      .select('*')
+      .select(`
+        *,
+        promocao_ativa,
+        promocao_inicio,
+        promocao_fim,
+        preco_promocional
+      `)
       .eq('id', id)
       .single();
     
@@ -101,13 +113,19 @@ export const getVendorProduct = async (id: string): Promise<VendorProduct | null
       return null;
     }
     
-    // Log product data for debugging
-    console.log('[VendorProducts] getVendorProduct:', data);
+    // Log product data for debugging with promotion info
+    console.log('[productFetcher] getVendorProduct with promotion data:', {
+      id: data.id,
+      nome: data.nome,
+      promocao_ativa: data.promocao_ativa,
+      promocao_inicio: data.promocao_inicio,
+      promocao_fim: data.promocao_fim,
+      preco_promocional: data.preco_promocional
+    });
     
     // Verify this product belongs to the current vendor
     if (data.vendedor_id !== vendor.id) {
       console.warn('[productFetcher] Product does not belong to current vendor');
-      // Still returning the product, but with a warning (you could return null to enforce access control)
     }
     
     return data as VendorProduct;
@@ -118,8 +136,7 @@ export const getVendorProduct = async (id: string): Promise<VendorProduct | null
 };
 
 /**
- * Fetch product details by ID
- * This function is used by other modules like ordersFetcher
+ * Fetch product details by ID - INCLUDING PROMOTION FIELDS
  */
 export const fetchProductDetails = async (productId: string): Promise<any> => {
   try {
@@ -130,10 +147,22 @@ export const fetchProductDetails = async (productId: string): Promise<any> => {
       return null;
     }
     
-    // Fetch the product
+    // Fetch the product WITH ALL PROMOTION FIELDS
     const { data, error } = await supabase
       .from('produtos')
-      .select('id, nome, preco_normal, imagens, descricao, categoria, vendedor_id')
+      .select(`
+        id, 
+        nome, 
+        preco_normal, 
+        preco_promocional,
+        promocao_ativa,
+        promocao_inicio,
+        promocao_fim,
+        imagens, 
+        descricao, 
+        categoria, 
+        vendedor_id
+      `)
       .eq('id', productId)
       .single();
     
@@ -153,11 +182,15 @@ export const fetchProductDetails = async (productId: string): Promise<any> => {
       imageUrl = typeof data.imagens[0] === 'string' ? data.imagens[0] : null;
     }
     
-    // Return formatted product details
+    // Return formatted product details WITH PROMOTION DATA
     return {
       id: data.id,
       nome: data.nome,
       preco: data.preco_normal,
+      preco_promocional: data.preco_promocional,
+      promocao_ativa: data.promocao_ativa,
+      promocao_inicio: data.promocao_inicio,
+      promocao_fim: data.promocao_fim,
       imagem_url: imageUrl,
       descricao: data.descricao,
       categoria: data.categoria,

@@ -17,13 +17,13 @@ interface ProductInfoProps {
 
 const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) => {
   // Use promotion utils for consistent promotion handling
-  const promotionInfo = getPromotionInfo(produto);
+  const promotionInfo = getProm"otionInfo(produto);
   
-  // Garantir valores corretos para preços
+  // Get correct prices
   const regularPrice = produto.preco_normal || produto.preco;
   const currentPrice = promotionInfo.hasActivePromotion ? promotionInfo.promotionalPrice! : promotionInfo.originalPrice;
 
-  // Obter a avaliação real do produto e memoizar para evitar mudanças durante a renderização
+  // Get product rating and review count
   const productRating = React.useMemo(() => 
     produto.avaliacao || 0
   , [produto.id, produto.avaliacao]);
@@ -31,6 +31,15 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
   const reviewCount = React.useMemo(() => 
     produto.num_avaliacoes || 0
   , [produto.id, produto.num_avaliacoes]);
+
+  // Debug log for promotion display
+  console.log('[ProductInfo] Promotion display for', produto.nome, {
+    hasActivePromotion: promotionInfo.hasActivePromotion,
+    promotionalPrice: promotionInfo.promotionalPrice,
+    originalPrice: promotionInfo.originalPrice,
+    discountPercentage: promotionInfo.discountPercentage,
+    promotionEndDate: promotionInfo.promotionEndDate
+  });
 
   return (
     <div>
@@ -71,7 +80,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
         </Link>
       )}
       
-      {/* Rating - Usando dados reais */}
+      {/* Rating */}
       <div className="flex items-center mb-4">
         <div className="flex">
           {[1, 2, 3, 4, 5].map((star) => (
@@ -91,8 +100,24 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
         </span>
       </div>
       
-      {/* Price section - Mostrando preço promocional quando disponível */}
+      {/* Price section - UPDATED FOR UNIVERSAL PROMOTION DISPLAY */}
       <div className="mb-4">
+        {/* Promotion badges and countdown */}
+        {promotionInfo.hasActivePromotion && (
+          <div className="flex items-center gap-2 mb-2">
+            <Badge className="bg-red-500 hover:bg-red-600 text-xs">
+              {promotionInfo.discountPercentage}% OFF
+            </Badge>
+            <OfferCountdown 
+              endDate={promotionInfo.promotionEndDate}
+              isActive={promotionInfo.hasActivePromotion}
+              size="sm"
+              variant="compact"
+            />
+          </div>
+        )}
+        
+        {/* Price display */}
         <div className="flex items-baseline mb-2">
           {promotionInfo.hasActivePromotion && (
             <span className="text-gray-500 line-through mr-2">
@@ -102,20 +127,6 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
           <span className="text-2xl font-bold text-green-700">
             R$ {currentPrice.toFixed(2)}
           </span>
-          
-          {promotionInfo.hasActivePromotion && (
-            <div className="flex items-center gap-2 ml-2">
-              <Badge className="bg-red-500">
-                {promotionInfo.discountPercentage}% OFF
-              </Badge>
-              <OfferCountdown 
-                endDate={promotionInfo.promotionEndDate}
-                isActive={promotionInfo.hasActivePromotion}
-                size="sm"
-                variant="compact"
-              />
-            </div>
-          )}
         </div>
         
         <div className="text-sm text-gray-700 mt-1">
@@ -146,7 +157,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
         </div>
       </div>
       
-      {/* Shipping info - ATUALIZADO conforme solicitado */}
+      {/* Shipping info */}
       <div className="p-3 bg-gray-50 rounded-md border border-gray-200 mb-4">
         <p className="text-sm text-gray-600 flex items-center mb-2">
           <Clock className="h-4 w-4 mr-2 text-green-600" />

@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from 'react';
+import { getBrazilNow } from '@/utils/brazilTimezone';
 
 interface CountdownState {
   days: number;
@@ -27,7 +28,8 @@ export const useOfferCountdown = (endDate: string | null, isActive?: boolean) =>
     }
 
     const calculateTimeLeft = () => {
-      const now = new Date().getTime();
+      // Use Brazil timezone for calculations
+      const now = getBrazilNow().getTime();
       const end = new Date(endDate).getTime();
       const difference = end - now;
 
@@ -58,10 +60,10 @@ export const useOfferCountdown = (endDate: string | null, isActive?: boolean) =>
       });
     };
 
-    // Calcular imediatamente
+    // Calculate immediately
     calculateTimeLeft();
 
-    // Atualizar a cada segundo
+    // Update every second
     const interval = setInterval(calculateTimeLeft, 1000);
 
     return () => clearInterval(interval);

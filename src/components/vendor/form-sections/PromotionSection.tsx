@@ -4,6 +4,7 @@ import { Zap, Calendar, Info } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatDateTimeLocal, parseDateTimeLocal, getBrazilNow } from '@/utils/brazilTimezone';
 
 interface PromotionSectionProps {
   formData: any;
@@ -14,6 +15,8 @@ const PromotionSection: React.FC<PromotionSectionProps> = ({ formData, onInputCh
   const watchPromocaoAtiva = formData.promocaoAtiva || false;
   const watchPrecoPromocional = formData.precoPromocional || null;
   const watchPreco = formData.preco || 0;
+  const watchPromocaoInicio = formData.promocaoInicio || '';
+  const watchPromocaoFim = formData.promocaoFim || '';
 
   // Calculate discount percentage for preview
   const discountPercentage = watchPrecoPromocional && watchPreco && watchPrecoPromocional < watchPreco
@@ -23,6 +26,26 @@ const PromotionSection: React.FC<PromotionSectionProps> = ({ formData, onInputCh
   // Validation for promotional price
   const hasValidPromotionalPrice = watchPrecoPromocional && watchPreco && watchPrecoPromocional < watchPreco;
   const promotionalPriceError = watchPromocaoAtiva && watchPrecoPromocional && watchPreco && watchPrecoPromocional >= watchPreco;
+
+  // Get minimum date/time for Brazil timezone
+  const brazilNow = getBrazilNow();
+  const minDateTime = formatDateTimeLocal(brazilNow.toISOString());
+
+  // Handle date changes with Brazil timezone conversion
+  const handleDateChange = (field: string, value: string) => {
+    if (value) {
+      // Convert from datetime-local to UTC for storage
+      const utcDate = parseDateTimeLocal(value);
+      onInputChange(field, utcDate);
+    } else {
+      onInputChange(field, '');
+    }
+  };
+
+  // Format dates for display in Brazil timezone
+  const formatForDisplay = (dateString: string): string => {
+    return formatDateTimeLocal(dateString);
+  };
 
   return (
     <Card>
@@ -45,7 +68,7 @@ const PromotionSection: React.FC<PromotionSectionProps> = ({ formData, onInputCh
               <p className="font-medium mb-1">Como funciona o temporizador de ofertas:</p>
               <ul className="space-y-1 text-xs">
                 <li>• Configure um preço promocional menor que o preço normal</li>
-                <li>• Defina o período da promoção (início e fim)</li>
+                <li>• Defina o período da promoção (início e fim) no horário de Brasília</li>
                 <li>• O countdown será exibido automaticamente no marketplace</li>
                 <li>• A promoção será desativada automaticamente quando expirar</li>
                 <li>• Produtos com promoções expiradas são removidos automaticamente do carrinho</li>
@@ -59,7 +82,7 @@ const PromotionSection: React.FC<PromotionSectionProps> = ({ formData, onInputCh
             checked={watchPromocaoAtiva}
             onCheckedChange={(checked) => {
               onInputChange('promocaoAtiva', checked);
-              // Reset promotional price when deactivating promotion
+              // Reset promotional fields when deactivating promotion
               if (!checked) {
                 onInputChange('precoPromocional', null);
                 onInputChange('promocaoInicio', '');
@@ -116,27 +139,33 @@ const PromotionSection: React.FC<PromotionSectionProps> = ({ formData, onInputCh
               <div>
                 <label className="block text-sm font-medium mb-1 flex items-center gap-1">
                   <Calendar size={14} />
-                  Início da promoção*
+                  Início da promoção* (Horário de Brasília)
                 </label>
                 <Input 
                   type="datetime-local"
-                  value={formData.promocaoInicio || ''}
-                  onChange={(e) => onInputChange('promocaoInicio', e.target.value)}
-                  min={new Date().toISOString().slice(0, 16)}
+                  value={formatForDisplay(watchPromocaoInicio)}
+                  onChange={(e) => handleDateChange('promocaoInicio', e.target.value)}
+                  min={minDateTime}
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Horário de Brasília (UTC-3)
+                </p>
               </div>
 
               <div>
                 <label className="block text-sm font-medium mb-1 flex items-center gap-1">
                   <Calendar size={14} />
-                  Fim da promoção*
+                  Fim da promoção* (Horário de Brasília)
                 </label>
                 <Input 
                   type="datetime-local"
-                  value={formData.promocaoFim || ''}
-                  onChange={(e) => onInputChange('promocaoFim', e.target.value)}
-                  min={formData.promocaoInicio || new Date().toISOString().slice(0, 16)}
+                  value={formatForDisplay(watchPromocaoFim)}
+                  onChange={(e) => handleDateChange('promocaoFim', e.target.value)}
+                  min={formatForDisplay(watchPromocaoInicio) || minDateTime}
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Horário de Brasília (UTC-3)
+                </p>
               </div>
             </div>
 
