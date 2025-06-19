@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { ArrowLeft, Truck, Save, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -52,7 +51,7 @@ const VendorDeliverySettingsScreen: React.FC = () => {
   const handleSave = async () => {
     try {
       setSaving(true);
-      // Aqui você salvaria as configurações no backend
+      // Aqu você salvaria as configurações no backend
       // await saveDeliverySettings({ settings, deliveryMethods });
       toast.success('Configurações de entrega salvas com sucesso!');
       navigate('/vendor/settings');
@@ -89,7 +88,7 @@ const VendorDeliverySettingsScreen: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-20">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
