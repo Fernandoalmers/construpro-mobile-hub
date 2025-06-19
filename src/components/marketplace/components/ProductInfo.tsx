@@ -86,7 +86,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
               logradouro: mainAddress.logradouro,
               numero: mainAddress.numero,
               complemento: mainAddress.complemento,
-              bairro: mainAddress.b   
+              bairro: mainAddress.bairro,
               cidade: mainAddress.cidade,
               estado: mainAddress.estado,
               cep: mainAddress.cep
