@@ -1,12 +1,15 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Star, Clock, AlertCircle, CheckCircle } from 'lucide-react';
+import { Star, Clock, AlertCircle, CheckCircle, MapPin, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Product } from '@/services/productService';
 import { getPromotionInfo } from '@/utils/promotionUtils';
 import { getDeliveryInfo, getStoreLocationInfo } from '@/utils/deliveryUtils';
 import { useAuth } from '@/context/AuthContext';
 import OfferCountdown from '@/components/common/OfferCountdown';
+import QuickAddressModal from './QuickAddressModal';
 
 interface ProductInfoProps {
   produto: Product;
@@ -17,7 +20,8 @@ interface ProductInfoProps {
 }
 
 const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) => {
-  const { profile } = useAuth();
+  const { profile, isAuthenticated, refreshProfile } = useAuth();
+  const [showAddressModal, setShowAddressModal] = useState(false);
   const [deliveryInfo, setDeliveryInfo] = useState<{
     isLocal: boolean;
     message: string;
@@ -79,6 +83,10 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
 
     calculateDeliveryInfo();
   }, [produto.stores?.id, produto.vendedor_id, profile?.endereco_principal]);
+
+  const handleAddressAdded = () => {
+    refreshProfile();
+  };
 
   // Debug log for promotion display
   console.log('[ProductInfo] Promotion display for', produto.nome, {
@@ -213,25 +221,52 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
         </p>
         
         <div className="text-sm text-gray-700 ml-6">
-          {deliveryInfo.isLocal ? (
-            <div className="flex items-center">
-              <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
-              <span>
-                <strong>Entrega local:</strong> {deliveryInfo.estimatedTime}
-              </span>
-            </div>
+          {profile?.endereco_principal ? (
+            <>
+              <div className="flex items-center mb-2">
+                <MapPin className="w-4 h-4 text-blue-500 mr-2" />
+                <span className="text-xs text-gray-600">
+                  {profile.endereco_principal.cidade} - {profile.endereco_principal.estado}
+                </span>
+              </div>
+              
+              {deliveryInfo.isLocal ? (
+                <div className="flex items-center">
+                  <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
+                  <span>
+                    <strong>Entrega local:</strong> {deliveryInfo.estimatedTime}
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center">
+                  <AlertCircle className="w-4 h-4 text-gray-500 mr-2" />
+                  <span>{deliveryInfo.message}</span>
+                </div>
+              )}
+            </>
           ) : (
-            <div className="flex items-center">
-              <AlertCircle className="w-4 h-4 text-gray-500 mr-2" />
-              <span>{deliveryInfo.message}</span>
-            </div>
-          )}
-          
-          {!profile?.endereco_principal && (
-            <div className="mt-2 text-xs text-blue-600">
-              <Link to="/profile/addresses" className="underline">
-                Adicione seu endereço para ver informações de entrega mais precisas
-              </Link>
+            <div className="space-y-3">
+              <div className="flex items-center">
+                <AlertCircle className="w-4 h-4 text-gray-500 mr-2" />
+                <span>Adicione seu endereço para ver informações de entrega</span>
+              </div>
+              
+              {isAuthenticated ? (
+                <Button
+                  onClick={() => setShowAddressModal(true)}
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+                  size="sm"
+                >
+                  <Plus className="w-4 h-4" />
+                  Cadastrar Endereço
+                </Button>
+              ) : (
+                <div className="text-xs text-blue-600">
+                  <Link to="/login" className="underline">
+                    Faça login para adicionar seu endereço
+                  </Link>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -246,6 +281,13 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
           )}
         </div>
       )}
+
+      {/* Quick Address Modal */}
+      <QuickAddressModal
+        open={showAddressModal}
+        onOpenChange={setShowAddressModal}
+        onAddressAdded={handleAddressAdded}
+      />
     </div>
   );
 };

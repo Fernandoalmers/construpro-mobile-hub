@@ -3,12 +3,14 @@ import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { addressService, Address } from '@/services/addressService';
 import { toast } from '@/components/ui/use-toast';
+import { useAuth } from '@/context/AuthContext';
 
 export function useAddresses() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const queryClient = useQueryClient();
+  const { refreshProfile } = useAuth();
 
   // Function to format error messages for better display
   const formatErrorMessage = (error: any): string => {
@@ -71,6 +73,7 @@ export function useAddresses() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['addresses'] });
+      refreshProfile(); // Refresh user profile to update primary address
       toast({
         title: "Endereço removido",
         description: "Endereço removido com sucesso."
@@ -100,6 +103,7 @@ export function useAddresses() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['addresses'] });
+      refreshProfile(); // Refresh user profile to update primary address
       toast({
         title: "Endereço principal atualizado",
         description: "Endereço principal atualizado com sucesso."
@@ -134,6 +138,7 @@ export function useAddresses() {
     onSuccess: (_, variables) => {
       console.log("Address saved successfully");
       queryClient.invalidateQueries({ queryKey: ['addresses'] });
+      refreshProfile(); // Refresh user profile to update primary address
       setErrorDetails(null);
       toast({
         title: variables.isEdit ? "Endereço atualizado" : "Endereço adicionado",
@@ -211,8 +216,9 @@ export function useAddresses() {
       // Save the address
       const result = await addressService.addAddress(fullAddress);
       
-      // Refresh the address list
+      // Refresh the address list and user profile
       queryClient.invalidateQueries({ queryKey: ['addresses'] });
+      await refreshProfile();
       
       return result;
     } catch (error) {
