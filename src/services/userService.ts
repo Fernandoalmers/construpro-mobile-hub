@@ -31,6 +31,27 @@ export interface UserProfile {
   historico_navegacao?: string[];
 }
 
+// Helper function to safely parse endereco_principal
+const parseEnderecosPrincipal = (endereco: any) => {
+  if (!endereco) return undefined;
+  
+  // If it's already an object, return it
+  if (typeof endereco === 'object' && endereco !== null) {
+    return endereco;
+  }
+  
+  // If it's a string, try to parse it as JSON
+  if (typeof endereco === 'string') {
+    try {
+      return JSON.parse(endereco);
+    } catch {
+      return undefined;
+    }
+  }
+  
+  return undefined;
+};
+
 export const getUserProfile = async (): Promise<UserProfile | null> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -59,7 +80,14 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
     }
 
     console.log('[getUserProfile] Profile fetched successfully:', profile);
-    return profile;
+    
+    // Parse endereco_principal safely
+    const parsedProfile: UserProfile = {
+      ...profile,
+      endereco_principal: parseEnderecosPrincipal(profile.endereco_principal)
+    };
+    
+    return parsedProfile;
   } catch (error) {
     console.error('[getUserProfile] Unexpected error:', error);
     return null;
@@ -92,7 +120,14 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
     }
 
     console.log('[updateUserProfile] Profile updated successfully:', profile);
-    return profile;
+    
+    // Parse endereco_principal safely
+    const parsedProfile: UserProfile = {
+      ...profile,
+      endereco_principal: parseEnderecosPrincipal(profile.endereco_principal)
+    };
+    
+    return parsedProfile;
   } catch (error) {
     console.error('[updateUserProfile] Unexpected error:', error);
     throw error;
@@ -127,7 +162,14 @@ export const createUserProfile = async (profileData: Partial<UserProfile>): Prom
     }
 
     console.log('[createUserProfile] Profile created successfully:', profile);
-    return profile;
+    
+    // Parse endereco_principal safely
+    const parsedProfile: UserProfile = {
+      ...profile,
+      endereco_principal: parseEnderecosPrincipal(profile.endereco_principal)
+    };
+    
+    return parsedProfile;
   } catch (error) {
     console.error('[createUserProfile] Unexpected error:', error);
     throw error;
