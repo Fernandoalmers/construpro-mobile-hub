@@ -37,6 +37,8 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
   const { isAuthenticated } = useAuth();
   const { isLoading, error, cepData, lookupAddress, clearData } = useCepLookup();
   const [cepInput, setCepInput] = useState('');
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [cepValidatedForEdit, setCepValidatedForEdit] = useState(false);
   
   const [formData, setFormData] = useState<Address>({
     nome: '',
@@ -55,9 +57,13 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
   
   useEffect(() => {
     if (initialData) {
+      console.log('[AddAddressModal] Editing address:', initialData);
       setFormData(initialData);
       setCepInput(initialData.cep || '');
+      setIsEditMode(true);
+      setCepValidatedForEdit(true); // Mark CEP as valid for existing addresses
     } else {
+      console.log('[AddAddressModal] Adding new address');
       setFormData({
         nome: '',
         cep: '',
@@ -70,6 +76,8 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
         principal: false
       });
       setCepInput('');
+      setIsEditMode(false);
+      setCepValidatedForEdit(false);
     }
     setValidationErrors({});
     clearData();
@@ -99,6 +107,8 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
         cidade: cepData.localidade,
         estado: cepData.uf
       }));
+      
+      setCepValidatedForEdit(true); // Mark as validated when new CEP data is loaded
       
       // Limpar erros de validação dos campos preenchidos automaticamente
       setValidationErrors(prev => {
@@ -159,11 +169,24 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
       });
     }
     
-    // Clear data if CEP is significantly modified
+    // If user changes CEP significantly in edit mode, require revalidation
     const sanitizedCep = value.replace(/\D/g, '');
-    if (sanitizedCep.length < 8 && cepData) {
+    if (isEditMode && initialData && sanitizedCep !== initialData.cep.replace(/\D/g, '')) {
+      console.log('[AddAddressModal] CEP changed in edit mode, requiring revalidation');
+      setCepValidatedForEdit(false);
       clearData();
-      // Limpar campos que foram preenchidos automaticamente
+      // Clear fields that were auto-populated
+      setFormData(prev => ({
+        ...prev,
+        cep: '',
+        logradouro: '',
+        bairro: '',
+        cidade: '',
+        estado: ''
+      }));
+    } else if (sanitizedCep.length < 8 && cepData) {
+      clearData();
+      // Clear fields that were auto-populated
       setFormData(prev => ({
         ...prev,
         cep: '',
@@ -211,13 +234,30 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
       errors.cep = 'CEP inválido. Use 8 dígitos';
     }
 
-    // Validate if CEP data was found
-    if (!cepData && formData.cep) {
-      errors.cep = 'CEP deve ser validado antes de salvar';
+    // For NEW addresses, require CEP validation
+    // For EDIT mode, only require validation if CEP was changed
+    if (!isEditMode) {
+      // New address - require CEP validation
+      if (!cepData && formData.cep) {
+        errors.cep = 'CEP deve ser validado antes de salvar';
+      }
+    } else {
+      // Edit mode - only require validation if CEP was changed and not validated
+      if (initialData && formData.cep !== initialData.cep && !cepValidatedForEdit) {
+        errors.cep = 'CEP alterado deve ser validado antes de salvar';
+      }
     }
     
     // Set validation errors
     setValidationErrors(errors);
+    
+    console.log('[AddAddressModal] Form validation:', {
+      isEditMode,
+      hasErrors: Object.keys(errors).length > 0,
+      errors,
+      cepValidatedForEdit,
+      hasCepData: !!cepData
+    });
     
     // Return true if no errors
     return Object.keys(errors).length === 0;
@@ -228,7 +268,12 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
       e.preventDefault();
     }
     
-    console.log("Iniciando salvamento com dados:", formData);
+    console.log("Iniciando salvamento com dados:", {
+      formData,
+      isEditMode,
+      cepValidatedForEdit,
+      hasCepData: !!cepData
+    });
     
     // Validate form
     if (!validateForm()) {
@@ -236,7 +281,7 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
       toast({
         variant: "destructive",
         title: "Campos obrigatórios",
-        description: "Por favor, preencha todos os campos obrigatórios e valide o CEP."
+        description: "Por favor, preencha todos os campos obrigatórios" + (isEditMode ? "" : " e valide o CEP") + "."
       });
       return;
     }
@@ -289,6 +334,7 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
   };
 
   const isCepValid = cepInput.replace(/\D/g, '').length === 8;
+  const shouldDisableSave = isEditMode ? false : (!cepData && !!formData.cep);
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -328,7 +374,7 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
                     onChange={(e) => handleCepInputChange(e.target.value)}
                     placeholder="00000-000"
                     maxLength={9}
-                    className={error ? 'border-red-500' : cepData ? 'border-green-500' : validationErrors.cep ? 'border-red-500' : ''}
+                    className={error ? 'border-red-500' : (cepData || cepValidatedForEdit) ? 'border-green-500' : validationErrors.cep ? 'border-red-500' : ''}
                   />
                   <Button
                     type="button"
@@ -345,6 +391,14 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
                     {isLoading ? '' : 'Buscar'}
                   </Button>
                 </div>
+                
+                {/* Show validation status */}
+                {isEditMode && cepValidatedForEdit && !cepData && (
+                  <div className="flex items-center gap-2">
+                    <CheckCircle size={14} className="text-green-600" />
+                    <span className="text-sm text-green-600 font-medium">CEP do endereço existente (válido)</span>
+                  </div>
+                )}
                 
                 {error && (
                   <div className="p-2 bg-red-50 border border-red-200 rounded-md">
@@ -516,7 +570,7 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
               variant="primary"
               loading={isSaving}
               onClick={handleSubmit}
-              disabled={!cepData && !!formData.cep}
+              disabled={shouldDisableSave}
             >
               {initialData ? 'Salvar' : 'Adicionar'}
             </CustomButton>

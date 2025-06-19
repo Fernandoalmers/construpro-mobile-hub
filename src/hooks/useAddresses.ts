@@ -124,9 +124,13 @@ export function useAddresses() {
     mutationFn: async (data: { address: Address, isEdit: boolean }) => {
       try {
         console.log("Saving address:", data.isEdit ? "Edit" : "Add", data.address);
+        console.log("Address ID for edit check:", data.address.id);
+        
         if (data.isEdit && data.address.id) {
+          console.log("Calling updateAddress with ID:", data.address.id);
           return await addressService.updateAddress(data.address.id, data.address);
         } else {
+          console.log("Calling addAddress for new address");
           return await addressService.addAddress(data.address);
         }
       } catch (err) {
@@ -135,8 +139,8 @@ export function useAddresses() {
         throw err;
       }
     },
-    onSuccess: (_, variables) => {
-      console.log("Address saved successfully");
+    onSuccess: (result, variables) => {
+      console.log("Address saved successfully:", result);
       queryClient.invalidateQueries({ queryKey: ['addresses'] });
       refreshProfile(); // Refresh user profile to update primary address
       setErrorDetails(null);
@@ -147,9 +151,11 @@ export function useAddresses() {
           : "Endereço adicionado com sucesso."
       });
       setIsAddModalOpen(false);
+      setEditingAddress(null); // Clear editing state
     },
     onError: (error: any) => {
       const errorMsg = formatErrorMessage(error);
+      console.error("Save address mutation error:", error);
       toast({
         variant: "destructive",
         title: "Erro ao salvar endereço",
@@ -172,6 +178,7 @@ export function useAddresses() {
   };
 
   const handleEditAddress = (address: Address) => {
+    console.log('[useAddresses] Setting address for editing:', address);
     setEditingAddress(address);
     setIsAddModalOpen(true);
   };
@@ -183,15 +190,21 @@ export function useAddresses() {
   };
 
   const handleAddAddress = () => {
+    console.log('[useAddresses] Opening modal for new address');
     setEditingAddress(null);
     setIsAddModalOpen(true);
   };
 
   const handleSaveAddress = (address: Address) => {
     console.log("handleSaveAddress called with:", address);
+    console.log("editingAddress state:", editingAddress);
+    
+    const isEdit = Boolean(editingAddress);
+    console.log("Is edit mode:", isEdit);
+    
     saveAddressMutation.mutate({ 
       address, 
-      isEdit: Boolean(editingAddress) 
+      isEdit 
     });
   };
 
