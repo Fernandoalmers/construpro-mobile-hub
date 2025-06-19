@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Heart, ShoppingCart, Star, Share2, Info, Store } from 'lucide-react';
@@ -33,6 +32,20 @@ const ProdutoContent: React.FC<ProdutoContentProps> = ({ produto }) => {
 
   // Get promotion info using the centralized utility
   const promotionInfo = getPromotionInfo(produto);
+
+  // Debug logging for the specific product
+  if (produto.nome?.includes('TRINCHA ATLAS')) {
+    console.log('[ProdutoContent] TRINCHA ATLAS promotion info:', {
+      produto: produto.nome,
+      promotionInfo,
+      originalData: {
+        promocao_ativa: produto.promocao_ativa,
+        preco_promocional: produto.preco_promocional,
+        preco_normal: produto.preco_normal,
+        promocao_fim: produto.promocao_fim
+      }
+    });
+  }
 
   // Check if product is favorited when component mounts
   useEffect(() => {
@@ -137,7 +150,7 @@ const ProdutoContent: React.FC<ProdutoContentProps> = ({ produto }) => {
     });
   };
 
-  // Use promotion info for prices
+  // CORRECTED: Use promotion info for prices
   const finalPrice = promotionInfo.hasActivePromotion ? promotionInfo.promotionalPrice! : promotionInfo.originalPrice;
   const originalPrice = promotionInfo.hasActivePromotion ? promotionInfo.originalPrice : null;
 
@@ -225,10 +238,10 @@ const ProdutoContent: React.FC<ProdutoContentProps> = ({ produto }) => {
           </div>
         )}
 
-        {/* Price Section - CORRIGIDA para usar promotionInfo */}
+        {/* Price Section - CORRECTED to use promotionInfo */}
         <div className="mb-4">
           {promotionInfo.hasActivePromotion && (
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-2">
               <Badge className="bg-red-500 hover:bg-red-600 text-xs">
                 {promotionInfo.discountPercentage}% OFF
               </Badge>
@@ -236,7 +249,7 @@ const ProdutoContent: React.FC<ProdutoContentProps> = ({ produto }) => {
                 endDate={promotionInfo.promotionEndDate}
                 isActive={promotionInfo.hasActivePromotion}
                 size="sm"
-                variant="compact"
+                variant="full"
               />
             </div>
           )}

@@ -44,9 +44,9 @@ const OfferCountdown: React.FC<OfferCountdownProps> = ({
         <Flame size={iconSizes[size]} />
         <span>
           {countdown.days > 0 ? (
-            `${countdown.days}d ${countdown.hours}h`
+            `${countdown.days}d ${countdown.hours}h ${countdown.minutes}m ${countdown.seconds}s`
           ) : countdown.hours > 0 ? (
-            `${countdown.hours}h ${countdown.minutes}m`
+            `${countdown.hours}h ${countdown.minutes}m ${countdown.seconds}s`
           ) : (
             `${countdown.minutes}:${countdown.seconds.toString().padStart(2, '0')}`
           )}
