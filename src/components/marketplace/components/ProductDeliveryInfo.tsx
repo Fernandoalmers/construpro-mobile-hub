@@ -48,8 +48,21 @@ const ProductDeliveryInfo: React.FC<ProductDeliveryInfoProps> = ({ produto }) =>
     }, 100);
   };
 
-  // Determine if CEP input should be shown - ONLY if user is not authenticated AND has no address
-  const shouldShowCepInput = !isAuthenticated && !currentUserCep && !profile?.endereco_principal;
+  // Enhanced logic to determine if user has any address
+  const hasUserAddress = profile?.endereco_principal?.cep || currentUserCep;
+  const userCepToShow = tempCep || profile?.endereco_principal?.cep || currentUserCep;
+  
+  // Show CEP input only if user has NO address at all
+  const shouldShowCepInput = !hasUserAddress && !tempCep;
+  
+  console.log('[ProductDeliveryInfo] Address debug:', {
+    isAuthenticated,
+    hasUserAddress,
+    profileCep: profile?.endereco_principal?.cep,
+    currentUserCep,
+    tempCep,
+    shouldShowCepInput
+  });
   
   return (
     <div className="p-3 bg-gray-50 rounded-md border border-gray-200 mb-4">
@@ -67,7 +80,7 @@ const ProductDeliveryInfo: React.FC<ProductDeliveryInfoProps> = ({ produto }) =>
         ) : (
           <>
             {/* Show current address/CEP being used */}
-            {(currentUserCep || tempCep) && (
+            {userCepToShow && (
               <div className="flex items-center mb-2">
                 <MapPin className="w-4 h-4 text-blue-500 mr-2" />
                 <span className="text-xs text-gray-600">
@@ -81,12 +94,10 @@ const ProductDeliveryInfo: React.FC<ProductDeliveryInfoProps> = ({ produto }) =>
                         (usar meu endereço)
                       </button>
                     </>
-                  ) : currentUserCep ? (
-                    <>
-                      Meu endereço: <strong>{currentUserCep.replace(/(\d{5})(\d{3})/, '$1-$2')}</strong>
-                    </>
                   ) : (
-                    'Endereço carregado'
+                    <>
+                      Meu endereço: <strong>{userCepToShow.replace(/(\d{5})(\d{3})/, '$1-$2')}</strong>
+                    </>
                   )}
                 </span>
               </div>
@@ -105,11 +116,11 @@ const ProductDeliveryInfo: React.FC<ProductDeliveryInfoProps> = ({ produto }) =>
               </span>
             </div>
             
-            {/* CEP input - only show if user has no address and is not authenticated */}
+            {/* CEP input - only show if user has NO address */}
             {shouldShowCepInput && (
               <div className="space-y-2">
                 <p className="text-xs text-gray-500">
-                  Faça login ou consulte o frete:
+                  {isAuthenticated ? 'Cadastre seu endereço ou consulte o frete:' : 'Faça login ou consulte o frete:'}
                 </p>
                 <TempCepInput 
                   onCepSubmit={handleTempCepSubmit}
@@ -121,7 +132,7 @@ const ProductDeliveryInfo: React.FC<ProductDeliveryInfoProps> = ({ produto }) =>
             {/* Options for authenticated users */}
             {isAuthenticated && (
               <div className="flex flex-col gap-2 mt-2">
-                {!currentUserCep && !profile?.endereco_principal && (
+                {!hasUserAddress && (
                   <Button
                     onClick={() => setShowAddressModal(true)}
                     className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
@@ -132,7 +143,7 @@ const ProductDeliveryInfo: React.FC<ProductDeliveryInfoProps> = ({ produto }) =>
                   </Button>
                 )}
                 
-                {(currentUserCep || profile?.endereco_principal) && !tempCep && (
+                {hasUserAddress && !tempCep && (
                   <div className="text-xs text-gray-600">
                     <p className="mb-1">Quer consultar para outro CEP?</p>
                     <TempCepInput 

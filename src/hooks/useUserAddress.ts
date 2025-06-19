@@ -7,7 +7,7 @@ export function useUserAddress() {
   const { profile, isAuthenticated } = useAuth();
   const [currentUserCep, setCurrentUserCep] = useState<string | null>(null);
 
-  // Enhanced function to get user's main address with better prioritization
+  // Enhanced function to get user's main address with CORRECT prioritization
   const getUserMainAddress = useCallback(async () => {
     const timestamp = new Date().toISOString();
     console.log(`[${timestamp}] [useUserAddress] Getting user main address for user:`, profile?.id);
@@ -19,9 +19,23 @@ export function useUserAddress() {
     }
 
     try {
-      // FIRST: Try to get main address directly from user_addresses table (most reliable)
-      console.log(`[${timestamp}] [useUserAddress] Step 1: Fetching main address from user_addresses table`);
+      // FIRST: Check profile.endereco_principal (most common and reliable)
+      console.log(`[${timestamp}] [useUserAddress] Step 1: Checking profile.endereco_principal`);
       
+      if (profile?.endereco_principal && profile.endereco_principal.cep) {
+        console.log(`[${timestamp}] [useUserAddress] ✅ Found endereco_principal in profile:`, {
+          cep: profile.endereco_principal.cep,
+          cidade: profile.endereco_principal.cidade,
+          estado: profile.endereco_principal.estado
+        });
+        
+        setCurrentUserCep(profile.endereco_principal.cep);
+        return profile.endereco_principal;
+      }
+
+      console.log(`[${timestamp}] [useUserAddress] Step 2: No endereco_principal found, checking user_addresses table`);
+      
+      // SECOND: Try to get main address from user_addresses table
       const { data: mainAddress, error: mainError } = await supabase
         .from('user_addresses')
         .select('*')
@@ -47,11 +61,26 @@ export function useUserAddress() {
         };
         
         setCurrentUserCep(mainAddress.cep);
+        
+        // Sync to profile for future use
+        try {
+          console.log(`[${timestamp}] [useUserAddress] Syncing endereco_principal to profile`);
+          await supabase
+            .from('profiles')
+            .update({
+              endereco_principal: addressData,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', profile.id);
+        } catch (syncError) {
+          console.error(`[${timestamp}] [useUserAddress] Error syncing endereco_principal:`, syncError);
+        }
+        
         return addressData;
       }
 
-      // SECOND: If no main address, try to get first available address
-      console.log(`[${timestamp}] [useUserAddress] Step 2: No main address found, trying first available address`);
+      // THIRD: If no main address, try to get first available address
+      console.log(`[${timestamp}] [useUserAddress] Step 3: No main address found, trying first available address`);
       
       const { data: firstAddress, error: firstError } = await supabase
         .from('user_addresses')
@@ -80,20 +109,6 @@ export function useUserAddress() {
         
         setCurrentUserCep(firstAddress.cep);
         return addressData;
-      }
-
-      // THIRD: Fallback to profile endereco_principal (less reliable)
-      console.log(`[${timestamp}] [useUserAddress] Step 3: Fallback to profile endereco_principal`);
-      
-      if (profile?.endereco_principal && profile.endereco_principal.cep) {
-        console.log(`[${timestamp}] [useUserAddress] ⚠️ Using profile endereco_principal as fallback:`, {
-          cep: profile.endereco_principal.cep,
-          cidade: profile.endereco_principal.cidade,
-          estado: profile.endereco_principal.estado
-        });
-        
-        setCurrentUserCep(profile.endereco_principal.cep);
-        return profile.endereco_principal;
       }
 
       console.log(`[${timestamp}] [useUserAddress] ❌ No address found anywhere`);
