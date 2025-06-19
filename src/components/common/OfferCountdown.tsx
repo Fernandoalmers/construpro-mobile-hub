@@ -39,18 +39,21 @@ const OfferCountdown: React.FC<OfferCountdownProps> = ({
   };
 
   if (variant === 'compact') {
+    // PADRONIZADO: Sempre exibir no formato "Xd Yh Zm Ws" com todas as unidades quando aplicável
+    let timeDisplay = '';
+    
+    if (countdown.days > 0) {
+      timeDisplay = `${countdown.days}d ${countdown.hours}h ${countdown.minutes}m ${countdown.seconds}s`;
+    } else if (countdown.hours > 0) {
+      timeDisplay = `${countdown.hours}h ${countdown.minutes}m ${countdown.seconds}s`;
+    } else {
+      timeDisplay = `${countdown.minutes}m ${countdown.seconds}s`;
+    }
+
     return (
       <div className={`inline-flex items-center gap-1 bg-red-500 text-white rounded-full ${sizeClasses[size]} font-medium ${isUrgent ? 'animate-pulse' : ''} ${className}`}>
         <Flame size={iconSizes[size]} />
-        <span>
-          {countdown.days > 0 ? (
-            `${countdown.days}d ${countdown.hours}h ${countdown.minutes}m ${countdown.seconds}s`
-          ) : countdown.hours > 0 ? (
-            `${countdown.hours}h ${countdown.minutes}m ${countdown.seconds}s`
-          ) : (
-            `${countdown.minutes}:${countdown.seconds.toString().padStart(2, '0')}`
-          )}
-        </span>
+        <span>{timeDisplay}</span>
       </div>
     );
   }
