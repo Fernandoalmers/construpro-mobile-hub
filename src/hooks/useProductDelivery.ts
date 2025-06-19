@@ -1,9 +1,9 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { Product } from '@/services/productService';
 import { getProductDeliveryInfo, getStoreLocationInfo } from '@/utils/delivery';
 import { useUserAddress } from './useUserAddress';
 import { useTempCep } from './useTempCep';
+import { useAuth } from '@/context/AuthContext';
 
 interface DeliveryInfo {
   isLocal: boolean;
@@ -42,7 +42,8 @@ interface ProductDeliveryInfo {
 
 export function useProductDelivery(produto: Product) {
   const { getUserMainAddress, currentUserCep } = useUserAddress();
-  const { tempCep } = useTempCep();
+  const { tempCep, clearIfUserHasAddress } = useTempCep();
+  const { isAuthenticated, profile } = useAuth();
   
   const [deliveryInfo, setDeliveryInfo] = useState<DeliveryInfo>({
     isLocal: false,
@@ -50,7 +51,7 @@ export function useProductDelivery(produto: Product) {
     loading: true
   });
 
-  // Enhanced delivery calculation with increased timeouts
+  // Enhanced delivery calculation with CORRECTED CEP prioritization
   const calculateDeliveryInfo = useCallback(async (forceRecalculate = false) => {
     const startTime = Date.now();
     const timestamp = new Date().toISOString();
@@ -65,32 +66,47 @@ export function useProductDelivery(produto: Product) {
       const userMainAddress = await Promise.race([
         getUserMainAddress() as Promise<UserAddress | null>,
         new Promise<null>((_, reject) => 
-          setTimeout(() => reject(new Error('Address fetch timeout')), 8000) // Aumentado de 5s para 8s
+          setTimeout(() => reject(new Error('Address fetch timeout')), 8000)
         )
       ]);
       
       const addressTime = Date.now() - startTime;
       console.log(`[${timestamp}] [useProductDelivery] User address lookup completed (${addressTime}ms)`);
 
-      // Get store location info with increased timeout
-      console.log(`[${timestamp}] [useProductDelivery] Getting store location info...`);
-      const storeLocationInfo = await Promise.race([
-        getStoreLocationInfo(produto.stores?.id, produto.vendedor_id) as Promise<StoreLocationInfo>,
-        new Promise<StoreLocationInfo>((_, reject) => 
-          setTimeout(() => reject(new Error('Store location timeout')), 6000) // Aumentado de 4s para 6s
-        )
-      ]);
+      // CORRIGIDO: Determinar qual CEP usar com priorização adequada
+      const hasUserRegisteredAddress = userMainAddress?.cep || profile?.endereco_principal?.cep || currentUserCep;
       
-      const storeTime = Date.now() - startTime;
-      console.log(`[${timestamp}] [useProductDelivery] Store location info (${storeTime}ms):`, storeLocationInfo);
-
-      // Determine which CEP to use (priority: temp > user registered > none)
-      const customerCep = tempCep || userMainAddress?.cep;
-      console.log(`[${timestamp}] [useProductDelivery] 📍 CEP Selection:`, {
+      console.log(`[${timestamp}] [useProductDelivery] 📍 CEP Priority Analysis:`, {
+        hasUserRegisteredAddress: !!hasUserRegisteredAddress,
+        userMainAddressCep: userMainAddress?.cep,
+        profileMainAddressCep: profile?.endereco_principal?.cep,
+        currentUserCep,
         tempCep,
-        userCep: userMainAddress?.cep,
-        finalCep: customerCep,
-        source: tempCep ? 'temporary' : userMainAddress?.cep ? 'user_address' : 'none'
+        isAuthenticated
+      });
+
+      // Clear temp CEP if user has registered address and temp wasn't set in current session
+      if (hasUserRegisteredAddress) {
+        clearIfUserHasAddress(true);
+      }
+
+      // NOVA LÓGICA: Para usuários autenticados com endereço, sempre usar endereço cadastrado
+      // Só usar tempCep se for usuário não autenticado OU se não tiver endereço cadastrado
+      let customerCep: string | undefined;
+      
+      if (isAuthenticated && hasUserRegisteredAddress) {
+        // Usuário autenticado com endereço: sempre usar endereço cadastrado
+        customerCep = userMainAddress?.cep || profile?.endereco_principal?.cep || currentUserCep;
+        console.log(`[${timestamp}] [useProductDelivery] ✅ Using registered address CEP:`, customerCep);
+      } else if (tempCep) {
+        // Usuário não autenticado ou sem endereço: usar CEP temporário se disponível
+        customerCep = tempCep;
+        console.log(`[${timestamp}] [useProductDelivery] ✅ Using temporary CEP:`, customerCep);
+      }
+
+      console.log(`[${timestamp}] [useProductDelivery] 📍 Final CEP Selection:`, {
+        customerCep,
+        source: isAuthenticated && hasUserRegisteredAddress ? 'registered_address' : tempCep ? 'temporary' : 'none'
       });
 
       if (!customerCep) {
@@ -102,6 +118,18 @@ export function useProductDelivery(produto: Product) {
         });
         return;
       }
+
+      // Get store location info with increased timeout
+      console.log(`[${timestamp}] [useProductDelivery] Getting store location info...`);
+      const storeLocationInfo = await Promise.race([
+        getStoreLocationInfo(produto.stores?.id, produto.vendedor_id) as Promise<StoreLocationInfo>,
+        new Promise<StoreLocationInfo>((_, reject) => 
+          setTimeout(() => reject(new Error('Store location timeout')), 6000)
+        )
+      ]);
+      
+      const storeTime = Date.now() - startTime;
+      console.log(`[${timestamp}] [useProductDelivery] Store location info (${storeTime}ms):`, storeLocationInfo);
 
       // Use the enhanced delivery calculation with increased timeout
       console.log(`[${timestamp}] [useProductDelivery] 🔄 Calling getProductDeliveryInfo with:`, {
@@ -121,7 +149,7 @@ export function useProductDelivery(produto: Product) {
           storeLocationInfo?.ibge
         ) as Promise<ProductDeliveryInfo>,
         new Promise<ProductDeliveryInfo>((_, reject) => 
-          setTimeout(() => reject(new Error('Delivery info timeout')), 15000) // Aumentado de 8s para 15s
+          setTimeout(() => reject(new Error('Delivery info timeout')), 15000)
         )
       ]);
       
@@ -148,7 +176,7 @@ export function useProductDelivery(produto: Product) {
         loading: false
       });
     }
-  }, [produto.vendedor_id, produto.id, produto.stores?.id, getUserMainAddress, tempCep]);
+  }, [produto.vendedor_id, produto.id, produto.stores?.id, getUserMainAddress, tempCep, isAuthenticated, profile?.endereco_principal?.cep, currentUserCep, clearIfUserHasAddress]);
 
   // Calculate delivery info when dependencies change
   useEffect(() => {

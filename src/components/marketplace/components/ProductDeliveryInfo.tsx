@@ -15,7 +15,7 @@ interface ProductDeliveryInfoProps {
 
 const ProductDeliveryInfo: React.FC<ProductDeliveryInfoProps> = ({ produto }) => {
   const { profile, isAuthenticated, refreshProfile } = useAuth();
-  const { tempCep, isLoading: tempCepLoading, setIsLoading: setTempCepLoading, setTemporaryCep } = useTempCep();
+  const { tempCep, isLoading: tempCepLoading, setIsLoading: setTempCepLoading, setTemporaryCep, clearTemporaryCep } = useTempCep();
   const { deliveryInfo, calculateDeliveryInfo, currentUserCep } = useProductDelivery(produto);
   const [showAddressModal, setShowAddressModal] = useState(false);
 
@@ -40,9 +40,10 @@ const ProductDeliveryInfo: React.FC<ProductDeliveryInfoProps> = ({ produto }) =>
     }, 1000);
   };
 
-  // Clear temporary CEP
-  const handleClearTempCep = () => {
-    setTemporaryCep('');
+  // CORRIGIDO: Clear temporary CEP and use registered address
+  const handleUseMyAddress = () => {
+    console.log('[ProductDeliveryInfo] Switching to registered address');
+    clearTemporaryCep();
     setTimeout(() => {
       calculateDeliveryInfo(true);
     }, 100);
@@ -50,9 +51,13 @@ const ProductDeliveryInfo: React.FC<ProductDeliveryInfoProps> = ({ produto }) =>
 
   // Enhanced logic to determine if user has any address
   const hasUserAddress = profile?.endereco_principal?.cep || currentUserCep;
-  const userCepToShow = tempCep || profile?.endereco_principal?.cep || currentUserCep;
   
-  // Show CEP input only if user has NO address at all
+  // CORRIGIDO: Determinar qual CEP está sendo usado e qual mostrar
+  const registeredCep = profile?.endereco_principal?.cep || currentUserCep;
+  const activeCep = isAuthenticated && hasUserAddress && !tempCep ? registeredCep : tempCep;
+  const isUsingRegisteredAddress = isAuthenticated && hasUserAddress && !tempCep;
+  
+  // Show CEP input para usuários sem endereço OU quando quiserem consultar outro CEP
   const shouldShowCepInput = !hasUserAddress && !tempCep;
   
   console.log('[ProductDeliveryInfo] Address debug:', {
@@ -61,6 +66,8 @@ const ProductDeliveryInfo: React.FC<ProductDeliveryInfoProps> = ({ produto }) =>
     profileCep: profile?.endereco_principal?.cep,
     currentUserCep,
     tempCep,
+    activeCep,
+    isUsingRegisteredAddress,
     shouldShowCepInput
   });
   
@@ -80,23 +87,25 @@ const ProductDeliveryInfo: React.FC<ProductDeliveryInfoProps> = ({ produto }) =>
         ) : (
           <>
             {/* Show current address/CEP being used */}
-            {userCepToShow && (
+            {activeCep && (
               <div className="flex items-center mb-2">
                 <MapPin className="w-4 h-4 text-blue-500 mr-2" />
                 <span className="text-xs text-gray-600">
-                  {tempCep ? (
+                  {isUsingRegisteredAddress ? (
                     <>
-                      CEP temporário: <strong>{tempCep.replace(/(\d{5})(\d{3})/, '$1-$2')}</strong>
-                      <button 
-                        onClick={handleClearTempCep}
-                        className="ml-2 text-blue-600 hover:underline"
-                      >
-                        (usar meu endereço)
-                      </button>
+                      Meu endereço: <strong>{activeCep.replace(/(\d{5})(\d{3})/, '$1-$2')}</strong>
                     </>
                   ) : (
                     <>
-                      Meu endereço: <strong>{userCepToShow.replace(/(\d{5})(\d{3})/, '$1-$2')}</strong>
+                      CEP temporário: <strong>{activeCep.replace(/(\d{5})(\d{3})/, '$1-$2')}</strong>
+                      {hasUserAddress && (
+                        <button 
+                          onClick={handleUseMyAddress}
+                          className="ml-2 text-blue-600 hover:underline"
+                        >
+                          (usar meu endereço)
+                        </button>
+                      )}
                     </>
                   )}
                 </span>
@@ -143,7 +152,7 @@ const ProductDeliveryInfo: React.FC<ProductDeliveryInfoProps> = ({ produto }) =>
                   </Button>
                 )}
                 
-                {hasUserAddress && !tempCep && (
+                {hasUserAddress && isUsingRegisteredAddress && (
                   <div className="text-xs text-gray-600">
                     <p className="mb-1">Quer consultar para outro CEP?</p>
                     <TempCepInput 
