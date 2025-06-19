@@ -3,7 +3,6 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { getUserProfile, UserProfile, updateUserProfile } from '@/services/userService';
-import { addressService } from '@/services/addressService';
 
 export type UserRole = 'consumidor' | 'profissional' | 'lojista';
 
@@ -32,35 +31,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loadUserProfile = async (userId: string): Promise<UserProfile | null> => {
     try {
       console.log('[AuthContext] Loading user profile for:', userId);
-      
-      // Load basic profile
       const userProfile = await getUserProfile();
       
       if (userProfile) {
-        // Load primary address
-        try {
-          const addresses = await addressService.getAddresses();
-          const primaryAddress = addresses.find(addr => addr.principal);
-          
-          if (primaryAddress) {
-            userProfile.endereco_principal = {
-              logradouro: primaryAddress.logradouro,
-              numero: primaryAddress.numero,
-              complemento: primaryAddress.complemento,
-              bairro: primaryAddress.bairro,
-              cidade: primaryAddress.cidade,
-              estado: primaryAddress.estado,
-              cep: primaryAddress.cep
-            };
-            console.log('[AuthContext] Primary address loaded:', primaryAddress);
-          } else {
-            console.log('[AuthContext] No primary address found');
-          }
-        } catch (addressError) {
-          console.warn('[AuthContext] Failed to load address:', addressError);
-          // Continue without address - not critical
-        }
-        
         setProfile(userProfile);
         console.log('[AuthContext] Profile loaded successfully');
         return userProfile;
@@ -132,15 +105,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
+    let isMounted = true;
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!isMounted) return;
+      
       console.log('[AuthContext] Initial session:', session?.user?.id);
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user?.id) {
         loadUserProfile(session.user.id).finally(() => {
-          setIsLoading(false);
+          if (isMounted) setIsLoading(false);
         });
       } else {
         setIsLoading(false);
@@ -151,13 +128,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isMounted) return;
+      
       console.log('[AuthContext] Auth state changed:', event, session?.user?.id);
       
       setSession(session);
       setUser(session?.user ?? null);
       
       if (event === 'SIGNED_IN' && session?.user?.id) {
-        await loadUserProfile(session.user.id);
+        // Use setTimeout to defer the profile loading and avoid blocking
+        setTimeout(() => {
+          if (isMounted) {
+            loadUserProfile(session.user.id);
+          }
+        }, 0);
       } else if (event === 'SIGNED_OUT') {
         setProfile(null);
       }
@@ -165,7 +149,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {

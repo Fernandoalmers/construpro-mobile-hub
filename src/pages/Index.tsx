@@ -10,10 +10,11 @@ const Index = () => {
   const { isAuthenticated, isLoading } = useAuth();
 
   useEffect(() => {
-    if (!isLoading && isAuthenticated) {
+    // Simple redirect logic without delays
+    if (isAuthenticated && !isLoading) {
       navigate('/home', { replace: true });
     }
-  }, [navigate, isAuthenticated, isLoading]);
+  }, [isAuthenticated, isLoading, navigate]);
 
   // Show loading while checking auth status
   if (isLoading) {
@@ -25,7 +26,7 @@ const Index = () => {
     return <LandingPage />;
   }
 
-  // This shouldn't happen due to useEffect, but just in case
+  // Fallback - should not happen due to useEffect
   return <SplashScreen />;
 };
 
