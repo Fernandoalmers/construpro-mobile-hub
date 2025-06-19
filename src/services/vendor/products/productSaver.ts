@@ -178,9 +178,14 @@ const validateProductUniqueness = async (productData: VendorProductInput): Promi
       .select('id')
       .eq('sku', productData.sku.trim())
       .neq('id', productData.id || '00000000-0000-0000-0000-000000000000')
-      .single();
+      .maybeSingle();
     
-    if (existingSku && !skuError) {
+    if (skuError && skuError.code !== 'PGRST116') {
+      console.error('[productSaver] Error checking SKU uniqueness:', skuError);
+      throw new Error('Erro ao validar SKU único.');
+    }
+    
+    if (existingSku) {
       throw new Error('SKU já existe no sistema. Escolha um SKU único.');
     }
   }
@@ -192,9 +197,14 @@ const validateProductUniqueness = async (productData: VendorProductInput): Promi
       .select('id')
       .eq('codigo_barras', productData.codigo_barras.trim())
       .neq('id', productData.id || '00000000-0000-0000-0000-000000000000')
-      .single();
+      .maybeSingle();
     
-    if (existingBarcode && !barcodeError) {
+    if (barcodeError && barcodeError.code !== 'PGRST116') {
+      console.error('[productSaver] Error checking barcode uniqueness:', barcodeError);
+      throw new Error('Erro ao validar código de barras único.');
+    }
+    
+    if (existingBarcode) {
       throw new Error('Código de barras já existe no sistema. Escolha um código único.');
     }
   }
