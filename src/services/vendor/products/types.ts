@@ -4,20 +4,23 @@ export interface VendorProduct {
   nome: string;
   descricao: string;
   categoria: string;
-  segmento?: string;
-  segmento_id?: string;
   preco_normal: number;
   preco_promocional?: number;
+  promocao_ativa?: boolean;
+  promocao_inicio?: string;
+  promocao_fim?: string;
+  estoque: number;
+  imagens?: string[];
+  status: 'pendente' | 'aprovado' | 'rejeitado';
   pontos_consumidor: number;
   pontos_profissional: number;
-  estoque: number;
+  vendedor_id: string;
+  segmento_id?: string;
+  segmento?: string;
   sku?: string;
   codigo_barras?: string;
-  imagens: string[];
-  vendedor_id: string;
-  status: 'pendente' | 'aprovado' | 'rejeitado' | 'inativo';
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface VendorProductInput {
@@ -25,23 +28,27 @@ export interface VendorProductInput {
   nome: string;
   descricao: string;
   categoria: string;
-  segmento?: string;
-  segmento_id?: string;
   preco_normal: number;
   preco_promocional?: number | null;
+  promocao_ativa?: boolean;
+  promocao_inicio?: string | null;
+  promocao_fim?: string | null;
+  estoque: number;
+  imagens?: string[];
+  status?: 'pendente' | 'aprovado' | 'rejeitado';
   pontos_consumidor: number;
   pontos_profissional: number;
-  estoque: number;
+  segmento_id?: string | null;
+  segmento?: string;
   sku?: string;
   codigo_barras?: string;
-  imagens: string[];
 }
 
 export interface ProductImage {
   id: string;
   product_id: string;
   url: string;
-  ordem: number;
   is_primary: boolean;
+  ordem: number;
   created_at: string;
 }

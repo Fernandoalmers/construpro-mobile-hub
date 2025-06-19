@@ -55,6 +55,21 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
     // Validate SKU and barcode uniqueness
     await validateProductUniqueness(productData);
     
+    // Process promotion dates
+    let promocaoInicio = null;
+    let promocaoFim = null;
+    
+    if (productData.promocao_ativa && productData.promocao_inicio && productData.promocao_fim) {
+      promocaoInicio = new Date(productData.promocao_inicio).toISOString();
+      promocaoFim = new Date(productData.promocao_fim).toISOString();
+      
+      console.log('[productSaver] Processing promotion dates:', {
+        inicio: promocaoInicio,
+        fim: promocaoFim,
+        ativa: productData.promocao_ativa
+      });
+    }
+    
     // Prepare data for insert/update
     const dbData = {
       ...productData,
@@ -66,7 +81,11 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
       imagens: imagensArray, // Direct array, not stringified
       // Clean and format SKU and barcode
       sku: productData.sku?.trim() || null,
-      codigo_barras: productData.codigo_barras?.trim() || null
+      codigo_barras: productData.codigo_barras?.trim() || null,
+      // Process promotion fields
+      promocao_ativa: productData.promocao_ativa || false,
+      promocao_inicio: promocaoInicio,
+      promocao_fim: promocaoFim,
     };
     
     console.log('[productSaver] Database data to save:', {

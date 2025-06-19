@@ -7,6 +7,7 @@ import GeneralInformationSection from './form-sections/GeneralInformationSection
 import ProductIdentificationSection from './form-sections/ProductIdentificationSection';
 import UnitPackagingSection from './form-sections/UnitPackagingSection';
 import PriceStockSection from './form-sections/PriceStockSection';
+import PromotionSection from './form-sections/PromotionSection';
 import {
   Form,
   FormControl,
@@ -158,6 +159,8 @@ const ProdutoFormScreen: React.FC<ProdutoFormScreenProps> = ({
               <UnitPackagingSection form={form} />
               
               <PriceStockSection form={form} />
+              
+              <PromotionSection form={form} />
               
               {/* Images Section */}
               <AccordionItem value="item-5">

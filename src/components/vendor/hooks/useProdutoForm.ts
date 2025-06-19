@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -7,7 +8,7 @@ import { toast } from '@/components/ui/sonner';
 import { saveVendorProduct } from '@/services/vendorProductsService';
 import { uploadProductImage } from '@/services/vendor/products/productImages';
 
-// Define product form schema
+// Define product form schema with promotion fields
 const productFormSchema = z.object({
   // General Information
   nome: z.string().min(3, { message: 'O nome deve ter pelo menos 3 caracteres' }),
@@ -31,6 +32,11 @@ const productFormSchema = z.object({
   estoque: z.number().int().min(0, { message: 'O estoque não pode ser negativo' }),
   precoPromocional: z.number().optional().nullable(),
   
+  // Promotion Fields
+  promocaoAtiva: z.boolean().default(false),
+  promocaoInicio: z.string().optional(),
+  promocaoFim: z.string().optional(),
+  
   // Points
   pontosConsumidor: z.number().int().min(0),
   pontosProfissional: z.number().int().min(0),
@@ -39,6 +45,29 @@ const productFormSchema = z.object({
   temVariantes: z.boolean().default(false),
   tipoVariante: z.string().optional(),
   variantes: z.array(z.string()).optional(),
+}).refine((data) => {
+  // Validate promotion dates if promotion is active
+  if (data.promocaoAtiva) {
+    if (!data.precoPromocional) {
+      return false;
+    }
+    if (data.precoPromocional >= data.preco) {
+      return false;
+    }
+    if (!data.promocaoInicio || !data.promocaoFim) {
+      return false;
+    }
+    if (new Date(data.promocaoInicio) >= new Date(data.promocaoFim)) {
+      return false;
+    }
+    if (new Date(data.promocaoInicio) <= new Date()) {
+      return false;
+    }
+  }
+  return true;
+}, {
+  message: "Configuração de promoção inválida",
+  path: ["promocaoAtiva"]
 });
 
 export type ProductFormValues = z.infer<typeof productFormSchema>;
@@ -76,6 +105,9 @@ export const useProdutoForm = ({ isEditing = false, productId, initialData }: Us
       preco: 0,
       estoque: 0,
       precoPromocional: null,
+      promocaoAtiva: false,
+      promocaoInicio: '',
+      promocaoFim: '',
       pontosConsumidor: 0,
       pontosProfissional: 0,
       temVariantes: false,
@@ -107,6 +139,9 @@ export const useProdutoForm = ({ isEditing = false, productId, initialData }: Us
         preco: initialData.preco_normal || 0,
         estoque: initialData.estoque || 0,
         precoPromocional: initialData.preco_promocional || null,
+        promocaoAtiva: initialData.promocao_ativa || false,
+        promocaoInicio: initialData.promocao_inicio ? new Date(initialData.promocao_inicio).toISOString().slice(0, 16) : '',
+        promocaoFim: initialData.promocao_fim ? new Date(initialData.promocao_fim).toISOString().slice(0, 16) : '',
         pontosConsumidor: initialData.pontos_consumidor || 0,
         pontosProfissional: initialData.pontos_profissional || 0,
         temVariantes: false,
@@ -163,6 +198,26 @@ export const useProdutoForm = ({ isEditing = false, productId, initialData }: Us
       return;
     }
 
+    // Additional validation for promotions
+    if (values.promocaoAtiva) {
+      if (!values.precoPromocional || values.precoPromocional >= values.preco) {
+        toast.error("O preço promocional deve ser menor que o preço normal.");
+        return;
+      }
+      if (!values.promocaoInicio || !values.promocaoFim) {
+        toast.error("Defina as datas de início e fim da promoção.");
+        return;
+      }
+      if (new Date(values.promocaoInicio) >= new Date(values.promocaoFim)) {
+        toast.error("A data de fim deve ser posterior à data de início.");
+        return;
+      }
+      if (new Date(values.promocaoInicio) <= new Date()) {
+        toast.error("A data de início deve ser futura.");
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     
     try {
@@ -177,7 +232,10 @@ export const useProdutoForm = ({ isEditing = false, productId, initialData }: Us
         sku: values.sku?.trim() || undefined,
         codigo_barras: values.codigo_barras?.trim() || undefined,
         preco_normal: values.preco,
-        preco_promocional: values.precoPromocional || null,
+        preco_promocional: values.promocaoAtiva ? values.precoPromocional : null,
+        promocao_ativa: values.promocaoAtiva,
+        promocao_inicio: values.promocaoAtiva ? values.promocaoInicio : null,
+        promocao_fim: values.promocaoAtiva ? values.promocaoFim : null,
         estoque: values.estoque,
         pontos_consumidor: values.pontosConsumidor,
         pontos_profissional: values.pontosProfissional,
@@ -234,7 +292,11 @@ export const useProdutoForm = ({ isEditing = false, productId, initialData }: Us
         }
       }
       
-      toast.success(isEditing ? "Produto atualizado" : "Produto cadastrado", {
+      const successMessage = values.promocaoAtiva 
+        ? "Produto cadastrado com promoção ativa!"
+        : isEditing ? "Produto atualizado" : "Produto cadastrado";
+      
+      toast.success(successMessage, {
         description: isEditing 
           ? "As alterações foram salvas com sucesso." 
           : "O produto foi cadastrado com sucesso."
@@ -286,7 +348,6 @@ export const useProdutoForm = ({ isEditing = false, productId, initialData }: Us
     setImages(newPreviews);
   };
 
-  // Enhanced function to remove images
   const removeImage = (index: number) => {
     const imageToRemove = images[index];
     const isNewImage = imageToRemove?.startsWith('blob:');
