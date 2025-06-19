@@ -1,18 +1,7 @@
 
-import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
 
 const SplashScreen: React.FC = () => {
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      navigate('/onboarding');
-    }, 2000);
-
-    return () => clearTimeout(timer);
-  }, [navigate]);
-
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-construPro-blue">
       <div className="relative w-32 h-32 mb-4">

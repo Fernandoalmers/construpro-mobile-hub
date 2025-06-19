@@ -10,7 +10,6 @@ const Index = () => {
   const { isAuthenticated, isLoading } = useAuth();
 
   useEffect(() => {
-    // Immediate navigation without artificial delays
     if (!isLoading && isAuthenticated) {
       navigate('/home', { replace: true });
     }
