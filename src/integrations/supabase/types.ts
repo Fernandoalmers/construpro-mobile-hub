@@ -982,6 +982,9 @@ export type Database = {
           pontos_profissional: number | null
           preco_normal: number
           preco_promocional: number | null
+          promocao_ativa: boolean | null
+          promocao_fim: string | null
+          promocao_inicio: string | null
           segmento: string | null
           segmento_id: string | null
           sku: string | null
@@ -1002,6 +1005,9 @@ export type Database = {
           pontos_profissional?: number | null
           preco_normal: number
           preco_promocional?: number | null
+          promocao_ativa?: boolean | null
+          promocao_fim?: string | null
+          promocao_inicio?: string | null
           segmento?: string | null
           segmento_id?: string | null
           sku?: string | null
@@ -1022,6 +1028,9 @@ export type Database = {
           pontos_profissional?: number | null
           preco_normal?: number
           preco_promocional?: number | null
+          promocao_ativa?: boolean | null
+          promocao_fim?: string | null
+          promocao_inicio?: string | null
           segmento?: string | null
           segmento_id?: string | null
           sku?: string | null
@@ -2139,6 +2148,10 @@ export type Database = {
       secure_admin_promotion: {
         Args: { target_user_id: string; action: string; reason?: string }
         Returns: Json
+      }
+      update_expired_promotions: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       update_inventory_on_order: {
         Args: { p_produto_id: string; p_quantidade: number }

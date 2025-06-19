@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 
@@ -130,7 +131,7 @@ export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> =>
         categoria: product.categoria,
         preco_normal: product.preco_normal,
         preco_promocional: product.preco_promocional,
-        promocao_ativa: product.promocao_ativa,
+        promocao_ativa: product.promocao_ativa || false,
         promocao_inicio: product.promocao_inicio,
         promocao_fim: product.promocao_fim,
         estoque: product.estoque,
@@ -173,7 +174,12 @@ export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> =>
  */
 const updateExpiredPromotions = async (): Promise<void> => {
   try {
-    const { error } = await supabase.rpc('update_expired_promotions');
+    // Call the database function directly using a simple query
+    const { error } = await supabase
+      .from('produtos')
+      .update({ promocao_ativa: false })
+      .lt('promocao_fim', new Date().toISOString())
+      .eq('promocao_ativa', true);
     
     if (error) {
       console.error('[marketplaceProductsService] Error updating expired promotions:', error);
@@ -181,7 +187,7 @@ const updateExpiredPromotions = async (): Promise<void> => {
       console.log('[marketplaceProductsService] ✅ Updated expired promotions');
     }
   } catch (error) {
-    console.error('[marketplaceProductsService] Error calling update_expired_promotions:', error);
+    console.error('[marketplaceProductsService] Error calling update expired promotions:', error);
   }
 };
 
@@ -254,7 +260,7 @@ export const getProductsBySegment = async (segmentId: string): Promise<Marketpla
         categoria: product.categoria,
         preco_normal: product.preco_normal,
         preco_promocional: product.preco_promocional,
-        promocao_ativa: product.promocao_ativa,
+        promocao_ativa: product.promocao_ativa || false,
         promocao_inicio: product.promocao_inicio,
         promocao_fim: product.promocao_fim,
         estoque: product.estoque,
