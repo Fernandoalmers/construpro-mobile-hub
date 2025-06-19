@@ -218,7 +218,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
       console.error(`[${timestamp}] [ProductInfo] Error calculating delivery info (${totalTime}ms):`, error);
       
       // Enhanced fallback messaging
-      const hasAnyAddress = userMainAddress || tempCep;
+      const hasAnyAddress = tempCep || profile?.endereco_principal;
       
       const fallbackMessage = hasAnyAddress 
         ? 'Frete calculado no checkout'
