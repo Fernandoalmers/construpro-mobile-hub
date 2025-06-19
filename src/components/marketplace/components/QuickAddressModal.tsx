@@ -15,7 +15,7 @@ import { toast } from '@/components/ui/use-toast';
 import { useCepLookup } from '@/hooks/useCepLookup';
 import { useAddresses } from '@/hooks/useAddresses';
 import { formatCep } from '@/lib/cep';
-import { Search, AlertCircle, CheckCircle, MapPin, Plus } from 'lucide-react';
+import { Search, AlertCircle, CheckCircle, MapPin, Plus, Loader2 } from 'lucide-react';
 
 interface QuickAddressModalProps {
   open: boolean;
@@ -51,6 +51,11 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
 
   const handleCepSearch = async () => {
     if (!cepInput.trim()) {
+      toast({
+        variant: "destructive",
+        title: "CEP obrigatório",
+        description: "Por favor, digite um CEP para buscar"
+      });
       return;
     }
     
@@ -65,10 +70,17 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
       return;
     }
 
+    console.log('[QuickAddressModal] Buscando CEP:', sanitizedCep);
     const result = await lookupAddress(sanitizedCep);
+    
     if (result) {
       setShowFullForm(true);
       setFormData(prev => ({ ...prev, nome: 'Endereço Principal' }));
+      
+      toast({
+        title: "CEP encontrado!",
+        description: "Dados preenchidos automaticamente. Complete as informações."
+      });
     }
   };
 
@@ -83,10 +95,19 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
   };
 
   const handleSaveAddress = async () => {
-    if (!cepData || !formData.numero.trim()) {
+    if (!cepData) {
       toast({
         variant: "destructive",
-        title: "Dados incompletos",
+        title: "CEP não encontrado",
+        description: "Por favor, busque um CEP válido primeiro"
+      });
+      return;
+    }
+
+    if (!formData.numero.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Número obrigatório",
         description: "Por favor, preencha o número do endereço"
       });
       return;
@@ -98,27 +119,27 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
       await addAddress({
         nome: formData.nome || 'Endereço Principal',
         cep: cepData.cep,
-        logradouro: cepData.logradouro || '',
+        logradouro: cepData.logradouro,
         numero: formData.numero,
         complemento: formData.complemento,
-        bairro: cepData.bairro || '',
-        cidade: cepData.localidade || '',
-        estado: cepData.uf || '',
+        bairro: cepData.bairro,
+        cidade: cepData.localidade,
+        estado: cepData.uf,
         principal: true
       });
 
       toast({
-        title: "Endereço adicionado",
+        title: "Endereço adicionado!",
         description: "Endereço principal adicionado com sucesso!"
       });
 
       onOpenChange(false);
       onAddressAdded?.();
     } catch (error) {
-      console.error('Error saving address:', error);
+      console.error('Erro ao salvar endereço:', error);
       toast({
         variant: "destructive",
-        title: "Erro",
+        title: "Erro ao salvar",
         description: "Erro ao salvar endereço. Tente novamente."
       });
     } finally {
@@ -144,6 +165,8 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
       </Badge>
     );
   };
+
+  const isCepValid = cepInput.replace(/\D/g, '').length === 8;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -172,38 +195,40 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
                 onChange={(e) => handleCepInputChange(e.target.value)}
                 placeholder="00000-000"
                 maxLength={9}
-                className={error ? 'border-red-500' : ''}
+                className={error ? 'border-red-500' : cepData ? 'border-green-500' : ''}
               />
               <Button
                 type="button"
                 onClick={handleCepSearch}
-                disabled={isLoading || !cepInput.trim() || cepInput.replace(/\D/g, '').length !== 8}
-                className="flex items-center gap-2"
+                disabled={isLoading || !cepInput.trim() || !isCepValid}
+                className="flex items-center gap-2 min-w-[80px]"
                 size="sm"
               >
                 {isLoading ? (
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Search className="h-4 w-4" />
                 )}
-                Buscar
+                {isLoading ? '' : 'Buscar'}
               </Button>
             </div>
             
             {error && (
-              <p className="text-sm text-red-600 flex items-center gap-1">
-                <AlertCircle size={14} />
-                {error}
-              </p>
+              <div className="p-2 bg-red-50 border border-red-200 rounded-md">
+                <p className="text-sm text-red-600 flex items-center gap-1">
+                  <AlertCircle size={14} />
+                  {error}
+                </p>
+              </div>
             )}
             
             {cepData && (
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <CheckCircle size={14} className="text-green-600" />
-                  <span className="text-sm text-green-600">CEP encontrado!</span>
+                  <span className="text-sm text-green-600 font-medium">CEP válido encontrado!</span>
                 </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="p-3 bg-green-50 rounded-lg border border-green-200">
                   <p className="text-sm font-medium">{cepData.logradouro}</p>
                   <p className="text-sm text-gray-600">{cepData.bairro}, {cepData.localidade} - {cepData.uf}</p>
                 </div>
@@ -211,6 +236,15 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
                   <MapPin size={14} className="text-blue-600" />
                   {getZoneBadge()}
                 </div>
+              </div>
+            )}
+
+            {isLoading && (
+              <div className="p-2 bg-blue-50 border border-blue-200 rounded-md">
+                <p className="text-sm text-blue-600 flex items-center gap-2">
+                  <Loader2 size={14} className="animate-spin" />
+                  Buscando CEP... Aguarde alguns segundos.
+                </p>
               </div>
             )}
           </div>
@@ -237,6 +271,7 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
                     onChange={(e) => setFormData(prev => ({ ...prev, numero: e.target.value }))}
                     placeholder="123"
                     required
+                    className={!formData.numero.trim() ? 'border-amber-300' : ''}
                   />
                 </div>
                 
@@ -270,9 +305,16 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
                 type="button"
                 onClick={handleSaveAddress}
                 disabled={isSaving || !formData.numero.trim()}
-                className="bg-green-600 hover:bg-green-700"
+                className="bg-green-600 hover:bg-green-700 flex items-center gap-2"
               >
-                {isSaving ? 'Salvando...' : 'Salvar Endereço'}
+                {isSaving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  'Salvar Endereço'
+                )}
               </Button>
             )}
           </div>

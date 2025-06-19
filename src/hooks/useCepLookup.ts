@@ -24,9 +24,10 @@ export const useCepLookup = (): UseCepLookupReturn => {
       return null;
     }
 
-    console.log('[useCepLookup] Looking up CEP:', sanitizedCep);
+    console.log('[useCepLookup] Iniciando busca do CEP:', sanitizedCep);
     setIsLoading(true);
     setError(null);
+    setCepData(null);
 
     try {
       const data = await lookupCep(sanitizedCep);
@@ -34,15 +35,16 @@ export const useCepLookup = (): UseCepLookupReturn => {
       if (data) {
         setCepData(data);
         setError(null);
-        console.log('[useCepLookup] CEP found:', data);
+        console.log('[useCepLookup] CEP encontrado e validado:', data);
         return data;
       } else {
-        setError('CEP não encontrado. Verifique o número digitado.');
+        setError('CEP não encontrado ou desativado. Verifique o número digitado.');
         setCepData(null);
+        console.warn('[useCepLookup] CEP não encontrado:', sanitizedCep);
         return null;
       }
     } catch (err) {
-      console.error('[useCepLookup] Error:', err);
+      console.error('[useCepLookup] Erro na busca:', err);
       setError('Erro ao buscar CEP. Verifique sua conexão e tente novamente.');
       setCepData(null);
       return null;
@@ -54,7 +56,8 @@ export const useCepLookup = (): UseCepLookupReturn => {
   const clearData = useCallback(() => {
     setCepData(null);
     setError(null);
-    console.log('[useCepLookup] Data cleared');
+    setIsLoading(false);
+    console.log('[useCepLookup] Dados limpos');
   }, []);
 
   return {

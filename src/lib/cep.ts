@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export type CepData = {
@@ -37,6 +36,32 @@ export function isValidCep(cep: string): boolean {
 }
 
 /**
+ * Valida se os dados do CEP são completos e válidos
+ */
+function isValidCepData(data: any): boolean {
+  if (!data) return false;
+  
+  // Verificar se campos essenciais não estão vazios
+  const requiredFields = ['logradouro', 'bairro', 'localidade', 'uf'];
+  
+  for (const field of requiredFields) {
+    const value = data[field];
+    if (!value || typeof value !== 'string' || value.trim().length === 0) {
+      console.warn(`[isValidCepData] Campo obrigatório vazio ou inválido: ${field}`, value);
+      return false;
+    }
+  }
+  
+  // Verificar se não são apenas espaços ou caracteres especiais
+  if (data.logradouro.trim().length < 3) {
+    console.warn('[isValidCepData] Logradouro muito curto:', data.logradouro);
+    return false;
+  }
+  
+  return true;
+}
+
+/**
  * Busca CEP no cache do Supabase
  */
 async function getCachedCep(cep: string): Promise<CepData | null> {
@@ -49,7 +74,7 @@ async function getCachedCep(cep: string): Promise<CepData | null> {
 
     if (error || !data) return null;
 
-    return {
+    const cepData = {
       cep: data.cep,
       logradouro: data.logradouro || '',
       bairro: data.bairro || '',
@@ -59,6 +84,16 @@ async function getCachedCep(cep: string): Promise<CepData | null> {
       latitude: data.latitude || undefined,
       longitude: data.longitude || undefined,
     };
+
+    // Validar se os dados em cache são válidos
+    if (!isValidCepData(cepData)) {
+      console.warn('[getCachedCep] Dados em cache inválidos, removendo do cache:', cep);
+      // Remove dados inválidos do cache
+      await supabase.from('zip_cache').delete().eq('cep', cep);
+      return null;
+    }
+
+    return cepData;
   } catch (error) {
     console.error('[getCachedCep] Error:', error);
     return null;
@@ -66,10 +101,16 @@ async function getCachedCep(cep: string): Promise<CepData | null> {
 }
 
 /**
- * Salva CEP no cache do Supabase
+ * Salva CEP no cache do Supabase apenas se for válido
  */
 async function cacheCep(cepData: CepData): Promise<void> {
   try {
+    // Só fazer cache se os dados forem válidos
+    if (!isValidCepData(cepData)) {
+      console.warn('[cacheCep] Não salvando dados inválidos no cache:', cepData);
+      return;
+    }
+
     await supabase
       .from('zip_cache')
       .upsert({
@@ -89,16 +130,29 @@ async function cacheCep(cepData: CepData): Promise<void> {
 }
 
 /**
- * Busca CEP no ViaCEP
+ * Busca CEP no ViaCEP com timeout
  */
 async function fetchViaCep(cep: string): Promise<CepData | null> {
   try {
-    const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos timeout
+
+    const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`, {
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) return null;
+    
     const data = await response.json();
     
-    if (data.erro) return null;
+    if (data.erro) {
+      console.warn('[fetchViaCep] CEP não encontrado no ViaCEP:', cep);
+      return null;
+    }
     
-    return {
+    const cepData = {
       cep: cep,
       logradouro: data.logradouro || '',
       bairro: data.bairro || '',
@@ -106,24 +160,43 @@ async function fetchViaCep(cep: string): Promise<CepData | null> {
       uf: data.uf || '',
       ibge: data.ibge,
     };
+
+    // Validar dados antes de retornar
+    if (!isValidCepData(cepData)) {
+      console.warn('[fetchViaCep] Dados inválidos retornados pelo ViaCEP:', cepData);
+      return null;
+    }
+    
+    return cepData;
   } catch (error) {
-    console.error('[fetchViaCep] Error:', error);
+    if (error.name === 'AbortError') {
+      console.error('[fetchViaCep] Timeout na busca do CEP:', cep);
+    } else {
+      console.error('[fetchViaCep] Error:', error);
+    }
     return null;
   }
 }
 
 /**
- * Busca CEP no BrasilAPI
+ * Busca CEP no BrasilAPI com timeout
  */
 async function fetchBrasilApi(cep: string): Promise<CepData | null> {
   try {
-    const response = await fetch(`https://brasilapi.com.br/api/cep/v1/${cep}`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos timeout
+
+    const response = await fetch(`https://brasilapi.com.br/api/cep/v1/${cep}`, {
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
     
     if (!response.ok) return null;
     
     const data = await response.json();
     
-    return {
+    const cepData = {
       cep: cep,
       logradouro: data.street || '',
       bairro: data.neighborhood || '',
@@ -131,8 +204,20 @@ async function fetchBrasilApi(cep: string): Promise<CepData | null> {
       uf: data.state || '',
       ibge: data.city_ibge,
     };
+
+    // Validar dados antes de retornar
+    if (!isValidCepData(cepData)) {
+      console.warn('[fetchBrasilApi] Dados inválidos retornados pelo BrasilAPI:', cepData);
+      return null;
+    }
+    
+    return cepData;
   } catch (error) {
-    console.error('[fetchBrasilApi] Error:', error);
+    if (error.name === 'AbortError') {
+      console.error('[fetchBrasilApi] Timeout na busca do CEP:', cep);
+    } else {
+      console.error('[fetchBrasilApi] Error:', error);
+    }
     return null;
   }
 }
@@ -170,49 +255,74 @@ async function getDeliveryZone(ibge?: string): Promise<{ zona_entrega: string; p
 }
 
 /**
- * Função principal para buscar CEP com fallbacks e cache
+ * Função principal para buscar CEP com fallbacks, cache e validação robusta
  */
 export async function lookupCep(rawCep: string): Promise<CepData | null> {
   const cep = sanitizeCep(rawCep);
   
   if (!isValidCep(cep)) {
-    console.warn('[lookupCep] Invalid CEP format:', rawCep);
+    console.warn('[lookupCep] Formato de CEP inválido:', rawCep);
     return null;
   }
 
-  console.log('[lookupCep] Looking up CEP:', cep);
+  console.log('[lookupCep] Buscando CEP:', cep);
 
-  // 1. Verificar cache primeiro
-  const cached = await getCachedCep(cep);
-  if (cached) {
-    console.log('[lookupCep] Found in cache:', cep);
-    const deliveryInfo = await getDeliveryZone(cached.ibge);
-    return { ...cached, ...deliveryInfo };
-  }
+  try {
+    // 1. Verificar cache primeiro
+    const cached = await getCachedCep(cep);
+    if (cached) {
+      console.log('[lookupCep] CEP encontrado no cache:', cep);
+      const deliveryInfo = await getDeliveryZone(cached.ibge);
+      return { ...cached, ...deliveryInfo };
+    }
 
-  // 2. Tentar ViaCEP
-  let cepData = await fetchViaCep(cep);
-  
-  // 3. Se falhar, tentar BrasilAPI
-  if (!cepData) {
-    cepData = await fetchBrasilApi(cep);
-  }
+    // 2. Buscar nas APIs externas com Promise.race para garantir resposta rápida
+    const apiPromises = [
+      fetchViaCep(cep),
+      fetchBrasilApi(cep)
+    ];
 
-  // Se ainda não encontrou, retornar null
-  if (!cepData) {
-    console.warn('[lookupCep] CEP not found:', cep);
+    // Timeout geral de 8 segundos para todas as tentativas
+    const timeoutPromise = new Promise<null>((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout geral na busca do CEP')), 8000)
+    );
+
+    let cepData: CepData | null = null;
+
+    try {
+      // Tentar ambas APIs simultaneamente e pegar a primeira que retornar dados válidos
+      const results = await Promise.allSettled(apiPromises);
+      
+      for (const result of results) {
+        if (result.status === 'fulfilled' && result.value && isValidCepData(result.value)) {
+          cepData = result.value;
+          break;
+        }
+      }
+    } catch (error) {
+      console.error('[lookupCep] Erro ao buscar nas APIs:', error);
+    }
+
+    // Se ainda não encontrou dados válidos, retornar null
+    if (!cepData) {
+      console.warn('[lookupCep] CEP não encontrado ou dados inválidos:', cep);
+      return null;
+    }
+
+    // Determinar zona de entrega
+    const deliveryInfo = await getDeliveryZone(cepData.ibge);
+    const finalData = { ...cepData, ...deliveryInfo };
+
+    // Salvar no cache apenas se válido
+    await cacheCep(finalData);
+
+    console.log('[lookupCep] CEP encontrado e validado:', cep);
+    return finalData;
+
+  } catch (error) {
+    console.error('[lookupCep] Erro inesperado:', error);
     return null;
   }
-
-  // Determinar zona de entrega
-  const deliveryInfo = await getDeliveryZone(cepData.ibge);
-  const finalData = { ...cepData, ...deliveryInfo };
-
-  // Salvar no cache para próximas consultas
-  await cacheCep(finalData);
-
-  console.log('[lookupCep] CEP found and cached:', cep);
-  return finalData;
 }
 
 /**

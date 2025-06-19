@@ -19,7 +19,7 @@ import { Address } from '@/services/addressService';
 import { useAuth } from '@/context/AuthContext';
 import { useCepLookup } from '@/hooks/useCepLookup';
 import { formatCep } from '@/lib/cep';
-import { Search, AlertCircle, CheckCircle, MapPin } from 'lucide-react';
+import { Search, AlertCircle, CheckCircle, MapPin, Loader2 } from 'lucide-react';
 
 interface AddAddressModalProps {
   open: boolean;
@@ -77,7 +77,7 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
 
   useEffect(() => {
     if (open && !isAuthenticated) {
-      console.error("User is not authenticated");
+      console.error("Usuário não autenticado");
       toast({
         variant: "destructive",
         title: "Erro de autenticação",
@@ -90,34 +90,61 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
   // Auto-fill fields when CEP data is found
   useEffect(() => {
     if (cepData) {
-      console.log('[AddAddressModal] Auto-filling address fields:', cepData);
+      console.log('[AddAddressModal] Preenchendo campos automaticamente:', cepData);
       setFormData(prev => ({
         ...prev,
         cep: cepData.cep,
-        logradouro: cepData.logradouro || '',
-        bairro: cepData.bairro || '',
-        cidade: cepData.localidade || '',
-        estado: cepData.uf || ''
+        logradouro: cepData.logradouro,
+        bairro: cepData.bairro,
+        cidade: cepData.localidade,
+        estado: cepData.uf
       }));
+      
+      // Limpar erros de validação dos campos preenchidos automaticamente
+      setValidationErrors(prev => {
+        const updated = { ...prev };
+        delete updated.cep;
+        delete updated.logradouro;
+        delete updated.bairro;
+        delete updated.cidade;
+        delete updated.estado;
+        return updated;
+      });
     }
   }, [cepData]);
 
   const handleCepSearch = async () => {
     if (!cepInput.trim()) {
-      console.warn('[AddAddressModal] Empty CEP input');
+      console.warn('[AddAddressModal] CEP vazio');
+      toast({
+        variant: "destructive",
+        title: "CEP obrigatório",
+        description: "Por favor, digite um CEP para buscar"
+      });
       return;
     }
     
-    console.log('[AddAddressModal] Searching CEP:', cepInput);
+    console.log('[AddAddressModal] Buscando CEP:', cepInput);
     const sanitizedCep = cepInput.replace(/\D/g, '');
     
     if (sanitizedCep.length !== 8) {
-      console.warn('[AddAddressModal] Invalid CEP length:', sanitizedCep.length);
+      console.warn('[AddAddressModal] CEP inválido:', sanitizedCep.length);
       setValidationErrors(prev => ({ ...prev, cep: 'CEP deve ter 8 dígitos' }));
+      toast({
+        variant: "destructive",
+        title: "CEP inválido",
+        description: "CEP deve ter 8 dígitos"
+      });
       return;
     }
 
-    await lookupAddress(sanitizedCep);
+    const result = await lookupAddress(sanitizedCep);
+    if (result) {
+      toast({
+        title: "CEP encontrado!",
+        description: "Dados preenchidos automaticamente."
+      });
+    }
   };
 
   const handleCepInputChange = (value: string) => {
@@ -134,11 +161,20 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
     
     // Clear data if CEP is significantly modified
     const sanitizedCep = value.replace(/\D/g, '');
-    if (sanitizedCep.length < 8) {
+    if (sanitizedCep.length < 8 && cepData) {
       clearData();
+      // Limpar campos que foram preenchidos automaticamente
+      setFormData(prev => ({
+        ...prev,
+        cep: '',
+        logradouro: '',
+        bairro: '',
+        cidade: '',
+        estado: ''
+      }));
     }
     
-    console.log('[AddAddressModal] CEP input changed:', value, '-> sanitized:', sanitizedCep);
+    console.log('[AddAddressModal] CEP alterado:', value, '-> sanitizado:', sanitizedCep);
   };
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -164,14 +200,20 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
     
     // Check required fields
     requiredFields.forEach(field => {
-      if (!formData[field]) {
+      const value = formData[field];
+      if (!value || (typeof value === 'string' && !value.trim())) {
         errors[field] = 'Campo obrigatório';
       }
     });
     
     // Validate CEP format
-    if (formData.cep && !/^\d{5}-?\d{3}$/.test(formData.cep)) {
-      errors.cep = 'CEP inválido. Use o formato 00000-000';
+    if (formData.cep && !/^\d{8}$/.test(formData.cep.replace(/\D/g, ''))) {
+      errors.cep = 'CEP inválido. Use 8 dígitos';
+    }
+
+    // Validate if CEP data was found
+    if (!cepData && formData.cep) {
+      errors.cep = 'CEP deve ser validado antes de salvar';
     }
     
     // Set validation errors
@@ -186,22 +228,22 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
       e.preventDefault();
     }
     
-    console.log("Form submission initiated with data:", formData);
+    console.log("Iniciando salvamento com dados:", formData);
     
     // Validate form
     if (!validateForm()) {
-      console.error("Validation failed:", validationErrors);
+      console.error("Validação falhou:", validationErrors);
       toast({
         variant: "destructive",
         title: "Campos obrigatórios",
-        description: "Por favor, preencha todos os campos obrigatórios corretamente."
+        description: "Por favor, preencha todos os campos obrigatórios e valide o CEP."
       });
       return;
     }
     
     // Check authentication again before submitting
     if (!isAuthenticated) {
-      console.error("User is not authenticated during form submission");
+      console.error("Usuário não autenticado durante envio");
       toast({
         variant: "destructive",
         title: "Erro de autenticação",
@@ -213,13 +255,13 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
     setIsSaving(true);
     
     try {
-      console.log("Submitting address data:", formData);
+      console.log("Enviando dados do endereço:", formData);
       await onSave(formData);
     } catch (error) {
-      console.error('Error saving address:', error);
+      console.error('Erro ao salvar endereço:', error);
       toast({
         variant: "destructive",
-        title: "Erro",
+        title: "Erro ao salvar",
         description: error instanceof Error ? error.message : "Erro ao salvar endereço. Tente novamente."
       });
     } finally {
@@ -245,6 +287,8 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
       </Badge>
     );
   };
+
+  const isCepValid = cepInput.replace(/\D/g, '').length === 8;
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -284,41 +328,56 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
                     onChange={(e) => handleCepInputChange(e.target.value)}
                     placeholder="00000-000"
                     maxLength={9}
-                    className={error ? 'border-red-500' : ''}
+                    className={error ? 'border-red-500' : cepData ? 'border-green-500' : validationErrors.cep ? 'border-red-500' : ''}
                   />
                   <Button
                     type="button"
                     onClick={handleCepSearch}
-                    disabled={isLoading || !cepInput.trim() || cepInput.replace(/\D/g, '').length !== 8}
-                    className="flex items-center gap-2"
+                    disabled={isLoading || !cepInput.trim() || !isCepValid}
+                    className="flex items-center gap-2 min-w-[80px]"
                     size="sm"
                   >
                     {isLoading ? (
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <Search className="h-4 w-4" />
                     )}
-                    Buscar
+                    {isLoading ? '' : 'Buscar'}
                   </Button>
                 </div>
                 
                 {error && (
-                  <p className="text-sm text-red-600 flex items-center gap-1">
-                    <AlertCircle size={14} />
-                    {error}
-                  </p>
+                  <div className="p-2 bg-red-50 border border-red-200 rounded-md">
+                    <p className="text-sm text-red-600 flex items-center gap-1">
+                      <AlertCircle size={14} />
+                      {error}
+                    </p>
+                  </div>
                 )}
                 
                 {cepData && (
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <CheckCircle size={14} className="text-green-600" />
-                      <span className="text-sm text-green-600">CEP encontrado e dados preenchidos automaticamente!</span>
+                      <span className="text-sm text-green-600 font-medium">CEP válido encontrado!</span>
+                    </div>
+                    <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                      <p className="text-sm font-medium">{cepData.logradouro}</p>
+                      <p className="text-sm text-gray-600">{cepData.bairro}, {cepData.localidade} - {cepData.uf}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <MapPin size={14} className="text-blue-600" />
                       {getZoneBadge()}
                     </div>
+                  </div>
+                )}
+
+                {isLoading && (
+                  <div className="p-2 bg-blue-50 border border-blue-200 rounded-md">
+                    <p className="text-sm text-blue-600 flex items-center gap-2">
+                      <Loader2 size={14} className="animate-spin" />
+                      Buscando CEP... Aguarde alguns segundos.
+                    </p>
                   </div>
                 )}
 
@@ -335,8 +394,9 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
                   placeholder="Rua, Avenida, etc"
                   value={formData.logradouro}
                   onChange={handleChange}
-                  className={validationErrors.logradouro ? "border-red-500" : ""}
+                  className={validationErrors.logradouro ? "border-red-500" : cepData ? "bg-green-50" : ""}
                   required
+                  readOnly={!!cepData}
                 />
                 {validationErrors.logradouro && (
                   <p className="text-red-500 text-xs mt-1">{validationErrors.logradouro}</p>
@@ -380,8 +440,9 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
                   placeholder="Bairro"
                   value={formData.bairro}
                   onChange={handleChange}
-                  className={validationErrors.bairro ? "border-red-500" : ""}
+                  className={validationErrors.bairro ? "border-red-500" : cepData ? "bg-green-50" : ""}
                   required
+                  readOnly={!!cepData}
                 />
                 {validationErrors.bairro && (
                   <p className="text-red-500 text-xs mt-1">{validationErrors.bairro}</p>
@@ -397,8 +458,9 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
                     placeholder="Cidade"
                     value={formData.cidade}
                     onChange={handleChange}
-                    className={validationErrors.cidade ? "border-red-500" : ""}
+                    className={validationErrors.cidade ? "border-red-500" : cepData ? "bg-green-50" : ""}
                     required
+                    readOnly={!!cepData}
                   />
                   {validationErrors.cidade && (
                     <p className="text-red-500 text-xs mt-1">{validationErrors.cidade}</p>
@@ -413,9 +475,10 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
                     placeholder="UF"
                     value={formData.estado}
                     onChange={handleChange}
-                    className={validationErrors.estado ? "border-red-500" : ""}
+                    className={validationErrors.estado ? "border-red-500" : cepData ? "bg-green-50" : ""}
                     maxLength={2}
                     required
+                    readOnly={!!cepData}
                   />
                   {validationErrors.estado && (
                     <p className="text-red-500 text-xs mt-1">{validationErrors.estado}</p>
@@ -453,6 +516,7 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
               variant="primary"
               loading={isSaving}
               onClick={handleSubmit}
+              disabled={!cepData && formData.cep}
             >
               {initialData ? 'Salvar' : 'Adicionar'}
             </CustomButton>
