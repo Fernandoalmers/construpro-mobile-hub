@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { checkProductDeliveryRestriction } from '@/services/vendor/deliveryZones';
 
@@ -119,7 +118,7 @@ export async function getProductDeliveryInfo(
   try {
     const deliveryInfo = await withTimeout(
       getVendorDeliveryInfo(vendorId, customerCep),
-      5000 // Reduced timeout to 5 seconds
+      3000 // Reduced timeout to 3 seconds
     );
     
     const result = {
