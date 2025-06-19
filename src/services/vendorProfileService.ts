@@ -12,9 +12,20 @@ export interface VendorProfile {
   telefone?: string;
   whatsapp?: string;
   formas_entrega?: any[];
+  // Novos campos de endereço
+  endereco_cep?: string;
+  endereco_logradouro?: string;
+  endereco_numero?: string;
+  endereco_complemento?: string;
+  endereco_bairro?: string;
+  endereco_cidade?: string;
+  endereco_estado?: string;
+  endereco_latitude?: number;
+  endereco_longitude?: number;
+  zona_entrega?: string;
   created_at?: string;
   updated_at?: string;
-  status?: string; // Add the missing status property
+  status?: string;
 }
 
 export const getVendorProfile = async (): Promise<VendorProfile | null> => {

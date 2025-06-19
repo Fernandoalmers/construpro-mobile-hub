@@ -10,7 +10,9 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from '@/components/ui/sonner';
 import { ArrowLeft, Save, Upload } from 'lucide-react';
 import { useVendorProfile } from '@/hooks/useVendorProfile';
+import { getCoordinates } from '@/lib/cep';
 import LoadingState from '@/components/common/LoadingState';
+import AddressSection from './form-sections/AddressSection';
 
 const ConfiguracoesVendorScreen = () => {
   const navigate = useNavigate();
@@ -22,6 +24,15 @@ const ConfiguracoesVendorScreen = () => {
     whatsapp: '',
     email: '',
     segmento: '',
+    // Novos campos de endereço
+    endereco_cep: '',
+    endereco_logradouro: '',
+    endereco_numero: '',
+    endereco_complemento: '',
+    endereco_bairro: '',
+    endereco_cidade: '',
+    endereco_estado: '',
+    zona_entrega: '',
   });
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
@@ -39,6 +50,15 @@ const ConfiguracoesVendorScreen = () => {
         whatsapp: vendorProfile.whatsapp || '',
         email: vendorProfile.email || '',
         segmento: vendorProfile.segmento || '',
+        // Carregar campos de endereço
+        endereco_cep: vendorProfile.endereco_cep || '',
+        endereco_logradouro: vendorProfile.endereco_logradouro || '',
+        endereco_numero: vendorProfile.endereco_numero || '',
+        endereco_complemento: vendorProfile.endereco_complemento || '',
+        endereco_bairro: vendorProfile.endereco_bairro || '',
+        endereco_cidade: vendorProfile.endereco_cidade || '',
+        endereco_estado: vendorProfile.endereco_estado || '',
+        zona_entrega: vendorProfile.zona_entrega || '',
       });
       
       if (vendorProfile.logo) {
@@ -55,6 +75,11 @@ const ConfiguracoesVendorScreen = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Handle address field changes
+  const handleAddressChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   // Handle logo file selection
@@ -81,8 +106,22 @@ const ConfiguracoesVendorScreen = () => {
     setIsSaving(true);
     
     try {
+      // Get coordinates if address is complete
+      let coordinates = {};
+      if (formData.endereco_logradouro && formData.endereco_cidade && formData.endereco_estado) {
+        const fullAddress = `${formData.endereco_logradouro}, ${formData.endereco_numero || ''}, ${formData.endereco_bairro}, ${formData.endereco_cidade}, ${formData.endereco_estado}, ${formData.endereco_cep}`;
+        const coords = await getCoordinates(fullAddress);
+        if (coords) {
+          coordinates = {
+            endereco_latitude: coords.latitude,
+            endereco_longitude: coords.longitude,
+          };
+        }
+      }
+
       const updatedProfile = await updateVendorProfile({
         ...formData,
+        ...coordinates,
         logoFile,
         bannerFile
       });
@@ -163,6 +202,12 @@ const ConfiguracoesVendorScreen = () => {
               </div>
             </CardContent>
           </Card>
+
+          {/* Nova Seção de Endereço */}
+          <AddressSection 
+            formData={formData}
+            onInputChange={handleAddressChange}
+          />
           
           <Card>
             <CardHeader>

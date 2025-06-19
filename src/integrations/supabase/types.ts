@@ -350,6 +350,36 @@ export type Database = {
         }
         Relationships: []
       }
+      delivery_zones: {
+        Row: {
+          cep_ranges: string[] | null
+          created_at: string | null
+          delivery_time: string
+          ibge_code: string | null
+          id: string
+          zone_name: string
+          zone_type: string
+        }
+        Insert: {
+          cep_ranges?: string[] | null
+          created_at?: string | null
+          delivery_time: string
+          ibge_code?: string | null
+          id?: string
+          zone_name: string
+          zone_type: string
+        }
+        Update: {
+          cep_ranges?: string[] | null
+          created_at?: string | null
+          delivery_time?: string
+          ibge_code?: string | null
+          id?: string
+          zone_name?: string
+          zone_type?: string
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           data_adicionado: string | null
@@ -1831,6 +1861,15 @@ export type Database = {
           created_at: string | null
           descricao: string | null
           email: string | null
+          endereco_bairro: string | null
+          endereco_cep: string | null
+          endereco_cidade: string | null
+          endereco_complemento: string | null
+          endereco_estado: string | null
+          endereco_latitude: number | null
+          endereco_logradouro: string | null
+          endereco_longitude: number | null
+          endereco_numero: string | null
           formas_entrega: Json | null
           id: string
           logo: string | null
@@ -1841,12 +1880,22 @@ export type Database = {
           updated_at: string | null
           usuario_id: string
           whatsapp: string | null
+          zona_entrega: string | null
         }
         Insert: {
           banner?: string | null
           created_at?: string | null
           descricao?: string | null
           email?: string | null
+          endereco_bairro?: string | null
+          endereco_cep?: string | null
+          endereco_cidade?: string | null
+          endereco_complemento?: string | null
+          endereco_estado?: string | null
+          endereco_latitude?: number | null
+          endereco_logradouro?: string | null
+          endereco_longitude?: number | null
+          endereco_numero?: string | null
           formas_entrega?: Json | null
           id?: string
           logo?: string | null
@@ -1857,12 +1906,22 @@ export type Database = {
           updated_at?: string | null
           usuario_id: string
           whatsapp?: string | null
+          zona_entrega?: string | null
         }
         Update: {
           banner?: string | null
           created_at?: string | null
           descricao?: string | null
           email?: string | null
+          endereco_bairro?: string | null
+          endereco_cep?: string | null
+          endereco_cidade?: string | null
+          endereco_complemento?: string | null
+          endereco_estado?: string | null
+          endereco_latitude?: number | null
+          endereco_logradouro?: string | null
+          endereco_longitude?: number | null
+          endereco_numero?: string | null
           formas_entrega?: Json | null
           id?: string
           logo?: string | null
@@ -1873,6 +1932,7 @@ export type Database = {
           updated_at?: string | null
           usuario_id?: string
           whatsapp?: string | null
+          zona_entrega?: string | null
         }
         Relationships: []
       }
@@ -1894,6 +1954,45 @@ export type Database = {
           id?: string
           message?: string
           order_id?: string
+        }
+        Relationships: []
+      }
+      zip_cache: {
+        Row: {
+          bairro: string | null
+          cached_at: string | null
+          cep: string
+          created_at: string | null
+          ibge: string | null
+          latitude: number | null
+          localidade: string | null
+          logradouro: string | null
+          longitude: number | null
+          uf: string | null
+        }
+        Insert: {
+          bairro?: string | null
+          cached_at?: string | null
+          cep: string
+          created_at?: string | null
+          ibge?: string | null
+          latitude?: number | null
+          localidade?: string | null
+          logradouro?: string | null
+          longitude?: number | null
+          uf?: string | null
+        }
+        Update: {
+          bairro?: string | null
+          cached_at?: string | null
+          cep?: string
+          created_at?: string | null
+          ibge?: string | null
+          latitude?: number | null
+          localidade?: string | null
+          logradouro?: string | null
+          longitude?: number | null
+          uf?: string | null
         }
         Relationships: []
       }
