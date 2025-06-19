@@ -14,7 +14,7 @@ export interface MarketplaceData {
 }
 
 /**
- * Custom hook for fetching marketplace data - accessible to ALL authenticated users
+ * Custom hook for fetching marketplace data with improved promotion handling
  * @returns Products and stores data, loading states and error states
  */
 export function useMarketplaceData(selectedSegmentId: string | null): MarketplaceData {
@@ -24,7 +24,7 @@ export function useMarketplaceData(selectedSegmentId: string | null): Marketplac
   const [storesError, setStoresError] = useState<string | null>(null);
   const [segments, setSegments] = useState<{id: string, nome: string}[]>([]);
   
-  // Enhanced logging for debugging
+  // Enhanced logging for debugging promotion issues
   useEffect(() => {
     console.log('[useMarketplaceData] 🔄 selectedSegmentId changed:', selectedSegmentId);
   }, [selectedSegmentId]);
@@ -55,29 +55,38 @@ export function useMarketplaceData(selectedSegmentId: string | null): Marketplac
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        console.log('[useMarketplaceData] 🚀 Starting data fetch for ALL users');
+        console.log('[useMarketplaceData] 🚀 Starting data fetch with improved promotion logic');
         
-        // Fetch products using improved marketplace service - NO user restrictions
+        // Fetch products using improved marketplace service
         console.log('[useMarketplaceData] 📦 Fetching products...');
         const productsData = await getMarketplaceProducts();
         console.log('[useMarketplaceData] ✅ Products fetched successfully:', productsData.length);
         
-        // Enhanced debug logging for each product
-        if (productsData.length > 0) {
-          console.log('[useMarketplaceData] 📋 Sample products for debugging:', 
-            productsData.slice(0, 3).map(p => ({
-              id: p.id,
-              nome: p.nome,
-              status: p.status,
-              segmento_id: p.segmento_id,
-              vendedor_id: p.vendedor_id
-            }))
-          );
+        // Enhanced debug logging for promotion products
+        const promotionProducts = productsData.filter(p => p.promocao_ativa);
+        console.log(`[useMarketplaceData] 🎯 Found ${promotionProducts.length} products with active promotions`);
+        
+        // Special logging for TRINCHA ATLAS product
+        const trinchaProduct = productsData.find(p => 
+          p.nome && p.nome.includes('TRINCHA ATLAS')
+        );
+        
+        if (trinchaProduct) {
+          console.log('[useMarketplaceData] 🔍 TRINCHA ATLAS product found:', {
+            id: trinchaProduct.id,
+            nome: trinchaProduct.nome,
+            promocao_ativa: trinchaProduct.promocao_ativa,
+            promocao_fim: trinchaProduct.promocao_fim,
+            preco_promocional: trinchaProduct.preco_promocional,
+            status: trinchaProduct.status
+          });
         } else {
-          console.warn('[useMarketplaceData] ⚠️ NO PRODUCTS RETURNED! Debugging info:');
-          console.warn('- Check if there are approved products in database');
-          console.warn('- Verify RLS policies on produtos table');
-          console.warn('- Check user authentication status');
+          console.warn('[useMarketplaceData] ⚠️ TRINCHA ATLAS product NOT FOUND in marketplace products!');
+          
+          // Log available product names for debugging
+          console.log('[useMarketplaceData] Available products:', 
+            productsData.slice(0, 10).map(p => p.nome)
+          );
         }
         
         setProducts(productsData);
@@ -111,6 +120,11 @@ export function useMarketplaceData(selectedSegmentId: string | null): Marketplac
   const filteredProducts = useMemo(() => {
     if (!selectedSegmentId || selectedSegmentId === 'all') {
       console.log('[useMarketplaceData] 🔍 No segment filter - returning all products:', products.length);
+      
+      // Log promotion products in unfiltered view
+      const activePromotions = products.filter(p => p.promocao_ativa);
+      console.log(`[useMarketplaceData] Active promotions in all products: ${activePromotions.length}`);
+      
       return products;
     }
     
@@ -136,6 +150,10 @@ export function useMarketplaceData(selectedSegmentId: string | null): Marketplac
     
     console.log(`[useMarketplaceData] 🎯 Filtered results: ${filtered.length} products from ${products.length} total`);
     
+    // Log promotion products in filtered view
+    const filteredPromotions = filtered.filter(p => p.promocao_ativa);
+    console.log(`[useMarketplaceData] Active promotions in filtered products: ${filteredPromotions.length}`);
+    
     if (filtered.length === 0 && products.length > 0) {
       console.warn('[useMarketplaceData] ⚠️ WARNING: No products matched the segment filter!');
       console.warn('[useMarketplaceData] 📊 Available segments in products:', 
@@ -146,14 +164,17 @@ export function useMarketplaceData(selectedSegmentId: string | null): Marketplac
     return filtered;
   }, [products, selectedSegmentId, segments]);
   
-  // Add detailed logging to help debug filtering
+  // Add detailed logging to help debug filtering and promotions
   useEffect(() => {
     if (selectedSegmentId && selectedSegmentId !== 'all') {
       const selectedSegment = segments.find(s => s.id === selectedSegmentId);
+      const activePromotions = filteredProducts.filter(p => p.promocao_ativa);
+      
       console.log(
         `[useMarketplaceData] 📈 Filtering summary: ` +
         `Total products: ${products.length}, ` +
         `Filtered products: ${filteredProducts.length}, ` +
+        `Active promotions: ${activePromotions.length}, ` +
         `Selected segment: "${selectedSegment?.nome || 'Unknown'}" (${selectedSegmentId})`
       );
     }

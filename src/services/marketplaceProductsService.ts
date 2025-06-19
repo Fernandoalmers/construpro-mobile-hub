@@ -36,13 +36,13 @@ export interface MarketplaceProduct {
 }
 
 /**
- * Get all approved products for marketplace with active promotions only
+ * Get all approved products for marketplace with correct promotion handling
  */
 export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> => {
   try {
-    console.log('[marketplaceProductsService] 🔍 Fetching approved products with promotion filtering');
+    console.log('[marketplaceProductsService] 🔍 Fetching approved products with improved promotion handling');
     
-    // First, update expired promotions
+    // First, update expired promotions with corrected logic
     await updateExpiredPromotions();
     
     const { data: authData } = await supabase.auth.getUser();
@@ -71,7 +71,7 @@ export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> =>
     
     console.log(`[marketplaceProductsService] ✅ Successfully fetched ${data?.length || 0} approved products`);
     
-    // Transform data and filter products with valid promotions
+    // Transform data with improved promotion handling
     const products: MarketplaceProduct[] = (data || []).map(product => {
       // Debug vendor data processing with enhanced logging
       console.log('[marketplaceProductsService] Processing vendor data for product:', {
@@ -79,7 +79,9 @@ export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> =>
         productName: product.nome,
         vendedor_id: product.vendedor_id,
         vendedores: product.vendedores,
-        hasVendedorData: !!product.vendedores
+        hasVendedorData: !!product.vendedores,
+        promocao_ativa: product.promocao_ativa,
+        promocao_fim: product.promocao_fim
       });
 
       // Process images properly
@@ -124,6 +126,24 @@ export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> =>
         });
       }
       
+      // FIXED: Improved promotion validation - check if promotion is actually expired
+      let isPromotionActive = product.promocao_ativa || false;
+      
+      if (isPromotionActive && product.promocao_fim) {
+        const now = new Date();
+        const endDate = new Date(product.promocao_fim);
+        
+        // Add a small margin (1 minute) to avoid timezone/timing issues
+        const isActuallyExpired = endDate.getTime() < (now.getTime() - 60000);
+        
+        if (isActuallyExpired) {
+          console.log(`[marketplaceProductsService] 🕐 Promotion expired for product ${product.nome}: ${product.promocao_fim}`);
+          isPromotionActive = false;
+        } else {
+          console.log(`[marketplaceProductsService] ✅ Promotion still active for product ${product.nome}: ends ${product.promocao_fim}`);
+        }
+      }
+      
       const processedProduct = {
         id: product.id,
         nome: product.nome,
@@ -131,7 +151,7 @@ export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> =>
         categoria: product.categoria,
         preco_normal: product.preco_normal,
         preco_promocional: product.preco_promocional,
-        promocao_ativa: product.promocao_ativa || false,
+        promocao_ativa: isPromotionActive, // Use corrected promotion status
         promocao_inicio: product.promocao_inicio,
         promocao_fim: product.promocao_fim,
         estoque: product.estoque,
@@ -157,7 +177,8 @@ export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> =>
                   id: p.id,
                   nome: p.nome,
                   stores: p.stores,
-                  vendedores: p.vendedores
+                  vendedores: p.vendedores,
+                  promocao_ativa: p.promocao_ativa
                 })));
     
     return products;
@@ -170,21 +191,57 @@ export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> =>
 };
 
 /**
- * Update expired promotions in the database
+ * Update expired promotions in the database with improved logic
  */
 const updateExpiredPromotions = async (): Promise<void> => {
   try {
-    // Call the database function directly using a simple query
-    const { error } = await supabase
+    console.log('[marketplaceProductsService] 🔍 Checking for expired promotions...');
+    
+    // Get current time with a small margin to avoid timezone issues
+    const now = new Date();
+    const marginTime = new Date(now.getTime() - 60000); // 1 minute margin
+    
+    console.log('[marketplaceProductsService] Current time for expiration check:', now.toISOString());
+    console.log('[marketplaceProductsService] Margin time for expiration check:', marginTime.toISOString());
+    
+    // First, get all products with active promotions to debug
+    const { data: activePromotions, error: fetchError } = await supabase
+      .from('produtos')
+      .select('id, nome, promocao_ativa, promocao_fim')
+      .eq('promocao_ativa', true)
+      .not('promocao_fim', 'is', null);
+    
+    if (fetchError) {
+      console.error('[marketplaceProductsService] Error fetching active promotions:', fetchError);
+      return;
+    }
+    
+    console.log(`[marketplaceProductsService] Found ${activePromotions?.length || 0} products with active promotions`);
+    
+    // Log each active promotion for debugging
+    activePromotions?.forEach(promo => {
+      const endDate = new Date(promo.promocao_fim);
+      const isExpired = endDate < marginTime;
+      console.log(`[marketplaceProductsService] Product "${promo.nome}": ends ${promo.promocao_fim}, expired: ${isExpired}`);
+    });
+    
+    // Update only truly expired promotions with margin
+    const { data: updatedProducts, error } = await supabase
       .from('produtos')
       .update({ promocao_ativa: false })
-      .lt('promocao_fim', new Date().toISOString())
-      .eq('promocao_ativa', true);
+      .lt('promocao_fim', marginTime.toISOString())
+      .eq('promocao_ativa', true)
+      .select('id, nome, promocao_fim');
     
     if (error) {
       console.error('[marketplaceProductsService] Error updating expired promotions:', error);
     } else {
-      console.log('[marketplaceProductsService] ✅ Updated expired promotions');
+      console.log(`[marketplaceProductsService] ✅ Updated ${updatedProducts?.length || 0} expired promotions`);
+      
+      // Log which promotions were updated
+      updatedProducts?.forEach(product => {
+        console.log(`[marketplaceProductsService] Deactivated promotion for "${product.nome}" (ended: ${product.promocao_fim})`);
+      });
     }
   } catch (error) {
     console.error('[marketplaceProductsService] Error calling update expired promotions:', error);
@@ -192,11 +249,14 @@ const updateExpiredPromotions = async (): Promise<void> => {
 };
 
 /**
- * Get products by segment ID
+ * Get products by segment ID with improved promotion handling
  */
 export const getProductsBySegment = async (segmentId: string): Promise<MarketplaceProduct[]> => {
   try {
     console.log(`[marketplaceProductsService] Fetching products for segment: ${segmentId}`);
+    
+    // Update expired promotions first
+    await updateExpiredPromotions();
     
     const { data, error } = await supabase
       .from('produtos')
@@ -219,13 +279,15 @@ export const getProductsBySegment = async (segmentId: string): Promise<Marketpla
     
     console.log(`[marketplaceProductsService] Found ${data?.length || 0} products for segment ${segmentId}`);
     
-    // Apply the same data transformation as getMarketplaceProducts
+    // Apply the same data transformation as getMarketplaceProducts with improved promotion logic
     const products: MarketplaceProduct[] = (data || []).map(product => {
       // Debug vendor data processing for segment products
       console.log('[marketplaceProductsService] Processing segment product vendor data:', {
         productId: product.id,
         vendedor_id: product.vendedor_id,
-        vendedores: product.vendedores
+        vendedores: product.vendedores,
+        promocao_ativa: product.promocao_ativa,
+        promocao_fim: product.promocao_fim
       });
 
       // Process images properly
@@ -253,6 +315,19 @@ export const getProductsBySegment = async (segmentId: string): Promise<Marketpla
         logo_url: product.vendedores.logo || ''
       } : undefined;
       
+      // Apply same promotion validation as main function
+      let isPromotionActive = product.promocao_ativa || false;
+      
+      if (isPromotionActive && product.promocao_fim) {
+        const now = new Date();
+        const endDate = new Date(product.promocao_fim);
+        const isActuallyExpired = endDate.getTime() < (now.getTime() - 60000);
+        
+        if (isActuallyExpired) {
+          isPromotionActive = false;
+        }
+      }
+      
       return {
         id: product.id,
         nome: product.nome,
@@ -260,7 +335,7 @@ export const getProductsBySegment = async (segmentId: string): Promise<Marketpla
         categoria: product.categoria,
         preco_normal: product.preco_normal,
         preco_promocional: product.preco_promocional,
-        promocao_ativa: product.promocao_ativa || false,
+        promocao_ativa: isPromotionActive, // Use corrected promotion status
         promocao_inicio: product.promocao_inicio,
         promocao_fim: product.promocao_fim,
         estoque: product.estoque,

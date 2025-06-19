@@ -43,10 +43,21 @@ const OptimizedProductCard = memo<OptimizedProductCardProps>(({ product, onClick
     ? product.imagens[0] 
     : '/img/placeholder.png';
   
+  // Use improved promotion validation
   const promotionInfo = getPromotionInfo(product);
   const avaliacao = product.avaliacao || 0;
   const nome = product.nome || 'Produto sem nome';
   const categoria = product.categoria || '';
+
+  // Debug promotion info for the specific product
+  if (nome.includes('TRINCHA ATLAS')) {
+    console.log(`[OptimizedProductCard] Promotion info for ${nome}:`, {
+      promotionInfo,
+      product_promocao_ativa: product.promocao_ativa,
+      product_promocao_fim: product.promocao_fim,
+      product_preco_promocional: product.preco_promocional
+    });
+  }
 
   return (
     <div 
