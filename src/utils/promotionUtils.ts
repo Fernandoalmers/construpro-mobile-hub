@@ -15,9 +15,9 @@ export const getPromotionInfo = (product: any): PromotionInfo => {
   const promotionEndDate = product.promocao_fim;
   const promotionActive = product.promocao_ativa;
   
-  // Improved promotion validation with margin for timing issues
+  // CORRECTED: Improved promotion validation with proper margin for timing issues
   const isPromotionExpired = promotionEndDate ? 
-    new Date(promotionEndDate).getTime() < (now.getTime() - 60000) : false; // 1 minute margin
+    new Date(promotionEndDate).getTime() + (2 * 60 * 1000) < now.getTime() : false; // 2 minute grace period
   
   const hasValidPromotionalPrice = promotionalPrice && promotionalPrice < originalPrice;
   const hasActivePromotion = promotionActive && hasValidPromotionalPrice && !isPromotionExpired;
@@ -48,8 +48,7 @@ export const shouldShowPromotion = (product: any): boolean => {
 };
 
 /**
- * Validates if a promotion should be considered active
- * Takes into account timing margins and validation rules
+ * CORRECTED: Validates if a promotion should be considered active with proper timing
  */
 export const validatePromotionStatus = (
   isActive: boolean,
@@ -66,21 +65,21 @@ export const validatePromotionStatus = (
   if (promotionalPrice >= normalPrice) return false;
   
   const now = new Date();
-  const marginTime = 60000; // 1 minute margin
+  const gracePeriod = 2 * 60 * 1000; // 2 minutes grace period
   
   // Check start date if provided
   if (startDate) {
     const start = new Date(startDate);
-    if (start.getTime() > (now.getTime() + marginTime)) {
+    if (start.getTime() > now.getTime()) {
       return false; // Promotion hasn't started yet
     }
   }
   
-  // Check end date if provided
+  // CORRECTED: Check end date with proper grace period
   if (endDate) {
     const end = new Date(endDate);
-    if (end.getTime() < (now.getTime() - marginTime)) {
-      return false; // Promotion has ended (with margin)
+    if ((end.getTime() + gracePeriod) < now.getTime()) {
+      return false; // Promotion has ended (with grace period)
     }
   }
   
