@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 import { Star, Clock, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Product } from '@/services/productService';
+import { getPromotionInfo } from '@/utils/promotionUtils';
+import OfferCountdown from '@/components/common/OfferCountdown';
 
 interface ProductInfoProps {
   produto: Product;
@@ -14,22 +16,12 @@ interface ProductInfoProps {
 }
 
 const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) => {
+  // Use promotion utils for consistent promotion handling
+  const promotionInfo = getPromotionInfo(produto);
+  
   // Garantir valores corretos para preços
   const regularPrice = produto.preco_normal || produto.preco;
-  
-  // Verificar se há um preço promocional válido (menor que o preço regular)
-  const hasDiscount = produto.preco_promocional !== undefined && 
-                      produto.preco_promocional !== null && 
-                      produto.preco_promocional > 0 &&
-                      produto.preco_promocional < regularPrice;
-  
-  // Usar o preço promocional ou o regular, dependendo da verificação
-  const currentPrice = hasDiscount ? produto.preco_promocional : regularPrice;
-  
-  // Calcular a porcentagem de desconto, se aplicável
-  const discountPercentage = hasDiscount
-    ? Math.round(((regularPrice - currentPrice) / regularPrice) * 100)
-    : 0;
+  const currentPrice = promotionInfo.hasActivePromotion ? promotionInfo.promotionalPrice! : promotionInfo.originalPrice;
 
   // Obter a avaliação real do produto e memoizar para evitar mudanças durante a renderização
   const productRating = React.useMemo(() => 
@@ -112,20 +104,28 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
       
       {/* Price section - Mostrando preço promocional quando disponível */}
       <div className="mb-4">
-        <div className="flex items-baseline">
-          {hasDiscount && (
+        <div className="flex items-baseline mb-2">
+          {promotionInfo.hasActivePromotion && (
             <span className="text-gray-500 line-through mr-2">
-              R$ {regularPrice.toFixed(2)}
+              R$ {promotionInfo.originalPrice.toFixed(2)}
             </span>
           )}
           <span className="text-2xl font-bold text-green-700">
             R$ {currentPrice.toFixed(2)}
           </span>
           
-          {hasDiscount && discountPercentage > 0 && (
-            <Badge className="ml-2 bg-red-500">
-              {discountPercentage}% OFF
-            </Badge>
+          {promotionInfo.hasActivePromotion && (
+            <div className="flex items-center gap-2 ml-2">
+              <Badge className="bg-red-500">
+                {promotionInfo.discountPercentage}% OFF
+              </Badge>
+              <OfferCountdown 
+                endDate={promotionInfo.promotionEndDate}
+                isActive={promotionInfo.hasActivePromotion}
+                size="sm"
+                variant="compact"
+              />
+            </div>
           )}
         </div>
         

@@ -201,7 +201,7 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
 
         {/* Promotion Badge and Countdown */}
         {promotionInfo.hasActivePromotion && (
-          <div className="absolute top-2 left-2 flex flex-col gap-1">
+          <div className="absolute top-2 left-2 flex items-center gap-2">
             <Badge className="bg-red-500 hover:bg-red-600">
               {promotionInfo.discountPercentage}% OFF
             </Badge>

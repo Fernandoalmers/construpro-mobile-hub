@@ -6,6 +6,7 @@ import { useOptimizedMarketplace } from '@/hooks/useOptimizedMarketplace';
 import { useMarketplaceParams } from './useMarketplaceParams';
 import { useMarketplaceSegments } from './useMarketplaceSegments';
 import { useMarketplaceSearch } from './useMarketplaceSearch';
+import { useSegmentFix } from '@/hooks/useSegmentFix';
 
 export const useMarketplaceState = () => {
   const [headerHeight, setHeaderHeight] = useState(0);
@@ -16,6 +17,9 @@ export const useMarketplaceState = () => {
   
   // Use optimized marketplace data hook with safety checks
   const { products, stores, segments, isLoading, error } = useOptimizedMarketplace();
+  
+  // Auto-fix product segments
+  useSegmentFix();
   
   // Ensure data safety with default values
   const safeProducts = Array.isArray(products) ? products : [];
@@ -37,7 +41,7 @@ export const useMarketplaceState = () => {
   
   // CORRECTED: Filter products by selected segment with proper null segmento_id handling
   const segmentFilteredProducts = useMemo(() => {
-    console.log('[MarketplaceState] Starting segment filtering with selectedSegmentId:', selectedSegmentId);
+    console.log('[MarketplaceState] Starting segment filtering with selecte segmentId:', selectedSegmentId);
     
     if (!selectedSegmentId || selectedSegmentId === 'all') {
       console.log('[MarketplaceState] No segment filter - returning ALL products (including those without segmento_id):', safeProducts.length);

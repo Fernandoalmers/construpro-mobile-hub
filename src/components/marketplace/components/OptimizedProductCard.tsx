@@ -72,7 +72,7 @@ const OptimizedProductCard = memo<OptimizedProductCardProps>(({ product, onClick
           placeholderClassName="w-full h-48 rounded-t-lg"
         />
         {promotionInfo.hasActivePromotion && (
-          <div className="absolute top-2 left-2 flex flex-col gap-1">
+          <div className="absolute top-2 left-2 flex items-center gap-2">
             <div className="bg-red-500 text-white px-2 py-1 rounded text-xs font-semibold">
               -{promotionInfo.discountPercentage}%
             </div>
