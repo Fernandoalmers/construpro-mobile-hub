@@ -1,12 +1,12 @@
 
 import { checkProductDeliveryRestriction } from '@/services/vendor/deliveryZones';
 import { ProductDeliveryInfo } from './types';
-import { logWithTimestamp, withTimeout } from './logger';
+import { logWithTimestamp, withTimeout, withRetry } from './logger';
 import { getVendorDeliveryZonesInfo } from './vendorZones';
 import { getVendorDeliveryInfo } from './vendorDelivery';
 
 /**
- * Compara a localização da loja com a do cliente e verifica restrições de produto
+ * Verifica informações de entrega do produto com timeouts aumentados e melhor fallback
  */
 export async function getProductDeliveryInfo(
   vendorId: string,
@@ -31,7 +31,11 @@ export async function getProductDeliveryInfo(
     logWithTimestamp('[getProductDeliveryInfo] No customer CEP provided, getting vendor zones info');
     
     try {
-      const zonesInfo = await getVendorDeliveryZonesInfo(vendorId);
+      const zonesInfo = await withTimeout(
+        getVendorDeliveryZonesInfo(vendorId),
+        5000,
+        'Vendor zones info fetch'
+      );
       
       return {
         productId,
@@ -57,21 +61,23 @@ export async function getProductDeliveryInfo(
     }
   }
 
-  // Check for product-specific restrictions with shorter timeout and better fallback
+  // Check for product-specific restrictions with increased timeout and retry
   let restrictionCheck = null;
   try {
-    logWithTimestamp('[getProductDeliveryInfo] Checking product restrictions with timeout...');
+    logWithTimestamp('[getProductDeliveryInfo] Checking product restrictions...');
     
-    // Reduce timeout to 3 seconds to avoid long waits
-    restrictionCheck = await withTimeout(
-      checkProductDeliveryRestriction(vendorId, productId, customerCep),
-      3000
-    );
+    restrictionCheck = await withRetry(async () => {
+      return await withTimeout(
+        checkProductDeliveryRestriction(vendorId, productId, customerCep),
+        8000, // Aumentado de 3s para 8s
+        'Product restriction check'
+      );
+    }, 2, 1500, 'product restriction check');
 
     logWithTimestamp('[getProductDeliveryInfo] Restriction check completed:', restrictionCheck);
 
     if (restrictionCheck.has_restriction) {
-      logWithTimestamp('[getProductDeliveryInfo] Product restriction found:', restrictionCheck);
+      logWithTimestamp('[getProductDeliveryInfo] ✅ Product restriction found:', restrictionCheck);
       
       const result = {
         productId,
@@ -89,20 +95,21 @@ export async function getProductDeliveryInfo(
     }
   } catch (error) {
     const elapsed = Date.now() - startTime;
-    logWithTimestamp(`[getProductDeliveryInfo] Restriction check failed after ${elapsed}ms:`, error);
-    
+    logWithTimestamp(`[getProductDeliveryInfo] ⚠️ Restriction check failed after ${elapsed}ms, continuing with vendor zones:`, error);
     // Continue with vendor delivery zones instead of failing
-    logWithTimestamp('[getProductDeliveryInfo] Proceeding with vendor delivery zones due to restriction check failure');
   }
 
-  // If no restrictions or restriction check failed, check vendor delivery zones
+  // SEMPRE tentar verificar zonas do vendedor quando temos CEP
   logWithTimestamp('[getProductDeliveryInfo] No restrictions found or check failed, checking vendor delivery zones...');
   
   try {
-    const deliveryInfo = await withTimeout(
-      getVendorDeliveryInfo(vendorId, customerCep),
-      3000 // Reduced timeout to 3 seconds
-    );
+    const deliveryInfo = await withRetry(async () => {
+      return await withTimeout(
+        getVendorDeliveryInfo(vendorId, customerCep),
+        10000, // Aumentado de 3s para 10s
+        'Vendor delivery info'
+      );
+    }, 2, 2000, 'vendor delivery info');
     
     const result = {
       ...deliveryInfo,
@@ -113,16 +120,21 @@ export async function getProductDeliveryInfo(
     };
     
     const elapsed = Date.now() - startTime;
-    logWithTimestamp(`[getProductDeliveryInfo] Completed successfully in ${elapsed}ms`);
+    logWithTimestamp(`[getProductDeliveryInfo] ✅ Completed successfully in ${elapsed}ms`, result);
     return result;
     
   } catch (error) {
     const elapsed = Date.now() - startTime;
-    logWithTimestamp(`[getProductDeliveryInfo] Vendor delivery info failed after ${elapsed}ms:`, error);
+    logWithTimestamp(`[getProductDeliveryInfo] ❌ Vendor delivery info failed after ${elapsed}ms:`, error);
     
-    // Enhanced fallback with zone information
+    // Enhanced fallback - ainda tenta fornecer informações úteis
     try {
-      const zonesInfo = await getVendorDeliveryZonesInfo(vendorId);
+      const zonesInfo = await withTimeout(
+        getVendorDeliveryZonesInfo(vendorId),
+        5000,
+        'Fallback zones info'
+      );
+      
       return {
         productId,
         vendorId,

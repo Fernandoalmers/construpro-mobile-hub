@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface VendorDeliveryZone {
@@ -35,24 +34,36 @@ export interface DeliveryRestrictionCheck {
   delivery_available: boolean;
 }
 
-// Vendor Delivery Zones functions
+// Vendor Delivery Zones functions com timeout otimizado
 export async function getVendorDeliveryZones(vendorId: string): Promise<VendorDeliveryZone[]> {
   console.log('[getVendorDeliveryZones] Fetching zones for vendor:', vendorId);
   
-  const { data, error } = await supabase
+  // Query otimizada com timeout explícito
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('Vendor zones fetch timeout')), 8000)
+  );
+  
+  const queryPromise = supabase
     .from('vendor_delivery_zones')
     .select('*')
     .eq('vendor_id', vendorId)
     .eq('active', true)
     .order('zone_name');
 
-  if (error) {
-    console.error('[getVendorDeliveryZones] Error:', error);
+  try {
+    const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any;
+
+    if (error) {
+      console.error('[getVendorDeliveryZones] Error:', error);
+      throw error;
+    }
+
+    console.log('[getVendorDeliveryZones] Found zones:', data?.length || 0);
+    return (data || []) as VendorDeliveryZone[];
+  } catch (error) {
+    console.error('[getVendorDeliveryZones] Error or timeout:', error);
     throw error;
   }
-
-  console.log('[getVendorDeliveryZones] Found zones:', data?.length || 0);
-  return (data || []) as VendorDeliveryZone[];
 }
 
 export async function createVendorDeliveryZone(zone: Omit<VendorDeliveryZone, 'id' | 'created_at' | 'updated_at'>): Promise<VendorDeliveryZone> {
@@ -162,7 +173,7 @@ export async function deleteProductRestriction(id: string): Promise<void> {
   console.log('[deleteProductRestriction] Restriction deleted successfully');
 }
 
-// Check product delivery restrictions
+// Check product delivery restrictions com timeout otimizado
 export async function checkProductDeliveryRestriction(
   vendorId: string,
   productId: string,
@@ -174,24 +185,36 @@ export async function checkProductDeliveryRestriction(
     customerCep
   });
   
-  const { data, error } = await supabase.rpc('check_product_delivery_restriction', {
+  // Query otimizada com timeout explícito
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('Product restriction check timeout')), 8000)
+  );
+  
+  const queryPromise = supabase.rpc('check_product_delivery_restriction', {
     p_vendor_id: vendorId,
     p_product_id: productId,
     p_customer_cep: customerCep
   });
 
-  if (error) {
-    console.error('[checkProductDeliveryRestriction] Error:', error);
+  try {
+    const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any;
+
+    if (error) {
+      console.error('[checkProductDeliveryRestriction] Error:', error);
+      throw error;
+    }
+
+    const result = data?.[0] || {
+      has_restriction: false,
+      restriction_type: '',
+      restriction_message: '',
+      delivery_available: true
+    };
+
+    console.log('[checkProductDeliveryRestriction] Result:', result);
+    return result;
+  } catch (error) {
+    console.error('[checkProductDeliveryRestriction] Error or timeout:', error);
     throw error;
   }
-
-  const result = data?.[0] || {
-    has_restriction: false,
-    restriction_type: '',
-    restriction_message: '',
-    delivery_available: true
-  };
-
-  console.log('[checkProductDeliveryRestriction] Result:', result);
-  return result;
 }
