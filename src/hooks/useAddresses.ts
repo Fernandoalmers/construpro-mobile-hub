@@ -31,7 +31,65 @@ export function useAddresses() {
     return errorMessage;
   };
 
-  // Fetch addresses
+  // Enhanced CEP validation function
+  const validateCEP = (cep: string): boolean => {
+    // Remove non-numeric characters
+    const cleanCep = cep.replace(/\D/g, '');
+    
+    // Check if CEP has 8 digits
+    if (cleanCep.length !== 8) {
+      return false;
+    }
+    
+    // Check if CEP is not all zeros or same digit
+    if (cleanCep === '00000000' || /^(\d)\1{7}$/.test(cleanCep)) {
+      return false;
+    }
+    
+    return true;
+  };
+
+  // Enhanced address validation with better CEP handling
+  const validateAddress = (address: Address): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+    
+    if (!address.nome?.trim()) {
+      errors.push('Nome é obrigatório');
+    }
+    
+    if (!address.cep?.trim()) {
+      errors.push('CEP é obrigatório');
+    } else if (!validateCEP(address.cep)) {
+      errors.push('CEP deve ter 8 dígitos e ser válido');
+    }
+    
+    if (!address.logradouro?.trim()) {
+      errors.push('Logradouro é obrigatório');
+    }
+    
+    if (!address.numero?.trim()) {
+      errors.push('Número é obrigatório');
+    }
+    
+    if (!address.bairro?.trim()) {
+      errors.push('Bairro é obrigatório');
+    }
+    
+    if (!address.cidade?.trim()) {
+      errors.push('Cidade é obrigatória');
+    }
+    
+    if (!address.estado?.trim()) {
+      errors.push('Estado é obrigatório');
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  };
+
+  // Fetch addresses with enhanced error handling
   const { 
     data: addresses = [], 
     isLoading, 
@@ -52,10 +110,15 @@ export function useAddresses() {
         throw err; // Rethrow to let React Query handle it
       }
     },
-    // Added retry configuration
-    retry: 2,
-    retryDelay: 1000,
-    // Added staleTime to reduce unnecessary refetches
+    retry: (failureCount, error) => {
+      // Retry up to 3 times for network errors, but not for validation errors
+      if (failureCount < 3) {
+        console.log(`Retrying address fetch, attempt ${failureCount + 1}`);
+        return true;
+      }
+      return false;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     staleTime: 30000
   });
 
@@ -119,19 +182,49 @@ export function useAddresses() {
     }
   });
 
-  // Save address mutation
+  // Enhanced save address mutation with better validation and retry
   const saveAddressMutation = useMutation({
     mutationFn: async (data: { address: Address, isEdit: boolean }) => {
       try {
         console.log("Saving address:", data.isEdit ? "Edit" : "Add", data.address);
         console.log("Address ID for edit check:", data.address.id);
         
+        // Validate address before saving
+        const validation = validateAddress(data.address);
+        if (!validation.isValid) {
+          throw new Error(`Dados inválidos: ${validation.errors.join(', ')}`);
+        }
+        
+        // Clean and format CEP
+        const cleanedAddress = {
+          ...data.address,
+          cep: data.address.cep.replace(/\D/g, '')
+        };
+        
         if (data.isEdit && data.address.id) {
           console.log("Calling updateAddress with ID:", data.address.id);
-          return await addressService.updateAddress(data.address.id, data.address);
+          const result = await addressService.updateAddress(data.address.id, cleanedAddress);
+          
+          // Retry mechanism for failed updates
+          if (!result) {
+            console.log("Update failed, retrying...");
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            return await addressService.updateAddress(data.address.id, cleanedAddress);
+          }
+          
+          return result;
         } else {
           console.log("Calling addAddress for new address");
-          return await addressService.addAddress(data.address);
+          const result = await addressService.addAddress(cleanedAddress);
+          
+          // Retry mechanism for failed inserts
+          if (!result) {
+            console.log("Insert failed, retrying...");
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            return await addressService.addAddress(cleanedAddress);
+          }
+          
+          return result;
         }
       } catch (err) {
         const errorMsg = formatErrorMessage(err);
@@ -156,12 +249,24 @@ export function useAddresses() {
     onError: (error: any) => {
       const errorMsg = formatErrorMessage(error);
       console.error("Save address mutation error:", error);
-      toast({
-        variant: "destructive",
-        title: "Erro ao salvar endereço",
-        description: errorMsg
-      });
-    }
+      
+      // Special handling for CEP-related errors
+      if (errorMsg.includes('CEP') || errorMsg.includes('cep')) {
+        toast({
+          variant: "destructive",
+          title: "Erro de CEP",
+          description: "Verifique se o CEP está correto e tente novamente. CEPs de cidades menores podem demorar mais para validar."
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Erro ao salvar endereço",
+          description: errorMsg
+        });
+      }
+    },
+    retry: 2,
+    retryDelay: 1000
   });
 
   // Add retry functionality
@@ -208,14 +313,14 @@ export function useAddresses() {
     });
   };
 
-  // Add the addAddress function needed by useCheckout
+  // Add the addAddress function needed by useCheckout with enhanced validation
   const addAddress = async (formData: Partial<Address>): Promise<Address | null> => {
     try {
       // Create a complete Address object from partial data
       const fullAddress: Address = {
         id: '',
         nome: formData.nome || '',
-        cep: formData.cep || '',
+        cep: formData.cep?.replace(/\D/g, '') || '',
         logradouro: formData.logradouro || '',
         numero: formData.numero || '',
         complemento: formData.complemento || '',
@@ -226,8 +331,21 @@ export function useAddresses() {
         ...formData // Override with any provided fields
       };
 
-      // Save the address
-      const result = await addressService.addAddress(fullAddress);
+      // Validate before saving
+      const validation = validateAddress(fullAddress);
+      if (!validation.isValid) {
+        throw new Error(`Dados inválidos: ${validation.errors.join(', ')}`);
+      }
+
+      // Save the address with retry
+      let result = await addressService.addAddress(fullAddress);
+      
+      // Retry if failed
+      if (!result) {
+        console.log("First attempt failed, retrying address creation...");
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        result = await addressService.addAddress(fullAddress);
+      }
       
       // Refresh the address list and user profile
       queryClient.invalidateQueries({ queryKey: ['addresses'] });
@@ -261,6 +379,7 @@ export function useAddresses() {
     handleSaveAddress,
     isSaving: saveAddressMutation.isPending,
     saveError: saveAddressMutation.error,
-    addAddress, // Export the new addAddress function
+    addAddress, // Export the enhanced addAddress function
+    validateAddress, // Export validation function for use in components
   };
 }

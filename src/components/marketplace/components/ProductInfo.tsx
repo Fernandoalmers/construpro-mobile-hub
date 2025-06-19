@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Star, Clock, AlertCircle, CheckCircle, MapPin, Plus } from 'lucide-react';
@@ -50,7 +51,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
     produto.num_avaliacoes || 0
   , [produto.id, produto.num_avaliacoes]);
 
-  // Function to get user's main address with enhanced fallback
+  // Enhanced function to get user's main address with better fallback
   const getUserMainAddress = async () => {
     const timestamp = new Date().toISOString();
     console.log(`[${timestamp}] [ProductInfo] Getting user main address...`);
@@ -62,54 +63,68 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
       return profile.endereco_principal;
     }
     
-    // Enhanced fallback: get main address directly from user_addresses table
+    // Enhanced fallback: get main address directly from user_addresses table with retry
     if (isAuthenticated && profile?.id) {
       try {
         console.log(`[${timestamp}] [ProductInfo] Fallback: fetching from user_addresses table`);
         
-        // First try to get the main address
-        const { data: mainAddress, error } = await supabase
-          .from('user_addresses')
-          .select('*')
-          .eq('user_id', profile.id)
-          .eq('principal', true)
-          .single();
+        // First try to get the main address with retry
+        for (let attempt = 0; attempt < 3; attempt++) {
+          const { data: mainAddress, error } = await supabase
+            .from('user_addresses')
+            .select('*')
+            .eq('user_id', profile.id)
+            .eq('principal', true)
+            .single();
 
-        if (!error && mainAddress) {
-          console.log(`[${timestamp}] [ProductInfo] Found main address from user_addresses:`, mainAddress);
-          return {
-            logradouro: mainAddress.logradouro,
-            numero: mainAddress.numero,
-            complemento: mainAddress.complemento,
-            bairro: mainAddress.bairro,
-            cidade: mainAddress.cidade,
-            estado: mainAddress.estado,
-            cep: mainAddress.cep
-          };
+          if (!error && mainAddress) {
+            console.log(`[${timestamp}] [ProductInfo] Found main address from user_addresses:`, mainAddress);
+            return {
+              logradouro: mainAddress.logradouro,
+              numero: mainAddress.numero,
+              complemento: mainAddress.complemento,
+              bairro: mainAddress.bairro,
+              cidade: mainAddress.cidade,
+              estado: mainAddress.estado,
+              cep: mainAddress.cep
+            };
+          }
+          
+          if (attempt < 2) {
+            console.log(`[${timestamp}] [ProductInfo] Attempt ${attempt + 1} failed, retrying...`);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
         }
 
         console.log(`[${timestamp}] [ProductInfo] No main address found, trying first available address`);
         
-        // If no main address, try to get the first available address
-        const { data: firstAddress, error: firstError } = await supabase
-          .from('user_addresses')
-          .select('*')
-          .eq('user_id', profile.id)
-          .order('created_at', { ascending: true })
-          .limit(1)
-          .single();
+        // If no main address, try to get the first available address with retry
+        for (let attempt = 0; attempt < 3; attempt++) {
+          const { data: firstAddress, error: firstError } = await supabase
+            .from('user_addresses')
+            .select('*')
+            .eq('user_id', profile.id)
+            .order('created_at', { ascending: true })
+            .limit(1)
+            .single();
 
-        if (!firstError && firstAddress) {
-          console.log(`[${timestamp}] [ProductInfo] Using first available address:`, firstAddress);
-          return {
-            logradouro: firstAddress.logradouro,
-            numero: firstAddress.numero,
-            complemento: firstAddress.complemento,
-            bairro: firstAddress.bairro,
-            cidade: firstAddress.cidade,
-            estado: firstAddress.estado,
-            cep: firstAddress.cep
-          };
+          if (!firstError && firstAddress) {
+            console.log(`[${timestamp}] [ProductInfo] Using first available address:`, firstAddress);
+            return {
+              logradouro: firstAddress.logradouro,
+              numero: firstAddress.numero,
+              complemento: firstAddress.complemento,
+              bairro: firstAddress.bairro,
+              cidade: firstAddress.cidade,
+              estado: firstAddress.estado,
+              cep: firstAddress.cep
+            };
+          }
+          
+          if (attempt < 2) {
+            console.log(`[${timestamp}] [ProductInfo] Attempt ${attempt + 1} failed, retrying...`);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
         }
 
       } catch (error) {
@@ -121,7 +136,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
     return null;
   };
 
-  // Calculate delivery info with enhanced error handling and timeouts
+  // Enhanced delivery calculation with better error handling and robust fallbacks
   useEffect(() => {
     const calculateDeliveryInfo = async () => {
       const startTime = Date.now();
@@ -132,26 +147,26 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
       try {
         setDeliveryInfo(prev => ({ ...prev, loading: true }));
 
-        // Get user's main address with timeout
+        // Get user's main address with enhanced timeout
         console.log(`[${timestamp}] [ProductInfo] Getting user main address...`);
         const addressPromise = getUserMainAddress();
         const userMainAddress = await Promise.race([
           addressPromise,
           new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Address lookup timeout')), 5000)
+            setTimeout(() => reject(new Error('Address lookup timeout')), 8000)
           )
         ]) as any;
 
         const addressTime = Date.now() - startTime;
         console.log(`[${timestamp}] [ProductInfo] User main address result (${addressTime}ms):`, userMainAddress);
 
-        // Get store location info with timeout
+        // Get store location info with enhanced timeout
         console.log(`[${timestamp}] [ProductInfo] Getting store location info...`);
         const storePromise = getStoreLocationInfo(produto.stores?.id, produto.vendedor_id);
         const storeLocationInfo = await Promise.race([
           storePromise,
           new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Store info timeout')), 5000)
+            setTimeout(() => reject(new Error('Store info timeout')), 8000)
           )
         ]) as any;
 
@@ -172,7 +187,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
           return;
         }
 
-        // Use the delivery calculation with enhanced error handling
+        // Use the enhanced delivery calculation
         console.log(`[${timestamp}] [ProductInfo] Calling getProductDeliveryInfo with:`, {
           vendorId: produto.vendedor_id,
           productId: produto.id,
@@ -181,7 +196,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
           storeIbge: storeLocationInfo?.ibge
         });
         
-        // Add overall timeout for the entire delivery calculation
+        // Enhanced delivery calculation with extended timeout and better fallback
         const deliveryPromise = getProductDeliveryInfo(
           produto.vendedor_id,
           produto.id,
@@ -193,7 +208,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
         const info = await Promise.race([
           deliveryPromise,
           new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Delivery calculation timeout')), 15000)
+            setTimeout(() => reject(new Error('Delivery calculation timeout')), 12000)
           )
         ]) as any;
         
@@ -212,10 +227,15 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
         const totalTime = Date.now() - startTime;
         console.error(`[${timestamp}] [ProductInfo] Error calculating delivery info (${totalTime}ms):`, error);
         
-        // Fallback to generic message instead of staying in loading state
+        // Enhanced fallback with more robust messaging
+        const fallbackMessage = userMainAddress 
+          ? 'Frete calculado no checkout'
+          : 'Adicione seu endereço para ver informações de entrega';
+        
         setDeliveryInfo({
           isLocal: false,
-          message: 'Frete a combinar (informado após o fechamento do pedido)',
+          message: fallbackMessage,
+          estimatedTime: userMainAddress ? 'Prazo informado após fechamento do pedido' : undefined,
           loading: false
         });
       }
@@ -368,7 +388,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
         </div>
       </div>
       
-      {/* Shipping info - ENHANCED WITH ROBUST ERROR HANDLING AND TIMEOUTS */}
+      {/* Enhanced shipping info with robust error handling */}
       <div className="p-3 bg-gray-50 rounded-md border border-gray-200 mb-4">
         <p className="text-sm text-gray-600 flex items-center mb-2">
           <Clock className="h-4 w-4 mr-2 text-green-600" />
