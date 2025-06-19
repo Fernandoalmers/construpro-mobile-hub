@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Star, Clock, AlertCircle, CheckCircle, MapPin, Plus } from 'lucide-react';
@@ -153,7 +152,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
         const userMainAddress = await Promise.race([
           addressPromise,
           new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Address lookup timeout')), 8000)
+            setTimeout(() => reject(new Error('Address lookup timeout')), 5000)
           )
         ]) as any;
 
@@ -166,7 +165,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
         const storeLocationInfo = await Promise.race([
           storePromise,
           new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Store info timeout')), 8000)
+            setTimeout(() => reject(new Error('Store info timeout')), 5000)
           )
         ]) as any;
 
@@ -196,7 +195,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
           storeIbge: storeLocationInfo?.ibge
         });
         
-        // Enhanced delivery calculation with extended timeout and better fallback
+        // Enhanced delivery calculation with timeout
         const deliveryPromise = getProductDeliveryInfo(
           produto.vendedor_id,
           produto.id,
@@ -208,7 +207,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
         const info = await Promise.race([
           deliveryPromise,
           new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Delivery calculation timeout')), 12000)
+            setTimeout(() => reject(new Error('Delivery calculation timeout')), 8000)
           )
         ]) as any;
         
@@ -227,7 +226,9 @@ const ProductInfo: React.FC<ProductInfoProps> = ({ produto, deliveryEstimate }) 
         const totalTime = Date.now() - startTime;
         console.error(`[${timestamp}] [ProductInfo] Error calculating delivery info (${totalTime}ms):`, error);
         
-        // Enhanced fallback with more robust messaging
+        // Enhanced fallback with more robust messaging  
+        const userMainAddress = await getUserMainAddress().catch(() => null);
+        
         const fallbackMessage = userMainAddress 
           ? 'Frete calculado no checkout'
           : 'Adicione seu endereço para ver informações de entrega';
