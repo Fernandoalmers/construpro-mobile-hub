@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { checkProductDeliveryRestriction } from '@/services/vendor/deliveryZones';
 
@@ -267,7 +268,7 @@ export async function getVendorDeliveryInfo(
  * Verifica se um CEP está dentro de uma zona configurada
  */
 async function checkCepInZone(customerCep: string, zoneType: string, zoneValue: string): Promise<boolean> {
-  logWithTimestamp('[checkCepInZone] Checking if CEP', customerCep, 'is in zone type', zoneType, 'with value', zoneValue);
+  logWithTimestamp(`[checkCepInZone] Checking if CEP ${customerCep} is in zone type ${zoneType} with value ${zoneValue}`);
   
   switch (zoneType) {
     case 'cep_specific':
