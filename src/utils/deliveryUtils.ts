@@ -68,21 +68,21 @@ export async function getProductDeliveryInfo(
       productId,
       vendorId,
       isLocal: false,
-      message: 'Endereço não encontrado',
+      message: 'Informe seu CEP para calcular o frete',
       hasRestrictions: false,
-      deliveryAvailable: false
+      deliveryAvailable: true
     };
   }
 
-  // Check for product-specific restrictions with timeout and fallback
+  // Check for product-specific restrictions with shorter timeout and better fallback
   let restrictionCheck = null;
   try {
     logWithTimestamp('[getProductDeliveryInfo] Checking product restrictions with timeout...');
     
-    // Add 5 second timeout to restriction check
+    // Reduce timeout to 3 seconds to avoid long waits
     restrictionCheck = await withTimeout(
       checkProductDeliveryRestriction(vendorId, productId, customerCep),
-      5000
+      3000
     );
 
     logWithTimestamp('[getProductDeliveryInfo] Restriction check completed:', restrictionCheck);
@@ -118,7 +118,7 @@ export async function getProductDeliveryInfo(
   try {
     const deliveryInfo = await withTimeout(
       getVendorDeliveryInfo(vendorId, customerCep),
-      10000 // 10 second timeout for delivery zones
+      5000 // Reduced timeout to 5 seconds
     );
     
     const result = {
@@ -137,12 +137,13 @@ export async function getProductDeliveryInfo(
     const elapsed = Date.now() - startTime;
     logWithTimestamp(`[getProductDeliveryInfo] Vendor delivery info failed after ${elapsed}ms:`, error);
     
-    // Final fallback - return basic delivery info
+    // Always provide a valid delivery option instead of showing "not available"
     return {
       productId,
       vendorId,
       isLocal: false,
-      message: 'Frete a combinar (informado após o fechamento do pedido)',
+      message: 'Frete calculado no checkout',
+      estimatedTime: 'Prazo informado após confirmação do pedido',
       hasRestrictions: false,
       deliveryAvailable: true
     };
@@ -166,7 +167,7 @@ export async function getVendorDeliveryInfo(
     logWithTimestamp('[getVendorDeliveryInfo] No customer CEP provided');
     return {
       isLocal: false,
-      message: 'CEP do cliente não encontrado',
+      message: 'Informe seu CEP para calcular o frete',
     };
   }
 
@@ -190,7 +191,8 @@ export async function getVendorDeliveryInfo(
       logWithTimestamp('[getVendorDeliveryInfo] Error fetching zones:', error);
       return {
         isLocal: false,
-        message: 'Frete a combinar (informado após o fechamento do pedido)',
+        message: 'Frete calculado no checkout',
+        estimatedTime: 'Prazo informado após confirmação do pedido',
       };
     }
 
@@ -198,7 +200,8 @@ export async function getVendorDeliveryInfo(
       logWithTimestamp('[getVendorDeliveryInfo] No delivery zones configured, using fallback');
       return {
         isLocal: false,
-        message: 'Frete a combinar (informado após o fechamento do pedido)',
+        message: 'Frete calculado no checkout',
+        estimatedTime: 'Prazo informado após confirmação do pedido',
       };
     }
 
@@ -211,7 +214,7 @@ export async function getVendorDeliveryInfo(
       try {
         const isInZone = await withTimeout(
           checkCepInZone(cleanCustomerCep, zone.zone_type, zone.zone_value),
-          3000 // 3 second timeout per zone check
+          2000 // 2 second timeout per zone check
         );
         
         logWithTimestamp('[getVendorDeliveryInfo] Zone check result:', { zoneName: zone.zone_name, isInZone });
@@ -237,11 +240,12 @@ export async function getVendorDeliveryInfo(
       }
     }
 
-    // Se não está em nenhuma zona configurada
+    // Se não está em nenhuma zona configurada, ainda assim fornecer uma opção
     logWithTimestamp('[getVendorDeliveryInfo] Customer not in any configured zone');
     const result = {
       isLocal: false,
-      message: 'Frete a combinar (informado após o fechamento do pedido)',
+      message: 'Frete calculado no checkout',
+      estimatedTime: 'Prazo informado após confirmação do pedido',
     };
     
     const totalElapsed = Date.now() - startTime;
@@ -253,7 +257,8 @@ export async function getVendorDeliveryInfo(
     logWithTimestamp(`[getVendorDeliveryInfo] Error after ${elapsed}ms:`, error);
     return {
       isLocal: false,
-      message: 'Frete a combinar (informado após o fechamento do pedido)',
+      message: 'Frete calculado no checkout',
+      estimatedTime: 'Prazo informado após confirmação do pedido',
     };
   }
 }
@@ -343,7 +348,8 @@ async function fallbackDeliveryInfo(
     logWithTimestamp('[fallbackDeliveryInfo] Insufficient store info, returning default');
     return {
       isLocal: false,
-      message: 'Frete a combinar (informado após o fechamento do pedido)',
+      message: 'Frete calculado no checkout',
+      estimatedTime: 'Prazo informado após confirmação do pedido',
     };
   }
 
@@ -365,7 +371,8 @@ async function fallbackDeliveryInfo(
     } else {
       return {
         isLocal: false,
-        message: 'Frete a combinar (informado após o fechamento do pedido)',
+        message: 'Frete calculado no checkout',
+        estimatedTime: 'Prazo informado após confirmação do pedido',
       };
     }
   }
@@ -407,11 +414,12 @@ async function fallbackDeliveryInfo(
     }
   }
 
-  // Default: frete a combinar
-  logWithTimestamp('[fallbackDeliveryInfo] Using default frete a combinar');
+  // Default: frete calculado no checkout
+  logWithTimestamp('[fallbackDeliveryInfo] Using default frete calculado no checkout');
   return {
     isLocal: false,
-    message: 'Frete a combinar (informado após o fechamento do pedido)',
+    message: 'Frete calculado no checkout',
+    estimatedTime: 'Prazo informado após confirmação do pedido',
   };
 }
 
