@@ -31,6 +31,9 @@ export async function processCartItems(
       return {
         id: cartId,
         user_id: userId,
+        status: 'active',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
         items: [],
         summary: {
           subtotal: 0,
@@ -56,7 +59,10 @@ export async function processCartItems(
         segmento,
         status,
         vendedor_id,
-        imagens
+        imagens,
+        promocao_ativa,
+        promocao_inicio,
+        promocao_fim
       `)
       .in('id', productIds);
 
@@ -105,14 +111,15 @@ export async function processCartItems(
 
       // Calculate correct points for this user type
       const pointsForUserType = getProductPoints(produto, userType);
+      const subtotal = item.price_at_add * item.quantity;
 
       return {
         id: item.id,
-        cart_id: cartId,
+        user_id: userId, // Add the missing user_id property
         produto_id: item.product_id,
         quantidade: item.quantity,
         preco: item.price_at_add,
-        subtotal: item.price_at_add * item.quantity,
+        subtotal: subtotal, // Add the missing subtotal property
         created_at: item.created_at,
         updated_at: item.updated_at,
         produto: {
@@ -130,7 +137,10 @@ export async function processCartItems(
           categoria: produto.categoria,
           segmento: produto.segmento,
           loja_id: produto.vendedor_id,
-          status: produto.status
+          status: produto.status,
+          promocao_ativa: produto.promocao_ativa,
+          promocao_inicio: produto.promocao_inicio,
+          promocao_fim: produto.promocao_fim
         }
       };
     }).filter(Boolean) as CartItem[]; // Remove null items
@@ -141,6 +151,9 @@ export async function processCartItems(
     const cart: Cart = {
       id: cartId,
       user_id: userId,
+      status: 'active',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
       items: cartItems,
       summary
     };

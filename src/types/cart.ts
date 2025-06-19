@@ -5,6 +5,7 @@ export interface CartItem {
   produto_id: string;
   quantidade: number;
   preco: number;
+  subtotal: number;
   created_at: string;
   updated_at: string;
   produto?: {
@@ -36,4 +37,21 @@ export interface Cart {
   created_at: string;
   updated_at: string;
   items?: CartItem[];
+  summary?: {
+    subtotal: number;
+    totalItems: number;
+    totalPoints: number;
+  };
+}
+
+export interface CartContextType {
+  cart: Cart | null;
+  cartCount: number;
+  cartItems: CartItem[];
+  isLoading: boolean;
+  addToCart: (productId: string, quantity: number) => Promise<void>;
+  updateQuantity: (cartItemId: string, newQuantity: number) => Promise<void>;
+  removeItem: (cartItemId: string) => Promise<void>;
+  clearCart: () => Promise<void>;
+  refreshCart: () => Promise<void>;
 }

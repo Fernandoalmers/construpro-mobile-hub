@@ -37,9 +37,11 @@ export const useCartScreen = () => {
     isValidating
   } = useCoupon();
 
-  // Extract unique store IDs from cart items
+  // Extract unique store IDs from cart items - fix type issue
   const storeIds = useMemo(() => {
-    const ids = cartItems.map(item => item.produto?.loja_id).filter(Boolean);
+    const ids = cartItems
+      .map(item => item.produto?.loja_id)
+      .filter((id): id is string => Boolean(id)); // Type guard to ensure string[]
     return [...new Set(ids)];
   }, [cartItems]);
 
