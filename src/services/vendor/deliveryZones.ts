@@ -52,10 +52,10 @@ export async function getVendorDeliveryZones(vendorId: string): Promise<VendorDe
   }
 
   console.log('[getVendorDeliveryZones] Found zones:', data?.length || 0);
-  return data || [];
+  return (data || []) as VendorDeliveryZone[];
 }
 
-export async function createVendorDeliveryZone(zone: Partial<VendorDeliveryZone>): Promise<VendorDeliveryZone> {
+export async function createVendorDeliveryZone(zone: Omit<VendorDeliveryZone, 'id' | 'created_at' | 'updated_at'>): Promise<VendorDeliveryZone> {
   console.log('[createVendorDeliveryZone] Creating zone:', zone);
   
   const { data, error } = await supabase
@@ -70,10 +70,10 @@ export async function createVendorDeliveryZone(zone: Partial<VendorDeliveryZone>
   }
 
   console.log('[createVendorDeliveryZone] Zone created:', data);
-  return data;
+  return data as VendorDeliveryZone;
 }
 
-export async function updateVendorDeliveryZone(id: string, updates: Partial<VendorDeliveryZone>): Promise<VendorDeliveryZone> {
+export async function updateVendorDeliveryZone(id: string, updates: Partial<Omit<VendorDeliveryZone, 'id' | 'created_at' | 'updated_at'>>): Promise<VendorDeliveryZone> {
   console.log('[updateVendorDeliveryZone] Updating zone:', id, updates);
   
   const { data, error } = await supabase
@@ -89,7 +89,7 @@ export async function updateVendorDeliveryZone(id: string, updates: Partial<Vend
   }
 
   console.log('[updateVendorDeliveryZone] Zone updated:', data);
-  return data;
+  return data as VendorDeliveryZone;
 }
 
 export async function deleteVendorDeliveryZone(id: string): Promise<void> {
@@ -125,10 +125,10 @@ export async function getVendorProductRestrictions(vendorId: string): Promise<Ve
   }
 
   console.log('[getVendorProductRestrictions] Found restrictions:', data?.length || 0);
-  return data || [];
+  return (data || []) as VendorProductRestriction[];
 }
 
-export async function createProductRestriction(restriction: Partial<VendorProductRestriction>): Promise<VendorProductRestriction> {
+export async function createProductRestriction(restriction: Omit<VendorProductRestriction, 'id' | 'created_at' | 'updated_at'>): Promise<VendorProductRestriction> {
   console.log('[createProductRestriction] Creating restriction:', restriction);
   
   const { data, error } = await supabase
@@ -143,7 +143,7 @@ export async function createProductRestriction(restriction: Partial<VendorProduc
   }
 
   console.log('[createProductRestriction] Restriction created:', data);
-  return data;
+  return data as VendorProductRestriction;
 }
 
 export async function deleteProductRestriction(id: string): Promise<void> {

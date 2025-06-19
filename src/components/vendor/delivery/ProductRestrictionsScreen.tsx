@@ -39,7 +39,7 @@ const ProductRestrictionsScreen: React.FC = () => {
       setLoading(true);
       const [restrictionsData, productsData] = await Promise.all([
         getVendorProductRestrictions(vendorProfile.id),
-        getVendorProducts(vendorProfile.id)
+        getVendorProducts()
       ]);
       
       setRestrictions(restrictionsData);

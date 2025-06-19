@@ -11,7 +11,7 @@ import LoadingState from '@/components/common/LoadingState';
 const ConfiguracoesVendorScreen: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { vendorProfile, loading } = useVendorProfile();
+  const { vendorProfile, isLoading } = useVendorProfile();
 
   const configurationSections = [
     {
@@ -58,7 +58,7 @@ const ConfiguracoesVendorScreen: React.FC = () => {
     }
   ];
 
-  if (loading) {
+  if (isLoading) {
     return <LoadingState text="Carregando configurações..." />;
   }
 
