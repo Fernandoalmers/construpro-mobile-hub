@@ -62,6 +62,9 @@ export function useCartState(
         const emptyCart: Cart = {
           id: cartData?.id || '',
           user_id: userId,
+          status: 'active',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
           items: [],
           summary: {
             subtotal: 0,
@@ -84,6 +87,9 @@ export function useCartState(
       setCart({
         id: '',
         user_id: userId,
+        status: 'active',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
         items: [],
         summary: {
           subtotal: 0,

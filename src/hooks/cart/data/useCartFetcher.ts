@@ -92,6 +92,9 @@ const createEmptyCart = (userId: string): Cart => {
   return {
     id: '',
     user_id: userId,
+    status: 'active',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
     items: [],
     summary: {
       subtotal: 0,
