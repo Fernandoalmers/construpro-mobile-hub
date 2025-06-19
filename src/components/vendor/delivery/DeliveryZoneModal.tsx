@@ -118,6 +118,7 @@ const DeliveryZoneModal: React.FC<DeliveryZoneModalProps> = ({
       
       const zoneData = {
         vendor_id: vendorId,
+        active: true,
         ...formData
       };
 

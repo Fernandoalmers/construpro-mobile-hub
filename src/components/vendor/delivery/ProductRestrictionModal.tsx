@@ -94,6 +94,7 @@ const ProductRestrictionModal: React.FC<ProductRestrictionModalProps> = ({
       
       const restrictionData = {
         vendor_id: vendorId,
+        active: true,
         ...formData
       };
 
