@@ -10,7 +10,7 @@ export type CepData = {
   ibge?: string;
   latitude?: number;
   longitude?: number;
-  zona_entrega?: 'local' | 'regional' | 'outras';
+  zona_entrega?: string;
   prazo_entrega?: string;
 };
 
