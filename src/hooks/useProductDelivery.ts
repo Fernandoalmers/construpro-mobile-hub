@@ -58,6 +58,12 @@ export function useProductDelivery(produto: Product) {
     const timestamp = new Date().toISOString();
     console.log(`[${timestamp}] [useProductDelivery] 🚚 STARTING DELIVERY CALCULATION for product:`, produto.id);
     console.log(`[${timestamp}] [useProductDelivery] Product vendor ID:`, produto.vendedor_id);
+    console.log(`[${timestamp}] [useProductDelivery] Product details:`, {
+      id: produto.id,
+      nome: produto.nome,
+      vendedor_id: produto.vendedor_id,
+      stores: produto.stores
+    });
     
     try {
       setDeliveryInfo(prev => ({ ...prev, loading: true }));
@@ -139,7 +145,7 @@ export function useProductDelivery(produto: Product) {
       const storeTime = Date.now() - startTime;
       console.log(`[${timestamp}] [useProductDelivery] Store location info (${storeTime}ms):`, storeLocationInfo);
 
-      // Calculate delivery info
+      // Calculate delivery info - CRITICAL CALL
       console.log(`[${timestamp}] [useProductDelivery] 🔄 CALLING getProductDeliveryInfo with:`, {
         vendorId: produto.vendedor_id,
         productId: produto.id,
@@ -147,6 +153,29 @@ export function useProductDelivery(produto: Product) {
         storeCep: storeLocationInfo?.cep,
         storeIbge: storeLocationInfo?.ibge
       });
+      
+      // Add explicit validation
+      if (!produto.vendedor_id) {
+        console.error(`[${timestamp}] [useProductDelivery] ❌ MISSING VENDOR ID!`);
+        setDeliveryInfo({
+          isLocal: false,
+          message: 'Informações de entrega não disponíveis',
+          loading: false
+        });
+        return;
+      }
+
+      if (!customerCep) {
+        console.error(`[${timestamp}] [useProductDelivery] ❌ MISSING CUSTOMER CEP!`);
+        setDeliveryInfo({
+          isLocal: false,
+          message: 'CEP não encontrado',
+          loading: false
+        });
+        return;
+      }
+      
+      console.log(`[${timestamp}] [useProductDelivery] 🚀 ABOUT TO CALL getProductDeliveryInfo - WATCH FOR NEXT LOGS!`);
       
       const info = await Promise.race([
         getProductDeliveryInfo(
@@ -187,9 +216,19 @@ export function useProductDelivery(produto: Product) {
 
   // Calculate delivery info when dependencies change
   useEffect(() => {
+    console.log('[useProductDelivery] useEffect triggered with:', {
+      vendorId: produto.vendedor_id,
+      productId: produto.id,
+      isAuthenticated,
+      profileCep: profile?.endereco_principal?.cep,
+      currentUserCep
+    });
+    
     if (produto.vendedor_id) {
+      console.log('[useProductDelivery] Triggering calculateDeliveryInfo...');
       calculateDeliveryInfo();
     } else {
+      console.log('[useProductDelivery] No vendor ID, setting default message');
       setDeliveryInfo({
         isLocal: false,
         message: 'Informações de entrega não disponíveis',

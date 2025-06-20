@@ -17,6 +17,17 @@ export async function getProductDeliveryInfo(
   customerIbge?: string
 ): Promise<ProductDeliveryInfo> {
   const startTime = Date.now();
+  const timestamp = new Date().toISOString();
+  
+  console.log(`[${timestamp}] [getProductDeliveryInfo] 🚀 FUNCTION CALLED - Starting delivery check for product:`, {
+    vendorId,
+    productId,
+    customerCep,
+    storeCep,
+    storeIbge,
+    customerIbge
+  });
+
   logWithTimestamp('[getProductDeliveryInfo] Starting delivery check for product:', {
     vendorId,
     productId,
@@ -28,6 +39,7 @@ export async function getProductDeliveryInfo(
 
   // Enhanced fallback when no customer CEP is provided
   if (!customerCep) {
+    console.log(`[${timestamp}] [getProductDeliveryInfo] ❌ No customer CEP provided`);
     logWithTimestamp('[getProductDeliveryInfo] No customer CEP provided, getting vendor zones info');
     
     try {
@@ -49,6 +61,7 @@ export async function getProductDeliveryInfo(
         estimatedTime: zonesInfo.hasZones ? 'Consulte com seu CEP' : undefined
       };
     } catch (error) {
+      console.error(`[${timestamp}] [getProductDeliveryInfo] Error getting zones info:`, error);
       logWithTimestamp('[getProductDeliveryInfo] Error getting zones info:', error);
       return {
         productId,
@@ -61,9 +74,12 @@ export async function getProductDeliveryInfo(
     }
   }
 
+  console.log(`[${timestamp}] [getProductDeliveryInfo] ✅ Customer CEP provided: ${customerCep}`);
+
   // Check for product-specific restrictions with increased timeout and retry
   let restrictionCheck = null;
   try {
+    console.log(`[${timestamp}] [getProductDeliveryInfo] 🔍 Checking product restrictions...`);
     logWithTimestamp('[getProductDeliveryInfo] Checking product restrictions...');
     
     restrictionCheck = await withRetry(async () => {
@@ -74,9 +90,11 @@ export async function getProductDeliveryInfo(
       );
     }, 2, 1500, 'product restriction check');
 
+    console.log(`[${timestamp}] [getProductDeliveryInfo] ✅ Restriction check completed:`, restrictionCheck);
     logWithTimestamp('[getProductDeliveryInfo] Restriction check completed:', restrictionCheck);
 
     if (restrictionCheck.has_restriction) {
+      console.log(`[${timestamp}] [getProductDeliveryInfo] ✅ Product restriction found:`, restrictionCheck);
       logWithTimestamp('[getProductDeliveryInfo] ✅ Product restriction found:', restrictionCheck);
       
       const result = {
@@ -90,19 +108,24 @@ export async function getProductDeliveryInfo(
       };
       
       const elapsed = Date.now() - startTime;
+      console.log(`[${timestamp}] [getProductDeliveryInfo] Completed with restrictions in ${elapsed}ms`);
       logWithTimestamp(`[getProductDeliveryInfo] Completed with restrictions in ${elapsed}ms`);
       return result;
     }
   } catch (error) {
     const elapsed = Date.now() - startTime;
+    console.error(`[${timestamp}] [getProductDeliveryInfo] ⚠️ Restriction check failed after ${elapsed}ms, continuing with vendor zones:`, error);
     logWithTimestamp(`[getProductDeliveryInfo] ⚠️ Restriction check failed after ${elapsed}ms, continuing with vendor zones:`, error);
     // Continue with vendor delivery zones instead of failing
   }
 
   // SEMPRE tentar verificar zonas do vendedor quando temos CEP
+  console.log(`[${timestamp}] [getProductDeliveryInfo] 🔍 No restrictions found or check failed, checking vendor delivery zones...`);
   logWithTimestamp('[getProductDeliveryInfo] No restrictions found or check failed, checking vendor delivery zones...');
   
   try {
+    console.log(`[${timestamp}] [getProductDeliveryInfo] 🚀 CALLING getVendorDeliveryInfo with vendorId: ${vendorId}, customerCep: ${customerCep}`);
+    
     const deliveryInfo = await withRetry(async () => {
       return await withTimeout(
         getVendorDeliveryInfo(vendorId, customerCep),
@@ -120,11 +143,13 @@ export async function getProductDeliveryInfo(
     };
     
     const elapsed = Date.now() - startTime;
+    console.log(`[${timestamp}] [getProductDeliveryInfo] ✅ Completed successfully in ${elapsed}ms`, result);
     logWithTimestamp(`[getProductDeliveryInfo] ✅ Completed successfully in ${elapsed}ms`, result);
     return result;
     
   } catch (error) {
     const elapsed = Date.now() - startTime;
+    console.error(`[${timestamp}] [getProductDeliveryInfo] ❌ Vendor delivery info failed after ${elapsed}ms:`, error);
     logWithTimestamp(`[getProductDeliveryInfo] ❌ Vendor delivery info failed after ${elapsed}ms:`, error);
     
     // Enhanced fallback - ainda tenta fornecer informações úteis
