@@ -185,24 +185,34 @@ export function useCheckoutDelivery(storeGroups: StoreGroup[], selectedAddress: 
             selectedAddress.cep
           );
 
-          const deliveryInfo = await Promise.race([
+          const deliveryInfoResult = await Promise.race([
             deliveryPromise,
             new Promise((_, reject) => 
               setTimeout(() => reject(new Error('Individual delivery timeout')), 8000)
             )
           ]);
 
+          // Type assertion with proper validation
+          const deliveryInfo = deliveryInfoResult as {
+            isLocal: boolean;
+            message: string;
+            estimatedTime?: string;
+            deliveryFee?: number;
+            hasRestrictions: boolean;
+            deliveryAvailable: boolean;
+          };
+
           console.log(`[useCheckoutDelivery] Delivery info for ${storeName}:`, deliveryInfo);
 
           newStoreDeliveries[storeId] = {
             storeId,
             storeName,
-            isLocal: deliveryInfo.isLocal,
-            message: deliveryInfo.message,
+            isLocal: deliveryInfo.isLocal || false,
+            message: deliveryInfo.message || 'Frete a calcular',
             estimatedTime: deliveryInfo.estimatedTime,
             deliveryFee: deliveryInfo.deliveryFee || 0,
-            hasRestrictions: deliveryInfo.hasRestrictions,
-            deliveryAvailable: deliveryInfo.deliveryAvailable,
+            hasRestrictions: deliveryInfo.hasRestrictions || false,
+            deliveryAvailable: deliveryInfo.deliveryAvailable !== false,
             loading: false
           };
 
@@ -211,7 +221,7 @@ export function useCheckoutDelivery(storeGroups: StoreGroup[], selectedAddress: 
           if (deliveryInfo.hasRestrictions) {
             hasRestrictions = true;
           }
-          if (!deliveryInfo.deliveryAvailable) {
+          if (deliveryInfo.deliveryAvailable === false) {
             allAvailable = false;
           }
 
