@@ -74,19 +74,20 @@ export function useCheckoutDelivery(storeGroups: StoreGroup[], selectedAddress: 
       try {
         // Get the first product from this store to use for delivery calculation
         const firstItem = storeGroup.items[0];
-        if (!firstItem?.produto?.vendedor_id) {
-          console.warn(`[useCheckoutDelivery] No vendor ID for store ${storeName}`);
+        // Use loja_id as the vendor ID since that's what's available in CartItem
+        if (!firstItem?.produto?.loja_id) {
+          console.warn(`[useCheckoutDelivery] No loja_id for store ${storeName}`);
           newStoreDeliveries[storeId] = {
             ...newStoreDeliveries[storeId],
             message: 'Frete será calculado na finalização',
             loading: false,
-            error: 'Vendor ID not found'
+            error: 'Store ID not found'
           };
           continue;
         }
 
         const deliveryInfo = await getProductDeliveryInfo(
-          firstItem.produto.vendedor_id,
+          firstItem.produto.loja_id, // Use loja_id instead of vendedor_id
           firstItem.produto.id,
           selectedAddress.cep
         );
