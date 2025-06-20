@@ -111,7 +111,7 @@ const CheckoutScreen: React.FC = () => {
             onChangeAmountChange={checkout.setChangeAmount}
           />
           
-          {/* Order Summary */}
+          {/* Order Summary - NEW: Pass delivery data */}
           <OrderSummarySection
             storeGroups={checkout.storeGroups}
             subtotal={checkout.subtotal}
@@ -121,6 +121,9 @@ const CheckoutScreen: React.FC = () => {
             totalPoints={checkout.totalPoints}
             appliedCoupon={checkout.appliedCoupon}
             isSubmitting={checkout.isSubmitting}
+            storeDeliveries={checkout.storeDeliveries}
+            isCalculatingDelivery={checkout.isCalculatingDelivery}
+            hasRestrictedItems={checkout.hasRestrictedItems}
             onPlaceOrder={handleCheckout}
             onGoBack={() => navigate(-1)}
           />

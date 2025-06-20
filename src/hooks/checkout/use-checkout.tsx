@@ -12,6 +12,7 @@ import { useGroupItemsByStore, storeGroupsToArray, StoreGroup } from '@/hooks/ca
 import { useStoreInfo } from '@/hooks/cart/use-store-info';
 import { validateCartStock, StockValidationResult } from '@/services/checkout/stockValidation';
 import { referralService } from '@/services/pointsService';
+import { useCheckoutDelivery } from './use-checkout-delivery';
 
 // Define the PaymentMethod type
 export type PaymentMethod = 'credit' | 'debit' | 'money' | 'pix';
@@ -52,9 +53,27 @@ export function useCheckout() {
     totalPoints: 0
   };
   
-  // Calculate totals - use cart summary data directly
+  // Group items by store with store info
+  const { groupedItems } = useGroupItemsByStore(cartItems);
+  // Convert record to array for components that expect an array and add store info
+  const storeGroupsArray = Object.values(groupedItems).map(group => ({
+    loja: storeInfo[group.loja.id] || group.loja,
+    items: group.items
+  })) as StoreGroup[];
+  
+  // NEW: Use delivery calculation hook
+  const {
+    storeDeliveries,
+    totalShipping,
+    isCalculating: isCalculatingDelivery,
+    allDeliveryAvailable,
+    hasRestrictedItems,
+    recalculateDelivery
+  } = useCheckoutDelivery(storeGroupsArray, selectedAddress);
+  
+  // Calculate totals - use cart summary data directly plus calculated shipping
   const subtotal = cartSummary.subtotal || 0;
-  const shipping = 0; // Free shipping
+  const shipping = totalShipping; // Use calculated shipping instead of fixed 0
   
   // Get applied coupon information from localStorage or cart context
   const [appliedCoupon, setAppliedCoupon] = useState<{code: string, discount: number} | null>(null);
@@ -78,14 +97,6 @@ export function useCheckout() {
   
   // Use the product-specific points directly from cart summary
   const totalPoints = cartSummary.totalPoints || 0;
-  
-  // Group items by store with store info
-  const { groupedItems } = useGroupItemsByStore(cartItems);
-  // Convert record to array for components that expect an array and add store info
-  const storeGroupsArray = Object.values(groupedItems).map(group => ({
-    loja: storeInfo[group.loja.id] || group.loja,
-    items: group.items
-  })) as StoreGroup[];
   
   // Function to activate referral on first purchase (moved to background)
   const activateReferralInBackground = useCallback(async (userId: string) => {
@@ -170,6 +181,14 @@ export function useCheckout() {
       setSelectedAddress(defaultAddress);
     }
   }, [addresses, selectedAddress]);
+  
+  // Recalculate delivery when address changes
+  useEffect(() => {
+    if (selectedAddress && storeGroupsArray.length > 0) {
+      console.log('[useCheckout] Address changed, recalculating delivery');
+      recalculateDelivery();
+    }
+  }, [selectedAddress, recalculateDelivery]);
   
   // Select address handler
   const selectAddress = useCallback((address: Address) => {
@@ -274,6 +293,12 @@ export function useCheckout() {
       if (!cartItems.length) {
         console.log('❌ [useCheckout] Empty cart');
         toast.error('Seu carrinho está vazio');
+        return;
+      }
+
+      // Check delivery availability
+      if (!allDeliveryAvailable) {
+        toast.error('Alguns produtos não podem ser entregues no endereço selecionado');
         return;
       }
 
@@ -421,7 +446,8 @@ export function useCheckout() {
     user,
     isAuthenticated,
     activateReferralInBackground,
-    isSubmitting // Added to dependencies
+    isSubmitting,
+    allDeliveryAvailable // Added to dependencies
   ]);
   
   // Handle retry
@@ -450,6 +476,13 @@ export function useCheckout() {
     orderAttempts,
     isLoading: addressesLoading,
     
+    // NEW: Delivery data
+    storeDeliveries,
+    totalShipping,
+    isCalculatingDelivery,
+    allDeliveryAvailable,
+    hasRestrictedItems,
+    
     // Actions
     setPaymentMethod,
     setChangeAmount,
@@ -458,6 +491,7 @@ export function useCheckout() {
     addNewAddress,
     handlePlaceOrder,
     handleRetry,
+    recalculateDelivery,
     
     // New stock validation values
     stockValidationResult,

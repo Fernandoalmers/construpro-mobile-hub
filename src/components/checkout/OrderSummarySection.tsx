@@ -1,9 +1,22 @@
 
 import React from 'react';
-import { CheckCircle, Tag } from 'lucide-react';
+import { CheckCircle, Tag, Truck, AlertTriangle } from 'lucide-react';
 import Card from '@/components/common/Card';
 import CustomButton from '@/components/common/CustomButton';
 import { StoreGroup } from '@/hooks/cart/use-group-items-by-store';
+
+interface StoreDeliveryInfo {
+  storeId: string;
+  storeName: string;
+  isLocal: boolean;
+  message: string;
+  estimatedTime?: string;
+  deliveryFee: number;
+  hasRestrictions: boolean;
+  deliveryAvailable: boolean;
+  loading: boolean;
+  error?: string;
+}
 
 interface OrderSummarySectionProps {
   storeGroups: StoreGroup[];
@@ -14,6 +27,9 @@ interface OrderSummarySectionProps {
   totalPoints: number;
   appliedCoupon?: {code: string, discount: number} | null;
   isSubmitting: boolean;
+  storeDeliveries?: Record<string, StoreDeliveryInfo>;
+  isCalculatingDelivery?: boolean;
+  hasRestrictedItems?: boolean;
   onPlaceOrder: () => void;
   onGoBack: () => void;
 }
@@ -27,6 +43,9 @@ const OrderSummarySection: React.FC<OrderSummarySectionProps> = ({
   totalPoints,
   appliedCoupon,
   isSubmitting,
+  storeDeliveries = {},
+  isCalculatingDelivery = false,
+  hasRestrictedItems = false,
   onPlaceOrder,
   onGoBack
 }) => {
@@ -35,24 +54,58 @@ const OrderSummarySection: React.FC<OrderSummarySectionProps> = ({
       <h2 className="font-bold mb-3">Resumo do Pedido</h2>
       <Card className="p-4">
         <div className="space-y-3 mb-4">
-          {/* Per store summary */}
-          {storeGroups.map((store, index) => (
-            <div key={index} className="border-b border-gray-100 pb-3 mb-3">
-              <div className="flex items-center mb-2">
-                <span className="font-medium text-sm">{store.loja?.nome || `Loja ${index + 1}`}</span>
-              </div>
-              <div className="pl-7 space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Subtotal ({store.items.length} {store.items.length === 1 ? 'item' : 'itens'})</span>
-                  <span>R$ {store.items.reduce((sum, item) => sum + (item.subtotal || 0), 0).toFixed(2)}</span>
+          {/* Per store summary with delivery info */}
+          {storeGroups.map((store, index) => {
+            const storeDelivery = storeDeliveries[store.loja.id];
+            const storeSubtotal = store.items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
+            
+            return (
+              <div key={index} className="border-b border-gray-100 pb-3 mb-3">
+                <div className="flex items-center mb-2">
+                  <span className="font-medium text-sm">{store.loja?.nome || `Loja ${index + 1}`}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Frete</span>
-                  <span>Grátis</span>
+                <div className="pl-7 space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Subtotal ({store.items.length} {store.items.length === 1 ? 'item' : 'itens'})</span>
+                    <span>R$ {storeSubtotal.toFixed(2)}</span>
+                  </div>
+                  
+                  {/* Delivery info per store */}
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-1">
+                      <Truck className="h-3 w-3 text-gray-500" />
+                      <span className="text-gray-600">Frete</span>
+                    </div>
+                    <div className="text-right">
+                      {isCalculatingDelivery || storeDelivery?.loading ? (
+                        <div className="flex items-center gap-1">
+                          <div className="w-3 h-3 animate-spin rounded-full border border-blue-500 border-t-transparent"></div>
+                          <span className="text-xs text-gray-500">Calculando...</span>
+                        </div>
+                      ) : storeDelivery ? (
+                        <div>
+                          <span className={`text-xs ${storeDelivery.isLocal ? 'text-green-600' : 'text-gray-700'}`}>
+                            {storeDelivery.deliveryFee === 0 ? 'Grátis' : `R$ ${storeDelivery.deliveryFee.toFixed(2)}`}
+                          </span>
+                          {storeDelivery.estimatedTime && (
+                            <div className="text-xs text-gray-500">{storeDelivery.estimatedTime}</div>
+                          )}
+                          {storeDelivery.hasRestrictions && (
+                            <div className="flex items-center gap-1 text-xs text-orange-600">
+                              <AlertTriangle className="h-3 w-3" />
+                              <span>Com restrições</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-500">A calcular</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           
           <div className="flex justify-between">
             <span className="text-gray-600">Subtotal</span>
@@ -60,8 +113,22 @@ const OrderSummarySection: React.FC<OrderSummarySectionProps> = ({
           </div>
           
           <div className="flex justify-between">
-            <span className="text-gray-600">Frete</span>
-            <span>Grátis</span>
+            <div className="flex items-center gap-1">
+              <Truck className="h-4 w-4 text-gray-500" />
+              <span className="text-gray-600">Frete Total</span>
+            </div>
+            <span className={shipping === 0 ? 'text-green-600' : ''}>
+              {isCalculatingDelivery ? (
+                <div className="flex items-center gap-1">
+                  <div className="w-4 h-4 animate-spin rounded-full border border-blue-500 border-t-transparent"></div>
+                  <span className="text-sm">Calculando...</span>
+                </div>
+              ) : shipping === 0 ? (
+                'Grátis'
+              ) : (
+                `R$ ${shipping.toFixed(2)}`
+              )}
+            </span>
           </div>
           
           {/* Show discount if coupon is applied */}
@@ -85,6 +152,19 @@ const OrderSummarySection: React.FC<OrderSummarySectionProps> = ({
             <span>{totalPoints} pontos</span>
           </div>
         </div>
+        
+        {/* Show restrictions warning */}
+        {hasRestrictedItems && (
+          <div className="bg-orange-50 p-3 rounded-md flex items-start gap-2 mb-4 border border-orange-200">
+            <AlertTriangle className="text-orange-500 mt-0.5" size={16} />
+            <div>
+              <p className="font-medium text-orange-700">Atenção!</p>
+              <p className="text-sm text-orange-600">
+                Alguns produtos possuem restrições de entrega para o endereço selecionado.
+              </p>
+            </div>
+          </div>
+        )}
         
         {/* Show savings highlight if there's a discount */}
         {appliedCoupon && discount > 0 && (
@@ -114,9 +194,9 @@ const OrderSummarySection: React.FC<OrderSummarySectionProps> = ({
             variant="primary" 
             fullWidth
             onClick={onPlaceOrder}
-            disabled={isSubmitting}
+            disabled={isSubmitting || isCalculatingDelivery}
           >
-            {isSubmitting ? "Processando..." : "Finalizar Pedido"}
+            {isSubmitting ? "Processando..." : isCalculatingDelivery ? "Calculando frete..." : "Finalizar Pedido"}
           </CustomButton>
           
           <CustomButton 
