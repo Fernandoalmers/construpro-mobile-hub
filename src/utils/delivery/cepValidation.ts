@@ -7,22 +7,42 @@ import { logWithTimestamp, withTimeout, withRetry } from './logger';
  */
 export async function checkCepInZone(customerCep: string, zoneType: string, zoneValue: string): Promise<boolean> {
   const cleanCustomerCep = customerCep.replace(/\D/g, '');
-  logWithTimestamp(`[checkCepInZone] Checking if CEP ${cleanCustomerCep} is in zone type ${zoneType} with value ${zoneValue}`);
+  logWithTimestamp(`[checkCepInZone] 🚀 STARTING CEP ZONE CHECK:`, {
+    customerCep: cleanCustomerCep,
+    zoneType,
+    zoneValue,
+    originalCustomerCep: customerCep
+  });
   
   try {
     switch (zoneType) {
       case 'cep_specific':
         const cleanZoneValue = zoneValue.replace(/\D/g, '');
         const result = cleanCustomerCep === cleanZoneValue;
-        logWithTimestamp('[checkCepInZone] CEP specific check:', { customerCep: cleanCustomerCep, zoneValue: cleanZoneValue, result });
+        logWithTimestamp('[checkCepInZone] ✅ CEP SPECIFIC RESULT:', { 
+          customerCep: cleanCustomerCep, 
+          zoneValue: cleanZoneValue, 
+          result,
+          comparison: `${cleanCustomerCep} === ${cleanZoneValue}`
+        });
         return result;
       
       case 'cep_range':
-        return await withTimeout(
+        logWithTimestamp('[checkCepInZone] 🔍 CALLING CEP RANGE CHECK:', {
+          customerCep: cleanCustomerCep,
+          rangeValue: zoneValue
+        });
+        const rangeResult = await withTimeout(
           checkCepRange(cleanCustomerCep, zoneValue),
           5000,
           'CEP range check'
         );
+        logWithTimestamp('[checkCepInZone] ✅ CEP RANGE FINAL RESULT:', {
+          customerCep: cleanCustomerCep,
+          rangeValue: zoneValue,
+          result: rangeResult
+        });
+        return rangeResult;
       
       case 'ibge':
         return await withTimeout(
@@ -39,29 +59,46 @@ export async function checkCepInZone(customerCep: string, zoneType: string, zone
         );
       
       default:
-        logWithTimestamp('[checkCepInZone] Unknown zone type:', zoneType);
+        logWithTimestamp('[checkCepInZone] ❌ UNKNOWN ZONE TYPE:', zoneType);
         return false;
     }
   } catch (error) {
-    logWithTimestamp('[checkCepInZone] Error in zone check:', { zoneType, error });
+    logWithTimestamp('[checkCepInZone] 💥 CRITICAL ERROR in zone check:', { 
+      zoneType, 
+      customerCep: cleanCustomerCep,
+      zoneValue,
+      error: error?.message || error 
+    });
     return false;
   }
 }
 
 async function checkCepRange(customerCep: string, rangeValue: string): Promise<boolean> {
   try {
-    logWithTimestamp('[checkCepRange] 🔍 Starting CEP range validation:', {
+    logWithTimestamp('[checkCepRange] 🚀 STARTING CEP RANGE VALIDATION:', {
       customerCep,
       rangeValue,
-      customerCepLength: customerCep.length
+      customerCepLength: customerCep.length,
+      customerCepType: typeof customerCep,
+      rangeValueType: typeof rangeValue
     });
+
+    // Validate input parameters
+    if (!customerCep || !rangeValue) {
+      logWithTimestamp('[checkCepRange] ❌ INVALID INPUT - Missing parameters:', {
+        customerCep: !!customerCep,
+        rangeValue: !!rangeValue
+      });
+      return false;
+    }
 
     // Split the range and clean both values
     const rangeParts = rangeValue.split('-');
     if (rangeParts.length !== 2) {
-      logWithTimestamp('[checkCepRange] ❌ Invalid range format - should contain exactly one dash:', {
+      logWithTimestamp('[checkCepRange] ❌ INVALID RANGE FORMAT - should contain exactly one dash:', {
         rangeValue,
-        parts: rangeParts
+        parts: rangeParts,
+        partsCount: rangeParts.length
       });
       return false;
     }
@@ -69,30 +106,33 @@ async function checkCepRange(customerCep: string, rangeValue: string): Promise<b
     const startCep = rangeParts[0].replace(/\D/g, '').trim();
     const endCep = rangeParts[1].replace(/\D/g, '').trim();
     
-    logWithTimestamp('[checkCepRange] 🧹 Cleaned range parts:', {
+    logWithTimestamp('[checkCepRange] 🧹 CLEANED RANGE PARTS:', {
       originalRange: rangeValue,
       startCep,
       endCep,
       startCepLength: startCep.length,
-      endCepLength: endCep.length
+      endCepLength: endCep.length,
+      rangeParts
     });
 
     // Validate that both CEPs are 8 digits
     if (startCep.length !== 8 || endCep.length !== 8) {
-      logWithTimestamp('[checkCepRange] ❌ Invalid CEP length in range:', {
+      logWithTimestamp('[checkCepRange] ❌ INVALID CEP LENGTH in range:', {
         startCep,
         endCep,
         startCepLength: startCep.length,
-        endCepLength: endCep.length
+        endCepLength: endCep.length,
+        expected: 8
       });
       return false;
     }
 
     // Validate customer CEP length
     if (customerCep.length !== 8) {
-      logWithTimestamp('[checkCepRange] ❌ Invalid customer CEP length:', {
+      logWithTimestamp('[checkCepRange] ❌ INVALID CUSTOMER CEP LENGTH:', {
         customerCep,
-        length: customerCep.length
+        length: customerCep.length,
+        expected: 8
       });
       return false;
     }
@@ -102,9 +142,12 @@ async function checkCepRange(customerCep: string, rangeValue: string): Promise<b
     const startCepNum = parseInt(startCep, 10);
     const endCepNum = parseInt(endCep, 10);
     
-    logWithTimestamp('[checkCepRange] 🔢 Numeric conversion:', {
+    logWithTimestamp('[checkCepRange] 🔢 NUMERIC CONVERSION RESULTS:', {
+      customerCep,
       customerCepNum,
+      startCep,
       startCepNum,
+      endCep,
       endCepNum,
       customerCepValid: !isNaN(customerCepNum),
       startCepValid: !isNaN(startCepNum),
@@ -112,43 +155,55 @@ async function checkCepRange(customerCep: string, rangeValue: string): Promise<b
     });
     
     if (isNaN(customerCepNum) || isNaN(startCepNum) || isNaN(endCepNum)) {
-      logWithTimestamp('[checkCepRange] ❌ Failed to convert CEPs to numbers:', {
+      logWithTimestamp('[checkCepRange] ❌ FAILED NUMERIC CONVERSION:', {
         customerCep,
         startCep,
         endCep,
         customerCepNum,
         startCepNum,
-        endCepNum
+        endCepNum,
+        customerCepIsNaN: isNaN(customerCepNum),
+        startCepIsNaN: isNaN(startCepNum),
+        endCepIsNaN: isNaN(endCepNum)
       });
       return false;
     }
 
     // Validate range logic
     if (startCepNum > endCepNum) {
-      logWithTimestamp('[checkCepRange] ❌ Invalid range - start CEP is greater than end CEP:', {
+      logWithTimestamp('[checkCepRange] ❌ INVALID RANGE LOGIC - start CEP is greater than end CEP:', {
         startCepNum,
-        endCepNum
+        endCepNum,
+        difference: startCepNum - endCepNum
       });
       return false;
     }
     
     // Perform the range check
-    const isInRange = customerCepNum >= startCepNum && customerCepNum <= endCepNum;
+    const isGreaterOrEqual = customerCepNum >= startCepNum;
+    const isLessOrEqual = customerCepNum <= endCepNum;
+    const isInRange = isGreaterOrEqual && isLessOrEqual;
     
-    logWithTimestamp('[checkCepRange] 🎯 Final range validation:', {
+    logWithTimestamp('[checkCepRange] 🎯 FINAL RANGE VALIDATION RESULT:', {
       customerCepNum,
       startCepNum,
       endCepNum,
-      isGreaterOrEqualToStart: customerCepNum >= startCepNum,
-      isLessOrEqualToEnd: customerCepNum <= endCepNum,
+      isGreaterOrEqual,
+      isLessOrEqual,
       isInRange,
-      calculation: `${customerCepNum} >= ${startCepNum} && ${customerCepNum} <= ${endCepNum} = ${isInRange}`
+      calculation: `${customerCepNum} >= ${startCepNum} && ${customerCepNum} <= ${endCepNum} = ${isInRange}`,
+      detailedCheck: {
+        step1: `${customerCepNum} >= ${startCepNum} = ${isGreaterOrEqual}`,
+        step2: `${customerCepNum} <= ${endCepNum} = ${isLessOrEqual}`,
+        final: `${isGreaterOrEqual} && ${isLessOrEqual} = ${isInRange}`
+      }
     });
     
     return isInRange;
   } catch (error) {
-    logWithTimestamp('[checkCepRange] ❌ Exception during CEP range check:', {
-      error: error.message || error,
+    logWithTimestamp('[checkCepRange] 💥 EXCEPTION during CEP range check:', {
+      error: error?.message || error,
+      stack: error?.stack,
       customerCep,
       rangeValue
     });
@@ -158,6 +213,8 @@ async function checkCepRange(customerCep: string, rangeValue: string): Promise<b
 
 async function checkCepByIbge(customerCep: string, ibgeValue: string): Promise<boolean> {
   try {
+    logWithTimestamp('[checkCepByIbge] Starting IBGE check:', { customerCep, ibgeValue });
+    
     const { data: cepData, error } = await supabase
       .from('zip_cache')
       .select('ibge')
@@ -180,6 +237,8 @@ async function checkCepByIbge(customerCep: string, ibgeValue: string): Promise<b
 
 async function checkCepByCity(customerCep: string, cityValue: string): Promise<boolean> {
   try {
+    logWithTimestamp('[checkCepByCity] Starting city check:', { customerCep, cityValue });
+    
     const { data: cepData, error } = await supabase
       .from('zip_cache')
       .select('localidade')
