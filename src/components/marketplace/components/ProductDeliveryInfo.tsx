@@ -25,11 +25,11 @@ const ProductDeliveryInfo: React.FC<ProductDeliveryInfoProps> = ({ produto }) =>
     }, 1000);
   };
 
-  // Determinar se usuário tem endereço cadastrado
+  // Determinar se usuário tem endereço cadastrado - APENAS endereço cadastrado
   const hasUserAddress = isAuthenticated && (profile?.endereco_principal?.cep || currentUserCep);
   const displayCep = hasUserAddress ? (profile?.endereco_principal?.cep || currentUserCep) : null;
   
-  console.log('[ProductDeliveryInfo] Address debug:', {
+  console.log('[ProductDeliveryInfo] Address debug - AUTHENTICATED USERS ONLY:', {
     isAuthenticated,
     hasUserAddress,
     profileCep: profile?.endereco_principal?.cep,
@@ -53,8 +53,8 @@ const ProductDeliveryInfo: React.FC<ProductDeliveryInfoProps> = ({ produto }) =>
           </div>
         ) : (
           <>
-            {/* Show current registered address being used */}
-            {displayCep && (
+            {/* Show current registered address being used - ONLY for authenticated users */}
+            {isAuthenticated && displayCep && (
               <div className="flex items-center mb-2">
                 <MapPin className="w-4 h-4 text-blue-500 mr-2" />
                 <span className="text-xs text-gray-600">
@@ -93,11 +93,11 @@ const ProductDeliveryInfo: React.FC<ProductDeliveryInfoProps> = ({ produto }) =>
               </div>
             )}
 
-            {/* Message for non-authenticated users */}
+            {/* Message for non-authenticated users - NO temporary CEP option */}
             {!isAuthenticated && (
               <div className="mt-2">
                 <p className="text-xs text-gray-500">
-                  Faça login para calcular o frete automaticamente com seu endereço cadastrado
+                  Faça login e cadastre seu endereço para calcular o frete automaticamente
                 </p>
               </div>
             )}
@@ -108,7 +108,7 @@ const ProductDeliveryInfo: React.FC<ProductDeliveryInfoProps> = ({ produto }) =>
       {/* Quick Address Modal */}
       <QuickAddressModal
         open={showAddressModal}
-        onOpen Change={setShowAddressModal}
+        onOpenChange={setShowAddressModal}
         onAddressAdded={handleAddressAdded}
       />
     </div>
