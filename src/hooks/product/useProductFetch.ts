@@ -151,6 +151,7 @@ export function useProductFetch(id: string | undefined) {
           pontos_consumidor: data.pontos_consumidor || 0,
           pontos_profissional: data.pontos_profissional || 0,
           loja_id: data.vendedor_id,
+          vendedor_id: data.vendedor_id, // FIX: Correctly map vendedor_id
           status: data.status as "pendente" | "aprovado" | "rejeitado",
           unidade_medida: 'unidade_medida' in data ? String(data.unidade_medida) : 'unidade',
           codigo_barras: data.codigo_barras,
@@ -174,7 +175,8 @@ export function useProductFetch(id: string | undefined) {
             console.log("[useProductFetch] ✅ Successfully processed vendor info:", {
               productName: productData.nome,
               storeName: productData.stores.nome_loja,
-              storeId: productData.stores.id
+              storeId: productData.stores.id,
+              vendedor_id: productData.vendedor_id // LOG: Confirm vendedor_id is correctly set
             });
           } else {
             console.warn("[useProductFetch] ⚠️ Vendor data exists but missing nome_loja:", vendedorData);
