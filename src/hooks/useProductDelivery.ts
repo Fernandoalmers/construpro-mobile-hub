@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { Product } from '@/services/productService';
 import { getProductDeliveryInfo, getStoreLocationInfo } from '@/utils/delivery';
@@ -42,7 +43,7 @@ interface ProductDeliveryInfo {
 
 export function useProductDelivery(produto: Product) {
   const { getUserMainAddress, currentUserCep } = useUserAddress();
-  const { tempCep, clearIfUserHasAddress } = useTempCep();
+  const { tempCep, clearTemporaryCep } = useTempCep();
   const { isAuthenticated, profile } = useAuth();
   
   const [deliveryInfo, setDeliveryInfo] = useState<DeliveryInfo>({
@@ -51,7 +52,7 @@ export function useProductDelivery(produto: Product) {
     loading: true
   });
 
-  // Enhanced delivery calculation with CORRECTED CEP prioritization
+  // NOVA LÓGICA: Sempre priorizar endereço cadastrado para usuários autenticados
   const calculateDeliveryInfo = useCallback(async (forceRecalculate = false) => {
     const startTime = Date.now();
     const timestamp = new Date().toISOString();
@@ -61,65 +62,74 @@ export function useProductDelivery(produto: Product) {
     try {
       setDeliveryInfo(prev => ({ ...prev, loading: true }));
 
-      // Get user's main address with increased patience
-      console.log(`[${timestamp}] [useProductDelivery] Getting user main address...`);
-      const userMainAddress = await Promise.race([
-        getUserMainAddress() as Promise<UserAddress | null>,
-        new Promise<null>((_, reject) => 
-          setTimeout(() => reject(new Error('Address fetch timeout')), 8000)
-        )
-      ]);
-      
-      const addressTime = Date.now() - startTime;
-      console.log(`[${timestamp}] [useProductDelivery] User address lookup completed (${addressTime}ms)`);
-
-      // CORRIGIDO: Determinar qual CEP usar com priorização adequada
-      const hasUserRegisteredAddress = userMainAddress?.cep || profile?.endereco_principal?.cep || currentUserCep;
-      
-      console.log(`[${timestamp}] [useProductDelivery] 📍 CEP Priority Analysis:`, {
-        hasUserRegisteredAddress: !!hasUserRegisteredAddress,
-        userMainAddressCep: userMainAddress?.cep,
-        profileMainAddressCep: profile?.endereco_principal?.cep,
-        currentUserCep,
-        tempCep,
-        isAuthenticated
-      });
-
-      // Clear temp CEP if user has registered address and temp wasn't set in current session
-      if (hasUserRegisteredAddress) {
-        clearIfUserHasAddress(true);
-      }
-
-      // NOVA LÓGICA: Para usuários autenticados com endereço, sempre usar endereço cadastrado
-      // Só usar tempCep se for usuário não autenticado OU se não tiver endereço cadastrado
       let customerCep: string | undefined;
-      
-      if (isAuthenticated && hasUserRegisteredAddress) {
-        // Usuário autenticado com endereço: sempre usar endereço cadastrado
-        customerCep = userMainAddress?.cep || profile?.endereco_principal?.cep || currentUserCep;
-        console.log(`[${timestamp}] [useProductDelivery] ✅ Using registered address CEP:`, customerCep);
-      } else if (tempCep) {
-        // Usuário não autenticado ou sem endereço: usar CEP temporário se disponível
-        customerCep = tempCep;
-        console.log(`[${timestamp}] [useProductDelivery] ✅ Using temporary CEP:`, customerCep);
+
+      if (isAuthenticated) {
+        // PRIORIDADE 1: Para usuários autenticados, SEMPRE usar endereço cadastrado
+        console.log(`[${timestamp}] [useProductDelivery] ✅ User authenticated, looking for registered address...`);
+        
+        // Limpar qualquer CEP temporário existente
+        if (tempCep) {
+          console.log(`[${timestamp}] [useProductDelivery] 🧹 Clearing temporary CEP for authenticated user`);
+          clearTemporaryCep();
+        }
+
+        // Buscar endereço principal do usuário
+        try {
+          const userMainAddress = await Promise.race([
+            getUserMainAddress() as Promise<UserAddress | null>,
+            new Promise<null>((_, reject) => 
+              setTimeout(() => reject(new Error('Address fetch timeout')), 8000)
+            )
+          ]);
+
+          // Verificar várias fontes de endereço cadastrado
+          const registeredCep = userMainAddress?.cep || profile?.endereco_principal?.cep || currentUserCep;
+          
+          if (registeredCep) {
+            customerCep = registeredCep;
+            console.log(`[${timestamp}] [useProductDelivery] ✅ Using registered address CEP:`, customerCep);
+          } else {
+            console.log(`[${timestamp}] [useProductDelivery] ❌ No registered address found for authenticated user`);
+            setDeliveryInfo({
+              isLocal: false,
+              message: 'Cadastre seu endereço para calcular o frete',
+              loading: false
+            });
+            return;
+          }
+        } catch (addressError) {
+          console.error(`[${timestamp}] [useProductDelivery] Error fetching user address:`, addressError);
+          setDeliveryInfo({
+            isLocal: false,
+            message: 'Erro ao buscar endereço cadastrado',
+            loading: false
+          });
+          return;
+        }
+      } else {
+        // PRIORIDADE 2: Para usuários não autenticados, usar CEP temporário se disponível
+        if (tempCep) {
+          customerCep = tempCep;
+          console.log(`[${timestamp}] [useProductDelivery] ✅ Using temporary CEP for non-authenticated user:`, customerCep);
+        } else {
+          console.log(`[${timestamp}] [useProductDelivery] ❌ No CEP available for non-authenticated user`);
+          setDeliveryInfo({
+            isLocal: false,
+            message: 'Informe seu CEP para calcular o frete',
+            loading: false
+          });
+          return;
+        }
       }
 
       console.log(`[${timestamp}] [useProductDelivery] 📍 Final CEP Selection:`, {
         customerCep,
-        source: isAuthenticated && hasUserRegisteredAddress ? 'registered_address' : tempCep ? 'temporary' : 'none'
+        isAuthenticated,
+        source: isAuthenticated ? 'registered_address' : 'temporary'
       });
 
-      if (!customerCep) {
-        console.log(`[${timestamp}] [useProductDelivery] ❌ No CEP available for delivery calculation`);
-        setDeliveryInfo({
-          isLocal: false,
-          message: 'Informe seu CEP para calcular o frete',
-          loading: false
-        });
-        return;
-      }
-
-      // Get store location info with increased timeout
+      // Get store location info
       console.log(`[${timestamp}] [useProductDelivery] Getting store location info...`);
       const storeLocationInfo = await Promise.race([
         getStoreLocationInfo(produto.stores?.id, produto.vendedor_id) as Promise<StoreLocationInfo>,
@@ -131,7 +141,7 @@ export function useProductDelivery(produto: Product) {
       const storeTime = Date.now() - startTime;
       console.log(`[${timestamp}] [useProductDelivery] Store location info (${storeTime}ms):`, storeLocationInfo);
 
-      // Use the enhanced delivery calculation with increased timeout
+      // Calculate delivery info
       console.log(`[${timestamp}] [useProductDelivery] 🔄 Calling getProductDeliveryInfo with:`, {
         vendorId: produto.vendedor_id,
         productId: produto.id,
@@ -168,7 +178,6 @@ export function useProductDelivery(produto: Product) {
       const totalTime = Date.now() - startTime;
       console.error(`[${timestamp}] [useProductDelivery] ❌ Error calculating delivery info (${totalTime}ms):`, error);
       
-      // Fallback melhorado - tenta fornecer informação útil mesmo com erro
       setDeliveryInfo({
         isLocal: false,
         message: 'Frete calculado no checkout',
@@ -176,7 +185,7 @@ export function useProductDelivery(produto: Product) {
         loading: false
       });
     }
-  }, [produto.vendedor_id, produto.id, produto.stores?.id, getUserMainAddress, tempCep, isAuthenticated, profile?.endereco_principal?.cep, currentUserCep, clearIfUserHasAddress]);
+  }, [produto.vendedor_id, produto.id, produto.stores?.id, getUserMainAddress, tempCep, isAuthenticated, profile?.endereco_principal?.cep, currentUserCep, clearTemporaryCep]);
 
   // Calculate delivery info when dependencies change
   useEffect(() => {
@@ -194,6 +203,6 @@ export function useProductDelivery(produto: Product) {
   return {
     deliveryInfo,
     calculateDeliveryInfo,
-    currentUserCep
+    currentUserCep: isAuthenticated ? (profile?.endereco_principal?.cep || currentUserCep) : tempCep
   };
 }
