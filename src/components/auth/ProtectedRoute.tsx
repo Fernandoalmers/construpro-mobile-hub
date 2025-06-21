@@ -30,9 +30,18 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     pathname: location.pathname
   });
 
-  // Show loading while auth or admin status is being checked
-  if (authLoading || (requireAdmin && adminCheckLoading)) {
-    return <LoadingState text="Verificando autenticação..." />;
+  // Show loading while auth is loading OR while admin check is loading (if admin is required)
+  const isCheckingAuth = authLoading;
+  const isCheckingAdmin = requireAdmin && adminCheckLoading;
+  const isStillLoading = isCheckingAuth || isCheckingAdmin;
+
+  if (isStillLoading) {
+    const loadingText = isCheckingAuth 
+      ? "Verificando autenticação..." 
+      : "Verificando permissões de administrador...";
+    
+    console.log('🔐 [ProtectedRoute] Still loading:', { isCheckingAuth, isCheckingAdmin });
+    return <LoadingState text={loadingText} />;
   }
 
   // If authentication is required and user is not authenticated, redirect to login
@@ -42,7 +51,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // If admin access is required and user is not an admin, redirect to home
-  if (requireAdmin && !isAdmin) {
+  // Only check this AFTER we're sure admin check is complete (!adminCheckLoading)
+  if (requireAdmin && isAuthenticated && !adminCheckLoading && !isAdmin) {
     console.log('🔐 [ProtectedRoute] Admin required but not admin, redirecting to home');
     return <Navigate to="/home" replace />;
   }

@@ -4,15 +4,23 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 
 export const useIsAdmin = () => {
-  const { user, isAuthenticated, session, profile } = useAuth();
+  const { user, isAuthenticated, session, profile, isLoading: authLoading } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [attemptCount, setAttemptCount] = useState(0);
 
   useEffect(() => {
     const checkAdminStatus = async () => {
       console.log('🔐 [useIsAdmin] Starting admin check for user:', user?.id);
+      console.log('🔐 [useIsAdmin] Auth loading:', authLoading);
       console.log('🔐 [useIsAdmin] Profile from context:', profile);
       
+      // Don't start admin check if auth is still loading
+      if (authLoading) {
+        console.log('🔐 [useIsAdmin] Auth still loading, waiting...');
+        return;
+      }
+
       if (!isAuthenticated || !user || !session) {
         console.log('🔐 [useIsAdmin] User not authenticated');
         setIsAdmin(false);
@@ -41,6 +49,14 @@ export const useIsAdmin = () => {
         
         if (profileError) {
           console.error('🔐 [useIsAdmin] Profile query error:', profileError);
+          
+          // Retry logic for network errors
+          if (attemptCount < 2 && (profileError.message?.includes('network') || profileError.code === 'PGRST301')) {
+            console.log('🔐 [useIsAdmin] Retrying admin check due to network error');
+            setAttemptCount(prev => prev + 1);
+            setTimeout(() => checkAdminStatus(), 1000);
+            return;
+          }
         } else {
           console.log('🔐 [useIsAdmin] Profile data from direct query:', profileData);
           if (profileData?.is_admin) {
@@ -81,8 +97,10 @@ export const useIsAdmin = () => {
       }
     };
 
+    // Reset attempt count when user changes
+    setAttemptCount(0);
     checkAdminStatus();
-  }, [user, isAuthenticated, session, profile]);
+  }, [user, isAuthenticated, session, profile, authLoading, attemptCount]);
 
   console.log('🔐 [useIsAdmin] Hook returning:', { isAdmin, isLoading });
   return { isAdmin, isLoading };

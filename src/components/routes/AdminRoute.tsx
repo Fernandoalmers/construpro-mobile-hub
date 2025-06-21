@@ -6,21 +6,28 @@ import { useAuth } from '@/context/AuthContext';
 import LoadingState from '../common/LoadingState';
 
 const AdminRoute: React.FC = () => {
-  const { isAdmin, isLoading } = useIsAdmin();
+  const { isAdmin, isLoading: adminLoading } = useIsAdmin();
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
 
   console.log('🔐 [AdminRoute] Status:', {
     isAuthenticated,
     isAdmin,
-    isLoading,
+    adminLoading,
     authLoading,
     userId: user?.id,
     userEmail: user?.email
   });
 
-  if (authLoading || isLoading) {
-    console.log('🔐 [AdminRoute] Still loading auth or admin status');
-    return <LoadingState text="Verificando permissões de administrador..." />;
+  // Show loading while checking auth or admin status
+  const isStillLoading = authLoading || adminLoading;
+
+  if (isStillLoading) {
+    const loadingText = authLoading 
+      ? "Verificando autenticação..." 
+      : "Verificando permissões de administrador...";
+    
+    console.log('🔐 [AdminRoute] Still loading:', { authLoading, adminLoading });
+    return <LoadingState text={loadingText} />;
   }
 
   if (!isAuthenticated) {
