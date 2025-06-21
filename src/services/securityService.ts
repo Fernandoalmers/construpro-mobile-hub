@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 
@@ -64,19 +63,54 @@ export const securityService = {
     }
   },
 
-  // Check if current user is admin using secure function
+  // Enhanced admin check with multiple fallbacks
   async isCurrentUserAdmin(): Promise<boolean> {
     try {
-      const { data, error } = await supabase.rpc('is_admin');
+      console.log('🔐 [securityService] Checking admin status');
       
-      if (error) {
-        console.error('Error checking admin status:', error);
+      // First verify we have a valid session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        console.error('🔐 [securityService] No valid session:', sessionError);
         return false;
       }
 
-      return !!data;
+      console.log('🔐 [securityService] Session valid, checking admin status');
+
+      // Try the RPC function first
+      try {
+        const { data, error } = await supabase.rpc('is_admin');
+        
+        if (!error && data !== null) {
+          console.log('🔐 [securityService] RPC result:', data);
+          return !!data;
+        } else {
+          console.warn('🔐 [securityService] RPC failed:', error);
+        }
+      } catch (rpcError) {
+        console.warn('🔐 [securityService] RPC exception:', rpcError);
+      }
+
+      // Fallback: Direct profile query
+      console.log('🔐 [securityService] Falling back to direct profile query');
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', session.user.id)
+        .single();
+      
+      if (profileError) {
+        console.error('🔐 [securityService] Profile query error:', profileError);
+        return false;
+      }
+
+      const isAdmin = !!profile?.is_admin;
+      console.log('🔐 [securityService] Direct profile admin status:', isAdmin);
+      return isAdmin;
+      
     } catch (error) {
-      console.error('Exception checking admin status:', error);
+      console.error('🔐 [securityService] Exception checking admin status:', error);
       return false;
     }
   },

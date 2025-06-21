@@ -35,7 +35,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (userProfile) {
         setProfile(userProfile);
-        console.log('[AuthContext] Profile loaded successfully');
+        console.log('[AuthContext] Profile loaded successfully:', {
+          id: userProfile.id,
+          nome: userProfile.nome,
+          is_admin: userProfile.is_admin
+        });
         return userProfile;
       } else {
         console.warn('[AuthContext] No profile found for user');
@@ -111,7 +115,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!isMounted) return;
       
-      console.log('[AuthContext] Initial session:', session?.user?.id);
+      console.log('[AuthContext] Initial session:', {
+        hasSession: !!session,
+        userId: session?.user?.id,
+        userEmail: session?.user?.email
+      });
+      
       setSession(session);
       setUser(session?.user ?? null);
       
@@ -130,7 +139,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
       
-      console.log('[AuthContext] Auth state changed:', event, session?.user?.id);
+      console.log('[AuthContext] Auth state changed:', {
+        event,
+        hasSession: !!session,
+        userId: session?.user?.id,
+        userEmail: session?.user?.email
+      });
       
       setSession(session);
       setUser(session?.user ?? null);
