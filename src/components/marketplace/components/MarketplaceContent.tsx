@@ -2,16 +2,12 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useInfiniteScroll } from '@/hooks/use-infinite-scroll';
-import StoresSection from './StoresSection';
 import CategoryHeader from './CategoryHeader';
 import GridProductView from './GridProductView';
 import ListProductView from './ListProductView';
 
 interface MarketplaceContentProps {
   dynamicPaddingTop: number;
-  stores: any[];
-  onLojaClick: (lojaId: string) => void;
-  storesError: string | null;
   currentCategoryName: string;
   filteredProdutos: any[];
   isLoading: boolean;
@@ -21,13 +17,11 @@ interface MarketplaceContentProps {
   loadMoreProducts: () => void;
   clearFilters: () => void;
   viewType: 'grid' | 'list';
+  onLojaClick: (lojaId: string) => void;
 }
 
 const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
   dynamicPaddingTop,
-  stores,
-  onLojaClick,
-  storesError,
   currentCategoryName,
   filteredProdutos,
   isLoading,
@@ -36,12 +30,12 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
   isLoadingMore,
   loadMoreProducts,
   clearFilters,
-  viewType
+  viewType,
+  onLojaClick
 }) => {
   const navigate = useNavigate();
   
   // Ensure arrays are safe to use
-  const safeStores = Array.isArray(stores) ? stores : [];
   const safeFilteredProducts = Array.isArray(filteredProdutos) ? filteredProdutos : [];
   const safeDisplayedProducts = Array.isArray(displayedProducts) ? displayedProducts : [];
 
@@ -64,13 +58,6 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
       style={{ paddingTop: `${dynamicPaddingTop}px` }}
     >
       <div className="min-h-screen">
-        {/* Stores Section */}
-        <StoresSection 
-          stores={safeStores}
-          onLojaClick={onLojaClick}
-          storesError={storesError}
-        />
-        
         {/* Category Header */}
         <CategoryHeader 
           currentCategoryName={currentCategoryName}

@@ -109,9 +109,6 @@ const OptimizedMarketplaceScreen: React.FC = () => {
       
       <MarketplaceContent
         dynamicPaddingTop={dynamicPaddingTop}
-        stores={safeStores}
-        onLojaClick={handleLojaCardClick}
-        storesError={null}
         currentCategoryName={currentCategoryName}
         filteredProdutos={Array.isArray(filteredProducts) ? filteredProducts : []}
         isLoading={isLoading}
@@ -121,6 +118,7 @@ const OptimizedMarketplaceScreen: React.FC = () => {
         loadMoreProducts={actions?.loadMore || (() => {})}
         clearFilters={actions?.clearFilters || (() => {})}
         viewType={viewType}
+        onLojaClick={handleLojaCardClick}
       />
     </div>
   );
