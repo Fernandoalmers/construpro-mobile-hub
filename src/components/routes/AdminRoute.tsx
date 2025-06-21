@@ -7,16 +7,19 @@ import LoadingState from '../common/LoadingState';
 
 const AdminRoute: React.FC = () => {
   const { isAdmin, isLoading } = useIsAdmin();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, user } = useAuth();
 
   console.log('🔐 [AdminRoute] Status:', {
     isAuthenticated,
     isAdmin,
     isLoading,
-    authLoading
+    authLoading,
+    userId: user?.id,
+    userEmail: user?.email
   });
 
   if (authLoading || isLoading) {
+    console.log('🔐 [AdminRoute] Still loading auth or admin status');
     return <LoadingState text="Verificando permissões de administrador..." />;
   }
 
@@ -26,11 +29,11 @@ const AdminRoute: React.FC = () => {
   }
 
   if (!isAdmin) {
-    console.log('🔐 [AdminRoute] User not admin, redirecting to home');
+    console.log('🔐 [AdminRoute] User not admin, redirecting to home. User:', user?.email);
     return <Navigate to="/home" replace />;
   }
 
-  console.log('🔐 [AdminRoute] Admin access granted');
+  console.log('🔐 [AdminRoute] Admin access granted for user:', user?.email);
   return <Outlet />;
 };
 

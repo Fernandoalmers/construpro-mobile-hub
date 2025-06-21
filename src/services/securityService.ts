@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 
@@ -63,7 +64,7 @@ export const securityService = {
     }
   },
 
-  // Enhanced admin check with multiple fallbacks
+  // Simplified and more reliable admin check
   async isCurrentUserAdmin(): Promise<boolean> {
     try {
       console.log('🔐 [securityService] Checking admin status');
@@ -76,9 +77,27 @@ export const securityService = {
         return false;
       }
 
-      console.log('🔐 [securityService] Session valid, checking admin status');
+      console.log('🔐 [securityService] Session valid, user ID:', session.user.id);
 
-      // Try the RPC function first
+      // Primary method: Direct profile query (most reliable)
+      console.log('🔐 [securityService] Using direct profile query');
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('is_admin, papel, nome, email')
+        .eq('id', session.user.id)
+        .single();
+      
+      if (!profileError && profile) {
+        console.log('🔐 [securityService] Profile data:', profile);
+        const isAdmin = !!profile.is_admin;
+        console.log('🔐 [securityService] Direct profile admin status:', isAdmin);
+        return isAdmin;
+      } else {
+        console.error('🔐 [securityService] Profile query error:', profileError);
+      }
+
+      // Fallback: Try RPC function
+      console.log('🔐 [securityService] Falling back to RPC function');
       try {
         const { data, error } = await supabase.rpc('is_admin');
         
@@ -92,22 +111,9 @@ export const securityService = {
         console.warn('🔐 [securityService] RPC exception:', rpcError);
       }
 
-      // Fallback: Direct profile query
-      console.log('🔐 [securityService] Falling back to direct profile query');
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', session.user.id)
-        .single();
-      
-      if (profileError) {
-        console.error('🔐 [securityService] Profile query error:', profileError);
-        return false;
-      }
-
-      const isAdmin = !!profile?.is_admin;
-      console.log('🔐 [securityService] Direct profile admin status:', isAdmin);
-      return isAdmin;
+      // If all methods fail, user is not admin
+      console.log('🔐 [securityService] All methods failed - user is not admin');
+      return false;
       
     } catch (error) {
       console.error('🔐 [securityService] Exception checking admin status:', error);
