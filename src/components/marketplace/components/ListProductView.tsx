@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Store } from 'lucide-react';
+import { Store, Clock } from 'lucide-react';
 import { getPromotionInfo } from '@/utils/promotionUtils';
 import OfferCountdown from '@/components/common/OfferCountdown';
 import { truncateTextForLines } from '@/utils/textUtils';
@@ -18,7 +19,7 @@ const ListProductView: React.FC<ListProductViewProps> = ({
   onLojaClick,
 }) => {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
       {products.map(produto => {
         // Debug log to check product data
         console.log('[ListProductView] Product data:', {
@@ -39,7 +40,7 @@ const ListProductView: React.FC<ListProductViewProps> = ({
                          produto.imagem_url || 
                          'https://via.placeholder.com/150?text=Sem+Imagem';
 
-        // FIXED: Standardized store name logic - always use real store name
+        // Standardized store name logic
         const storeName = produto.stores?.nome_loja || 
                          produto.vendedores?.nome_loja ||
                          produto.stores?.nome || 
@@ -51,11 +52,12 @@ const ListProductView: React.FC<ListProductViewProps> = ({
                        produto.vendedores?.id ||
                        produto.vendedor_id;
 
-        // FIXED: Only show store info if we have a valid store name (not generic fallback)
+        // Only show store info if we have a valid store name
         const shouldShowStoreInfo = storeName && storeName.trim().length > 0;
 
-        // Truncate product name intelligently for list view
+        // Truncate product name and store name intelligently
         const truncatedName = truncateTextForLines(produto.nome, 35, 2);
+        const truncatedStoreName = truncateTextForLines(storeName || '', 25, 2);
 
         console.log('[ListProductView] Store info processed:', {
           productName: produto.nome,
@@ -68,63 +70,72 @@ const ListProductView: React.FC<ListProductViewProps> = ({
         return (
           <div 
             key={produto.id} 
-            className="bg-white rounded-md shadow-sm p-3 flex border border-gray-100 relative cursor-pointer hover:shadow-md transition-shadow"
+            className="bg-white rounded-lg shadow-sm p-4 flex border border-gray-100 hover:shadow-md transition-all duration-200 cursor-pointer"
             onClick={() => navigateToProduct(produto.id)}
           >
-            {/* Product Image - positioned on the left side */}
-            <div className="w-20 h-20 rounded-md overflow-hidden mr-3 flex-shrink-0 relative">
+            {/* Product Image - Clean, no overlays */}
+            <div className="w-24 h-24 rounded-lg overflow-hidden mr-4 flex-shrink-0 bg-gray-50">
               <img 
                 src={imageUrl} 
                 alt={produto.nome}
-                className="w-full h-full object-contain"
+                className="w-full h-full object-contain hover:scale-105 transition-transform duration-200"
                 onError={(e) => {
                   console.error('Error loading product image:', imageUrl);
                   e.currentTarget.src = 'https://via.placeholder.com/150?text=Sem+Imagem';
                 }}
               />
-              {/* Promotion badges on image */}
-              {promotionInfo.hasActivePromotion && (
-                <div className="absolute top-0 left-0 flex flex-col items-start gap-1">
-                  <div className="bg-red-500 text-white px-1 py-0.5 rounded-br text-xs font-semibold">
-                    -{promotionInfo.discountPercentage}%
-                  </div>
-                  {promotionInfo.promotionEndDate && (
-                    <OfferCountdown 
-                      endDate={promotionInfo.promotionEndDate}
-                      isActive={promotionInfo.hasActivePromotion}
-                      size="sm"
-                      variant="compact"
-                    />
-                  )}
-                </div>
-              )}
             </div>
             
-            <div className="flex-1">
-              {/* Product name - intelligently truncated */}
-              <h3 className="text-xs font-medium mb-1 leading-tight min-h-[2.2rem] break-words">{truncatedName}</h3>
+            <div className="flex-1 min-w-0">
+              {/* Linha 1: Product name - up to 2 lines */}
+              <h3 className="text-sm font-semibold text-gray-900 mb-2 leading-tight min-h-[2.5rem] break-words">
+                {truncatedName}
+              </h3>
               
-              {/* Type/Category */}
-              <div className="text-xs text-gray-500 mb-1">
-                {produto.categoria || "Categoria não especificada"}
+              {/* Linha 2: Category + Timer (when promotion is active) */}
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs text-gray-500 font-medium">
+                  {produto.categoria || "Categoria não especificada"}
+                </span>
+                {promotionInfo.hasActivePromotion && promotionInfo.promotionEndDate && (
+                  <>
+                    <span className="text-gray-300">•</span>
+                    <div className="flex items-center gap-1">
+                      <Clock size={12} className="text-red-500" />
+                      <OfferCountdown 
+                        endDate={promotionInfo.promotionEndDate}
+                        isActive={promotionInfo.hasActivePromotion}
+                        size="sm"
+                        variant="compact"
+                      />
+                    </div>
+                  </>
+                )}
               </div>
               
-              {/* Price section with conditional promotional display */}
-              <div className="font-bold text-lg mb-0.5">
-                R$ {(promotionInfo.hasActivePromotion ? promotionInfo.promotionalPrice! : promotionInfo.originalPrice).toFixed(2).replace('.', ',')}
+              {/* Linha 3: Price + Discount inline */}
+              <div className="flex items-center gap-2 mb-2">
+                <span className="font-bold text-lg text-construPro-blue">
+                  R$ {(promotionInfo.hasActivePromotion ? promotionInfo.promotionalPrice! : promotionInfo.originalPrice).toFixed(2).replace('.', ',')}
+                </span>
                 {promotionInfo.hasActivePromotion && (
-                  <span className="text-sm text-gray-400 line-through ml-2">
-                    R$ {promotionInfo.originalPrice.toFixed(2).replace('.', ',')}
-                  </span>
+                  <>
+                    <div className="bg-red-500 text-white px-2 py-0.5 rounded-full text-xs font-semibold">
+                      -{promotionInfo.discountPercentage}%
+                    </div>
+                    <span className="text-sm text-gray-400 line-through">
+                      R$ {promotionInfo.originalPrice.toFixed(2).replace('.', ',')}
+                    </span>
+                  </>
                 )}
               </div>
 
-              {/* Store name with icon - STANDARDIZED - Always show when available */}
+              {/* Linha 4: Store name - up to 2 lines */}
               {shouldShowStoreInfo && (
-                <div className="flex items-start gap-1">
-                  <Store size={12} className="text-gray-500 flex-shrink-0 mt-0.5" />
+                <div className="flex items-start gap-1.5">
+                  <Store size={12} className="text-gray-400 flex-shrink-0 mt-0.5" />
                   <div 
-                    className="text-xs text-gray-600 hover:underline cursor-pointer font-medium line-clamp-2 leading-tight"
+                    className="text-xs text-gray-600 hover:text-construPro-blue hover:underline cursor-pointer font-medium leading-tight transition-colors"
                     onClick={(e) => {
                       e.stopPropagation();
                       if (storeId && onLojaClick) {
@@ -132,7 +143,7 @@ const ListProductView: React.FC<ListProductViewProps> = ({
                       }
                     }}
                   >
-                    Vendido por {storeName}
+                    Vendido por {truncatedStoreName}
                   </div>
                 </div>
               )}
