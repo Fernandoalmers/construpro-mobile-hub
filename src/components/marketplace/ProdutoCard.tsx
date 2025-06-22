@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Heart, ShoppingCart, Star, Store } from 'lucide-react';
@@ -189,20 +190,20 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
         <Button
           variant="ghost"
           size="sm"
-          className="absolute top-2 right-2 p-2 bg-white/80 hover:bg-white rounded-full shadow-sm"
+          className="absolute top-1 sm:top-2 right-1 sm:right-2 p-1.5 sm:p-2 bg-white/80 hover:bg-white rounded-full shadow-sm"
           onClick={handleToggleFavorite}
           disabled={checkingFavorite}
         >
           <Heart 
-            size={16} 
+            size={14} 
             className={`${favorited ? 'fill-red-500 text-red-500' : 'text-gray-600'} ${checkingFavorite ? 'animate-pulse' : ''}`}
           />
         </Button>
 
         {/* Promotion Badge and Countdown */}
         {promotionInfo.hasActivePromotion && (
-          <div className="absolute top-2 left-2 flex items-center gap-2">
-            <Badge className="bg-red-500 hover:bg-red-600">
+          <div className="absolute top-1 sm:top-2 left-1 sm:left-2 flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2">
+            <Badge className="bg-red-500 hover:bg-red-600 text-xs px-1.5 py-0.5 sm:px-2 sm:py-1">
               {promotionInfo.discountPercentage}% OFF
             </Badge>
             <OfferCountdown 
@@ -216,33 +217,33 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
 
         {/* Out of Stock Badge */}
         {produto.estoque === 0 && (
-          <Badge variant="secondary" className="absolute bottom-2 left-2">
+          <Badge variant="secondary" className="absolute bottom-1 sm:bottom-2 left-1 sm:left-2 text-xs px-1.5 py-0.5">
             Fora de estoque
           </Badge>
         )}
       </div>
 
-      <div className="p-4">
+      <div className="p-3 sm:p-4">
         {/* Product Name */}
-        <h3 className="font-medium text-sm mb-2 line-clamp-2 h-10">
+        <h3 className="font-medium text-xs sm:text-sm mb-1 sm:mb-2 line-clamp-1 sm:line-clamp-2 h-4 sm:h-10 leading-tight">
           {produto.nome}
         </h3>
 
         {/* Category */}
-        <p className="text-xs text-gray-500 mb-2">{produto.categoria}</p>
+        <p className="text-xs text-gray-500 mb-1 sm:mb-2 truncate">{produto.categoria}</p>
 
         {/* Rating */}
         {produto.avaliacao && produto.avaliacao > 0 && (
-          <div className="flex items-center gap-1 mb-2">
-            <Star size={12} className="fill-yellow-400 text-yellow-400" />
+          <div className="flex items-center gap-1 mb-1 sm:mb-2">
+            <Star size={10} className="fill-yellow-400 text-yellow-400" />
             <span className="text-xs text-gray-600">{produto.avaliacao.toFixed(1)}</span>
           </div>
         )}
 
         {/* Price */}
-        <div className="mb-3">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-construPro-blue">
+        <div className="mb-2 sm:mb-3">
+          <div className="flex items-center gap-1 sm:gap-2">
+            <span className="font-bold text-construPro-blue text-sm">
               {formatPrice(finalPrice)}
             </span>
             {originalPrice && (
@@ -255,9 +256,9 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
 
         {/* Store Name */}
         {shouldShowStoreInfo && (
-          <div className="mb-2 flex items-center gap-1">
-            <Store size={12} className="text-gray-500" />
-            <span className="text-xs text-gray-600">
+          <div className="mb-1 sm:mb-2 flex items-center gap-1">
+            <Store size={10} className="text-gray-500 flex-shrink-0" />
+            <span className="text-xs text-gray-600 truncate">
               Vendido por {storeName}
             </span>
           </div>
@@ -265,9 +266,9 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
 
         {/* Points */}
         {displayPoints > 0 && (
-          <div className="mb-3">
+          <div className="mb-2 sm:mb-3">
             <span className="text-xs text-construPro-orange font-medium">
-              +{displayPoints} pontos {userType === 'profissional' ? '(profissional)' : ''}
+              +{displayPoints} pontos {userType === 'profissional' ? '(prof.)' : ''}
             </span>
           </div>
         )}
@@ -276,17 +277,17 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
         <Button
           onClick={handleAddToCart}
           disabled={produto.estoque === 0 || addingToCart || isLoading}
-          className="w-full bg-construPro-orange hover:bg-orange-600 text-white text-sm h-8"
+          className="w-full bg-construPro-orange hover:bg-orange-600 text-white text-xs sm:text-sm h-7 sm:h-8"
           size="sm"
         >
           {addingToCart ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2">
               <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
               <span>Adicionando...</span>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
-              <ShoppingCart size={14} />
+            <div className="flex items-center gap-1 sm:gap-2">
+              <ShoppingCart size={12} />
               <span>Adicionar</span>
             </div>
           )}

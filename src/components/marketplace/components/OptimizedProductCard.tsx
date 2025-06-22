@@ -72,8 +72,8 @@ const OptimizedProductCard = memo<OptimizedProductCardProps>(({ product, onClick
           placeholderClassName="w-full h-48 rounded-t-lg"
         />
         {promotionInfo.hasActivePromotion && (
-          <div className="absolute top-2 left-2 flex items-center gap-2">
-            <div className="bg-red-500 text-white px-2 py-1 rounded text-xs font-semibold">
+          <div className="absolute top-1 sm:top-2 left-1 sm:left-2 flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2">
+            <div className="bg-red-500 text-white px-1.5 py-0.5 sm:px-2 sm:py-1 rounded text-xs font-semibold">
               -{promotionInfo.discountPercentage}%
             </div>
             <OfferCountdown 
@@ -86,22 +86,22 @@ const OptimizedProductCard = memo<OptimizedProductCardProps>(({ product, onClick
         )}
       </div>
       
-      <div className="p-3">
-        <h3 className="font-medium text-sm text-gray-900 line-clamp-2 mb-1">
+      <div className="p-2 sm:p-3">
+        <h3 className="font-medium text-xs sm:text-sm text-gray-900 line-clamp-1 sm:line-clamp-2 mb-1 leading-tight">
           {nome}
         </h3>
         
-        <div className="flex items-center gap-1 mb-2">
-          <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+        <div className="flex items-center gap-1 mb-1 sm:mb-2">
+          <Star className="w-3 h-3 sm:w-4 sm:h-4 fill-yellow-400 text-yellow-400" />
           <span className="text-xs text-gray-600">{avaliacao.toFixed(1)}</span>
         </div>
         
-        <div className="flex items-center gap-1 mb-2">
-          <MapPin className="w-3 h-3 text-gray-400" />
+        <div className="flex items-center gap-1 mb-1 sm:mb-2">
+          <MapPin className="w-3 h-3 text-gray-400 flex-shrink-0" />
           <span className="text-xs text-gray-500 truncate">{storeName}</span>
         </div>
         
-        <div className="space-y-1">
+        <div className="space-y-0.5 sm:space-y-1">
           {promotionInfo.hasActivePromotion && (
             <div className="text-xs text-gray-500 line-through">
               R$ {promotionInfo.originalPrice.toFixed(2)}
