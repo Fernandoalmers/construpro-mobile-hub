@@ -1,9 +1,9 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Store } from 'lucide-react';
 import { getPromotionInfo } from '@/utils/promotionUtils';
 import OfferCountdown from '@/components/common/OfferCountdown';
+import { truncateTextForLines } from '@/utils/textUtils';
 
 interface ListProductViewProps {
   products: any[];
@@ -54,6 +54,9 @@ const ListProductView: React.FC<ListProductViewProps> = ({
         // FIXED: Only show store info if we have a valid store name (not generic fallback)
         const shouldShowStoreInfo = storeName && storeName.trim().length > 0;
 
+        // Truncate product name intelligently for list view
+        const truncatedName = truncateTextForLines(produto.nome, 35, 2);
+
         console.log('[ListProductView] Store info processed:', {
           productName: produto.nome,
           storeName,
@@ -98,8 +101,8 @@ const ListProductView: React.FC<ListProductViewProps> = ({
             </div>
             
             <div className="flex-1">
-              {/* Product name - 2 lines with smaller font */}
-              <h3 className="text-xs font-medium line-clamp-2 mb-1 leading-tight min-h-[2.2rem]">{produto.nome}</h3>
+              {/* Product name - intelligently truncated */}
+              <h3 className="text-xs font-medium mb-1 leading-tight min-h-[2.2rem] break-words">{truncatedName}</h3>
               
               {/* Type/Category */}
               <div className="text-xs text-gray-500 mb-1">

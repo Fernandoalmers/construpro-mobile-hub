@@ -12,6 +12,7 @@ import { getProductPoints } from '@/utils/pointsCalculations';
 import { safeFirstImage, handleImageError } from '@/utils/imageUtils';
 import { getPromotionInfo } from '@/utils/promotionUtils';
 import OfferCountdown from '@/components/common/OfferCountdown';
+import { truncateProductName } from '@/utils/textUtils';
 
 interface Product {
   id: string;
@@ -156,6 +157,9 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
   // FIXED: Use safe image extraction from imagens field only
   const displayImageUrl = safeFirstImage(produto.imagens);
 
+  // Truncate product name intelligently
+  const truncatedName = truncateProductName(produto.nome);
+
   return (
     <Card 
       className={`cursor-pointer hover:shadow-lg transition-all duration-200 overflow-hidden ${className}`}
@@ -217,9 +221,9 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
       </div>
 
       <div className="p-3 sm:p-4">
-        {/* Product Name - 2 lines with smaller font */}
-        <h3 className="font-medium text-xs mb-1 sm:mb-2 line-clamp-2 min-h-[2.2rem] leading-tight">
-          {produto.nome}
+        {/* Product Name - intelligently truncated */}
+        <h3 className="font-medium text-xs mb-1 sm:mb-2 min-h-[2.2rem] leading-tight break-words">
+          {truncatedName}
         </h3>
 
         {/* Category */}

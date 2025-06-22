@@ -1,9 +1,9 @@
-
 import React, { memo } from 'react';
 import { Star, MapPin } from 'lucide-react';
 import LazyImage from '@/components/common/LazyImage';
 import { getPromotionInfo } from '@/utils/promotionUtils';
 import OfferCountdown from '@/components/common/OfferCountdown';
+import { truncateProductName } from '@/utils/textUtils';
 
 interface OptimizedProductCardProps {
   product: {
@@ -49,6 +49,9 @@ const OptimizedProductCard = memo<OptimizedProductCardProps>(({ product, onClick
   const nome = product.nome || 'Produto sem nome';
   const categoria = product.categoria || '';
 
+  // Truncate product name intelligently
+  const truncatedName = truncateProductName(nome);
+
   // Debug promotion info for the specific product
   if (nome.includes('TRINCHA ATLAS')) {
     console.log(`[OptimizedProductCard] Promotion info for ${nome}:`, {
@@ -87,8 +90,8 @@ const OptimizedProductCard = memo<OptimizedProductCardProps>(({ product, onClick
       </div>
       
       <div className="p-2 sm:p-3">
-        <h3 className="font-medium text-xs text-gray-900 line-clamp-2 mb-1 leading-tight min-h-[2.2rem]">
-          {nome}
+        <h3 className="font-medium text-xs text-gray-900 mb-1 leading-tight min-h-[2.2rem] break-words">
+          {truncatedName}
         </h3>
         
         <div className="flex items-center gap-1 mb-1">
