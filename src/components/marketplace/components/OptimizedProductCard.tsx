@@ -87,29 +87,29 @@ const OptimizedProductCard = memo<OptimizedProductCardProps>(({ product, onClick
       </div>
       
       <div className="p-2 sm:p-3">
-        <h3 className="font-medium text-xs sm:text-sm text-gray-900 line-clamp-2 mb-1 leading-tight min-h-[2.5rem] sm:min-h-[2.8rem]">
+        <h3 className="font-medium text-xs text-gray-900 line-clamp-2 mb-1 leading-tight min-h-[2.2rem]">
           {nome}
         </h3>
         
-        <div className="flex items-center gap-1 mb-1 sm:mb-2">
+        <div className="flex items-center gap-1 mb-1">
           <Star className="w-3 h-3 sm:w-4 sm:h-4 fill-yellow-400 text-yellow-400" />
           <span className="text-xs text-gray-600">{avaliacao.toFixed(1)}</span>
         </div>
         
-        <div className="flex items-center gap-1 mb-1 sm:mb-2">
-          <MapPin className="w-3 h-3 text-gray-400 flex-shrink-0" />
-          <span className="text-xs text-gray-500 truncate">{storeName}</span>
-        </div>
-        
-        <div className="space-y-0.5 sm:space-y-1">
+        <div className="space-y-0.5">
           {promotionInfo.hasActivePromotion && (
             <div className="text-xs text-gray-500 line-through">
               R$ {promotionInfo.originalPrice.toFixed(2)}
             </div>
           )}
-          <div className="text-sm font-semibold text-construPro-blue">
+          <div className="text-sm font-semibold text-construPro-blue mb-0.5">
             R$ {(promotionInfo.hasActivePromotion ? promotionInfo.promotionalPrice! : promotionInfo.originalPrice).toFixed(2)}
           </div>
+        </div>
+        
+        <div className="flex items-start gap-1">
+          <MapPin className="w-3 h-3 text-gray-400 flex-shrink-0 mt-0.5" />
+          <span className="text-xs text-gray-500 line-clamp-2 leading-tight">{storeName}</span>
         </div>
       </div>
     </div>

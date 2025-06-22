@@ -85,33 +85,29 @@ const ListProductView: React.FC<ListProductViewProps> = ({
                   <div className="bg-red-500 text-white px-1 py-0.5 rounded-br text-xs font-semibold">
                     -{promotionInfo.discountPercentage}%
                   </div>
+                  {promotionInfo.promotionEndDate && (
+                    <OfferCountdown 
+                      endDate={promotionInfo.promotionEndDate}
+                      isActive={promotionInfo.hasActivePromotion}
+                      size="sm"
+                      variant="compact"
+                    />
+                  )}
                 </div>
               )}
             </div>
             
             <div className="flex-1">
-              {/* Product name - 2 lines */}
-              <h3 className="text-sm font-medium line-clamp-2 mb-1 leading-tight min-h-[2.5rem]">{produto.nome}</h3>
+              {/* Product name - 2 lines with smaller font */}
+              <h3 className="text-xs font-medium line-clamp-2 mb-1 leading-tight min-h-[2.2rem]">{produto.nome}</h3>
               
               {/* Type/Category */}
-              <div className="text-xs text-gray-500 mb-2">
+              <div className="text-xs text-gray-500 mb-1">
                 {produto.categoria || "Categoria não especificada"}
               </div>
               
-              {/* Countdown timer for active promotions */}
-              {promotionInfo.hasActivePromotion && promotionInfo.promotionEndDate && (
-                <div className="mb-2">
-                  <OfferCountdown 
-                    endDate={promotionInfo.promotionEndDate}
-                    isActive={promotionInfo.hasActivePromotion}
-                    size="sm"
-                    variant="compact"
-                  />
-                </div>
-              )}
-              
               {/* Price section with conditional promotional display */}
-              <div className="font-bold text-lg mb-2">
+              <div className="font-bold text-lg mb-0.5">
                 R$ {(promotionInfo.hasActivePromotion ? promotionInfo.promotionalPrice! : promotionInfo.originalPrice).toFixed(2).replace('.', ',')}
                 {promotionInfo.hasActivePromotion && (
                   <span className="text-sm text-gray-400 line-through ml-2">
@@ -122,10 +118,10 @@ const ListProductView: React.FC<ListProductViewProps> = ({
 
               {/* Store name with icon - STANDARDIZED - Always show when available */}
               {shouldShowStoreInfo && (
-                <div className="flex items-center gap-1 mb-2">
-                  <Store size={12} className="text-gray-500 flex-shrink-0" />
+                <div className="flex items-start gap-1">
+                  <Store size={12} className="text-gray-500 flex-shrink-0 mt-0.5" />
                   <div 
-                    className="text-xs text-gray-600 hover:underline cursor-pointer font-medium"
+                    className="text-xs text-gray-600 hover:underline cursor-pointer font-medium line-clamp-2 leading-tight"
                     onClick={(e) => {
                       e.stopPropagation();
                       if (storeId && onLojaClick) {

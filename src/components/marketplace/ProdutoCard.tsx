@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Heart, ShoppingCart, Star, Store } from 'lucide-react';
@@ -218,24 +217,24 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
       </div>
 
       <div className="p-3 sm:p-4">
-        {/* Product Name - 2 lines */}
-        <h3 className="font-medium text-xs sm:text-sm mb-1 sm:mb-2 line-clamp-2 min-h-[2.5rem] sm:min-h-[2.8rem] leading-tight">
+        {/* Product Name - 2 lines with smaller font */}
+        <h3 className="font-medium text-xs mb-1 sm:mb-2 line-clamp-2 min-h-[2.2rem] leading-tight">
           {produto.nome}
         </h3>
 
         {/* Category */}
-        <p className="text-xs text-gray-500 mb-1 sm:mb-2 truncate">{produto.categoria}</p>
+        <p className="text-xs text-gray-500 mb-1 truncate">{produto.categoria}</p>
 
         {/* Rating */}
         {produto.avaliacao && produto.avaliacao > 0 && (
-          <div className="flex items-center gap-1 mb-1 sm:mb-2">
+          <div className="flex items-center gap-1 mb-1">
             <Star size={10} className="fill-yellow-400 text-yellow-400" />
             <span className="text-xs text-gray-600">{produto.avaliacao.toFixed(1)}</span>
           </div>
         )}
 
         {/* Price */}
-        <div className="mb-2 sm:mb-3">
+        <div className="mb-0.5 sm:mb-1">
           <div className="flex items-center gap-1 sm:gap-2">
             <span className="font-bold text-construPro-blue text-sm">
               {formatPrice(finalPrice)}
@@ -250,9 +249,9 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
 
         {/* Store Name */}
         {shouldShowStoreInfo && (
-          <div className="mb-1 sm:mb-2 flex items-center gap-1">
-            <Store size={10} className="text-gray-500 flex-shrink-0" />
-            <span className="text-xs text-gray-600 truncate">
+          <div className="mb-1 sm:mb-2 flex items-start gap-1">
+            <Store size={10} className="text-gray-500 flex-shrink-0 mt-0.5" />
+            <span className="text-xs text-gray-600 line-clamp-2 leading-tight">
               Vendido por {storeName}
             </span>
           </div>
