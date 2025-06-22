@@ -2,6 +2,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Store } from 'lucide-react';
+import { getPromotionInfo } from '@/utils/promotionUtils';
+import OfferCountdown from '@/components/common/OfferCountdown';
 
 interface ListProductViewProps {
   products: any[];
@@ -27,11 +29,8 @@ const ListProductView: React.FC<ListProductViewProps> = ({
           vendedores: produto.vendedores
         });
 
-        // Determine prices logic
-        const precoRegular = produto.preco_normal || produto.precoNormal || produto.preco || 0;
-        const precoPromocional = produto.preco_promocional || produto.precoPromocional || null;
-        const hasDiscount = precoPromocional && precoPromocional < precoRegular;
-        const precoExibir = hasDiscount ? precoPromocional : precoRegular;
+        // Get promotion info
+        const promotionInfo = getPromotionInfo(produto);
 
         // Get proper image URL with fallbacks
         const imageUrl = produto.imagemPrincipal || 
@@ -70,7 +69,7 @@ const ListProductView: React.FC<ListProductViewProps> = ({
             onClick={() => navigateToProduct(produto.id)}
           >
             {/* Product Image - positioned on the left side */}
-            <div className="w-20 h-20 rounded-md overflow-hidden mr-3 flex-shrink-0">
+            <div className="w-20 h-20 rounded-md overflow-hidden mr-3 flex-shrink-0 relative">
               <img 
                 src={imageUrl} 
                 alt={produto.nome}
@@ -80,23 +79,43 @@ const ListProductView: React.FC<ListProductViewProps> = ({
                   e.currentTarget.src = 'https://via.placeholder.com/150?text=Sem+Imagem';
                 }}
               />
+              {/* Promotion badges on image */}
+              {promotionInfo.hasActivePromotion && (
+                <div className="absolute top-0 left-0 flex flex-col items-start gap-1">
+                  <div className="bg-red-500 text-white px-1 py-0.5 rounded-br text-xs font-semibold">
+                    -{promotionInfo.discountPercentage}%
+                  </div>
+                </div>
+              )}
             </div>
             
             <div className="flex-1">
-              {/* Product name */}
-              <h3 className="text-sm font-medium line-clamp-2 mb-1">{produto.nome}</h3>
+              {/* Product name - 2 lines */}
+              <h3 className="text-sm font-medium line-clamp-2 mb-1 leading-tight min-h-[2.5rem]">{produto.nome}</h3>
               
               {/* Type/Category */}
               <div className="text-xs text-gray-500 mb-2">
                 {produto.categoria || "Categoria não especificada"}
               </div>
               
+              {/* Countdown timer for active promotions */}
+              {promotionInfo.hasActivePromotion && promotionInfo.promotionEndDate && (
+                <div className="mb-2">
+                  <OfferCountdown 
+                    endDate={promotionInfo.promotionEndDate}
+                    isActive={promotionInfo.hasActivePromotion}
+                    size="sm"
+                    variant="compact"
+                  />
+                </div>
+              )}
+              
               {/* Price section with conditional promotional display */}
               <div className="font-bold text-lg mb-2">
-                R$ {precoExibir.toFixed(2).replace('.', ',')}
-                {hasDiscount && (
+                R$ {(promotionInfo.hasActivePromotion ? promotionInfo.promotionalPrice! : promotionInfo.originalPrice).toFixed(2).replace('.', ',')}
+                {promotionInfo.hasActivePromotion && (
                   <span className="text-sm text-gray-400 line-through ml-2">
-                    R$ {precoRegular.toFixed(2).replace('.', ',')}
+                    R$ {promotionInfo.originalPrice.toFixed(2).replace('.', ',')}
                   </span>
                 )}
               </div>

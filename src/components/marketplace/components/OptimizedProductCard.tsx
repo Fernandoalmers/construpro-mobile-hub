@@ -87,7 +87,7 @@ const OptimizedProductCard = memo<OptimizedProductCardProps>(({ product, onClick
       </div>
       
       <div className="p-2 sm:p-3">
-        <h3 className="font-medium text-xs sm:text-sm text-gray-900 line-clamp-1 sm:line-clamp-2 mb-1 leading-tight">
+        <h3 className="font-medium text-xs sm:text-sm text-gray-900 line-clamp-2 mb-1 leading-tight min-h-[2.5rem] sm:min-h-[2.8rem]">
           {nome}
         </h3>
         

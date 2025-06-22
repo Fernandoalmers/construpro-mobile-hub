@@ -82,12 +82,6 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
     checkFavoriteStatus();
   }, [produto.id, isAuthenticated, isFavorite]);
 
-  // FIXED: Calculate points correctly using specific fields
-  const userType = profile?.tipo_perfil || 'consumidor';
-  const displayPoints = userType === 'profissional' 
-    ? (produto.pontos_profissional || 0)
-    : (produto.pontos_consumidor || 0);
-
   // FIXED: Standardized store name logic - always use real store name
   const storeName = produto.stores?.nome_loja || 
                    produto.vendedores?.nome_loja ||
@@ -224,8 +218,8 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
       </div>
 
       <div className="p-3 sm:p-4">
-        {/* Product Name */}
-        <h3 className="font-medium text-xs sm:text-sm mb-1 sm:mb-2 line-clamp-1 sm:line-clamp-2 h-4 sm:h-10 leading-tight">
+        {/* Product Name - 2 lines */}
+        <h3 className="font-medium text-xs sm:text-sm mb-1 sm:mb-2 line-clamp-2 min-h-[2.5rem] sm:min-h-[2.8rem] leading-tight">
           {produto.nome}
         </h3>
 
@@ -260,15 +254,6 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto, className = '', onCl
             <Store size={10} className="text-gray-500 flex-shrink-0" />
             <span className="text-xs text-gray-600 truncate">
               Vendido por {storeName}
-            </span>
-          </div>
-        )}
-
-        {/* Points */}
-        {displayPoints > 0 && (
-          <div className="mb-2 sm:mb-3">
-            <span className="text-xs text-construPro-orange font-medium">
-              +{displayPoints} pontos {userType === 'profissional' ? '(prof.)' : ''}
             </span>
           </div>
         )}
