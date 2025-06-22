@@ -116,9 +116,6 @@ export const MarketplaceDisplay: React.FC<MarketplaceDisplayProps> = ({
       {/* Main Content with dynamic padding */}
       <MarketplaceContent
         dynamicPaddingTop={dynamicPaddingTop}
-        stores={safeStores}
-        onLojaClick={handleLojaCardClick}
-        storesError={null}
         currentCategoryName={currentCategoryName}
         filteredProdutos={Array.isArray(filteredProdutos) ? filteredProdutos : []}
         isLoading={isLoading}
@@ -128,6 +125,7 @@ export const MarketplaceDisplay: React.FC<MarketplaceDisplayProps> = ({
         loadMoreProducts={loadMoreProducts || (() => {})}
         clearFilters={clearFilters}
         viewType={viewType}
+        onLojaClick={handleLojaCardClick}
       />
     </div>
   );
