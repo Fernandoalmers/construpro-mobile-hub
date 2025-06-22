@@ -1,4 +1,3 @@
-
 import React, { useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import SearchResults from './SearchResults';
@@ -158,7 +157,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
   }, [showResults]);
 
   return (
-    <form onSubmit={handleSearchSubmit} className="relative mb-4 search-container flex items-center">
+    <form onSubmit={handleSearchSubmit} className="relative mb-2 sm:mb-4 search-container flex items-center">
       <div className="relative flex-grow">
         <input
           type="text"
@@ -166,7 +165,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
           value={searchTerm}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          className="w-full px-4 py-2 border border-gray-300 rounded-md bg-white text-sm focus:outline-none"
+          className="w-full px-3 py-1.5 sm:px-4 sm:py-2 border border-gray-300 rounded-md bg-white text-sm focus:outline-none"
           data-testid="search-input"
         />
         
@@ -183,12 +182,13 @@ const SearchBar: React.FC<SearchBarProps> = ({
         type="submit" 
         variant="default"
         size="sm"
-        className="ml-2"
+        className="ml-1.5 sm:ml-2 px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm"
         onClick={(e) => handleSearchSubmit(e)}
         data-testid="search-button"
       >
-        <Search size={16} className="mr-1" />
-        Buscar
+        <Search size={14} className="mr-0.5 sm:mr-1 sm:hidden" />
+        <Search size={16} className="mr-1 hidden sm:block" />
+        <span className="hidden sm:inline">Buscar</span>
       </Button>
       
       {/* Search results dropdown - só mostra se showSuggestions for true */}

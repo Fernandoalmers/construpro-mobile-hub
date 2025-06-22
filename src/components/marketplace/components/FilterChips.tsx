@@ -51,7 +51,7 @@ const FilterChips: React.FC<FilterChipsProps> = ({
 
   return (
     <motion.div 
-      className="flex flex-wrap gap-2 mt-3"
+      className="flex flex-wrap gap-1.5 sm:gap-2 mt-2 sm:mt-3"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
@@ -62,7 +62,7 @@ const FilterChips: React.FC<FilterChipsProps> = ({
         return (
           <motion.div
             key={`category-${categoryId}`}
-            className="flex items-center bg-white/20 text-white px-2 py-1 rounded-full text-xs"
+            className="flex items-center bg-white/20 text-white px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full text-xs"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             exit={{ scale: 0 }}
@@ -70,9 +70,10 @@ const FilterChips: React.FC<FilterChipsProps> = ({
             <span>Cat: {category?.label}</span>
             <button
               onClick={() => onCategoryClick(categoryId)}
-              className="ml-1 hover:bg-white/30 rounded-full p-0.5"
+              className="ml-0.5 sm:ml-1 hover:bg-white/30 rounded-full p-0.5"
             >
-              <X size={12} />
+              <X size={10} className="sm:hidden" />
+              <X size={12} className="hidden sm:block" />
             </button>
           </motion.div>
         );
@@ -84,7 +85,7 @@ const FilterChips: React.FC<FilterChipsProps> = ({
         return (
           <motion.div
             key={`loja-${lojaId}`}
-            className="flex items-center bg-white/20 text-white px-2 py-1 rounded-full text-xs"
+            className="flex items-center bg-white/20 text-white px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full text-xs"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             exit={{ scale: 0 }}
@@ -92,9 +93,10 @@ const FilterChips: React.FC<FilterChipsProps> = ({
             <span>Loja: {loja?.label}</span>
             <button
               onClick={() => onLojaClick(lojaId)}
-              className="ml-1 hover:bg-white/30 rounded-full p-0.5"
+              className="ml-0.5 sm:ml-1 hover:bg-white/30 rounded-full p-0.5"
             >
-              <X size={12} />
+              <X size={10} className="sm:hidden" />
+              <X size={12} className="hidden sm:block" />
             </button>
           </motion.div>
         );
@@ -106,7 +108,7 @@ const FilterChips: React.FC<FilterChipsProps> = ({
         return (
           <motion.div
             key={`price-${rangeId}`}
-            className="flex items-center bg-white/20 text-white px-2 py-1 rounded-full text-xs"
+            className="flex items-center bg-white/20 text-white px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full text-xs"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             exit={{ scale: 0 }}
@@ -114,9 +116,10 @@ const FilterChips: React.FC<FilterChipsProps> = ({
             <span>Preço: {range?.label}</span>
             <button
               onClick={() => onPriceRangeClick(rangeId)}
-              className="ml-1 hover:bg-white/30 rounded-full p-0.5"
+              className="ml-0.5 sm:ml-1 hover:bg-white/30 rounded-full p-0.5"
             >
-              <X size={12} />
+              <X size={10} className="sm:hidden" />
+              <X size={12} className="hidden sm:block" />
             </button>
           </motion.div>
         );
@@ -128,7 +131,7 @@ const FilterChips: React.FC<FilterChipsProps> = ({
         return (
           <motion.div
             key={`rating-${ratingId}`}
-            className="flex items-center bg-white/20 text-white px-2 py-1 rounded-full text-xs"
+            className="flex items-center bg-white/20 text-white px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full text-xs"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             exit={{ scale: 0 }}
@@ -136,9 +139,10 @@ const FilterChips: React.FC<FilterChipsProps> = ({
             <span>Nota: {rating?.label}</span>
             <button
               onClick={() => onRatingClick(ratingId)}
-              className="ml-1 hover:bg-white/30 rounded-full p-0.5"
+              className="ml-0.5 sm:ml-1 hover:bg-white/30 rounded-full p-0.5"
             >
-              <X size={12} />
+              <X size={10} className="sm:hidden" />
+              <X size={12} className="hidden sm:block" />
             </button>
           </motion.div>
         );
@@ -150,7 +154,7 @@ const FilterChips: React.FC<FilterChipsProps> = ({
         return (
           <motion.div
             key={`segment-${segmentId}`}
-            className="flex items-center bg-white/20 text-white px-2 py-1 rounded-full text-xs"
+            className="flex items-center bg-white/20 text-white px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full text-xs"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             exit={{ scale: 0 }}
@@ -158,9 +162,10 @@ const FilterChips: React.FC<FilterChipsProps> = ({
             <span>Seg: {segment?.label}</span>
             <button
               onClick={() => onSegmentClick(segmentId)}
-              className="ml-1 hover:bg-white/30 rounded-full p-0.5"
+              className="ml-0.5 sm:ml-1 hover:bg-white/30 rounded-full p-0.5"
             >
-              <X size={12} />
+              <X size={10} className="sm:hidden" />
+              <X size={12} className="hidden sm:block" />
             </button>
           </motion.div>
         );
@@ -169,12 +174,13 @@ const FilterChips: React.FC<FilterChipsProps> = ({
       {/* Clear all filters button */}
       <motion.button
         onClick={clearFilters}
-        className="flex items-center bg-construPro-orange text-white px-2 py-1 rounded-full text-xs hover:bg-construPro-orange/80"
+        className="flex items-center bg-construPro-orange text-white px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full text-xs hover:bg-construPro-orange/80"
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         exit={{ scale: 0 }}
       >
-        Limpar tudo <X size={12} className="ml-1" />
+        Limpar tudo <X size={10} className="ml-0.5 sm:ml-1 sm:hidden" />
+        <X size={12} className="ml-1 hidden sm:block" />
       </motion.button>
     </motion.div>
   );

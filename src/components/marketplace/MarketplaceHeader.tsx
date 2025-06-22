@@ -108,7 +108,7 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
       }}
     >
       <div className="bg-construPro-blue">
-        <div className="p-4 pt-8">
+        <div className="p-2 sm:p-4 pt-4 sm:pt-8">
           {/* Header Top with Back Button, Title, View Selector and Cart */}
           <MarketplaceHeaderTop 
             cartCount={cartCount} 
@@ -117,7 +117,7 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
           />
           
           {/* Search Bar - com espaçamento reduzido */}
-          <div className="mt-3">
+          <div className="mt-1.5 sm:mt-3">
             <SearchBar 
               searchTerm={searchTerm} 
               onSearchChange={onSearchChange} 

@@ -11,7 +11,7 @@ const ViewTypeSelector: React.FC<ViewTypeSelectorProps> = ({ viewType, setViewTy
   return (
     <div className="bg-white/20 rounded-md border border-white/30 inline-flex">
       <button 
-        className={`p-1.5 rounded-l-md transition-colors ${
+        className={`p-1 sm:p-1.5 rounded-l-md transition-colors ${
           viewType === 'grid' 
             ? 'bg-white text-construPro-blue' 
             : 'text-white/80 hover:text-white hover:bg-white/10'
@@ -19,10 +19,11 @@ const ViewTypeSelector: React.FC<ViewTypeSelectorProps> = ({ viewType, setViewTy
         onClick={() => setViewType('grid')}
         title="Visualização em grade"
       >
-        <Grid size={18} />
+        <Grid size={16} className="sm:hidden" />
+        <Grid size={18} className="hidden sm:block" />
       </button>
       <button 
-        className={`p-1.5 rounded-r-md transition-colors ${
+        className={`p-1 sm:p-1.5 rounded-r-md transition-colors ${
           viewType === 'list' 
             ? 'bg-white text-construPro-blue' 
             : 'text-white/80 hover:text-white hover:bg-white/10'
@@ -30,7 +31,8 @@ const ViewTypeSelector: React.FC<ViewTypeSelectorProps> = ({ viewType, setViewTy
         onClick={() => setViewType('list')}
         title="Visualização em lista"
       >
-        <List size={18} />
+        <List size={16} className="sm:hidden" />
+        <List size={18} className="hidden sm:block" />
       </button>
     </div>
   );

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -40,13 +41,14 @@ const FilterDialogs: React.FC<FilterDialogsProps> = ({
   console.log('[FilterDialogs] Lojas options length:', lojasOptions.length);
 
   return (
-    <div className="flex space-x-2 overflow-x-auto pb-4">
+    <div className="flex space-x-1.5 sm:space-x-2 overflow-x-auto pb-2 sm:pb-4">
       <Dialog>
         <DialogTrigger asChild>
-          <button className="flex items-center gap-1 bg-white text-gray-800 px-3 py-1.5 rounded-full text-sm whitespace-nowrap">
-            Loja <ChevronDown size={16} />
+          <button className="flex items-center gap-1 bg-white text-gray-800 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-xs sm:text-sm whitespace-nowrap">
+            Loja <ChevronDown size={14} className="sm:hidden" />
+            <ChevronDown size={16} className="hidden sm:block" />
             {selectedLojas.length > 0 && (
-              <span className="ml-1 bg-construPro-orange text-white rounded-full px-1 text-xs">
+              <span className="ml-0.5 sm:ml-1 bg-construPro-orange text-white rounded-full px-1 text-xs">
                 {selectedLojas.length}
               </span>
             )}
@@ -86,10 +88,11 @@ const FilterDialogs: React.FC<FilterDialogsProps> = ({
 
       <Dialog>
         <DialogTrigger asChild>
-          <button className="flex items-center gap-1 bg-white text-gray-800 px-3 py-1.5 rounded-full text-sm whitespace-nowrap">
-            Categoria <ChevronDown size={16} />
+          <button className="flex items-center gap-1 bg-white text-gray-800 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-xs sm:text-sm whitespace-nowrap">
+            Categoria <ChevronDown size={14} className="sm:hidden" />
+            <ChevronDown size={16} className="hidden sm:block" />
             {selectedCategories.length > 0 && (
-              <span className="ml-1 bg-construPro-orange text-white rounded-full px-1 text-xs">
+              <span className="ml-0.5 sm:ml-1 bg-construPro-orange text-white rounded-full px-1 text-xs">
                 {selectedCategories.length}
               </span>
             )}
@@ -117,10 +120,11 @@ const FilterDialogs: React.FC<FilterDialogsProps> = ({
       
       <Dialog>
         <DialogTrigger asChild>
-          <button className="flex items-center gap-1 bg-white text-gray-800 px-3 py-1.5 rounded-full text-sm whitespace-nowrap">
-            Preço <ChevronDown size={16} />
+          <button className="flex items-center gap-1 bg-white text-gray-800 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-xs sm:text-sm whitespace-nowrap">
+            Preço <ChevronDown size={14} className="sm:hidden" />
+            <ChevronDown size={16} className="hidden sm:block" />
             {selectedPriceRanges.length > 0 && (
-              <span className="ml-1 bg-construPro-orange text-white rounded-full px-1 text-xs">
+              <span className="ml-0.5 sm:ml-1 bg-construPro-orange text-white rounded-full px-1 text-xs">
                 {selectedPriceRanges.length}
               </span>
             )}
@@ -151,10 +155,11 @@ const FilterDialogs: React.FC<FilterDialogsProps> = ({
 
       <Dialog>
         <DialogTrigger asChild>
-          <button className="flex items-center gap-1 bg-white text-gray-800 px-3 py-1.5 rounded-full text-sm whitespace-nowrap">
-            Segmento <ChevronDown size={16} />
+          <button className="flex items-center gap-1 bg-white text-gray-800 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-xs sm:text-sm whitespace-nowrap">
+            Segmento <ChevronDown size={14} className="sm:hidden" />
+            <ChevronDown size={16} className="hidden sm:block" />
             {selectedSegments.length > 0 && (
-              <span className="ml-1 bg-construPro-orange text-white rounded-full px-1 text-xs">
+              <span className="ml-0.5 sm:ml-1 bg-construPro-orange text-white rounded-full px-1 text-xs">
                 {selectedSegments.length}
               </span>
             )}
