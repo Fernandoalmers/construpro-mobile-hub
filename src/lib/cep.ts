@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 export type CepData = {
@@ -75,7 +76,7 @@ async function getCachedCep(cep: string): Promise<CepData | null> {
 
     if (error || !data) return null;
 
-    const cepData = {
+    const cepData: CepData = {
       cep: data.cep,
       logradouro: data.logradouro || '',
       bairro: data.bairro || '',
@@ -84,7 +85,7 @@ async function getCachedCep(cep: string): Promise<CepData | null> {
       ibge: data.ibge || undefined,
       latitude: data.latitude || undefined,
       longitude: data.longitude || undefined,
-      source: 'cache',
+      source: 'cache' as const,
     };
 
     // Validar se os dados em cache são válidos
@@ -162,14 +163,14 @@ async function fetchViaCep(cep: string): Promise<CepData | null> {
       return null;
     }
     
-    const cepData = {
+    const cepData: CepData = {
       cep: cep,
       logradouro: data.logradouro || '',
       bairro: data.bairro || '',
       localidade: data.localidade || '',
       uf: data.uf || '',
       ibge: data.ibge,
-      source: 'viacep',
+      source: 'viacep' as const,
     };
 
     // Validar dados antes de retornar
@@ -220,14 +221,14 @@ async function fetchBrasilApi(cep: string): Promise<CepData | null> {
     
     const data = await response.json();
     
-    const cepData = {
+    const cepData: CepData = {
       cep: cep,
       logradouro: data.street || '',
       bairro: data.neighborhood || '',
       localidade: data.city || '',
       uf: data.state || '',
       ibge: data.city_ibge,
-      source: 'brasilapi',
+      source: 'brasilapi' as const,
     };
 
     // Validar dados antes de retornar
