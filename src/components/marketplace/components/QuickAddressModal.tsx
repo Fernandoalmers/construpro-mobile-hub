@@ -15,6 +15,7 @@ import { toast } from '@/components/ui/use-toast';
 import { useCepLookup } from '@/hooks/useCepLookup';
 import { useAddresses } from '@/hooks/useAddresses';
 import { formatCep } from '@/lib/cep';
+import CepErrorDisplay from '@/components/common/CepErrorDisplay';
 import { Search, AlertCircle, CheckCircle, MapPin, Plus, Loader2 } from 'lucide-react';
 
 interface QuickAddressModalProps {
@@ -147,6 +148,20 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
     }
   };
 
+  const handleRetry = async () => {
+    console.log('[QuickAddressModal] Tentando novamente...');
+    const sanitizedCep = cepInput.replace(/\D/g, '');
+    if (sanitizedCep.length === 8) {
+      await lookupAddress(sanitizedCep);
+    }
+  };
+
+  const handleManualEntry = () => {
+    console.log('[QuickAddressModal] Mostrando entrada manual');
+    setShowFullForm(true);
+    setFormData(prev => ({ ...prev, nome: 'Endereço Principal' }));
+  };
+
   const getZoneBadge = () => {
     if (!cepData?.zona_entrega) return null;
     
@@ -214,12 +229,13 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
             </div>
             
             {error && (
-              <div className="p-2 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-sm text-red-600 flex items-center gap-1">
-                  <AlertCircle size={14} />
-                  {error}
-                </p>
-              </div>
+              <CepErrorDisplay
+                error={error}
+                onRetry={handleRetry}
+                onManualEntry={handleManualEntry}
+                isRetrying={isLoading}
+                searchedCep={cepInput.replace(/\D/g, '')}
+              />
             )}
             
             {cepData && (
@@ -250,7 +266,7 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
           </div>
 
           {/* Additional fields when CEP is found */}
-          {showFullForm && cepData && (
+          {showFullForm && (cepData || error) && (
             <div className="space-y-4 pt-4 border-t">
               <div className="space-y-2">
                 <Label htmlFor="nome">Nome do endereço</Label>
@@ -300,11 +316,11 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
               Cancelar
             </Button>
             
-            {showFullForm && cepData && (
+            {showFullForm && (cepData || error) && (
               <Button
                 type="button"
                 onClick={handleSaveAddress}
-                disabled={isSaving || !formData.numero.trim()}
+                disabled={isSaving || !formData.numero.trim() || !cepData}
                 className="bg-green-600 hover:bg-green-700 flex items-center gap-2"
               >
                 {isSaving ? (

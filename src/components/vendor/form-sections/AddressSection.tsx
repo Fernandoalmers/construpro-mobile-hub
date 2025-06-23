@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useCepLookup } from '@/hooks/useCepLookup';
 import { formatCep } from '@/lib/cep';
+import CepErrorDisplay from '@/components/common/CepErrorDisplay';
 
 interface AddressSectionProps {
   formData: {
@@ -83,6 +84,20 @@ const AddressSection: React.FC<AddressSectionProps> = ({ formData, onInputChange
     console.log('[AddressSection] CEP input changed:', value, '-> sanitized:', sanitizedCep);
   };
 
+  const handleRetry = async () => {
+    console.log('[AddressSection] Tentando novamente...');
+    const sanitizedCep = cepInput.replace(/\D/g, '');
+    if (sanitizedCep.length === 8) {
+      await lookupAddress(sanitizedCep);
+    }
+  };
+
+  const handleManualEntry = () => {
+    console.log('[AddressSection] Mostrando entrada manual');
+    // Allow manual entry by clearing the error
+    clearData();
+  };
+
   const getZoneBadge = () => {
     if (!formData.zona_entrega) return null;
     
@@ -152,10 +167,13 @@ const AddressSection: React.FC<AddressSectionProps> = ({ formData, onInputChange
           </div>
           
           {error && (
-            <p className="text-sm text-red-600 flex items-center gap-1">
-              <AlertCircle size={14} />
-              {error}
-            </p>
+            <CepErrorDisplay
+              error={error}
+              onRetry={handleRetry}
+              onManualEntry={handleManualEntry}
+              isRetrying={isLoading}
+              searchedCep={cepInput.replace(/\D/g, '')}
+            />
           )}
           
           {cepData && (

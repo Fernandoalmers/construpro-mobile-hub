@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -19,6 +18,7 @@ import { Address } from '@/services/addressService';
 import { useAuth } from '@/context/AuthContext';
 import { useCepLookup } from '@/hooks/useCepLookup';
 import { formatCep } from '@/lib/cep';
+import CepErrorDisplay from '@/components/common/CepErrorDisplay';
 import { Search, AlertCircle, CheckCircle, MapPin, Loader2 } from 'lucide-react';
 
 interface AddAddressModalProps {
@@ -217,6 +217,21 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
     }
   };
 
+  const handleRetry = async () => {
+    console.log('[AddAddressModal] Tentando novamente...');
+    const sanitizedCep = cepInput.replace(/\D/g, '');
+    if (sanitizedCep.length === 8) {
+      await lookupAddress(sanitizedCep);
+    }
+  };
+
+  const handleManualEntry = () => {
+    console.log('[AddAddressModal] Mostrando entrada manual');
+    // Allow manual entry by clearing the error and enabling form fields
+    setValidationErrors({});
+    setCepValidatedForEdit(true);
+  };
+
   const validateForm = (): boolean => {
     const requiredFields: (keyof Address)[] = ['nome', 'cep', 'logradouro', 'numero', 'bairro', 'cidade', 'estado'];
     const errors: Record<string, string> = {};
@@ -401,12 +416,13 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
                 )}
                 
                 {error && (
-                  <div className="p-2 bg-red-50 border border-red-200 rounded-md">
-                    <p className="text-sm text-red-600 flex items-center gap-1">
-                      <AlertCircle size={14} />
-                      {error}
-                    </p>
-                  </div>
+                  <CepErrorDisplay
+                    error={error}
+                    onRetry={handleRetry}
+                    onManualEntry={handleManualEntry}
+                    isRetrying={isLoading}
+                    searchedCep={cepInput.replace(/\D/g, '')}
+                  />
                 )}
                 
                 {cepData && (
