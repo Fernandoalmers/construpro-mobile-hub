@@ -134,8 +134,13 @@ async function cacheCep(cepData: CepData): Promise<void> {
  */
 async function fetchViaCep(cep: string): Promise<CepData | null> {
   try {
+    console.log('[fetchViaCep] 🚀 Iniciando busca no ViaCEP para:', cep);
+    
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos timeout
+    const timeoutId = setTimeout(() => {
+      console.log('[fetchViaCep] ⏰ Timeout no ViaCEP após 5 segundos');
+      controller.abort();
+    }, 5000);
 
     const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`, {
       signal: controller.signal
@@ -143,12 +148,15 @@ async function fetchViaCep(cep: string): Promise<CepData | null> {
     
     clearTimeout(timeoutId);
     
-    if (!response.ok) return null;
+    if (!response.ok) {
+      console.error('[fetchViaCep] ❌ Resposta não OK:', response.status, response.statusText);
+      return null;
+    }
     
     const data = await response.json();
     
     if (data.erro) {
-      console.warn('[fetchViaCep] CEP não encontrado no ViaCEP:', cep);
+      console.warn('[fetchViaCep] ⚠️ ViaCEP retornou erro - CEP não encontrado:', cep);
       return null;
     }
     
@@ -163,16 +171,17 @@ async function fetchViaCep(cep: string): Promise<CepData | null> {
 
     // Validar dados antes de retornar
     if (!isValidCepData(cepData)) {
-      console.warn('[fetchViaCep] Dados inválidos retornados pelo ViaCEP:', cepData);
+      console.warn('[fetchViaCep] ⚠️ Dados inválidos retornados pelo ViaCEP:', cepData);
       return null;
     }
     
+    console.log('[fetchViaCep] ✅ ViaCEP retornou dados válidos:', cepData);
     return cepData;
   } catch (error) {
     if (error.name === 'AbortError') {
-      console.error('[fetchViaCep] Timeout na busca do CEP:', cep);
+      console.error('[fetchViaCep] ⏰ Timeout na busca do CEP ViaCEP:', cep);
     } else {
-      console.error('[fetchViaCep] Error:', error);
+      console.error('[fetchViaCep] 💥 Erro no ViaCEP:', error);
     }
     return null;
   }
@@ -183,8 +192,13 @@ async function fetchViaCep(cep: string): Promise<CepData | null> {
  */
 async function fetchBrasilApi(cep: string): Promise<CepData | null> {
   try {
+    console.log('[fetchBrasilApi] 🚀 Iniciando busca no BrasilAPI para:', cep);
+    
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos timeout
+    const timeoutId = setTimeout(() => {
+      console.log('[fetchBrasilApi] ⏰ Timeout no BrasilAPI após 5 segundos');
+      controller.abort();
+    }, 5000);
 
     const response = await fetch(`https://brasilapi.com.br/api/cep/v1/${cep}`, {
       signal: controller.signal
@@ -192,7 +206,14 @@ async function fetchBrasilApi(cep: string): Promise<CepData | null> {
     
     clearTimeout(timeoutId);
     
-    if (!response.ok) return null;
+    if (!response.ok) {
+      if (response.status === 404) {
+        console.warn('[fetchBrasilApi] ⚠️ BrasilAPI: CEP não encontrado (404):', cep);
+      } else {
+        console.error('[fetchBrasilApi] ❌ Resposta não OK:', response.status, response.statusText);
+      }
+      return null;
+    }
     
     const data = await response.json();
     
@@ -207,16 +228,17 @@ async function fetchBrasilApi(cep: string): Promise<CepData | null> {
 
     // Validar dados antes de retornar
     if (!isValidCepData(cepData)) {
-      console.warn('[fetchBrasilApi] Dados inválidos retornados pelo BrasilAPI:', cepData);
+      console.warn('[fetchBrasilApi] ⚠️ Dados inválidos retornados pelo BrasilAPI:', cepData);
       return null;
     }
     
+    console.log('[fetchBrasilApi] ✅ BrasilAPI retornou dados válidos:', cepData);
     return cepData;
   } catch (error) {
     if (error.name === 'AbortError') {
-      console.error('[fetchBrasilApi] Timeout na busca do CEP:', cep);
+      console.error('[fetchBrasilApi] ⏰ Timeout na busca do CEP BrasilAPI:', cep);
     } else {
-      console.error('[fetchBrasilApi] Error:', error);
+      console.error('[fetchBrasilApi] 💥 Erro no BrasilAPI:', error);
     }
     return null;
   }
@@ -265,62 +287,85 @@ export async function lookupCep(rawCep: string): Promise<CepData | null> {
     return null;
   }
 
-  console.log('[lookupCep] Buscando CEP:', cep);
+  console.log('[lookupCep] 🔍 Iniciando busca detalhada para CEP:', cep);
 
   try {
     // 1. Verificar cache primeiro
+    console.log('[lookupCep] 📦 Verificando cache...');
     const cached = await getCachedCep(cep);
     if (cached) {
-      console.log('[lookupCep] CEP encontrado no cache:', cep);
+      console.log('[lookupCep] ✅ CEP encontrado no cache:', cep);
       const deliveryInfo = await getDeliveryZone(cached.ibge);
       return { ...cached, ...deliveryInfo };
     }
+    console.log('[lookupCep] ❌ CEP não encontrado no cache');
 
-    // 2. Buscar nas APIs externas com Promise.race para garantir resposta rápida
-    const apiPromises = [
-      fetchViaCep(cep),
-      fetchBrasilApi(cep)
-    ];
-
-    // Timeout geral de 8 segundos para todas as tentativas
-    const timeoutPromise = new Promise<null>((_, reject) =>
-      setTimeout(() => reject(new Error('Timeout geral na busca do CEP')), 8000)
-    );
-
+    // 2. Buscar nas APIs externas com diagnóstico detalhado
+    console.log('[lookupCep] 🌐 Iniciando busca nas APIs externas...');
+    
+    // Test ViaCEP first
+    console.log('[lookupCep] 🔍 Testando ViaCEP...');
     let cepData: CepData | null = null;
-
+    
     try {
-      // Tentar ambas APIs simultaneamente e pegar a primeira que retornar dados válidos
-      const results = await Promise.allSettled(apiPromises);
-      
-      for (const result of results) {
-        if (result.status === 'fulfilled' && result.value && isValidCepData(result.value)) {
-          cepData = result.value;
-          break;
-        }
+      const viacepData = await fetchViaCep(cep);
+      if (viacepData && isValidCepData(viacepData)) {
+        console.log('[lookupCep] ✅ ViaCEP retornou dados válidos');
+        cepData = viacepData;
+      } else {
+        console.log('[lookupCep] ❌ ViaCEP não retornou dados válidos');
       }
-    } catch (error) {
-      console.error('[lookupCep] Erro ao buscar nas APIs:', error);
+    } catch (viacepError) {
+      console.error('[lookupCep] ❌ Erro no ViaCEP:', viacepError);
+    }
+    
+    // If ViaCEP failed, try BrasilAPI
+    if (!cepData) {
+      console.log('[lookupCep] 🔍 Testando BrasilAPI...');
+      try {
+        const brasilApiData = await fetchBrasilApi(cep);
+        if (brasilApiData && isValidCepData(brasilApiData)) {
+          console.log('[lookupCep] ✅ BrasilAPI retornou dados válidos');
+          cepData = brasilApiData;
+        } else {
+          console.log('[lookupCep] ❌ BrasilAPI não retornou dados válidos');
+        }
+      } catch (brasilApiError) {
+        console.error('[lookupCep] ❌ Erro no BrasilAPI:', brasilApiError);
+      }
     }
 
     // Se ainda não encontrou dados válidos, retornar null
     if (!cepData) {
-      console.warn('[lookupCep] CEP não encontrado ou dados inválidos:', cep);
+      console.warn('[lookupCep] ⚠️ Nenhuma API retornou dados válidos para CEP:', cep);
+      
+      // Additional diagnostic
+      console.log('[lookupCep] 🔬 Diagnóstico detalhado:');
+      console.log('- CEP sanitizado:', cep);
+      console.log('- CEP original:', rawCep);
+      console.log('- Formato válido:', /^\d{8}$/.test(cep));
+      
       return null;
     }
 
     // Determinar zona de entrega
+    console.log('[lookupCep] 📍 Determinando zona de entrega...');
     const deliveryInfo = await getDeliveryZone(cepData.ibge);
     const finalData = { ...cepData, ...deliveryInfo };
 
     // Salvar no cache apenas se válido
+    console.log('[lookupCep] 💾 Salvando no cache...');
     await cacheCep(finalData);
 
-    console.log('[lookupCep] CEP encontrado e validado:', cep);
+    console.log('[lookupCep] ✅ CEP encontrado e processado com sucesso:', cep);
     return finalData;
 
   } catch (error) {
-    console.error('[lookupCep] Erro inesperado:', error);
+    console.error('[lookupCep] 💥 Erro inesperado na busca do CEP:', {
+      cep,
+      error: error?.message || error,
+      stack: error?.stack
+    });
     return null;
   }
 }
