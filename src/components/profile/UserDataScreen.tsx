@@ -138,6 +138,67 @@ const UserDataScreen: React.FC = () => {
       }));
     }
   };
+
+  const handleCepInputChange = (value: string) => {
+    const formatted = formatCep(value);
+    setFormData(prev => ({
+      ...prev,
+      endereco: {
+        ...prev.endereco,
+        cep: value.replace(/\D/g, '')
+      }
+    }));
+    
+    const sanitizedCep = value.replace(/\D/g, '');
+    if (sanitizedCep.length < 8) {
+      clearData();
+    }
+  };
+
+  const handleCepSearch = async () => {
+    if (!formData.endereco.cep.trim()) {
+      console.warn('[UserDataScreen] Empty CEP input');
+      return;
+    }
+    
+    console.log('[UserDataScreen] Searching CEP with enhanced system:', formData.endereco.cep);
+    const sanitizedCep = formData.endereco.cep.replace(/\D/g, '');
+    
+    if (sanitizedCep.length !== 8) {
+      console.warn('[UserDataScreen] Invalid CEP length:', sanitizedCep.length);
+      return;
+    }
+
+    setIsCepSearching(true);
+    const data = await lookupAddress(sanitizedCep);
+    setIsCepSearching(false);
+    
+    if (data) {
+      console.log('[UserDataScreen] Enhanced CEP found and saved:', sanitizedCep, data);
+    }
+  };
+
+  const handleCepRetry = async () => {
+    console.log('[UserDataScreen] Retrying with enhanced system...');
+    await retryLookup();
+  };
+
+  const handleCepManualEntry = () => {
+    console.log('[UserDataScreen] Showing manual entry');
+    clearData();
+  };
+
+  const handleCepSuggestion = async (suggestedCep: string) => {
+    console.log('[UserDataScreen] Using suggested CEP:', suggestedCep);
+    setFormData(prev => ({
+      ...prev,
+      endereco: {
+        ...prev.endereco,
+        cep: suggestedCep
+      }
+    }));
+    await lookupAddress(suggestedCep);
+  };
   
   const handleSelectChange = (name: string, value: string) => {
     setFormData(prev => ({
@@ -343,7 +404,7 @@ const UserDataScreen: React.FC = () => {
               {cepData && (
                 <div className="mt-2 p-2 bg-green-50 rounded border border-green-200">
                   <p className="text-sm text-green-700">
-                    ✅ CEP encontrado pelo sistema aprimorado! (Fonte: {cepData.source})
+                    ✅ CEP encontrado pelo sistema aprimorado! {cepData.source && `(Fonte: ${cepData.source})`}
                   </p>
                 </div>
               )}

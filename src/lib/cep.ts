@@ -11,6 +11,7 @@ export type CepData = {
   longitude?: number;
   zona_entrega?: string;
   prazo_entrega?: string;
+  source?: 'cache' | 'viacep' | 'brasilapi' | 'correios' | 'fallback';
 };
 
 export type DeliveryZone = {
@@ -83,6 +84,7 @@ async function getCachedCep(cep: string): Promise<CepData | null> {
       ibge: data.ibge || undefined,
       latitude: data.latitude || undefined,
       longitude: data.longitude || undefined,
+      source: 'cache',
     };
 
     // Validar se os dados em cache são válidos
@@ -167,6 +169,7 @@ async function fetchViaCep(cep: string): Promise<CepData | null> {
       localidade: data.localidade || '',
       uf: data.uf || '',
       ibge: data.ibge,
+      source: 'viacep',
     };
 
     // Validar dados antes de retornar
@@ -224,6 +227,7 @@ async function fetchBrasilApi(cep: string): Promise<CepData | null> {
       localidade: data.city || '',
       uf: data.state || '',
       ibge: data.city_ibge,
+      source: 'brasilapi',
     };
 
     // Validar dados antes de retornar
