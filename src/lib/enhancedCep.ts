@@ -1,12 +1,21 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { CepData } from './cep';
 
 /**
  * Sistema CEP aprimorado com múltiplas APIs e cache robusto
  */
 
-export interface EnhancedCepData extends CepData {
+export interface EnhancedCepData {
+  cep: string;
+  logradouro: string;
+  bairro: string;
+  localidade: string;
+  uf: string;
+  ibge?: string;
+  latitude?: number;
+  longitude?: number;
+  zona_entrega?: string;
+  prazo_entrega?: string;
   source: 'cache' | 'viacep' | 'brasilapi' | 'correios' | 'fallback';
   confidence: 'high' | 'medium' | 'low';
 }
@@ -15,7 +24,7 @@ export interface EnhancedCepData extends CepData {
  * Cache expandido para CEPs de Minas Gerais - especialmente região de Capelinha
  */
 const MG_EXPANDED_CACHE = {
-  // Capelinha e região do Vale do Jequitinhonha
+  // Capelinha e região do Vale do Jequitinhonha - EXPANDIDO
   '39680000': { cidade: 'Capelinha', uf: 'MG', zona: 'local', bairro: 'Centro' },
   '39680001': { cidade: 'Capelinha', uf: 'MG', zona: 'local', bairro: 'Centro' },
   '39685000': { cidade: 'Capelinha', uf: 'MG', zona: 'local', bairro: 'São Sebastião' },
@@ -32,6 +41,25 @@ const MG_EXPANDED_CACHE = {
 };
 
 /**
+ * Validação flexível que aceita dados parciais válidos
+ */
+function isValidEnhancedCepData(data: any): boolean {
+  if (!data) return false;
+  
+  // Campos essenciais mínimos - MUITO mais flexível
+  const hasEssentials = data.localidade && data.uf;
+  
+  if (!hasEssentials) {
+    console.warn('[isValidEnhancedCepData] Faltam campos essenciais mínimos (cidade/UF):', data);
+    return false;
+  }
+  
+  // Aceitar logradouros curtos ou vazios para CEPs rurais
+  console.log('[isValidEnhancedCepData] ✅ Dados válidos (validação flexível):', data);
+  return true;
+}
+
+/**
  * Busca CEP com cache expandido
  */
 async function getCachedCepExpanded(cep: string): Promise<EnhancedCepData | null> {
@@ -44,46 +72,58 @@ async function getCachedCepExpanded(cep: string): Promise<EnhancedCepData | null
       .single();
 
     if (data && !error) {
-      return {
+      const cepData: EnhancedCepData = {
         cep: data.cep,
         logradouro: data.logradouro || '',
         bairro: data.bairro || '',
         localidade: data.localidade || '',
         uf: data.uf || '',
-        source: 'cache',
-        confidence: 'high'
+        ibge: data.ibge,
+        source: 'cache' as const,
+        confidence: 'high' as const
       };
+      
+      if (isValidEnhancedCepData(cepData)) {
+        console.log('[getCachedCepExpanded] ✅ Cache Supabase encontrado:', cep);
+        return cepData;
+      }
     }
 
     // Verificar cache expandido de MG
     if (MG_EXPANDED_CACHE[cep]) {
       const cached = MG_EXPANDED_CACHE[cep];
-      return {
+      const cepData: EnhancedCepData = {
         cep,
         logradouro: 'Logradouro não especificado',
         bairro: cached.bairro,
         localidade: cached.cidade,
         uf: cached.uf,
         zona_entrega: cached.zona,
-        source: 'fallback',
-        confidence: 'medium'
+        source: 'fallback' as const,
+        confidence: 'medium' as const
       };
+      
+      console.log('[getCachedCepExpanded] ✅ Cache expandido MG encontrado:', cep);
+      return cepData;
     }
 
-    // Buscar CEP similar (mesmo município)
+    // Buscar CEP similar (mesmo município) - FALLBACK INTELIGENTE
     const baseCep = cep.substring(0, 5) + '000';
     if (MG_EXPANDED_CACHE[baseCep]) {
       const cached = MG_EXPANDED_CACHE[baseCep];
-      return {
+      const cepData: EnhancedCepData = {
         cep,
         logradouro: 'Logradouro não especificado',
         bairro: cached.bairro,
         localidade: cached.cidade,
         uf: cached.uf,
         zona_entrega: cached.zona,
-        source: 'fallback',
-        confidence: 'low'
+        source: 'fallback' as const,
+        confidence: 'low' as const
       };
+      
+      console.log('[getCachedCepExpanded] ✅ Fallback regional encontrado:', cep, '->', baseCep);
+      return cepData;
     }
 
     return null;
@@ -94,7 +134,7 @@ async function getCachedCepExpanded(cep: string): Promise<EnhancedCepData | null
 }
 
 /**
- * Busca ViaCEP com timeout otimizado
+ * Busca ViaCEP com timeout otimizado e validação flexível
  */
 async function fetchViaCepEnhanced(cep: string): Promise<EnhancedCepData | null> {
   try {
@@ -132,12 +172,18 @@ async function fetchViaCepEnhanced(cep: string): Promise<EnhancedCepData | null>
       localidade: data.localidade || '',
       uf: data.uf || '',
       ibge: data.ibge,
-      source: 'viacep',
-      confidence: 'high'
+      source: 'viacep' as const,
+      confidence: 'high' as const
     };
     
-    console.log('[fetchViaCepEnhanced] Sucesso:', result);
-    return result;
+    // Validação flexível
+    if (isValidEnhancedCepData(result)) {
+      console.log('[fetchViaCepEnhanced] ✅ Sucesso:', result);
+      return result;
+    } else {
+      console.warn('[fetchViaCepEnhanced] ⚠️ Dados não passaram na validação flexível:', result);
+      return null;
+    }
   } catch (error) {
     console.error('[fetchViaCepEnhanced] Erro:', error);
     return null;
@@ -145,7 +191,7 @@ async function fetchViaCepEnhanced(cep: string): Promise<EnhancedCepData | null>
 }
 
 /**
- * Busca BrasilAPI com retry
+ * Busca BrasilAPI com retry e validação flexível
  */
 async function fetchBrasilApiEnhanced(cep: string): Promise<EnhancedCepData | null> {
   try {
@@ -182,12 +228,18 @@ async function fetchBrasilApiEnhanced(cep: string): Promise<EnhancedCepData | nu
       localidade: data.city || '',
       uf: data.state || '',
       ibge: data.city_ibge,
-      source: 'brasilapi',
-      confidence: 'high'
+      source: 'brasilapi' as const,
+      confidence: 'high' as const
     };
     
-    console.log('[fetchBrasilApiEnhanced] Sucesso:', result);
-    return result;
+    // Validação flexível
+    if (isValidEnhancedCepData(result)) {
+      console.log('[fetchBrasilApiEnhanced] ✅ Sucesso:', result);
+      return result;
+    } else {
+      console.warn('[fetchBrasilApiEnhanced] ⚠️ Dados não passaram na validação flexível:', result);
+      return null;
+    }
   } catch (error) {
     console.error('[fetchBrasilApiEnhanced] Erro:', error);
     return null;
@@ -212,12 +264,13 @@ function getDeliveryZoneFromLocation(cidade: string, uf: string): string {
 }
 
 /**
- * Cache o resultado no Supabase
+ * Cache o resultado no Supabase - APENAS para dados de alta qualidade
  */
 async function cacheEnhancedCep(cepData: EnhancedCepData): Promise<void> {
   try {
-    if (!cepData.logradouro || !cepData.localidade) {
-      console.warn('[cacheEnhancedCep] Dados incompletos, não cacheando:', cepData);
+    // Cache apenas dados de alta confiança e completos
+    if (cepData.confidence !== 'high' || !cepData.localidade) {
+      console.log('[cacheEnhancedCep] Não cacheando dados de baixa confiança:', cepData);
       return;
     }
 
@@ -242,7 +295,7 @@ async function cacheEnhancedCep(cepData: EnhancedCepData): Promise<void> {
 }
 
 /**
- * Função principal de busca CEP aprimorada
+ * Função principal de busca CEP aprimorada com fallbacks inteligentes
  */
 export async function lookupCepEnhanced(rawCep: string): Promise<EnhancedCepData | null> {
   const cep = rawCep.replace(/\D/g, '');
@@ -252,13 +305,13 @@ export async function lookupCepEnhanced(rawCep: string): Promise<EnhancedCepData
     return null;
   }
 
-  console.log('[lookupCepEnhanced] 🔍 Iniciando busca aprimorada para:', cep);
+  console.log('[lookupCepEnhanced] 🔍 INICIANDO BUSCA APRIMORADA PARA:', cep);
 
   try {
-    // 1. Verificar cache primeiro
+    // 1. Verificar cache primeiro (incluindo expandido)
     const cached = await getCachedCepExpanded(cep);
     if (cached) {
-      console.log('[lookupCepEnhanced] ✅ Encontrado no cache:', cep);
+      console.log('[lookupCepEnhanced] ✅ Encontrado no cache expandido:', cep);
       
       // Adicionar zona de entrega se não existir
       if (!cached.zona_entrega) {
@@ -276,9 +329,9 @@ export async function lookupCepEnhanced(rawCep: string): Promise<EnhancedCepData
       result = await fetchBrasilApiEnhanced(cep);
     }
 
-    // 4. Se ainda não encontrou, verificar se é CEP de Capelinha/região
+    // 4. FALLBACK INTELIGENTE PARA CAPELINHA - Se ainda não encontrou e é CEP da região
     if (!result && cep.startsWith('3968')) {
-      console.log('[lookupCepEnhanced] 🎯 CEP da região de Capelinha, criando fallback');
+      console.log('[lookupCepEnhanced] 🎯 CEP da região de Capelinha, criando fallback inteligente');
       result = {
         cep,
         logradouro: 'Endereço não especificado',
@@ -286,8 +339,26 @@ export async function lookupCepEnhanced(rawCep: string): Promise<EnhancedCepData
         localidade: 'Capelinha',
         uf: 'MG',
         zona_entrega: 'local',
-        source: 'fallback',
-        confidence: 'medium'
+        source: 'fallback' as const,
+        confidence: 'medium' as const
+      };
+    }
+
+    // 5. FALLBACK GENÉRICO PARA MG - Se ainda não encontrou e é CEP de MG
+    if (!result && (cep.startsWith('30') || cep.startsWith('31') || cep.startsWith('32') || 
+                    cep.startsWith('33') || cep.startsWith('34') || cep.startsWith('35') || 
+                    cep.startsWith('36') || cep.startsWith('37') || cep.startsWith('38') || 
+                    cep.startsWith('39'))) {
+      console.log('[lookupCepEnhanced] 🎯 CEP de MG, criando fallback genérico');
+      result = {
+        cep,
+        logradouro: 'Endereço não especificado',
+        bairro: 'Centro',
+        localidade: 'Cidade não especificada',
+        uf: 'MG',
+        zona_entrega: 'outras',
+        source: 'fallback' as const,
+        confidence: 'low' as const
       };
     }
 
@@ -302,11 +373,11 @@ export async function lookupCepEnhanced(rawCep: string): Promise<EnhancedCepData
         await cacheEnhancedCep(result);
       }
       
-      console.log('[lookupCepEnhanced] ✅ CEP encontrado:', result);
+      console.log('[lookupCepEnhanced] ✅ CEP ENCONTRADO COM SISTEMA APRIMORADO:', result);
       return result;
     }
 
-    console.warn('[lookupCepEnhanced] ❌ CEP não encontrado em nenhuma fonte:', cep);
+    console.warn('[lookupCepEnhanced] ❌ CEP não encontrado mesmo com todos os fallbacks:', cep);
     return null;
 
   } catch (error) {
@@ -354,4 +425,51 @@ export async function validateCepExists(cep: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/**
+ * Inicializar cache expandido automaticamente na inicialização
+ */
+async function initializeExpandedCache(): Promise<void> {
+  try {
+    console.log('[initializeExpandedCache] Inicializando cache expandido...');
+    
+    for (const [cep, info] of Object.entries(MG_EXPANDED_CACHE)) {
+      try {
+        // Verificar se já existe
+        const { data: existing } = await supabase
+          .from('zip_cache')
+          .select('cep')
+          .eq('cep', cep)
+          .single();
+        
+        if (existing) continue;
+        
+        // Inserir no cache
+        await supabase
+          .from('zip_cache')
+          .insert({
+            cep: cep,
+            logradouro: info.bairro === 'Centro' ? 'Rua Principal' : 'Endereço não especificado',
+            bairro: info.bairro,
+            localidade: info.cidade,
+            uf: info.uf,
+            cached_at: new Date().toISOString(),
+          });
+        
+        console.log('[initializeExpandedCache] Cacheado:', cep, info.cidade);
+      } catch (error) {
+        console.error(`[initializeExpandedCache] Erro ao cachear ${cep}:`, error);
+      }
+    }
+    
+    console.log('[initializeExpandedCache] ✅ Cache expandido inicializado');
+  } catch (error) {
+    console.error('[initializeExpandedCache] Erro geral:', error);
+  }
+}
+
+// Inicializar cache automaticamente
+if (typeof window !== 'undefined') {
+  initializeExpandedCache().catch(console.error);
 }

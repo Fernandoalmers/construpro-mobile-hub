@@ -1,6 +1,6 @@
 
 import { useState, useCallback } from 'react';
-import { lookupCep, CepData } from '@/lib/cep';
+import { lookupCepEnhanced, EnhancedCepData } from '@/lib/enhancedCep';
 
 export interface CepError {
   type: 'validation' | 'not_found' | 'network' | 'timeout' | 'api_error';
@@ -13,8 +13,8 @@ export interface CepError {
 interface UseEnhancedCepLookupReturn {
   isLoading: boolean;
   error: CepError | null;
-  cepData: CepData | null;
-  lookupAddress: (cep: string) => Promise<CepData | null>;
+  cepData: EnhancedCepData | null;
+  lookupAddress: (cep: string) => Promise<EnhancedCepData | null>;
   clearData: () => void;
   retryLookup: () => Promise<void>;
   lastSearchedCep: string | null;
@@ -24,7 +24,7 @@ interface UseEnhancedCepLookupReturn {
 export const useEnhancedCepLookup = (): UseEnhancedCepLookupReturn => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<CepError | null>(null);
-  const [cepData, setCepData] = useState<CepData | null>(null);
+  const [cepData, setCepData] = useState<EnhancedCepData | null>(null);
   const [lastSearchedCep, setLastSearchedCep] = useState<string | null>(null);
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
 
@@ -67,7 +67,7 @@ export const useEnhancedCepLookup = (): UseEnhancedCepLookupReturn => {
     }
   };
 
-  const lookupAddress = useCallback(async (cep: string): Promise<CepData | null> => {
+  const lookupAddress = useCallback(async (cep: string): Promise<EnhancedCepData | null> => {
     const sanitizedCep = cep.replace(/\D/g, '');
     
     if (!sanitizedCep || sanitizedCep.length !== 8) {
@@ -78,7 +78,7 @@ export const useEnhancedCepLookup = (): UseEnhancedCepLookupReturn => {
       return null;
     }
 
-    console.log('[useEnhancedCepLookup] 🚀 INICIANDO BUSCA MELHORADA:', {
+    console.log('[useEnhancedCepLookup] 🚀 INICIANDO BUSCA COM SISTEMA APRIMORADO:', {
       cep: sanitizedCep,
       timestamp: new Date().toISOString(),
       searchCount: searchHistory.length + 1
@@ -97,34 +97,38 @@ export const useEnhancedCepLookup = (): UseEnhancedCepLookupReturn => {
 
     try {
       const startTime = Date.now();
-      const data = await lookupCep(sanitizedCep);
+      const data = await lookupCepEnhanced(sanitizedCep);
       const endTime = Date.now();
       
-      console.log('[useEnhancedCepLookup] ⏱️ TEMPO DE RESPOSTA:', {
+      console.log('[useEnhancedCepLookup] ⏱️ TEMPO DE RESPOSTA SISTEMA APRIMORADO:', {
         cep: sanitizedCep,
         duration: `${endTime - startTime}ms`,
-        success: !!data
+        success: !!data,
+        source: data?.source || 'none',
+        confidence: data?.confidence || 'none'
       });
       
       if (data) {
         setCepData(data);
         setError(null);
-        console.log('[useEnhancedCepLookup] ✅ SUCESSO:', {
+        console.log('[useEnhancedCepLookup] ✅ SUCESSO COM SISTEMA APRIMORADO:', {
           cep: sanitizedCep,
           cidade: data.localidade,
           uf: data.uf,
-          zona: data.zona_entrega
+          zona: data.zona_entrega,
+          source: data.source,
+          confidence: data.confidence
         });
         return data;
       } else {
-        console.warn('[useEnhancedCepLookup] ❌ CEP NÃO ENCONTRADO:', sanitizedCep);
-        const error = createError('not_found', '', `CEP ${sanitizedCep} consultado em múltiplas APIs`);
+        console.warn('[useEnhancedCepLookup] ❌ CEP NÃO ENCONTRADO MESMO COM SISTEMA APRIMORADO:', sanitizedCep);
+        const error = createError('not_found', '', `CEP ${sanitizedCep} consultado no sistema aprimorado com múltiplas APIs e fallbacks`);
         setError(error);
         setCepData(null);
         return null;
       }
     } catch (err) {
-      console.error('[useEnhancedCepLookup] 💥 ERRO NA BUSCA:', {
+      console.error('[useEnhancedCepLookup] 💥 ERRO NO SISTEMA APRIMORADO:', {
         cep: sanitizedCep,
         error: err?.message || err,
         stack: err?.stack
@@ -153,7 +157,7 @@ export const useEnhancedCepLookup = (): UseEnhancedCepLookupReturn => {
 
   const retryLookup = useCallback(async () => {
     if (lastSearchedCep) {
-      console.log('[useEnhancedCepLookup] 🔄 RETRY:', lastSearchedCep);
+      console.log('[useEnhancedCepLookup] 🔄 RETRY COM SISTEMA APRIMORADO:', lastSearchedCep);
       await lookupAddress(lastSearchedCep);
     }
   }, [lastSearchedCep, lookupAddress]);
@@ -163,7 +167,7 @@ export const useEnhancedCepLookup = (): UseEnhancedCepLookupReturn => {
     setError(null);
     setIsLoading(false);
     setLastSearchedCep(null);
-    console.log('[useEnhancedCepLookup] 🧹 DADOS LIMPOS');
+    console.log('[useEnhancedCepLookup] 🧹 DADOS LIMPOS DO SISTEMA APRIMORADO');
   }, []);
 
   return {

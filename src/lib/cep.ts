@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export type CepData = {
@@ -23,6 +22,11 @@ export type DeliveryZone = {
 };
 
 /**
+ * LEGACY SYSTEM - Use enhancedCep.ts for new implementations
+ * This file is kept for backward compatibility
+ */
+
+/**
  * Sanitiza o CEP removendo caracteres não numéricos
  */
 export function sanitizeCep(rawCep: string): string {
@@ -38,28 +42,20 @@ export function isValidCep(cep: string): boolean {
 }
 
 /**
- * Valida se os dados do CEP são completos e válidos
+ * VALIDAÇÃO FLEXÍVEL - Aceita dados parciais válidos (compatibilidade)
  */
 function isValidCepData(data: any): boolean {
   if (!data) return false;
   
-  // Verificar se campos essenciais não estão vazios
-  const requiredFields = ['logradouro', 'bairro', 'localidade', 'uf'];
+  // Verificar se campos essenciais básicos existem (flexível)
+  const hasBasics = data.localidade && data.uf;
   
-  for (const field of requiredFields) {
-    const value = data[field];
-    if (!value || typeof value !== 'string' || value.trim().length === 0) {
-      console.warn(`[isValidCepData] Campo obrigatório vazio ou inválido: ${field}`, value);
-      return false;
-    }
-  }
-  
-  // Verificar se não são apenas espaços ou caracteres especiais
-  if (data.logradouro.trim().length < 3) {
-    console.warn('[isValidCepData] Logradouro muito curto:', data.logradouro);
+  if (!hasBasics) {
+    console.warn('[isValidCepData] Faltam campos básicos (cidade/UF):', data);
     return false;
   }
   
+  console.log('[isValidCepData] ✅ Dados considerados válidos (validação flexível):', data);
   return true;
 }
 
@@ -282,7 +278,7 @@ async function getDeliveryZone(ibge?: string): Promise<{ zona_entrega: string; p
 }
 
 /**
- * Função principal para buscar CEP com fallbacks, cache e validação robusta
+ * Função principal para buscar CEP - AGORA COM VALIDAÇÃO FLEXÍVEL
  */
 export async function lookupCep(rawCep: string): Promise<CepData | null> {
   const cep = sanitizeCep(rawCep);
@@ -292,7 +288,7 @@ export async function lookupCep(rawCep: string): Promise<CepData | null> {
     return null;
   }
 
-  console.log('[lookupCep] 🔍 Iniciando busca detalhada para CEP:', cep);
+  console.log('[lookupCep] 🔍 SISTEMA LEGADO - Recomenda-se usar enhancedCep.ts:', cep);
 
   try {
     // 1. Verificar cache primeiro
@@ -303,67 +299,44 @@ export async function lookupCep(rawCep: string): Promise<CepData | null> {
       const deliveryInfo = await getDeliveryZone(cached.ibge);
       return { ...cached, ...deliveryInfo };
     }
-    console.log('[lookupCep] ❌ CEP não encontrado no cache');
 
-    // 2. Buscar nas APIs externas com diagnóstico detalhado
-    console.log('[lookupCep] 🌐 Iniciando busca nas APIs externas...');
-    
-    // Test ViaCEP first
-    console.log('[lookupCep] 🔍 Testando ViaCEP...');
+    // 2. Buscar nas APIs externas com validação flexível
     let cepData: CepData | null = null;
     
+    // ViaCEP
     try {
       const viacepData = await fetchViaCep(cep);
       if (viacepData && isValidCepData(viacepData)) {
-        console.log('[lookupCep] ✅ ViaCEP retornou dados válidos');
+        console.log('[lookupCep] ✅ ViaCEP retornou dados válidos (flexível)');
         cepData = viacepData;
-      } else {
-        console.log('[lookupCep] ❌ ViaCEP não retornou dados válidos');
       }
     } catch (viacepError) {
       console.error('[lookupCep] ❌ Erro no ViaCEP:', viacepError);
     }
     
-    // If ViaCEP failed, try BrasilAPI
+    // BrasilAPI se ViaCEP falhou
     if (!cepData) {
-      console.log('[lookupCep] 🔍 Testando BrasilAPI...');
       try {
         const brasilApiData = await fetchBrasilApi(cep);
         if (brasilApiData && isValidCepData(brasilApiData)) {
-          console.log('[lookupCep] ✅ BrasilAPI retornou dados válidos');
+          console.log('[lookupCep] ✅ BrasilAPI retornou dados válidos (flexível)');
           cepData = brasilApiData;
-        } else {
-          console.log('[lookupCep] ❌ BrasilAPI não retornou dados válidos');
         }
       } catch (brasilApiError) {
         console.error('[lookupCep] ❌ Erro no BrasilAPI:', brasilApiError);
       }
     }
 
-    // Se ainda não encontrou dados válidos, retornar null
-    if (!cepData) {
-      console.warn('[lookupCep] ⚠️ Nenhuma API retornou dados válidos para CEP:', cep);
-      
-      // Additional diagnostic
-      console.log('[lookupCep] 🔬 Diagnóstico detalhado:');
-      console.log('- CEP sanitizado:', cep);
-      console.log('- CEP original:', rawCep);
-      console.log('- Formato válido:', /^\d{8}$/.test(cep));
-      
-      return null;
+    if (cepData) {
+      const deliveryInfo = await getDeliveryZone(cepData.ibge);
+      const finalData = { ...cepData, ...deliveryInfo };
+      await cacheCep(finalData);
+      console.log('[lookupCep] ✅ CEP encontrado (sistema legado com validação flexível):', cep);
+      return finalData;
     }
 
-    // Determinar zona de entrega
-    console.log('[lookupCep] 📍 Determinando zona de entrega...');
-    const deliveryInfo = await getDeliveryZone(cepData.ibge);
-    const finalData = { ...cepData, ...deliveryInfo };
-
-    // Salvar no cache apenas se válido
-    console.log('[lookupCep] 💾 Salvando no cache...');
-    await cacheCep(finalData);
-
-    console.log('[lookupCep] ✅ CEP encontrado e processado com sucesso:', cep);
-    return finalData;
+    console.warn('[lookupCep] ⚠️ SISTEMA LEGADO não encontrou CEP:', cep);
+    return null;
 
   } catch (error) {
     console.error('[lookupCep] 💥 Erro inesperado na busca do CEP:', {
