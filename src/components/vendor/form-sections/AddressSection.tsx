@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { MapPin, Search, AlertCircle, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,9 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useCepLookup } from '@/hooks/useCepLookup';
+import { useEnhancedCepLookup } from '@/hooks/useEnhancedCepLookup';
 import { formatCep } from '@/lib/cep';
-import CepErrorDisplay from '@/components/common/CepErrorDisplay';
+import EnhancedCepErrorDisplay from '@/components/common/EnhancedCepErrorDisplay';
 
 interface AddressSectionProps {
   formData: {
@@ -25,7 +24,7 @@ interface AddressSectionProps {
 }
 
 const AddressSection: React.FC<AddressSectionProps> = ({ formData, onInputChange }) => {
-  const { isLoading, error, cepData, lookupAddress, clearData } = useCepLookup();
+  const { isLoading, error, cepData, lookupAddress, clearData, retryLookup, lastSearchedCep } = useEnhancedCepLookup();
   const [cepInput, setCepInput] = useState('');
 
   // Sincronizar cepInput com formData.endereco_cep quando os dados são carregados
@@ -54,7 +53,7 @@ const AddressSection: React.FC<AddressSectionProps> = ({ formData, onInputChange
       return;
     }
     
-    console.log('[AddressSection] Searching CEP:', cepInput);
+    console.log('[AddressSection] Searching CEP with enhanced system:', cepInput);
     const sanitizedCep = cepInput.replace(/\D/g, '');
     
     if (sanitizedCep.length !== 8) {
@@ -65,7 +64,7 @@ const AddressSection: React.FC<AddressSectionProps> = ({ formData, onInputChange
     const data = await lookupAddress(sanitizedCep);
     if (data) {
       onInputChange('endereco_cep', sanitizedCep);
-      console.log('[AddressSection] CEP found and saved:', sanitizedCep);
+      console.log('[AddressSection] Enhanced CEP found and saved:', sanitizedCep, data);
     }
   };
 
@@ -73,10 +72,8 @@ const AddressSection: React.FC<AddressSectionProps> = ({ formData, onInputChange
     setCepInput(value);
     const sanitizedCep = value.replace(/\D/g, '');
     
-    // Sempre atualizar o formData com o valor sanitizado
     onInputChange('endereco_cep', sanitizedCep);
     
-    // Limpar dados anteriores se o CEP foi modificado significativamente
     if (sanitizedCep.length < 8) {
       clearData();
     }
@@ -85,17 +82,20 @@ const AddressSection: React.FC<AddressSectionProps> = ({ formData, onInputChange
   };
 
   const handleRetry = async () => {
-    console.log('[AddressSection] Tentando novamente...');
-    const sanitizedCep = cepInput.replace(/\D/g, '');
-    if (sanitizedCep.length === 8) {
-      await lookupAddress(sanitizedCep);
-    }
+    console.log('[AddressSection] Retrying with enhanced system...');
+    await retryLookup();
   };
 
   const handleManualEntry = () => {
-    console.log('[AddressSection] Mostrando entrada manual');
-    // Allow manual entry by clearing the error
+    console.log('[AddressSection] Showing manual entry');
     clearData();
+  };
+
+  const handleCepSuggestion = async (suggestedCep: string) => {
+    console.log('[AddressSection] Using suggested CEP:', suggestedCep);
+    setCepInput(suggestedCep);
+    onInputChange('endereco_cep', suggestedCep);
+    await lookupAddress(suggestedCep);
   };
 
   const getZoneBadge = () => {
@@ -139,7 +139,7 @@ const AddressSection: React.FC<AddressSectionProps> = ({ formData, onInputChange
           </div>
         </div>
 
-        {/* CEP Field with Search */}
+        {/* CEP Field with Enhanced Search */}
         <div className="space-y-2">
           <Label htmlFor="endereco_cep">CEP*</Label>
           <div className="flex gap-2">
@@ -149,7 +149,7 @@ const AddressSection: React.FC<AddressSectionProps> = ({ formData, onInputChange
               onChange={(e) => handleCepInputChange(e.target.value)}
               placeholder="00000-000"
               maxLength={9}
-              className={error ? 'border-red-500' : ''}
+              className={error ? 'border-red-500' : cepData ? 'border-green-500' : ''}
             />
             <Button
               type="button"
@@ -167,19 +167,20 @@ const AddressSection: React.FC<AddressSectionProps> = ({ formData, onInputChange
           </div>
           
           {error && (
-            <CepErrorDisplay
+            <EnhancedCepErrorDisplay
               error={error}
               onRetry={handleRetry}
               onManualEntry={handleManualEntry}
+              onCepSuggestion={handleCepSuggestion}
               isRetrying={isLoading}
-              searchedCep={cepInput.replace(/\D/g, '')}
+              searchedCep={lastSearchedCep || undefined}
             />
           )}
           
           {cepData && (
             <div className="flex items-center gap-2">
               <CheckCircle size={14} className="text-green-600" />
-              <span className="text-sm text-green-600">CEP encontrado e dados preenchidos automaticamente!</span>
+              <span className="text-sm text-green-600">CEP encontrado pelo sistema aprimorado!</span>
               {getZoneBadge()}
             </div>
           )}

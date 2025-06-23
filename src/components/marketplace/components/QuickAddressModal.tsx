@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -12,10 +11,10 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/components/ui/use-toast';
-import { useCepLookup } from '@/hooks/useCepLookup';
+import { useEnhancedCepLookup } from '@/hooks/useEnhancedCepLookup';
 import { useAddresses } from '@/hooks/useAddresses';
 import { formatCep } from '@/lib/cep';
-import CepErrorDisplay from '@/components/common/CepErrorDisplay';
+import EnhancedCepErrorDisplay from '@/components/common/EnhancedCepErrorDisplay';
 import { Search, AlertCircle, CheckCircle, MapPin, Plus, Loader2 } from 'lucide-react';
 
 interface QuickAddressModalProps {
@@ -29,7 +28,7 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
   onOpenChange,
   onAddressAdded
 }) => {
-  const { isLoading, error, cepData, lookupAddress, clearData } = useCepLookup();
+  const { isLoading, error, cepData, lookupAddress, clearData, retryLookup, lastSearchedCep } = useEnhancedCepLookup();
   const { addAddress } = useAddresses();
   const [cepInput, setCepInput] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -71,7 +70,7 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
       return;
     }
 
-    console.log('[QuickAddressModal] Buscando CEP:', sanitizedCep);
+    console.log('[QuickAddressModal] Buscando CEP com sistema aprimorado:', sanitizedCep);
     const result = await lookupAddress(sanitizedCep);
     
     if (result) {
@@ -80,7 +79,7 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
       
       toast({
         title: "CEP encontrado!",
-        description: "Dados preenchidos automaticamente. Complete as informações."
+        description: `Dados preenchidos pelo sistema aprimorado (fonte: ${result.source})`
       });
     }
   };
@@ -93,6 +92,23 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
       setShowFullForm(false);
       clearData();
     }
+  };
+
+  const handleRetry = async () => {
+    console.log('[QuickAddressModal] Tentando novamente com sistema aprimorado...');
+    await retryLookup();
+  };
+
+  const handleManualEntry = () => {
+    console.log('[QuickAddressModal] Mostrando entrada manual');
+    setShowFullForm(true);
+    setFormData(prev => ({ ...prev, nome: 'Endereço Principal' }));
+  };
+
+  const handleCepSuggestion = async (suggestedCep: string) => {
+    console.log('[QuickAddressModal] Usando CEP sugerido:', suggestedCep);
+    setCepInput(suggestedCep);
+    await lookupAddress(suggestedCep);
   };
 
   const handleSaveAddress = async () => {
@@ -148,20 +164,6 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
     }
   };
 
-  const handleRetry = async () => {
-    console.log('[QuickAddressModal] Tentando novamente...');
-    const sanitizedCep = cepInput.replace(/\D/g, '');
-    if (sanitizedCep.length === 8) {
-      await lookupAddress(sanitizedCep);
-    }
-  };
-
-  const handleManualEntry = () => {
-    console.log('[QuickAddressModal] Mostrando entrada manual');
-    setShowFullForm(true);
-    setFormData(prev => ({ ...prev, nome: 'Endereço Principal' }));
-  };
-
   const getZoneBadge = () => {
     if (!cepData?.zona_entrega) return null;
     
@@ -196,11 +198,11 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
         <div className="space-y-4 py-4">
           <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
             <p className="text-sm text-blue-800">
-              Adicione seu endereço para ver informações precisas sobre entrega e frete.
+              Sistema aprimorado de CEP com múltiplas fontes e cache inteligente para melhor precisão.
             </p>
           </div>
 
-          {/* CEP Field with Search */}
+          {/* CEP Field with Enhanced Search */}
           <div className="space-y-2">
             <Label htmlFor="cep">CEP*</Label>
             <div className="flex gap-2">
@@ -229,12 +231,13 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
             </div>
             
             {error && (
-              <CepErrorDisplay
+              <EnhancedCepErrorDisplay
                 error={error}
                 onRetry={handleRetry}
                 onManualEntry={handleManualEntry}
+                onCepSuggestion={handleCepSuggestion}
                 isRetrying={isLoading}
-                searchedCep={cepInput.replace(/\D/g, '')}
+                searchedCep={lastSearchedCep || undefined}
               />
             )}
             
@@ -242,7 +245,9 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <CheckCircle size={14} className="text-green-600" />
-                  <span className="text-sm text-green-600 font-medium">CEP válido encontrado!</span>
+                  <span className="text-sm text-green-600 font-medium">
+                    CEP encontrado! (Fonte: {cepData.source || 'sistema'})
+                  </span>
                 </div>
                 <div className="p-3 bg-green-50 rounded-lg border border-green-200">
                   <p className="text-sm font-medium">{cepData.logradouro}</p>
@@ -259,7 +264,7 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
               <div className="p-2 bg-blue-50 border border-blue-200 rounded-md">
                 <p className="text-sm text-blue-600 flex items-center gap-2">
                   <Loader2 size={14} className="animate-spin" />
-                  Buscando CEP... Aguarde alguns segundos.
+                  Sistema aprimorado buscando em múltiplas fontes...
                 </p>
               </div>
             )}

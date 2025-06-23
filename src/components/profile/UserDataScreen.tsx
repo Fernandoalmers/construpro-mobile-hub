@@ -1,11 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, User, Save } from 'lucide-react';
+import { ChevronLeft, User, Save, Search } from 'lucide-react';
 import Card from '../common/Card';
 import CustomInput from '../common/CustomInput';
 import CustomButton from '../common/CustomButton';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import { 
   Select,
   SelectTrigger,
@@ -16,6 +16,9 @@ import {
 import { toast } from '@/components/ui/sonner';
 import { useAuth } from '../../context/AuthContext';
 import { useMutation } from '@tanstack/react-query';
+import { useEnhancedCepLookup } from '@/hooks/useEnhancedCepLookup';
+import { formatCep } from '@/lib/cep';
+import EnhancedCepErrorDisplay from '@/components/common/EnhancedCepErrorDisplay';
 
 // Opções de especialidade para profissionais
 const specialtyOptions = [
@@ -34,6 +37,7 @@ const specialtyOptions = [
 const UserDataScreen: React.FC = () => {
   const navigate = useNavigate();
   const { profile, updateProfile } = useAuth();
+  const { isLoading: cepLoading, error: cepError, cepData, lookupAddress, clearData, retryLookup, lastSearchedCep } = useEnhancedCepLookup();
   
   // Form state
   const [formData, setFormData] = useState({
@@ -95,6 +99,25 @@ const UserDataScreen: React.FC = () => {
     }
   });
   
+  const [isCepSearching, setIsCepSearching] = useState(false);
+
+  // Auto-fill address fields when CEP data is found
+  useEffect(() => {
+    if (cepData) {
+      console.log('[UserDataScreen] Auto-filling address fields with enhanced data:', cepData);
+      setFormData(prev => ({
+        ...prev,
+        endereco: {
+          ...prev.endereco,
+          logradouro: cepData.logradouro || '',
+          bairro: cepData.bairro || '',
+          cidade: cepData.localidade || '',
+          estado: cepData.uf || ''
+        }
+      }));
+    }
+  }, [cepData]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     
@@ -279,12 +302,51 @@ const UserDataScreen: React.FC = () => {
 
             <div>
               <Label htmlFor="endereco.cep">CEP</Label>
-              <CustomInput
-                id="endereco.cep"
-                name="endereco.cep"
-                value={formData.endereco.cep}
-                onChange={handleChange}
-              />
+              <div className="flex gap-2">
+                <CustomInput
+                  id="endereco.cep"
+                  name="endereco.cep"
+                  value={formatCep(formData.endereco.cep)}
+                  onChange={(e) => handleCepInputChange(e.target.value)}
+                  placeholder="00000-000"
+                  maxLength={9}
+                />
+                <Button
+                  type="button"
+                  onClick={handleCepSearch}
+                  disabled={cepLoading || isCepSearching || formData.endereco.cep.replace(/\D/g, '').length !== 8}
+                  className="flex items-center gap-2"
+                  size="sm"
+                >
+                  {(cepLoading || isCepSearching) ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Search className="h-4 w-4" />
+                  )}
+                  Buscar
+                </Button>
+              </div>
+              
+              {cepError && (
+                <div className="mt-2">
+                  <EnhancedCepErrorDisplay
+                    error={cepError}
+                    onRetry={handleCepRetry}
+                    onManualEntry={handleCepManualEntry}
+                    onCepSuggestion={handleCepSuggestion}
+                    isRetrying={cepLoading || isCepSearching}
+                    searchedCep={lastSearchedCep || undefined}
+                  />
+                </div>
+              )}
+              
+              {cepData && (
+                <div className="mt-2 p-2 bg-green-50 rounded border border-green-200">
+                  <p className="text-sm text-green-700">
+                    ✅ CEP encontrado pelo sistema aprimorado! (Fonte: {cepData.source})
+                  </p>
+                </div>
+              )}
             </div>
             
             {isProfessional && (
