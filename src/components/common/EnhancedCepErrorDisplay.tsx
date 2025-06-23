@@ -73,6 +73,7 @@ const EnhancedCepErrorDisplay: React.FC<EnhancedCepErrorDisplayProps> = ({
 
   const handleRunDiagnostic = async () => {
     if (searchedCep) {
+      console.log('[EnhancedCepErrorDisplay] 🔍 Executando diagnóstico completo para:', searchedCep);
       await runDiagnostic(searchedCep);
       setShowDiagnostic(true);
     }
@@ -153,7 +154,7 @@ const EnhancedCepErrorDisplay: React.FC<EnhancedCepErrorDisplayProps> = ({
                 ) : (
                   <>
                     <Search className="h-3 w-3 mr-1" />
-                    Diagnóstico Completo
+                    Diagnóstico Avançado
                   </>
                 )}
               </Button>
@@ -182,11 +183,11 @@ const EnhancedCepErrorDisplay: React.FC<EnhancedCepErrorDisplayProps> = ({
             </Button>
           </div>
 
-          {/* Diagnostic Results */}
+          {/* Diagnostic Results - MELHORADO */}
           {diagnostic && showDiagnostic && (
             <div className="mt-4 p-3 bg-gray-50 rounded-lg border">
               <div className="flex items-center justify-between mb-2">
-                <h4 className="font-medium text-sm">Diagnóstico Detalhado</h4>
+                <h4 className="font-medium text-sm">Diagnóstico Avançado</h4>
                 <Button
                   size="sm"
                   variant="ghost"
@@ -197,9 +198,10 @@ const EnhancedCepErrorDisplay: React.FC<EnhancedCepErrorDisplayProps> = ({
                 </Button>
               </div>
               
-              <div className="space-y-2 text-xs">
-                <p className="font-medium">{diagnostic.diagnosticMessage}</p>
+              <div className="space-y-3 text-xs">
+                <p className="font-medium text-sm">{diagnostic.diagnosticMessage}</p>
                 
+                {/* API Status */}
                 <div className="grid grid-cols-3 gap-2 text-xs">
                   <div className="flex items-center gap-1">
                     <span>{getApiStatusIcon(diagnostic.viacepStatus)}</span>
@@ -215,6 +217,29 @@ const EnhancedCepErrorDisplay: React.FC<EnhancedCepErrorDisplayProps> = ({
                   </div>
                 </div>
 
+                {/* External Verification Results */}
+                {diagnostic.externalVerification && (
+                  <div className="mt-2 p-2 bg-white rounded border">
+                    <p className="font-medium text-xs mb-1">Verificação Externa:</p>
+                    {diagnostic.externalVerification.viacep && (
+                      <p className="text-xs">
+                        🏛️ ViaCEP: {diagnostic.externalVerification.viacep.localidade} - {diagnostic.externalVerification.viacep.uf}
+                      </p>
+                    )}
+                    {diagnostic.externalVerification.brasilapi && (
+                      <p className="text-xs">
+                        🇧🇷 BrasilAPI: {diagnostic.externalVerification.brasilapi.city} - {diagnostic.externalVerification.brasilapi.state}
+                      </p>
+                    )}
+                    {diagnostic.externalVerification.discrepancy && (
+                      <p className="text-xs text-red-600 font-medium mt-1">
+                        ⚠️ Discrepância detectada entre APIs!
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* CEP Suggestions */}
                 {diagnostic.suggestedCeps.length > 0 && (
                   <div className="mt-3">
                     <p className="font-medium mb-2">CEPs similares para tentar:</p>
@@ -246,7 +271,7 @@ const EnhancedCepErrorDisplay: React.FC<EnhancedCepErrorDisplayProps> = ({
               className="h-8 text-xs text-gray-600"
             >
               <ChevronDown className="h-3 w-3 mr-1" />
-              Ver diagnóstico completo
+              Ver diagnóstico avançado
             </Button>
           )}
         </div>

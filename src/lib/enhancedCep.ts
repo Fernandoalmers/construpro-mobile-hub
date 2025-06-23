@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 /**
@@ -22,13 +21,15 @@ export interface EnhancedCepData {
 
 /**
  * Cache expandido para CEPs de Minas Gerais - especialmente região de Capelinha
+ * CORRIGIDO: CEP 39688-000 agora aponta para Angelândia, não Setubinha
  */
 const MG_EXPANDED_CACHE = {
-  // Capelinha e região do Vale do Jequitinhonha - EXPANDIDO
+  // Capelinha e região do Vale do Jequitinhonha - EXPANDIDO E CORRIGIDO
   '39680000': { cidade: 'Capelinha', uf: 'MG', zona: 'local', bairro: 'Centro' },
   '39680001': { cidade: 'Capelinha', uf: 'MG', zona: 'local', bairro: 'Centro' },
   '39685000': { cidade: 'Capelinha', uf: 'MG', zona: 'local', bairro: 'São Sebastião' },
   '39685001': { cidade: 'Capelinha', uf: 'MG', zona: 'local', bairro: 'Maria Lúcia' },
+  '39688000': { cidade: 'Angelândia', uf: 'MG', zona: 'regional', bairro: 'Centro' }, // CORRIGIDO
   '39690000': { cidade: 'Turmalina', uf: 'MG', zona: 'regional', bairro: 'Centro' },
   '39695000': { cidade: 'Veredinha', uf: 'MG', zona: 'regional', bairro: 'Centro' },
   '39700000': { cidade: 'Minas Novas', uf: 'MG', zona: 'regional', bairro: 'Centro' },
@@ -295,7 +296,7 @@ async function cacheEnhancedCep(cepData: EnhancedCepData): Promise<void> {
 }
 
 /**
- * Função principal de busca CEP aprimorada com fallbacks inteligentes
+ * Função principal de busca CEP aprimorada com validação externa
  */
 export async function lookupCepEnhanced(rawCep: string): Promise<EnhancedCepData | null> {
   const cep = rawCep.replace(/\D/g, '');
@@ -307,11 +308,16 @@ export async function lookupCepEnhanced(rawCep: string): Promise<EnhancedCepData
 
   console.log('[lookupCepEnhanced] 🔍 INICIANDO BUSCA APRIMORADA PARA:', cep);
 
+  // Log especial para CEPs problemáticos
+  if (cep === '39688000') {
+    console.log('[lookupCepEnhanced] 🎯 CEP 39688-000 - Verificando se correção foi aplicada...');
+  }
+
   try {
     // 1. Verificar cache primeiro (incluindo expandido)
     const cached = await getCachedCepExpanded(cep);
     if (cached) {
-      console.log('[lookupCepEnhanced] ✅ Encontrado no cache expandido:', cep);
+      console.log('[lookupCepEnhanced] ✅ Encontrado no cache expandido:', cep, '-', cached.localidade);
       
       // Adicionar zona de entrega se não existir
       if (!cached.zona_entrega) {
@@ -329,22 +335,39 @@ export async function lookupCepEnhanced(rawCep: string): Promise<EnhancedCepData
       result = await fetchBrasilApiEnhanced(cep);
     }
 
-    // 4. FALLBACK INTELIGENTE PARA CAPELINHA - Se ainda não encontrou e é CEP da região
-    if (!result && cep.startsWith('3968')) {
-      console.log('[lookupCepEnhanced] 🎯 CEP da região de Capelinha, criando fallback inteligente');
-      result = {
-        cep,
-        logradouro: 'Endereço não especificado',
-        bairro: cep.endsWith('5000') ? 'São Sebastião' : 'Centro',
-        localidade: 'Capelinha',
-        uf: 'MG',
-        zona_entrega: 'local',
-        source: 'fallback' as const,
-        confidence: 'medium' as const
-      };
+    // 4. FALLBACK INTELIGENTE ESPECÍFICO para região conhecida
+    if (!result) {
+      // Angelândia - CEP 39688-000
+      if (cep === '39688000') {
+        console.log('[lookupCepEnhanced] 🎯 CEP 39688-000 - Aplicando fallback para Angelândia');
+        result = {
+          cep,
+          logradouro: 'Endereço não especificado',
+          bairro: 'Centro',
+          localidade: 'Angelândia',
+          uf: 'MG',
+          zona_entrega: 'regional',
+          source: 'fallback' as const,
+          confidence: 'medium' as const
+        };
+      }
+      // Capelinha - região 3968x
+      else if (cep.startsWith('3968')) {
+        console.log('[lookupCepEnhanced] 🎯 CEP da região de Capelinha, criando fallback inteligente');
+        result = {
+          cep,
+          logradouro: 'Endereço não especificado',
+          bairro: cep.endsWith('5000') ? 'São Sebastião' : 'Centro',
+          localidade: 'Capelinha',
+          uf: 'MG',
+          zona_entrega: 'local',
+          source: 'fallback' as const,
+          confidence: 'medium' as const
+        };
+      }
     }
 
-    // 5. FALLBACK GENÉRICO PARA MG - Se ainda não encontrou e é CEP de MG
+    // 5. FALLBACK GENÉRICO PARA MG
     if (!result && (cep.startsWith('30') || cep.startsWith('31') || cep.startsWith('32') || 
                     cep.startsWith('33') || cep.startsWith('34') || cep.startsWith('35') || 
                     cep.startsWith('36') || cep.startsWith('37') || cep.startsWith('38') || 
@@ -432,38 +455,36 @@ export async function validateCepExists(cep: string): Promise<boolean> {
  */
 async function initializeExpandedCache(): Promise<void> {
   try {
-    console.log('[initializeExpandedCache] Inicializando cache expandido...');
+    console.log('[initializeExpandedCache] Inicializando cache expandido CORRIGIDO...');
     
     for (const [cep, info] of Object.entries(MG_EXPANDED_CACHE)) {
       try {
-        // Verificar se já existe
-        const { data: existing } = await supabase
-          .from('zip_cache')
-          .select('cep')
-          .eq('cep', cep)
-          .single();
-        
-        if (existing) continue;
-        
-        // Inserir no cache
+        // Sempre atualizar para garantir correções
         await supabase
           .from('zip_cache')
-          .insert({
+          .upsert({
             cep: cep,
             logradouro: info.bairro === 'Centro' ? 'Rua Principal' : 'Endereço não especificado',
             bairro: info.bairro,
             localidade: info.cidade,
             uf: info.uf,
             cached_at: new Date().toISOString(),
+          }, {
+            onConflict: 'cep'
           });
         
-        console.log('[initializeExpandedCache] Cacheado:', cep, info.cidade);
+        console.log('[initializeExpandedCache] Atualizado:', cep, info.cidade);
+        
+        // Log especial para CEP corrigido
+        if (cep === '39688000') {
+          console.log('[initializeExpandedCache] ✅ CEP 39688-000 CORRIGIDO para Angelândia-MG');
+        }
       } catch (error) {
         console.error(`[initializeExpandedCache] Erro ao cachear ${cep}:`, error);
       }
     }
     
-    console.log('[initializeExpandedCache] ✅ Cache expandido inicializado');
+    console.log('[initializeExpandedCache] ✅ Cache expandido inicializado com correções');
   } catch (error) {
     console.error('[initializeExpandedCache] Erro geral:', error);
   }
