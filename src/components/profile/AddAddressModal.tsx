@@ -10,7 +10,6 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import CustomButton from '../common/CustomButton';
 import { toast } from '@/components/ui/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -19,7 +18,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useCepLookup } from '@/hooks/useCepLookup';
 import { formatCep } from '@/lib/cep';
 import CepErrorDisplay from '@/components/common/CepErrorDisplay';
-import { Search, AlertCircle, CheckCircle, MapPin, Loader2 } from 'lucide-react';
+import { Search, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 
 interface AddAddressModalProps {
   open: boolean;
@@ -329,25 +328,6 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
     }
   };
 
-  const getZoneBadge = () => {
-    if (!cepData?.zona_entrega) return null;
-    
-    const zoneConfig = {
-      local: { label: 'Zona Local', color: 'bg-green-500', text: 'entrega em até 48h' },
-      regional: { label: 'Zona Regional', color: 'bg-blue-500', text: 'até 7 dias úteis' },
-      outras: { label: 'Outras Localidades', color: 'bg-gray-500', text: 'frete a combinar' },
-    };
-    
-    const config = zoneConfig[cepData.zona_entrega as keyof typeof zoneConfig];
-    if (!config) return null;
-    
-    return (
-      <Badge className={`${config.color} hover:${config.color}/80 text-white`}>
-        {config.label} - {config.text}
-      </Badge>
-    );
-  };
-
   const isCepValid = cepInput.replace(/\D/g, '').length === 8;
   const shouldDisableSave = isEditMode ? false : (!cepData && !!formData.cep);
   
@@ -434,10 +414,6 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
                     <div className="p-3 bg-green-50 rounded-lg border border-green-200">
                       <p className="text-sm font-medium">{cepData.logradouro}</p>
                       <p className="text-sm text-gray-600">{cepData.bairro}, {cepData.localidade} - {cepData.uf}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <MapPin size={14} className="text-blue-600" />
-                      {getZoneBadge()}
                     </div>
                   </div>
                 )}
