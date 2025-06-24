@@ -1,10 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { MapPin, Search, AlertCircle, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { useEnhancedCepLookup } from '@/hooks/useEnhancedCepLookup';
 import { formatCep } from '@/lib/cep';
 import EnhancedCepErrorDisplay from '@/components/common/EnhancedCepErrorDisplay';
@@ -43,7 +43,7 @@ const AddressSection: React.FC<AddressSectionProps> = ({ formData, onInputChange
       onInputChange('endereco_bairro', cepData.bairro || '');
       onInputChange('endereco_cidade', cepData.localidade || '');
       onInputChange('endereco_estado', cepData.uf || '');
-      onInputChange('zona_entrega', cepData.zona_entrega || 'outras');
+      // Não definir zona_entrega aqui - isso é para contexto de produto, não endereço
     }
   }, [cepData, onInputChange]);
 
@@ -98,25 +98,6 @@ const AddressSection: React.FC<AddressSectionProps> = ({ formData, onInputChange
     await lookupAddress(suggestedCep);
   };
 
-  const getZoneBadge = () => {
-    if (!formData.zona_entrega) return null;
-    
-    const zoneConfig = {
-      local: { label: 'Zona Local', color: 'bg-green-500', text: 'entrega em até 48h' },
-      regional: { label: 'Zona Regional', color: 'bg-blue-500', text: 'até 7 dias úteis' },
-      outras: { label: 'Outras Localidades', color: 'bg-gray-500', text: 'frete a combinar' },
-    };
-    
-    const config = zoneConfig[formData.zona_entrega as keyof typeof zoneConfig];
-    if (!config) return null;
-    
-    return (
-      <Badge className={`${config.color} hover:${config.color}/80 text-white`}>
-        {config.label} - {config.text}
-      </Badge>
-    );
-  };
-
   return (
     <Card>
       <CardHeader>
@@ -132,8 +113,7 @@ const AddressSection: React.FC<AddressSectionProps> = ({ formData, onInputChange
             <div className="text-sm text-blue-800">
               <p className="font-medium mb-1">Endereço da sua loja:</p>
               <p className="text-xs">
-                Este endereço será usado para determinar automaticamente se a entrega é local ou se precisa calcular frete.
-                Clientes da mesma cidade terão entrega local (até 48h), demais localidades terão frete a combinar.
+                Este endereço será usado para identificar sua localização. As configurações de frete e entrega serão definidas individualmente para cada produto.
               </p>
             </div>
           </div>
@@ -180,8 +160,10 @@ const AddressSection: React.FC<AddressSectionProps> = ({ formData, onInputChange
           {cepData && (
             <div className="flex items-center gap-2">
               <CheckCircle size={14} className="text-green-600" />
-              <span className="text-sm text-green-600">CEP encontrado pelo sistema aprimorado!</span>
-              {getZoneBadge()}
+              <span className="text-sm text-green-600">
+                CEP encontrado: {cepData.localidade} - {cepData.uf}
+                {cepData.source && <span className="text-xs ml-1">(fonte: {cepData.source})</span>}
+              </span>
             </div>
           )}
         </div>
@@ -239,7 +221,7 @@ const AddressSection: React.FC<AddressSectionProps> = ({ formData, onInputChange
               id="endereco_cidade"
               value={formData.endereco_cidade || ''}
               onChange={(e) => onInputChange('endereco_cidade', e.target.value)}
-              placeholder="Capelinha"
+              placeholder="Sua cidade"
               required
             />
           </div>
@@ -256,22 +238,6 @@ const AddressSection: React.FC<AddressSectionProps> = ({ formData, onInputChange
             />
           </div>
         </div>
-
-        {/* Delivery Zone Preview */}
-        {formData.zona_entrega && (
-          <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-            <h4 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
-              <MapPin size={16} />
-              Zona de Entrega Detectada:
-            </h4>
-            <div className="flex items-center gap-2">
-              {getZoneBadge()}
-            </div>
-            <p className="text-xs text-gray-600 mt-2">
-              Esta informação será usada para determinar automaticamente se a entrega é local para seus clientes.
-            </p>
-          </div>
-        )}
       </CardContent>
     </Card>
   );

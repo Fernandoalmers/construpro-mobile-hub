@@ -404,7 +404,8 @@ const UserDataScreen: React.FC = () => {
               {cepData && (
                 <div className="mt-2 p-2 bg-green-50 rounded border border-green-200">
                   <p className="text-sm text-green-700">
-                    ✅ CEP encontrado pelo sistema aprimorado! {cepData.source && `(Fonte: ${cepData.source})`}
+                    ✅ CEP encontrado: {cepData.localidade} - {cepData.uf}
+                    {cepData.source && <span className="text-xs ml-1">(fonte: {cepData.source})</span>}
                   </p>
                 </div>
               )}
@@ -431,14 +432,22 @@ const UserDataScreen: React.FC = () => {
               </div>
             )}
             
-            <CustomButton
-              type="submit"
-              variant="primary"
-              fullWidth
-              loading={updateProfileMutation.isPending}
-              icon={<Save size={18} />}
+            <CustomButton 
+              type="submit" 
+              disabled={updateProfileMutation.isPending}
+              className="w-full"
             >
-              Salvar alterações
+              {updateProfileMutation.isPending ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Salvando...
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Save size={18} />
+                  Salvar Dados
+                </div>
+              )}
             </CustomButton>
           </form>
         </Card>

@@ -13,8 +13,6 @@ export interface EnhancedCepData {
   ibge?: string;
   latitude?: number;
   longitude?: number;
-  zona_entrega?: string;
-  prazo_entrega?: string;
   source: 'cache' | 'viacep' | 'brasilapi' | 'correios' | 'fallback';
   confidence: 'high' | 'medium' | 'low';
 }
@@ -25,20 +23,20 @@ export interface EnhancedCepData {
  */
 const MG_EXPANDED_CACHE = {
   // Capelinha e região do Vale do Jequitinhonha - EXPANDIDO E CORRIGIDO
-  '39680000': { cidade: 'Capelinha', uf: 'MG', zona: 'local', bairro: 'Centro' },
-  '39680001': { cidade: 'Capelinha', uf: 'MG', zona: 'local', bairro: 'Centro' },
-  '39685000': { cidade: 'Capelinha', uf: 'MG', zona: 'local', bairro: 'São Sebastião' },
-  '39685001': { cidade: 'Capelinha', uf: 'MG', zona: 'local', bairro: 'Maria Lúcia' },
-  '39688000': { cidade: 'Angelândia', uf: 'MG', zona: 'regional', bairro: 'Centro' }, // CORRIGIDO
-  '39690000': { cidade: 'Turmalina', uf: 'MG', zona: 'regional', bairro: 'Centro' },
-  '39695000': { cidade: 'Veredinha', uf: 'MG', zona: 'regional', bairro: 'Centro' },
-  '39700000': { cidade: 'Minas Novas', uf: 'MG', zona: 'regional', bairro: 'Centro' },
+  '39680000': { cidade: 'Capelinha', uf: 'MG', bairro: 'Centro' },
+  '39680001': { cidade: 'Capelinha', uf: 'MG', bairro: 'Centro' },
+  '39685000': { cidade: 'Capelinha', uf: 'MG', bairro: 'São Sebastião' },
+  '39685001': { cidade: 'Capelinha', uf: 'MG', bairro: 'Maria Lúcia' },
+  '39688000': { cidade: 'Angelândia', uf: 'MG', bairro: 'Centro' }, // CORRIGIDO
+  '39690000': { cidade: 'Turmalina', uf: 'MG', bairro: 'Centro' },
+  '39695000': { cidade: 'Veredinha', uf: 'MG', bairro: 'Centro' },
+  '39700000': { cidade: 'Minas Novas', uf: 'MG', bairro: 'Centro' },
   
   // Principais cidades de MG
-  '30000000': { cidade: 'Belo Horizonte', uf: 'MG', zona: 'outras', bairro: 'Centro' },
-  '31000000': { cidade: 'Belo Horizonte', uf: 'MG', zona: 'outras', bairro: 'Zona Norte' },
-  '35000000': { cidade: 'Governador Valadares', uf: 'MG', zona: 'outras', bairro: 'Centro' },
-  '36000000': { cidade: 'Juiz de Fora', uf: 'MG', zona: 'outras', bairro: 'Centro' },
+  '30000000': { cidade: 'Belo Horizonte', uf: 'MG', bairro: 'Centro' },
+  '31000000': { cidade: 'Belo Horizonte', uf: 'MG', bairro: 'Zona Norte' },
+  '35000000': { cidade: 'Governador Valadares', uf: 'MG', bairro: 'Centro' },
+  '36000000': { cidade: 'Juiz de Fora', uf: 'MG', bairro: 'Centro' },
 };
 
 /**
@@ -99,7 +97,6 @@ async function getCachedCepExpanded(cep: string): Promise<EnhancedCepData | null
         bairro: cached.bairro,
         localidade: cached.cidade,
         uf: cached.uf,
-        zona_entrega: cached.zona,
         source: 'fallback' as const,
         confidence: 'medium' as const
       };
@@ -118,7 +115,6 @@ async function getCachedCepExpanded(cep: string): Promise<EnhancedCepData | null
         bairro: cached.bairro,
         localidade: cached.cidade,
         uf: cached.uf,
-        zona_entrega: cached.zona,
         source: 'fallback' as const,
         confidence: 'low' as const
       };
@@ -248,23 +244,6 @@ async function fetchBrasilApiEnhanced(cep: string): Promise<EnhancedCepData | nu
 }
 
 /**
- * Determina zona de entrega com base na localização
- */
-function getDeliveryZoneFromLocation(cidade: string, uf: string): string {
-  if (uf !== 'MG') return 'outras';
-  
-  const localCities = ['capelinha', 'turmalina', 'veredinha'];
-  const regionalCities = ['minas novas', 'chapada do norte', 'berilo'];
-  
-  const cityLower = cidade.toLowerCase();
-  
-  if (localCities.includes(cityLower)) return 'local';
-  if (regionalCities.includes(cityLower)) return 'regional';
-  
-  return 'outras';
-}
-
-/**
  * Cache o resultado no Supabase - APENAS para dados de alta qualidade
  */
 async function cacheEnhancedCep(cepData: EnhancedCepData): Promise<void> {
@@ -318,12 +297,6 @@ export async function lookupCepEnhanced(rawCep: string): Promise<EnhancedCepData
     const cached = await getCachedCepExpanded(cep);
     if (cached) {
       console.log('[lookupCepEnhanced] ✅ Encontrado no cache expandido:', cep, '-', cached.localidade);
-      
-      // Adicionar zona de entrega se não existir
-      if (!cached.zona_entrega) {
-        cached.zona_entrega = getDeliveryZoneFromLocation(cached.localidade, cached.uf);
-      }
-      
       return cached;
     }
 
@@ -346,7 +319,6 @@ export async function lookupCepEnhanced(rawCep: string): Promise<EnhancedCepData
           bairro: 'Centro',
           localidade: 'Angelândia',
           uf: 'MG',
-          zona_entrega: 'regional',
           source: 'fallback' as const,
           confidence: 'medium' as const
         };
@@ -360,7 +332,6 @@ export async function lookupCepEnhanced(rawCep: string): Promise<EnhancedCepData
           bairro: cep.endsWith('5000') ? 'São Sebastião' : 'Centro',
           localidade: 'Capelinha',
           uf: 'MG',
-          zona_entrega: 'local',
           source: 'fallback' as const,
           confidence: 'medium' as const
         };
@@ -379,18 +350,12 @@ export async function lookupCepEnhanced(rawCep: string): Promise<EnhancedCepData
         bairro: 'Centro',
         localidade: 'Cidade não especificada',
         uf: 'MG',
-        zona_entrega: 'outras',
         source: 'fallback' as const,
         confidence: 'low' as const
       };
     }
 
     if (result) {
-      // Adicionar zona de entrega
-      if (!result.zona_entrega) {
-        result.zona_entrega = getDeliveryZoneFromLocation(result.localidade, result.uf);
-      }
-      
       // Cache apenas se for de alta confiança
       if (result.confidence === 'high') {
         await cacheEnhancedCep(result);
@@ -492,5 +457,10 @@ async function initializeExpandedCache(): Promise<void> {
 
 // Inicializar cache automaticamente
 if (typeof window !== 'undefined') {
+  // Importar e executar correção específica
+  import('./cepCorrection').then(() => {
+    console.log('[enhancedCep] Correção específica aplicada');
+  }).catch(console.error);
+  
   initializeExpandedCache().catch(console.error);
 }

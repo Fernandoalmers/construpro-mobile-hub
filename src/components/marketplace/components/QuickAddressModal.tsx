@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -9,13 +10,12 @@ import {
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { toast } from '@/components/ui/use-toast';
 import { useEnhancedCepLookup } from '@/hooks/useEnhancedCepLookup';
 import { useAddresses } from '@/hooks/useAddresses';
 import { formatCep } from '@/lib/cep';
 import EnhancedCepErrorDisplay from '@/components/common/EnhancedCepErrorDisplay';
-import { Search, AlertCircle, CheckCircle, MapPin, Plus, Loader2 } from 'lucide-react';
+import { Search, CheckCircle, Plus, Loader2 } from 'lucide-react';
 
 interface QuickAddressModalProps {
   open: boolean;
@@ -79,7 +79,7 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
       
       toast({
         title: "CEP encontrado!",
-        description: `Dados preenchidos pelo sistema aprimorado (fonte: ${result.source})`
+        description: `${result.localidade} - ${result.uf} (fonte: ${result.source})`
       });
     }
   };
@@ -164,25 +164,6 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
     }
   };
 
-  const getZoneBadge = () => {
-    if (!cepData?.zona_entrega) return null;
-    
-    const zoneConfig = {
-      local: { label: 'Zona Local', color: 'bg-green-500', text: 'entrega em até 48h' },
-      regional: { label: 'Zona Regional', color: 'bg-blue-500', text: 'até 7 dias úteis' },
-      outras: { label: 'Outras Localidades', color: 'bg-gray-500', text: 'frete a combinar' },
-    };
-    
-    const config = zoneConfig[cepData.zona_entrega as keyof typeof zoneConfig];
-    if (!config) return null;
-    
-    return (
-      <Badge className={`${config.color} hover:${config.color}/80 text-white`}>
-        {config.label} - {config.text}
-      </Badge>
-    );
-  };
-
   const isCepValid = cepInput.replace(/\D/g, '').length === 8;
 
   return (
@@ -196,12 +177,6 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
         </DialogHeader>
         
         <div className="space-y-4 py-4">
-          <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-            <p className="text-sm text-blue-800">
-              Sistema aprimorado de CEP com múltiplas fontes e cache inteligente para melhor precisão.
-            </p>
-          </div>
-
           {/* CEP Field with Enhanced Search */}
           <div className="space-y-2">
             <Label htmlFor="cep">CEP*</Label>
@@ -246,16 +221,15 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
                 <div className="flex items-center gap-2">
                   <CheckCircle size={14} className="text-green-600" />
                   <span className="text-sm text-green-600 font-medium">
-                    CEP encontrado! (Fonte: {cepData.source || 'sistema'})
+                    CEP encontrado: {cepData.localidade} - {cepData.uf}
                   </span>
                 </div>
                 <div className="p-3 bg-green-50 rounded-lg border border-green-200">
                   <p className="text-sm font-medium">{cepData.logradouro}</p>
                   <p className="text-sm text-gray-600">{cepData.bairro}, {cepData.localidade} - {cepData.uf}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <MapPin size={14} className="text-blue-600" />
-                  {getZoneBadge()}
+                  {cepData.source && (
+                    <p className="text-xs text-gray-500 mt-1">Fonte: {cepData.source}</p>
+                  )}
                 </div>
               </div>
             )}
@@ -264,7 +238,7 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
               <div className="p-2 bg-blue-50 border border-blue-200 rounded-md">
                 <p className="text-sm text-blue-600 flex items-center gap-2">
                   <Loader2 size={14} className="animate-spin" />
-                  Sistema aprimorado buscando em múltiplas fontes...
+                  Sistema aprimorado buscando CEP...
                 </p>
               </div>
             )}
