@@ -115,7 +115,6 @@ export const useEnhancedCepLookup = (): UseEnhancedCepLookupReturn => {
           cep: sanitizedCep,
           cidade: data.localidade,
           uf: data.uf,
-          zona: data.zona_entrega,
           source: data.source,
           confidence: data.confidence
         });
