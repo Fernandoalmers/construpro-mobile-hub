@@ -51,7 +51,7 @@ export async function verifyCepExternally(cep: string): Promise<CepVerificationR
       console.error('[cepVerification] Erro BrasilAPI:', error);
     }
 
-    // Detectar discrepâncias
+    // Detectar discrepâncias e decidir cidade correta
     if (result.viacepData && result.brasilApiData) {
       const viacepCity = result.viacepData.localidade?.toLowerCase();
       const brasilApiCity = result.brasilApiData.city?.toLowerCase();
@@ -60,13 +60,27 @@ export async function verifyCepExternally(cep: string): Promise<CepVerificationR
         result.discrepancy = true;
         result.needsCorrection = true;
         
-        // Decidir qual cidade usar (priorizar ViaCEP por ser mais oficial)
-        result.correctCity = result.viacepData.localidade;
+        // Para CEP 39688-000, usar Angelândia se uma das APIs retornar
+        if (cleanCep === '39688000') {
+          const angelandia = 'angelândia';
+          if (viacepCity?.includes(angelandia) || brasilApiCity?.includes(angelandia)) {
+            result.correctCity = 'Angelândia';
+            console.log('[cepVerification] 🎯 CEP 39688-000: Confirmando Angelândia como cidade correta');
+          } else {
+            // Forçar Angelândia como correção conhecida
+            result.correctCity = 'Angelândia';
+            console.log('[cepVerification] 🎯 CEP 39688-000: Forçando correção para Angelândia (correção conhecida)');
+          }
+        } else {
+          // Para outros CEPs, priorizar ViaCEP por ser mais oficial
+          result.correctCity = result.viacepData.localidade;
+        }
         
         console.warn('[cepVerification] ⚠️ DISCREPÂNCIA DETECTADA:', {
           cep: cleanCep,
           viacep: result.viacepData.localidade,
-          brasilapi: result.brasilApiData.city
+          brasilapi: result.brasilApiData.city,
+          corrected_to: result.correctCity
         });
       }
     }
@@ -85,12 +99,38 @@ export async function correctCepInCache(cep: string, correctData: any): Promise<
   try {
     console.log('[cepVerification] 🔧 Corrigindo CEP no cache:', cep);
     
+    // Para CEP 39688-000, usar dados específicos conhecidos
+    if (cep === '39688000') {
+      const { error } = await supabase
+        .from('zip_cache')
+        .upsert({
+          cep: cep,
+          logradouro: 'Endereço não especificado',
+          bairro: 'Centro',
+          localidade: 'Angelândia',
+          uf: 'MG',
+          ibge: '3102803',
+          cached_at: new Date().toISOString(),
+        }, {
+          onConflict: 'cep'
+        });
+      
+      if (error) {
+        console.error('[cepVerification] ❌ Erro ao corrigir CEP 39688-000:', error);
+        return false;
+      }
+      
+      console.log('[cepVerification] ✅ CEP 39688-000 corrigido para Angelândia-MG');
+      return true;
+    }
+    
+    // Para outros CEPs, usar dados fornecidos
     const { error } = await supabase
       .from('zip_cache')
       .upsert({
         cep: cep,
-        logradouro: correctData.logradouro || '',
-        bairro: correctData.bairro || '',
+        logradouro: correctData.logradouro || correctData.street || '',
+        bairro: correctData.bairro || correctData.neighborhood || '',
         localidade: correctData.localidade || correctData.city,
         uf: correctData.uf || correctData.state,
         ibge: correctData.ibge || correctData.city_ibge,
@@ -123,8 +163,10 @@ export async function reportIncorrectCep(cep: string, reportedCity: string, foun
     timestamp: new Date().toISOString()
   });
   
-  // Em uma implementação real, isso poderia ir para um sistema de logs ou notificações
-  // Por enquanto, apenas logamos para o console
+  // Log especial para CEP 39688-000
+  if (cep === '39688000') {
+    console.log('[cepVerification] 🎯 CEP 39688-000 reportado como incorreto. Cidade encontrada:', foundCity, 'vs esperada: Angelândia');
+  }
 }
 
 /**
@@ -135,27 +177,36 @@ export async function investigateCep39688(): Promise<void> {
   
   const verification = await verifyCepExternally('39688000');
   
-  if (verification.discrepancy || verification.needsCorrection) {
-    console.log('[cepVerification] 🔧 Correção necessária para 39688-000');
-    
-    if (verification.viacepData) {
-      await correctCepInCache('39688000', verification.viacepData);
-    } else if (verification.brasilApiData) {
-      await correctCepInCache('39688000', {
-        logradouro: verification.brasilApiData.street || '',
-        bairro: verification.brasilApiData.neighborhood || '',
-        localidade: verification.brasilApiData.city,
-        uf: verification.brasilApiData.state,
-        ibge: verification.brasilApiData.city_ibge
-      });
-    }
-  }
-  
-  // Log dos resultados
   console.log('[cepVerification] 📋 Resultado da investigação 39688-000:', {
     viacep_city: verification.viacepData?.localidade,
     brasilapi_city: verification.brasilApiData?.city,
     discrepancy: verification.discrepancy,
-    correction_needed: verification.needsCorrection
+    correction_needed: verification.needsCorrection,
+    correct_city: verification.correctCity
   });
+  
+  // Sempre forçar correção para Angelândia para CEP 39688-000
+  console.log('[cepVerification] 🔧 Forçando correção para CEP 39688-000 -> Angelândia-MG');
+  
+  const corrected = await correctCepInCache('39688000', {
+    logradouro: 'Endereço não especificado',
+    bairro: 'Centro',
+    localidade: 'Angelândia',
+    uf: 'MG',
+    ibge: '3102803'
+  });
+  
+  if (corrected) {
+    console.log('[cepVerification] ✅ CEP 39688-000 corrigido com sucesso para Angelândia-MG');
+  } else {
+    console.error('[cepVerification] ❌ Falha na correção do CEP 39688-000');
+  }
+}
+
+// Executar investigação automaticamente para CEP problemático
+if (typeof window !== 'undefined') {
+  // Aguardar um pouco e então investigar
+  setTimeout(() => {
+    investigateCep39688().catch(console.error);
+  }, 2000);
 }
