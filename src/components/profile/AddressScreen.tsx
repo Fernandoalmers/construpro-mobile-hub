@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, MapPin, Plus, RefreshCw } from 'lucide-react';
@@ -25,7 +26,8 @@ const AddressScreen: React.FC = () => {
     handleEditAddress,
     handleDeleteAddress,
     handleAddAddress,
-    handleSaveAddress
+    handleSaveAddress,
+    isSettingPrimary
   } = useAddresses();
 
   // Handle retry with a user-friendly message
@@ -141,8 +143,10 @@ const AddressScreen: React.FC = () => {
                       size="sm"
                       onClick={() => handleSetDefaultAddress(address.id!)}
                       className="mt-3"
+                      loading={isSettingPrimary}
+                      disabled={isSettingPrimary}
                     >
-                      Definir como principal
+                      {isSettingPrimary ? 'Definindo...' : 'Definir como principal'}
                     </CustomButton>
                   )}
                 </div>
@@ -163,3 +167,4 @@ const AddressScreen: React.FC = () => {
 };
 
 export default AddressScreen;
+
