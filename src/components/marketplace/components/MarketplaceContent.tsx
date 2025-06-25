@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import GridProductView from './GridProductView';
 import ListProductView from './ListProductView';
@@ -196,37 +197,6 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
       />
     </div>
   );
-
-  function getPageTitle() {
-    if (hasDefinedCepWithoutCoverage) {
-      return "Nenhum lojista atende esse endereço";
-    }
-    
-    if (hasActiveZones && currentCep) {
-      return "Produtos disponíveis para o endereço selecionado";
-    }
-    
-    if (!currentCep) {
-      return "Todos os produtos disponíveis";
-    }
-    
-    return currentCategoryName;
-  }
-
-  function getSubtitle() {
-    if (hasDefinedCepWithoutCoverage) {
-      return `Não encontramos vendedores para o CEP ${currentCep?.replace(/(\d{5})(\d{3})/, '$1-$2')}`;
-    }
-    
-    const productCount = filteredProdutos.length;
-    const productText = `${productCount} produto${productCount !== 1 ? 's' : ''} encontrado${productCount !== 1 ? 's' : ''}`;
-    
-    if (hasActiveZones && currentCep) {
-      return `${productText} para o CEP ${currentCep.replace(/(\d{5})(\d{3})/, '$1-$2')}`;
-    }
-    
-    return productText;
-  }
 };
 
 export default MarketplaceContent;
