@@ -24,9 +24,9 @@ export const useOptimizedMarketplace = () => {
   const { currentZones, hasActiveZones, currentCep, isLoading: zonesLoading } = useDeliveryZones();
   const { shouldShowAllProducts, isFilteredByZone, hasDefinedCepWithoutCoverage } = useMarketplaceFilters();
   
-  // IDs dos vendedores que atendem a zona atual - SIMPLIFICADO para evitar loops
+  // IDs dos vendedores que atendem a zona atual - SIMPLIFICADO
   const availableVendorIds = useMemo(() => {
-    // Se CEP definido mas sem cobertura, retornar array vazio para não mostrar produtos
+    // Se CEP definido mas sem cobertura, retornar array vazio
     if (hasDefinedCepWithoutCoverage) {
       console.log('[useOptimizedMarketplace] 🚫 CEP sem cobertura - não exibindo produtos');
       return [];
@@ -34,52 +34,43 @@ export const useOptimizedMarketplace = () => {
     
     // Se deve mostrar todos os produtos OU não há CEP definido, não filtrar
     if (shouldShowAllProducts || !currentCep) {
-      console.log('[useOptimizedMarketplace] 🌍 Mostrando todos os produtos');
       return undefined; // undefined = sem filtro, todos os produtos
     }
     
     // Se há zonas ativas, filtrar por elas
     if (hasActiveZones && currentZones.length > 0) {
       const vendorIds = currentZones.map(zone => zone.vendor_id);
-      console.log('[useOptimizedMarketplace] 📍 Filtros de zona ativos:', {
-        zonesCount: currentZones.length,
-        vendorIds: vendorIds.length,
-        currentCep
+      console.log('[useOptimizedMarketplace] 📍 Filtros ativos:', {
+        zonas: currentZones.length,
+        vendedores: vendorIds.length,
+        cep: currentCep
       });
       return vendorIds;
     }
     
-    // Fallback: não filtrar
     return undefined;
   }, [currentZones, hasActiveZones, currentCep, shouldShowAllProducts, hasDefinedCepWithoutCoverage]);
 
-  // CORRIGIDO: Query de produtos com configuração otimizada para performance
+  // Query de produtos com configuração otimizada
   const { 
     data: products = [], 
     isLoading: productsLoading,
     error: productsError,
     isFetching: productsRefetching,
-    dataUpdatedAt
   } = useQuery({
     queryKey: [
       'marketplace-products', 
-      currentCep || 'all', // Usar string estável em vez de null
-      availableVendorIds?.length || 'all', // Usar length em vez de serialize
+      currentCep || 'all',
+      availableVendorIds?.length || 'all',
       hasDefinedCepWithoutCoverage ? 'no-coverage' : 'with-coverage'
     ],
     queryFn: async () => {
-      console.log('[useOptimizedMarketplace] 🔄 Buscando produtos para CEP:', currentCep);
-      console.log('[useOptimizedMarketplace] 📊 Parâmetros da busca:', {
-        currentCep,
-        vendorIds: availableVendorIds?.length || 'todos',
-        hasDefinedCepWithoutCoverage,
-        timestamp: new Date().toISOString()
-      });
+      console.log('[useOptimizedMarketplace] 🔄 Buscando produtos...');
       
       try {
         // Se CEP definido mas sem cobertura, retornar array vazio
         if (hasDefinedCepWithoutCoverage) {
-          console.log('[useOptimizedMarketplace] CEP sem cobertura - retornando array vazio');
+          console.log('[useOptimizedMarketplace] CEP sem cobertura - array vazio');
           return [];
         }
         
@@ -91,15 +82,14 @@ export const useOptimizedMarketplace = () => {
         return [];
       }
     },
-    staleTime: 30000, // 30 segundos - CORRIGIDO: era 0 que causava refetch constante
-    gcTime: 2 * 60 * 1000, // 2 minutos
+    staleTime: 30000, // 30 segundos
+    gcTime: 2 * 60 * 1000, // 2 minutos  
     refetchOnWindowFocus: false,
-    enabled: !zonesLoading, // Só buscar quando as zonas estiverem resolvidas
+    enabled: !zonesLoading,
     retry: 2,
-    // REMOVIDO: refetchOnMount: true que causava refetch desnecessário
   });
 
-  // Queries paralelas com configuração otimizada
+  // Queries paralelas otimizadas
   const { 
     data: stores = [], 
     isLoading: storesLoading,
@@ -139,13 +129,9 @@ export const useOptimizedMarketplace = () => {
     retry: 1,
   });
 
-  // REMOVIDO: useEffect problemático que causava loop infinito (linhas 140-155)
-  // A invalidação agora é feita apenas quando necessário no useDeliveryZones
-
-  // Loading inclui refetching para mostrar estado de carregamento durante mudanças de CEP
   const isLoadingData = zonesLoading || productsLoading || storesLoading || segmentsLoading || productsRefetching;
 
-  // Memoize the consolidated data
+  // Dados consolidados memoizados
   const marketplaceData: OptimizedMarketplaceData = useMemo(() => ({
     products,
     stores,

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { MapPin, Plus, ChevronRight, Loader2 } from 'lucide-react';
 import CustomModal from '@/components/common/CustomModal';
@@ -40,16 +41,10 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
     const startTime = Date.now();
     
     try {
-      // CORRIGIDO: Aguardar a resolução completa das zonas com timeout mais longo
-      console.log('[SmartCepModal] ⏳ Resolvendo zonas de entrega...');
+      console.log('[SmartCepModal] ⏳ Chamando onCepChange...');
       
-      // Timeout aumentado para 20 segundos para operações complexas
-      await Promise.race([
-        onCepChange(cep),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Timeout: Resolução demorou mais que 20 segundos')), 20000)
-        )
-      ]);
+      // CORRIGIDO: Aguardar diretamente o onCepChange sem Promise.race
+      await onCepChange(cep);
       
       const endTime = Date.now();
       const duration = endTime - startTime;
@@ -57,12 +52,12 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
       console.log('[SmartCepModal] ✅ CEP alterado com sucesso em', duration, 'ms');
       toast({
         title: "✅ CEP alterado com sucesso",
-        description: `Produtos atualizados para ${formatCep(cep)} (${Math.round(duration/1000)}s)`,
+        description: `Produtos atualizados para ${formatCep(cep)}`,
         duration: 3000
       });
       
-      // CORRIGIDO: Aguardar mais tempo para garantir que UI seja atualizada
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Aguardar um pouco para garantir que a UI seja atualizada
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       console.log('[SmartCepModal] 🚪 Fechando modal após resolução completa');
       onOpenChange(false);
@@ -75,11 +70,7 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
       
       let errorMessage = "Tente novamente em alguns instantes";
       if (error instanceof Error) {
-        if (error.message.includes('Timeout')) {
-          errorMessage = "A resolução está demorando mais que o esperado. Tente novamente.";
-        } else {
-          errorMessage = error.message;
-        }
+        errorMessage = error.message;
       }
       
       toast({
@@ -129,7 +120,7 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
           {isChangingCep && (
             <div className="flex items-center justify-center gap-2 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Resolvendo zonas de entrega e atualizando produtos...</span>
+              <span>Atualizando produtos...</span>
             </div>
           )}
           
@@ -179,7 +170,7 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
               {isChangingCep && (
                 <div className="flex items-center justify-center gap-2 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg mb-3">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Resolvendo zonas e atualizando produtos...</span>
+                  <span>Atualizando produtos...</span>
                 </div>
               )}
               
@@ -229,7 +220,7 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
           {isChangingCep && (
             <div className="flex items-center justify-center gap-2 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Resolvendo zonas de entrega e atualizando produtos...</span>
+              <span>Atualizando produtos...</span>
             </div>
           )}
 
@@ -276,7 +267,6 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
                         {isChangingThis ? (
                           <div className="flex items-center gap-1">
                             <Loader2 className="w-3 h-3 animate-spin text-blue-500" />
-                            <span className="text-xs text-blue-600">Resolvendo...</span>
                           </div>
                         ) : isChangingCep ? (
                           <div className="w-4 h-4 bg-gray-200 rounded animate-pulse" />

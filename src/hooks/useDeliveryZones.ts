@@ -50,11 +50,12 @@ export const useDeliveryZones = (): UseDeliveryZonesReturn => {
   const resolveZones = useCallback(async (cep: string) => {
     const cleanCep = cep.replace(/\D/g, '');
     
-    if (!cleanCep || cleanCep.length !== 8 || cleanCep === currentCep) {
-      console.log('[useDeliveryZones] ⏭️ Pulando resolução - CEP inválido ou igual ao atual');
-      return;
+    if (!cleanCep || cleanCep.length !== 8) {
+      console.log('[useDeliveryZones] ❌ CEP inválido:', cleanCep);
+      throw new Error('CEP inválido');
     }
     
+    // CORRIGIDO: Sempre processar, mesmo se for o mesmo CEP, para garantir que funcione
     console.log('[useDeliveryZones] 🔍 Iniciando resolução de zonas para CEP:', cleanCep);
     setIsLoading(true);
     setError(null);
@@ -66,11 +67,10 @@ export const useDeliveryZones = (): UseDeliveryZonesReturn => {
       setCurrentZones(zones);
       setCurrentCep(cleanCep);
       
-      // CORRIGIDO: Invalidação mais eficiente e aguardar completamente
+      // Invalidação simplificada e direta
       console.log('[useDeliveryZones] 🔄 Invalidando queries do marketplace...');
       
-      // Usar Promise.allSettled para não falhar se alguma query der erro
-      const invalidationPromises = [
+      await Promise.allSettled([
         queryClient.invalidateQueries({
           queryKey: ['marketplace-products'],
           refetchType: 'active'
@@ -79,29 +79,16 @@ export const useDeliveryZones = (): UseDeliveryZonesReturn => {
           queryKey: ['marketplace-stores'],
           refetchType: 'active'
         })
-      ];
-      
-      // Aguardar todas as invalidações (mesmo se algumas falharem)
-      await Promise.allSettled(invalidationPromises);
-      console.log('[useDeliveryZones] ✅ Queries invalidadas');
-      
-      // Aguardar refetch das queries principais com timeout
-      await Promise.race([
-        new Promise(resolve => setTimeout(resolve, 3000)), // 3s timeout
-        queryClient.refetchQueries({
-          queryKey: ['marketplace-products']
-        })
       ]);
       
-      console.log('[useDeliveryZones] ✅ Refetch completo');
+      console.log('[useDeliveryZones] ✅ Queries invalidadas');
       
-      // Salvar contexto em background - MELHORADO para aguardar e capturar erros
+      // Salvar contexto em background
       try {
         await deliveryZoneService.saveUserDeliveryContext(cleanCep, zones, profile?.id);
         console.log('[useDeliveryZones] ✅ Contexto salvo com sucesso');
       } catch (contextError) {
         console.warn('[useDeliveryZones] ⚠️ Aviso ao salvar contexto:', contextError);
-        // Não falhar o processo principal por erro de contexto
       }
       
       console.log('[useDeliveryZones] ✅ Resolução completa! Zonas:', zones.length);
@@ -110,10 +97,11 @@ export const useDeliveryZones = (): UseDeliveryZonesReturn => {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao resolver zonas de entrega';
       setError(errorMessage);
       console.error('[useDeliveryZones] ❌ Erro na resolução:', err);
+      throw err; // Propagar erro para o SmartCepModal
     } finally {
       setIsLoading(false);
     }
-  }, [currentCep, profile?.id, queryClient]);
+  }, [profile?.id, queryClient]);
 
   const clearZones = useCallback(() => {
     console.log('[useDeliveryZones] 🧹 Limpando zonas');
@@ -160,7 +148,6 @@ export const useDeliveryZones = (): UseDeliveryZonesReturn => {
       }
     };
 
-    // CORRIGIDO: Debounce para evitar inicialização múltipla
     const timer = setTimeout(initializeZones, 200);
     return () => clearTimeout(timer);
   }, [initialized, profile?.id, getUserCep, resolveZones]);
