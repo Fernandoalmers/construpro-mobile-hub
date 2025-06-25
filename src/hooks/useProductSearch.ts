@@ -1,38 +1,58 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 export function useProductSearch(fetchProducts: (term: string) => void) {
   const [term, setTerm] = useState('');
+  const [lastFetchedTerm, setLastFetchedTerm] = useState('');
   
-  // Debounce effect for search input - FIXED to handle empty search
+  // CORRIGIDO: Memoizar fetchProducts para evitar dependência instável
+  const memoizedFetchProducts = useCallback((searchTerm: string) => {
+    console.log('[useProductSearch] 🔍 Executing search for:', searchTerm);
+    fetchProducts(searchTerm);
+    setLastFetchedTerm(searchTerm);
+  }, [fetchProducts]);
+  
+  // CORRIGIDO: Debounce effect mais controlado - evita execução excessiva
   useEffect(() => {
-    console.log('[useProductSearch] Term changed to:', term);
+    // Não executar se o termo não mudou desde a última busca
+    if (term === lastFetchedTerm) {
+      console.log('[useProductSearch] ⏭️ Skipping search - term unchanged:', term);
+      return;
+    }
+    
+    console.log('[useProductSearch] 📝 Term changed to:', term, 'Last fetched:', lastFetchedTerm);
     
     const timeout = setTimeout(() => {
-      if (term.trim().length >= 2) {
-        console.log('[useProductSearch] Searching for term:', term);
-        fetchProducts(term);
-      } else if (term.trim().length === 0) {
-        // CRUCIAL: When search is cleared, reset to show all products
-        console.log('[useProductSearch] Search cleared, resetting products');
-        fetchProducts('');
+      const trimmedTerm = term.trim();
+      
+      if (trimmedTerm.length >= 2) {
+        console.log('[useProductSearch] 🔍 Searching for term:', trimmedTerm);
+        memoizedFetchProducts(trimmedTerm);
+      } else if (trimmedTerm.length === 0) {
+        console.log('[useProductSearch] 🔄 Search cleared, resetting products');
+        memoizedFetchProducts('');
       }
       // Note: We don't call fetchProducts for terms with length 1 to avoid unnecessary searches
-    }, 300);
+    }, 500); // AUMENTADO: debounce de 300ms para 500ms para reduzir execuções
     
     return () => clearTimeout(timeout);
-  }, [term, fetchProducts]);
+  }, [term, lastFetchedTerm, memoizedFetchProducts]);
   
-  // Handle explicit search submission with validation
-  const handleSubmit = () => {
-    console.log('[useProductSearch] Search submitted with term:', term);
-    if (term.trim().length >= 2) {
-      fetchProducts(term);
-    } else if (term.trim().length === 0) {
-      // Handle explicit search with empty term
-      fetchProducts('');
+  // CORRIGIDO: Handle explicit search submission with better validation
+  const handleSubmit = useCallback(() => {
+    const trimmedTerm = term.trim();
+    console.log('[useProductSearch] 📤 Search submitted with term:', trimmedTerm);
+    
+    if (trimmedTerm !== lastFetchedTerm) {
+      if (trimmedTerm.length >= 2) {
+        memoizedFetchProducts(trimmedTerm);
+      } else if (trimmedTerm.length === 0) {
+        memoizedFetchProducts('');
+      }
+    } else {
+      console.log('[useProductSearch] ⏭️ Skipping submit - already fetched:', trimmedTerm);
     }
-  };
+  }, [term, lastFetchedTerm, memoizedFetchProducts]);
   
   return { term, setTerm, handleSubmit };
 }

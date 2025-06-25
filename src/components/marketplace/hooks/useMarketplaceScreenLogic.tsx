@@ -59,24 +59,20 @@ export const useMarketplaceScreenLogic = () => {
     actions
   } = useOptimizedProductFilter(segmentFilteredProducts);
   
-  // Sync search term with safety check
-  useEffect(() => {
-    if (actions?.setSearchTerm) {
+  // CORRIGIDO: Sync search term with safety check - SEM useEffect para evitar loop
+  const syncSearchTerm = useCallback(() => {
+    if (actions?.setSearchTerm && searchTerm !== term) {
       actions.setSearchTerm(term || '');
     }
-  }, [term, actions]);
+  }, [actions?.setSearchTerm, searchTerm, term]);
   
-  // Auto-search with debounce and safety checks
+  // Chamar sync apenas uma vez quando necessário
   useEffect(() => {
-    const timer = setTimeout(() => {
-      const trimmedTerm = (term || '').trim();
-      if (trimmedTerm.length >= 2 || trimmedTerm.length === 0) {
-        handleSubmit();
-      }
-    }, 300);
-    
-    return () => clearTimeout(timer);
-  }, [term, handleSubmit]);
+    syncSearchTerm();
+  }, [syncSearchTerm]);
+
+  // REMOVIDO: useEffect problemático que causava loop infinito (linhas 66-74)
+  // O auto-search agora é feito apenas no useMarketplaceSearch
   
   // Static filter options
   const ratingOptions = useMemo(() => [
@@ -132,10 +128,12 @@ export const useMarketplaceScreenLogic = () => {
     return "Todos os Produtos";
   }, [selectedSegmentId, segmentOptions, selectedCategories, categories]);
   
-  // Handle search input change with safety check
+  // CORRIGIDO: Handle search input change sem useEffect adicional
   const handleSearchInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e?.target?.value || '';
+    console.log('[useMarketplaceScreenLogic] ✏️ Search input changed to:', value);
     setTerm(value);
+    // REMOVIDO: Não chama handleSubmit aqui para evitar loop
   }, [setTerm]);
 
   return {

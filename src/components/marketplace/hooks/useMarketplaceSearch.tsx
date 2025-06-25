@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useProductSearch } from '@/hooks/useProductSearch';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,25 +9,44 @@ export function useMarketplaceSearch() {
   const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
   const searchQuery = searchParams.get('search');
+  const lastNavigatedTermRef = useRef<string>('');
+  const isInitializedRef = useRef(false);
   
-  // Enhanced search functionality
-  const fetchProducts = (term: string) => {
-    console.log('[useMarketplaceSearch] Searching for:', term);
+  // CORRIGIDO: Enhanced search functionality com proteção contra loops
+  const fetchProducts = useCallback((term: string) => {
+    const trimmedTerm = term.trim();
+    console.log('[useMarketplaceSearch] 🔍 Searching for:', trimmedTerm);
+    
+    // PROTEÇÃO: Evitar navegação se o termo é o mesmo que já foi navegado
+    if (trimmedTerm === lastNavigatedTermRef.current) {
+      console.log('[useMarketplaceSearch] ⏭️ Skipping navigation - same term:', trimmedTerm);
+      return;
+    }
     
     const newSearchParams = new URLSearchParams(searchParams);
-    if (term && term.trim().length >= 2) {
-      newSearchParams.set('search', term);
-    } else {
+    let shouldNavigate = false;
+    
+    if (trimmedTerm && trimmedTerm.length >= 2) {
+      newSearchParams.set('search', trimmedTerm);
+      shouldNavigate = true;
+    } else if (trimmedTerm.length === 0) {
       newSearchParams.delete('search');
+      shouldNavigate = true;
     }
-    navigate(`${location.pathname}?${newSearchParams.toString()}`, { replace: true });
-  };
+    
+    if (shouldNavigate) {
+      lastNavigatedTermRef.current = trimmedTerm;
+      const newUrl = `${location.pathname}?${newSearchParams.toString()}`;
+      console.log('[useMarketplaceSearch] 🧭 Navigating to:', newUrl);
+      navigate(newUrl, { replace: true });
+    }
+  }, [location.pathname, navigate, searchParams]);
   
   const { term, setTerm, handleSubmit } = useProductSearch(fetchProducts);
   
   // Quick search functionality
   const handleQuickSearch = async (term: string) => {
-    console.log('[useMarketplaceSearch] Quick search for:', term);
+    console.log('[useMarketplaceSearch] ⚡ Quick search for:', term);
     if (!term || term.trim().length < 2) {
       return;
     }
@@ -52,12 +71,15 @@ export function useMarketplaceSearch() {
     }
   };
   
-  // Initialize search term from URL
+  // CORRIGIDO: Initialize search term from URL apenas uma vez
   useEffect(() => {
-    if (searchQuery) {
+    if (!isInitializedRef.current && searchQuery && searchQuery !== term) {
+      console.log('[useMarketplaceSearch] 🚀 Initializing term from URL:', searchQuery);
       setTerm(searchQuery);
+      lastNavigatedTermRef.current = searchQuery;
+      isInitializedRef.current = true;
     }
-  }, [searchQuery, setTerm]);
+  }, [searchQuery, setTerm, term]);
   
   return {
     term,
