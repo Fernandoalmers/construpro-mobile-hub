@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 
 export function useScrollBehavior() {
-  const [hideFilters, setHideFilters] = useState(false);
+  const [hideHeader, setHideHeader] = useState(false);
   const [lastScrollY, setLastScrollY] = useState(0);
   const [scrollDirection, setScrollDirection] = useState<'up' | 'down'>('up');
   
@@ -19,12 +19,7 @@ export function useScrollBehavior() {
     return scrollHeight - scrollTop - clientHeight < BOTTOM_THRESHOLD;
   }, []);
 
-  // Helper function to check if user is near top of page
-  const isNearTop = useCallback(() => {
-    return window.scrollY < HIDE_THRESHOLD;
-  }, []);
-
-  // Debounced scroll handler with corrected logic
+  // Debounced scroll handler with bottom detection
   const handleScroll = useCallback(() => {
     const currentScrollY = window.scrollY;
     
@@ -34,29 +29,27 @@ export function useScrollBehavior() {
     }
     
     const nearBottom = isNearBottom();
-    const nearTop = isNearTop();
     
     // Determine scroll direction
     if (currentScrollY > lastScrollY) {
-      // Scrolling down - SHOW filters
+      // Scrolling down
       setScrollDirection('down');
-      setHideFilters(false);
-    } else {
-      // Scrolling up - HIDE filters
-      setScrollDirection('up');
       // Only hide if we've scrolled enough from the top and not near bottom
-      if (!nearTop && !nearBottom) {
-        setHideFilters(true);
+      if (currentScrollY > HIDE_THRESHOLD && !nearBottom) {
+        setHideHeader(true);
+      }
+    } else {
+      // Scrolling up
+      setScrollDirection('up');
+      // Only show header if user scrolled up significantly or not near bottom
+      const scrollUpDistance = lastScrollY - currentScrollY;
+      if (scrollUpDistance > SCROLL_THRESHOLD * 2 || !nearBottom) {
+        setHideHeader(false);
       }
     }
     
-    // Special case: if near top, always show filters
-    if (nearTop) {
-      setHideFilters(false);
-    }
-    
     setLastScrollY(currentScrollY);
-  }, [lastScrollY, isNearBottom, isNearTop]);
+  }, [lastScrollY, isNearBottom]);
 
   // Handle scroll events with passive listener for better performance
   useEffect(() => {
@@ -75,5 +68,5 @@ export function useScrollBehavior() {
     };
   }, [handleScroll]);
 
-  return { hideFilters, scrollDirection, lastScrollY };
+  return { hideHeader, scrollDirection, lastScrollY };
 }
