@@ -53,20 +53,27 @@ export const useOptimizedMarketplace = () => {
     return undefined;
   }, [currentZones, hasActiveZones, currentCep, shouldShowAllProducts, hasDefinedCepWithoutCoverage]);
 
-  // Query de produtos com key que inclui CEP para invalidação correta
+  // CORRIGIDO: Query de produtos com key mais específica e aguardar mudanças de CEP
   const { 
     data: products = [], 
     isLoading: productsLoading,
     error: productsError,
-    isFetching: productsRefetching
+    isFetching: productsRefetching,
+    dataUpdatedAt // Para detectar quando dados foram atualizados
   } = useQuery({
-    queryKey: ['marketplace-products', currentCep, availableVendorIds, hasDefinedCepWithoutCoverage],
+    queryKey: [
+      'marketplace-products', 
+      currentCep, 
+      JSON.stringify(availableVendorIds), // Serialize para key estável
+      hasDefinedCepWithoutCoverage
+    ],
     queryFn: async () => {
       console.log('[useOptimizedMarketplace] 🔄 Buscando produtos para CEP:', currentCep);
       console.log('[useOptimizedMarketplace] 📊 Parâmetros da busca:', {
         currentCep,
         vendorIds: availableVendorIds?.length || 'todos',
-        hasDefinedCepWithoutCoverage
+        hasDefinedCepWithoutCoverage,
+        timestamp: new Date().toISOString()
       });
       
       try {
@@ -77,7 +84,7 @@ export const useOptimizedMarketplace = () => {
         }
         
         const result = await getMarketplaceProducts(availableVendorIds);
-        console.log('[useOptimizedMarketplace] ✅ Produtos carregados:', result.length);
+        console.log('[useOptimizedMarketplace] ✅ Produtos carregados:', result.length, 'timestamp:', new Date().toISOString());
         return result;
       } catch (error) {
         console.error('[useOptimizedMarketplace] ❌ Erro ao carregar produtos:', error);
@@ -85,11 +92,12 @@ export const useOptimizedMarketplace = () => {
         return [];
       }
     },
-    staleTime: 1 * 60 * 1000, // 1 minute (reduzido para melhor responsividade)
-    gcTime: 5 * 60 * 1000,
+    staleTime: 0, // SEMPRE refetch quando key muda
+    gcTime: 2 * 60 * 1000, // Manter cache por 2 minutos
     refetchOnWindowFocus: false,
     enabled: !zonesLoading, // Só buscar quando as zonas estiverem resolvidas
-    retry: 1, // Tentar apenas uma vez em caso de erro
+    retry: 2,
+    refetchOnMount: true // Sempre refetch no mount
   });
 
   // Queries paralelas com tratamento de erro
@@ -132,7 +140,7 @@ export const useOptimizedMarketplace = () => {
     retry: 1,
   });
 
-  // Log informações de debug sobre filtros de zona
+  // Log informações de debug sobre filtros de zona com timestamp dos dados
   useEffect(() => {
     if (!zonesLoading) {
       console.log('[useOptimizedMarketplace] 📊 Estado atual do marketplace:', {
@@ -145,10 +153,12 @@ export const useOptimizedMarketplace = () => {
         shouldShowAllProducts,
         hasDefinedCepWithoutCoverage,
         isRefetching: productsRefetching,
-        isProductsLoading: productsLoading
+        isProductsLoading: productsLoading,
+        dataUpdatedAt: new Date(dataUpdatedAt || 0).toISOString(),
+        timestamp: new Date().toISOString()
       });
     }
-  }, [hasActiveZones, currentCep, currentZones.length, availableVendorIds?.length, products.length, zonesLoading, isFilteredByZone, shouldShowAllProducts, hasDefinedCepWithoutCoverage, productsRefetching, productsLoading]);
+  }, [hasActiveZones, currentCep, currentZones.length, availableVendorIds?.length, products.length, zonesLoading, isFilteredByZone, shouldShowAllProducts, hasDefinedCepWithoutCoverage, productsRefetching, productsLoading, dataUpdatedAt]);
 
   // Loading inclui refetching para mostrar estado de carregamento durante mudanças de CEP
   const isLoadingData = zonesLoading || productsLoading || storesLoading || segmentsLoading || productsRefetching;

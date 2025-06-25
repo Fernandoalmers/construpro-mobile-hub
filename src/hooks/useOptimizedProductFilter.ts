@@ -96,7 +96,7 @@ export const useOptimizedProductFilter = (products: any[] = []) => {
     }
   }, []);
 
-  // Memoized filtered products with safety checks
+  // Memoized filtered products with safety checks - MOVED loadMore callback OUT of this useMemo
   const filteredProducts = useMemo(() => {
     console.log('[useOptimizedProductFilter] Starting filter with products:', safeProducts?.length || 0);
     
@@ -162,6 +162,16 @@ export const useOptimizedProductFilter = (products: any[] = []) => {
     return filtered || [];
   }, [safeProducts, state, isPriceInRange]);
 
+  // FIXED: loadMore callback moved OUTSIDE of useMemo to avoid hooks-in-hooks error
+  const loadMore = useCallback(() => {
+    const currentDisplayed = Array.isArray(displayedProducts) ? displayedProducts.length : 0;
+    const totalFiltered = Array.isArray(filteredProducts) ? filteredProducts.length : 0;
+    
+    if (currentDisplayed < totalFiltered) {
+      dispatch({ type: 'SET_PAGE', payload: state.page + 1 });
+    }
+  }, [displayedProducts, filteredProducts, state.page]);
+
   // Update displayed products based on pagination with safety checks
   useEffect(() => {
     if (!Array.isArray(filteredProducts)) {
@@ -199,15 +209,8 @@ export const useOptimizedProductFilter = (products: any[] = []) => {
     setPage: (page: number) => dispatch({ type: 'SET_PAGE', payload: Math.max(1, page || 1) }),
     setLojas: (lojas: string[]) => dispatch({ type: 'SET_LOJAS', payload: Array.isArray(lojas) ? lojas : [] }),
     clearFilters: () => dispatch({ type: 'CLEAR_FILTERS' }),
-    loadMore: useCallback(() => {
-      const currentDisplayed = Array.isArray(displayedProducts) ? displayedProducts.length : 0;
-      const totalFiltered = Array.isArray(filteredProducts) ? filteredProducts.length : 0;
-      
-      if (currentDisplayed < totalFiltered) {
-        dispatch({ type: 'SET_PAGE', payload: state.page + 1 });
-      }
-    }, [displayedProducts, filteredProducts, state.page])
-  }), [displayedProducts, filteredProducts, state.page]);
+    loadMore
+  }), [loadMore]);
 
   return {
     ...state,

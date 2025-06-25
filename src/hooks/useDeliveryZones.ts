@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
@@ -65,25 +66,40 @@ export const useDeliveryZones = (): UseDeliveryZonesReturn => {
       setCurrentZones(zones);
       setCurrentCep(cleanCep);
       
-      // Invalidar queries do marketplace de forma sequencial e aguardar
+      // CORRIGIDO: Invalidar queries com timeout de segurança e aguardar completamente
       console.log('[useDeliveryZones] 🔄 Invalidando queries do marketplace...');
       
-      // Invalidar queries de produtos primeiro
-      await queryClient.invalidateQueries({
-        queryKey: ['marketplace-products']
-      });
+      const invalidationPromises = [];
       
-      console.log('[useDeliveryZones] ✅ Queries de produtos invalidadas');
+      // Invalidar queries de produtos com CEP específico
+      invalidationPromises.push(
+        queryClient.invalidateQueries({
+          queryKey: ['marketplace-products'],
+          refetchType: 'active' // Força refetch imediato
+        })
+      );
       
       // Invalidar queries de lojas
-      await queryClient.invalidateQueries({
-        queryKey: ['marketplace-stores']
-      });
+      invalidationPromises.push(
+        queryClient.invalidateQueries({
+          queryKey: ['marketplace-stores'],
+          refetchType: 'active'
+        })
+      );
       
-      console.log('[useDeliveryZones] ✅ Queries de lojas invalidadas');
+      // AGUARDAR todas as invalidações completarem
+      await Promise.all(invalidationPromises);
+      console.log('[useDeliveryZones] ✅ Todas as queries invalidadas');
       
-      // Aguardar um pouco para garantir que as queries sejam refetchadas
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Aguardar refetch completo com timeout de segurança
+      await Promise.race([
+        new Promise(resolve => setTimeout(resolve, 2000)), // 2s timeout
+        queryClient.refetchQueries({
+          queryKey: ['marketplace-products']
+        })
+      ]);
+      
+      console.log('[useDeliveryZones] ✅ Refetch completo');
       
       // Salvar contexto em background (não aguardar para evitar delays)
       deliveryZoneService.saveUserDeliveryContext(cleanCep, zones, profile?.id).catch(err => {

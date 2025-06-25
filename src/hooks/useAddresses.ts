@@ -1,5 +1,4 @@
-
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { addressService, Address } from '@/services/addressService';
 import { addressCacheService } from '@/services/addressCacheService';
@@ -11,21 +10,28 @@ export function useAddresses() {
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [cachedAddresses, setCachedAddresses] = useState<Address[]>([]);
-  const [isLoadingFromCache, setIsLoadingFromCache] = useState(true);
+  const [isCacheLoaded, setIsCacheLoaded] = useState(false);
   const queryClient = useQueryClient();
   const { refreshProfile } = useAuth();
 
-  // Carregar do cache imediatamente para exibição instantânea
+  // Carregar cache imediatamente de forma síncrona para exibição instantânea
   useEffect(() => {
     console.log('[useAddresses] 🏠 Carregando endereços do cache para exibição instantânea...');
-    const cached = addressCacheService.loadFromCache();
-    if (cached && cached.length > 0) {
-      setCachedAddresses(cached);
-      console.log('[useAddresses] ✅ Endereços do cache disponíveis instantaneamente:', cached.length);
-    } else {
-      console.log('[useAddresses] ℹ️ Cache vazio - aguardando servidor');
+    
+    // Carregar cache de forma síncrona
+    try {
+      const cached = addressCacheService.loadFromCache();
+      if (cached && cached.length > 0) {
+        setCachedAddresses(cached);
+        console.log('[useAddresses] ✅ Endereços do cache disponíveis instantaneamente:', cached.length);
+      } else {
+        console.log('[useAddresses] ℹ️ Cache vazio - aguardando servidor');
+      }
+    } catch (error) {
+      console.warn('[useAddresses] ⚠️ Erro ao carregar cache:', error);
+    } finally {
+      setIsCacheLoaded(true);
     }
-    setIsLoadingFromCache(false);
   }, []);
 
   // Enhanced error formatting
@@ -72,7 +78,7 @@ export function useAddresses() {
     return { isValid: errors.length === 0, errors };
   };
 
-  // Fetch addresses com sincronização em background
+  // Fetch addresses em background sem bloquear exibição do cache
   const { 
     data: serverAddresses = [], 
     isLoading: isLoadingServer, 
@@ -87,6 +93,9 @@ export function useAddresses() {
         
         // Salvar no cache após sucesso
         addressCacheService.saveToCache(data);
+        
+        // Atualizar cache local também
+        setCachedAddresses(data);
         
         console.log("✅ Endereços sincronizados com sucesso:", data.length);
         setErrorDetails(null);
@@ -106,14 +115,23 @@ export function useAddresses() {
     },
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 3000),
     staleTime: 30000, // 30 segundos
-    refetchOnWindowFocus: false // Evitar refetch desnecessário
+    refetchOnWindowFocus: false, // Evitar refetch desnecessário
+    enabled: isCacheLoaded // Só sincronizar após cache carregar
   });
 
-  // Usar endereços do servidor se disponíveis, senão do cache
-  const addresses = serverAddresses.length > 0 ? serverAddresses : cachedAddresses;
+  // Priorizar dados do servidor se disponíveis e mais recentes, senão usar cache
+  const addresses = useMemo(() => {
+    // Se dados do servidor estão disponíveis e são mais recentes, usar eles
+    if (serverAddresses.length > 0) {
+      return serverAddresses;
+    }
+    
+    // Caso contrário, usar cache para exibição instantânea
+    return cachedAddresses;
+  }, [serverAddresses, cachedAddresses]);
   
-  // Loading apenas se não há dados nem do cache nem do servidor
-  const isLoading = isLoadingFromCache || (cachedAddresses.length === 0 && isLoadingServer);
+  // Loading só se não há dados nem do cache nem do servidor E ainda não carregou cache
+  const isLoading = !isCacheLoaded || (cachedAddresses.length === 0 && isLoadingServer);
 
   // Delete address mutation
   const deleteAddressMutation = useMutation({
