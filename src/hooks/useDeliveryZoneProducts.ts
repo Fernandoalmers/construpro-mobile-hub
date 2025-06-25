@@ -98,7 +98,7 @@ export const useDeliveryZoneProducts = (): UseDeliveryZoneProductsReturn => {
           nome: product.nome,
           descricao: product.descricao,
           categoria: product.categoria,
-          preco_original: product.preco_original,
+          preco_original: product.preco_normal, // Use preco_normal from database
           preco_promocional: product.preco_promocional,
           promocao_ativa: product.promocao_ativa || false,
           promocao_inicio: product.promocao_inicio,
@@ -116,7 +116,7 @@ export const useDeliveryZoneProducts = (): UseDeliveryZoneProductsReturn => {
           created_at: product.created_at,
           updated_at: product.updated_at,
           // Legacy compatibility
-          preco_normal: product.preco_original
+          preco_normal: product.preco_normal // Use actual database field
         };
       });
 
