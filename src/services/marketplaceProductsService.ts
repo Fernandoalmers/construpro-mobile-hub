@@ -1,20 +1,25 @@
 
 import { supabase } from "@/integrations/supabase/client";
 
-interface MarketplaceProduct {
+export interface MarketplaceProduct {
   id: string;
   nome: string;
   descricao?: string;
   preco_original: number;
   preco_promocional?: number;
   promocao_ativa: boolean;
+  promocao_inicio?: string;
+  promocao_fim?: string;
   imagens?: string[];
   categoria?: string;
   segmento?: string;
+  segmento_id?: string;
   estoque: number;
   vendedor_id: string;
   store_name?: string;
   store_id?: string;
+  stores?: any;
+  vendedores?: any;
   pontos_consumidor?: number;
   pontos_profissional?: number;
   unidade?: string;
@@ -22,8 +27,11 @@ interface MarketplaceProduct {
   peso?: number;
   dimensoes?: string;
   marca?: string;
+  status?: 'pendente' | 'aprovado' | 'rejeitado';
   created_at?: string;
   updated_at?: string;
+  // Legacy fields for compatibility
+  preco_normal?: number;
 }
 
 export const getMarketplaceProducts = async (vendorIds?: string[]): Promise<MarketplaceProduct[]> => {
@@ -43,9 +51,12 @@ export const getMarketplaceProducts = async (vendorIds?: string[]): Promise<Mark
         preco_original,
         preco_promocional,
         promocao_ativa,
+        promocao_inicio,
+        promocao_fim,
         imagens,
         categoria,
         segmento,
+        segmento_id,
         estoque,
         vendedor_id,
         pontos_consumidor,
@@ -55,6 +66,7 @@ export const getMarketplaceProducts = async (vendorIds?: string[]): Promise<Mark
         peso,
         dimensoes,
         marca,
+        status,
         created_at,
         updated_at,
         vendedores!inner (
@@ -87,7 +99,7 @@ export const getMarketplaceProducts = async (vendorIds?: string[]): Promise<Mark
     }
 
     // OTIMIZADO: Processar produtos em lote em vez de um por um
-    console.log('[marketplaceProductsService] ⚙️ Processando', products.length, 'produtos...');
+    console.log('[marketplaceProductsService] ⚙️ Processando', products.length, 'produtos em lote...');
     
     const processedProducts = products.map((product: any) => {
       // Processar informações da loja
@@ -114,13 +126,23 @@ export const getMarketplaceProducts = async (vendorIds?: string[]): Promise<Mark
         preco_original: product.preco_original,
         preco_promocional: product.preco_promocional,
         promocao_ativa: product.promocao_ativa || false,
+        promocao_inicio: product.promocao_inicio,
+        promocao_fim: product.promocao_fim,
         imagens: processedImages,
         categoria: product.categoria,
         segmento: product.segmento,
+        segmento_id: product.segmento_id,
         estoque: product.estoque,
         vendedor_id: product.vendedor_id,
         store_name: storeName,
         store_id: storeId,
+        stores: storeInfo ? {
+          id: storeId,
+          nome: storeName,
+          nome_loja: storeName,
+          logo_url: storeInfo.logo || ''
+        } : undefined,
+        vendedores: storeInfo,
         pontos_consumidor: product.pontos_consumidor,
         pontos_profissional: product.pontos_profissional,
         unidade: product.unidade,
@@ -128,8 +150,11 @@ export const getMarketplaceProducts = async (vendorIds?: string[]): Promise<Mark
         peso: product.peso,
         dimensoes: product.dimensoes,
         marca: product.marca,
+        status: product.status as 'pendente' | 'aprovado' | 'rejeitado',
         created_at: product.created_at,
-        updated_at: product.updated_at
+        updated_at: product.updated_at,
+        // Legacy compatibility
+        preco_normal: product.preco_original
       };
     });
 
@@ -141,7 +166,7 @@ export const getMarketplaceProducts = async (vendorIds?: string[]): Promise<Mark
       produtos: processedProducts.length,
       lojas: storeCount,
       promocoes: promotionCount,
-      tempoProcessamento: 'otimizado'
+      tempoProcessamento: 'otimizado em lote'
     });
 
     return processedProducts;
