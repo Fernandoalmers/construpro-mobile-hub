@@ -1,11 +1,11 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import GridProductView from './GridProductView';
 import ListProductView from './ListProductView';
 import LoadingState from '../../common/LoadingState';
 import EmptyProductState from './EmptyProductState';
 import DeliveryZoneIndicator from './DeliveryZoneIndicator';
 import NoDeliveryZoneState from './NoDeliveryZoneState';
+import SmartCepModal from './SmartCepModal';
 import { useDeliveryZones } from '@/hooks/useDeliveryZones';
 import { useMarketplaceFilters } from '@/hooks/useMarketplaceFilters';
 
@@ -38,25 +38,16 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
 }) => {
   const { hasActiveZones, currentCep, resolveZones } = useDeliveryZones();
   const { hasDefinedCepWithoutCoverage, clearAllFilters } = useMarketplaceFilters();
+  const [showCepModal, setShowCepModal] = useState(false);
 
-  // Handler para trocar CEP
+  // Handler para alterar CEP usando o modal inteligente
   const handleChangeCep = () => {
-    const newCep = prompt('Digite o novo CEP:');
-    if (newCep) {
-      const cleanCep = newCep.replace(/\D/g, '');
-      if (cleanCep.length === 8) {
-        resolveZones(cleanCep);
-      } else {
-        alert('CEP deve ter 8 dígitos');
-      }
-    }
+    setShowCepModal(true);
   };
 
-  // Handler para tentar novamente
-  const handleRetry = () => {
-    if (currentCep) {
-      resolveZones(currentCep);
-    }
+  // Handler para quando CEP é alterado no modal
+  const handleCepChange = async (newCep: string) => {
+    await resolveZones(newCep);
   };
 
   // Determinar título baseado no estado da zona de entrega
@@ -195,8 +186,47 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
           </>
         )}
       </div>
+
+      {/* Modal Inteligente de Seleção de CEP */}
+      <SmartCepModal
+        open={showCepModal}
+        onOpenChange={setShowCepModal}
+        onCepChange={handleCepChange}
+        currentCep={currentCep}
+      />
     </div>
   );
+
+  function getPageTitle() {
+    if (hasDefinedCepWithoutCoverage) {
+      return "Nenhum lojista atende esse endereço";
+    }
+    
+    if (hasActiveZones && currentCep) {
+      return "Produtos disponíveis para o endereço selecionado";
+    }
+    
+    if (!currentCep) {
+      return "Todos os produtos disponíveis";
+    }
+    
+    return currentCategoryName;
+  }
+
+  function getSubtitle() {
+    if (hasDefinedCepWithoutCoverage) {
+      return `Não encontramos vendedores para o CEP ${currentCep?.replace(/(\d{5})(\d{3})/, '$1-$2')}`;
+    }
+    
+    const productCount = filteredProdutos.length;
+    const productText = `${productCount} produto${productCount !== 1 ? 's' : ''} encontrado${productCount !== 1 ? 's' : ''}`;
+    
+    if (hasActiveZones && currentCep) {
+      return `${productText} para o CEP ${currentCep.replace(/(\d{5})(\d{3})/, '$1-$2')}`;
+    }
+    
+    return productText;
+  }
 };
 
 export default MarketplaceContent;
