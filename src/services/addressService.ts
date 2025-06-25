@@ -34,68 +34,126 @@ async function ensureAuthSession() {
   return sessionData.session;
 }
 
-// Helper to handle API errors consistently
-function handleApiError(error: any, operation: string): never {
-  console.error(`Error in ${operation}:`, error);
-  
-  // Try to extract more specific error message if available
-  let errorMessage = `Failed to ${operation}`;
-  
-  if (error instanceof Error) {
-    errorMessage = error.message;
-  } else if (typeof error === 'object' && error !== null) {
-    errorMessage = error.message || JSON.stringify(error);
-  }
-  
-  throw new Error(errorMessage);
-}
+// Direct Supabase operations as fallback
+const directSupabaseOperations = {
+  async getAddresses(): Promise<Address[]> {
+    console.log('[addressService] Using direct Supabase fallback for getAddresses');
+    
+    const { data: addresses, error } = await supabase
+      .from('user_addresses')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-// Enhanced function invocation with better error handling
-async function invokeAddressFunction(options: {
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE',
-  body?: any,
-  retries?: number
-}) {
-  const { method, body, retries = 2 } = options;
-  let lastError: any;
-  
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      console.log(`[addressService] Attempt ${attempt + 1} - Invoking address function:`, { method, hasBody: !!body });
-      
-      const invokeOptions: any = {};
-      
-      if (body) {
-        invokeOptions.body = body;
-      }
-      
-      const { data, error } = await supabase.functions.invoke('address-management', invokeOptions);
-      
-      if (error) {
-        throw error;
-      }
-      
-      console.log(`[addressService] Success on attempt ${attempt + 1}`);
-      return data;
-    } catch (error) {
-      lastError = error;
-      console.error(`[addressService] Attempt ${attempt + 1} failed:`, error);
-      
-      // Don't retry on authentication errors
-      if (error.message?.includes('authentication') || error.message?.includes('unauthorized')) {
-        throw error;
-      }
-      
-      // Wait before retry (exponential backoff)
-      if (attempt < retries) {
-        const delay = Math.min(1000 * Math.pow(2, attempt), 5000);
-        console.log(`[addressService] Waiting ${delay}ms before retry...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
+    if (error) {
+      console.error('[addressService] Direct Supabase error:', error);
+      throw new Error(error.message);
+    }
+
+    return addresses || [];
+  },
+
+  async addAddress(addressData: Address): Promise<Address> {
+    console.log('[addressService] Using direct Supabase fallback for addAddress');
+    
+    // If setting as principal, first clear other principal addresses
+    if (addressData.principal) {
+      await supabase
+        .from('user_addresses')
+        .update({ principal: false })
+        .eq('principal', true);
+    }
+
+    const { data: address, error } = await supabase
+      .from('user_addresses')
+      .insert(addressData)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[addressService] Direct Supabase error:', error);
+      throw new Error(error.message);
+    }
+
+    return address;
+  },
+
+  async updateAddress(addressId: string, addressData: Partial<Address>): Promise<Address> {
+    console.log('[addressService] Using direct Supabase fallback for updateAddress');
+    
+    // If setting as principal, first clear other principal addresses
+    if (addressData.principal) {
+      await supabase
+        .from('user_addresses')
+        .update({ principal: false })
+        .eq('principal', true)
+        .neq('id', addressId);
+    }
+
+    const { data: address, error } = await supabase
+      .from('user_addresses')
+      .update(addressData)
+      .eq('id', addressId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[addressService] Direct Supabase error:', error);
+      throw new Error(error.message);
+    }
+
+    return address;
+  },
+
+  async deleteAddress(addressId: string): Promise<void> {
+    console.log('[addressService] Using direct Supabase fallback for deleteAddress');
+    
+    const { error } = await supabase
+      .from('user_addresses')
+      .delete()
+      .eq('id', addressId);
+
+    if (error) {
+      console.error('[addressService] Direct Supabase error:', error);
+      throw new Error(error.message);
     }
   }
+};
+
+// Enhanced function invocation with automatic fallback
+async function invokeAddressFunctionWithFallback(options: {
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+  body?: any,
+  fallbackOperation?: () => Promise<any>
+}) {
+  const { method, body, fallbackOperation } = options;
   
-  throw lastError;
+  try {
+    console.log(`[addressService] Attempting edge function call: ${method}`);
+    
+    const invokeOptions: any = {};
+    if (body) {
+      invokeOptions.body = body;
+    }
+    
+    const { data, error } = await supabase.functions.invoke('address-management', invokeOptions);
+    
+    if (error) {
+      console.warn(`[addressService] Edge function error, falling back to direct Supabase:`, error);
+      if (fallbackOperation) {
+        return await fallbackOperation();
+      }
+      throw error;
+    }
+    
+    console.log(`[addressService] Edge function success`);
+    return data;
+  } catch (error) {
+    console.warn(`[addressService] Edge function failed, using direct Supabase fallback:`, error);
+    if (fallbackOperation) {
+      return await fallbackOperation();
+    }
+    throw error;
+  }
 }
 
 export const addressService = {
@@ -104,13 +162,16 @@ export const addressService = {
     try {
       await ensureAuthSession();
       
-      const data = await invokeAddressFunction({ method: 'GET' });
+      const data = await invokeAddressFunctionWithFallback({
+        method: 'GET',
+        fallbackOperation: directSupabaseOperations.getAddresses
+      });
       
-      console.log('[addressService] Addresses fetched successfully:', data?.addresses?.length || 0);
-      return data?.addresses || [];
+      console.log('[addressService] Addresses fetched successfully:', data?.addresses?.length || data?.length || 0);
+      return data?.addresses || data || [];
     } catch (error) {
       console.error('[addressService] Error in getAddresses:', error);
-      return handleApiError(error, "fetch addresses");
+      throw new Error(`Failed to fetch addresses: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   },
   
@@ -119,20 +180,26 @@ export const addressService = {
     try {
       await ensureAuthSession();
       
-      const data = await invokeAddressFunction({ 
-        method: 'GET', 
-        body: { id: addressId } 
-      });
-      
-      if (!data?.address) {
+      // For get single address, use direct Supabase as it's more reliable
+      const { data: address, error } = await supabase
+        .from('user_addresses')
+        .select('*')
+        .eq('id', addressId)
+        .single();
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (!address) {
         throw new Error('Address not found');
       }
       
-      console.log('[addressService] Address fetched successfully:', data.address.id);
-      return data.address;
+      console.log('[addressService] Address fetched successfully:', address.id);
+      return address;
     } catch (error) {
       console.error('[addressService] Error in getAddress:', error);
-      return handleApiError(error, "get address details");
+      throw new Error(`Failed to get address details: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   },
   
@@ -151,20 +218,22 @@ export const addressService = {
         throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
       }
       
-      const data = await invokeAddressFunction({
+      const result = await invokeAddressFunctionWithFallback({
         method: 'POST',
-        body: addressData
+        body: addressData,
+        fallbackOperation: () => directSupabaseOperations.addAddress(addressData)
       });
       
-      if (!data?.address) {
+      const address = result?.address || result;
+      if (!address) {
         throw new Error('Failed to add address: Invalid response');
       }
       
-      console.log('[addressService] Address added successfully:', data.address.id);
-      return data.address;
+      console.log('[addressService] Address added successfully:', address.id);
+      return address;
     } catch (error) {
       console.error('[addressService] Error in addAddress:', error);
-      return handleApiError(error, "add address");
+      throw new Error(`Failed to add address: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   },
   
@@ -180,21 +249,22 @@ export const addressService = {
       const updatePayload = { id: addressId, ...addressData };
       console.log('[addressService] Update payload:', updatePayload);
       
-      const data = await invokeAddressFunction({
+      const result = await invokeAddressFunctionWithFallback({
         method: 'PUT',
         body: updatePayload,
-        retries: 3 // More retries for principal updates
+        fallbackOperation: () => directSupabaseOperations.updateAddress(addressId, addressData)
       });
       
-      if (!data?.address) {
+      const address = result?.address || result;
+      if (!address) {
         throw new Error('Failed to update address: Invalid response');
       }
       
       console.log('[addressService] Address updated successfully');
-      return data.address;
+      return address;
     } catch (error) {
       console.error('[addressService] Error in updateAddress:', error);
-      return handleApiError(error, "update address");
+      throw new Error(`Failed to update address: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   },
   
@@ -207,15 +277,16 @@ export const addressService = {
         throw new Error('Address ID is required');
       }
       
-      const data = await invokeAddressFunction({
+      await invokeAddressFunctionWithFallback({
         method: 'DELETE',
-        body: { id: addressId }
+        body: { id: addressId },
+        fallbackOperation: () => directSupabaseOperations.deleteAddress(addressId)
       });
       
       console.log('[addressService] Address deleted successfully');
     } catch (error) {
       console.error('[addressService] Error in deleteAddress:', error);
-      handleApiError(error, "delete address");
+      throw new Error(`Failed to delete address: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   },
   
@@ -225,7 +296,7 @@ export const addressService = {
       return this.updateAddress(addressId, { principal: true });
     } catch (error) {
       console.error('[addressService] Error in setPrimaryAddress:', error);
-      return handleApiError(error, "set primary address");
+      throw new Error(`Failed to set primary address: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 };
