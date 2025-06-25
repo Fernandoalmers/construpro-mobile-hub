@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { addressService, Address } from '@/services/addressService';
@@ -12,7 +13,7 @@ export function useAddresses() {
   const [cachedAddresses, setCachedAddresses] = useState<Address[]>([]);
   const [isCacheLoaded, setIsCacheLoaded] = useState(false);
   const queryClient = useQueryClient();
-  const { refreshProfile } = useAuth();
+  const { refreshProfile, user } = useAuth();
 
   // Carregar cache imediatamente de forma síncrona para exibição instantânea
   useEffect(() => {
@@ -89,7 +90,12 @@ export function useAddresses() {
     queryFn: async () => {
       try {
         console.log("🔄 Sincronizando endereços com servidor em background...");
-        const data = await addressService.getAddresses();
+        
+        if (!user?.id) {
+          throw new Error('Usuário não autenticado');
+        }
+        
+        const data = await addressService.getUserAddresses(user.id);
         
         // Salvar no cache após sucesso
         addressCacheService.saveToCache(data);
@@ -116,7 +122,7 @@ export function useAddresses() {
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 3000),
     staleTime: 30000, // 30 segundos
     refetchOnWindowFocus: false, // Evitar refetch desnecessário
-    enabled: isCacheLoaded // Só sincronizar após cache carregar
+    enabled: isCacheLoaded && !!user?.id // Só sincronizar após cache carregar e ter usuário
   });
 
   // Priorizar dados do servidor se disponíveis e mais recentes, senão usar cache
@@ -170,6 +176,10 @@ export function useAddresses() {
       try {
         console.log(`[useAddresses] 🏠 Definindo endereço ${addressId} como principal`);
         
+        if (!user?.id) {
+          throw new Error('Usuário não autenticado');
+        }
+        
         const currentAddresses = addresses;
         const addressExists = currentAddresses.find(addr => addr.id === addressId);
         
@@ -177,7 +187,7 @@ export function useAddresses() {
           throw new Error('Endereço não encontrado. Atualize a página e tente novamente.');
         }
         
-        const result = await addressService.setPrimaryAddress(addressId);
+        const result = await addressService.setPrimaryAddress(addressId, user.id);
         return result;
       } catch (err) {
         const errorMsg = formatErrorMessage(err);
@@ -243,7 +253,8 @@ export function useAddresses() {
         
         const cleanedAddress = {
           ...data.address,
-          cep: data.address.cep.replace(/\D/g, '')
+          cep: data.address.cep.replace(/\D/g, ''),
+          user_id: user?.id || data.address.user_id
         };
         
         if (data.isEdit && data.address.id) {
@@ -325,6 +336,7 @@ export function useAddresses() {
     try {
       const fullAddress: Address = {
         id: '',
+        user_id: user?.id || '',
         nome: formData.nome || '',
         cep: formData.cep?.replace(/\D/g, '') || '',
         logradouro: formData.logradouro || '',
@@ -334,6 +346,8 @@ export function useAddresses() {
         cidade: formData.cidade || '',
         estado: formData.estado || '',
         principal: formData.principal || false,
+        created_at: '',
+        updated_at: '',
         ...formData
       };
 

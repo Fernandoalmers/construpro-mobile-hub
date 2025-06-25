@@ -1,8 +1,10 @@
+
 import React, { useState } from 'react';
 import { MapPin, Plus, ChevronRight, Loader2 } from 'lucide-react';
 import CustomModal from '@/components/common/CustomModal';
 import { useAddresses } from '@/hooks/useAddresses';
 import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import TempCepInput from './TempCepInput';
 import AddAddressModal from '@/components/profile/AddAddressModal';
 import { Button } from '@/components/ui/button';
@@ -21,7 +23,7 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
   onCepChange,
   currentCep
 }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { addresses, isLoading, refetch } = useAddresses();
   const [showAddAddressModal, setShowAddAddressModal] = useState(false);
   const [isChangingCep, setIsChangingCep] = useState(false);
@@ -38,13 +40,12 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
     
     try {
       // Se é um endereço cadastrado, definir como principal primeiro
-      if (addressId) {
+      if (addressId && user?.id) {
         console.log('[SmartCepModal] 🏠 Definindo endereço como principal:', addressId);
         const { addressService } = await import('@/services/addressService');
-        const { useAuth } = await import('@/context/AuthContext');
         
         // Definir como endereço principal (isso sincronizará com o perfil)
-        await addressService.setPrimaryAddress(addressId, (await supabase.auth.getUser()).data.user?.id!);
+        await addressService.setPrimaryAddress(addressId, user.id);
         
         // Aguardar um momento para sincronização
         await new Promise(resolve => setTimeout(resolve, 500));

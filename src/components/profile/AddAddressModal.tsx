@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -33,13 +34,15 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
   onSave,
   initialData
 }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { isLoading, error, cepData, lookupAddress, clearData, retryLookup, lastSearchedCep } = useEnhancedCepLookup();
   const [cepInput, setCepInput] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
   const [cepValidatedForEdit, setCepValidatedForEdit] = useState(false);
   
   const [formData, setFormData] = useState<Address>({
+    id: '',
+    user_id: user?.id || '',
     nome: '',
     cep: '',
     logradouro: '',
@@ -48,7 +51,9 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
     bairro: '',
     cidade: '',
     estado: '',
-    principal: false
+    principal: false,
+    created_at: '',
+    updated_at: ''
   });
   
   const [isSaving, setIsSaving] = useState(false);
@@ -64,6 +69,8 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
     } else {
       console.log('[AddAddressModal] Adding new address');
       setFormData({
+        id: '',
+        user_id: user?.id || '',
         nome: '',
         cep: '',
         logradouro: '',
@@ -72,7 +79,9 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
         bairro: '',
         cidade: '',
         estado: '',
-        principal: false
+        principal: false,
+        created_at: '',
+        updated_at: ''
       });
       setCepInput('');
       setIsEditMode(false);
@@ -80,7 +89,7 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
     }
     setValidationErrors({});
     clearData();
-  }, [initialData, open, clearData]);
+  }, [initialData, open, clearData, user?.id]);
 
   useEffect(() => {
     if (open && !isAuthenticated) {

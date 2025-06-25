@@ -48,7 +48,7 @@ export const getMarketplaceProducts = async (vendorIds?: string[]): Promise<Mark
         id,
         nome,
         descricao,
-        preco_original,
+        preco_normal,
         preco_promocional,
         promocao_ativa,
         promocao_inicio,
@@ -123,7 +123,7 @@ export const getMarketplaceProducts = async (vendorIds?: string[]): Promise<Mark
         id: product.id,
         nome: product.nome,
         descricao: product.descricao,
-        preco_original: product.preco_original,
+        preco_original: product.preco_normal, // Use preco_normal from database
         preco_promocional: product.preco_promocional,
         promocao_ativa: product.promocao_ativa || false,
         promocao_inicio: product.promocao_inicio,
@@ -154,7 +154,7 @@ export const getMarketplaceProducts = async (vendorIds?: string[]): Promise<Mark
         created_at: product.created_at,
         updated_at: product.updated_at,
         // Legacy compatibility
-        preco_normal: product.preco_original
+        preco_normal: product.preco_normal
       };
     });
 
