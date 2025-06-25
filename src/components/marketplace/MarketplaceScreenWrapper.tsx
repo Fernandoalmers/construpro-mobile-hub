@@ -1,7 +1,7 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useLocation } from 'react-router-dom';
-import MarketplaceScreen from './MarketplaceScreen';
+import OptimizedMarketplaceScreen from './OptimizedMarketplaceScreen';
 import MarketplaceHomeScreen from './MarketplaceHomeScreen';
 import ErrorBoundary from '../common/ErrorBoundary';
 
@@ -11,10 +11,10 @@ const MarketplaceScreenWrapper: React.FC = () => {
   // Check if we should show products or home screen
   const showProducts = location.pathname === '/marketplace/products';
 
-  // Conditionally render marketplace or home screen
+  // Always use OptimizedMarketplaceScreen for products view
   return (
     <ErrorBoundary>
-      {showProducts ? <MarketplaceScreen /> : <MarketplaceHomeScreen />}
+      {showProducts ? <OptimizedMarketplaceScreen /> : <MarketplaceHomeScreen />}
     </ErrorBoundary>
   );
 };

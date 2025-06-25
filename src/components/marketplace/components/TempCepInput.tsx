@@ -1,19 +1,22 @@
+
 import React, { useState } from 'react';
 import { MapPin, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useEnhancedCepLookup } from '@/hooks/useEnhancedCepLookup';
+import { useDeliveryZones } from '@/hooks/useDeliveryZones';
 import EnhancedCepErrorDisplay from '@/components/common/EnhancedCepErrorDisplay';
 import ManualAddressForm from '@/components/common/ManualAddressForm';
 
 interface TempCepInputProps {
-  onCepSubmit: (cep: string) => void;
+  onCepSubmit?: (cep: string) => void;
   loading?: boolean;
 }
 
 const TempCepInput: React.FC<TempCepInputProps> = ({ onCepSubmit, loading = false }) => {
   const [tempCep, setTempCep] = useState('');
   const [showManualForm, setShowManualForm] = useState(false);
+  const { resolveZones, isLoading: zonesLoading } = useDeliveryZones();
   
   const { 
     isLoading, 
@@ -53,7 +56,14 @@ const TempCepInput: React.FC<TempCepInputProps> = ({ onCepSubmit, loading = fals
       const result = await lookupAddress(cleanCep);
       
       if (result) {
-        onCepSubmit(cleanCep);
+        // Resolver zonas de entrega para o CEP
+        await resolveZones(cleanCep);
+        
+        // Chamar callback se fornecido
+        if (onCepSubmit) {
+          onCepSubmit(cleanCep);
+        }
+        
         setShowManualForm(false);
       }
     }
@@ -74,13 +84,19 @@ const TempCepInput: React.FC<TempCepInputProps> = ({ onCepSubmit, loading = fals
     setTempCep(formatCep(suggestedCep));
     const result = await lookupAddress(suggestedCep);
     if (result) {
-      onCepSubmit(suggestedCep);
+      await resolveZones(suggestedCep);
+      if (onCepSubmit) {
+        onCepSubmit(suggestedCep);
+      }
     }
   };
 
-  const handleManualSubmit = (data: any) => {
+  const handleManualSubmit = async (data: any) => {
     console.log('[TempCepInput] Endereço manual enviado:', data);
-    onCepSubmit(data.cep);
+    await resolveZones(data.cep);
+    if (onCepSubmit) {
+      onCepSubmit(data.cep);
+    }
     setShowManualForm(false);
     setTempCep(formatCep(data.cep));
   };
@@ -100,6 +116,8 @@ const TempCepInput: React.FC<TempCepInputProps> = ({ onCepSubmit, loading = fals
     );
   }
 
+  const isProcessing = isLoading || loading || zonesLoading;
+
   return (
     <div className="space-y-3">
       <form onSubmit={handleSubmit} className="flex gap-2 items-center">
@@ -116,10 +134,10 @@ const TempCepInput: React.FC<TempCepInputProps> = ({ onCepSubmit, loading = fals
         <Button 
           type="submit" 
           size="sm" 
-          disabled={tempCep.replace(/\D/g, '').length !== 8 || isLoading || loading}
+          disabled={tempCep.replace(/\D/g, '').length !== 8 || isProcessing}
           className="flex items-center gap-1"
         >
-          {isLoading || loading ? (
+          {isProcessing ? (
             <Loader2 className="w-3 h-3 animate-spin" />
           ) : (
             <MapPin className="w-3 h-3" />

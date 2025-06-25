@@ -21,8 +21,20 @@ export const useOptimizedMarketplace = () => {
   
   // IDs dos vendedores que atendem a zona atual
   const availableVendorIds = useMemo(() => {
-    return hasActiveZones ? currentZones.map(zone => zone.vendor_id) : undefined;
-  }, [currentZones, hasActiveZones]);
+    if (!hasActiveZones || currentZones.length === 0) {
+      console.log('[useOptimizedMarketplace] 🌍 Sem filtros de zona - todos os produtos disponíveis');
+      return undefined; // undefined = sem filtro, todos os produtos
+    }
+    
+    const vendorIds = currentZones.map(zone => zone.vendor_id);
+    console.log('[useOptimizedMarketplace] 📍 Filtros de zona ativos:', {
+      zonesCount: currentZones.length,
+      vendorIds: vendorIds.length,
+      currentCep
+    });
+    
+    return vendorIds;
+  }, [currentZones, hasActiveZones, currentCep]);
 
   // Consolidate all marketplace data in parallel queries
   const { 
@@ -63,15 +75,17 @@ export const useOptimizedMarketplace = () => {
 
   // Log informações de debug sobre filtros de zona
   useEffect(() => {
-    if (hasActiveZones) {
-      console.log('[useOptimizedMarketplace] 📍 Filtros de zona ativados:', {
+    if (!zonesLoading) {
+      console.log('[useOptimizedMarketplace] 📊 Estado atual do marketplace:', {
+        hasActiveZones,
         currentCep,
         zonesCount: currentZones.length,
-        vendorsCount: availableVendorIds?.length || 0,
-        productsCount: products.length
+        vendorsCount: availableVendorIds?.length || 'todos',
+        productsCount: products.length,
+        isFiltered: hasActiveZones
       });
     }
-  }, [hasActiveZones, currentCep, currentZones.length, availableVendorIds?.length, products.length]);
+  }, [hasActiveZones, currentCep, currentZones.length, availableVendorIds?.length, products.length, zonesLoading]);
 
   // Memoize the consolidated data
   const marketplaceData: OptimizedMarketplaceData = useMemo(() => ({

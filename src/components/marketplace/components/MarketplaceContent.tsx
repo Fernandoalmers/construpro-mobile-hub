@@ -39,10 +39,14 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
 
   // Handler para trocar CEP
   const handleChangeCep = () => {
-    // Aqui você pode abrir um modal ou navegar para uma tela de seleção de CEP
     const newCep = prompt('Digite o novo CEP:');
     if (newCep) {
-      resolveZones(newCep);
+      const cleanCep = newCep.replace(/\D/g, '');
+      if (cleanCep.length === 8) {
+        resolveZones(cleanCep);
+      } else {
+        alert('CEP deve ter 8 dígitos');
+      }
     }
   };
 
@@ -71,6 +75,11 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
           </h2>
           <p className="text-sm text-gray-600">
             {filteredProdutos.length} produto{filteredProdutos.length !== 1 ? 's' : ''} encontrado{filteredProdutos.length !== 1 ? 's' : ''}
+            {hasActiveZones && (
+              <span className="text-construPro-blue font-medium">
+                {' '}na sua região
+              </span>
+            )}
           </p>
         </div>
 
