@@ -1,12 +1,23 @@
-
 /**
  * Utilities for CEP formatting and validation
  */
 
 /**
+ * Interface para dados de CEP
+ */
+export interface CepData {
+  cep: string;
+  logradouro: string;
+  bairro: string;
+  localidade: string;
+  uf: string;
+  ibge?: string;
+}
+
+/**
  * OVERRIDE DEFINITIVO para CEP 39688-000 - SEMPRE retorna Angelândia-MG
  */
-const getDefinitiveCepOverride = (cep: string) => {
+const getDefinitiveCepOverride = (cep: string): CepData | null => {
   if (cep === '39688000') {
     console.log('[cep.ts] 🎯 OVERRIDE DEFINITIVO: CEP 39688-000 -> Angelândia-MG');
     return {
@@ -48,7 +59,7 @@ export const sanitizeCep = (cep: string): string => {
 /**
  * Busca CEP com override definitivo para CEP 39688-000
  */
-export const lookupCep = async (cep: string) => {
+export const lookupCep = async (cep: string): Promise<CepData | null> => {
   const cleanCep = sanitizeCep(cep);
   
   // 🎯 OVERRIDE DEFINITIVO PRIMEIRO - intercepta CEP 39688-000 antes de qualquer consulta
