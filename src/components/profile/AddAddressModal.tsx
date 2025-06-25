@@ -15,9 +15,9 @@ import { toast } from '@/components/ui/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Address } from '@/services/addressService';
 import { useAuth } from '@/context/AuthContext';
-import { useCepLookup } from '@/hooks/useCepLookup';
+import { useEnhancedCepLookup } from '@/hooks/useEnhancedCepLookup';
 import { formatCep } from '@/lib/cep';
-import CepErrorDisplay from '@/components/common/CepErrorDisplay';
+import EnhancedCepErrorDisplay from '@/components/common/EnhancedCepErrorDisplay';
 import { Search, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 
 interface AddAddressModalProps {
@@ -34,7 +34,7 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
   initialData
 }) => {
   const { isAuthenticated } = useAuth();
-  const { isLoading, error, cepData, lookupAddress, clearData } = useCepLookup();
+  const { isLoading, error, cepData, lookupAddress, clearData, retryLookup, lastSearchedCep } = useEnhancedCepLookup();
   const [cepInput, setCepInput] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
   const [cepValidatedForEdit, setCepValidatedForEdit] = useState(false);
@@ -60,7 +60,7 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
       setFormData(initialData);
       setCepInput(initialData.cep || '');
       setIsEditMode(true);
-      setCepValidatedForEdit(true); // Mark CEP as valid for existing addresses
+      setCepValidatedForEdit(true);
     } else {
       console.log('[AddAddressModal] Adding new address');
       setFormData({
@@ -97,7 +97,7 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
   // Auto-fill fields when CEP data is found
   useEffect(() => {
     if (cepData) {
-      console.log('[AddAddressModal] Preenchendo campos automaticamente:', cepData);
+      console.log('[AddAddressModal] Preenchendo campos automaticamente com sistema aprimorado:', cepData);
       setFormData(prev => ({
         ...prev,
         cep: cepData.cep,
@@ -107,7 +107,7 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
         estado: cepData.uf
       }));
       
-      setCepValidatedForEdit(true); // Mark as validated when new CEP data is loaded
+      setCepValidatedForEdit(true);
       
       // Limpar erros de validação dos campos preenchidos automaticamente
       setValidationErrors(prev => {
@@ -133,7 +133,7 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
       return;
     }
     
-    console.log('[AddAddressModal] Buscando CEP:', cepInput);
+    console.log('[AddAddressModal] Buscando CEP com sistema aprimorado:', cepInput);
     const sanitizedCep = cepInput.replace(/\D/g, '');
     
     if (sanitizedCep.length !== 8) {
@@ -151,7 +151,7 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
     if (result) {
       toast({
         title: "CEP encontrado!",
-        description: "Dados preenchidos automaticamente."
+        description: `Endereço em ${result.localidade}-${result.uf} preenchido automaticamente.`
       });
     }
   };
@@ -217,18 +217,26 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
   };
 
   const handleRetry = async () => {
-    console.log('[AddAddressModal] Tentando novamente...');
-    const sanitizedCep = cepInput.replace(/\D/g, '');
-    if (sanitizedCep.length === 8) {
-      await lookupAddress(sanitizedCep);
-    }
+    console.log('[AddAddressModal] Tentando novamente com sistema aprimorado...');
+    await retryLookup();
   };
 
   const handleManualEntry = () => {
-    console.log('[AddAddressModal] Mostrando entrada manual');
-    // Allow manual entry by clearing the error and enabling form fields
+    console.log('[AddAddressModal] Permitindo entrada manual');
     setValidationErrors({});
     setCepValidatedForEdit(true);
+  };
+
+  const handleCepSuggestion = async (suggestedCep: string) => {
+    console.log('[AddAddressModal] Usando CEP sugerido:', suggestedCep);
+    setCepInput(suggestedCep);
+    const result = await lookupAddress(suggestedCep);
+    if (result) {
+      toast({
+        title: "CEP encontrado!",
+        description: `Endereço em ${result.localidade}-${result.uf} preenchido automaticamente.`
+      });
+    }
   };
 
   const validateForm = (): boolean => {
@@ -359,7 +367,7 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
                 )}
               </div>
 
-              {/* CEP Field with Search */}
+              {/* CEP Field with Enhanced Search */}
               <div className="space-y-2">
                 <Label htmlFor="cep">CEP*</Label>
                 <div className="flex gap-2">
@@ -396,12 +404,13 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
                 )}
                 
                 {error && (
-                  <CepErrorDisplay
+                  <EnhancedCepErrorDisplay
                     error={error}
                     onRetry={handleRetry}
                     onManualEntry={handleManualEntry}
+                    onCepSuggestion={handleCepSuggestion}
                     isRetrying={isLoading}
-                    searchedCep={cepInput.replace(/\D/g, '')}
+                    searchedCep={lastSearchedCep || undefined}
                   />
                 )}
                 
@@ -409,11 +418,17 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <CheckCircle size={14} className="text-green-600" />
-                      <span className="text-sm text-green-600 font-medium">CEP válido encontrado!</span>
+                      <span className="text-sm text-green-600 font-medium">
+                        CEP válido encontrado com sistema aprimorado!
+                        {cepData.source && <span className="text-xs ml-1">(fonte: {cepData.source})</span>}
+                      </span>
                     </div>
                     <div className="p-3 bg-green-50 rounded-lg border border-green-200">
                       <p className="text-sm font-medium">{cepData.logradouro}</p>
                       <p className="text-sm text-gray-600">{cepData.bairro}, {cepData.localidade} - {cepData.uf}</p>
+                      {cepData.confidence && (
+                        <p className="text-xs text-gray-500 mt-1">Confiança: {cepData.confidence}</p>
+                      )}
                     </div>
                   </div>
                 )}
@@ -422,7 +437,7 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
                   <div className="p-2 bg-blue-50 border border-blue-200 rounded-md">
                     <p className="text-sm text-blue-600 flex items-center gap-2">
                       <Loader2 size={14} className="animate-spin" />
-                      Buscando CEP... Aguarde alguns segundos.
+                      Buscando CEP com sistema aprimorado... Aguarde alguns segundos.
                     </p>
                   </div>
                 )}

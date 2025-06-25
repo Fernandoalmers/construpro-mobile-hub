@@ -175,6 +175,7 @@ const UserDataScreen: React.FC = () => {
     
     if (data) {
       console.log('[UserDataScreen] Enhanced CEP found and saved:', sanitizedCep, data);
+      toast.success(`CEP encontrado: ${data.localidade}-${data.uf}`);
     }
   };
 
@@ -404,8 +405,9 @@ const UserDataScreen: React.FC = () => {
               {cepData && (
                 <div className="mt-2 p-2 bg-green-50 rounded border border-green-200">
                   <p className="text-sm text-green-700">
-                    ✅ CEP encontrado: {cepData.localidade} - {cepData.uf}
+                    ✅ CEP encontrado com sistema aprimorado: {cepData.localidade} - {cepData.uf}
                     {cepData.source && <span className="text-xs ml-1">(fonte: {cepData.source})</span>}
+                    {cepData.confidence && <span className="text-xs ml-1">- confiança: {cepData.confidence}</span>}
                   </p>
                 </div>
               )}
