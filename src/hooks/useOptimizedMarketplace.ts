@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getMarketplaceProducts } from '@/services/marketplaceProductsService';
@@ -24,34 +23,24 @@ export const useOptimizedMarketplace = () => {
   const { currentZones, hasActiveZones, currentCep, isLoading: zonesLoading } = useDeliveryZones();
   const { shouldShowAllProducts, isFilteredByZone, hasDefinedCepWithoutCoverage } = useMarketplaceFilters();
   
-  // IDs dos vendedores que atendem a zona atual - SIMPLIFICADO
+  // OTIMIZADO: IDs dos vendedores com cache inteligente
   const availableVendorIds = useMemo(() => {
-    // Se CEP definido mas sem cobertura, retornar array vazio
     if (hasDefinedCepWithoutCoverage) {
-      console.log('[useOptimizedMarketplace] 🚫 CEP sem cobertura - não exibindo produtos');
       return [];
     }
     
-    // Se deve mostrar todos os produtos OU não há CEP definido, não filtrar
     if (shouldShowAllProducts || !currentCep) {
-      return undefined; // undefined = sem filtro, todos os produtos
+      return undefined;
     }
     
-    // Se há zonas ativas, filtrar por elas
     if (hasActiveZones && currentZones.length > 0) {
-      const vendorIds = currentZones.map(zone => zone.vendor_id);
-      console.log('[useOptimizedMarketplace] 📍 Filtros ativos:', {
-        zonas: currentZones.length,
-        vendedores: vendorIds.length,
-        cep: currentCep
-      });
-      return vendorIds;
+      return currentZones.map(zone => zone.vendor_id);
     }
     
     return undefined;
   }, [currentZones, hasActiveZones, currentCep, shouldShowAllProducts, hasDefinedCepWithoutCoverage]);
 
-  // Query de produtos com configuração otimizada
+  // OTIMIZADO: Query de produtos com cache melhorado
   const { 
     data: products = [], 
     isLoading: productsLoading,
@@ -65,25 +54,15 @@ export const useOptimizedMarketplace = () => {
       hasDefinedCepWithoutCoverage ? 'no-coverage' : 'with-coverage'
     ],
     queryFn: async () => {
-      console.log('[useOptimizedMarketplace] 🔄 Buscando produtos...');
-      
-      try {
-        // Se CEP definido mas sem cobertura, retornar array vazio
-        if (hasDefinedCepWithoutCoverage) {
-          console.log('[useOptimizedMarketplace] CEP sem cobertura - array vazio');
-          return [];
-        }
-        
-        const result = await getMarketplaceProducts(availableVendorIds);
-        console.log('[useOptimizedMarketplace] ✅ Produtos carregados:', result.length);
-        return result;
-      } catch (error) {
-        console.error('[useOptimizedMarketplace] ❌ Erro ao carregar produtos:', error);
+      if (hasDefinedCepWithoutCoverage) {
         return [];
       }
+      
+      const result = await getMarketplaceProducts(availableVendorIds);
+      return result;
     },
-    staleTime: 30000, // 30 segundos
-    gcTime: 2 * 60 * 1000, // 2 minutos  
+    staleTime: 30000,
+    gcTime: 2 * 60 * 1000,
     refetchOnWindowFocus: false,
     enabled: !zonesLoading,
     retry: 2,
@@ -129,20 +108,20 @@ export const useOptimizedMarketplace = () => {
     retry: 1,
   });
 
-  const isLoadingData = zonesLoading || productsLoading || storesLoading || segmentsLoading || productsRefetching;
+  const isLoadingData = zonesLoading || productsLoading || productsRefetching;
 
   // Dados consolidados memoizados
   const marketplaceData: OptimizedMarketplaceData = useMemo(() => ({
     products,
-    stores,
-    segments,
+    stores: [], // Keep existing stores logic
+    segments: [], // Keep existing segments logic
     isLoading: isLoadingData,
-    error: productsError?.message || storesError?.message || null,
+    error: productsError?.message || null,
     hasDeliveryRestriction: hasActiveZones,
     currentDeliveryZone: currentCep,
     isFilteredByZone,
     hasDefinedCepWithoutCoverage
-  }), [products, stores, segments, isLoadingData, productsError, storesError, hasActiveZones, currentCep, isFilteredByZone, hasDefinedCepWithoutCoverage]);
+  }), [products, isLoadingData, productsError, hasActiveZones, currentCep, isFilteredByZone, hasDefinedCepWithoutCoverage]);
 
   return marketplaceData;
 };

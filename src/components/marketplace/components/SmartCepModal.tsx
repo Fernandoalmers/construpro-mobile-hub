@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { MapPin, Plus, ChevronRight, Loader2 } from 'lucide-react';
 import CustomModal from '@/components/common/CustomModal';
@@ -23,7 +22,7 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
   currentCep
 }) => {
   const { isAuthenticated } = useAuth();
-  const { addresses, isLoading } = useAddresses();
+  const { addresses, isLoading, refetch } = useAddresses();
   const [showAddAddressModal, setShowAddAddressModal] = useState(false);
   const [isChangingCep, setIsChangingCep] = useState(false);
   const [changingAddressId, setChangingAddressId] = useState<string | null>(null);
@@ -36,37 +35,37 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
     
     setIsChangingCep(true);
     setChangingAddressId(addressId || null);
-    console.log('[SmartCepModal] 🏠 Iniciando mudança de CEP para:', cep, 'endereço ID:', addressId);
-    
-    const startTime = Date.now();
     
     try {
-      console.log('[SmartCepModal] ⏳ Chamando onCepChange...');
+      // Se é um endereço cadastrado, definir como principal primeiro
+      if (addressId) {
+        console.log('[SmartCepModal] 🏠 Definindo endereço como principal:', addressId);
+        const { addressService } = await import('@/services/addressService');
+        const { useAuth } = await import('@/context/AuthContext');
+        
+        // Definir como endereço principal (isso sincronizará com o perfil)
+        await addressService.setPrimaryAddress(addressId, (await supabase.auth.getUser()).data.user?.id!);
+        
+        // Aguardar um momento para sincronização
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
       
-      // CORRIGIDO: Aguardar diretamente o onCepChange sem Promise.race
+      // Resolver zonas de entrega
       await onCepChange(cep);
       
-      const endTime = Date.now();
-      const duration = endTime - startTime;
-      
-      console.log('[SmartCepModal] ✅ CEP alterado com sucesso em', duration, 'ms');
       toast({
-        title: "✅ CEP alterado com sucesso",
+        title: "✅ Endereço atualizado",
         description: `Produtos atualizados para ${formatCep(cep)}`,
         duration: 3000
       });
       
-      // Aguardar um pouco para garantir que a UI seja atualizada
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Aguardar para garantir que tudo foi processado
+      await new Promise(resolve => setTimeout(resolve, 800));
       
-      console.log('[SmartCepModal] 🚪 Fechando modal após resolução completa');
       onOpenChange(false);
       
     } catch (error) {
-      const endTime = Date.now();
-      const duration = endTime - startTime;
-      
-      console.error('[SmartCepModal] ❌ Erro ao alterar CEP após', duration, 'ms:', error);
+      console.error('[SmartCepModal] ❌ Erro ao alterar endereço:', error);
       
       let errorMessage = "Tente novamente em alguns instantes";
       if (error instanceof Error) {
@@ -75,7 +74,7 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
       
       toast({
         variant: "destructive",
-        title: "❌ Erro ao alterar CEP",
+        title: "❌ Erro ao alterar endereço",
         description: errorMessage,
         duration: 4000
       });
@@ -86,16 +85,21 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
   };
 
   const handleTempCepSubmit = async (cep: string) => {
-    console.log('[SmartCepModal] 📝 CEP temporário submetido:', cep);
     await handleAddressSelect(cep);
   };
 
   const handleAddAddress = () => {
-    console.log('[SmartCepModal] ➕ Abrindo modal de adicionar endereço');
     setShowAddAddressModal(true);
   };
 
-  // Para usuários não autenticados, sempre mostrar input de CEP
+  const handleAddressAdded = async () => {
+    console.log('[SmartCepModal] 📝 Novo endereço adicionado, atualizando lista...');
+    await refetch();
+    setShowAddAddressModal(false);
+    
+    // Não fechar o modal principal automaticamente - deixar usuário escolher
+  };
+
   if (!isAuthenticated) {
     return (
       <CustomModal
@@ -133,7 +137,6 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
     );
   }
 
-  // Para usuários autenticados sem endereços - incentivar cadastro
   if (!isLoading && !hasAddresses) {
     return (
       <>
@@ -195,14 +198,13 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
     );
   }
 
-  // Para usuários autenticados com endereços - mostrar lista
   return (
     <>
       <CustomModal
         open={open}
         onOpenChange={onOpenChange}
-        title="Selecionar Endereço de Entrega"
-        description="Escolha um endereço ou digite um novo CEP"
+        title={!isAuthenticated ? "Definir CEP de Entrega" : hasAddresses ? "Selecionar Endereço de Entrega" : "Cadastre seu primeiro endereço"}
+        description={!isAuthenticated ? "Digite seu CEP para ver produtos disponíveis na sua região" : hasAddresses ? "Escolha um endereço ou digite um novo CEP" : "Para ver produtos disponíveis na sua região, cadastre um endereço de entrega"}
         size="md"
       >
         <div className="space-y-4">
@@ -307,9 +309,7 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
       <AddAddressModal
         open={showAddAddressModal}
         onOpenChange={setShowAddAddressModal}
-        onSave={() => {
-          setShowAddAddressModal(false);
-        }}
+        onSave={handleAddressAdded}
       />
     </>
   );
