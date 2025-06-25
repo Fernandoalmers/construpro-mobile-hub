@@ -55,17 +55,23 @@ const directSupabaseOperations = {
   async addAddress(addressData: Address): Promise<Address> {
     console.log('[addressService] Using direct Supabase fallback for addAddress');
     
+    const session = await ensureAuthSession();
+    
     // If setting as principal, first clear other principal addresses
     if (addressData.principal) {
       await supabase
         .from('user_addresses')
         .update({ principal: false })
-        .eq('principal', true);
+        .eq('principal', true)
+        .eq('user_id', session.user.id);
     }
 
     const { data: address, error } = await supabase
       .from('user_addresses')
-      .insert(addressData)
+      .insert({
+        ...addressData,
+        user_id: session.user.id
+      })
       .select()
       .single();
 
@@ -80,12 +86,15 @@ const directSupabaseOperations = {
   async updateAddress(addressId: string, addressData: Partial<Address>): Promise<Address> {
     console.log('[addressService] Using direct Supabase fallback for updateAddress');
     
+    const session = await ensureAuthSession();
+    
     // If setting as principal, first clear other principal addresses
     if (addressData.principal) {
       await supabase
         .from('user_addresses')
         .update({ principal: false })
         .eq('principal', true)
+        .eq('user_id', session.user.id)
         .neq('id', addressId);
     }
 
@@ -93,6 +102,7 @@ const directSupabaseOperations = {
       .from('user_addresses')
       .update(addressData)
       .eq('id', addressId)
+      .eq('user_id', session.user.id)
       .select()
       .single();
 
@@ -107,10 +117,13 @@ const directSupabaseOperations = {
   async deleteAddress(addressId: string): Promise<void> {
     console.log('[addressService] Using direct Supabase fallback for deleteAddress');
     
+    const session = await ensureAuthSession();
+    
     const { error } = await supabase
       .from('user_addresses')
       .delete()
-      .eq('id', addressId);
+      .eq('id', addressId)
+      .eq('user_id', session.user.id);
 
     if (error) {
       console.error('[addressService] Direct Supabase error:', error);
@@ -178,13 +191,14 @@ export const addressService = {
   async getAddress(addressId: string): Promise<Address> {
     console.log('[addressService] Fetching address by ID:', addressId);
     try {
-      await ensureAuthSession();
+      const session = await ensureAuthSession();
       
       // For get single address, use direct Supabase as it's more reliable
       const { data: address, error } = await supabase
         .from('user_addresses')
         .select('*')
         .eq('id', addressId)
+        .eq('user_id', session.user.id)
         .single();
 
       if (error) {

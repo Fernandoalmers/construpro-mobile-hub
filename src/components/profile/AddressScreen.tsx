@@ -56,11 +56,11 @@ const AddressScreen: React.FC = () => {
           </button>
           <h1 className="text-xl font-bold text-white ml-2">Meus Endereços</h1>
           {/* Connection status indicator */}
-          <div className="ml-auto">
+          <div className="ml-auto" title={isConnectionIssue ? "Problema de conexão" : "Conectado"}>
             {isConnectionIssue ? (
-              <WifiOff size={20} className="text-red-300" title="Problema de conexão" />
+              <WifiOff size={20} className="text-red-300" />
             ) : (
-              <Wifi size={20} className="text-green-300" title="Conectado" />
+              <Wifi size={20} className="text-green-300" />
             )}
           </div>
         </div>
