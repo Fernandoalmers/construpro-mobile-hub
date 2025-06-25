@@ -73,10 +73,10 @@ export const MarketplaceDisplay: React.FC<MarketplaceDisplayProps> = ({
   isLoadingMore,
   loadMoreProducts
 }) => {
-  const { hideHeader } = useScrollBehavior();
+  const { hideFilters } = useScrollBehavior();
   
-  // Calculate dynamic padding based on header visibility and height
-  const dynamicPaddingTop = hideHeader ? 0 : headerHeight;
+  // Calculate dynamic padding based on filters visibility and height
+  const dynamicPaddingTop = headerHeight;
 
   // Handle header height changes
   const handleHeaderHeightChange = (height: number) => {
@@ -87,7 +87,7 @@ export const MarketplaceDisplay: React.FC<MarketplaceDisplayProps> = ({
     <div className="flex flex-col min-h-screen bg-gray-50 pb-20">
       {/* Fixed Header - completely outside layout flow */}
       <MarketplaceHeader 
-        hideHeader={hideHeader}
+        hideFilters={hideFilters}
         searchTerm={term || ''}
         selectedCategories={Array.isArray(selectedCategories) ? selectedCategories : []}
         selectedLojas={Array.isArray(selectedLojas) ? selectedLojas : []}

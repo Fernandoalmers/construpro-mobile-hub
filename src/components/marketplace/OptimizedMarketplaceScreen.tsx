@@ -7,7 +7,7 @@ import MarketplaceContent from './components/MarketplaceContent';
 import LoadingState from '../common/LoadingState';
 
 const OptimizedMarketplaceScreen: React.FC = () => {
-  const { hideHeader } = useScrollBehavior();
+  const { hideFilters } = useScrollBehavior();
   
   const {
     // State
@@ -54,7 +54,7 @@ const OptimizedMarketplaceScreen: React.FC = () => {
   } = useMarketplaceScreenLogic();
   
   const currentCategoryName = getCurrentDisplayName();
-  const dynamicPaddingTop = hideHeader ? 0 : headerHeight;
+  const dynamicPaddingTop = headerHeight;
   
   // Show loading state
   if (isLoading) {
@@ -81,7 +81,7 @@ const OptimizedMarketplaceScreen: React.FC = () => {
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 pb-20">
       <MarketplaceHeader 
-        hideHeader={hideHeader}
+        hideFilters={hideFilters}
         searchTerm={term || ''}
         selectedCategories={Array.isArray(selectedCategories) ? selectedCategories : []}
         selectedLojas={Array.isArray(selectedLojas) ? selectedLojas : []}

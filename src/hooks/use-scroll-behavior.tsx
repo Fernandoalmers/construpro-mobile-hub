@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 
 export function useScrollBehavior() {
-  const [hideHeader, setHideHeader] = useState(false);
+  const [hideFilters, setHideFilters] = useState(false);
   const [lastScrollY, setLastScrollY] = useState(0);
   const [scrollDirection, setScrollDirection] = useState<'up' | 'down'>('up');
   
@@ -36,15 +36,15 @@ export function useScrollBehavior() {
       setScrollDirection('down');
       // Only hide if we've scrolled enough from the top and not near bottom
       if (currentScrollY > HIDE_THRESHOLD && !nearBottom) {
-        setHideHeader(true);
+        setHideFilters(true);
       }
     } else {
       // Scrolling up
       setScrollDirection('up');
-      // Only show header if user scrolled up significantly or not near bottom
+      // Only show filters if user scrolled up significantly or not near bottom
       const scrollUpDistance = lastScrollY - currentScrollY;
       if (scrollUpDistance > SCROLL_THRESHOLD * 2 || !nearBottom) {
-        setHideHeader(false);
+        setHideFilters(false);
       }
     }
     
@@ -68,5 +68,5 @@ export function useScrollBehavior() {
     };
   }, [handleScroll]);
 
-  return { hideHeader, scrollDirection, lastScrollY };
+  return { hideFilters, scrollDirection, lastScrollY };
 }

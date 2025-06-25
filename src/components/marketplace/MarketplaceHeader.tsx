@@ -1,18 +1,12 @@
 
 import React, { useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
 import { useCart } from '@/hooks/use-cart';
 import { FilterOption } from '@/hooks/use-product-filter';
-
-// Import our new components
-import MarketplaceHeaderTop from './components/MarketplaceHeaderTop';
-import SearchBar from './components/SearchBar';
-import FilterDialogs from './components/FilterDialogs';
-import FilterChips from './components/FilterChips';
-import SegmentCardsHeader from './components/SegmentCardsHeader';
+import FixedHeaderTop from './components/FixedHeaderTop';
+import CollapsibleFiltersSection from './components/CollapsibleFiltersSection';
 
 interface MarketplaceHeaderProps {
-  hideHeader: boolean;
+  hideFilters: boolean;
   searchTerm: string;
   selectedCategories: string[];
   selectedLojas: string[];
@@ -39,7 +33,7 @@ interface MarketplaceHeaderProps {
 }
 
 const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
-  hideHeader,
+  hideFilters,
   searchTerm,
   selectedCategories,
   selectedLojas,
@@ -65,14 +59,17 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
   onHeightChange
 }) => {
   const { cartCount } = useCart();
-  const headerRef = useRef<HTMLDivElement>(null);
+  const fixedHeaderRef = useRef<HTMLDivElement>(null);
+  const filtersRef = useRef<HTMLDivElement>(null);
 
   // Calculate and report header height correctly
   useEffect(() => {
     const calculateHeight = () => {
-      if (headerRef.current && onHeightChange) {
-        const height = headerRef.current.offsetHeight;
-        onHeightChange(height);
+      if (fixedHeaderRef.current && filtersRef.current && onHeightChange) {
+        const fixedHeight = fixedHeaderRef.current.offsetHeight;
+        const filtersHeight = hideFilters ? 0 : filtersRef.current.offsetHeight;
+        const totalHeight = fixedHeight + filtersHeight;
+        onHeightChange(totalHeight);
       }
     };
 
@@ -86,7 +83,7 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
       window.removeEventListener('resize', calculateHeight);
       clearTimeout(timeoutId);
     };
-  }, [onHeightChange, selectedCategories, selectedLojas, selectedRatings, selectedSegments, selectedPriceRanges]);
+  }, [onHeightChange, hideFilters, selectedCategories, selectedLojas, selectedRatings, selectedSegments, selectedPriceRanges]);
 
   // Fix the store mapping to ensure proper format
   const lojasOptions = stores.map(store => ({
@@ -95,84 +92,43 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
   }));
 
   return (
-    <motion.div 
-      ref={headerRef}
-      className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 shadow-sm"
-      initial={{ transform: 'translateY(0)' }}
-      animate={{ 
-        transform: hideHeader ? 'translateY(-100%)' : 'translateY(0)'
-      }}
-      transition={{ 
-        duration: 0.4, 
-        ease: [0.25, 0.46, 0.45, 0.94] // easeOutQuart for smoother animation
-      }}
-    >
-      <div className="bg-construPro-blue">
-        <div className="p-2 sm:p-4 pt-4 sm:pt-8">
-          {/* Header Top with Back Button, Title, View Selector and Cart */}
-          <MarketplaceHeaderTop 
-            cartCount={cartCount} 
-            viewType={viewType}
-            setViewType={setViewType}
-          />
-          
-          {/* Search Bar - com espaçamento reduzido */}
-          <div className="mt-1.5 sm:mt-3">
-            <SearchBar 
-              searchTerm={searchTerm} 
-              onSearchChange={onSearchChange} 
-              onSearch={onSearch} 
-              showSuggestions={false} 
-            />
-          </div>
-
-          {/* Filter Dialogs */}
-          <FilterDialogs 
-            lojasOptions={lojasOptions} 
-            allCategories={allCategories} 
-            segmentOptions={segmentOptions} 
-            priceRangeOptions={priceRangeOptions} 
-            selectedLojas={selectedLojas} 
-            selectedCategories={selectedCategories} 
-            selectedSegments={selectedSegments} 
-            selectedPriceRanges={selectedPriceRanges} 
-            onLojaClick={onLojaClick} 
-            onCategoryClick={onCategoryClick} 
-            onSegmentClick={onSegmentClick} 
-            onPriceRangeClick={onPriceRangeClick} 
-          />
-          
-          {/* Selected Filter Chips */}
-          <FilterChips 
-            selectedCategories={selectedCategories} 
-            selectedLojas={selectedLojas} 
-            selectedRatings={selectedRatings} 
-            selectedSegments={selectedSegments} 
-            selectedPriceRanges={selectedPriceRanges} 
-            allCategories={allCategories} 
-            lojasOptions={lojasOptions} 
-            ratingOptions={ratingOptions} 
-            priceRangeOptions={priceRangeOptions} 
-            segmentOptions={segmentOptions} 
-            onCategoryClick={onCategoryClick} 
-            onLojaClick={onLojaClick} 
-            onRatingClick={onRatingClick} 
-            onSegmentClick={onSegmentClick} 
-            onPriceRangeClick={onPriceRangeClick} 
-            clearFilters={clearFilters} 
-          />
-        </div>
-        
-        {/* Segment Cards Header - now hidden but logic preserved */}
-        <div className="bg-white">
-          <SegmentCardsHeader 
-            selectedSegment={selectedSegmentId}
-            onSegmentClick={onSegmentClick}
-            showSegmentCards={false}
-          />
-        </div>
+    <div className="fixed top-0 left-0 right-0 z-40">
+      {/* Fixed Header Top - Always Visible */}
+      <div ref={fixedHeaderRef}>
+        <FixedHeaderTop
+          cartCount={cartCount}
+          viewType={viewType}
+          setViewType={setViewType}
+          searchTerm={searchTerm}
+          onSearchChange={onSearchChange}
+          onSearch={onSearch}
+        />
       </div>
-    </motion.div>
+
+      {/* Collapsible Filters Section */}
+      <div ref={filtersRef}>
+        <CollapsibleFiltersSection
+          hideFilters={hideFilters}
+          selectedCategories={selectedCategories}
+          selectedLojas={selectedLojas}
+          selectedRatings={selectedRatings}
+          selectedSegments={selectedSegments}
+          selectedPriceRanges={selectedPriceRanges}
+          selectedSegmentId={selectedSegmentId}
+          allCategories={allCategories}
+          ratingOptions={ratingOptions}
+          priceRangeOptions={priceRangeOptions}
+          segmentOptions={segmentOptions}
+          lojasOptions={lojasOptions}
+          onLojaClick={onLojaClick}
+          onCategoryClick={onCategoryClick}
+          onRatingClick={onRatingClick}
+          onSegmentClick={onSegmentClick}
+          onPriceRangeClick={onPriceRangeClick}
+          clearFilters={clearFilters}
+        />
+      </div>
+    </div>
   );
 };
 
