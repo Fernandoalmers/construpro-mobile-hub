@@ -22,14 +22,7 @@ export const useMarketplaceFilters = (): MarketplaceFiltersReturn => {
   // Estado crítico: CEP definido mas sem vendedores que atendem
   const hasDefinedCepWithoutCoverage = Boolean(currentCep && !hasActiveZones);
 
-  // Resetar filtro quando não há zonas ativas
-  useEffect(() => {
-    if (!hasActiveZones) {
-      setShowAllProducts(false);
-    }
-  }, [hasActiveZones]);
-
-  // Lógica corrigida para determinar se deve mostrar todos os produtos
+  // CORRIGIDO: Memoizar melhor para evitar recálculos constantes
   const shouldShowAllProducts = useMemo(() => {
     // Se não há CEP definido, mostrar todos os produtos
     if (!currentCep) {

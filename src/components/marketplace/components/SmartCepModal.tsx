@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { MapPin, Plus, ChevronRight, Loader2 } from 'lucide-react';
 import CustomModal from '@/components/common/CustomModal';
@@ -41,14 +40,14 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
     const startTime = Date.now();
     
     try {
-      // CORRIGIDO: Aguardar a resolução completa das zonas e invalidação das queries
+      // CORRIGIDO: Aguardar a resolução completa das zonas com timeout mais longo
       console.log('[SmartCepModal] ⏳ Resolvendo zonas de entrega...');
       
-      // Timeout de segurança para evitar travamento
+      // Timeout aumentado para 20 segundos para operações complexas
       await Promise.race([
         onCepChange(cep),
         new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Timeout: Resolução demorou mais que 15 segundos')), 15000)
+          setTimeout(() => reject(new Error('Timeout: Resolução demorou mais que 20 segundos')), 20000)
         )
       ]);
       
@@ -62,8 +61,8 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
         duration: 3000
       });
       
-      // CORRIGIDO: Aguardar mais tempo para garantir que as queries sejam completamente revalidadas
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // CORRIGIDO: Aguardar mais tempo para garantir que UI seja atualizada
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       console.log('[SmartCepModal] 🚪 Fechando modal após resolução completa');
       onOpenChange(false);
