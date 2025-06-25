@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 
@@ -36,11 +35,15 @@ export interface MarketplaceProduct {
 }
 
 /**
- * Get all approved products for marketplace with corrected promotion handling
+ * Get all approved products for marketplace with optional delivery zone filtering
  */
-export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> => {
+export const getMarketplaceProducts = async (vendorIds?: string[]): Promise<MarketplaceProduct[]> => {
   try {
-    console.log('[marketplaceProductsService] 🔍 Fetching approved products with corrected promotion handling');
+    console.log('[marketplaceProductsService] 🔍 Fetching approved products');
+    
+    if (vendorIds) {
+      console.log('[marketplaceProductsService] 📍 Filtering by delivery zone vendors:', vendorIds.length);
+    }
     
     // First, update expired promotions with corrected logic
     await updateExpiredPromotions();
@@ -48,7 +51,8 @@ export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> =>
     const { data: authData } = await supabase.auth.getUser();
     console.log('[marketplaceProductsService] 👤 Current user:', authData.user?.id || 'anonymous');
     
-    const { data, error } = await supabase
+    // Base query
+    let query = supabase
       .from('produtos')
       .select(`
         *,
@@ -63,10 +67,17 @@ export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> =>
       .eq('status', 'aprovado')
       .order('created_at', { ascending: false });
     
+    // Apply vendor filter if provided
+    if (vendorIds && vendorIds.length > 0) {
+      query = query.in('vendedor_id', vendorIds);
+    }
+    
+    const { data, error } = await query;
+    
     if (error) {
       console.error('[marketplaceProductsService] ❌ Error fetching products:', error);
       toast.error('Erro ao carregar produtos');
-      return[];
+      return [];
     }
     
     console.log(`[marketplaceProductsService] ✅ Successfully fetched ${data?.length || 0} approved products`);
@@ -125,7 +136,7 @@ export const getMarketplaceProducts = async (): Promise<MarketplaceProduct[]> =>
         });
       }
       
-      // CORRECTED: Use the promotion status from database (already corrected by updateExpiredPromotions)
+      // Use the promotion status from database (already corrected by updateExpiredPromotions)
       const isPromotionActive = product.promocao_ativa || false;
       
       console.log(`[marketplaceProductsService] 📊 Product ${product.nome} promotion status: ${isPromotionActive}`);
@@ -253,14 +264,15 @@ const updateExpiredPromotions = async (): Promise<void> => {
 /**
  * Get products by segment ID with corrected promotion handling
  */
-export const getProductsBySegment = async (segmentId: string): Promise<MarketplaceProduct[]> => {
+export const getProductsBySegment = async (segmentId: string, vendorIds?: string[]): Promise<MarketplaceProduct[]> => {
   try {
     console.log(`[marketplaceProductsService] Fetching products for segment: ${segmentId}`);
     
     // Update expired promotions first
     await updateExpiredPromotions();
     
-    const { data, error } = await supabase
+    // Base query
+    let query = supabase
       .from('produtos')
       .select(`
         *,
@@ -273,6 +285,13 @@ export const getProductsBySegment = async (segmentId: string): Promise<Marketpla
       .eq('status', 'aprovado')
       .eq('segmento_id', segmentId)
       .order('created_at', { ascending: false });
+    
+    // Apply vendor filter if provided
+    if (vendorIds && vendorIds.length > 0) {
+      query = query.in('vendedor_id', vendorIds);
+    }
+    
+    const { data, error } = await query;
     
     if (error) {
       console.error('[marketplaceProductsService] Error fetching products by segment:', error);

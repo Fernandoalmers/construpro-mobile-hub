@@ -1855,6 +1855,45 @@ export type Database = {
           },
         ]
       }
+      user_delivery_context: {
+        Row: {
+          created_at: string
+          current_cep: string
+          current_city: string | null
+          current_state: string | null
+          id: string
+          last_resolved_at: string | null
+          resolved_zone_ids: string[] | null
+          session_id: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          current_cep: string
+          current_city?: string | null
+          current_state?: string | null
+          id?: string
+          last_resolved_at?: string | null
+          resolved_zone_ids?: string[] | null
+          session_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          current_cep?: string
+          current_city?: string | null
+          current_state?: string | null
+          id?: string
+          last_resolved_at?: string | null
+          resolved_zone_ids?: string[] | null
+          session_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       vendedores: {
         Row: {
           banner: string | null
@@ -2348,6 +2387,15 @@ export type Database = {
           old_balance: number
           new_balance: number
           difference: number
+        }[]
+      }
+      resolve_delivery_zones: {
+        Args: { user_cep: string }
+        Returns: {
+          zone_id: string
+          vendor_id: string
+          zone_name: string
+          delivery_fee: number
         }[]
       }
       rollback_transaction: {

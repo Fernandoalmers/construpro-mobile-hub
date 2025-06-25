@@ -1,9 +1,10 @@
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getMarketplaceProducts } from '@/services/marketplaceProductsService';
 import { getStores } from '@/services/marketplace/marketplaceService';
 import { getProductSegments } from '@/services/admin/productSegmentsService';
+import { useDeliveryZones } from './useDeliveryZones';
 
 interface OptimizedMarketplaceData {
   products: any[];
@@ -11,20 +12,30 @@ interface OptimizedMarketplaceData {
   segments: any[];
   isLoading: boolean;
   error: string | null;
+  hasDeliveryRestriction: boolean;
+  currentDeliveryZone: string | null;
 }
 
 export const useOptimizedMarketplace = () => {
+  const { currentZones, hasActiveZones, currentCep, isLoading: zonesLoading } = useDeliveryZones();
+  
+  // IDs dos vendedores que atendem a zona atual
+  const availableVendorIds = useMemo(() => {
+    return hasActiveZones ? currentZones.map(zone => zone.vendor_id) : undefined;
+  }, [currentZones, hasActiveZones]);
+
   // Consolidate all marketplace data in parallel queries
   const { 
     data: products = [], 
     isLoading: productsLoading,
     error: productsError 
   } = useQuery({
-    queryKey: ['marketplace-products'],
-    queryFn: getMarketplaceProducts,
+    queryKey: ['marketplace-products', availableVendorIds],
+    queryFn: () => getMarketplaceProducts(availableVendorIds),
     staleTime: 2 * 60 * 1000, // 2 minutes
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
+    enabled: !zonesLoading, // Só buscar quando as zonas estiverem resolvidas
   });
 
   const { 
@@ -50,14 +61,28 @@ export const useOptimizedMarketplace = () => {
     refetchOnWindowFocus: false,
   });
 
+  // Log informações de debug sobre filtros de zona
+  useEffect(() => {
+    if (hasActiveZones) {
+      console.log('[useOptimizedMarketplace] 📍 Filtros de zona ativados:', {
+        currentCep,
+        zonesCount: currentZones.length,
+        vendorsCount: availableVendorIds?.length || 0,
+        productsCount: products.length
+      });
+    }
+  }, [hasActiveZones, currentCep, currentZones.length, availableVendorIds?.length, products.length]);
+
   // Memoize the consolidated data
   const marketplaceData: OptimizedMarketplaceData = useMemo(() => ({
     products,
     stores,
     segments,
-    isLoading: productsLoading || storesLoading || segmentsLoading,
-    error: productsError?.message || storesError?.message || null
-  }), [products, stores, segments, productsLoading, storesLoading, segmentsLoading, productsError, storesError]);
+    isLoading: zonesLoading || productsLoading || storesLoading || segmentsLoading,
+    error: productsError?.message || storesError?.message || null,
+    hasDeliveryRestriction: hasActiveZones,
+    currentDeliveryZone: currentCep
+  }), [products, stores, segments, zonesLoading, productsLoading, storesLoading, segmentsLoading, productsError, storesError, hasActiveZones, currentCep]);
 
   return marketplaceData;
 };

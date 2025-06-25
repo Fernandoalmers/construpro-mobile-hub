@@ -1,10 +1,12 @@
 
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useInfiniteScroll } from '@/hooks/use-infinite-scroll';
-import CategoryHeader from './CategoryHeader';
-import GridProductView from './GridProductView';
-import ListProductView from './ListProductView';
+import { GridProductView } from './GridProductView';
+import { ListProductView } from './ListProductView';
+import LoadingState from '../../common/LoadingState';
+import { EmptyProductState } from './EmptyProductState';
+import DeliveryZoneIndicator from './DeliveryZoneIndicator';
+import NoDeliveryZoneState from './NoDeliveryZoneState';
+import { useDeliveryZones } from '@/hooks/useDeliveryZones';
 
 interface MarketplaceContentProps {
   dynamicPaddingTop: number;
@@ -17,7 +19,7 @@ interface MarketplaceContentProps {
   loadMoreProducts: () => void;
   clearFilters: () => void;
   viewType: 'grid' | 'list';
-  onLojaClick: (lojaId: string) => void;
+  onLojaClick?: (lojaId: string) => void;
 }
 
 const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
@@ -33,94 +35,91 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
   viewType,
   onLojaClick
 }) => {
-  const navigate = useNavigate();
-  
-  // Ensure arrays are safe to use
-  const safeFilteredProducts = Array.isArray(filteredProdutos) ? filteredProdutos : [];
-  const safeDisplayedProducts = Array.isArray(displayedProducts) ? displayedProducts : [];
+  const { hasActiveZones, currentCep, resolveZones } = useDeliveryZones();
 
-  // Use infinite scroll hook
-  const { observerRef } = useInfiniteScroll({
-    hasMore,
-    isLoading: isLoadingMore,
-    onLoadMore: loadMoreProducts,
-    threshold: 200
-  });
+  // Handler para trocar CEP
+  const handleChangeCep = () => {
+    // Aqui você pode abrir um modal ou navegar para uma tela de seleção de CEP
+    const newCep = prompt('Digite o novo CEP:');
+    if (newCep) {
+      resolveZones(newCep);
+    }
+  };
 
-  // Navigate to product function
-  const navigateToProduct = (productId: string) => {
-    navigate(`/produto/${productId}`);
+  // Handler para tentar novamente
+  const handleRetry = () => {
+    if (currentCep) {
+      resolveZones(currentCep);
+    }
   };
 
   return (
-    <main 
-      className="flex-1 overflow-y-auto"
+    <div 
+      className="flex-1 pb-20"
       style={{ paddingTop: `${dynamicPaddingTop}px` }}
     >
-      <div className="min-h-screen">
-        {/* Category Header */}
-        <CategoryHeader 
-          currentCategoryName={currentCategoryName}
-          productCount={safeFilteredProducts.length}
-        />
-        
-        {/* Products Section */}
-        <div className="bg-white min-h-screen">
-          {isLoading ? (
-            <div className="flex justify-center items-center py-20">
-              <div className="text-center">
-                <div className="w-8 h-8 border-2 border-construPro-blue border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                <p className="text-gray-600">Carregando produtos...</p>
-              </div>
-            </div>
-          ) : safeFilteredProducts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 px-4">
-              <div className="text-center">
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum produto encontrado</h3>
-                <p className="text-gray-600 mb-6">Tente ajustar seus filtros ou buscar por outros termos</p>
-                <button
-                  onClick={clearFilters}
-                  className="bg-construPro-blue text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors"
-                >
-                  Limpar filtros
-                </button>
-              </div>
-            </div>
-          ) : (
-            <>
-              {/* Products Display based on viewType */}
-              <div className="p-4">
-                {viewType === 'grid' ? (
-                  <GridProductView
-                    products={safeDisplayedProducts}
-                    navigateToProduct={navigateToProduct}
-                    onLojaClick={onLojaClick}
-                  />
-                ) : (
-                  <ListProductView
-                    products={safeDisplayedProducts}
-                    navigateToProduct={navigateToProduct}
-                    onLojaClick={onLojaClick}
-                  />
-                )}
-              </div>
-
-              {/* Infinite Scroll Observer */}
-              {hasMore && safeDisplayedProducts.length > 0 && (
-                <div ref={observerRef} className="w-full h-10 flex items-center justify-center">
-                  {isLoadingMore && (
-                    <div className="flex items-center">
-                      <div className="w-6 h-6 border-2 border-construPro-blue border-t-transparent rounded-full animate-spin"></div>
-                      <span className="ml-3 text-sm text-gray-500">Carregando mais produtos...</span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </>
-          )}
+      <div className="p-4">
+        {/* Indicador de zona de entrega */}
+        <div className="mb-4">
+          <DeliveryZoneIndicator />
         </div>
+
+        {/* Nome da categoria atual */}
+        <div className="mb-6">
+          <h2 className="text-xl font-bold text-gray-800">
+            {currentCategoryName}
+          </h2>
+          <p className="text-sm text-gray-600">
+            {filteredProdutos.length} produto{filteredProdutos.length !== 1 ? 's' : ''} encontrado{filteredProdutos.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+
+        {/* Loading state */}
+        {isLoading && (
+          <LoadingState type="skeleton" text="Carregando produtos..." count={6} />
+        )}
+
+        {/* Estado quando não há produtos na zona de entrega */}
+        {!isLoading && hasActiveZones && filteredProdutos.length === 0 && (
+          <NoDeliveryZoneState
+            currentCep={currentCep}
+            onChangeCep={handleChangeCep}
+            onRetry={handleRetry}
+          />
+        )}
+
+        {/* Estado vazio padrão (sem filtros de zona) */}
+        {!isLoading && !hasActiveZones && filteredProdutos.length === 0 && (
+          <EmptyProductState 
+            clearFilters={clearFilters}
+            hasActiveFilters={false}
+          />
+        )}
+
+        {/* Lista de produtos */}
+        {!isLoading && filteredProdutos.length > 0 && (
+          <>
+            {viewType === 'grid' ? (
+              <GridProductView
+                products={displayedProducts}
+                hasMore={hasMore}
+                isLoadingMore={isLoadingMore}
+                loadMore={loadMoreProducts}
+                onLojaClick={onLojaClick}
+              />
+            ) : (
+              <ListProductView
+                products={displayedProducts}
+                hasMore={hasMore}
+                isLoadingMore={isLoadingMore}
+                loadMore={loadMoreProducts}
+                onLojaClick={onLojaClick}
+              />
+            )}
+          </>
+        )}
       </div>
-    </main>
+    </div>
   );
 };
 
