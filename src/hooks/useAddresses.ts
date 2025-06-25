@@ -152,7 +152,7 @@ export function useAddresses() {
     }
   });
 
-  // FASE 3: MELHORIA DO FRONTEND - Enhanced set primary address mutation
+  // CORREÇÃO PRINCIPAL: Enhanced set primary address mutation
   const setPrimaryAddressMutation = useMutation({
     mutationFn: async (addressId: string) => {
       try {
@@ -222,8 +222,8 @@ export function useAddresses() {
       
       const errorMsg = formatErrorMessage(error);
       
-      // RETRY AUTOMÁTICO: Sugerir retry para falhas de rede
-      if (errorMsg.includes('network') || errorMsg.includes('conexão') || errorMsg.includes('timeout')) {
+      // FEEDBACK MELHORADO: Mensagens mais específicas
+      if (errorMsg.includes('network') || errorMsg.includes('conexão') || errorMsg.includes('timeout') || errorMsg.includes('Failed to send')) {
         toast({
           variant: "destructive",
           title: "❌ Erro de conexão",

@@ -132,12 +132,12 @@ serve(async (req) => {
 
       console.log('[address-management] Updating address:', { id, updateData, user_id: user.id })
 
-      // FASE 2: IMPLEMENTAÇÃO ROBUSTA PARA DEFINIR ENDEREÇO PRINCIPAL
+      // CORREÇÃO PRINCIPAL: Lógica robusta para definir endereço principal
       if (updateData.principal === true) {
         console.log('[address-management] Setting address as principal with atomic operation:', id)
         
         try {
-          // Verificar se o endereço existe e pertence ao usuário
+          // 1. Verificar se o endereço existe e pertence ao usuário
           const { data: existingAddress, error: verifyError } = await supabaseClient
             .from('user_addresses')
             .select('*')
@@ -155,7 +155,25 @@ serve(async (req) => {
 
           console.log('[address-management] Address verified, updating as principal')
 
-          // Atualizar o endereço como principal (o trigger do banco vai cuidar da lógica)
+          // 2. OPERAÇÃO ATÔMICA: Primeiro desmarcar todos os outros endereços
+          const { error: clearError } = await supabaseClient
+            .from('user_addresses')
+            .update({ 
+              principal: false,
+              updated_at: new Date().toISOString()
+            })
+            .eq('user_id', user.id)
+            .neq('id', id)
+
+          if (clearError) {
+            console.error('[address-management] Error clearing other principal addresses:', clearError)
+            return new Response(
+              JSON.stringify({ error: `Failed to clear other addresses: ${clearError.message}` }),
+              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+          }
+
+          // 3. Agora definir este endereço como principal
           const { data: updatedAddress, error: updateError } = await supabaseClient
             .from('user_addresses')
             .update({ 
@@ -178,7 +196,7 @@ serve(async (req) => {
 
           console.log('[address-management] Address successfully set as principal:', updatedAddress.id)
 
-          // Verificação final: confirmar que apenas um endereço é principal
+          // 4. Verificação final: confirmar que apenas um endereço é principal
           const { data: verification, error: verifyFinalError } = await supabaseClient
             .from('user_addresses')
             .select('id, nome, principal')

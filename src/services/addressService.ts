@@ -50,22 +50,61 @@ function handleApiError(error: any, operation: string): never {
   throw new Error(errorMessage);
 }
 
+// Enhanced function invocation with better error handling
+async function invokeAddressFunction(options: {
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+  body?: any,
+  retries?: number
+}) {
+  const { method, body, retries = 2 } = options;
+  let lastError: any;
+  
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      console.log(`[addressService] Attempt ${attempt + 1} - Invoking address function:`, { method, hasBody: !!body });
+      
+      const invokeOptions: any = {};
+      
+      if (body) {
+        invokeOptions.body = body;
+      }
+      
+      const { data, error } = await supabase.functions.invoke('address-management', invokeOptions);
+      
+      if (error) {
+        throw error;
+      }
+      
+      console.log(`[addressService] Success on attempt ${attempt + 1}`);
+      return data;
+    } catch (error) {
+      lastError = error;
+      console.error(`[addressService] Attempt ${attempt + 1} failed:`, error);
+      
+      // Don't retry on authentication errors
+      if (error.message?.includes('authentication') || error.message?.includes('unauthorized')) {
+        throw error;
+      }
+      
+      // Wait before retry (exponential backoff)
+      if (attempt < retries) {
+        const delay = Math.min(1000 * Math.pow(2, attempt), 5000);
+        console.log(`[addressService] Waiting ${delay}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  
+  throw lastError;
+}
+
 export const addressService = {
   async getAddresses(): Promise<Address[]> {
     console.log('[addressService] Fetching all addresses');
     try {
       await ensureAuthSession();
       
-      const { data, error } = await supabase.functions.invoke('address-management', {
-        method: 'GET'
-      });
-      
-      console.log('[addressService] Edge function response:', { data, error });
-      
-      if (error) {
-        console.error('[addressService] Edge function error:', error);
-        throw error;
-      }
+      const data = await invokeAddressFunction({ method: 'GET' });
       
       console.log('[addressService] Addresses fetched successfully:', data?.addresses?.length || 0);
       return data?.addresses || [];
@@ -80,17 +119,10 @@ export const addressService = {
     try {
       await ensureAuthSession();
       
-      const { data, error } = await supabase.functions.invoke('address-management', {
-        method: 'GET',
-        body: { id: addressId }
+      const data = await invokeAddressFunction({ 
+        method: 'GET', 
+        body: { id: addressId } 
       });
-      
-      console.log('[addressService] Edge function response for single address:', { data, error });
-      
-      if (error) {
-        console.error('[addressService] Edge function error:', error);
-        throw error;
-      }
       
       if (!data?.address) {
         throw new Error('Address not found');
@@ -119,17 +151,10 @@ export const addressService = {
         throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
       }
       
-      const { data, error } = await supabase.functions.invoke('address-management', {
+      const data = await invokeAddressFunction({
         method: 'POST',
         body: addressData
       });
-      
-      console.log('[addressService] Edge function response for add:', { data, error });
-      
-      if (error) {
-        console.error('[addressService] Edge function error:', error);
-        throw error;
-      }
       
       if (!data?.address) {
         throw new Error('Failed to add address: Invalid response');
@@ -155,17 +180,11 @@ export const addressService = {
       const updatePayload = { id: addressId, ...addressData };
       console.log('[addressService] Update payload:', updatePayload);
       
-      const { data, error } = await supabase.functions.invoke('address-management', {
+      const data = await invokeAddressFunction({
         method: 'PUT',
-        body: updatePayload
+        body: updatePayload,
+        retries: 3 // More retries for principal updates
       });
-      
-      console.log('[addressService] Edge function response for update:', { data, error });
-      
-      if (error) {
-        console.error('[addressService] Edge function error:', error);
-        throw error;
-      }
       
       if (!data?.address) {
         throw new Error('Failed to update address: Invalid response');
@@ -188,17 +207,10 @@ export const addressService = {
         throw new Error('Address ID is required');
       }
       
-      const { data, error } = await supabase.functions.invoke('address-management', {
+      const data = await invokeAddressFunction({
         method: 'DELETE',
         body: { id: addressId }
       });
-      
-      console.log('[addressService] Edge function response for delete:', { data, error });
-      
-      if (error) {
-        console.error('[addressService] Edge function error:', error);
-        throw error;
-      }
       
       console.log('[addressService] Address deleted successfully');
     } catch (error) {
