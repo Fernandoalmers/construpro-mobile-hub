@@ -21,6 +21,26 @@ interface UseEnhancedCepLookupReturn {
   searchHistory: string[];
 }
 
+/**
+ * Override definitivo para CEP 39688-000 - SEMPRE retorna Angelândia-MG
+ */
+const getDefinitiveCepOverride = (cep: string): EnhancedCepData | null => {
+  if (cep === '39688000') {
+    console.log('[useEnhancedCepLookup] 🎯 OVERRIDE DEFINITIVO: CEP 39688-000 -> Angelândia-MG');
+    return {
+      cep: '39688000',
+      logradouro: 'Endereço não especificado',
+      bairro: 'Centro',
+      localidade: 'Angelândia',
+      uf: 'MG',
+      ibge: '3102803',
+      source: 'fallback' as const,
+      confidence: 'high' as const
+    };
+  }
+  return null;
+};
+
 export const useEnhancedCepLookup = (): UseEnhancedCepLookupReturn => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<CepError | null>(null);
@@ -76,6 +96,20 @@ export const useEnhancedCepLookup = (): UseEnhancedCepLookupReturn => {
       setCepData(null);
       setLastSearchedCep(null);
       return null;
+    }
+
+    // 🎯 OVERRIDE DEFINITIVO PRIMEIRO - intercepta CEP 39688-000 ANTES de qualquer consulta
+    const overrideResult = getDefinitiveCepOverride(sanitizedCep);
+    if (overrideResult) {
+      console.log('[useEnhancedCepLookup] ✅ CORREÇÃO DEFINITIVA APLICADA:', overrideResult);
+      setCepData(overrideResult);
+      setError(null);
+      setLastSearchedCep(sanitizedCep);
+      setSearchHistory(prev => {
+        const updated = [sanitizedCep, ...prev.filter(c => c !== sanitizedCep)];
+        return updated.slice(0, 10);
+      });
+      return overrideResult;
     }
 
     console.log('[useEnhancedCepLookup] 🚀 INICIANDO BUSCA COM SISTEMA APRIMORADO:', {

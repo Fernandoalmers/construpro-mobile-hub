@@ -18,6 +18,26 @@ export interface EnhancedCepData {
 }
 
 /**
+ * FALLBACK DEFINITIVO para CEP 39688-000 - SEMPRE retorna Angelândia
+ */
+const getDefinitiveFallback = (cep: string): EnhancedCepData | null => {
+  if (cep === '39688000') {
+    console.log('[enhancedCep] 🎯 FALLBACK DEFINITIVO: CEP 39688-000 -> Angelândia-MG');
+    return {
+      cep,
+      logradouro: 'Endereço não especificado',
+      bairro: 'Centro',
+      localidade: 'Angelândia', // DEFINITIVO: Angelândia, não Setubinha
+      uf: 'MG',
+      ibge: '3102803', // IBGE correto para Angelândia-MG
+      source: 'fallback' as const,
+      confidence: 'high' as const // Alta confiança pois é correção conhecida
+    };
+  }
+  return null;
+};
+
+/**
  * Cache expandido para CEPs de Minas Gerais - especialmente região de Capelinha
  * ✅ CORRIGIDO: CEP 39688-000 agora aponta para Angelândia, não Setubinha
  */
@@ -27,7 +47,7 @@ const MG_EXPANDED_CACHE = {
   '39680001': { cidade: 'Capelinha', uf: 'MG', bairro: 'Centro' },
   '39685000': { cidade: 'Capelinha', uf: 'MG', bairro: 'São Sebastião' },
   '39685001': { cidade: 'Capelinha', uf: 'MG', bairro: 'Maria Lúcia' },
-  '39688000': { cidade: 'Angelândia', uf: 'MG', bairro: 'Centro' }, // ✅ CORRIGIDO
+  '39688000': { cidade: 'Angelândia', uf: 'MG', bairro: 'Centro' }, // ✅ CORRIGIDO DEFINITIVAMENTE
   '39690000': { cidade: 'Turmalina', uf: 'MG', bairro: 'Centro' },
   '39695000': { cidade: 'Veredinha', uf: 'MG', bairro: 'Centro' },
   '39700000': { cidade: 'Minas Novas', uf: 'MG', bairro: 'Centro' },
@@ -287,6 +307,13 @@ export async function lookupCepEnhanced(rawCep: string): Promise<EnhancedCepData
 
   console.log('[lookupCepEnhanced] 🔍 INICIANDO BUSCA APRIMORADA PARA:', cep);
 
+  // 🎯 FALLBACK DEFINITIVO PRIMEIRO - intercepta CEP 39688-000 imediatamente
+  const definitiveFallback = getDefinitiveFallback(cep);
+  if (definitiveFallback) {
+    console.log('[lookupCepEnhanced] ✅ FALLBACK DEFINITIVO APLICADO:', definitiveFallback);
+    return definitiveFallback;
+  }
+
   // Log especial para CEP corrigido
   if (cep === '39688000') {
     console.log('[lookupCepEnhanced] 🎯 CEP 39688-000 - Buscando Angelândia-MG (corrigido)');
@@ -310,18 +337,18 @@ export async function lookupCepEnhanced(rawCep: string): Promise<EnhancedCepData
 
     // 4. FALLBACK INTELIGENTE ESPECÍFICO para região conhecida
     if (!result) {
-      // Angelândia - CEP 39688-000 - ✅ CORRIGIDO
+      // Angelândia - CEP 39688-000 - ✅ CORRIGIDO DEFINITIVAMENTE
       if (cep === '39688000') {
-        console.log('[lookupCepEnhanced] 🎯 CEP 39688-000 - Aplicando fallback CORRIGIDO para Angelândia');
+        console.log('[lookupCepEnhanced] 🎯 CEP 39688-000 - Aplicando fallback DEFINITIVO para Angelândia');
         result = {
           cep,
           logradouro: 'Endereço não especificado',
           bairro: 'Centro',
-          localidade: 'Angelândia', // ✅ CORRIGIDO: era Setubinha, agora é Angelândia
+          localidade: 'Angelândia', // ✅ DEFINITIVO: Angelândia, não Setubinha
           uf: 'MG',
           ibge: '3102803', // Código IBGE correto para Angelândia
           source: 'fallback' as const,
-          confidence: 'medium' as const
+          confidence: 'high' as const // Alta confiança para correção conhecida
         };
       }
       // Capelinha - região 3968x
@@ -459,9 +486,9 @@ async function initializeExpandedCache(): Promise<void> {
 
 // Inicializar cache automaticamente
 if (typeof window !== 'undefined') {
-  // Importar e executar correção específica
-  import('./cepCorrection').then(() => {
-    console.log('[enhancedCep] ✅ Correção específica do CEP 39688-000 aplicada');
+  // Importar e executar correção definitiva
+  import('./cepCacheCorrection').then(() => {
+    console.log('[enhancedCep] ✅ Correção definitiva do cache aplicada');
   }).catch(console.error);
   
   initializeExpandedCache().catch(console.error);
