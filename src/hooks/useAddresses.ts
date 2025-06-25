@@ -227,11 +227,7 @@ export function useAddresses() {
         toast({
           variant: "destructive",
           title: "❌ Erro de conexão",
-          description: "Verifique sua internet e tente novamente.",
-          action: {
-            label: "Tentar novamente",
-            onClick: () => setPrimaryAddressMutation.mutate(addressId)
-          }
+          description: "Verifique sua internet e tente novamente."
         });
       } else {
         toast({
