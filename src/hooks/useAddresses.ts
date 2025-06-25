@@ -15,13 +15,15 @@ export function useAddresses() {
   const queryClient = useQueryClient();
   const { refreshProfile } = useAuth();
 
-  // Carregar do cache imediatamente
+  // Carregar do cache imediatamente para exibição instantânea
   useEffect(() => {
-    console.log('[useAddresses] Carregando endereços do cache...');
+    console.log('[useAddresses] 🏠 Carregando endereços do cache para exibição instantânea...');
     const cached = addressCacheService.loadFromCache();
     if (cached && cached.length > 0) {
       setCachedAddresses(cached);
-      console.log('[useAddresses] ✅ Endereços carregados do cache:', cached.length);
+      console.log('[useAddresses] ✅ Endereços do cache disponíveis instantaneamente:', cached.length);
+    } else {
+      console.log('[useAddresses] ℹ️ Cache vazio - aguardando servidor');
     }
     setIsLoadingFromCache(false);
   }, []);
@@ -70,7 +72,7 @@ export function useAddresses() {
     return { isValid: errors.length === 0, errors };
   };
 
-  // Fetch addresses com cache em background
+  // Fetch addresses com sincronização em background
   const { 
     data: serverAddresses = [], 
     isLoading: isLoadingServer, 
@@ -80,52 +82,54 @@ export function useAddresses() {
     queryKey: ['addresses'],
     queryFn: async () => {
       try {
-        console.log("Sincronizando endereços com servidor...");
+        console.log("🔄 Sincronizando endereços com servidor em background...");
         const data = await addressService.getAddresses();
         
         // Salvar no cache após sucesso
         addressCacheService.saveToCache(data);
         
-        console.log("Endereços sincronizados:", data.length);
+        console.log("✅ Endereços sincronizados com sucesso:", data.length);
         setErrorDetails(null);
         return data;
       } catch (err) {
         const errorMsg = formatErrorMessage(err);
-        console.error("Error fetching addresses:", errorMsg);
+        console.error("❌ Erro ao sincronizar endereços:", errorMsg);
         throw err;
       }
     },
     retry: (failureCount, error) => {
       if (failureCount < 2) {
-        console.log(`Retrying address fetch, attempt ${failureCount + 1}`);
+        console.log(`🔄 Tentativa ${failureCount + 1} de sincronização de endereços`);
         return true;
       }
       return false;
     },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
-    staleTime: 30000 // 30 segundos
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 3000),
+    staleTime: 30000, // 30 segundos
+    refetchOnWindowFocus: false // Evitar refetch desnecessário
   });
 
-  // Usar endereços do cache ou servidor
+  // Usar endereços do servidor se disponíveis, senão do cache
   const addresses = serverAddresses.length > 0 ? serverAddresses : cachedAddresses;
+  
+  // Loading apenas se não há dados nem do cache nem do servidor
   const isLoading = isLoadingFromCache || (cachedAddresses.length === 0 && isLoadingServer);
 
   // Delete address mutation
   const deleteAddressMutation = useMutation({
     mutationFn: async (addressId: string) => {
       try {
-        console.log(`Deleting address with ID: ${addressId}`);
+        console.log(`🗑️ Removendo endereço: ${addressId}`);
         return await addressService.deleteAddress(addressId);
       } catch (err) {
         const errorMsg = formatErrorMessage(err);
-        console.error("Delete address error:", errorMsg);
+        console.error("❌ Erro ao remover endereço:", errorMsg);
         throw err;
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['addresses'] });
       refreshProfile();
-      // Limpar cache para forçar atualização
       addressCacheService.clearCache();
       toast({
         title: "✅ Endereço removido",
@@ -146,7 +150,7 @@ export function useAddresses() {
   const setPrimaryAddressMutation = useMutation({
     mutationFn: async (addressId: string) => {
       try {
-        console.log(`[useAddresses] Setting address ${addressId} as primary`);
+        console.log(`[useAddresses] 🏠 Definindo endereço ${addressId} como principal`);
         
         const currentAddresses = addresses;
         const addressExists = currentAddresses.find(addr => addr.id === addressId);
@@ -159,12 +163,12 @@ export function useAddresses() {
         return result;
       } catch (err) {
         const errorMsg = formatErrorMessage(err);
-        console.error("[useAddresses] Set primary address error:", errorMsg);
+        console.error("[useAddresses] ❌ Erro ao definir endereço principal:", errorMsg);
         throw err;
       }
     },
     onMutate: async (addressId: string) => {
-      console.log(`[useAddresses] Optimistically updating address ${addressId} as primary`);
+      console.log(`[useAddresses] ⚡ Atualização otimista: endereço ${addressId} como principal`);
       
       await queryClient.cancelQueries({ queryKey: ['addresses'] });
       const previousAddresses = queryClient.getQueryData(['addresses']) as Address[];
@@ -181,10 +185,9 @@ export function useAddresses() {
       return { previousAddresses };
     },
     onSuccess: (result, addressId) => {
-      console.log(`[useAddresses] Primary address set successfully:`, addressId);
+      console.log(`[useAddresses] ✅ Endereço principal definido:`, addressId);
       queryClient.invalidateQueries({ queryKey: ['addresses'] });
       refreshProfile();
-      // Limpar cache para forçar atualização
       addressCacheService.clearCache();
       
       toast({
@@ -194,7 +197,7 @@ export function useAddresses() {
       });
     },
     onError: (error: any, addressId, context) => {
-      console.error(`[useAddresses] Failed to set primary address ${addressId}:`, error);
+      console.error(`[useAddresses] ❌ Falha ao definir endereço principal ${addressId}:`, error);
       
       if (context?.previousAddresses) {
         queryClient.setQueryData(['addresses'], context.previousAddresses);
@@ -213,7 +216,7 @@ export function useAddresses() {
   const saveAddressMutation = useMutation({
     mutationFn: async (data: { address: Address, isEdit: boolean }) => {
       try {
-        console.log("Saving address:", data.isEdit ? "Edit" : "Add", data.address);
+        console.log("💾 Salvando endereço:", data.isEdit ? "Edição" : "Novo", data.address);
         
         const validation = validateAddress(data.address);
         if (!validation.isValid) {
@@ -232,15 +235,14 @@ export function useAddresses() {
         }
       } catch (err) {
         const errorMsg = formatErrorMessage(err);
-        console.error("Save address error:", errorMsg);
+        console.error("❌ Erro ao salvar endereço:", errorMsg);
         throw err;
       }
     },
     onSuccess: (result, variables) => {
-      console.log("Address saved successfully:", result);
+      console.log("✅ Endereço salvo com sucesso:", result);
       queryClient.invalidateQueries({ queryKey: ['addresses'] });
       refreshProfile();
-      // Limpar cache para forçar atualização
       addressCacheService.clearCache();
       setErrorDetails(null);
       toast({
@@ -272,12 +274,12 @@ export function useAddresses() {
   }, [refetch]);
 
   const handleSetDefaultAddress = (addressId: string) => {
-    console.log(`[useAddresses] User requested to set address ${addressId} as primary`);
+    console.log(`[useAddresses] 🏠 Usuário solicitou definir endereço ${addressId} como principal`);
     setPrimaryAddressMutation.mutate(addressId);
   };
 
   const handleEditAddress = (address: Address) => {
-    console.log('[useAddresses] Setting address for editing:', address);
+    console.log('[useAddresses] ✏️ Editando endereço:', address);
     setEditingAddress(address);
     setIsAddModalOpen(true);
   };
@@ -289,13 +291,13 @@ export function useAddresses() {
   };
 
   const handleAddAddress = () => {
-    console.log('[useAddresses] Opening modal for new address');
+    console.log('[useAddresses] ➕ Abrindo modal para novo endereço');
     setEditingAddress(null);
     setIsAddModalOpen(true);
   };
 
   const handleSaveAddress = (address: Address) => {
-    console.log("handleSaveAddress called with:", address);
+    console.log("💾 handleSaveAddress chamado com:", address);
     const isEdit = Boolean(editingAddress);
     saveAddressMutation.mutate({ address, isEdit });
   };
@@ -324,13 +326,12 @@ export function useAddresses() {
 
       const result = await addressService.addAddress(fullAddress);
       queryClient.invalidateQueries({ queryKey: ['addresses'] });
-      // Limpar cache para forçar atualização
       addressCacheService.clearCache();
       await refreshProfile();
       
       return result;
     } catch (error) {
-      console.error("Error adding address:", error);
+      console.error("❌ Erro ao adicionar endereço:", error);
       throw error;
     }
   };

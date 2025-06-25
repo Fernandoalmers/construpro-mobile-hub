@@ -50,35 +50,47 @@ export const useDeliveryZones = (): UseDeliveryZonesReturn => {
     const cleanCep = cep.replace(/\D/g, '');
     
     if (!cleanCep || cleanCep.length !== 8 || cleanCep === currentCep) {
+      console.log('[useDeliveryZones] ⏭️ Pulando resolução - CEP inválido ou igual ao atual');
       return;
     }
     
-    console.log('[useDeliveryZones] 🔍 Resolvendo zonas para CEP:', cleanCep);
+    console.log('[useDeliveryZones] 🔍 Iniciando resolução de zonas para CEP:', cleanCep);
     setIsLoading(true);
     setError(null);
     
     try {
       const zones = await deliveryZoneService.resolveUserZones(cleanCep);
       
+      console.log('[useDeliveryZones] 📍 Zonas encontradas:', zones.length);
       setCurrentZones(zones);
       setCurrentCep(cleanCep);
       
-      // Invalidar todas as queries relacionadas ao marketplace após mudança de CEP
+      // Invalidar queries do marketplace de forma sequencial e aguardar
       console.log('[useDeliveryZones] 🔄 Invalidando queries do marketplace...');
+      
+      // Invalidar queries de produtos primeiro
       await queryClient.invalidateQueries({
         queryKey: ['marketplace-products']
       });
       
+      console.log('[useDeliveryZones] ✅ Queries de produtos invalidadas');
+      
+      // Invalidar queries de lojas
       await queryClient.invalidateQueries({
         queryKey: ['marketplace-stores']
       });
       
-      // Salvar contexto sem aguardar para evitar loops
+      console.log('[useDeliveryZones] ✅ Queries de lojas invalidadas');
+      
+      // Aguardar um pouco para garantir que as queries sejam refetchadas
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Salvar contexto em background (não aguardar para evitar delays)
       deliveryZoneService.saveUserDeliveryContext(cleanCep, zones, profile?.id).catch(err => {
-        console.warn('[useDeliveryZones] Erro ao salvar contexto:', err);
+        console.warn('[useDeliveryZones] ⚠️ Aviso ao salvar contexto:', err);
       });
       
-      console.log('[useDeliveryZones] ✅ Zonas resolvidas e queries invalidadas:', zones.length);
+      console.log('[useDeliveryZones] ✅ Resolução completa! Zonas:', zones.length);
       
       if (zones.length > 0) {
         const vendorCount = zones.length;
@@ -90,7 +102,7 @@ export const useDeliveryZones = (): UseDeliveryZonesReturn => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao resolver zonas de entrega';
       setError(errorMessage);
-      console.error('[useDeliveryZones] ❌ Erro:', err);
+      console.error('[useDeliveryZones] ❌ Erro na resolução:', err);
     } finally {
       setIsLoading(false);
     }

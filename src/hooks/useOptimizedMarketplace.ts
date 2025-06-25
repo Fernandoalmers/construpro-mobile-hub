@@ -63,6 +63,11 @@ export const useOptimizedMarketplace = () => {
     queryKey: ['marketplace-products', currentCep, availableVendorIds, hasDefinedCepWithoutCoverage],
     queryFn: async () => {
       console.log('[useOptimizedMarketplace] 🔄 Buscando produtos para CEP:', currentCep);
+      console.log('[useOptimizedMarketplace] 📊 Parâmetros da busca:', {
+        currentCep,
+        vendorIds: availableVendorIds?.length || 'todos',
+        hasDefinedCepWithoutCoverage
+      });
       
       try {
         // Se CEP definido mas sem cobertura, retornar array vazio
@@ -75,7 +80,7 @@ export const useOptimizedMarketplace = () => {
         console.log('[useOptimizedMarketplace] ✅ Produtos carregados:', result.length);
         return result;
       } catch (error) {
-        console.error('[useOptimizedMarketplace] Erro ao carregar produtos:', error);
+        console.error('[useOptimizedMarketplace] ❌ Erro ao carregar produtos:', error);
         // Retornar array vazio em vez de falhar
         return [];
       }
@@ -98,7 +103,7 @@ export const useOptimizedMarketplace = () => {
       try {
         return await getStores();
       } catch (error) {
-        console.warn('[useOptimizedMarketplace] Erro ao carregar lojas:', error);
+        console.warn('[useOptimizedMarketplace] ⚠️ Erro ao carregar lojas:', error);
         return [];
       }
     },
@@ -117,7 +122,7 @@ export const useOptimizedMarketplace = () => {
       try {
         return await getProductSegments();
       } catch (error) {
-        console.warn('[useOptimizedMarketplace] Erro ao carregar segmentos:', error);
+        console.warn('[useOptimizedMarketplace] ⚠️ Erro ao carregar segmentos:', error);
         return [];
       }
     },
@@ -139,10 +144,11 @@ export const useOptimizedMarketplace = () => {
         isFilteredByZone,
         shouldShowAllProducts,
         hasDefinedCepWithoutCoverage,
-        isRefetching: productsRefetching
+        isRefetching: productsRefetching,
+        isProductsLoading: productsLoading
       });
     }
-  }, [hasActiveZones, currentCep, currentZones.length, availableVendorIds?.length, products.length, zonesLoading, isFilteredByZone, shouldShowAllProducts, hasDefinedCepWithoutCoverage, productsRefetching]);
+  }, [hasActiveZones, currentCep, currentZones.length, availableVendorIds?.length, products.length, zonesLoading, isFilteredByZone, shouldShowAllProducts, hasDefinedCepWithoutCoverage, productsRefetching, productsLoading]);
 
   // Loading inclui refetching para mostrar estado de carregamento durante mudanças de CEP
   const isLoadingData = zonesLoading || productsLoading || storesLoading || segmentsLoading || productsRefetching;
