@@ -5,6 +5,7 @@ import { getMarketplaceProducts } from '@/services/marketplaceProductsService';
 import { getStores } from '@/services/marketplace/marketplaceService';
 import { getProductSegments } from '@/services/admin/productSegmentsService';
 import { useDeliveryZones } from './useDeliveryZones';
+import { useMarketplaceFilters } from './useMarketplaceFilters';
 
 interface OptimizedMarketplaceData {
   products: any[];
@@ -14,15 +15,18 @@ interface OptimizedMarketplaceData {
   error: string | null;
   hasDeliveryRestriction: boolean;
   currentDeliveryZone: string | null;
+  isFilteredByZone: boolean;
 }
 
 export const useOptimizedMarketplace = () => {
   const { currentZones, hasActiveZones, currentCep, isLoading: zonesLoading } = useDeliveryZones();
+  const { shouldShowAllProducts, isFilteredByZone } = useMarketplaceFilters();
   
   // IDs dos vendedores que atendem a zona atual
   const availableVendorIds = useMemo(() => {
-    if (!hasActiveZones || currentZones.length === 0) {
-      console.log('[useOptimizedMarketplace] 🌍 Sem filtros de zona - todos os produtos disponíveis');
+    // Se deve mostrar todos os produtos OU não há zonas ativas, não filtrar
+    if (shouldShowAllProducts || !hasActiveZones || currentZones.length === 0) {
+      console.log('[useOptimizedMarketplace] 🌍 Mostrando todos os produtos');
       return undefined; // undefined = sem filtro, todos os produtos
     }
     
@@ -34,7 +38,7 @@ export const useOptimizedMarketplace = () => {
     });
     
     return vendorIds;
-  }, [currentZones, hasActiveZones, currentCep]);
+  }, [currentZones, hasActiveZones, currentCep, shouldShowAllProducts]);
 
   // Query de produtos com tratamento de erro melhorado
   const { 
@@ -42,7 +46,7 @@ export const useOptimizedMarketplace = () => {
     isLoading: productsLoading,
     error: productsError 
   } = useQuery({
-    queryKey: ['marketplace-products', availableVendorIds],
+    queryKey: ['marketplace-products', availableVendorIds, shouldShowAllProducts],
     queryFn: async () => {
       try {
         return await getMarketplaceProducts(availableVendorIds);
@@ -108,10 +112,11 @@ export const useOptimizedMarketplace = () => {
         zonesCount: currentZones.length,
         vendorsCount: availableVendorIds?.length || 'todos',
         productsCount: products.length,
-        isFiltered: hasActiveZones
+        isFilteredByZone,
+        shouldShowAllProducts
       });
     }
-  }, [hasActiveZones, currentCep, currentZones.length, availableVendorIds?.length, products.length, zonesLoading]);
+  }, [hasActiveZones, currentCep, currentZones.length, availableVendorIds?.length, products.length, zonesLoading, isFilteredByZone, shouldShowAllProducts]);
 
   // Memoize the consolidated data
   const marketplaceData: OptimizedMarketplaceData = useMemo(() => ({
@@ -121,8 +126,9 @@ export const useOptimizedMarketplace = () => {
     isLoading: zonesLoading || productsLoading || storesLoading || segmentsLoading,
     error: productsError?.message || storesError?.message || null,
     hasDeliveryRestriction: hasActiveZones,
-    currentDeliveryZone: currentCep
-  }), [products, stores, segments, zonesLoading, productsLoading, storesLoading, segmentsLoading, productsError, storesError, hasActiveZones, currentCep]);
+    currentDeliveryZone: currentCep,
+    isFilteredByZone
+  }), [products, stores, segments, zonesLoading, productsLoading, storesLoading, segmentsLoading, productsError, storesError, hasActiveZones, currentCep, isFilteredByZone]);
 
   return marketplaceData;
 };

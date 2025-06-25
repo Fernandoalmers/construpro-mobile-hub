@@ -1,7 +1,8 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { addressService, Address } from '@/services/addressService';
+import { addressCacheService } from '@/services/addressCacheService';
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/context/AuthContext';
 
@@ -9,8 +10,21 @@ export function useAddresses() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
+  const [cachedAddresses, setCachedAddresses] = useState<Address[]>([]);
+  const [isLoadingFromCache, setIsLoadingFromCache] = useState(true);
   const queryClient = useQueryClient();
   const { refreshProfile } = useAuth();
+
+  // Carregar do cache imediatamente
+  useEffect(() => {
+    console.log('[useAddresses] Carregando endereços do cache...');
+    const cached = addressCacheService.loadFromCache();
+    if (cached && cached.length > 0) {
+      setCachedAddresses(cached);
+      console.log('[useAddresses] ✅ Endereços carregados do cache:', cached.length);
+    }
+    setIsLoadingFromCache(false);
+  }, []);
 
   // Enhanced error formatting
   const formatErrorMessage = (error: any): string => {
@@ -56,19 +70,23 @@ export function useAddresses() {
     return { isValid: errors.length === 0, errors };
   };
 
-  // Fetch addresses with enhanced error handling and retry
+  // Fetch addresses com cache em background
   const { 
-    data: addresses = [], 
-    isLoading, 
+    data: serverAddresses = [], 
+    isLoading: isLoadingServer, 
     error, 
     refetch
   } = useQuery({
     queryKey: ['addresses'],
     queryFn: async () => {
       try {
-        console.log("Fetching addresses...");
+        console.log("Sincronizando endereços com servidor...");
         const data = await addressService.getAddresses();
-        console.log("Addresses loaded successfully:", data);
+        
+        // Salvar no cache após sucesso
+        addressCacheService.saveToCache(data);
+        
+        console.log("Endereços sincronizados:", data.length);
         setErrorDetails(null);
         return data;
       } catch (err) {
@@ -85,8 +103,12 @@ export function useAddresses() {
       return false;
     },
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
-    staleTime: 10000 // Cache for 10 seconds
+    staleTime: 30000 // 30 segundos
   });
+
+  // Usar endereços do cache ou servidor
+  const addresses = serverAddresses.length > 0 ? serverAddresses : cachedAddresses;
+  const isLoading = isLoadingFromCache || (cachedAddresses.length === 0 && isLoadingServer);
 
   // Delete address mutation
   const deleteAddressMutation = useMutation({
@@ -103,6 +125,8 @@ export function useAddresses() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['addresses'] });
       refreshProfile();
+      // Limpar cache para forçar atualização
+      addressCacheService.clearCache();
       toast({
         title: "✅ Endereço removido",
         description: "Endereço removido com sucesso."
@@ -118,23 +142,20 @@ export function useAddresses() {
     }
   });
 
-  // Set primary address mutation with optimistic updates
+  // Set primary address mutation
   const setPrimaryAddressMutation = useMutation({
     mutationFn: async (addressId: string) => {
       try {
         console.log(`[useAddresses] Setting address ${addressId} as primary`);
         
-        const currentAddresses = queryClient.getQueryData(['addresses']) as Address[] || [];
+        const currentAddresses = addresses;
         const addressExists = currentAddresses.find(addr => addr.id === addressId);
         
         if (!addressExists) {
           throw new Error('Endereço não encontrado. Atualize a página e tente novamente.');
         }
         
-        console.log(`[useAddresses] Address exists, proceeding with principal update`);
         const result = await addressService.setPrimaryAddress(addressId);
-        console.log(`[useAddresses] Primary address update result:`, result);
-        
         return result;
       } catch (err) {
         const errorMsg = formatErrorMessage(err);
@@ -155,7 +176,6 @@ export function useAddresses() {
         }));
         
         queryClient.setQueryData(['addresses'], optimisticAddresses);
-        console.log(`[useAddresses] Optimistic update applied`);
       }
       
       return { previousAddresses };
@@ -164,6 +184,8 @@ export function useAddresses() {
       console.log(`[useAddresses] Primary address set successfully:`, addressId);
       queryClient.invalidateQueries({ queryKey: ['addresses'] });
       refreshProfile();
+      // Limpar cache para forçar atualização
+      addressCacheService.clearCache();
       
       toast({
         title: "✅ Endereço principal atualizado",
@@ -176,28 +198,18 @@ export function useAddresses() {
       
       if (context?.previousAddresses) {
         queryClient.setQueryData(['addresses'], context.previousAddresses);
-        console.log(`[useAddresses] Rolled back optimistic update`);
       }
       
       const errorMsg = formatErrorMessage(error);
-      
-      if (errorMsg.includes('network') || errorMsg.includes('conexão') || errorMsg.includes('timeout')) {
-        toast({
-          variant: "destructive",
-          title: "❌ Erro de conexão",
-          description: "Verifique sua internet e tente novamente."
-        });
-      } else {
-        toast({
-          variant: "destructive",
-          title: "❌ Erro ao definir endereço principal", 
-          description: errorMsg
-        });
-      }
+      toast({
+        variant: "destructive",
+        title: "❌ Erro ao definir endereço principal", 
+        description: errorMsg
+      });
     }
   });
 
-  // Save address mutation with enhanced validation
+  // Save address mutation
   const saveAddressMutation = useMutation({
     mutationFn: async (data: { address: Address, isEdit: boolean }) => {
       try {
@@ -214,10 +226,8 @@ export function useAddresses() {
         };
         
         if (data.isEdit && data.address.id) {
-          console.log("Calling updateAddress with ID:", data.address.id);
           return await addressService.updateAddress(data.address.id, cleanedAddress);
         } else {
-          console.log("Calling addAddress for new address");
           return await addressService.addAddress(cleanedAddress);
         }
       } catch (err) {
@@ -230,6 +240,8 @@ export function useAddresses() {
       console.log("Address saved successfully:", result);
       queryClient.invalidateQueries({ queryKey: ['addresses'] });
       refreshProfile();
+      // Limpar cache para forçar atualização
+      addressCacheService.clearCache();
       setErrorDetails(null);
       toast({
         title: variables.isEdit ? "✅ Endereço atualizado" : "✅ Endereço adicionado",
@@ -242,21 +254,11 @@ export function useAddresses() {
     },
     onError: (error: any) => {
       const errorMsg = formatErrorMessage(error);
-      console.error("Save address mutation error:", error);
-      
-      if (errorMsg.includes('CEP') || errorMsg.includes('cep')) {
-        toast({
-          variant: "destructive",
-          title: "❌ Erro de CEP",
-          description: "Verifique se o CEP está correto e tente novamente."
-        });
-      } else {
-        toast({
-          variant: "destructive",
-          title: "❌ Erro ao salvar endereço",
-          description: errorMsg
-        });
-      }
+      toast({
+        variant: "destructive",
+        title: "❌ Erro ao salvar endereço",
+        description: errorMsg
+      });
     }
   });
 
@@ -294,15 +296,8 @@ export function useAddresses() {
 
   const handleSaveAddress = (address: Address) => {
     console.log("handleSaveAddress called with:", address);
-    console.log("editingAddress state:", editingAddress);
-    
     const isEdit = Boolean(editingAddress);
-    console.log("Is edit mode:", isEdit);
-    
-    saveAddressMutation.mutate({ 
-      address, 
-      isEdit 
-    });
+    saveAddressMutation.mutate({ address, isEdit });
   };
 
   // Enhanced addAddress function for useCheckout
@@ -329,6 +324,8 @@ export function useAddresses() {
 
       const result = await addressService.addAddress(fullAddress);
       queryClient.invalidateQueries({ queryKey: ['addresses'] });
+      // Limpar cache para forçar atualização
+      addressCacheService.clearCache();
       await refreshProfile();
       
       return result;

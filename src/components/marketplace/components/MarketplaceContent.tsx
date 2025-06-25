@@ -57,6 +57,26 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
     }
   };
 
+  // Determinar título baseado no estado da zona de entrega
+  const getPageTitle = () => {
+    if (hasActiveZones && currentCep) {
+      return "Produtos disponíveis para o endereço selecionado";
+    }
+    return currentCategoryName;
+  };
+
+  // Determinar subtítulo com informações da zona
+  const getSubtitle = () => {
+    const productCount = filteredProdutos.length;
+    const productText = `${productCount} produto${productCount !== 1 ? 's' : ''} encontrado${productCount !== 1 ? 's' : ''}`;
+    
+    if (hasActiveZones && currentCep) {
+      return `${productText} para o CEP ${currentCep.replace(/(\d{5})(\d{3})/, '$1-$2')}`;
+    }
+    
+    return productText;
+  };
+
   return (
     <div 
       className="flex-1 pb-20"
@@ -68,19 +88,19 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
           <DeliveryZoneIndicator />
         </div>
 
-        {/* Nome da categoria atual */}
+        {/* Título da página */}
         <div className="mb-6">
           <h2 className="text-xl font-bold text-gray-800">
-            {currentCategoryName}
+            {getPageTitle()}
           </h2>
           <p className="text-sm text-gray-600">
-            {filteredProdutos.length} produto{filteredProdutos.length !== 1 ? 's' : ''} encontrado{filteredProdutos.length !== 1 ? 's' : ''}
-            {hasActiveZones && (
-              <span className="text-construPro-blue font-medium">
-                {' '}na sua região
-              </span>
-            )}
+            {getSubtitle()}
           </p>
+          {hasActiveZones && (
+            <p className="text-xs text-construPro-blue mt-1">
+              Mostrando apenas produtos com entrega disponível
+            </p>
+          )}
         </div>
 
         {/* Loading state */}
@@ -90,11 +110,39 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
 
         {/* Estado quando não há produtos na zona de entrega */}
         {!isLoading && hasActiveZones && filteredProdutos.length === 0 && (
-          <NoDeliveryZoneState
-            currentCep={currentCep}
-            onChangeCep={handleChangeCep}
-            onRetry={handleRetry}
-          />
+          <div className="text-center py-12">
+            <div className="max-w-sm mx-auto">
+              <div className="mb-4">
+                <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center">
+                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Nenhum lojista atende esse endereço
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Não encontramos vendedores que fazem entrega para o CEP {currentCep?.replace(/(\d{5})(\d{3})/, '$1-$2')}. 
+                Tente um CEP diferente ou navegue pelos produtos sem filtro de região.
+              </p>
+              <div className="space-y-3">
+                <button
+                  onClick={handleChangeCep}
+                  className="w-full bg-construPro-blue text-white px-6 py-3 rounded-lg font-medium hover:bg-construPro-blue-dark transition-colors"
+                >
+                  Alterar CEP
+                </button>
+                <button
+                  onClick={clearFilters}
+                  className="w-full border border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                >
+                  Ver todos os produtos
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Estado vazio padrão (sem filtros de zona) */}
