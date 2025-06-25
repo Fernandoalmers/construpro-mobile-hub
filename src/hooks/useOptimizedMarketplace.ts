@@ -16,29 +16,41 @@ interface OptimizedMarketplaceData {
   hasDeliveryRestriction: boolean;
   currentDeliveryZone: string | null;
   isFilteredByZone: boolean;
+  hasDefinedCepWithoutCoverage: boolean;
 }
 
 export const useOptimizedMarketplace = () => {
   const { currentZones, hasActiveZones, currentCep, isLoading: zonesLoading } = useDeliveryZones();
-  const { shouldShowAllProducts, isFilteredByZone } = useMarketplaceFilters();
+  const { shouldShowAllProducts, isFilteredByZone, hasDefinedCepWithoutCoverage } = useMarketplaceFilters();
   
   // IDs dos vendedores que atendem a zona atual
   const availableVendorIds = useMemo(() => {
-    // Se deve mostrar todos os produtos OU não há zonas ativas, não filtrar
-    if (shouldShowAllProducts || !hasActiveZones || currentZones.length === 0) {
+    // Se CEP definido mas sem cobertura, retornar array vazio para não mostrar produtos
+    if (hasDefinedCepWithoutCoverage) {
+      console.log('[useOptimizedMarketplace] 🚫 CEP sem cobertura - não exibindo produtos');
+      return [];
+    }
+    
+    // Se deve mostrar todos os produtos OU não há CEP definido, não filtrar
+    if (shouldShowAllProducts || !currentCep) {
       console.log('[useOptimizedMarketplace] 🌍 Mostrando todos os produtos');
       return undefined; // undefined = sem filtro, todos os produtos
     }
     
-    const vendorIds = currentZones.map(zone => zone.vendor_id);
-    console.log('[useOptimizedMarketplace] 📍 Filtros de zona ativos:', {
-      zonesCount: currentZones.length,
-      vendorIds: vendorIds.length,
-      currentCep
-    });
+    // Se há zonas ativas, filtrar por elas
+    if (hasActiveZones && currentZones.length > 0) {
+      const vendorIds = currentZones.map(zone => zone.vendor_id);
+      console.log('[useOptimizedMarketplace] 📍 Filtros de zona ativos:', {
+        zonesCount: currentZones.length,
+        vendorIds: vendorIds.length,
+        currentCep
+      });
+      return vendorIds;
+    }
     
-    return vendorIds;
-  }, [currentZones, hasActiveZones, currentCep, shouldShowAllProducts]);
+    // Fallback: não filtrar
+    return undefined;
+  }, [currentZones, hasActiveZones, currentCep, shouldShowAllProducts, hasDefinedCepWithoutCoverage]);
 
   // Query de produtos com tratamento de erro melhorado
   const { 
@@ -46,9 +58,15 @@ export const useOptimizedMarketplace = () => {
     isLoading: productsLoading,
     error: productsError 
   } = useQuery({
-    queryKey: ['marketplace-products', availableVendorIds, shouldShowAllProducts],
+    queryKey: ['marketplace-products', availableVendorIds, shouldShowAllProducts, hasDefinedCepWithoutCoverage],
     queryFn: async () => {
       try {
+        // Se CEP definido mas sem cobertura, retornar array vazio
+        if (hasDefinedCepWithoutCoverage) {
+          console.log('[useOptimizedMarketplace] CEP sem cobertura - retornando array vazio');
+          return [];
+        }
+        
         return await getMarketplaceProducts(availableVendorIds);
       } catch (error) {
         console.error('[useOptimizedMarketplace] Erro ao carregar produtos:', error);
@@ -113,10 +131,11 @@ export const useOptimizedMarketplace = () => {
         vendorsCount: availableVendorIds?.length || 'todos',
         productsCount: products.length,
         isFilteredByZone,
-        shouldShowAllProducts
+        shouldShowAllProducts,
+        hasDefinedCepWithoutCoverage
       });
     }
-  }, [hasActiveZones, currentCep, currentZones.length, availableVendorIds?.length, products.length, zonesLoading, isFilteredByZone, shouldShowAllProducts]);
+  }, [hasActiveZones, currentCep, currentZones.length, availableVendorIds?.length, products.length, zonesLoading, isFilteredByZone, shouldShowAllProducts, hasDefinedCepWithoutCoverage]);
 
   // Memoize the consolidated data
   const marketplaceData: OptimizedMarketplaceData = useMemo(() => ({
@@ -127,8 +146,9 @@ export const useOptimizedMarketplace = () => {
     error: productsError?.message || storesError?.message || null,
     hasDeliveryRestriction: hasActiveZones,
     currentDeliveryZone: currentCep,
-    isFilteredByZone
-  }), [products, stores, segments, zonesLoading, productsLoading, storesLoading, segmentsLoading, productsError, storesError, hasActiveZones, currentCep, isFilteredByZone]);
+    isFilteredByZone,
+    hasDefinedCepWithoutCoverage
+  }), [products, stores, segments, zonesLoading, productsLoading, storesLoading, segmentsLoading, productsError, storesError, hasActiveZones, currentCep, isFilteredByZone, hasDefinedCepWithoutCoverage]);
 
   return marketplaceData;
 };

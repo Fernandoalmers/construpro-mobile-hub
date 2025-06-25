@@ -10,7 +10,7 @@ interface DeliveryZoneIndicatorProps {
 
 const DeliveryZoneIndicator: React.FC<DeliveryZoneIndicatorProps> = ({ className = "" }) => {
   const { currentZones, currentCep, hasActiveZones, isLoading } = useDeliveryZones();
-  const { shouldShowAllProducts, isFilteredByZone, toggleZoneFilter } = useMarketplaceFilters();
+  const { shouldShowAllProducts, isFilteredByZone, hasDefinedCepWithoutCoverage, toggleZoneFilter } = useMarketplaceFilters();
 
   if (isLoading) {
     return (
@@ -21,7 +21,26 @@ const DeliveryZoneIndicator: React.FC<DeliveryZoneIndicatorProps> = ({ className
     );
   }
 
-  if (!hasActiveZones) {
+  // Estado: CEP definido mas sem vendedores que atendem
+  if (hasDefinedCepWithoutCoverage) {
+    const formatCep = currentCep?.replace(/(\d{5})(\d{3})/, '$1-$2');
+    return (
+      <div className={`flex items-center justify-between gap-2 text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg ${className}`}>
+        <div className="flex items-center gap-2">
+          <AlertCircle className="w-4 h-4" />
+          <div className="flex flex-col">
+            <span className="font-medium">Nenhum lojista atende {formatCep}</span>
+            <span className="text-xs text-red-500">
+              Tente outro CEP ou navegue sem filtro de região
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Estado: Sem CEP definido - mostrando todos os produtos
+  if (!currentCep) {
     return (
       <div className={`flex items-center justify-between gap-2 text-sm text-amber-600 bg-amber-50 px-3 py-2 rounded-lg ${className}`}>
         <div className="flex items-center gap-2">
@@ -35,7 +54,8 @@ const DeliveryZoneIndicator: React.FC<DeliveryZoneIndicatorProps> = ({ className
   const vendorCount = currentZones.length;
   const formatCep = currentCep?.replace(/(\d{5})(\d{3})/, '$1-$2');
 
-  if (shouldShowAllProducts) {
+  // Estado: CEP com cobertura mas mostrando todos os produtos
+  if (shouldShowAllProducts && hasActiveZones) {
     return (
       <div className={`flex items-center justify-between gap-2 text-sm text-blue-600 bg-blue-50 px-3 py-2 rounded-lg ${className}`}>
         <div className="flex items-center gap-2">
@@ -57,27 +77,33 @@ const DeliveryZoneIndicator: React.FC<DeliveryZoneIndicatorProps> = ({ className
     );
   }
 
-  return (
-    <div className={`flex items-center justify-between gap-2 text-sm text-green-700 bg-green-50 px-3 py-2 rounded-lg ${className}`}>
-      <div className="flex items-center gap-2">
-        <MapPin className="w-4 h-4" />
-        <div className="flex flex-col">
-          <span className="font-medium">
-            Entrega para {formatCep}
-          </span>
-          <span className="text-xs text-green-600">
-            {vendorCount} loja{vendorCount !== 1 ? 's' : ''} disponíve{vendorCount !== 1 ? 'is' : 'l'}
-          </span>
+  // Estado: CEP com cobertura e filtrando por zona
+  if (hasActiveZones) {
+    return (
+      <div className={`flex items-center justify-between gap-2 text-sm text-green-700 bg-green-50 px-3 py-2 rounded-lg ${className}`}>
+        <div className="flex items-center gap-2">
+          <MapPin className="w-4 h-4" />
+          <div className="flex flex-col">
+            <span className="font-medium">
+              Entrega para {formatCep}
+            </span>
+            <span className="text-xs text-green-600">
+              {vendorCount} loja{vendorCount !== 1 ? 's' : ''} disponíve{vendorCount !== 1 ? 'is' : 'l'}
+            </span>
+          </div>
         </div>
+        <button 
+          onClick={toggleZoneFilter}
+          className="text-xs bg-green-100 hover:bg-green-200 px-2 py-1 rounded transition-colors"
+        >
+          Ver todos
+        </button>
       </div>
-      <button 
-        onClick={toggleZoneFilter}
-        className="text-xs bg-green-100 hover:bg-green-200 px-2 py-1 rounded transition-colors"
-      >
-        Ver todos
-      </button>
-    </div>
-  );
+    );
+  }
+
+  // Fallback
+  return null;
 };
 
 export default DeliveryZoneIndicator;

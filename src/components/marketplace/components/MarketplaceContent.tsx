@@ -7,6 +7,7 @@ import EmptyProductState from './EmptyProductState';
 import DeliveryZoneIndicator from './DeliveryZoneIndicator';
 import NoDeliveryZoneState from './NoDeliveryZoneState';
 import { useDeliveryZones } from '@/hooks/useDeliveryZones';
+import { useMarketplaceFilters } from '@/hooks/useMarketplaceFilters';
 
 interface MarketplaceContentProps {
   dynamicPaddingTop: number;
@@ -36,6 +37,7 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
   onLojaClick
 }) => {
   const { hasActiveZones, currentCep, resolveZones } = useDeliveryZones();
+  const { hasDefinedCepWithoutCoverage, clearAllFilters } = useMarketplaceFilters();
 
   // Handler para trocar CEP
   const handleChangeCep = () => {
@@ -59,14 +61,27 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
 
   // Determinar título baseado no estado da zona de entrega
   const getPageTitle = () => {
+    if (hasDefinedCepWithoutCoverage) {
+      return "Nenhum lojista atende esse endereço";
+    }
+    
     if (hasActiveZones && currentCep) {
       return "Produtos disponíveis para o endereço selecionado";
     }
+    
+    if (!currentCep) {
+      return "Todos os produtos disponíveis";
+    }
+    
     return currentCategoryName;
   };
 
   // Determinar subtítulo com informações da zona
   const getSubtitle = () => {
+    if (hasDefinedCepWithoutCoverage) {
+      return `Não encontramos vendedores para o CEP ${currentCep?.replace(/(\d{5})(\d{3})/, '$1-$2')}`;
+    }
+    
     const productCount = filteredProdutos.length;
     const productText = `${productCount} produto${productCount !== 1 ? 's' : ''} encontrado${productCount !== 1 ? 's' : ''}`;
     
@@ -96,7 +111,7 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
           <p className="text-sm text-gray-600">
             {getSubtitle()}
           </p>
-          {hasActiveZones && (
+          {hasActiveZones && !hasDefinedCepWithoutCoverage && (
             <p className="text-xs text-construPro-blue mt-1">
               Mostrando apenas produtos com entrega disponível
             </p>
@@ -108,13 +123,13 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
           <LoadingState type="skeleton" text="Carregando produtos..." count={6} />
         )}
 
-        {/* Estado quando não há produtos na zona de entrega */}
-        {!isLoading && hasActiveZones && filteredProdutos.length === 0 && (
+        {/* Estado quando CEP definido mas sem vendedores que atendem */}
+        {!isLoading && hasDefinedCepWithoutCoverage && (
           <div className="text-center py-12">
             <div className="max-w-sm mx-auto">
               <div className="mb-4">
-                <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center">
-                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-16 h-16 mx-auto bg-red-100 rounded-full flex items-center justify-center">
+                  <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
@@ -135,7 +150,12 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
                   Alterar CEP
                 </button>
                 <button
-                  onClick={clearFilters}
+                  onClick={() => {
+                    // Limpar CEP para mostrar todos os produtos
+                    if (clearAllFilters) {
+                      clearAllFilters();
+                    }
+                  }}
                   className="w-full border border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors"
                 >
                   Ver todos os produtos
@@ -145,15 +165,15 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
           </div>
         )}
 
-        {/* Estado vazio padrão (sem filtros de zona) */}
-        {!isLoading && !hasActiveZones && filteredProdutos.length === 0 && (
+        {/* Estado vazio padrão (sem CEP definido e sem produtos) */}
+        {!isLoading && !hasDefinedCepWithoutCoverage && !currentCep && filteredProdutos.length === 0 && (
           <EmptyProductState 
             clearFilters={clearFilters}
           />
         )}
 
         {/* Lista de produtos */}
-        {!isLoading && filteredProdutos.length > 0 && (
+        {!isLoading && !hasDefinedCepWithoutCoverage && filteredProdutos.length > 0 && (
           <>
             {viewType === 'grid' ? (
               <GridProductView
