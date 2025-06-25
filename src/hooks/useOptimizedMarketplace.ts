@@ -36,30 +36,48 @@ export const useOptimizedMarketplace = () => {
     return vendorIds;
   }, [currentZones, hasActiveZones, currentCep]);
 
-  // Consolidate all marketplace data in parallel queries
+  // Query de produtos com tratamento de erro melhorado
   const { 
     data: products = [], 
     isLoading: productsLoading,
     error: productsError 
   } = useQuery({
     queryKey: ['marketplace-products', availableVendorIds],
-    queryFn: () => getMarketplaceProducts(availableVendorIds),
+    queryFn: async () => {
+      try {
+        return await getMarketplaceProducts(availableVendorIds);
+      } catch (error) {
+        console.error('[useOptimizedMarketplace] Erro ao carregar produtos:', error);
+        // Retornar array vazio em vez de falhar
+        return [];
+      }
+    },
     staleTime: 2 * 60 * 1000, // 2 minutes
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     enabled: !zonesLoading, // Só buscar quando as zonas estiverem resolvidas
+    retry: 1, // Tentar apenas uma vez em caso de erro
   });
 
+  // Queries paralelas com tratamento de erro
   const { 
     data: stores = [], 
     isLoading: storesLoading,
     error: storesError 
   } = useQuery({
     queryKey: ['marketplace-stores'],
-    queryFn: getStores,
+    queryFn: async () => {
+      try {
+        return await getStores();
+      } catch (error) {
+        console.warn('[useOptimizedMarketplace] Erro ao carregar lojas:', error);
+        return [];
+      }
+    },
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
+    retry: 1,
   });
 
   const { 
@@ -67,10 +85,18 @@ export const useOptimizedMarketplace = () => {
     isLoading: segmentsLoading 
   } = useQuery({
     queryKey: ['product-segments'],
-    queryFn: getProductSegments,
+    queryFn: async () => {
+      try {
+        return await getProductSegments();
+      } catch (error) {
+        console.warn('[useOptimizedMarketplace] Erro ao carregar segmentos:', error);
+        return [];
+      }
+    },
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
+    retry: 1,
   });
 
   // Log informações de debug sobre filtros de zona

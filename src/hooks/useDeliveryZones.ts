@@ -21,6 +21,7 @@ export const useDeliveryZones = (): UseDeliveryZonesReturn => {
   const [currentCep, setCurrentCep] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [initialized, setInitialized] = useState(false);
 
   // Função para obter CEP do usuário com prioridades corretas
   const getUserCep = useCallback(() => {
@@ -61,8 +62,10 @@ export const useDeliveryZones = (): UseDeliveryZonesReturn => {
       setCurrentZones(zones);
       setCurrentCep(cleanCep);
       
-      // Salvar contexto
-      await deliveryZoneService.saveUserDeliveryContext(cleanCep, zones, profile?.id);
+      // Salvar contexto sem aguardar para evitar loops
+      deliveryZoneService.saveUserDeliveryContext(cleanCep, zones, profile?.id).catch(err => {
+        console.warn('[useDeliveryZones] Erro ao salvar contexto:', err);
+      });
       
       console.log('[useDeliveryZones] ✅ Zonas resolvidas:', zones.length);
       
@@ -89,16 +92,21 @@ export const useDeliveryZones = (): UseDeliveryZonesReturn => {
     setError(null);
   }, []);
 
-  // Carregar contexto salvo e resolver zonas automaticamente na inicialização
+  // Inicialização única para evitar loops
   useEffect(() => {
+    if (initialized) return;
+
     const initializeZones = async () => {
+      console.log('[useDeliveryZones] 🚀 Inicializando sistema de zonas');
+      
       try {
         // Primeiro: Tentar carregar contexto salvo
-        const context = await deliveryZoneService.getUserDeliveryContext(profile?.id);
+        const context = await deliveryZoneService.getUserDeliveryContext(profile?.id).catch(() => null);
         
         if (context && context.resolved_zone_ids.length > 0) {
           console.log('[useDeliveryZones] 📂 Contexto salvo encontrado, resolvendo zonas...');
           await resolveZones(context.current_cep);
+          setInitialized(true);
           return;
         }
         
@@ -112,24 +120,27 @@ export const useDeliveryZones = (): UseDeliveryZonesReturn => {
         }
       } catch (err) {
         console.error('[useDeliveryZones] ❌ Erro na inicialização:', err);
+      } finally {
+        setInitialized(true);
       }
     };
 
-    // Só inicializar se não estiver carregando e não houver zonas ativas
-    if (!isLoading && currentZones.length === 0) {
-      initializeZones();
-    }
-  }, [profile?.id, getUserCep, resolveZones, isLoading, currentZones.length]);
+    // Aguardar um pouco para evitar corrida de condições
+    const timer = setTimeout(initializeZones, 100);
+    return () => clearTimeout(timer);
+  }, [initialized, profile?.id, getUserCep, resolveZones]);
 
-  // Reagir a mudanças no CEP do usuário
+  // Reagir a mudanças no CEP do usuário apenas após inicialização
   useEffect(() => {
+    if (!initialized) return;
+    
     const userCep = getUserCep();
     
     if (userCep && userCep !== currentCep && userCep.length === 8) {
       console.log('[useDeliveryZones] 🔄 CEP do usuário mudou, resolvendo zonas...');
       resolveZones(userCep);
     }
-  }, [getUserCep, currentCep, resolveZones]);
+  }, [initialized, getUserCep, currentCep, resolveZones]);
 
   const hasActiveZones = currentZones.length > 0;
 

@@ -33,6 +33,7 @@ export const deliveryZoneService = {
       
       if (error) {
         console.error('[deliveryZoneService] Erro ao resolver zonas:', error);
+        // Retornar array vazio em vez de falhar para manter o sistema funcionando
         return [];
       }
       
@@ -40,6 +41,7 @@ export const deliveryZoneService = {
       return data || [];
     } catch (error) {
       console.error('[deliveryZoneService] Erro inesperado:', error);
+      // Retornar array vazio para manter o sistema funcionando
       return [];
     }
   },
@@ -66,18 +68,20 @@ export const deliveryZoneService = {
         last_resolved_at: new Date().toISOString()
       };
       
-      // Primeiro tenta atualizar contexto existente
-      const { error: updateError } = await supabase
+      // Tentar salvar contexto, mas não falhar se houver erro
+      const { error } = await supabase
         .from('user_delivery_context')
         .upsert(contextData, {
           onConflict: userId ? 'user_id' : 'session_id'
         });
       
-      if (updateError) {
-        console.error('[deliveryZoneService] Erro ao salvar contexto:', updateError);
+      if (error) {
+        console.warn('[deliveryZoneService] Aviso ao salvar contexto:', error);
+        // Não fazer throw para não quebrar o fluxo principal
       }
     } catch (error) {
-      console.error('[deliveryZoneService] Erro inesperado ao salvar contexto:', error);
+      console.warn('[deliveryZoneService] Aviso inesperado ao salvar contexto:', error);
+      // Não fazer throw para não quebrar o fluxo principal
     }
   },
 
@@ -94,16 +98,16 @@ export const deliveryZoneService = {
         .eq(userId ? 'user_id' : 'session_id', userId || localStorage.getItem('delivery_session_id'))
         .order('updated_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
       
       if (error && error.code !== 'PGRST116') {
-        console.error('[deliveryZoneService] Erro ao recuperar contexto:', error);
+        console.warn('[deliveryZoneService] Aviso ao recuperar contexto:', error);
         return null;
       }
       
       return data || null;
     } catch (error) {
-      console.error('[deliveryZoneService] Erro inesperado ao recuperar contexto:', error);
+      console.warn('[deliveryZoneService] Aviso inesperado ao recuperar contexto:', error);
       return null;
     }
   },
