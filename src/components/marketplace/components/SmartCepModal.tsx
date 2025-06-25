@@ -1,10 +1,8 @@
-
 import React, { useState } from 'react';
 import { MapPin, Plus, ChevronRight, Loader2 } from 'lucide-react';
 import CustomModal from '@/components/common/CustomModal';
 import { useAddresses } from '@/hooks/useAddresses';
 import { useAuth } from '@/context/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import TempCepInput from './TempCepInput';
 import AddAddressModal from '@/components/profile/AddAddressModal';
 import { Button } from '@/components/ui/button';
@@ -137,68 +135,7 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
       </CustomModal>
     );
   }
-
-  if (!isLoading && !hasAddresses) {
-    return (
-      <>
-        <CustomModal
-          open={open}
-          onOpenChange={onOpenChange}
-          title="Cadastre seu primeiro endereço"
-          description="Para ver produtos disponíveis na sua região, cadastre um endereço de entrega"
-          size="md"
-        >
-          <div className="space-y-6">
-            <div className="text-center py-8">
-              <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                <MapPin className="w-8 h-8 text-blue-600" />
-              </div>
-              <p className="text-gray-600 mb-6">
-                Você ainda não possui endereços cadastrados. Adicione seu primeiro endereço para começar a comprar!
-              </p>
-              <Button
-                onClick={handleAddAddress}
-                className="w-full bg-construPro-blue hover:bg-construPro-blue-dark"
-                disabled={isChangingCep}
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Cadastrar primeiro endereço
-              </Button>
-            </div>
-
-            <div className="border-t pt-4">
-              <p className="text-sm text-gray-500 mb-3">
-                Ou digite um CEP temporariamente:
-              </p>
-              
-              {isChangingCep && (
-                <div className="flex items-center justify-center gap-2 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg mb-3">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Atualizando produtos...</span>
-                </div>
-              )}
-              
-              <TempCepInput 
-                onCepSubmit={handleTempCepSubmit}
-                loading={isChangingCep}
-              />
-            </div>
-          </div>
-        </CustomModal>
-
-        <AddAddressModal
-          open={showAddAddressModal}
-          onOpenChange={setShowAddAddressModal}
-          onSave={() => {
-            setShowAddAddressModal(false);
-            // Fechar também o modal principal após salvar
-            setTimeout(() => onOpenChange(false), 500);
-          }}
-        />
-      </>
-    );
-  }
-
+  
   return (
     <>
       <CustomModal
@@ -227,83 +164,122 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
             </div>
           )}
 
-          {/* Lista de endereços cadastrados */}
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium text-gray-700 mb-3">
-              Seus endereços cadastrados:
-            </h4>
-            
-            {isLoading ? (
+          {hasAddresses ? (
+            <>
+              {/* Lista de endereços cadastrados */}
               <div className="space-y-2">
-                {[1, 2].map((i) => (
-                  <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {addresses.map((address) => {
-                  const isChangingThis = changingAddressId === address.id;
-                  return (
-                    <button
-                      key={address.id}
-                      onClick={() => handleAddressSelect(address.cep, address.id)}
-                      disabled={isChangingCep}
-                      className="w-full p-3 text-left bg-white border border-gray-200 rounded-lg hover:border-construPro-blue hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-medium text-gray-900">{address.nome}</span>
-                            {address.principal && (
-                              <span className="text-xs bg-construPro-blue text-white px-2 py-0.5 rounded-full">
-                                Principal
-                              </span>
+                <h4 className="text-sm font-medium text-gray-700 mb-3">
+                  Seus endereços cadastrados:
+                </h4>
+                
+                {isLoading ? (
+                  <div className="space-y-2">
+                    {[1, 2].map((i) => (
+                      <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {addresses.map((address) => {
+                      const isChangingThis = changingAddressId === address.id;
+                      return (
+                        <button
+                          key={address.id}
+                          onClick={() => handleAddressSelect(address.cep, address.id)}
+                          disabled={isChangingCep}
+                          className="w-full p-3 text-left bg-white border border-gray-200 rounded-lg hover:border-construPro-blue hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-medium text-gray-900">{address.nome}</span>
+                                {address.principal && (
+                                  <span className="text-xs bg-construPro-blue text-white px-2 py-0.5 rounded-full">
+                                    Principal
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-600">
+                                {address.logradouro}, {address.numero} - {address.bairro}
+                              </p>
+                              <p className="text-sm text-gray-500">
+                                {address.cidade} - {address.estado} | CEP: {formatCep(address.cep)}
+                              </p>
+                            </div>
+                            {isChangingThis ? (
+                              <div className="flex items-center gap-1">
+                                <Loader2 className="w-3 h-3 animate-spin text-blue-500" />
+                              </div>
+                            ) : isChangingCep ? (
+                              <div className="w-4 h-4 bg-gray-200 rounded animate-pulse" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4 text-gray-400" />
                             )}
                           </div>
-                          <p className="text-sm text-gray-600">
-                            {address.logradouro}, {address.numero} - {address.bairro}
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            {address.cidade} - {address.estado} | CEP: {formatCep(address.cep)}
-                          </p>
-                        </div>
-                        {isChangingThis ? (
-                          <div className="flex items-center gap-1">
-                            <Loader2 className="w-3 h-3 animate-spin text-blue-500" />
-                          </div>
-                        ) : isChangingCep ? (
-                          <div className="w-4 h-4 bg-gray-200 rounded animate-pulse" />
-                        ) : (
-                          <ChevronRight className="w-4 h-4 text-gray-400" />
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
-          {/* Botão para adicionar novo endereço */}
-          <button
-            onClick={handleAddAddress}
-            disabled={isChangingCep}
-            className="w-full p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-construPro-blue hover:text-construPro-blue transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Plus className="w-4 h-4 mx-auto mb-1" />
-            <span className="text-sm">Cadastrar novo endereço</span>
-          </button>
+              {/* Botão para adicionar novo endereço */}
+              <button
+                onClick={handleAddAddress}
+                disabled={isChangingCep}
+                className="w-full p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-construPro-blue hover:text-construPro-blue transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Plus className="w-4 h-4 mx-auto mb-1" />
+                <span className="text-sm">Cadastrar novo endereço</span>
+              </button>
 
-          {/* Input para CEP temporário */}
-          <div className="border-t pt-4">
-            <p className="text-sm text-gray-500 mb-3">
-              Ou digite um CEP diferente:
-            </p>
-            <TempCepInput 
-              onCepSubmit={handleTempCepSubmit}
-              loading={isChangingCep}
-            />
-          </div>
+              {/* Input para CEP temporário */}
+              <div className="border-t pt-4">
+                <p className="text-sm text-gray-500 mb-3">
+                  Ou digite um CEP diferente:
+                </p>
+                <TempCepInput 
+                  onCepSubmit={handleTempCepSubmit}
+                  loading={isChangingCep}
+                />
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-8">
+              <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                <MapPin className="w-8 h-8 text-blue-600" />
+              </div>
+              <p className="text-gray-600 mb-6">
+                Você ainda não possui endereços cadastrados. Adicione seu primeiro endereço para começar a comprar!
+              </p>
+              <Button
+                onClick={handleAddAddress}
+                className="w-full bg-construPro-blue hover:bg-construPro-blue-dark"
+                disabled={isChangingCep}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Cadastrar primeiro endereço
+              </Button>
+              
+              <div className="border-t pt-4 mt-6">
+                <p className="text-sm text-gray-500 mb-3">
+                  Ou digite um CEP temporariamente:
+                </p>
+                
+                {isChangingCep && (
+                  <div className="flex items-center justify-center gap-2 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg mb-3">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Atualizando produtos...</span>
+                  </div>
+                )}
+                
+                <TempCepInput 
+                  onCepSubmit={handleTempCepSubmit}
+                  loading={isChangingCep}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </CustomModal>
 

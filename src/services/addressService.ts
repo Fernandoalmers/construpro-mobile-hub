@@ -52,7 +52,7 @@ export const addressService = {
 
     if (updateError) throw updateError;
 
-    // NOVO: Atualizar também o endereco_principal no perfil para sincronização imediata
+    // CORRIGIDO: Atualizar também o endereco_principal no perfil para sincronização imediata
     const { error: profileError } = await supabase
       .from('profiles')
       .update({

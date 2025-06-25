@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getMarketplaceProducts } from '@/services/marketplaceProductsService';
@@ -54,11 +55,19 @@ export const useOptimizedMarketplace = () => {
       hasDefinedCepWithoutCoverage ? 'no-coverage' : 'with-coverage'
     ],
     queryFn: async () => {
+      console.log('[useOptimizedMarketplace] 🔄 Executando query de produtos com filtros:', {
+        currentCep,
+        availableVendorIds: availableVendorIds?.length || 'all',
+        hasDefinedCepWithoutCoverage
+      });
+      
       if (hasDefinedCepWithoutCoverage) {
+        console.log('[useOptimizedMarketplace] 🚫 CEP sem cobertura, retornando array vazio');
         return [];
       }
       
       const result = await getMarketplaceProducts(availableVendorIds);
+      console.log('[useOptimizedMarketplace] ✅ Produtos carregados:', result.length);
       return result;
     },
     staleTime: 30000,
@@ -113,15 +122,15 @@ export const useOptimizedMarketplace = () => {
   // Dados consolidados memoizados
   const marketplaceData: OptimizedMarketplaceData = useMemo(() => ({
     products,
-    stores: [], // Keep existing stores logic
-    segments: [], // Keep existing segments logic
+    stores: stores || [],
+    segments: segments || [],
     isLoading: isLoadingData,
     error: productsError?.message || null,
     hasDeliveryRestriction: hasActiveZones,
     currentDeliveryZone: currentCep,
     isFilteredByZone,
     hasDefinedCepWithoutCoverage
-  }), [products, isLoadingData, productsError, hasActiveZones, currentCep, isFilteredByZone, hasDefinedCepWithoutCoverage]);
+  }), [products, stores, segments, isLoadingData, productsError, hasActiveZones, currentCep, isFilteredByZone, hasDefinedCepWithoutCoverage]);
 
   return marketplaceData;
 };

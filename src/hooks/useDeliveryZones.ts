@@ -30,15 +30,18 @@ export const useDeliveryZones = (): UseDeliveryZonesReturn => {
     // 1. CEP do perfil principal (usuários autenticados)
     if (isAuthenticated && profile?.endereco_principal?.cep) {
       const cep = profile.endereco_principal.cep.replace(/\D/g, '');
+      console.log('[useDeliveryZones] 🏠 Usando CEP do perfil principal:', cep);
       return cep;
     }
     
     // 2. CEP temporário (usuários não autenticados)
     if (!isAuthenticated && tempCep) {
       const cep = tempCep.replace(/\D/g, '');
+      console.log('[useDeliveryZones] 📍 Usando CEP temporário:', cep);
       return cep;
     }
     
+    console.log('[useDeliveryZones] ❌ Nenhum CEP encontrado');
     return null;
   }, [isAuthenticated, profile?.endereco_principal?.cep, tempCep]);
 
@@ -66,10 +69,19 @@ export const useDeliveryZones = (): UseDeliveryZonesReturn => {
           refetchType: 'active'
         }),
         queryClient.invalidateQueries({
+          queryKey: ['marketplace-products-by-zone'],
+          refetchType: 'active'
+        }),
+        queryClient.invalidateQueries({
           queryKey: ['marketplace-stores'],
           refetchType: 'active'
         })
       ]);
+      
+      console.log('[useDeliveryZones] ✅ Zonas resolvidas e cache invalidado:', {
+        cep: cleanCep,
+        zonas: zones.length
+      });
       
       // Salvar contexto em background
       try {
@@ -88,6 +100,7 @@ export const useDeliveryZones = (): UseDeliveryZonesReturn => {
   }, [profile?.id, queryClient]);
 
   const clearZones = useCallback(() => {
+    console.log('[useDeliveryZones] 🧹 Limpando zonas de entrega');
     setCurrentZones([]);
     setCurrentCep(null);
     setError(null);
@@ -112,16 +125,19 @@ export const useDeliveryZones = (): UseDeliveryZonesReturn => {
     }
   }, [profile?.endereco_principal?.cep, currentCep, initialized, isAuthenticated, resolveZones]);
 
-  // Inicialização única
+  // Inicialização única melhorada
   useEffect(() => {
     if (initialized) return;
 
     const initializeZones = async () => {
+      console.log('[useDeliveryZones] 🚀 Inicializando zonas de entrega...');
+      
       try {
         // Tentar carregar contexto salvo primeiro
         const context = await deliveryZoneService.getUserDeliveryContext(profile?.id).catch(() => null);
         
         if (context && context.resolved_zone_ids.length > 0) {
+          console.log('[useDeliveryZones] 📋 Contexto salvo encontrado:', context.current_cep);
           await resolveZones(context.current_cep);
           setInitialized(true);
           return;
@@ -130,7 +146,10 @@ export const useDeliveryZones = (): UseDeliveryZonesReturn => {
         // Usar CEP atual do usuário
         const userCep = getUserCep();
         if (userCep && userCep.length === 8) {
+          console.log('[useDeliveryZones] 🎯 Inicializando com CEP do usuário:', userCep);
           await resolveZones(userCep);
+        } else {
+          console.log('[useDeliveryZones] ℹ️ Nenhum CEP disponível para inicialização');
         }
       } catch (err) {
         console.error('[useDeliveryZones] ❌ Erro na inicialização:', err);

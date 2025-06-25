@@ -22,8 +22,6 @@ export interface MarketplaceProduct {
   vendedores?: any;
   pontos_consumidor?: number;
   pontos_profissional?: number;
-  unidade?: string;
-  embalagem?: string;
   peso?: number;
   dimensoes?: string;
   marca?: string;
@@ -61,8 +59,6 @@ export const getMarketplaceProducts = async (vendorIds?: string[]): Promise<Mark
         vendedor_id,
         pontos_consumidor,
         pontos_profissional,
-        unidade,
-        embalagem,
         peso,
         dimensoes,
         marca,
@@ -145,8 +141,6 @@ export const getMarketplaceProducts = async (vendorIds?: string[]): Promise<Mark
         vendedores: storeInfo,
         pontos_consumidor: product.pontos_consumidor,
         pontos_profissional: product.pontos_profissional,
-        unidade: product.unidade,
-        embalagem: product.embalagem,
         peso: product.peso,
         dimensoes: product.dimensoes,
         marca: product.marca,
