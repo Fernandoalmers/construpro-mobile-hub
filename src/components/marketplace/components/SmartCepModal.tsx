@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { MapPin, Plus, ChevronRight } from 'lucide-react';
+import { MapPin, Plus, ChevronRight, Loader2 } from 'lucide-react';
 import CustomModal from '@/components/common/CustomModal';
 import { useAddresses } from '@/hooks/useAddresses';
 import { useAuth } from '@/context/AuthContext';
@@ -31,15 +31,27 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
   const formatCep = (cep: string) => cep.replace(/(\d{5})(\d{3})/, '$1-$2');
 
   const handleAddressSelect = async (cep: string) => {
+    if (isChangingCep) return;
+    
     setIsChangingCep(true);
+    console.log('[SmartCepModal] Alterando CEP para:', cep);
+    
     try {
+      // Aguardar a resolução das zonas e invalidação das queries
       await onCepChange(cep);
+      
       toast({
-        title: "✅ CEP alterado",
-        description: `Agora exibindo produtos para ${formatCep(cep)}`
+        title: "✅ CEP alterado com sucesso",
+        description: `Produtos atualizados para ${formatCep(cep)}`
       });
-      onOpenChange(false);
+      
+      // Aguardar um pouco para garantir que as queries sejam revalidadas
+      setTimeout(() => {
+        onOpenChange(false);
+      }, 500);
+      
     } catch (error) {
+      console.error('[SmartCepModal] Erro ao alterar CEP:', error);
       toast({
         variant: "destructive",
         title: "❌ Erro ao alterar CEP",
@@ -80,6 +92,13 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
             </div>
           )}
           
+          {isChangingCep && (
+            <div className="flex items-center justify-center gap-2 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Atualizando produtos...</span>
+            </div>
+          )}
+          
           <TempCepInput 
             onCepSubmit={handleTempCepSubmit}
             loading={isChangingCep}
@@ -111,6 +130,7 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
               <Button
                 onClick={handleAddAddress}
                 className="w-full bg-construPro-blue hover:bg-construPro-blue-dark"
+                disabled={isChangingCep}
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Cadastrar primeiro endereço
@@ -121,6 +141,14 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
               <p className="text-sm text-gray-500 mb-3">
                 Ou digite um CEP temporariamente:
               </p>
+              
+              {isChangingCep && (
+                <div className="flex items-center justify-center gap-2 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg mb-3">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Atualizando produtos...</span>
+                </div>
+              )}
+              
               <TempCepInput 
                 onCepSubmit={handleTempCepSubmit}
                 loading={isChangingCep}
@@ -164,6 +192,13 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
             </div>
           )}
 
+          {isChangingCep && (
+            <div className="flex items-center justify-center gap-2 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Atualizando produtos...</span>
+            </div>
+          )}
+
           {/* Lista de endereços cadastrados */}
           <div className="space-y-2">
             <h4 className="text-sm font-medium text-gray-700 mb-3">
@@ -202,7 +237,11 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
                           {address.cidade} - {address.estado} | CEP: {formatCep(address.cep)}
                         </p>
                       </div>
-                      <ChevronRight className="w-4 h-4 text-gray-400" />
+                      {isChangingCep ? (
+                        <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4 text-gray-400" />
+                      )}
                     </div>
                   </button>
                 ))}
@@ -213,7 +252,8 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
           {/* Botão para adicionar novo endereço */}
           <button
             onClick={handleAddAddress}
-            className="w-full p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-construPro-blue hover:text-construPro-blue transition-colors"
+            disabled={isChangingCep}
+            className="w-full p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-construPro-blue hover:text-construPro-blue transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Plus className="w-4 h-4 mx-auto mb-1" />
             <span className="text-sm">Cadastrar novo endereço</span>

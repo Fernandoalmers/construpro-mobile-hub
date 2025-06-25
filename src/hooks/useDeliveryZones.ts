@@ -1,5 +1,5 @@
-
 import { useState, useEffect, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 import { useTempCep } from './useTempCep';
 import { deliveryZoneService, type DeliveryZone } from '@/services/deliveryZoneService';
@@ -17,6 +17,7 @@ interface UseDeliveryZonesReturn {
 export const useDeliveryZones = (): UseDeliveryZonesReturn => {
   const { profile, isAuthenticated } = useAuth();
   const { tempCep } = useTempCep();
+  const queryClient = useQueryClient();
   const [currentZones, setCurrentZones] = useState<DeliveryZone[]>([]);
   const [currentCep, setCurrentCep] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -62,12 +63,22 @@ export const useDeliveryZones = (): UseDeliveryZonesReturn => {
       setCurrentZones(zones);
       setCurrentCep(cleanCep);
       
+      // Invalidar todas as queries relacionadas ao marketplace após mudança de CEP
+      console.log('[useDeliveryZones] 🔄 Invalidando queries do marketplace...');
+      await queryClient.invalidateQueries({
+        queryKey: ['marketplace-products']
+      });
+      
+      await queryClient.invalidateQueries({
+        queryKey: ['marketplace-stores']
+      });
+      
       // Salvar contexto sem aguardar para evitar loops
       deliveryZoneService.saveUserDeliveryContext(cleanCep, zones, profile?.id).catch(err => {
         console.warn('[useDeliveryZones] Erro ao salvar contexto:', err);
       });
       
-      console.log('[useDeliveryZones] ✅ Zonas resolvidas:', zones.length);
+      console.log('[useDeliveryZones] ✅ Zonas resolvidas e queries invalidadas:', zones.length);
       
       if (zones.length > 0) {
         const vendorCount = zones.length;
@@ -83,14 +94,19 @@ export const useDeliveryZones = (): UseDeliveryZonesReturn => {
     } finally {
       setIsLoading(false);
     }
-  }, [currentCep, profile?.id]);
+  }, [currentCep, profile?.id, queryClient]);
 
   const clearZones = useCallback(() => {
     console.log('[useDeliveryZones] 🧹 Limpando zonas');
     setCurrentZones([]);
     setCurrentCep(null);
     setError(null);
-  }, []);
+    
+    // Invalidar queries ao limpar zonas também
+    queryClient.invalidateQueries({
+      queryKey: ['marketplace-products']
+    });
+  }, [queryClient]);
 
   // Inicialização única para evitar loops
   useEffect(() => {

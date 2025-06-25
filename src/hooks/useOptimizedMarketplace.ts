@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getMarketplaceProducts } from '@/services/marketplaceProductsService';
 import { getStores } from '@/services/marketplace/marketplaceService';
 import { getProductSegments } from '@/services/admin/productSegmentsService';
@@ -20,6 +20,7 @@ interface OptimizedMarketplaceData {
 }
 
 export const useOptimizedMarketplace = () => {
+  const queryClient = useQueryClient();
   const { currentZones, hasActiveZones, currentCep, isLoading: zonesLoading } = useDeliveryZones();
   const { shouldShowAllProducts, isFilteredByZone, hasDefinedCepWithoutCoverage } = useMarketplaceFilters();
   
@@ -52,14 +53,17 @@ export const useOptimizedMarketplace = () => {
     return undefined;
   }, [currentZones, hasActiveZones, currentCep, shouldShowAllProducts, hasDefinedCepWithoutCoverage]);
 
-  // Query de produtos com tratamento de erro melhorado
+  // Query de produtos com key que inclui CEP para invalidação correta
   const { 
     data: products = [], 
     isLoading: productsLoading,
-    error: productsError 
+    error: productsError,
+    isFetching: productsRefetching
   } = useQuery({
-    queryKey: ['marketplace-products', availableVendorIds, shouldShowAllProducts, hasDefinedCepWithoutCoverage],
+    queryKey: ['marketplace-products', currentCep, availableVendorIds, hasDefinedCepWithoutCoverage],
     queryFn: async () => {
+      console.log('[useOptimizedMarketplace] 🔄 Buscando produtos para CEP:', currentCep);
+      
       try {
         // Se CEP definido mas sem cobertura, retornar array vazio
         if (hasDefinedCepWithoutCoverage) {
@@ -67,14 +71,16 @@ export const useOptimizedMarketplace = () => {
           return [];
         }
         
-        return await getMarketplaceProducts(availableVendorIds);
+        const result = await getMarketplaceProducts(availableVendorIds);
+        console.log('[useOptimizedMarketplace] ✅ Produtos carregados:', result.length);
+        return result;
       } catch (error) {
         console.error('[useOptimizedMarketplace] Erro ao carregar produtos:', error);
         // Retornar array vazio em vez de falhar
         return [];
       }
     },
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: 1 * 60 * 1000, // 1 minute (reduzido para melhor responsividade)
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     enabled: !zonesLoading, // Só buscar quando as zonas estiverem resolvidas
@@ -132,23 +138,27 @@ export const useOptimizedMarketplace = () => {
         productsCount: products.length,
         isFilteredByZone,
         shouldShowAllProducts,
-        hasDefinedCepWithoutCoverage
+        hasDefinedCepWithoutCoverage,
+        isRefetching: productsRefetching
       });
     }
-  }, [hasActiveZones, currentCep, currentZones.length, availableVendorIds?.length, products.length, zonesLoading, isFilteredByZone, shouldShowAllProducts, hasDefinedCepWithoutCoverage]);
+  }, [hasActiveZones, currentCep, currentZones.length, availableVendorIds?.length, products.length, zonesLoading, isFilteredByZone, shouldShowAllProducts, hasDefinedCepWithoutCoverage, productsRefetching]);
+
+  // Loading inclui refetching para mostrar estado de carregamento durante mudanças de CEP
+  const isLoadingData = zonesLoading || productsLoading || storesLoading || segmentsLoading || productsRefetching;
 
   // Memoize the consolidated data
   const marketplaceData: OptimizedMarketplaceData = useMemo(() => ({
     products,
     stores,
     segments,
-    isLoading: zonesLoading || productsLoading || storesLoading || segmentsLoading,
+    isLoading: isLoadingData,
     error: productsError?.message || storesError?.message || null,
     hasDeliveryRestriction: hasActiveZones,
     currentDeliveryZone: currentCep,
     isFilteredByZone,
     hasDefinedCepWithoutCoverage
-  }), [products, stores, segments, zonesLoading, productsLoading, storesLoading, segmentsLoading, productsError, storesError, hasActiveZones, currentCep, isFilteredByZone, hasDefinedCepWithoutCoverage]);
+  }), [products, stores, segments, isLoadingData, productsError, storesError, hasActiveZones, currentCep, isFilteredByZone, hasDefinedCepWithoutCoverage]);
 
   return marketplaceData;
 };
