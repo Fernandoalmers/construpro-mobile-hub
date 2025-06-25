@@ -152,15 +152,21 @@ export function useAddresses() {
     }
   });
 
-  // Enhanced set primary address mutation with detailed logging
+  // FASE 3: MELHORIA DO FRONTEND - Enhanced set primary address mutation
   const setPrimaryAddressMutation = useMutation({
     mutationFn: async (addressId: string) => {
       try {
         console.log(`[useAddresses] Setting address ${addressId} as primary`);
         
-        // Add optimistic update to improve UX
+        // VALIDAÇÃO PREVENTIVA: Verificar se o endereço ainda existe
         const currentAddresses = queryClient.getQueryData(['addresses']) as Address[] || [];
-        console.log(`[useAddresses] Current addresses before update:`, currentAddresses.map(a => ({ id: a.id, nome: a.nome, principal: a.principal })));
+        const addressExists = currentAddresses.find(addr => addr.id === addressId);
+        
+        if (!addressExists) {
+          throw new Error('Endereço não encontrado. Atualize a página e tente novamente.');
+        }
+        
+        console.log(`[useAddresses] Address exists, proceeding with principal update`);
         
         const result = await addressService.setPrimaryAddress(addressId);
         console.log(`[useAddresses] Primary address update result:`, result);
@@ -173,7 +179,7 @@ export function useAddresses() {
       }
     },
     onMutate: async (addressId: string) => {
-      // Optimistic update
+      // OTIMIZAÇÃO: Update otimista para melhor UX
       console.log(`[useAddresses] Optimistically updating address ${addressId} as primary`);
       
       await queryClient.cancelQueries({ queryKey: ['addresses'] });
@@ -194,30 +200,46 @@ export function useAddresses() {
     onSuccess: (result, addressId) => {
       console.log(`[useAddresses] Primary address set successfully:`, addressId);
       
-      // Force refetch to ensure consistency
+      // VALIDAÇÃO: Force refetch to ensure consistency
       queryClient.invalidateQueries({ queryKey: ['addresses'] });
       refreshProfile(); // Refresh user profile to update primary address
       
+      // FEEDBACK VISUAL: Confirmação clara da operação
       toast({
-        title: "Endereço principal atualizado",
-        description: "Endereço definido como principal com sucesso."
+        title: "✅ Endereço principal atualizado",
+        description: "Endereço definido como principal com sucesso.",
+        duration: 3000
       });
     },
     onError: (error: any, addressId, context) => {
       console.error(`[useAddresses] Failed to set primary address ${addressId}:`, error);
       
-      // Rollback optimistic update
+      // ROLLBACK: Desfazer update otimista
       if (context?.previousAddresses) {
         queryClient.setQueryData(['addresses'], context.previousAddresses);
         console.log(`[useAddresses] Rolled back optimistic update`);
       }
       
       const errorMsg = formatErrorMessage(error);
-      toast({
-        variant: "destructive",
-        title: "Erro ao definir endereço principal", 
-        description: errorMsg
-      });
+      
+      // RETRY AUTOMÁTICO: Sugerir retry para falhas de rede
+      if (errorMsg.includes('network') || errorMsg.includes('conexão') || errorMsg.includes('timeout')) {
+        toast({
+          variant: "destructive",
+          title: "❌ Erro de conexão",
+          description: "Verifique sua internet e tente novamente.",
+          action: {
+            label: "Tentar novamente",
+            onClick: () => setPrimaryAddressMutation.mutate(addressId)
+          }
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "❌ Erro ao definir endereço principal", 
+          description: errorMsg
+        });
+      }
     }
   });
 
@@ -424,4 +446,3 @@ export function useAddresses() {
     isSettingPrimary: setPrimaryAddressMutation.isPending, // Add loading state for primary button
   };
 }
-

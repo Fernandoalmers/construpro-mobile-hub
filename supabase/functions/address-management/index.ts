@@ -1,5 +1,4 @@
 
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -95,24 +94,6 @@ serve(async (req) => {
       const body = await req.json()
       console.log('[address-management] Creating address:', { ...body, user_id: user.id })
       
-      // If this address is being set as principal, first unset all others
-      if (body.principal) {
-        console.log('[address-management] Setting address as principal, unsetting others first')
-        const { error: unsetError } = await supabaseClient
-          .from('user_addresses')
-          .update({ principal: false })
-          .eq('user_id', user.id)
-
-        if (unsetError) {
-          console.error('[address-management] Error unsetting other addresses:', unsetError)
-          return new Response(
-            JSON.stringify({ error: `Failed to unset other addresses: ${unsetError.message}` }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
-        }
-        console.log('[address-management] Successfully unset other principal addresses')
-      }
-
       const { data: address, error } = await supabaseClient
         .from('user_addresses')
         .insert({
@@ -151,12 +132,12 @@ serve(async (req) => {
 
       console.log('[address-management] Updating address:', { id, updateData, user_id: user.id })
 
-      // Enhanced logic for setting principal address
+      // FASE 2: IMPLEMENTAÇÃO ROBUSTA PARA DEFINIR ENDEREÇO PRINCIPAL
       if (updateData.principal === true) {
-        console.log('[address-management] Setting address as principal, implementing robust transaction')
+        console.log('[address-management] Setting address as principal with atomic operation:', id)
         
         try {
-          // First, verify the address exists and belongs to the user
+          // Verificar se o endereço existe e pertence ao usuário
           const { data: existingAddress, error: verifyError } = await supabaseClient
             .from('user_addresses')
             .select('*')
@@ -172,26 +153,9 @@ serve(async (req) => {
             )
           }
 
-          console.log('[address-management] Address verified, proceeding with principal update')
+          console.log('[address-management] Address verified, updating as principal')
 
-          // Step 1: Unset all other principal addresses for this user
-          const { error: unsetError } = await supabaseClient
-            .from('user_addresses')
-            .update({ principal: false, updated_at: new Date().toISOString() })
-            .eq('user_id', user.id)
-            .neq('id', id)
-
-          if (unsetError) {
-            console.error('[address-management] Error unsetting other principal addresses:', unsetError)
-            return new Response(
-              JSON.stringify({ error: `Failed to unset other addresses: ${unsetError.message}` }),
-              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            )
-          }
-
-          console.log('[address-management] Successfully unset other principal addresses')
-
-          // Step 2: Set this address as principal
+          // Atualizar o endereço como principal (o trigger do banco vai cuidar da lógica)
           const { data: updatedAddress, error: updateError } = await supabaseClient
             .from('user_addresses')
             .update({ 
@@ -214,20 +178,20 @@ serve(async (req) => {
 
           console.log('[address-management] Address successfully set as principal:', updatedAddress.id)
 
-          // Step 3: Verify the operation was successful
+          // Verificação final: confirmar que apenas um endereço é principal
           const { data: verification, error: verifyFinalError } = await supabaseClient
             .from('user_addresses')
             .select('id, nome, principal')
             .eq('user_id', user.id)
+            .eq('principal', true)
 
           if (!verifyFinalError && verification) {
-            const principalAddresses = verification.filter(addr => addr.principal)
-            console.log('[address-management] Final verification - principal addresses:', principalAddresses.length, principalAddresses.map(a => a.id))
+            console.log('[address-management] Verification - principal addresses:', verification.length, verification.map(a => a.id))
             
-            if (principalAddresses.length !== 1 || principalAddresses[0].id !== id) {
+            if (verification.length !== 1 || verification[0].id !== id) {
               console.error('[address-management] Verification failed - incorrect principal state')
               return new Response(
-                JSON.stringify({ error: 'Failed to properly set principal address' }),
+                JSON.stringify({ error: 'Database integrity error: multiple principal addresses found' }),
                 { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
               )
             }
@@ -246,7 +210,7 @@ serve(async (req) => {
           )
         }
       } else {
-        // Standard update for non-principal changes
+        // Atualização normal para mudanças que não envolvem principal
         const { data: address, error } = await supabaseClient
           .from('user_addresses')
           .update({
@@ -323,4 +287,3 @@ serve(async (req) => {
     )
   }
 })
-

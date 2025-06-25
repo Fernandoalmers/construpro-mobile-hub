@@ -1,5 +1,4 @@
 
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, MapPin, Plus, RefreshCw } from 'lucide-react';
@@ -146,7 +145,14 @@ const AddressScreen: React.FC = () => {
                       loading={isSettingPrimary}
                       disabled={isSettingPrimary}
                     >
-                      {isSettingPrimary ? 'Definindo...' : 'Definir como principal'}
+                      {isSettingPrimary ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 border-2 border-construPro-blue border-t-transparent rounded-full animate-spin" />
+                          Definindo...
+                        </div>
+                      ) : (
+                        'Definir como principal'
+                      )}
                     </CustomButton>
                   )}
                 </div>
@@ -167,4 +173,3 @@ const AddressScreen: React.FC = () => {
 };
 
 export default AddressScreen;
-
