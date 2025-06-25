@@ -38,6 +38,23 @@ export const deliveryZoneService = {
       }
       
       console.log('[deliveryZoneService] Zonas encontradas:', data?.length || 0);
+      if (data && data.length > 0) {
+        console.log('[deliveryZoneService] Detalhes das zonas:', data);
+      } else {
+        console.log('[deliveryZoneService] ⚠️ Nenhuma zona encontrada para CEP:', cep);
+        // Verificar se existem zonas cadastradas no sistema
+        const { data: allZones } = await supabase
+          .from('vendor_delivery_zones')
+          .select('zone_name, zone_type, zone_value, vendor_id')
+          .eq('active', true)
+          .limit(5);
+        
+        console.log('[deliveryZoneService] Zonas cadastradas no sistema:', allZones?.length || 0);
+        if (allZones && allZones.length > 0) {
+          console.log('[deliveryZoneService] Exemplos de zonas:', allZones);
+        }
+      }
+      
       return data || [];
     } catch (error) {
       console.error('[deliveryZoneService] Erro inesperado:', error);
@@ -47,7 +64,7 @@ export const deliveryZoneService = {
   },
 
   /**
-   * Salva o contexto de entrega do usuário
+   * Salva o contexto de entrega do usuário - CORRIGIDO para usar constraint correta
    */
   async saveUserDeliveryContext(
     cep: string, 
@@ -55,6 +72,7 @@ export const deliveryZoneService = {
     userId?: string
   ): Promise<void> {
     console.log('[deliveryZoneService] Salvando contexto de entrega');
+    console.log('[deliveryZoneService] Dados:', { cep, zonesCount: zones.length, userId });
     
     try {
       const sessionId = userId ? null : crypto.randomUUID();
@@ -67,17 +85,49 @@ export const deliveryZoneService = {
         resolved_zone_ids: zoneIds,
         last_resolved_at: new Date().toISOString()
       };
+
+      console.log('[deliveryZoneService] Tentando salvar contexto:', contextData);
       
-      // Tentar salvar contexto, mas não falhar se houver erro
-      const { error } = await supabase
-        .from('user_delivery_context')
-        .upsert(contextData, {
-          onConflict: userId ? 'user_id' : 'session_id'
-        });
-      
-      if (error) {
-        console.warn('[deliveryZoneService] Aviso ao salvar contexto:', error);
-        // Não fazer throw para não quebrar o fluxo principal
+      // CORRIGIDO: Usar upsert mais específico baseado em user_id OU session_id
+      if (userId) {
+        // Para usuários autenticados, usar user_id
+        const { data, error } = await supabase
+          .from('user_delivery_context')
+          .upsert(contextData, {
+            onConflict: 'user_id',
+            ignoreDuplicates: false
+          })
+          .select()
+          .single();
+          
+        if (error) {
+          console.warn('[deliveryZoneService] Erro ao salvar contexto por user_id, tentando INSERT:', error);
+          // Tentar INSERT direto se upsert falhar
+          const { error: insertError } = await supabase
+            .from('user_delivery_context')
+            .insert(contextData);
+          
+          if (insertError) {
+            console.warn('[deliveryZoneService] Aviso ao inserir contexto:', insertError);
+          } else {
+            console.log('[deliveryZoneService] ✅ Contexto inserido com sucesso via INSERT');
+          }
+        } else {
+          console.log('[deliveryZoneService] ✅ Contexto salvo com sucesso via UPSERT:', data?.id);
+        }
+      } else {
+        // Para usuários não autenticados, usar session_id
+        const { data, error } = await supabase
+          .from('user_delivery_context')
+          .insert(contextData)
+          .select()
+          .single();
+          
+        if (error) {
+          console.warn('[deliveryZoneService] Aviso ao salvar contexto por session:', error);
+        } else {
+          console.log('[deliveryZoneService] ✅ Contexto de sessão salvo:', data?.id);
+        }
       }
     } catch (error) {
       console.warn('[deliveryZoneService] Aviso inesperado ao salvar contexto:', error);
@@ -89,20 +139,40 @@ export const deliveryZoneService = {
    * Recupera o contexto de entrega salvo
    */
   async getUserDeliveryContext(userId?: string): Promise<UserDeliveryContext | null> {
-    console.log('[deliveryZoneService] Recuperando contexto de entrega');
+    console.log('[deliveryZoneService] Recuperando contexto de entrega para:', userId || 'sessão');
     
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('user_delivery_context')
         .select('*')
-        .eq(userId ? 'user_id' : 'session_id', userId || localStorage.getItem('delivery_session_id'))
         .order('updated_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(1);
+      
+      if (userId) {
+        query = query.eq('user_id', userId);
+      } else {
+        const sessionId = localStorage.getItem('delivery_session_id');
+        if (sessionId) {
+          query = query.eq('session_id', sessionId);
+        } else {
+          console.log('[deliveryZoneService] Nenhuma sessão encontrada para recuperar contexto');
+          return null;
+        }
+      }
+      
+      const { data, error } = await query.maybeSingle();
       
       if (error && error.code !== 'PGRST116') {
         console.warn('[deliveryZoneService] Aviso ao recuperar contexto:', error);
         return null;
+      }
+      
+      if (data) {
+        console.log('[deliveryZoneService] ✅ Contexto recuperado:', {
+          id: data.id,
+          cep: data.current_cep,
+          zonesCount: data.resolved_zone_ids?.length || 0
+        });
       }
       
       return data || null;

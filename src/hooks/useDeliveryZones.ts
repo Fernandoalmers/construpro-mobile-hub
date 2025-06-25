@@ -95,10 +95,14 @@ export const useDeliveryZones = (): UseDeliveryZonesReturn => {
       
       console.log('[useDeliveryZones] ✅ Refetch completo');
       
-      // Salvar contexto em background
-      deliveryZoneService.saveUserDeliveryContext(cleanCep, zones, profile?.id).catch(err => {
-        console.warn('[useDeliveryZones] ⚠️ Aviso ao salvar contexto:', err);
-      });
+      // Salvar contexto em background - MELHORADO para aguardar e capturar erros
+      try {
+        await deliveryZoneService.saveUserDeliveryContext(cleanCep, zones, profile?.id);
+        console.log('[useDeliveryZones] ✅ Contexto salvo com sucesso');
+      } catch (contextError) {
+        console.warn('[useDeliveryZones] ⚠️ Aviso ao salvar contexto:', contextError);
+        // Não falhar o processo principal por erro de contexto
+      }
       
       console.log('[useDeliveryZones] ✅ Resolução completa! Zonas:', zones.length);
       

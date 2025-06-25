@@ -45,7 +45,7 @@ const DeliveryZoneIndicator: React.FC<DeliveryZoneIndicatorProps> = ({ className
       <div className={`flex items-center justify-between gap-2 text-sm text-amber-600 bg-amber-50 px-3 py-2 rounded-lg ${className}`}>
         <div className="flex items-center gap-2">
           <Package className="w-4 h-4" />
-          <span>Todos os produtos disponíveis</span>
+          <span>Todos os produtos disponíveis - Defina um CEP para ver entregas locais</span>
         </div>
       </div>
     );
@@ -53,6 +53,23 @@ const DeliveryZoneIndicator: React.FC<DeliveryZoneIndicatorProps> = ({ className
 
   const vendorCount = currentZones.length;
   const formatCep = currentCep?.replace(/(\d{5})(\d{3})/, '$1-$2');
+
+  // NOVO: Estado informativo quando não há zonas mas há CEP
+  if (currentCep && !hasActiveZones) {
+    return (
+      <div className={`flex items-center justify-between gap-2 text-sm text-orange-600 bg-orange-50 px-3 py-2 rounded-lg ${className}`}>
+        <div className="flex items-center gap-2">
+          <AlertCircle className="w-4 h-4" />
+          <div className="flex flex-col">
+            <span className="font-medium">CEP {formatCep} definido</span>
+            <span className="text-xs text-orange-500">
+              Nenhuma loja configurada para entrega neste CEP - Mostrando todos os produtos
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Estado: CEP com cobertura mas mostrando todos os produtos
   if (shouldShowAllProducts && hasActiveZones) {
