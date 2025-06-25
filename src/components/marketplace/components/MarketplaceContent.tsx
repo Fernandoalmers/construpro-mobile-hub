@@ -1,9 +1,9 @@
 
 import React from 'react';
-import { GridProductView } from './GridProductView';
-import { ListProductView } from './ListProductView';
+import GridProductView from './GridProductView';
+import ListProductView from './ListProductView';
 import LoadingState from '../../common/LoadingState';
-import { EmptyProductState } from './EmptyProductState';
+import EmptyProductState from './EmptyProductState';
 import DeliveryZoneIndicator from './DeliveryZoneIndicator';
 import NoDeliveryZoneState from './NoDeliveryZoneState';
 import { useDeliveryZones } from '@/hooks/useDeliveryZones';
@@ -92,7 +92,6 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
         {!isLoading && !hasActiveZones && filteredProdutos.length === 0 && (
           <EmptyProductState 
             clearFilters={clearFilters}
-            hasActiveFilters={false}
           />
         )}
 

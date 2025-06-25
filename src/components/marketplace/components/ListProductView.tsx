@@ -8,16 +8,26 @@ import { truncateTextForLines } from '@/utils/textUtils';
 
 interface ListProductViewProps {
   products: any[];
-  navigateToProduct: (productId: string) => void;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
+  loadMore?: () => void;
   onLojaClick?: (lojaId: string) => void;
   showActions?: boolean;
 }
 
 const ListProductView: React.FC<ListProductViewProps> = ({ 
   products, 
-  navigateToProduct,
+  hasMore,
+  isLoadingMore,
+  loadMore,
   onLojaClick,
 }) => {
+  const navigate = useNavigate();
+
+  const navigateToProduct = (productId: string) => {
+    navigate(`/produto/${productId}`);
+  };
+
   return (
     <div className="flex flex-col gap-2">
       {products.map(produto => {
