@@ -52,37 +52,13 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
     await resolveZones(newCep);
   };
 
-  // Determinar título baseado no estado da zona de entrega
+  // Determinar título baseado no estado da zona de entrega - SIMPLIFICADO
   const getPageTitle = () => {
     if (hasDefinedCepWithoutCoverage) {
       return "Nenhum lojista atende esse endereço";
     }
     
-    if (hasActiveZones && currentCep) {
-      return "Produtos disponíveis para o endereço selecionado";
-    }
-    
-    if (!currentCep) {
-      return "Todos os produtos disponíveis";
-    }
-    
-    return currentCategoryName;
-  };
-
-  // Determinar subtítulo com informações da zona
-  const getSubtitle = () => {
-    if (hasDefinedCepWithoutCoverage) {
-      return `Não encontramos vendedores para o CEP ${currentCep?.replace(/(\d{5})(\d{3})/, '$1-$2')}`;
-    }
-    
-    const productCount = filteredProdutos.length;
-    const productText = `${productCount} produto${productCount !== 1 ? 's' : ''} encontrado${productCount !== 1 ? 's' : ''}`;
-    
-    if (hasActiveZones && currentCep) {
-      return `${productText} para o CEP ${currentCep.replace(/(\d{5})(\d{3})/, '$1-$2')}`;
-    }
-    
-    return productText;
+    return currentCategoryName || "Produtos disponíveis";
   };
 
   return (
@@ -96,35 +72,34 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
           <DeliveryZoneIndicator />
         </div>
 
-        {/* Título da página */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <h2 className="text-xl font-bold text-gray-800">
-                {getPageTitle()}
-              </h2>
-              <p className="text-sm text-gray-600">
-                {getSubtitle()}
-              </p>
-              {hasActiveZones && !hasDefinedCepWithoutCoverage && (
-                <p className="text-xs text-construPro-blue mt-1">
-                  Mostrando apenas produtos com entrega disponível
-                </p>
+        {/* Título da página - SIMPLIFICADO */}
+        {!hasDefinedCepWithoutCoverage && (
+          <div className="mb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <h2 className="text-lg font-semibold text-gray-800">
+                  {getPageTitle()}
+                </h2>
+                {hasActiveZones && currentCep && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    CEP {currentCep.replace(/(\d{5})(\d{3})/, '$1-$2')}
+                  </p>
+                )}
+              </div>
+              
+              {/* Botão Alterar CEP quando há produtos válidos */}
+              {!isLoading && currentCep && filteredProdutos.length > 0 && (
+                <button
+                  onClick={handleChangeCep}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-construPro-blue border border-construPro-blue rounded-lg hover:bg-blue-50 transition-colors"
+                >
+                  <MapPin className="w-4 h-4" />
+                  Alterar CEP
+                </button>
               )}
             </div>
-            
-            {/* NOVO: Botão Alterar CEP quando há produtos válidos */}
-            {!isLoading && !hasDefinedCepWithoutCoverage && currentCep && filteredProdutos.length > 0 && (
-              <button
-                onClick={handleChangeCep}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-construPro-blue border border-construPro-blue rounded-lg hover:bg-blue-50 transition-colors"
-              >
-                <MapPin className="w-4 h-4" />
-                Alterar CEP
-              </button>
-            )}
           </div>
-        </div>
+        )}
 
         {/* Loading state */}
         {isLoading && (
