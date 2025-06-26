@@ -3,24 +3,48 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Smartphone, Gift, Settings, CheckCircle, Star, ArrowRight, Users, TrendingUp, Award } from 'lucide-react';
+import { Smartphone, Gift, Settings, CheckCircle, Star, ArrowRight, Users, TrendingUp, Award, MapPin, Truck, ShieldCheck } from 'lucide-react';
 import LazyImage from '@/components/common/LazyImage';
 
 const LandingPage = () => {
   const navigate = useNavigate();
+  const showMultisegmentHero = process.env.NEXT_PUBLIC_SHOW_MULTISEGMENT_HERO !== 'false';
+  
   const handleSignUp = () => {
     navigate('/signup');
   };
   const handleLogin = () => {
     navigate('/login');
   };
-  return <div className="min-h-screen bg-white">
+  
+  return (
+    <div className="min-h-screen bg-white" itemScope itemType="https://schema.org/LocalBusiness">
+      {/* Schema.org structured data */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "LocalBusiness",
+          "name": "Matershop",
+          "description": "Marketplace de negócios locais começando pela construção",
+          "url": "https://www.matershop.com.br",
+          "telephone": "+55-11-99999-9999",
+          "address": {
+            "@type": "PostalAddress",
+            "addressCountry": "BR"
+          },
+          "openingHours": "Mo-Fr 08:00-18:00",
+          "priceRange": "$$",
+          "paymentAccepted": ["Cash", "Credit Card", "Debit Card", "Pix"],
+          "currenciesAccepted": "BRL"
+        })}
+      </script>
+
       {/* Navigation */}
       <nav className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-royal-blue">Matershop</h1>
+              <h1 className="text-2xl font-bold text-royal-blue" itemProp="name">Matershop</h1>
             </div>
             <div className="flex items-center space-x-4">
               <Button variant="outline" onClick={handleLogin} className="border-royal-blue text-royal-blue hover:bg-royal-blue hover:text-white">
@@ -39,29 +63,63 @@ const LandingPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 leading-tight mb-6">
-                Matershop conecta você às{' '}
-                <span className="text-royal-blue">melhores ofertas</span> e{' '}
-                <span className="text-orange-points">recompensas</span> da
-                construção civil
-              </h1>
-              <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-                Cadastre-se grátis, garanta descontos exclusivos e acumule pontos online e nas lojas físicas parceiras.
-              </p>
+              {showMultisegmentHero ? (
+                <>
+                  <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 leading-tight mb-6" itemProp="description">
+                    Tudo do seu bairro a um clique: da{' '}
+                    <span className="text-royal-blue">obra</span> ao{' '}
+                    <span className="text-orange-points">dia a dia</span>.
+                  </h1>
+                  <p className="text-xl text-gray-600 mb-8 leading-relaxed">
+                    Compare preços, ganhe pontos e receba em casa produtos de lojas parceiras da sua região.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 leading-tight mb-6">
+                    Matershop conecta você às{' '}
+                    <span className="text-royal-blue">melhores ofertas</span> e{' '}
+                    <span className="text-orange-points">recompensas</span> da
+                    construção civil
+                  </h1>
+                  <p className="text-xl text-gray-600 mb-8 leading-relaxed">
+                    Cadastre-se grátis, garanta descontos exclusivos e acumule pontos online e nas lojas físicas parceiras.
+                  </p>
+                </>
+              )}
+              
               <div className="space-y-4">
                 <Button onClick={handleSignUp} size="lg" className="bg-orange-points hover:bg-orange-points/90 text-white text-lg px-8 py-4 rounded-lg shadow-lg">
-                  Criar conta gratuita
+                  {showMultisegmentHero ? 'Explorar minha região' : 'Criar conta gratuita'}
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
                 <p className="text-sm text-gray-500">
                   <strong>Profissional e consumidor?</strong> Use seu CNPJ/CPF para benefícios extras!
                 </p>
               </div>
+
+              {/* Benefits Bullets */}
+              {showMultisegmentHero && (
+                <div className="mt-8 space-y-3">
+                  <div className="flex items-center text-gray-700">
+                    <Award className="h-5 w-5 text-orange-points mr-3 flex-shrink-0" />
+                    <span className="font-medium">Pontuação inteligente em cada compra</span>
+                  </div>
+                  <div className="flex items-center text-gray-700">
+                    <Truck className="h-5 w-5 text-orange-points mr-3 flex-shrink-0" />
+                    <span className="font-medium">Entrega expressa no CEP que você escolher</span>
+                  </div>
+                  <div className="flex items-center text-gray-700">
+                    <ShieldCheck className="h-5 w-5 text-orange-points mr-3 flex-shrink-0" />
+                    <span className="font-medium">Negócios verificados • Suporte local</span>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="relative">
               <LazyImage 
                 src="/lovable-uploads/2a4834bb-9836-4472-83f1-737a07c2d9c8.png"
-                alt="App Matershop"
+                alt="App Matershop - Marketplace de negócios locais"
                 className="w-full max-w-md mx-auto rounded-2xl object-contain"
                 placeholderClassName="w-full max-w-md mx-auto rounded-2xl"
               />
@@ -75,45 +133,87 @@ const LandingPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Por que escolher a Matershop?
+              {showMultisegmentHero ? 'Por que escolher nosso marketplace?' : 'Por que escolher a Matershop?'}
             </h2>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
-            <Card className="border-0 shadow-lg rounded-lg hover:shadow-xl transition-shadow">
-              <CardContent className="p-8 text-center">
-                <Gift className="h-12 w-12 text-orange-points mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">
-                  Cupons exclusivos
-                </h3>
-                <p className="text-gray-600">
-                  Descontos especiais em materiais de construção direto no seu celular.
-                </p>
-              </CardContent>
-            </Card>
+            {showMultisegmentHero ? (
+              <>
+                <Card className="border-0 shadow-lg rounded-lg hover:shadow-xl transition-shadow">
+                  <CardContent className="p-8 text-center">
+                    <Award className="h-12 w-12 text-orange-points mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                      Pontuação inteligente em cada compra
+                    </h3>
+                    <p className="text-gray-600">
+                      Sistema de pontos que recompensa sua fidelidade com benefícios reais.
+                    </p>
+                  </CardContent>
+                </Card>
 
-            <Card className="border-0 shadow-lg rounded-lg hover:shadow-xl transition-shadow">
-              <CardContent className="p-8 text-center">
-                <Award className="h-12 w-12 text-orange-points mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">
-                  Pontos que viram prêmios/recompensas
-                </h3>
-                <p className="text-gray-600">
-                  Cada compra gera pontos que você troca por produtos e benefícios.
-                </p>
-              </CardContent>
-            </Card>
+                <Card className="border-0 shadow-lg rounded-lg hover:shadow-xl transition-shadow">
+                  <CardContent className="p-8 text-center">
+                    <Truck className="h-12 w-12 text-orange-points mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                      Entrega expressa no CEP que você escolher
+                    </h3>
+                    <p className="text-gray-600">
+                      Receba seus produtos rapidamente no endereço que preferir.
+                    </p>
+                  </CardContent>
+                </Card>
 
-            <Card className="border-0 shadow-lg rounded-lg hover:shadow-xl transition-shadow">
-              <CardContent className="p-8 text-center">
-                <Settings className="h-12 w-12 text-orange-points mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">
-                  Gestão em um só lugar
-                </h3>
-                <p className="text-gray-600">
-                  Acompanhe saldo, nível no clube e histórico de resgates pelo site. Transparência total para você planejar suas compras.
-                </p>
-              </CardContent>
-            </Card>
+                <Card className="border-0 shadow-lg rounded-lg hover:shadow-xl transition-shadow">
+                  <CardContent className="p-8 text-center">
+                    <ShieldCheck className="h-12 w-12 text-orange-points mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                      Negócios verificados • Suporte local
+                    </h3>
+                    <p className="text-gray-600">
+                      Parceiros verificados da sua região com suporte dedicado e confiável.
+                    </p>
+                  </CardContent>
+                </Card>
+              </>
+            ) : (
+              <>
+                <Card className="border-0 shadow-lg rounded-lg hover:shadow-xl transition-shadow">
+                  <CardContent className="p-8 text-center">
+                    <Gift className="h-12 w-12 text-orange-points mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                      Cupons exclusivos
+                    </h3>
+                    <p className="text-gray-600">
+                      Descontos especiais em materiais de construção direto no seu celular.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-0 shadow-lg rounded-lg hover:shadow-xl transition-shadow">
+                  <CardContent className="p-8 text-center">
+                    <Award className="h-12 w-12 text-orange-points mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                      Pontos que viram prêmios/recompensas
+                    </h3>
+                    <p className="text-gray-600">
+                      Cada compra gera pontos que você troca por produtos e benefícios.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-0 shadow-lg rounded-lg hover:shadow-xl transition-shadow">
+                  <CardContent className="p-8 text-center">
+                    <Settings className="h-12 w-12 text-orange-points mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                      Gestão em um só lugar
+                    </h3>
+                    <p className="text-gray-600">
+                      Acompanhe saldo, nível no clube e histórico de resgates pelo site. Transparência total para você planejar suas compras.
+                    </p>
+                  </CardContent>
+                </Card>
+              </>
+            )}
           </div>
         </div>
       </section>
@@ -137,7 +237,7 @@ const LandingPage = () => {
           }, {
             step: 2,
             title: "Aproveite descontos",
-            desc: "Acesse cupons exclusivos para materiais"
+            desc: showMultisegmentHero ? "Acesse ofertas dos negócios da sua região" : "Acesse cupons exclusivos para materiais"
           }, {
             step: 3,
             title: "Compre & acumule",
@@ -233,7 +333,10 @@ const LandingPage = () => {
             Pronto para economizar e ganhar recompensas?
           </h2>
           <p className="text-xl text-blue-100 mb-8">
-            Junte-se a milhares de profissionais e consumidores que já economizam com a Matershop
+            {showMultisegmentHero ? 
+              'Junte-se a milhares que já descobriram os melhores negócios da região' :
+              'Junte-se a milhares de profissionais e consumidores que já economizam com a Matershop'
+            }
           </p>
           <Button onClick={handleSignUp} size="lg" className="bg-orange-points hover:bg-orange-points/90 text-white text-xl px-12 py-6 rounded-lg shadow-xl">
             Cadastre-se agora
@@ -248,7 +351,10 @@ const LandingPage = () => {
           <div className="text-center">
             <h3 className="text-2xl font-bold text-white mb-4">Matershop</h3>
             <p className="text-gray-400 mb-6">
-              Marketplace e Clube de Compras Inteligentes para Profissionais e Consumidores da Construção
+              {showMultisegmentHero ? 
+                'O marketplace de negócios locais (começamos pela construção)' :
+                'Marketplace e Clube de Compras Inteligentes para Profissionais e Consumidores da Construção'
+              }
             </p>
             <div className="flex justify-center space-x-6">
               <Button variant="outline" onClick={handleLogin} className="border-gray-600 text-gray-300 bg-orange-points">
@@ -258,6 +364,8 @@ const LandingPage = () => {
           </div>
         </div>
       </footer>
-    </div>;
+    </div>
+  );
 };
+
 export default LandingPage;
