@@ -75,8 +75,8 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
         {/* Título da página - SIMPLIFICADO */}
         {!hasDefinedCepWithoutCoverage && (
           <div className="mb-4">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1 min-w-0">
                 <h2 className="text-lg font-semibold text-gray-800">
                   {getPageTitle()}
                 </h2>
@@ -87,13 +87,13 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
                 )}
               </div>
               
-              {/* Botão Alterar CEP quando há produtos válidos */}
+              {/* Botão Alterar CEP - AJUSTADO */}
               {!isLoading && currentCep && filteredProdutos.length > 0 && (
                 <button
                   onClick={handleChangeCep}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-construPro-blue border border-construPro-blue rounded-lg hover:bg-blue-50 transition-colors"
+                  className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-construPro-blue border border-construPro-blue rounded-md hover:bg-blue-50 transition-colors shrink-0"
                 >
-                  <MapPin className="w-4 h-4" />
+                  <MapPin className="w-3 h-3" />
                   Alterar CEP
                 </button>
               )}
