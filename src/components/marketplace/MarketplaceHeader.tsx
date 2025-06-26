@@ -65,13 +65,14 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
   onHeightChange
 }) => {
   const { cartCount } = useCart();
-  const headerRef = useRef<HTMLDivElement>(null);
+  const topSectionRef = useRef<HTMLDivElement>(null);
+  const bottomSectionRef = useRef<HTMLDivElement>(null);
 
-  // Calculate and report header height correctly
+  // Calculate and report only the always-visible section height
   useEffect(() => {
     const calculateHeight = () => {
-      if (headerRef.current && onHeightChange) {
-        const height = headerRef.current.offsetHeight;
+      if (topSectionRef.current && onHeightChange) {
+        const height = topSectionRef.current.offsetHeight;
         onHeightChange(height);
       }
     };
@@ -86,7 +87,7 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
       window.removeEventListener('resize', calculateHeight);
       clearTimeout(timeoutId);
     };
-  }, [onHeightChange, selectedCategories, selectedLojas, selectedRatings, selectedSegments, selectedPriceRanges]);
+  }, [onHeightChange]);
 
   // Fix the store mapping to ensure proper format
   const lojasOptions = stores.map(store => ({
@@ -95,19 +96,12 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
   }));
 
   return (
-    <motion.div 
-      ref={headerRef}
-      className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 shadow-sm"
-      initial={{ transform: 'translateY(0)' }}
-      animate={{ 
-        transform: hideHeader ? 'translateY(-100%)' : 'translateY(0)'
-      }}
-      transition={{ 
-        duration: 0.4, 
-        ease: [0.25, 0.46, 0.45, 0.94] // easeOutQuart for smoother animation
-      }}
-    >
-      <div className="bg-construPro-blue">
+    <div className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 shadow-sm">
+      {/* Seção Superior - SEMPRE VISÍVEL (Busca + Navegação) */}
+      <div 
+        ref={topSectionRef}
+        className="bg-construPro-blue"
+      >
         <div className="p-2 sm:p-4 pt-4 sm:pt-8">
           {/* Header Top with Back Button, Title, View Selector and Cart */}
           <MarketplaceHeaderTop 
@@ -116,7 +110,7 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
             setViewType={setViewType}
           />
           
-          {/* Search Bar - com espaçamento reduzido */}
+          {/* Search Bar - SEMPRE VISÍVEL */}
           <div className="mt-1.5 sm:mt-3">
             <SearchBar 
               searchTerm={searchTerm} 
@@ -125,7 +119,23 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
               showSuggestions={false} 
             />
           </div>
+        </div>
+      </div>
 
+      {/* Seção Inferior - OCULTÁVEL (Filtros) */}
+      <motion.div 
+        ref={bottomSectionRef}
+        className="bg-construPro-blue"
+        initial={{ transform: 'translateY(0)' }}
+        animate={{ 
+          transform: hideHeader ? 'translateY(-100%)' : 'translateY(0)'
+        }}
+        transition={{ 
+          duration: 0.4, 
+          ease: [0.25, 0.46, 0.45, 0.94] // easeOutQuart for smoother animation
+        }}
+      >
+        <div className="p-2 sm:p-4 pt-0">
           {/* Filter Dialogs */}
           <FilterDialogs 
             lojasOptions={lojasOptions} 
@@ -171,8 +181,8 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
             showSegmentCards={false}
           />
         </div>
-      </div>
-    </motion.div>
+      </motion.div>
+    </div>
   );
 };
 
