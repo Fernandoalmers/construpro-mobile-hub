@@ -9,6 +9,9 @@ import {
   ForgotPasswordScreen
 } from './LazyRoutes';
 
+// Import the new ResetPasswordScreen component
+const ResetPasswordScreen = React.lazy(() => import('@/components/auth/ResetPasswordScreen'));
+
 const PublicRoutes: React.FC = () => {
   return (
     <>
@@ -25,6 +28,11 @@ const PublicRoutes: React.FC = () => {
       <Route path="/recuperar-senha" element={
         <Suspense fallback={<LoadingState text="Carregando..." />}>
           <ForgotPasswordScreen />
+        </Suspense>
+      } />
+      <Route path="/reset-password" element={
+        <Suspense fallback={<LoadingState text="Carregando..." />}>
+          <ResetPasswordScreen />
         </Suspense>
       } />
       <Route path="/onboarding" element={

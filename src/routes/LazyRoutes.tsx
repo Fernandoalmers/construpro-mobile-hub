@@ -1,10 +1,10 @@
-
 import { lazy } from 'react';
 
 // Public Routes
 export const LoginScreen = lazy(() => import('../components/LoginScreen'));
 export const SignUpScreen = lazy(() => import('../components/SignupScreen'));
-export const ForgotPasswordScreen = lazy(() => import('../components/auth/ForgotPasswordScreen'));
+export const ForgotPasswordScreen = React.lazy(() => import('@/components/auth/ForgotPasswordScreen'));
+export const ResetPasswordScreen = React.lazy(() => import('@/components/auth/ResetPasswordScreen'));
 export const OnboardingScreen = lazy(() => import('../components/OnboardingScreen'));
 
 // Auth Routes
