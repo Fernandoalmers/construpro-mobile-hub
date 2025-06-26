@@ -66,13 +66,14 @@ export const useDeliveryZones = (): UseDeliveryZonesReturn => {
       setCurrentZones(zones);
       setCurrentCep(cleanCep);
       
-      // LIMITADO: Invalidar apenas queries específicas sem refetch automático
+      // LIMITADO: Invalidar queries do marketplace após mudança de zona
+      console.log('[useDeliveryZones] 🔄 Invalidando queries do marketplace...');
       queryClient.invalidateQueries({
         queryKey: ['marketplace-products'],
-        refetchType: 'none' // Não fazer refetch imediato
+        refetchType: 'active' // Refetch ativo para atualizar produtos
       });
       
-      console.log('[useDeliveryZones] ✅ Zonas resolvidas:', {
+      console.log('[useDeliveryZones] ✅ Zonas resolvidas e marketplace atualizado:', {
         cep: cleanCep,
         zonas: zones.length
       });
@@ -107,26 +108,53 @@ export const useDeliveryZones = (): UseDeliveryZonesReturn => {
   // NOVO: Listener para mudanças no endereço principal via evento customizado
   useEffect(() => {
     const handlePrimaryAddressChange = async (event: CustomEvent) => {
-      const { newCep, profile: updatedProfile } = event.detail;
+      const { newCep, addressId } = event.detail;
+      
+      console.log('[useDeliveryZones] 📡 Evento de mudança de endereço recebido:', { newCep, addressId });
       
       if (newCep && newCep !== currentCep) {
-        console.log('[useDeliveryZones] 🏠 Endereço principal mudou via evento:', newCep);
+        console.log('[useDeliveryZones] 🏠 Endereço principal mudou via evento, re-resolvendo zonas:', newCep);
         
         try {
           // Re-resolver zonas com o novo CEP
           await resolveZones(newCep);
+          console.log('[useDeliveryZones] ✅ Zonas re-resolvidas com sucesso para novo endereço');
         } catch (error) {
-          console.error('[useDeliveryZones] Erro ao resolver zonas após mudança de endereço:', error);
+          console.error('[useDeliveryZones] ❌ Erro ao resolver zonas após mudança de endereço:', error);
         }
       }
     };
 
+    console.log('[useDeliveryZones] 📡 Configurando listener para mudanças de endereço principal');
     window.addEventListener('primary-address-changed', handlePrimaryAddressChange as EventListener);
     
     return () => {
+      console.log('[useDeliveryZones] 📡 Removendo listener de mudanças de endereço principal');
       window.removeEventListener('primary-address-changed', handlePrimaryAddressChange as EventListener);
     };
   }, [resolveZones, currentCep]);
+
+  // MELHORADO: Listener para mudanças diretas no perfil do AuthContext
+  useEffect(() => {
+    if (!initialized) return;
+    
+    const newUserCep = getUserCep();
+    
+    // Se o CEP do perfil mudou, re-resolver zonas automaticamente
+    if (newUserCep && newUserCep !== currentCep && newUserCep.length === 8) {
+      console.log('[useDeliveryZones] 📋 CEP do perfil mudou, re-resolvendo automaticamente:', {
+        anterior: currentCep,
+        novo: newUserCep
+      });
+      
+      // Delay pequeno para permitir que outras atualizações sejam processadas
+      setTimeout(() => {
+        resolveZones(newUserCep).catch(error => {
+          console.error('[useDeliveryZones] ❌ Erro ao re-resolver zonas por mudança no perfil:', error);
+        });
+      }, 300);
+    }
+  }, [profile?.endereco_principal?.cep, getUserCep, resolveZones, currentCep, initialized]);
 
   // ESTABILIZADO: Inicialização única sem loops
   useEffect(() => {
@@ -136,8 +164,6 @@ export const useDeliveryZones = (): UseDeliveryZonesReturn => {
       console.log('[useDeliveryZones] 🚀 Inicializando zonas de entrega...');
       
       try {
-        // REMOVIDO: Tentativa de carregar contexto salvo para evitar calls desnecessários
-        
         // Usar CEP atual do usuário
         const userCep = getUserCep();
         if (userCep && userCep.length === 8) {
@@ -157,8 +183,6 @@ export const useDeliveryZones = (): UseDeliveryZonesReturn => {
     const timer = setTimeout(initializeZones, 500);
     return () => clearTimeout(timer);
   }, [initialized, getUserCep, resolveZones]);
-
-  // REMOVIDO: useEffect que observa mudanças no perfil para evitar loops
 
   const hasActiveZones = currentZones.length > 0;
 

@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
@@ -57,7 +56,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refreshProfile = async (): Promise<UserProfile | null> => {
     if (user?.id) {
       console.log('[AuthContext] 🔄 Refreshing profile...');
-      return await loadUserProfile(user.id);
+      const updatedProfile = await loadUserProfile(user.id);
+      
+      // NOVO: Disparar evento quando perfil é atualizado via refresh
+      if (updatedProfile) {
+        console.log('[AuthContext] 📡 Disparando evento de atualização de perfil...');
+        window.dispatchEvent(new CustomEvent('profile-updated', {
+          detail: { 
+            profile: updatedProfile, 
+            timestamp: Date.now(),
+            source: 'refresh'
+          }
+        }));
+      }
+      
+      return updatedProfile;
     }
     return null;
   };
@@ -110,7 +123,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // NOVO: Listener para mudanças no perfil em tempo real
+  // MELHORADO: Listener para mudanças no perfil em tempo real com eventos customizados
   useEffect(() => {
     if (!user?.id) return;
 
@@ -136,17 +149,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const newCep = newProfile.endereco_principal?.cep;
           const oldCep = oldProfile.endereco_principal?.cep;
           
+          // Atualizar o profile state imediatamente
+          setProfile(newProfile);
+          
           if (newCep !== oldCep) {
-            console.log('[AuthContext] 🏠 Endereço principal mudou:', { oldCep, newCep });
+            console.log('[AuthContext] 🏠 Endereço principal mudou via realtime:', { oldCep, newCep });
             
-            // Atualizar o profile state imediatamente
-            setProfile(newProfile);
-            
-            // Disparar evento customizado para que outros hooks possam reagir
+            // Disparar evento customizado para sincronização entre páginas
             window.dispatchEvent(new CustomEvent('primary-address-changed', {
-              detail: { newCep, oldCep, profile: newProfile }
+              detail: { 
+                newCep, 
+                oldCep, 
+                profile: newProfile,
+                source: 'realtime',
+                timestamp: Date.now()
+              }
             }));
           }
+          
+          // Disparar evento geral de atualização de perfil
+          window.dispatchEvent(new CustomEvent('profile-updated', {
+            detail: { 
+              profile: newProfile, 
+              oldProfile,
+              source: 'realtime',
+              timestamp: Date.now()
+            }
+          }));
         }
       )
       .subscribe();

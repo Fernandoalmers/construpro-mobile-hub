@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { addressService, Address } from '@/services/addressService';
@@ -132,7 +131,7 @@ export function useAddresses() {
   
   const isLoading = !isCacheLoaded || (cachedAddresses.length === 0 && isLoadingServer);
 
-  // MELHORADO: Set primary address mutation com invalidação forçada de cache
+  // MELHORADO: Set primary address mutation com sincronização completa
   const setPrimaryAddressMutation = useMutation({
     mutationFn: async (addressId: string) => {
       try {
@@ -143,40 +142,71 @@ export function useAddresses() {
         }
         
         const currentAddresses = addresses;
-        const addressExists = currentAddresses.find(addr => addr.id === addressId);
+        const addressToSet = currentAddresses.find(addr => addr.id === addressId);
         
-        if (!addressExists) {
+        if (!addressToSet) {
           throw new Error('Endereço não encontrado. Atualize a página e tente novamente.');
         }
         
-        const result = await addressService.setPrimaryAddress(addressId, user.id);
-        return result;
+        // Executar a mudança no servidor
+        await addressService.setPrimaryAddress(addressId, user.id);
+        
+        console.log(`[useAddresses] ✅ Endereço principal definido no servidor`);
+        return { addressId, newCep: addressToSet.cep };
       } catch (err) {
         const errorMsg = formatErrorMessage(err);
         console.error("[useAddresses] ❌ Erro ao definir endereço principal:", errorMsg);
         throw err;
       }
     },
-    onSuccess: (result, addressId) => {
-      console.log(`[useAddresses] ✅ Endereço principal definido:`, addressId);
+    onSuccess: async (result) => {
+      const { addressId, newCep } = result;
+      console.log(`[useAddresses] 🔄 Iniciando sincronização completa para endereço:`, addressId);
       
-      // MELHORADO: Invalidar queries específicas e forçar refetch
-      queryClient.invalidateQueries({ queryKey: ['addresses'] });
-      
-      // MELHORADO: Limpar cache para forçar reload
-      addressCacheService.clearCache();
-      setCachedAddresses([]);
-      
-      // MELHORADO: Forçar refetch imediato para atualizar a tela
-      setTimeout(() => {
-        refetch();
-      }, 100);
-      
-      toast({
-        title: "✅ Endereço principal atualizado",
-        description: "Endereço definido como principal com sucesso.",
-        duration: 3000
-      });
+      try {
+        // PASSO 1: Forçar refresh do perfil no AuthContext
+        console.log(`[useAddresses] 📋 Forçando refresh do perfil no AuthContext...`);
+        await refreshProfile();
+        
+        // PASSO 2: Aguardar um pouco para garantir sincronização
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
+        // PASSO 3: Invalidar e forçar refetch das queries
+        console.log(`[useAddresses] 🗂️ Invalidando cache e forçando refetch...`);
+        queryClient.invalidateQueries({ queryKey: ['addresses'] });
+        addressCacheService.clearCache();
+        setCachedAddresses([]);
+        
+        // PASSO 4: Disparar evento customizado para comunicação entre páginas
+        console.log(`[useAddresses] 📡 Disparando evento de mudança de endereço principal...`);
+        window.dispatchEvent(new CustomEvent('primary-address-changed', {
+          detail: { 
+            newCep, 
+            addressId,
+            timestamp: Date.now()
+          }
+        }));
+        
+        // PASSO 5: Forçar refetch imediato
+        setTimeout(() => {
+          refetch();
+        }, 100);
+        
+        console.log(`[useAddresses] 🎉 Sincronização completa finalizada com sucesso`);
+        
+        toast({
+          title: "✅ Endereço principal atualizado",
+          description: "Endereço definido como principal e sincronizado em todo o sistema.",
+          duration: 3000
+        });
+      } catch (syncError) {
+        console.error(`[useAddresses] ⚠️ Erro na sincronização pós-mudança:`, syncError);
+        toast({
+          variant: "destructive",
+          title: "⚠️ Endereço atualizado com aviso",
+          description: "Endereço foi alterado, mas pode precisar de alguns segundos para sincronizar."
+        });
+      }
     },
     onError: (error: any, addressId, context) => {
       console.error(`[useAddresses] ❌ Falha ao definir endereço principal ${addressId}:`, error);
