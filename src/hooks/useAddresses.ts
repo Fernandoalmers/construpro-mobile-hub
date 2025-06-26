@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { addressService, Address } from '@/services/addressService';
@@ -131,7 +132,7 @@ export function useAddresses() {
   
   const isLoading = !isCacheLoaded || (cachedAddresses.length === 0 && isLoadingServer);
 
-  // ESTABILIZADO: Set primary address mutation sem refresh automático do perfil
+  // MELHORADO: Set primary address mutation com invalidação forçada de cache
   const setPrimaryAddressMutation = useMutation({
     mutationFn: async (addressId: string) => {
       try {
@@ -159,13 +160,17 @@ export function useAddresses() {
     onSuccess: (result, addressId) => {
       console.log(`[useAddresses] ✅ Endereço principal definido:`, addressId);
       
-      // OTIMIZADO: Invalidar queries específicas sem refetch automático
-      queryClient.invalidateQueries({ queryKey: ['addresses'], refetchType: 'none' });
+      // MELHORADO: Invalidar queries específicas e forçar refetch
+      queryClient.invalidateQueries({ queryKey: ['addresses'] });
       
-      // REMOVIDO: refreshProfile() para evitar loops de dependência
-      // O perfil será atualizado automaticamente pelo trigger do banco
-      
+      // MELHORADO: Limpar cache para forçar reload
       addressCacheService.clearCache();
+      setCachedAddresses([]);
+      
+      // MELHORADO: Forçar refetch imediato para atualizar a tela
+      setTimeout(() => {
+        refetch();
+      }, 100);
       
       toast({
         title: "✅ Endereço principal atualizado",

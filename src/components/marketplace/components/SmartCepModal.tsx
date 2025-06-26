@@ -46,29 +46,49 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
         
         const { addressService } = await import('@/services/addressService');
         
-        // Definir como endereço principal (isso sincronizará com o perfil)
+        // Definir como endereço principal
         await addressService.setPrimaryAddress(addressId, user.id);
         
-        // CORRIGIDO: Aguardar mais tempo e forçar refresh do perfil
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        console.log('[SmartCepModal] ⏳ Aguardando sincronização completa...');
         
-        // Forçar atualização do perfil para garantir sincronização
-        console.log('[SmartCepModal] 🔄 Forçando refresh do perfil...');
-        const updatedProfile = await refreshProfile();
+        // MELHORADO: Aguardar mais tempo para garantir sincronização
+        await new Promise(resolve => setTimeout(resolve, 1500));
         
-        if (updatedProfile?.endereco_principal?.cep) {
-          console.log('[SmartCepModal] ✅ Perfil atualizado com novo endereço principal:', updatedProfile.endereco_principal.cep);
-        } else {
-          console.warn('[SmartCepModal] ⚠️ Perfil ainda não reflete o novo endereço principal');
-          // Aguardar mais um pouco e tentar novamente
-          await new Promise(resolve => setTimeout(resolve, 500));
-          await refreshProfile();
+        // MELHORADO: Múltiplas tentativas de refresh do perfil
+        let profileUpdated = false;
+        let attempts = 0;
+        const maxAttempts = 3;
+        
+        while (!profileUpdated && attempts < maxAttempts) {
+          attempts++;
+          console.log(`[SmartCepModal] 🔄 Tentativa ${attempts} de refresh do perfil...`);
+          
+          const updatedProfile = await refreshProfile();
+          
+          if (updatedProfile?.endereco_principal?.cep === cep.replace(/\D/g, '')) {
+            console.log('[SmartCepModal] ✅ Perfil sincronizado com sucesso!');
+            profileUpdated = true;
+          } else {
+            console.log(`[SmartCepModal] ⏳ Aguardando sincronização... (tentativa ${attempts})`);
+            if (attempts < maxAttempts) {
+              await new Promise(resolve => setTimeout(resolve, 800));
+            }
+          }
         }
+        
+        if (!profileUpdated) {
+          console.warn('[SmartCepModal] ⚠️ Perfil pode não ter sincronizado completamente');
+        }
+        
+        // MELHORADO: Invalidar cache de endereços para garantir atualização na tela "Meus Endereços"
+        console.log('[SmartCepModal] 🗂️ Invalidando cache de endereços...');
+        await refetch();
         
         setIsUpdatingPrimary(false);
       }
       
       // Resolver zonas de entrega
+      console.log('[SmartCepModal] 🎯 Resolvendo zonas de entrega para:', cep);
       await onCepChange(cep);
       
       toast({
@@ -179,11 +199,11 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
             </div>
           )}
 
-          {/* MELHORADO: Feedback específico para atualização do endereço principal */}
+          {/* MELHORADO: Feedback específico para sincronização */}
           {isUpdatingPrimary && (
             <div className="flex items-center justify-center gap-2 text-sm text-blue-600 bg-blue-50 p-3 rounded-lg border border-blue-200">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Atualizando endereço principal...</span>
+              <span>Sincronizando endereço principal...</span>
             </div>
           )}
 

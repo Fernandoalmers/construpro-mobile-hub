@@ -30,50 +30,99 @@ export const addressService = {
   },
 
   async setPrimaryAddress(addressId: string, userId: string): Promise<void> {
-    console.log('[addressService] 🏠 Definindo endereço principal:', addressId);
+    console.log('[addressService] 🏠 Iniciando definição de endereço principal:', { addressId, userId });
     
-    // Get the address data first
-    const { data: addressData, error: fetchError } = await supabase
-      .from('user_addresses')
-      .select('*')
-      .eq('id', addressId)
-      .single();
+    try {
+      // PASSO 1: Buscar dados do endereço que será definido como principal
+      const { data: addressData, error: fetchError } = await supabase
+        .from('user_addresses')
+        .select('*')
+        .eq('id', addressId)
+        .single();
 
-    if (fetchError) throw fetchError;
+      if (fetchError) {
+        console.error('[addressService] ❌ Erro ao buscar endereço:', fetchError);
+        throw fetchError;
+      }
 
-    // Set as primary (this will trigger the database function to unset others)
-    const { error: updateError } = await supabase
-      .from('user_addresses')
-      .update({ 
-        principal: true,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', addressId);
+      console.log('[addressService] 📋 Dados do endereço encontrado:', {
+        nome: addressData.nome,
+        cep: addressData.cep,
+        cidade: addressData.cidade
+      });
 
-    if (updateError) throw updateError;
+      // PASSO 2: Desmarcar todos os outros endereços como principal
+      const { error: unsetError } = await supabase
+        .from('user_addresses')
+        .update({ 
+          principal: false,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', userId)
+        .neq('id', addressId);
 
-    // CORRIGIDO: Atualizar também o endereco_principal no perfil para sincronização imediata
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({
-        endereco_principal: {
-          logradouro: addressData.logradouro,
-          numero: addressData.numero,
-          complemento: addressData.complemento,
-          bairro: addressData.bairro,
-          cidade: addressData.cidade,
-          estado: addressData.estado,
-          cep: addressData.cep
-        },
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', userId);
+      if (unsetError) {
+        console.error('[addressService] ❌ Erro ao desmarcar outros endereços:', unsetError);
+        throw unsetError;
+      }
 
-    if (profileError) {
-      console.warn('[addressService] ⚠️ Aviso ao atualizar endereco_principal:', profileError);
+      console.log('[addressService] ✅ Outros endereços desmarcados como principal');
+
+      // PASSO 3: Marcar o endereço selecionado como principal
+      const { error: updateError } = await supabase
+        .from('user_addresses')
+        .update({ 
+          principal: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', addressId);
+
+      if (updateError) {
+        console.error('[addressService] ❌ Erro ao marcar endereço como principal:', updateError);
+        throw updateError;
+      }
+
+      console.log('[addressService] ✅ Endereço marcado como principal na tabela user_addresses');
+
+      // PASSO 4: Atualizar o endereco_principal no perfil do usuário
+      const enderecoCompleto = {
+        logradouro: addressData.logradouro,
+        numero: addressData.numero,
+        complemento: addressData.complemento || '',
+        bairro: addressData.bairro,
+        cidade: addressData.cidade,
+        estado: addressData.estado,
+        cep: addressData.cep
+      };
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          endereco_principal: enderecoCompleto,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId);
+
+      if (profileError) {
+        console.error('[addressService] ❌ Erro ao atualizar endereco_principal no perfil:', profileError);
+        // Não vamos fazer throw aqui para não bloquear o fluxo
+        console.warn('[addressService] ⚠️ Continuando sem sincronização do perfil');
+      } else {
+        console.log('[addressService] ✅ Perfil atualizado com endereco_principal:', {
+          cep: enderecoCompleto.cep,
+          cidade: enderecoCompleto.cidade
+        });
+      }
+
+      // PASSO 5: Aguardar um momento para garantir que as mudanças foram persistidas
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      console.log('[addressService] 🎉 Sincronização completa - endereço principal definido');
+
+    } catch (error) {
+      console.error('[addressService] ❌ Erro geral ao definir endereço principal:', error);
+      throw error;
     }
-
-    console.log('[addressService] ✅ Endereço principal definido e perfil sincronizado');
   },
 
   async addAddress(address: Omit<Address, 'id' | 'created_at' | 'updated_at'>): Promise<Address> {
