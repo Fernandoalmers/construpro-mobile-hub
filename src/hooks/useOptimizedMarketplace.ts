@@ -24,7 +24,7 @@ export const useOptimizedMarketplace = () => {
   const { currentZones, hasActiveZones, currentCep, isLoading: zonesLoading } = useDeliveryZones();
   const { shouldShowAllProducts, isFilteredByZone, hasDefinedCepWithoutCoverage } = useMarketplaceFilters();
   
-  // OTIMIZADO: IDs dos vendedores com cache inteligente
+  // ESTABILIZADO: IDs dos vendedores com cache inteligente
   const availableVendorIds = useMemo(() => {
     if (hasDefinedCepWithoutCoverage) {
       return [];
@@ -41,7 +41,7 @@ export const useOptimizedMarketplace = () => {
     return undefined;
   }, [currentZones, hasActiveZones, currentCep, shouldShowAllProducts, hasDefinedCepWithoutCoverage]);
 
-  // OTIMIZADO: Query de produtos com cache melhorado
+  // OTIMIZADO: Query de produtos com cache melhorado e estável
   const { 
     data: products = [], 
     isLoading: productsLoading,
@@ -70,14 +70,15 @@ export const useOptimizedMarketplace = () => {
       console.log('[useOptimizedMarketplace] ✅ Produtos carregados:', result.length);
       return result;
     },
-    staleTime: 30000,
-    gcTime: 2 * 60 * 1000,
+    staleTime: 2 * 60 * 1000, // AUMENTADO: 2 minutos para evitar refetches desnecessários
+    gcTime: 5 * 60 * 1000, // AUMENTADO: 5 minutos
     refetchOnWindowFocus: false,
+    refetchOnMount: false, // ADICIONADO: Evitar refetch no mount
     enabled: !zonesLoading,
-    retry: 2,
+    retry: 1, // REDUZIDO: Menos tentativas
   });
 
-  // Queries paralelas otimizadas
+  // ESTABILIZADO: Queries paralelas otimizadas com cache longo
   const { 
     data: stores = [], 
     isLoading: storesLoading,
@@ -92,9 +93,10 @@ export const useOptimizedMarketplace = () => {
         return [];
       }
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000,
+    staleTime: 10 * 60 * 1000, // AUMENTADO: 10 minutos
+    gcTime: 30 * 60 * 1000, // AUMENTADO: 30 minutos
     refetchOnWindowFocus: false,
+    refetchOnMount: false, // ADICIONADO
     retry: 1,
   });
 
@@ -111,15 +113,16 @@ export const useOptimizedMarketplace = () => {
         return [];
       }
     },
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    staleTime: 15 * 60 * 1000, // AUMENTADO: 15 minutos
+    gcTime: 60 * 60 * 1000, // AUMENTADO: 1 hora
     refetchOnWindowFocus: false,
+    refetchOnMount: false, // ADICIONADO
     retry: 1,
   });
 
-  const isLoadingData = zonesLoading || productsLoading || productsRefetching;
+  const isLoadingData = zonesLoading || productsLoading;
 
-  // Dados consolidados memoizados
+  // ESTABILIZADO: Dados consolidados memoizados sem dependências reativas
   const marketplaceData: OptimizedMarketplaceData = useMemo(() => ({
     products,
     stores: stores || [],

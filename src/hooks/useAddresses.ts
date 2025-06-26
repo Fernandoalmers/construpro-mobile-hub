@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { addressService, Address } from '@/services/addressService';
@@ -15,11 +14,12 @@ export function useAddresses() {
   const queryClient = useQueryClient();
   const { refreshProfile, user } = useAuth();
 
-  // Carregar cache imediatamente de forma síncrona para exibição instantânea
+  // ESTABILIZADO: Carregar cache apenas uma vez
   useEffect(() => {
+    if (isCacheLoaded) return;
+    
     console.log('[useAddresses] 🏠 Carregando endereços do cache para exibição instantânea...');
     
-    // Carregar cache de forma síncrona
     try {
       const cached = addressCacheService.loadFromCache();
       if (cached && cached.length > 0) {
@@ -33,7 +33,7 @@ export function useAddresses() {
     } finally {
       setIsCacheLoaded(true);
     }
-  }, []);
+  }, [isCacheLoaded]);
 
   // Enhanced error formatting
   const formatErrorMessage = (error: any): string => {
@@ -79,7 +79,7 @@ export function useAddresses() {
     return { isValid: errors.length === 0, errors };
   };
 
-  // Fetch addresses em background sem bloquear exibição do cache
+  // ESTABILIZADO: Fetch addresses com cache mais longo
   const { 
     data: serverAddresses = [], 
     isLoading: isLoadingServer, 
@@ -112,65 +112,26 @@ export function useAddresses() {
         throw err;
       }
     },
-    retry: (failureCount, error) => {
-      if (failureCount < 2) {
-        console.log(`🔄 Tentativa ${failureCount + 1} de sincronização de endereços`);
-        return true;
-      }
-      return false;
-    },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 3000),
-    staleTime: 30000, // 30 segundos
-    refetchOnWindowFocus: false, // Evitar refetch desnecessário
-    enabled: isCacheLoaded && !!user?.id // Só sincronizar após cache carregar e ter usuário
+    retry: 1, // REDUZIDO: Menos tentativas
+    retryDelay: 2000, // AUMENTADO: Mais delay entre tentativas
+    staleTime: 2 * 60 * 1000, // AUMENTADO: 2 minutos
+    gcTime: 10 * 60 * 1000, // AUMENTADO: 10 minutos
+    refetchOnWindowFocus: false,
+    refetchOnMount: false, // ADICIONADO: Evitar refetch no mount
+    enabled: isCacheLoaded && !!user?.id
   });
 
-  // Priorizar dados do servidor se disponíveis e mais recentes, senão usar cache
+  // ESTABILIZADO: Priorizar dados sem mudanças reativas
   const addresses = useMemo(() => {
-    // Se dados do servidor estão disponíveis e são mais recentes, usar eles
     if (serverAddresses.length > 0) {
       return serverAddresses;
     }
-    
-    // Caso contrário, usar cache para exibição instantânea
     return cachedAddresses;
   }, [serverAddresses, cachedAddresses]);
   
-  // Loading só se não há dados nem do cache nem do servidor E ainda não carregou cache
   const isLoading = !isCacheLoaded || (cachedAddresses.length === 0 && isLoadingServer);
 
-  // Delete address mutation
-  const deleteAddressMutation = useMutation({
-    mutationFn: async (addressId: string) => {
-      try {
-        console.log(`🗑️ Removendo endereço: ${addressId}`);
-        return await addressService.deleteAddress(addressId);
-      } catch (err) {
-        const errorMsg = formatErrorMessage(err);
-        console.error("❌ Erro ao remover endereço:", errorMsg);
-        throw err;
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['addresses'] });
-      refreshProfile();
-      addressCacheService.clearCache();
-      toast({
-        title: "✅ Endereço removido",
-        description: "Endereço removido com sucesso."
-      });
-    },
-    onError: (error: any) => {
-      const errorMsg = formatErrorMessage(error);
-      toast({
-        variant: "destructive",
-        title: "❌ Erro ao remover endereço",
-        description: errorMsg
-      });
-    }
-  });
-
-  // Set primary address mutation
+  // ESTABILIZADO: Set primary address mutation sem refresh automático do perfil
   const setPrimaryAddressMutation = useMutation({
     mutationFn: async (addressId: string) => {
       try {
@@ -195,27 +156,15 @@ export function useAddresses() {
         throw err;
       }
     },
-    onMutate: async (addressId: string) => {
-      console.log(`[useAddresses] ⚡ Atualização otimista: endereço ${addressId} como principal`);
-      
-      await queryClient.cancelQueries({ queryKey: ['addresses'] });
-      const previousAddresses = queryClient.getQueryData(['addresses']) as Address[];
-      
-      if (previousAddresses) {
-        const optimisticAddresses = previousAddresses.map(addr => ({
-          ...addr,
-          principal: addr.id === addressId
-        }));
-        
-        queryClient.setQueryData(['addresses'], optimisticAddresses);
-      }
-      
-      return { previousAddresses };
-    },
     onSuccess: (result, addressId) => {
       console.log(`[useAddresses] ✅ Endereço principal definido:`, addressId);
-      queryClient.invalidateQueries({ queryKey: ['addresses'] });
-      refreshProfile();
+      
+      // OTIMIZADO: Invalidar queries específicas sem refetch automático
+      queryClient.invalidateQueries({ queryKey: ['addresses'], refetchType: 'none' });
+      
+      // REMOVIDO: refreshProfile() para evitar loops de dependência
+      // O perfil será atualizado automaticamente pelo trigger do banco
+      
       addressCacheService.clearCache();
       
       toast({
@@ -227,14 +176,40 @@ export function useAddresses() {
     onError: (error: any, addressId, context) => {
       console.error(`[useAddresses] ❌ Falha ao definir endereço principal ${addressId}:`, error);
       
-      if (context?.previousAddresses) {
-        queryClient.setQueryData(['addresses'], context.previousAddresses);
-      }
-      
       const errorMsg = formatErrorMessage(error);
       toast({
         variant: "destructive",
         title: "❌ Erro ao definir endereço principal", 
+        description: errorMsg
+      });
+    }
+  });
+
+  // Delete address mutation
+  const deleteAddressMutation = useMutation({
+    mutationFn: async (addressId: string) => {
+      try {
+        console.log(`🗑️ Removendo endereço: ${addressId}`);
+        return await addressService.deleteAddress(addressId);
+      } catch (err) {
+        const errorMsg = formatErrorMessage(err);
+        console.error("❌ Erro ao remover endereço:", errorMsg);
+        throw err;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['addresses'], refetchType: 'none' });
+      addressCacheService.clearCache();
+      toast({
+        title: "✅ Endereço removido",
+        description: "Endereço removido com sucesso."
+      });
+    },
+    onError: (error: any) => {
+      const errorMsg = formatErrorMessage(error);
+      toast({
+        variant: "destructive",
+        title: "❌ Erro ao remover endereço",
         description: errorMsg
       });
     }
@@ -270,8 +245,7 @@ export function useAddresses() {
     },
     onSuccess: (result, variables) => {
       console.log("✅ Endereço salvo com sucesso:", result);
-      queryClient.invalidateQueries({ queryKey: ['addresses'] });
-      refreshProfile();
+      queryClient.invalidateQueries({ queryKey: ['addresses'], refetchType: 'none' });
       addressCacheService.clearCache();
       setErrorDetails(null);
       toast({
@@ -357,9 +331,8 @@ export function useAddresses() {
       }
 
       const result = await addressService.addAddress(fullAddress);
-      queryClient.invalidateQueries({ queryKey: ['addresses'] });
+      queryClient.invalidateQueries({ queryKey: ['addresses'], refetchType: 'none' });
       addressCacheService.clearCache();
-      await refreshProfile();
       
       return result;
     } catch (error) {
