@@ -22,9 +22,8 @@ export interface MarketplaceProduct {
   vendedores?: any;
   pontos_consumidor?: number;
   pontos_profissional?: number;
-  peso?: number;
-  dimensoes?: string;
-  marca?: string;
+  // Campos removidos pois não existem na tabela produtos:
+  // peso, dimensoes, marca
   status?: 'pendente' | 'aprovado' | 'rejeitado';
   created_at?: string;
   updated_at?: string;
@@ -59,9 +58,6 @@ export const getMarketplaceProducts = async (vendorIds?: string[]): Promise<Mark
         vendedor_id,
         pontos_consumidor,
         pontos_profissional,
-        peso,
-        dimensoes,
-        marca,
         status,
         created_at,
         updated_at,
@@ -141,9 +137,6 @@ export const getMarketplaceProducts = async (vendorIds?: string[]): Promise<Mark
         vendedores: storeInfo,
         pontos_consumidor: product.pontos_consumidor,
         pontos_profissional: product.pontos_profissional,
-        peso: product.peso,
-        dimensoes: product.dimensoes,
-        marca: product.marca,
         status: product.status as 'pendente' | 'aprovado' | 'rejeitado',
         created_at: product.created_at,
         updated_at: product.updated_at,
