@@ -20,38 +20,92 @@ const ResetPasswordScreen: React.FC = () => {
   const [passwordReset, setPasswordReset] = useState(false);
 
   useEffect(() => {
-    const checkToken = async () => {
+    const checkAndSetSession = async () => {
+      // Primeiro, tentar obter tokens da URL
       const accessToken = searchParams.get('access_token');
       const refreshToken = searchParams.get('refresh_token');
+      const type = searchParams.get('type');
+      const error = searchParams.get('error');
       
-      if (!accessToken || !refreshToken) {
-        toast.error('Link inválido ou expirado');
-        navigate('/login');
+      console.log('URL params:', { accessToken: !!accessToken, refreshToken: !!refreshToken, type, error });
+      
+      // Se há erro na URL (token expirado, etc.)
+      if (error) {
+        console.error('URL error:', error);
+        if (error === 'access_denied' && searchParams.get('error_code') === 'otp_expired') {
+          toast.error('Link de recuperação expirado. Solicite um novo link.');
+        } else {
+          toast.error('Link inválido ou expirado');
+        }
+        navigate('/recuperar-senha');
         return;
       }
 
-      try {
-        const { data, error } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
-
-        if (error) {
-          toast.error('Link inválido ou expirado');
-          navigate('/login');
-        } else {
-          setIsValidToken(true);
+      // Se não temos os tokens necessários, verificar se há uma sessão ativa
+      if (!accessToken || !refreshToken) {
+        console.log('No tokens in URL, checking current session...');
+        
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('Session error:', sessionError);
+          toast.error('Erro ao verificar sessão. Solicite um novo link.');
+          navigate('/recuperar-senha');
+          return;
         }
-      } catch (error) {
-        console.error('Token validation error:', error);
-        toast.error('Erro ao validar link');
-        navigate('/login');
-      } finally {
-        setIsCheckingToken(false);
+        
+        if (session) {
+          console.log('Found active session');
+          setIsValidToken(true);
+        } else {
+          console.log('No active session found');
+          toast.error('Link inválido ou expirado. Solicite um novo link.');
+          navigate('/recuperar-senha');
+          return;
+        }
+      } else {
+        // Temos tokens, vamos configurar a sessão
+        console.log('Setting session with tokens from URL...');
+        
+        try {
+          const { data, error: setSessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+
+          if (setSessionError) {
+            console.error('Set session error:', setSessionError);
+            
+            if (setSessionError.message.includes('expired')) {
+              toast.error('Link de recuperação expirado. Solicite um novo link.');
+            } else {
+              toast.error('Link inválido. Solicite um novo link.');
+            }
+            navigate('/recuperar-senha');
+            return;
+          }
+          
+          if (data?.session) {
+            console.log('Session set successfully');
+            setIsValidToken(true);
+          } else {
+            console.log('No session returned');
+            toast.error('Erro ao validar link. Solicite um novo link.');
+            navigate('/recuperar-senha');
+            return;
+          }
+        } catch (error) {
+          console.error('Unexpected error setting session:', error);
+          toast.error('Erro inesperado. Solicite um novo link.');
+          navigate('/recuperar-senha');
+          return;
+        }
       }
+      
+      setIsCheckingToken(false);
     };
 
-    checkToken();
+    checkAndSetSession();
   }, [searchParams, navigate]);
 
   const validatePassword = (pwd: string): string | null => {
@@ -113,7 +167,7 @@ const ResetPasswordScreen: React.FC = () => {
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-construPro-blue mx-auto mb-4"></div>
-          <p className="text-gray-600">Validando link...</p>
+          <p className="text-gray-600">Validando link de recuperação...</p>
         </div>
       </div>
     );
@@ -123,10 +177,10 @@ const ResetPasswordScreen: React.FC = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">
-          <p className="text-red-600">Link inválido ou expirado</p>
+          <p className="text-red-600 mb-4">Link inválido ou expirado</p>
           <Button 
             onClick={() => navigate('/recuperar-senha')}
-            className="mt-4 bg-construPro-blue hover:bg-construPro-blue-dark text-white"
+            className="bg-construPro-blue hover:bg-construPro-blue-dark text-white"
           >
             Solicitar novo link
           </Button>

@@ -9,8 +9,9 @@ import {
   ForgotPasswordScreen
 } from './LazyRoutes';
 
-// Import the new ResetPasswordScreen component
+// Import the new ResetPasswordScreen component and VerifyRedirectScreen
 const ResetPasswordScreen = React.lazy(() => import('@/components/auth/ResetPasswordScreen'));
+const VerifyRedirectScreen = React.lazy(() => import('@/components/auth/VerifyRedirectScreen'));
 
 const PublicRoutes: React.FC = () => {
   return (
@@ -33,6 +34,11 @@ const PublicRoutes: React.FC = () => {
       <Route path="/reset-password" element={
         <Suspense fallback={<LoadingState text="Carregando..." />}>
           <ResetPasswordScreen />
+        </Suspense>
+      } />
+      <Route path="/verify" element={
+        <Suspense fallback={<LoadingState text="Redirecionando..." />}>
+          <VerifyRedirectScreen />
         </Suspense>
       } />
       <Route path="/onboarding" element={
