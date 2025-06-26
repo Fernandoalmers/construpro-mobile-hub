@@ -100,7 +100,7 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
       {/* Seção Superior - SEMPRE VISÍVEL (Busca + Navegação) */}
       <div 
         ref={topSectionRef}
-        className="bg-construPro-blue"
+        className="bg-construPro-blue relative z-50"
       >
         <div className="p-2 sm:p-4 pt-4 sm:pt-8">
           {/* Header Top with Back Button, Title, View Selector and Cart */}
@@ -125,10 +125,10 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
       {/* Seção Inferior - OCULTÁVEL (Filtros) */}
       <motion.div 
         ref={bottomSectionRef}
-        className="bg-construPro-blue"
-        initial={{ transform: 'translateY(0)' }}
+        className="bg-construPro-blue relative z-40 overflow-hidden"
+        initial={{ maxHeight: '500px' }}
         animate={{ 
-          transform: hideHeader ? 'translateY(-100%)' : 'translateY(0)'
+          maxHeight: hideHeader ? '0px' : '500px'
         }}
         transition={{ 
           duration: 0.4, 
