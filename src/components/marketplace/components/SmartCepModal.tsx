@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { MapPin, Plus, ChevronRight, Loader2 } from 'lucide-react';
 import CustomModal from '@/components/common/CustomModal';
@@ -21,11 +22,12 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
   onCepChange,
   currentCep
 }) => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, refreshProfile } = useAuth();
   const { addresses, isLoading, refetch } = useAddresses();
   const [showAddAddressModal, setShowAddAddressModal] = useState(false);
   const [isChangingCep, setIsChangingCep] = useState(false);
   const [changingAddressId, setChangingAddressId] = useState<string | null>(null);
+  const [isUpdatingPrimary, setIsUpdatingPrimary] = useState(false);
 
   const hasAddresses = addresses.length > 0;
   const formatCep = (cep: string) => cep.replace(/(\d{5})(\d{3})/, '$1-$2');
@@ -40,13 +42,30 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
       // Se é um endereço cadastrado, definir como principal primeiro
       if (addressId && user?.id) {
         console.log('[SmartCepModal] 🏠 Definindo endereço como principal:', addressId);
+        setIsUpdatingPrimary(true);
+        
         const { addressService } = await import('@/services/addressService');
         
         // Definir como endereço principal (isso sincronizará com o perfil)
         await addressService.setPrimaryAddress(addressId, user.id);
         
-        // Aguardar um momento para sincronização
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // CORRIGIDO: Aguardar mais tempo e forçar refresh do perfil
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Forçar atualização do perfil para garantir sincronização
+        console.log('[SmartCepModal] 🔄 Forçando refresh do perfil...');
+        const updatedProfile = await refreshProfile();
+        
+        if (updatedProfile?.endereco_principal?.cep) {
+          console.log('[SmartCepModal] ✅ Perfil atualizado com novo endereço principal:', updatedProfile.endereco_principal.cep);
+        } else {
+          console.warn('[SmartCepModal] ⚠️ Perfil ainda não reflete o novo endereço principal');
+          // Aguardar mais um pouco e tentar novamente
+          await new Promise(resolve => setTimeout(resolve, 500));
+          await refreshProfile();
+        }
+        
+        setIsUpdatingPrimary(false);
       }
       
       // Resolver zonas de entrega
@@ -54,7 +73,9 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
       
       toast({
         title: "✅ Endereço atualizado",
-        description: `Produtos atualizados para ${formatCep(cep)}`,
+        description: addressId 
+          ? `Endereço principal alterado para ${formatCep(cep)}` 
+          : `Produtos atualizados para ${formatCep(cep)}`,
         duration: 3000
       });
       
@@ -80,6 +101,7 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
     } finally {
       setIsChangingCep(false);
       setChangingAddressId(null);
+      setIsUpdatingPrimary(false);
     }
   };
 
@@ -157,7 +179,15 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
             </div>
           )}
 
-          {isChangingCep && (
+          {/* MELHORADO: Feedback específico para atualização do endereço principal */}
+          {isUpdatingPrimary && (
+            <div className="flex items-center justify-center gap-2 text-sm text-blue-600 bg-blue-50 p-3 rounded-lg border border-blue-200">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Atualizando endereço principal...</span>
+            </div>
+          )}
+
+          {isChangingCep && !isUpdatingPrimary && (
             <div className="flex items-center justify-center gap-2 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
               <Loader2 className="h-4 w-4 animate-spin" />
               <span>Atualizando produtos...</span>
@@ -182,19 +212,25 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
                   <div className="space-y-2 max-h-60 overflow-y-auto">
                     {addresses.map((address) => {
                       const isChangingThis = changingAddressId === address.id;
+                      const isCurrentPrimary = address.principal;
+                      
                       return (
                         <button
                           key={address.id}
                           onClick={() => handleAddressSelect(address.cep, address.id)}
                           disabled={isChangingCep}
-                          className="w-full p-3 text-left bg-white border border-gray-200 rounded-lg hover:border-construPro-blue hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className={`w-full p-3 text-left border rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                            isCurrentPrimary 
+                              ? 'bg-green-50 border-green-200 hover:border-green-300' 
+                              : 'bg-white border-gray-200 hover:border-construPro-blue hover:bg-blue-50'
+                          }`}
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
                                 <span className="font-medium text-gray-900">{address.nome}</span>
                                 {address.principal && (
-                                  <span className="text-xs bg-construPro-blue text-white px-2 py-0.5 rounded-full">
+                                  <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded-full">
                                     Principal
                                   </span>
                                 )}

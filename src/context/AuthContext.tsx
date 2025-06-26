@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
@@ -37,7 +38,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('[AuthContext] Profile loaded successfully:', {
           id: userProfile.id,
           nome: userProfile.nome,
-          is_admin: userProfile.is_admin
+          is_admin: userProfile.is_admin,
+          endereco_principal: userProfile.endereco_principal?.cep ? 'presente' : 'ausente'
         });
         return userProfile;
       } else {
@@ -54,6 +56,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshProfile = async (): Promise<UserProfile | null> => {
     if (user?.id) {
+      console.log('[AuthContext] 🔄 Refreshing profile...');
       return await loadUserProfile(user.id);
     }
     return null;
@@ -106,6 +109,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw error;
     }
   };
+
+  // NOVO: Listener para mudanças no perfil em tempo real
+  useEffect(() => {
+    if (!user?.id) return;
+
+    console.log('[AuthContext] 📡 Configurando listener realtime para perfil:', user.id);
+    
+    const channel = supabase
+      .channel('profile-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`
+        },
+        async (payload) => {
+          console.log('[AuthContext] 📡 Perfil atualizado via realtime:', payload);
+          
+          // Verificar se o endereco_principal mudou
+          const newProfile = payload.new as UserProfile;
+          const oldProfile = payload.old as UserProfile;
+          
+          const newCep = newProfile.endereco_principal?.cep;
+          const oldCep = oldProfile.endereco_principal?.cep;
+          
+          if (newCep !== oldCep) {
+            console.log('[AuthContext] 🏠 Endereço principal mudou:', { oldCep, newCep });
+            
+            // Atualizar o profile state imediatamente
+            setProfile(newProfile);
+            
+            // Disparar evento customizado para que outros hooks possam reagir
+            window.dispatchEvent(new CustomEvent('primary-address-changed', {
+              detail: { newCep, oldCep, profile: newProfile }
+            }));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('[AuthContext] 📡 Removendo listener realtime do perfil');
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
 
   useEffect(() => {
     let isMounted = true;

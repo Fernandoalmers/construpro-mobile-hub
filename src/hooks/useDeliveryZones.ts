@@ -104,6 +104,30 @@ export const useDeliveryZones = (): UseDeliveryZonesReturn => {
     });
   }, [queryClient]);
 
+  // NOVO: Listener para mudanças no endereço principal via evento customizado
+  useEffect(() => {
+    const handlePrimaryAddressChange = async (event: CustomEvent) => {
+      const { newCep, profile: updatedProfile } = event.detail;
+      
+      if (newCep && newCep !== currentCep) {
+        console.log('[useDeliveryZones] 🏠 Endereço principal mudou via evento:', newCep);
+        
+        try {
+          // Re-resolver zonas com o novo CEP
+          await resolveZones(newCep);
+        } catch (error) {
+          console.error('[useDeliveryZones] Erro ao resolver zonas após mudança de endereço:', error);
+        }
+      }
+    };
+
+    window.addEventListener('primary-address-changed', handlePrimaryAddressChange as EventListener);
+    
+    return () => {
+      window.removeEventListener('primary-address-changed', handlePrimaryAddressChange as EventListener);
+    };
+  }, [resolveZones, currentCep]);
+
   // ESTABILIZADO: Inicialização única sem loops
   useEffect(() => {
     if (initialized) return;
