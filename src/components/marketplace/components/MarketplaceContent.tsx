@@ -9,6 +9,7 @@ import NoDeliveryZoneState from './NoDeliveryZoneState';
 import SmartCepModal from './SmartCepModal';
 import { useDeliveryZones } from '@/hooks/useDeliveryZones';
 import { useMarketplaceFilters } from '@/hooks/useMarketplaceFilters';
+import { MapPin } from 'lucide-react';
 
 interface MarketplaceContentProps {
   dynamicPaddingTop: number;
@@ -97,17 +98,32 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
 
         {/* Título da página */}
         <div className="mb-6">
-          <h2 className="text-xl font-bold text-gray-800">
-            {getPageTitle()}
-          </h2>
-          <p className="text-sm text-gray-600">
-            {getSubtitle()}
-          </p>
-          {hasActiveZones && !hasDefinedCepWithoutCoverage && (
-            <p className="text-xs text-construPro-blue mt-1">
-              Mostrando apenas produtos com entrega disponível
-            </p>
-          )}
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <h2 className="text-xl font-bold text-gray-800">
+                {getPageTitle()}
+              </h2>
+              <p className="text-sm text-gray-600">
+                {getSubtitle()}
+              </p>
+              {hasActiveZones && !hasDefinedCepWithoutCoverage && (
+                <p className="text-xs text-construPro-blue mt-1">
+                  Mostrando apenas produtos com entrega disponível
+                </p>
+              )}
+            </div>
+            
+            {/* NOVO: Botão Alterar CEP quando há produtos válidos */}
+            {!isLoading && !hasDefinedCepWithoutCoverage && currentCep && filteredProdutos.length > 0 && (
+              <button
+                onClick={handleChangeCep}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-construPro-blue border border-construPro-blue rounded-lg hover:bg-blue-50 transition-colors"
+              >
+                <MapPin className="w-4 h-4" />
+                Alterar CEP
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Loading state */}
@@ -132,7 +148,7 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
               </h3>
               <p className="text-gray-600 mb-6">
                 Não encontramos vendedores que fazem entrega para o CEP {currentCep?.replace(/(\d{5})(\d{3})/, '$1-$2')}. 
-                Tente um CEP diferente ou navegue pelos produtos sem filtro de região.
+                Tente um CEP diferente.
               </p>
               <div className="space-y-3">
                 <button
@@ -140,17 +156,6 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
                   className="w-full bg-construPro-blue text-white px-6 py-3 rounded-lg font-medium hover:bg-construPro-blue-dark transition-colors"
                 >
                   Alterar CEP
-                </button>
-                <button
-                  onClick={() => {
-                    // Limpar CEP para mostrar todos os produtos
-                    if (clearAllFilters) {
-                      clearAllFilters();
-                    }
-                  }}
-                  className="w-full border border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-                >
-                  Ver todos os produtos
                 </button>
               </div>
             </div>
