@@ -32,6 +32,17 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
   const hasAddresses = addresses.length > 0;
   const formatCep = (cep: string) => cep.replace(/(\d{5})(\d{3})/, '$1-$2');
 
+  // NOVO: Função para disparar evento de mudança de endereço
+  const dispatchAddressChangeEvent = (newCep: string) => {
+    console.log('[SmartCepModal] 🚀 Disparando evento primary-address-changed:', newCep);
+    
+    const event = new CustomEvent('primary-address-changed', {
+      detail: { newCep: newCep.replace(/\D/g, '') }
+    });
+    
+    window.dispatchEvent(event);
+  };
+
   const handleAddressSelect = async (cep: string, addressId?: string) => {
     if (isChangingCep) return;
     
@@ -91,6 +102,9 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
       console.log('[SmartCepModal] 🎯 Resolvendo zonas de entrega para:', cep);
       await onCepChange(cep);
       
+      // NOVO: Disparar evento para atualizar o marketplace automaticamente
+      dispatchAddressChangeEvent(cep);
+      
       toast({
         title: "✅ Endereço atualizado",
         description: addressId 
@@ -125,8 +139,22 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
     }
   };
 
+  // CORRIGIDO: Modificar para disparar evento também para CEPs temporários
   const handleTempCepSubmit = async (cep: string) => {
-    await handleAddressSelect(cep);
+    console.log('[SmartCepModal] 📍 Processando CEP temporário:', cep);
+    
+    try {
+      // Primeiro resolver as zonas
+      await handleAddressSelect(cep);
+      
+      // NOVO: Garantir que o evento seja disparado para CEPs temporários também
+      console.log('[SmartCepModal] 🚀 Disparando evento para CEP temporário:', cep);
+      dispatchAddressChangeEvent(cep);
+      
+    } catch (error) {
+      console.error('[SmartCepModal] ❌ Erro ao processar CEP temporário:', error);
+      throw error;
+    }
   };
 
   const handleAddAddress = () => {
