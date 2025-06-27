@@ -10,21 +10,21 @@ const PromotionsSection: React.FC = () => {
 
   const promotionalOffers = [
     {
-      title: "Ganhe 500 pontos",
+      title: "Ganhe 50 pontos",
       subtitle: "Em compras acima de R$ 200",
-      validUntil: "31/12/2024",
+      validUntil: "31/07/2025",
       color: "bg-green-500"
     },
     {
-      title: "Frete Grátis",
-      subtitle: "Para pedidos acima de R$ 150",
-      validUntil: "15/01/2025",
+      title: "Indique um amigo e ganhe 20 pontos",
+      subtitle: "Cada amigo que se cadastrar e efetuar sua primeira compra",
+      validUntil: "31/08/2025",
       color: "bg-blue-500"
     },
     {
-      title: "Desconto 15%",
-      subtitle: "Em ferramentas elétricas",
-      validUntil: "28/12/2024",
+      title: "Compre e ganhe um brinde",
+      subtitle: "Nas compras acima de R$ 400,00",
+      validUntil: "31/07/2025",
       color: "bg-orange-500"
     }
   ];
