@@ -223,15 +223,15 @@ const PromotionalCouponsSection: React.FC = () => {
                       <div className="space-y-1">
                         <div className="flex items-center space-x-2">
                           <h4 className="font-medium">{coupon.name}</h4>
-                          <Badge className={getCouponStatusColor(coupon.active, coupon.expires_at)}>
-                            {getCouponStatusText(coupon.active, coupon.expires_at)}
+                          <Badge className={getCouponStatusColor(coupon)}>
+                            {getCouponStatusText(coupon)}
                           </Badge>
                         </div>
                         <p className="text-sm text-gray-600">
                           Código: <span className="font-mono">{coupon.code}</span>
                         </p>
                         <p className="text-sm text-gray-600">
-                          Desconto: {formatDiscount(`${coupon.discount_type}:${coupon.discount_value}`)}
+                          Desconto: {formatDiscount(coupon.discount_type, coupon.discount_value)}
                         </p>
                         <p className="text-sm text-gray-600">
                           {formatExpiryDate(coupon.expires_at)}
@@ -357,8 +357,8 @@ const PromotionalCouponsSection: React.FC = () => {
                       <div className="space-y-1">
                         <div className="flex items-center space-x-2">
                           <h4 className="font-medium">{coupon.name}</h4>
-                          <Badge className={getCouponStatusColor(coupon.active, coupon.expires_at)}>
-                            {getCouponStatusText(coupon.active, coupon.expires_at)}
+                          <Badge className={getCouponStatusColor(coupon)}>
+                            {getCouponStatusText(coupon)}
                           </Badge>
                           {promotionalCoupon.featured && (
                             <Badge variant="secondary">Visível</Badge>
@@ -366,7 +366,7 @@ const PromotionalCouponsSection: React.FC = () => {
                         </div>
                         <div className="flex items-center space-x-4 text-sm text-gray-600">
                           <span>Código: <span className="font-mono">{coupon.code}</span></span>
-                          <span>Desconto: {formatDiscount(`${coupon.discount_type}:${coupon.discount_value}`)}</span>
+                          <span>Desconto: {formatDiscount(coupon.discount_type, coupon.discount_value)}</span>
                           <span>{formatExpiryDate(coupon.expires_at)}</span>
                         </div>
                       </div>
