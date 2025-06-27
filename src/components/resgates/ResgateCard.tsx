@@ -52,9 +52,9 @@ const ResgateCard: React.FC<ResgateCardProps> = ({ resgate, userPoints, onClick 
       className="overflow-hidden border border-gray-200 shadow-sm hover:shadow-md transition-all rounded-xl cursor-pointer h-full"
       onClick={handleClick}
     >
-      <div className="flex flex-col h-full md:h-80">
+      <div className="flex flex-col h-full min-h-80">
         {/* Enhanced image area with WHITE background - Responsive */}
-        <div className="w-full h-32 md:h-40 bg-white flex items-center justify-center relative flex-shrink-0">
+        <div className="w-full h-32 md:h-36 bg-white flex items-center justify-center relative flex-shrink-0">
           <img 
             src={resgate.imagemUrl} 
             alt={resgate.titulo} 
@@ -70,7 +70,7 @@ const ResgateCard: React.FC<ResgateCardProps> = ({ resgate, userPoints, onClick 
         </div>
         
         {/* Enhanced information layout - Flexible */}
-        <div className="p-4 flex flex-col justify-between flex-grow">
+        <div className="p-3 md:p-4 flex flex-col justify-between flex-grow">
           <div className="flex-grow">
             {/* Added product type label */}
             <div className="mb-2">
@@ -84,12 +84,12 @@ const ResgateCard: React.FC<ResgateCardProps> = ({ resgate, userPoints, onClick 
             
             {/* Description with better styling */}
             {resgate.descricao && (
-              <p className="text-xs text-gray-500 line-clamp-2 mb-3 leading-relaxed">{resgate.descricao}</p>
+              <p className="text-xs text-gray-500 line-clamp-2 mb-2 leading-relaxed">{resgate.descricao}</p>
             )}
           </div>
           
           {/* Enhanced points display and progress section */}
-          <div className="mt-auto space-y-3">
+          <div className="mt-auto space-y-2">
             <div className="flex justify-between items-center">
               <div className="flex items-center">
                 <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 mr-2">
