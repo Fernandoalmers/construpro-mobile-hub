@@ -3,28 +3,61 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Copy, Gift, Calendar, Percent, DollarSign } from 'lucide-react';
+import { Copy, Gift, Calendar, Percent, DollarSign, AlertTriangle, RefreshCw } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import LoadingState from '@/components/common/LoadingState';
-import { CupomVitrine, fetchCuponsPublicos } from '@/services/cuponsVitrineService';
+import ErrorBoundary from '@/components/common/ErrorBoundary';
+import { CupomVitrine, fetchCuponsPublicos, createSampleCupons } from '@/services/cuponsVitrineService';
 
-const MeusCuponsScreen: React.FC = () => {
+const MeusCuponsScreenContent: React.FC = () => {
   const [cupons, setCupons] = useState<CupomVitrine[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isCreatingSamples, setIsCreatingSamples] = useState(false);
 
   useEffect(() => {
+    console.log('🔄 [MeusCuponsScreen] Component mounted, loading cupons...');
     loadCupons();
   }, []);
 
   const loadCupons = async () => {
+    console.log('🔄 [MeusCuponsScreen] Starting to load cupons...');
     setIsLoading(true);
+    setError(null);
+    
     try {
       const data = await fetchCuponsPublicos();
+      console.log(`✅ [MeusCuponsScreen] Loaded ${data.length} cupons:`, data);
       setCupons(data);
+      
+      if (data.length === 0) {
+        console.log('⚠️ [MeusCuponsScreen] No cupons found, user might need sample data');
+      }
     } catch (error) {
-      console.error('Error loading cupons:', error);
+      console.error('❌ [MeusCuponsScreen] Error loading cupons:', error);
+      setError('Erro ao carregar cupons. Tente novamente.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleCreateSamples = async () => {
+    console.log('🔄 [MeusCuponsScreen] Creating sample cupons...');
+    setIsCreatingSamples(true);
+    
+    try {
+      const success = await createSampleCupons();
+      if (success) {
+        toast.success('Cupons de exemplo criados com sucesso!');
+        await loadCupons(); // Recarregar a lista
+      } else {
+        toast.error('Erro ao criar cupons de exemplo');
+      }
+    } catch (error) {
+      console.error('❌ [MeusCuponsScreen] Error creating samples:', error);
+      toast.error('Erro ao criar cupons de exemplo');
+    } finally {
+      setIsCreatingSamples(false);
     }
   };
 
@@ -33,7 +66,7 @@ const MeusCuponsScreen: React.FC = () => {
       await navigator.clipboard.writeText(code);
       toast.success('Código copiado! Cole no carrinho para aplicar.');
     } catch (error) {
-      console.error('Error copying code:', error);
+      console.error('❌ [MeusCuponsScreen] Error copying code:', error);
       toast.error('Erro ao copiar código');
     }
   };
@@ -66,6 +99,30 @@ const MeusCuponsScreen: React.FC = () => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="flex flex-col bg-gray-100 min-h-screen pb-20">
+        <div className="p-6 pt-12">
+          <Card className="p-8 text-center">
+            <div className="flex flex-col items-center gap-4">
+              <AlertTriangle className="h-12 w-12 text-red-500" />
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Erro ao carregar cupons
+                </h3>
+                <p className="text-gray-600 mb-4">{error}</p>
+                <Button onClick={loadCupons} className="gap-2">
+                  <RefreshCw className="h-4 w-4" />
+                  Tentar novamente
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col bg-gray-100 min-h-screen pb-20">
       {/* Header */}
@@ -91,15 +148,33 @@ const MeusCuponsScreen: React.FC = () => {
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
                   Nenhum cupom disponível no momento
                 </h3>
-                <p className="text-gray-600">
+                <p className="text-gray-600 mb-4">
                   Volte em breve para conferir novas ofertas!
                 </p>
+                <Button 
+                  onClick={handleCreateSamples}
+                  disabled={isCreatingSamples}
+                  className="gap-2"
+                >
+                  <Gift className="h-4 w-4" />
+                  {isCreatingSamples ? 'Criando...' : 'Criar cupons de exemplo'}
+                </Button>
               </div>
             </div>
           </Card>
         ) : (
           /* Cupons List */
           <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <p className="text-sm text-gray-600">
+                {cupons.length} cupom{cupons.length !== 1 ? 's' : ''} disponível{cupons.length !== 1 ? 'eis' : ''}
+              </p>
+              <Button variant="outline" size="sm" onClick={loadCupons} className="gap-2">
+                <RefreshCw className="h-3 w-3" />
+                Atualizar
+              </Button>
+            </div>
+            
             {cupons.map((cupom) => (
               <Card key={cupom.id} className={`${isExpired(cupom.expires_at) ? 'opacity-60' : ''}`}>
                 <CardHeader className="pb-3">
@@ -150,6 +225,14 @@ const MeusCuponsScreen: React.FC = () => {
         )}
       </div>
     </div>
+  );
+};
+
+const MeusCuponsScreen: React.FC = () => {
+  return (
+    <ErrorBoundary>
+      <MeusCuponsScreenContent />
+    </ErrorBoundary>
   );
 };
 

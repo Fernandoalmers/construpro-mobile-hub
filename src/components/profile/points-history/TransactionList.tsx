@@ -1,8 +1,24 @@
 
-import React from 'react';
-import Card from '../../common/Card';
-import { CircleDollarSign, ShoppingBag, Gift, Users, Receipt, Briefcase } from 'lucide-react';
-import { Transaction } from '@/utils/pointsCalculations';
+import React, { useState } from 'react';
+import { formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { Calendar, Plus, Minus, Gift, ShoppingCart, Settings, AlertTriangle } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/context/AuthContext';
+import { createSamplePointsTransactions } from '@/services/sampleDataService';
+import { toast } from '@/components/ui/sonner';
+import LoadingState from '@/components/common/LoadingState';
+
+interface Transaction {
+  id: string;
+  pontos: number;
+  tipo: string;
+  descricao: string;
+  data: string;
+  reference_code?: string;
+}
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -10,109 +26,164 @@ interface TransactionListProps {
 }
 
 const TransactionList: React.FC<TransactionListProps> = ({ transactions, isLoading }) => {
-  // Get icon for transaction type
-  const getTransactionIcon = (type: string) => {
-    switch(type) {
-      case 'compra':
-        return <ShoppingBag size={18} className="text-green-600" />;
-      case 'resgate':
-        return <Gift size={18} className="text-red-600" />;
-      case 'indicacao':
-        return <Users size={18} className="text-blue-600" />;
-      case 'loja-fisica':
-        return <Receipt size={18} className="text-purple-600" />;
-      case 'servico':
-        return <Briefcase size={18} className="text-orange-600" />;
-      default:
-        return <CircleDollarSign size={18} className="text-gray-600" />;
+  const { user } = useAuth();
+  const [isCreatingSamples, setIsCreatingSamples] = useState(false);
+
+  const handleCreateSampleData = async () => {
+    if (!user) {
+      toast.error('Usuário não autenticado');
+      return;
     }
-  };
 
-  // Format date
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
-  };
+    console.log('🔄 [TransactionList] Creating sample data for user:', user.id);
+    setIsCreatingSamples(true);
 
-  // Format transaction description with reference id if available
-  const formatDescription = (transaction: Transaction) => {
-    let description = transaction.descricao || '';
-    
-    // Remover qualquer ID de transação do formato [uuid-timestamp]
-    // que possa ter sido adicionado ao final da descrição
-    description = description.replace(/\s*\[.*?\]$/, '');
-    
-    // Para compras, format a descrição de forma mais concisa
-    if (transaction.tipo === 'compra') {
-      const shortDescription = 'Pontos por compra';
-      
-      // Se temos um ID de referência, mostrar apenas os primeiros 8 caracteres
-      if (transaction.referencia_id) {
-        const shortId = typeof transaction.referencia_id === 'string' 
-          ? transaction.referencia_id.substring(0, 8)
-          : '';
-          
-        return (
-          <div>
-            {shortDescription}
-            {shortId && <div className="text-xs text-gray-500">#{shortId}</div>}
-          </div>
-        );
+    try {
+      const success = await createSamplePointsTransactions(user.id);
+      if (success) {
+        toast.success('Dados de exemplo criados com sucesso!');
+        window.location.reload(); // Recarregar a página para mostrar os novos dados
+      } else {
+        toast.error('Erro ao criar dados de exemplo');
       }
-      return shortDescription;
+    } catch (error) {
+      console.error('❌ [TransactionList] Error creating sample data:', error);
+      toast.error('Erro ao criar dados de exemplo');
+    } finally {
+      setIsCreatingSamples(false);
     }
-    
-    // Para resgates, manter a descrição breve
-    if (transaction.tipo === 'resgate') {
-      return description;
+  };
+
+  const getTransactionIcon = (tipo: string, pontos: number) => {
+    if (pontos > 0) {
+      switch (tipo) {
+        case 'compra':
+          return <ShoppingCart className="h-5 w-5 text-green-600" />;
+        case 'servico':
+          return <Settings className="h-5 w-5 text-blue-600" />;
+        default:
+          return <Plus className="h-5 w-5 text-green-600" />;
+      }
+    } else {
+      switch (tipo) {
+        case 'resgate':
+          return <Gift className="h-5 w-5 text-red-600" />;
+        default:
+          return <Minus className="h-5 w-5 text-red-600" />;
+      }
     }
-    
-    // Para todos os outros tipos, manter simples com informações básicas do tipo
-    return description || `Transação de ${transaction.tipo}`;
+  };
+
+  const getTransactionColor = (pontos: number) => {
+    return pontos > 0 ? 'text-green-600' : 'text-red-600';
+  };
+
+  const getTypeLabel = (tipo: string) => {
+    switch (tipo) {
+      case 'compra':
+        return 'Compra';
+      case 'resgate':
+        return 'Resgate';
+      case 'servico':
+        return 'Serviço';
+      default:
+        return tipo;
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return formatDistanceToNow(date, { addSuffix: true, locale: ptBR });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Data inválida';
+    }
   };
 
   if (isLoading) {
-    return (
-      <Card className="overflow-hidden">
-        <div className="flex justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-construPro-blue"></div>
-        </div>
-      </Card>
-    );
+    return <LoadingState text="Carregando transações..." />;
   }
 
   if (transactions.length === 0) {
     return (
-      <Card className="overflow-hidden">
-        <div className="text-center py-10">
-          <CircleDollarSign className="mx-auto text-gray-400 mb-3" size={40} />
-          <h3 className="text-lg font-medium text-gray-700">Nenhuma transação encontrada</h3>
-          <p className="text-gray-500 mt-1">Não há transações com os filtros selecionados</p>
+      <Card className="p-8 text-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+            <Calendar className="h-8 w-8 text-gray-400" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Nenhuma transação encontrada
+            </h3>
+            <p className="text-gray-600 mb-4">
+              Suas transações de pontos aparecerão aqui
+            </p>
+            <Button 
+              onClick={handleCreateSampleData}
+              disabled={isCreatingSamples}
+              className="gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              {isCreatingSamples ? 'Criando...' : 'Criar dados de exemplo'}
+            </Button>
+          </div>
         </div>
       </Card>
     );
   }
 
   return (
-    <Card className="overflow-hidden">
-      <div className="divide-y divide-gray-100">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-gray-900">
+          Histórico de Transações
+        </h3>
+        <Badge variant="outline">
+          {transactions.length} transaç{transactions.length !== 1 ? 'ões' : 'ão'}
+        </Badge>
+      </div>
+      
+      <div className="space-y-3">
         {transactions.map((transaction) => (
-          <div key={transaction.id} className="p-4">
-            <div className="flex justify-between items-start">
-              <div className="flex">
-                {getTransactionIcon(transaction.tipo)}
-                <div className="ml-3">
-                  <p className="font-medium">{formatDescription(transaction)}</p>
-                  <p className="text-xs text-gray-500">{formatDate(transaction.data)}</p>
+          <Card key={transaction.id} className="hover:shadow-sm transition-shadow">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {getTransactionIcon(transaction.tipo, transaction.pontos)}
+                  <div>
+                    <p className="font-medium text-gray-900">
+                      {transaction.descricao}
+                    </p>
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <span>{getTypeLabel(transaction.tipo)}</span>
+                      <span>•</span>
+                      <span>{formatDate(transaction.data)}</span>
+                      {transaction.reference_code && (
+                        <>
+                          <span>•</span>
+                          <span className="font-mono text-xs">
+                            {transaction.reference_code}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className={`text-right ${getTransactionColor(transaction.pontos)}`}>
+                  <p className="font-bold text-lg">
+                    {transaction.pontos > 0 ? '+' : ''}{transaction.pontos}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {transaction.pontos > 0 ? 'ganhos' : 'gastos'}
+                  </p>
                 </div>
               </div>
-              <div className={`font-medium ${transaction.pontos > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {transaction.pontos > 0 ? '+' : ''}{transaction.pontos}
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         ))}
       </div>
-    </Card>
+    </div>
   );
 };
 
