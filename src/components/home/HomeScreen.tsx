@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,29 +28,27 @@ import BottomTabNavigator from '@/components/layout/BottomTabNavigator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import Avatar from '@/components/common/Avatar';
+import { useHomeScreenData } from '@/hooks/useHomeScreenData';
 
 const HomeScreen: React.FC = () => {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const { products, isLoading: produtosLoading } = useMarketplaceData(null);
   const { rewards, isLoading: rewardsLoading } = useRewardsData();
-  const [userPoints, setUserPoints] = useState(0);
-
-  useEffect(() => {
-    // Get user points from profile or simulate
-    const points = profile?.saldo_pontos || Math.floor(Math.random() * 5000);
-    setUserPoints(points);
-  }, [profile]);
-
-  // Função para determinar o nível baseado nos pontos
-  const getUserLevel = (points: number) => {
-    if (points >= 10000) return { name: 'Diamante', color: 'bg-blue-500', next: null, pointsToNext: 0, progress: 100 };
-    if (points >= 5000) return { name: 'Ouro', color: 'bg-yellow-500', next: 'Diamante', pointsToNext: 10000 - points, progress: (points - 5000) / 5000 * 100 };
-    if (points >= 2000) return { name: 'Prata', color: 'bg-gray-400', next: 'Ouro', pointsToNext: 5000 - points, progress: (points - 2000) / 3000 * 100 };
-    return { name: 'Bronze', color: 'bg-orange-600', next: 'Prata', pointsToNext: 2000 - points, progress: points / 2000 * 100 };
-  };
-
-  const userLevel = getUserLevel(userPoints);
+  
+  // Usar dados reais do Supabase
+  const {
+    userPoints,
+    monthlyPoints,
+    currentLevel,
+    levelProgress,
+    pointsToNextLevel,
+    nextLevelName,
+    currentMonth,
+    isLoading: pointsLoading,
+    hasTransactions,
+    refreshData
+  } = useHomeScreenData();
 
   const quickAccessItems = [
     {
@@ -136,47 +134,67 @@ const HomeScreen: React.FC = () => {
           </p>
         </div>
 
-        {/* Saldo de Pontos */}
+        {/* Saldo de Pontos - Usando dados reais */}
         <Card className="mb-4 bg-gradient-to-r from-royal-blue to-royal-blue/80 text-white">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <p className="text-white/80 text-xs mb-1">Seu saldo</p>
-                <div className="flex items-center space-x-2">
-                  <Award className="h-5 w-5" />
-                  <span className="text-xl font-bold">
-                    {userPoints.toLocaleString()} pontos
-                  </span>
-                </div>
+            {pointsLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-4 w-32 bg-white/20" />
+                <Skeleton className="h-6 w-48 bg-white/20" />
+                <Skeleton className="h-2 w-full bg-white/20" />
               </div>
-              <div className="text-right">
-                <p className="text-white/80 text-xs mb-1">Nível</p>
-                <div className="flex items-center space-x-2">
-                  <div className={`w-2 h-2 rounded-full ${userLevel.color}`}></div>
-                  <span className="font-medium text-sm">{userLevel.name}</span>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <p className="text-white/80 text-xs mb-1">Seu saldo</p>
+                    <div className="flex items-center space-x-2">
+                      <Award className="h-5 w-5" />
+                      <span className="text-xl font-bold">
+                        {userPoints.toLocaleString()} pontos
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-white/80 text-xs mb-1">Nível</p>
+                    <div className="flex items-center space-x-2">
+                      <div className={`w-2 h-2 rounded-full ${currentLevel.color}`}></div>
+                      <span className="font-medium text-sm">{currentLevel.name}</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-between text-xs">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate('/profile/points-history')}
-                className="text-white hover:bg-white/10 p-1 h-auto text-xs"
-              >
-                Ver extrato <ExternalLink className="h-3 w-3 ml-1" />
-              </Button>
-            </div>
+                
+                <div className="flex items-center justify-between text-xs">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate('/profile/points-history')}
+                    className="text-white hover:bg-white/10 p-1 h-auto text-xs"
+                  >
+                    Ver extrato <ExternalLink className="h-3 w-3 ml-1" />
+                  </Button>
+                </div>
 
-            {userLevel.next && (
-              <div className="mt-3">
-                <div className="flex justify-between text-xs text-white/80 mb-1">
-                  <span>Próximo nível: {userLevel.next}</span>
-                  <span>{userLevel.pointsToNext} pontos restantes</span>
-                </div>
-                <Progress value={userLevel.progress} className="h-1 bg-white/20" />
-              </div>
+                {/* Progresso do nível baseado em pontos mensais */}
+                {nextLevelName && (
+                  <div className="mt-3">
+                    <div className="flex justify-between text-xs text-white/80 mb-1">
+                      <span>Nível {currentMonth}: {nextLevelName}</span>
+                      <span>{pointsToNextLevel} pontos restantes</span>
+                    </div>
+                    <Progress value={levelProgress} className="h-1 bg-white/20" />
+                  </div>
+                )}
+
+                {/* Mostrar informações específicas quando não há transações */}
+                {!hasTransactions && (
+                  <div className="mt-3 text-center">
+                    <p className="text-white/80 text-xs">
+                      Faça sua primeira compra para começar a ganhar pontos!
+                    </p>
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>
