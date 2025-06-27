@@ -47,21 +47,9 @@ const AdminCouponsScreen: React.FC = () => {
     setShowForm(true);
   };
 
-  const handleFormClose = async () => {
+  const handleFormClose = () => {
     setShowForm(false);
     setEditingCoupon(null);
-    await loadCoupons();
-  };
-
-  const handleDeleteCoupon = (couponId: string) => {
-    // Implementar lógica de deletar cupom
-    console.log('Delete coupon:', couponId);
-    loadCoupons();
-  };
-
-  const handleToggleStatus = (couponId: string, active: boolean) => {
-    // Implementar lógica de alterar status
-    console.log('Toggle status:', couponId, active);
     loadCoupons();
   };
 
@@ -168,8 +156,7 @@ const AdminCouponsScreen: React.FC = () => {
               <CouponsTable 
                 coupons={coupons} 
                 onEdit={handleEditCoupon}
-                onDelete={handleDeleteCoupon}
-                onToggleStatus={handleToggleStatus}
+                onRefresh={loadCoupons}
               />
             )}
           </TabsContent>
@@ -183,8 +170,7 @@ const AdminCouponsScreen: React.FC = () => {
         {showForm && (
           <CouponForm
             coupon={editingCoupon}
-            onSubmit={handleFormClose}
-            onCancel={handleFormClose}
+            onClose={handleFormClose}
           />
         )}
       </div>

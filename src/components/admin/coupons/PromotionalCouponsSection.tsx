@@ -39,6 +39,7 @@ import {
 } from '@/components/ui/dialog';
 import { 
   fetchAllPromotionalCoupons,
+  fetchAdminCoupons,
   createPromotionalCoupon,
   togglePromotionalCouponStatus,
   deletePromotionalCoupon,
@@ -49,7 +50,7 @@ import {
   getCouponStatusColor,
   getCouponStatusText
 } from '@/services/promotionalCouponsService';
-import { fetchAdminCoupons, AdminCoupon } from '@/services/adminCouponsService';
+import { AdminCoupon } from '@/services/adminCouponsService';
 
 const PromotionalCouponsSection: React.FC = () => {
   const [promotionalCoupons, setPromotionalCoupons] = useState<PromotionalCoupon[]>([]);
@@ -223,8 +224,8 @@ const PromotionalCouponsSection: React.FC = () => {
                       <div className="space-y-1">
                         <div className="flex items-center space-x-2">
                           <h4 className="font-medium">{coupon.name}</h4>
-                          <Badge className={getCouponStatusColor(coupon)}>
-                            {getCouponStatusText(coupon)}
+                          <Badge className={getCouponStatusColor(coupon.active, coupon.expires_at)}>
+                            {getCouponStatusText(coupon.active, coupon.expires_at)}
                           </Badge>
                         </div>
                         <p className="text-sm text-gray-600">
@@ -357,8 +358,8 @@ const PromotionalCouponsSection: React.FC = () => {
                       <div className="space-y-1">
                         <div className="flex items-center space-x-2">
                           <h4 className="font-medium">{coupon.name}</h4>
-                          <Badge className={getCouponStatusColor(coupon)}>
-                            {getCouponStatusText(coupon)}
+                          <Badge className={getCouponStatusColor(coupon.active, coupon.expires_at)}>
+                            {getCouponStatusText(coupon.active, coupon.expires_at)}
                           </Badge>
                           {promotionalCoupon.featured && (
                             <Badge variant="secondary">Visível</Badge>
