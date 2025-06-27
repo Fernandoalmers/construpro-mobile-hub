@@ -41,7 +41,7 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({
       </div>
       
       {isLoading ? (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {[...Array(4)].map((_, i) => (
             <Card key={i}>
               <CardContent className="p-3">
@@ -53,7 +53,7 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {products.slice(0, 4).map((produto) => (
             <Card 
               key={produto.id}
