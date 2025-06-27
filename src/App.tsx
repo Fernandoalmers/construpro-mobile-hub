@@ -54,6 +54,7 @@ import {
   VendorDeliverySettingsScreen
 } from './routes/RouteImports';
 import ConviteScreen from './components/referral/ConviteScreen';
+import MeusCuponsScreen from './components/coupons/MeusCuponsScreen';
 import AutoFixCodesPage from './pages/AutoFixCodes';
 import {
   AdminDashboard,
@@ -104,6 +105,9 @@ const App = () => (
           
           {/* Referral invitation page - public access */}
           <Route path="/convite" element={<ConviteScreen />} />
+          
+          {/* Meus Cupons */}
+          <Route path="/meus-cupons" element={<ProtectedRoute><MeusCuponsScreen /></ProtectedRoute>} />
           
           {/* Services screen for professionals */}
           <Route path="/services" element={<ProtectedRoute><ServicesScreen /></ProtectedRoute>} />
