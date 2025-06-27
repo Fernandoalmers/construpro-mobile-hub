@@ -9,14 +9,11 @@ import WelcomeSection from './components/WelcomeSection';
 import PointsBalanceCard from './components/PointsBalanceCard';
 import QuickAccessSection from './components/QuickAccessSection';
 import PromotionsSection from './components/PromotionsSection';
-import FeaturedProductsSection from './components/FeaturedProductsSection';
-import TempCepInput from '@/components/marketplace/components/TempCepInput';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import FeaturedCarouselSection from './components/FeaturedCarouselSection';
 
 const HomeScreen: React.FC = () => {
   const { products, isLoading: produtosLoading } = useMarketplaceData(null);
   const { rewards, isLoading: rewardsLoading } = useRewardsData();
-  const [showCepModal, setShowCepModal] = useState(false);
   
   // Use real data from Supabase - same logic as points page
   const {
@@ -47,16 +44,6 @@ const HomeScreen: React.FC = () => {
     }
   }, [userPoints, monthlyPoints, currentLevel, levelProgress, pointsToNextLevel, nextLevelName, currentMonth, pointsLoading]);
 
-  const handleChangeCep = () => {
-    setShowCepModal(true);
-  };
-
-  const handleCepSubmit = (cep: string) => {
-    console.log('CEP atualizado:', cep);
-    setShowCepModal(false);
-    // Aqui você pode adicionar lógica para recarregar os produtos com o novo CEP
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
       <HomeHeader />
@@ -81,24 +68,8 @@ const HomeScreen: React.FC = () => {
 
         <PromotionsSection />
 
-        <FeaturedProductsSection
-          products={products}
-          isLoading={produtosLoading}
-          onChangeCep={handleChangeCep}
-        />
+        <FeaturedCarouselSection />
       </div>
-
-      {/* CEP Modal */}
-      <Dialog open={showCepModal} onOpenChange={setShowCepModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Alterar CEP</DialogTitle>
-          </DialogHeader>
-          <div className="p-4">
-            <TempCepInput onCepSubmit={handleCepSubmit} />
-          </div>
-        </DialogContent>
-      </Dialog>
 
       <BottomTabNavigator />
     </div>
