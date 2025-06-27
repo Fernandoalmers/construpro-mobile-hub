@@ -71,6 +71,7 @@ import {
 import AdminCouponsScreen from './components/admin/coupons/AdminCouponsScreen';
 import AdminLoyaltyDashboard from './components/admin/loyalty/AdminLoyaltyDashboard';
 import OnboardingScreen from './components/OnboardingScreen';
+import MeusCuponsScreen from './components/coupons/MeusCuponsScreen';
 
 const App = () => (
   <TooltipProvider>
@@ -101,6 +102,9 @@ const App = () => (
           {/* User Routes */}
           <Route path="/home" element={<ProtectedRoute><HomeScreen /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><ProfileScreen /></ProtectedRoute>} />
+          
+          {/* Cupons Route */}
+          <Route path="/meus-cupons" element={<ProtectedRoute><MeusCuponsScreen /></ProtectedRoute>} />
           
           {/* Referral invitation page - public access */}
           <Route path="/convite" element={<ConviteScreen />} />
