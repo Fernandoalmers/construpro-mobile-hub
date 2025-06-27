@@ -65,17 +65,14 @@ export const usePointsHistory = () => {
     },
     enabled: !!user, // Only fetch if authenticated
     retry: 2,
-    retryDelay: 1000,
-    onError: (error) => {
-      console.error('❌ [usePointsHistory] Query error:', error);
-      toast.error('Erro ao carregar histórico de pontos');
-    }
+    retryDelay: 1000
   });
   
-  // Log any query errors
+  // Handle query errors using useEffect since onError is deprecated
   useEffect(() => {
     if (error) {
       console.error('❌ [usePointsHistory] Query error detected:', error);
+      toast.error('Erro ao carregar histórico de pontos');
     }
   }, [error]);
   
@@ -84,7 +81,7 @@ export const usePointsHistory = () => {
   const levelInfo = calculateLevelInfo(monthlyPoints);
   const currentMonth = getCurrentMonthName();
   
-  console.log(`📊 [usePointsHistory] Calculated stats - Monthly: ${monthlyPoints}, Level: ${levelInfo.level}`);
+  console.log(`📊 [usePointsHistory] Calculated stats - Monthly: ${monthlyPoints}, Level: ${levelInfo.currentLevel}`);
   
   // Apply filters
   const getFilteredTransactions = () => {
