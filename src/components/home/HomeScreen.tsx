@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
@@ -26,7 +25,7 @@ import { Badge } from '@/components/ui/badge';
 const HomeScreen: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const marketplaceData = useMarketplaceData({});
+  const marketplaceData = useMarketplaceData(null);
   const { rewards, isLoading: rewardsLoading } = useRewardsData();
   const [userPoints, setUserPoints] = useState(0);
 
