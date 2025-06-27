@@ -21,8 +21,11 @@ interface OptimizedMarketplaceData {
 
 export const useOptimizedMarketplace = () => {
   const queryClient = useQueryClient();
-  const { currentZones, hasActiveZones, currentCep, isLoading: zonesLoading } = useDeliveryZones();
+  const { currentZones, hasActiveZones, currentCep, isLoading: zonesLoading, isInitialized: zonesInitialized } = useDeliveryZones();
   const { shouldShowAllProducts, isFilteredByZone, hasDefinedCepWithoutCoverage } = useMarketplaceFilters();
+  
+  // NOVO: Aguarda inicialização das zonas antes de prosseguir
+  const shouldFetchProducts = zonesInitialized && !zonesLoading;
   
   // ESTABILIZADO: IDs dos vendedores com cache inteligente
   const availableVendorIds = useMemo(() => {
@@ -41,12 +44,11 @@ export const useOptimizedMarketplace = () => {
     return undefined;
   }, [currentZones, hasActiveZones, currentCep, shouldShowAllProducts, hasDefinedCepWithoutCoverage]);
 
-  // OTIMIZADO: Query de produtos com cache melhorado e estável
+  // OTIMIZADO: Query de produtos que aguarda resolução das zonas
   const { 
     data: products = [], 
     isLoading: productsLoading,
     error: productsError,
-    isFetching: productsRefetching,
   } = useQuery({
     queryKey: [
       'marketplace-products', 
@@ -70,19 +72,18 @@ export const useOptimizedMarketplace = () => {
       console.log('[useOptimizedMarketplace] ✅ Produtos carregados:', result.length);
       return result;
     },
-    staleTime: 2 * 60 * 1000, // AUMENTADO: 2 minutos para evitar refetches desnecessários
-    gcTime: 5 * 60 * 1000, // AUMENTADO: 5 minutos
+    staleTime: 2 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
-    refetchOnMount: false, // ADICIONADO: Evitar refetch no mount
-    enabled: !zonesLoading,
-    retry: 1, // REDUZIDO: Menos tentativas
+    refetchOnMount: false,
+    enabled: shouldFetchProducts, // NOVO: só executa após inicialização das zonas
+    retry: 1,
   });
 
-  // ESTABILIZADO: Queries paralelas otimizadas com cache longo
+  // ESTABILIZADO: Queries paralelas otimizadas
   const { 
     data: stores = [], 
     isLoading: storesLoading,
-    error: storesError 
   } = useQuery({
     queryKey: ['marketplace-stores'],
     queryFn: async () => {
@@ -93,10 +94,10 @@ export const useOptimizedMarketplace = () => {
         return [];
       }
     },
-    staleTime: 10 * 60 * 1000, // AUMENTADO: 10 minutos
-    gcTime: 30 * 60 * 1000, // AUMENTADO: 30 minutos
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
-    refetchOnMount: false, // ADICIONADO
+    refetchOnMount: false,
     retry: 1,
   });
 
@@ -113,16 +114,17 @@ export const useOptimizedMarketplace = () => {
         return [];
       }
     },
-    staleTime: 15 * 60 * 1000, // AUMENTADO: 15 minutos
-    gcTime: 60 * 60 * 1000, // AUMENTADO: 1 hora
+    staleTime: 15 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
     refetchOnWindowFocus: false,
-    refetchOnMount: false, // ADICIONADO
+    refetchOnMount: false,
     retry: 1,
   });
 
-  const isLoadingData = zonesLoading || productsLoading;
+  // NOVO: Loading coordenado que aguarda zonas E produtos
+  const isLoadingData = zonesLoading || !zonesInitialized || (shouldFetchProducts && productsLoading);
 
-  // ESTABILIZADO: Dados consolidados memoizados sem dependências reativas
+  // ESTABILIZADO: Dados consolidados memoizados
   const marketplaceData: OptimizedMarketplaceData = useMemo(() => ({
     products,
     stores: stores || [],

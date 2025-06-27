@@ -5,7 +5,6 @@ import ListProductView from './ListProductView';
 import LoadingState from '../../common/LoadingState';
 import EmptyProductState from './EmptyProductState';
 import DeliveryZoneIndicator from './DeliveryZoneIndicator';
-import NoDeliveryZoneState from './NoDeliveryZoneState';
 import SmartCepModal from './SmartCepModal';
 import { useDeliveryZones } from '@/hooks/useDeliveryZones';
 import { useMarketplaceFilters } from '@/hooks/useMarketplaceFilters';
@@ -38,8 +37,8 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
   viewType,
   onLojaClick
 }) => {
-  const { hasActiveZones, currentCep, resolveZones } = useDeliveryZones();
-  const { hasDefinedCepWithoutCoverage, clearAllFilters } = useMarketplaceFilters();
+  const { hasActiveZones, currentCep, resolveZones, isInitialized } = useDeliveryZones();
+  const { hasDefinedCepWithoutCoverage } = useMarketplaceFilters();
   const [showCepModal, setShowCepModal] = useState(false);
 
   // Handler para alterar CEP usando o modal inteligente
@@ -52,7 +51,7 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
     await resolveZones(newCep);
   };
 
-  // Determinar título baseado no estado da zona de entrega - SIMPLIFICADO
+  // NOVO: Determinar título baseado no estado atual
   const getPageTitle = () => {
     if (hasDefinedCepWithoutCoverage) {
       return "Nenhum lojista atende esse endereço";
@@ -60,6 +59,23 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
     
     return currentCategoryName || "Produtos disponíveis";
   };
+
+  // NOVO: Loading state coordenado - não mostra produtos até verificação completa
+  if (isLoading || !isInitialized) {
+    return (
+      <div 
+        className="flex-1 pb-20"
+        style={{ paddingTop: `${dynamicPaddingTop}px` }}
+      >
+        <div className="p-4">
+          <div className="mb-4">
+            <DeliveryZoneIndicator />
+          </div>
+          <LoadingState type="skeleton" text="Verificando produtos disponíveis..." count={6} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div 
@@ -72,7 +88,7 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
           <DeliveryZoneIndicator />
         </div>
 
-        {/* Título da página - SIMPLIFICADO */}
+        {/* Título da página */}
         {!hasDefinedCepWithoutCoverage && (
           <div className="mb-4">
             <div className="flex items-start justify-between gap-3">
@@ -87,8 +103,8 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
                 )}
               </div>
               
-              {/* Botão Alterar CEP - AJUSTADO */}
-              {!isLoading && currentCep && filteredProdutos.length > 0 && (
+              {/* Botão Alterar CEP */}
+              {currentCep && filteredProdutos.length > 0 && (
                 <button
                   onClick={handleChangeCep}
                   className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-construPro-blue border border-construPro-blue rounded-md hover:bg-blue-50 transition-colors shrink-0"
@@ -101,13 +117,8 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
           </div>
         )}
 
-        {/* Loading state */}
-        {isLoading && (
-          <LoadingState type="skeleton" text="Carregando produtos..." count={6} />
-        )}
-
         {/* Estado quando CEP definido mas sem vendedores que atendem */}
-        {!isLoading && hasDefinedCepWithoutCoverage && (
+        {hasDefinedCepWithoutCoverage && (
           <div className="text-center py-12">
             <div className="max-w-sm mx-auto">
               <div className="mb-4">
@@ -138,14 +149,14 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
         )}
 
         {/* Estado vazio padrão (sem CEP definido e sem produtos) */}
-        {!isLoading && !hasDefinedCepWithoutCoverage && !currentCep && filteredProdutos.length === 0 && (
+        {!hasDefinedCepWithoutCoverage && !currentCep && filteredProdutos.length === 0 && (
           <EmptyProductState 
             clearFilters={clearFilters}
           />
         )}
 
-        {/* Lista de produtos */}
-        {!isLoading && !hasDefinedCepWithoutCoverage && filteredProdutos.length > 0 && (
+        {/* Lista de produtos - só mostra se não há problema de cobertura */}
+        {!hasDefinedCepWithoutCoverage && filteredProdutos.length > 0 && (
           <>
             {viewType === 'grid' ? (
               <GridProductView
