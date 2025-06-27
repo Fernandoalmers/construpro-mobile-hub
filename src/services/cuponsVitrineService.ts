@@ -28,7 +28,13 @@ export const fetchCuponsVitrine = async (): Promise<CupomVitrine[]> => {
       return [];
     }
     
-    return data || [];
+    // Transform the data to match our interface
+    const transformedData = (data || []).map(item => ({
+      ...item,
+      discount_type: item.discount_type as 'percentage' | 'fixed'
+    }));
+    
+    return transformedData;
   } catch (error) {
     console.error('Error fetching cupons vitrine:', error);
     toast.error('Erro ao carregar cupons');
@@ -72,7 +78,13 @@ export const fetchCuponsPublicos = async (): Promise<CupomVitrine[]> => {
       return [];
     }
     
-    return data || [];
+    // Transform the data to match our interface
+    const transformedData = (data || []).map(item => ({
+      ...item,
+      discount_type: item.discount_type as 'percentage' | 'fixed'
+    }));
+    
+    return transformedData;
   } catch (error) {
     console.error('Error fetching public coupons:', error);
     return [];
