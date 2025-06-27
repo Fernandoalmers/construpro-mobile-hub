@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 import { 
   ShoppingBag, 
   Gift, 
@@ -16,7 +17,9 @@ import {
   Store,
   Scan,
   ShoppingCart,
-  HelpCircle
+  HelpCircle,
+  User,
+  ExternalLink
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useMarketplaceData } from '@/hooks/useMarketplaceData';
@@ -24,26 +27,27 @@ import { useRewardsData } from '@/hooks/useRewardsData';
 import BottomTabNavigator from '@/components/layout/BottomTabNavigator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import Avatar from '@/components/common/Avatar';
 
 const HomeScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { products, isLoading: produtosLoading } = useMarketplaceData(null);
   const { rewards, isLoading: rewardsLoading } = useRewardsData();
   const [userPoints, setUserPoints] = useState(0);
 
   useEffect(() => {
-    // Simular carregamento de pontos do usuário
-    const points = Math.floor(Math.random() * 5000);
+    // Get user points from profile or simulate
+    const points = profile?.saldo_pontos || Math.floor(Math.random() * 5000);
     setUserPoints(points);
-  }, []);
+  }, [profile]);
 
   // Função para determinar o nível baseado nos pontos
   const getUserLevel = (points: number) => {
-    if (points >= 10000) return { name: 'Diamante', color: 'bg-blue-500' };
-    if (points >= 5000) return { name: 'Ouro', color: 'bg-yellow-500' };
-    if (points >= 2000) return { name: 'Prata', color: 'bg-gray-400' };
-    return { name: 'Bronze', color: 'bg-orange-600' };
+    if (points >= 10000) return { name: 'Diamante', color: 'bg-blue-500', next: null, pointsToNext: 0, progress: 100 };
+    if (points >= 5000) return { name: 'Ouro', color: 'bg-yellow-500', next: 'Diamante', pointsToNext: 10000 - points, progress: (points - 5000) / 5000 * 100 };
+    if (points >= 2000) return { name: 'Prata', color: 'bg-gray-400', next: 'Ouro', pointsToNext: 5000 - points, progress: (points - 2000) / 3000 * 100 };
+    return { name: 'Bronze', color: 'bg-orange-600', next: 'Prata', pointsToNext: 2000 - points, progress: points / 2000 * 100 };
   };
 
   const userLevel = getUserLevel(userPoints);
@@ -64,13 +68,6 @@ const HomeScreen: React.FC = () => {
       color: 'bg-green-500'
     },
     {
-      icon: <Ticket className="h-6 w-6" />,
-      title: 'Meus Cupons',
-      subtitle: 'Descontos disponíveis',
-      path: '/meus-cupons',
-      color: 'bg-orange-500'
-    },
-    {
       icon: <HelpCircle className="h-6 w-6" />,
       title: 'Suporte',
       subtitle: 'Ajuda e contato',
@@ -83,6 +80,27 @@ const HomeScreen: React.FC = () => {
     navigate(path);
   };
 
+  const promotionalOffers = [
+    {
+      title: "Ganhe 500 pontos",
+      subtitle: "Em compras acima de R$ 200",
+      validUntil: "31/12/2024",
+      color: "bg-green-500"
+    },
+    {
+      title: "Frete Grátis",
+      subtitle: "Para pedidos acima de R$ 150",
+      validUntil: "15/01/2025",
+      color: "bg-blue-500"
+    },
+    {
+      title: "Desconto 15%",
+      subtitle: "Em ferramentas elétricas",
+      validUntil: "28/12/2024",
+      color: "bg-orange-500"
+    }
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -94,69 +112,90 @@ const HomeScreen: React.FC = () => {
               <h1 className="text-xl font-bold text-gray-900">Matershop</h1>
             </div>
             <div className="flex items-center space-x-4">
-              <Button
-                variant="outline"
+              <Avatar
+                src={profile?.avatar}
+                alt={profile?.nome || 'Usuario'}
+                fallback={profile?.nome}
+                size="sm"
                 onClick={() => navigate('/profile')}
-                className="text-sm"
-              >
-                Perfil
-              </Button>
+              />
             </div>
           </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         {/* Welcome Section */}
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Olá, {user?.user_metadata?.name || 'Usuário'}!
+        <div className="mb-4">
+          <h2 className="text-xl font-bold text-gray-900 mb-1">
+            Olá, {profile?.nome || user?.user_metadata?.name || 'Usuário'}!
           </h2>
-          <p className="text-gray-600">
+          <p className="text-gray-600 text-sm">
             Bem-vindo de volta ao seu marketplace de confiança
           </p>
         </div>
 
         {/* Saldo de Pontos */}
-        <Card className="mb-6 bg-gradient-to-r from-royal-blue to-royal-blue/80 text-white">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
+        <Card className="mb-4 bg-gradient-to-r from-royal-blue to-royal-blue/80 text-white">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-3">
               <div>
-                <p className="text-white/80 text-sm mb-1">Seu saldo</p>
+                <p className="text-white/80 text-xs mb-1">Seu saldo</p>
                 <div className="flex items-center space-x-2">
-                  <Award className="h-6 w-6" />
-                  <span className="text-2xl font-bold">
+                  <Award className="h-5 w-5" />
+                  <span className="text-xl font-bold">
                     {userPoints.toLocaleString()} pontos
                   </span>
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-white/80 text-sm mb-1">Nível</p>
+                <p className="text-white/80 text-xs mb-1">Nível</p>
                 <div className="flex items-center space-x-2">
-                  <div className={`w-3 h-3 rounded-full ${userLevel.color}`}></div>
-                  <span className="font-medium">{userLevel.name}</span>
+                  <div className={`w-2 h-2 rounded-full ${userLevel.color}`}></div>
+                  <span className="font-medium text-sm">{userLevel.name}</span>
                 </div>
               </div>
             </div>
+            
+            <div className="flex items-center justify-between text-xs">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/profile/points-history')}
+                className="text-white hover:bg-white/10 p-1 h-auto text-xs"
+              >
+                Ver extrato <ExternalLink className="h-3 w-3 ml-1" />
+              </Button>
+            </div>
+
+            {userLevel.next && (
+              <div className="mt-3">
+                <div className="flex justify-between text-xs text-white/80 mb-1">
+                  <span>Próximo nível: {userLevel.next}</span>
+                  <span>{userLevel.pointsToNext} pontos restantes</span>
+                </div>
+                <Progress value={userLevel.progress} className="h-1 bg-white/20" />
+              </div>
+            )}
           </CardContent>
         </Card>
 
         {/* Quick Access */}
-        <div className="mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Acesso Rápido</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="mb-6">
+          <h3 className="text-base font-semibold text-gray-900 mb-3">Acesso Rápido</h3>
+          <div className="grid grid-cols-3 gap-3">
             {quickAccessItems.map((item, index) => (
               <Card 
                 key={index} 
                 className="cursor-pointer hover:shadow-md transition-shadow"
                 onClick={() => handleQuickAccess(item.path)}
               >
-                <CardContent className="p-4 text-center">
-                  <div className={`${item.color} w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 text-white`}>
+                <CardContent className="p-3 text-center">
+                  <div className={`${item.color} w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-2 text-white`}>
                     {item.icon}
                   </div>
-                  <h4 className="font-medium text-gray-900 mb-1">{item.title}</h4>
+                  <h4 className="font-medium text-gray-900 text-sm mb-1">{item.title}</h4>
                   <p className="text-xs text-gray-500">{item.subtitle}</p>
                 </CardContent>
               </Card>
@@ -164,41 +203,79 @@ const HomeScreen: React.FC = () => {
           </div>
         </div>
 
-        {/* Promoções e Novidades */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Promoções e Novidades</h3>
+        {/* Promoções */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-base font-semibold text-gray-900">Promoções</h3>
             <Button
               variant="outline"
               onClick={() => navigate('/marketplace')}
-              className="text-sm"
+              size="sm"
+              className="text-xs"
             >
               Ver Todas
             </Button>
           </div>
           
+          <div className="space-y-2">
+            {promotionalOffers.map((offer, index) => (
+              <Card key={index} className="cursor-pointer hover:shadow-sm transition-shadow">
+                <CardContent className="p-3">
+                  <div className="flex items-center space-x-3">
+                    <div className={`${offer.color} w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0`}>
+                      <Gift className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-gray-900 text-sm">{offer.title}</h4>
+                      <p className="text-xs text-gray-600">{offer.subtitle}</p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-xs text-gray-500">Válido até</p>
+                      <p className="text-xs font-medium text-gray-700">{offer.validUntil}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        {/* Produtos em Destaque */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-base font-semibold text-gray-900">Produtos em Destaque</h3>
+            <Button
+              variant="outline"
+              onClick={() => navigate('/marketplace')}
+              size="sm"
+              className="text-xs"
+            >
+              Ver Mais
+            </Button>
+          </div>
+          
           {produtosLoading ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               {[...Array(4)].map((_, i) => (
                 <Card key={i}>
-                  <CardContent className="p-4">
-                    <Skeleton className="w-full h-32 mb-2" />
-                    <Skeleton className="h-4 w-3/4 mb-1" />
+                  <CardContent className="p-3">
+                    <Skeleton className="w-full h-24 mb-2" />
+                    <Skeleton className="h-3 w-3/4 mb-1" />
                     <Skeleton className="h-3 w-1/2" />
                   </CardContent>
                 </Card>
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               {products.slice(0, 4).map((produto) => (
                 <Card 
                   key={produto.id}
                   className="cursor-pointer hover:shadow-md transition-shadow"
                   onClick={() => navigate(`/produto/${produto.id}`)}
                 >
-                  <CardContent className="p-4">
-                    <div className="aspect-square bg-gray-100 rounded-lg mb-3 flex items-center justify-center">
+                  <CardContent className="p-3">
+                    <div className="aspect-square bg-gray-100 rounded-lg mb-2 flex items-center justify-center">
                       {produto.imagens && produto.imagens.length > 0 ? (
                         <img 
                           src={produto.imagens[0]} 
@@ -206,14 +283,14 @@ const HomeScreen: React.FC = () => {
                           className="w-full h-full object-cover rounded-lg"
                         />
                       ) : (
-                        <ShoppingBag className="h-8 w-8 text-gray-400" />
+                        <ShoppingBag className="h-6 w-6 text-gray-400" />
                       )}
                     </div>
-                    <h4 className="font-medium text-gray-900 text-sm mb-1 line-clamp-2">
+                    <h4 className="font-medium text-gray-900 text-xs mb-1 line-clamp-2">
                       {produto.nome}
                     </h4>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold text-green-600">
+                      <span className="text-xs font-bold text-green-600">
                         R$ {produto.preco_normal?.toFixed(2)}
                       </span>
                       {produto.pontos_consumidor > 0 && (
@@ -227,34 +304,6 @@ const HomeScreen: React.FC = () => {
               ))}
             </div>
           )}
-        </div>
-
-        {/* Benefícios */}
-        <div className="bg-gradient-to-r from-royal-blue to-royal-blue/80 rounded-lg p-6 text-white">
-          <h3 className="text-lg font-semibold mb-4">Por que escolher a Matershop?</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="flex items-center space-x-3">
-              <Truck className="h-6 w-6 flex-shrink-0" />
-              <div>
-                <h4 className="font-medium">Entrega Rápida</h4>
-                <p className="text-sm opacity-80">Receba em casa ou na obra</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3">
-              <Award className="h-6 w-6 flex-shrink-0" />
-              <div>
-                <h4 className="font-medium">Ganhe Pontos</h4>
-                <p className="text-sm opacity-80">A cada compra você acumula</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3">
-              <Store className="h-6 w-6 flex-shrink-0" />
-              <div>
-                <h4 className="font-medium">Lojas Parceiras</h4>
-                <p className="text-sm opacity-80">Rede de confiança local</p>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
