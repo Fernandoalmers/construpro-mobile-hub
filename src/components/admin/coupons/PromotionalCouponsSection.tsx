@@ -39,7 +39,6 @@ import {
 } from '@/components/ui/dialog';
 import { 
   fetchAllPromotionalCoupons,
-  fetchAdminCoupons,
   createPromotionalCoupon,
   togglePromotionalCouponStatus,
   deletePromotionalCoupon,
@@ -50,7 +49,7 @@ import {
   getCouponStatusColor,
   getCouponStatusText
 } from '@/services/promotionalCouponsService';
-import { AdminCoupon } from '@/services/adminCouponsService';
+import { fetchAdminCoupons, AdminCoupon } from '@/services/adminCouponsService';
 
 const PromotionalCouponsSection: React.FC = () => {
   const [promotionalCoupons, setPromotionalCoupons] = useState<PromotionalCoupon[]>([]);

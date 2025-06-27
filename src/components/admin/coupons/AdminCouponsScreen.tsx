@@ -53,6 +53,18 @@ const AdminCouponsScreen: React.FC = () => {
     loadCoupons();
   };
 
+  const handleDeleteCoupon = (couponId: string) => {
+    // Implementar lógica de deletar cupom
+    console.log('Delete coupon:', couponId);
+    loadCoupons();
+  };
+
+  const handleToggleStatus = (couponId: string, active: boolean) => {
+    // Implementar lógica de alterar status
+    console.log('Toggle status:', couponId, active);
+    loadCoupons();
+  };
+
   if (adminLoading) {
     return <LoadingState text="Verificando permissões..." />;
   }
@@ -156,7 +168,8 @@ const AdminCouponsScreen: React.FC = () => {
               <CouponsTable 
                 coupons={coupons} 
                 onEdit={handleEditCoupon}
-                onRefresh={loadCoupons}
+                onDelete={handleDeleteCoupon}
+                onToggleStatus={handleToggleStatus}
               />
             )}
           </TabsContent>
@@ -170,7 +183,8 @@ const AdminCouponsScreen: React.FC = () => {
         {showForm && (
           <CouponForm
             coupon={editingCoupon}
-            onClose={handleFormClose}
+            onSave={handleFormClose}
+            onCancel={handleFormClose}
           />
         )}
       </div>
