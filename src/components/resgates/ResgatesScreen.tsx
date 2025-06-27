@@ -100,7 +100,7 @@ const ResgatesScreen: React.FC = () => {
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 pb-20">
       {/* Enhanced Header */}
-      <div className="bg-gradient-to-b from-construPro-blue to-construPro-blue/90 p-6">
+      <div className="bg-gradient-to-b from-construPro-blue to-construPro-blue/90 p-4 md:p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
             <button onClick={() => navigate(-1)} className="text-white mr-2 p-1.5 hover:bg-white/10 rounded-full transition-colors">
@@ -165,12 +165,12 @@ const ResgatesScreen: React.FC = () => {
         </div>
       </div>
       
-      {/* Enhanced Content */}
+      {/* Enhanced Content with Responsive Grid */}
       <div className="flex-1 p-4 md:p-6">
         {isLoading ? (
           <LoadingState text="Carregando recompensas..." />
         ) : filteredResgates.length > 0 ? (
-          <div className="space-y-4">
+          <div className="space-y-4 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 md:gap-4 lg:gap-6">
             {filteredResgates.map((resgate) => (
               <ResgateCard
                 key={resgate.id}
