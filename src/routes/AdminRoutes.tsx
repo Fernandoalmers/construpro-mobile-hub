@@ -9,7 +9,8 @@ import {
   ProductsManagementScreen,
   StoresManagementScreen,
   AdminCategoriesScreen,
-  AdminRewardsScreen
+  AdminRewardsScreen,
+  CuponsVitrineScreen
 } from './LazyRoutes';
 
 // Import remaining admin components directly for now (smaller components)
@@ -68,6 +69,13 @@ const AdminRoutes: React.FC = () => {
         <ProtectedRoute requireAdmin={true}>
           <AdminLoadingWrapper>
             <AdminRewardsScreen />
+          </AdminLoadingWrapper>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/cupons-vitrine" element={
+        <ProtectedRoute requireAdmin={true}>
+          <AdminLoadingWrapper>
+            <CuponsVitrineScreen />
           </AdminLoadingWrapper>
         </ProtectedRoute>
       } />

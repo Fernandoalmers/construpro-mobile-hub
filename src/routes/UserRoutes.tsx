@@ -27,7 +27,8 @@ import {
   CartScreen,
   CheckoutScreen,
   OrderConfirmationScreen,
-  MarketplaceScreenWrapper
+  MarketplaceScreenWrapper,
+  MeusCuponsScreen
 } from './RouteImports';
 import ConviteScreen from '../components/referral/ConviteScreen';
 
@@ -50,6 +51,7 @@ const UserRoutes: React.FC = () => {
       <Route path="/escanear" element={<ProtectedRoute><EscanearScreen /></ProtectedRoute>} />
       <Route path="/scan" element={<ProtectedRoute><EscanearScreen /></ProtectedRoute>} />
       <Route path="/suporte" element={<ProtectedRoute><SuporteScreen /></ProtectedRoute>} />
+      <Route path="/meus-cupons" element={<ProtectedRoute><MeusCuponsScreen /></ProtectedRoute>} />
       
       {/* Profile related routes */}
       <Route path="/profile/orders" element={<ProtectedRoute><OrdersScreen /></ProtectedRoute>} />

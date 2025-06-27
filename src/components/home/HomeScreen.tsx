@@ -8,18 +8,23 @@ import ErrorState from '../common/ErrorState';
 import Card from '../common/Card';
 import Avatar from '../common/Avatar';
 import CustomButton from '../common/CustomButton';
-import { Receipt, Gift, MessageSquare, Award, ChevronRight } from 'lucide-react';
+import { Receipt, Gift, MessageSquare, Award, ChevronRight, Ticket } from 'lucide-react';
 import { calculateMonthlyPoints, calculateLevelInfo, getCurrentMonthName } from '@/utils/pointsCalculations';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import MonthlyLevelProgress from '../profile/points-history/MonthlyLevelProgress';
 
-// Define the shortcuts array for the quick access section (removed Escanear)
+// Define the shortcuts array for the quick access section (added Meus Cupons)
 const shortcuts = [{
   id: 'receipt',
   label: 'Compras',
   route: '/compras',
   icon: <Receipt size={24} />
+}, {
+  id: 'coupons',
+  label: 'Meus Cupons',
+  route: '/meus-cupons',
+  icon: <Ticket size={24} />
 }, {
   id: 'rewards',
   label: 'Resgates',
@@ -154,7 +159,7 @@ const HomeScreen: React.FC = () => {
       {/* Shortcuts */}
       <div className="p-6">
         <h2 className="font-bold text-lg text-gray-800 mb-4">Acesso rápido</h2>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-4 gap-3">
           {shortcuts.map(shortcut => <button key={shortcut.id} className="flex flex-col items-center" onClick={() => navigate(shortcut.route)}>
               <div className="w-14 h-14 rounded-full bg-white shadow-md flex items-center justify-center mb-2 text-construPro-orange">
                 {shortcut.icon}

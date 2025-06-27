@@ -312,6 +312,7 @@ export type Database = {
           max_uses: number | null
           min_order_value: number | null
           name: string
+          show_in_vitrine: boolean
           starts_at: string | null
           updated_at: string | null
           used_count: number | null
@@ -328,6 +329,7 @@ export type Database = {
           max_uses?: number | null
           min_order_value?: number | null
           name: string
+          show_in_vitrine?: boolean
           starts_at?: string | null
           updated_at?: string | null
           used_count?: number | null
@@ -344,6 +346,7 @@ export type Database = {
           max_uses?: number | null
           min_order_value?: number | null
           name?: string
+          show_in_vitrine?: boolean
           starts_at?: string | null
           updated_at?: string | null
           used_count?: number | null
@@ -1417,6 +1420,41 @@ export type Database = {
             columns: ["profissional_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      promotional_coupons: {
+        Row: {
+          coupon_id: string
+          created_at: string
+          display_order: number
+          featured: boolean
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          coupon_id: string
+          created_at?: string
+          display_order?: number
+          featured?: boolean
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          coupon_id?: string
+          created_at?: string
+          display_order?: number
+          featured?: boolean
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promotional_coupons_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: true
+            referencedRelation: "coupons"
             referencedColumns: ["id"]
           },
         ]
