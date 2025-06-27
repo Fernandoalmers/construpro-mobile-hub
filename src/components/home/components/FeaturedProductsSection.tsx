@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ShoppingBag } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import FeaturedProductsEmptyState from './FeaturedProductsEmptyState';
 
 interface Product {
   id: string;
@@ -18,26 +19,32 @@ interface Product {
 interface FeaturedProductsSectionProps {
   products: Product[];
   isLoading: boolean;
+  onChangeCep?: () => void;
 }
 
 const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({
   products,
-  isLoading
+  isLoading,
+  onChangeCep
 }) => {
   const navigate = useNavigate();
+
+  const hasProducts = products && products.length > 0;
 
   return (
     <div className="mb-6">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-base font-semibold text-gray-900">Produtos em Destaque</h3>
-        <Button
-          variant="outline"
-          onClick={() => navigate('/marketplace')}
-          size="sm"
-          className="text-xs"
-        >
-          Ver Mais
-        </Button>
+        {hasProducts && (
+          <Button
+            variant="outline"
+            onClick={() => navigate('/marketplace')}
+            size="sm"
+            className="text-xs"
+          >
+            Ver Mais
+          </Button>
+        )}
       </div>
       
       {isLoading ? (
@@ -52,7 +59,7 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({
             </Card>
           ))}
         </div>
-      ) : (
+      ) : hasProducts ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {products.slice(0, 4).map((produto) => (
             <Card 
@@ -89,6 +96,8 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({
             </Card>
           ))}
         </div>
+      ) : (
+        <FeaturedProductsEmptyState onChangeCep={onChangeCep} />
       )}
     </div>
   );
