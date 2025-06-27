@@ -14,7 +14,9 @@ import {
   Award,
   Users,
   Store,
-  Scan
+  Scan,
+  ShoppingCart,
+  HelpCircle
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useMarketplaceData } from '@/hooks/useMarketplaceData';
@@ -36,20 +38,23 @@ const HomeScreen: React.FC = () => {
     setUserPoints(points);
   }, []);
 
+  // Função para determinar o nível baseado nos pontos
+  const getUserLevel = (points: number) => {
+    if (points >= 10000) return { name: 'Diamante', color: 'bg-blue-500' };
+    if (points >= 5000) return { name: 'Ouro', color: 'bg-yellow-500' };
+    if (points >= 2000) return { name: 'Prata', color: 'bg-gray-400' };
+    return { name: 'Bronze', color: 'bg-orange-600' };
+  };
+
+  const userLevel = getUserLevel(userPoints);
+
   const quickAccessItems = [
     {
-      icon: <ShoppingBag className="h-6 w-6" />,
-      title: 'Marketplace',
-      subtitle: 'Encontre produtos',
-      path: '/marketplace',
+      icon: <ShoppingCart className="h-6 w-6" />,
+      title: 'Compras',
+      subtitle: 'Ver pedidos',
+      path: '/compras',
       color: 'bg-blue-500'
-    },
-    {
-      icon: <Ticket className="h-6 w-6" />,
-      title: 'Meus Cupons',
-      subtitle: 'Descontos disponíveis',
-      path: '/meus-cupons',
-      color: 'bg-orange-500'
     },
     {
       icon: <Gift className="h-6 w-6" />,
@@ -59,10 +64,17 @@ const HomeScreen: React.FC = () => {
       color: 'bg-green-500'
     },
     {
-      icon: <Scan className="h-6 w-6" />,
-      title: 'Escanear',
-      subtitle: 'QR Code',
-      path: '/escanear',
+      icon: <Ticket className="h-6 w-6" />,
+      title: 'Meus Cupons',
+      subtitle: 'Descontos disponíveis',
+      path: '/meus-cupons',
+      color: 'bg-orange-500'
+    },
+    {
+      icon: <HelpCircle className="h-6 w-6" />,
+      title: 'Suporte',
+      subtitle: 'Ajuda e contato',
+      path: '/suporte',
       color: 'bg-purple-500'
     }
   ];
@@ -82,12 +94,6 @@ const HomeScreen: React.FC = () => {
               <h1 className="text-xl font-bold text-gray-900">Matershop</h1>
             </div>
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <Award className="h-5 w-5 text-orange-points" />
-                <span className="text-sm font-medium text-gray-900">
-                  {userPoints.toLocaleString()} pts
-                </span>
-              </div>
               <Button
                 variant="outline"
                 onClick={() => navigate('/profile')}
@@ -103,7 +109,7 @@ const HomeScreen: React.FC = () => {
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Welcome Section */}
-        <div className="mb-8">
+        <div className="mb-6">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
             Olá, {user?.user_metadata?.name || 'Usuário'}!
           </h2>
@@ -111,6 +117,30 @@ const HomeScreen: React.FC = () => {
             Bem-vindo de volta ao seu marketplace de confiança
           </p>
         </div>
+
+        {/* Saldo de Pontos */}
+        <Card className="mb-6 bg-gradient-to-r from-royal-blue to-royal-blue/80 text-white">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-white/80 text-sm mb-1">Seu saldo</p>
+                <div className="flex items-center space-x-2">
+                  <Award className="h-6 w-6" />
+                  <span className="text-2xl font-bold">
+                    {userPoints.toLocaleString()} pontos
+                  </span>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-white/80 text-sm mb-1">Nível</p>
+                <div className="flex items-center space-x-2">
+                  <div className={`w-3 h-3 rounded-full ${userLevel.color}`}></div>
+                  <span className="font-medium">{userLevel.name}</span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Quick Access */}
         <div className="mb-8">
@@ -134,16 +164,16 @@ const HomeScreen: React.FC = () => {
           </div>
         </div>
 
-        {/* Produtos em Destaque */}
+        {/* Promoções e Novidades */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Produtos em Destaque</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Promoções e Novidades</h3>
             <Button
               variant="outline"
               onClick={() => navigate('/marketplace')}
               className="text-sm"
             >
-              Ver Todos
+              Ver Todas
             </Button>
           </div>
           
@@ -191,65 +221,6 @@ const HomeScreen: React.FC = () => {
                           +{produto.pontos_consumidor} pts
                         </Badge>
                       )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Recompensas */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Recompensas Populares</h3>
-            <Button
-              variant="outline"
-              onClick={() => navigate('/resgates')}
-              className="text-sm"
-            >
-              Ver Todas
-            </Button>
-          </div>
-          
-          {rewardsLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {[...Array(3)].map((_, i) => (
-                <Card key={i}>
-                  <CardContent className="p-4">
-                    <Skeleton className="w-full h-24 mb-2" />
-                    <Skeleton className="h-4 w-3/4 mb-1" />
-                    <Skeleton className="h-3 w-1/2" />
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {rewards.slice(0, 3).map((reward) => (
-                <Card 
-                  key={reward.id}
-                  className="cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => navigate('/resgates')}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="bg-orange-100 p-2 rounded-lg flex-shrink-0">
-                        <Gift className="h-6 w-6 text-orange-500" />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-medium text-gray-900 text-sm mb-1">
-                          {reward.titulo}
-                        </h4>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-500">
-                            {reward.pontos} pontos
-                          </span>
-                          <Badge variant="outline" className="text-xs">
-                            {reward.categoria}
-                          </Badge>
-                        </div>
-                      </div>
                     </div>
                   </CardContent>
                 </Card>
