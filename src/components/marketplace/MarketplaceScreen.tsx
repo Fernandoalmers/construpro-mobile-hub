@@ -7,6 +7,9 @@ import { getCurrentDisplayName, logDebugInfo } from './utils/marketplaceUtils';
 import LoadingState from '../common/LoadingState';
 
 const MarketplaceScreen: React.FC = () => {
+  // Debug log to confirm marketplace screen is loading
+  console.log('[MarketplaceScreen] Component loaded - applying pb-24 for bottom menu');
+
   // Get all marketplace state from custom hook
   const {
     headerHeight,
@@ -121,7 +124,7 @@ const MarketplaceScreen: React.FC = () => {
   }
 
   return (
-    <div className="pb-24">
+    <div className="pb-24 border-4 border-green-500">
       <MarketplaceDisplay
         headerHeight={headerHeight}
         setHeaderHeight={setHeaderHeight}

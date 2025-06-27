@@ -26,6 +26,9 @@ interface CarouselCard {
 const FeaturedCarouselSection: React.FC = () => {
   const navigate = useNavigate();
 
+  // Debug log to confirm component is loading
+  console.log('[FeaturedCarouselSection] Component loaded - checking layout responsiveness');
+
   const carouselCards: CarouselCard[] = [
     {
       id: '1',
@@ -75,14 +78,14 @@ const FeaturedCarouselSection: React.FC = () => {
         <h3 className="text-base font-semibold text-gray-900">Destaques</h3>
       </div>
       
-      {/* Mobile: Carousel */}
+      {/* Mobile: Carousel - Hidden on desktop */}
       <div className="block md:hidden">
         <Carousel
           opts={{
             align: "start",
             loop: true,
           }}
-          className="w-full"
+          className="w-full border-2 border-green-200"
         >
           <CarouselContent className="-ml-2">
             {carouselCards.map((card) => (
@@ -138,8 +141,8 @@ const FeaturedCarouselSection: React.FC = () => {
         </Carousel>
       </div>
 
-      {/* Desktop: Grid layout */}
-      <div className="hidden md:grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Desktop: Grid layout - Hidden on mobile */}
+      <div className="hidden md:grid grid-cols-2 lg:grid-cols-4 gap-4 border-2 border-purple-200">
         {carouselCards.map((card) => (
           <Card key={card.id} className="overflow-hidden group cursor-pointer hover:shadow-lg transition-all duration-300">
             <CardContent className="p-0 relative h-48">
