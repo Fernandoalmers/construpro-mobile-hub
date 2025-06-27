@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -51,7 +50,7 @@ const MeusCuponsScreen: React.FC = () => {
   };
 
   const handleGoToCart = () => {
-    navigate('/carrinho');
+    navigate('/cart');
   };
 
   if (loading) {
