@@ -43,26 +43,33 @@ const ProductSearchList: React.FC<ProductSearchListProps> = ({
         <Package className="h-16 w-16 mb-4 text-gray-300" />
         <p className="text-lg font-medium mb-2">Nenhum produto encontrado</p>
         <p className="text-sm text-center max-w-sm">
-          Tente ajustar os termos da busca ou verifique se existem produtos aprovados.
+          Tente ajustar os termos da busca ou verifique se existem produtos aprovados no sistema.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-3 max-h-full overflow-y-auto">
-      <div className="text-sm text-gray-600 mb-3">
+    <div className="space-y-3">
+      <div className="text-sm text-gray-600 mb-3 sticky top-0 bg-white py-2 border-b">
         {products.length} produto(s) encontrado(s)
+        {selectedProductIds.length > 0 && (
+          <span className="ml-2 text-blue-600">
+            • {selectedProductIds.length} selecionado(s)
+          </span>
+        )}
       </div>
       
-      {products.map((product) => (
-        <ProductItem
-          key={product.id}
-          product={product}
-          isSelected={selectedProductIds.includes(product.id)}
-          onToggle={onProductToggle}
-        />
-      ))}
+      <div className="space-y-2">
+        {products.map((product) => (
+          <ProductItem
+            key={product.id}
+            product={product}
+            isSelected={selectedProductIds.includes(product.id)}
+            onToggle={onProductToggle}
+          />
+        ))}
+      </div>
     </div>
   );
 };

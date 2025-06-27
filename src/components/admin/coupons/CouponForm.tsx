@@ -7,7 +7,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { AdminCoupon, CreateCouponData } from '@/services/adminCouponsService';
+import { AdminCoupon, CreateCouponData, createCoupon, updateCoupon } from '@/services/adminCouponsService';
+import { toast } from '@/components/ui/sonner';
 import ProductSelector from './ProductSelector';
 
 interface CouponFormProps {
@@ -19,7 +20,7 @@ interface CouponFormProps {
 const CouponForm: React.FC<CouponFormProps> = ({
   coupon,
   onClose,
-  isLoading = false
+  isLoading: externalLoading = false
 }) => {
   const [formData, setFormData] = useState<CreateCouponData>({
     code: coupon?.code || '',
@@ -35,28 +36,98 @@ const CouponForm: React.FC<CouponFormProps> = ({
     product_ids: coupon?.specific_products?.map(sp => sp.product_id) || []
   });
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.code.trim()) {
+      newErrors.code = 'Código é obrigatório';
+    }
+
+    if (!formData.name.trim()) {
+      newErrors.name = 'Nome é obrigatório';
+    }
+
+    if (formData.discount_value <= 0) {
+      newErrors.discount_value = 'Valor do desconto deve ser maior que zero';
+    }
+
+    if (formData.discount_type === 'percentage' && formData.discount_value > 100) {
+      newErrors.discount_value = 'Porcentagem não pode ser maior que 100%';
+    }
+
+    if (formData.min_order_value < 0) {
+      newErrors.min_order_value = 'Valor mínimo não pode ser negativo';
+    }
+
+    if (formData.max_uses && formData.max_uses <= 0) {
+      newErrors.max_uses = 'Limite de uso deve ser maior que zero';
+    }
+
+    if (formData.expires_at && formData.starts_at && new Date(formData.expires_at) <= new Date(formData.starts_at)) {
+      newErrors.expires_at = 'Data de expiração deve ser posterior à data de início';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const submitData = {
-      ...formData,
-      starts_at: formData.starts_at ? new Date(formData.starts_at).toISOString() : undefined,
-      expires_at: formData.expires_at ? new Date(formData.expires_at).toISOString() : undefined,
-      max_uses: formData.max_uses || undefined
-    };
+    if (!validateForm()) {
+      toast.error('Por favor, corrija os erros no formulário');
+      return;
+    }
+
+    setIsSubmitting(true);
     
-    // Implement submit logic here
-    console.log('Submit coupon:', submitData);
-    onClose();
+    try {
+      const submitData = {
+        ...formData,
+        starts_at: formData.starts_at ? new Date(formData.starts_at).toISOString() : undefined,
+        expires_at: formData.expires_at ? new Date(formData.expires_at).toISOString() : undefined,
+        max_uses: formData.max_uses || undefined
+      };
+      
+      let success = false;
+      
+      if (coupon) {
+        // Editando cupom existente
+        success = await updateCoupon(coupon.id, submitData);
+      } else {
+        // Criando novo cupom
+        success = await createCoupon(submitData);
+      }
+      
+      if (success) {
+        toast.success(coupon ? 'Cupom atualizado com sucesso!' : 'Cupom criado com sucesso!');
+        onClose();
+      }
+    } catch (error) {
+      console.error('Error submitting coupon:', error);
+      toast.error('Erro ao salvar cupom. Tente novamente.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (field: keyof CreateCouponData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Limpar erro do campo quando o usuário começar a digitar
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
   };
 
+  const isLoading = externalLoading || isSubmitting;
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <Card className="w-full max-w-2xl mx-auto m-4 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <CardHeader>
           <CardTitle>
             {coupon ? 'Editar Cupom' : 'Novo Cupom'}
@@ -74,7 +145,9 @@ const CouponForm: React.FC<CouponFormProps> = ({
                   placeholder="EX: DESCONTO10"
                   required
                   disabled={isLoading}
+                  className={errors.code ? 'border-red-500' : ''}
                 />
+                {errors.code && <p className="text-sm text-red-500">{errors.code}</p>}
               </div>
               
               <div className="space-y-2">
@@ -86,7 +159,9 @@ const CouponForm: React.FC<CouponFormProps> = ({
                   placeholder="Nome descritivo"
                   required
                   disabled={isLoading}
+                  className={errors.name ? 'border-red-500' : ''}
                 />
+                {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
               </div>
             </div>
 
@@ -133,7 +208,9 @@ const CouponForm: React.FC<CouponFormProps> = ({
                   onChange={(e) => handleChange('discount_value', parseFloat(e.target.value) || 0)}
                   required
                   disabled={isLoading}
+                  className={errors.discount_value ? 'border-red-500' : ''}
                 />
+                {errors.discount_value && <p className="text-sm text-red-500">{errors.discount_value}</p>}
               </div>
             </div>
 
@@ -148,7 +225,9 @@ const CouponForm: React.FC<CouponFormProps> = ({
                   value={formData.min_order_value}
                   onChange={(e) => handleChange('min_order_value', parseFloat(e.target.value) || 0)}
                   disabled={isLoading}
+                  className={errors.min_order_value ? 'border-red-500' : ''}
                 />
+                {errors.min_order_value && <p className="text-sm text-red-500">{errors.min_order_value}</p>}
               </div>
               
               <div className="space-y-2">
@@ -161,7 +240,9 @@ const CouponForm: React.FC<CouponFormProps> = ({
                   onChange={(e) => handleChange('max_uses', e.target.value ? parseInt(e.target.value) : undefined)}
                   placeholder="Ilimitado"
                   disabled={isLoading}
+                  className={errors.max_uses ? 'border-red-500' : ''}
                 />
+                {errors.max_uses && <p className="text-sm text-red-500">{errors.max_uses}</p>}
               </div>
             </div>
 
@@ -185,7 +266,9 @@ const CouponForm: React.FC<CouponFormProps> = ({
                   value={formData.expires_at}
                   onChange={(e) => handleChange('expires_at', e.target.value)}
                   disabled={isLoading}
+                  className={errors.expires_at ? 'border-red-500' : ''}
                 />
+                {errors.expires_at && <p className="text-sm text-red-500">{errors.expires_at}</p>}
               </div>
             </div>
 
@@ -207,10 +290,19 @@ const CouponForm: React.FC<CouponFormProps> = ({
             </div>
 
             <div className="flex gap-4 pt-4">
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? 'Salvando...' : (coupon ? 'Atualizar' : 'Criar')} Cupom
+              <Button 
+                type="submit" 
+                disabled={isLoading}
+                className="min-w-[120px]"
+              >
+                {isSubmitting ? 'Salvando...' : (coupon ? 'Atualizar' : 'Criar')} Cupom
               </Button>
-              <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={onClose} 
+                disabled={isLoading}
+              >
                 Cancelar
               </Button>
             </div>

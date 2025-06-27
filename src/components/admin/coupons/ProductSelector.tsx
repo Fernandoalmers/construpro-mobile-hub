@@ -25,7 +25,7 @@ interface ProductSelectorProps {
   disabled?: boolean;
 }
 
-// Hook personalizado para debounce
+// Hook personalizado para debounce otimizado
 const useDebounce = (value: string, delay: number) => {
   const [debouncedValue, setDebouncedValue] = useState(value);
 
@@ -54,10 +54,10 @@ const ProductSelector: React.FC<ProductSelectorProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Aplicar debounce no termo de busca
-  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+  // Reduzir debounce para melhor responsividade
+  const debouncedSearchTerm = useDebounce(searchTerm, 200);
 
-  // Buscar produtos quando o modal abre ou quando o termo de busca muda (com debounce)
+  // Buscar produtos quando o modal abre ou quando o termo de busca muda
   useEffect(() => {
     if (isOpen) {
       loadProducts(debouncedSearchTerm);
@@ -76,6 +76,7 @@ const ProductSelector: React.FC<ProductSelectorProps> = ({
   const loadProducts = async (searchTerm = '') => {
     setLoading(true);
     setError(null);
+    
     try {
       const data = await fetchProductsForCoupon(searchTerm);
       
@@ -88,7 +89,7 @@ const ProductSelector: React.FC<ProductSelectorProps> = ({
       setProducts(transformedProducts);
     } catch (error) {
       console.error('Error loading products:', error);
-      setError('Erro ao carregar produtos. Tente novamente.');
+      setError('Erro ao carregar produtos. Verifique sua conexão e tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -133,6 +134,20 @@ const ProductSelector: React.FC<ProductSelectorProps> = ({
     setSelectedProducts(newSelected);
   }, [selectedProductIds, selectedProducts, onProductsChange]);
 
+  const handleOpenDialog = () => {
+    setSearchTerm(''); // Limpar busca ao abrir
+    setIsOpen(true);
+  };
+
+  const handleCloseDialog = (open: boolean) => {
+    setIsOpen(open);
+    if (!open) {
+      setSearchTerm(''); // Limpar busca ao fechar
+      setProducts([]); // Limpar produtos para economizar memória
+      setError(null);
+    }
+  };
+
   return (
     <div className="space-y-3">
       <Label>Produtos Específicos (Opcional)</Label>
@@ -153,16 +168,19 @@ const ProductSelector: React.FC<ProductSelectorProps> = ({
         variant="outline"
         className="w-full"
         disabled={disabled}
-        onClick={() => setIsOpen(true)}
+        onClick={handleOpenDialog}
       >
         <Plus className="h-4 w-4 mr-2" />
-        {selectedProducts.length > 0 ? 'Editar Produtos' : 'Selecionar Produtos'}
+        {selectedProducts.length > 0 ? 
+          `Editar Produtos (${selectedProducts.length} selecionados)` : 
+          'Selecionar Produtos'
+        }
       </Button>
 
       {/* Dialog de seleção */}
       <ProductSelectorDialog
         isOpen={isOpen}
-        onOpenChange={setIsOpen}
+        onOpenChange={handleCloseDialog}
         searchTerm={searchTerm}
         onSearchTermChange={setSearchTerm}
         products={products}
