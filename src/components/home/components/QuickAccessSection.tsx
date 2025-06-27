@@ -2,7 +2,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
-import { ShoppingCart, Gift, HelpCircle } from 'lucide-react';
+import { ShoppingCart, Gift, HelpCircle, Ticket } from 'lucide-react';
 
 const QuickAccessSection: React.FC = () => {
   const navigate = useNavigate();
@@ -14,6 +14,13 @@ const QuickAccessSection: React.FC = () => {
       subtitle: 'Ver pedidos',
       path: '/compras',
       color: 'bg-blue-500'
+    },
+    {
+      icon: <Ticket className="h-6 w-6" />,
+      title: 'Cupons',
+      subtitle: 'Descontos exclusivos',
+      path: '/meus-cupons',
+      color: 'bg-orange-500'
     },
     {
       icon: <Gift className="h-6 w-6" />,
@@ -38,7 +45,7 @@ const QuickAccessSection: React.FC = () => {
   return (
     <div className="mb-6">
       <h3 className="text-base font-semibold text-gray-900 mb-3">Acesso Rápido</h3>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {quickAccessItems.map((item, index) => (
           <Card 
             key={index} 
