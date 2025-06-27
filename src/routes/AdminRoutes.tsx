@@ -1,7 +1,7 @@
 
 import React, { Suspense } from 'react';
 import { Route } from 'react-router-dom';
-import AdminRoute from '../components/routes/AdminRoute';
+import { ProtectedRoute } from '../imports';
 import LoadingState from '@/components/common/LoadingState';
 import {
   AdminDashboard,
@@ -9,19 +9,19 @@ import {
   ProductsManagementScreen,
   StoresManagementScreen,
   AdminCategoriesScreen,
-  AdminRewardsScreen,
-  AdminCouponsScreen
+  AdminRewardsScreen
 } from './LazyRoutes';
 
-// Import smaller admin components directly
+// Import remaining admin components directly for now (smaller components)
 import RedemptionsManagementScreen from '../components/admin/redemptions/RedemptionsManagementScreen';
 import OrdersManagementScreen from '../components/admin/orders/OrdersManagementScreen';
 import AdminLogsScreen from '../components/admin/AdminLogs';
 import AdminSettingsScreen from '../components/admin/settings/AdminSettingsScreen';
+import AdminCouponsScreen from '../components/admin/coupons/AdminCouponsScreen';
 import AdminLoyaltyDashboard from '../components/admin/loyalty/AdminLoyaltyDashboard';
 
 const AdminLoadingWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <Suspense fallback={<LoadingState text="Carregando painel administrativo..." />}>
+  <Suspense fallback={<LoadingState text="Carregando painel admin..." />}>
     {children}
   </Suspense>
 );
@@ -30,68 +30,53 @@ const AdminRoutes: React.FC = () => {
   return (
     <>
       <Route path="/admin" element={
-        <AdminRoute>
+        <ProtectedRoute requireAdmin={true}>
           <AdminLoadingWrapper>
             <AdminDashboard />
           </AdminLoadingWrapper>
-        </AdminRoute>
-      } />
-      <Route path="/admin/dashboard" element={
-        <AdminRoute>
-          <AdminLoadingWrapper>
-            <AdminDashboard />
-          </AdminLoadingWrapper>
-        </AdminRoute>
+        </ProtectedRoute>
       } />
       <Route path="/admin/users" element={
-        <AdminRoute>
+        <ProtectedRoute requireAdmin={true}>
           <AdminLoadingWrapper>
             <UsersManagement />
           </AdminLoadingWrapper>
-        </AdminRoute>
+        </ProtectedRoute>
       } />
       <Route path="/admin/products" element={
-        <AdminRoute>
+        <ProtectedRoute requireAdmin={true}>
           <AdminLoadingWrapper>
             <ProductsManagementScreen />
           </AdminLoadingWrapper>
-        </AdminRoute>
+        </ProtectedRoute>
       } />
       <Route path="/admin/stores" element={
-        <AdminRoute>
+        <ProtectedRoute requireAdmin={true}>
           <AdminLoadingWrapper>
             <StoresManagementScreen />
           </AdminLoadingWrapper>
-        </AdminRoute>
+        </ProtectedRoute>
       } />
       <Route path="/admin/categories" element={
-        <AdminRoute>
+        <ProtectedRoute requireAdmin={true}>
           <AdminLoadingWrapper>
             <AdminCategoriesScreen />
           </AdminLoadingWrapper>
-        </AdminRoute>
+        </ProtectedRoute>
       } />
       <Route path="/admin/rewards" element={
-        <AdminRoute>
+        <ProtectedRoute requireAdmin={true}>
           <AdminLoadingWrapper>
             <AdminRewardsScreen />
           </AdminLoadingWrapper>
-        </AdminRoute>
+        </ProtectedRoute>
       } />
-      <Route path="/admin/cupons" element={
-        <AdminRoute>
-          <AdminLoadingWrapper>
-            <AdminCouponsScreen />
-          </AdminLoadingWrapper>
-        </AdminRoute>
-      } />
-      
-      {/* Smaller admin components - direct import */}
-      <Route path="/admin/redemptions" element={<AdminRoute><RedemptionsManagementScreen /></AdminRoute>} />
-      <Route path="/admin/orders" element={<AdminRoute><OrdersManagementScreen /></AdminRoute>} />
-      <Route path="/admin/logs" element={<AdminRoute><AdminLogsScreen /></AdminRoute>} />
-      <Route path="/admin/settings" element={<AdminRoute><AdminSettingsScreen /></AdminRoute>} />
-      <Route path="/admin/loyalty" element={<AdminRoute><AdminLoyaltyDashboard /></AdminRoute>} />
+      <Route path="/admin/redemptions" element={<ProtectedRoute requireAdmin={true}><RedemptionsManagementScreen /></ProtectedRoute>} />
+      <Route path="/admin/orders" element={<ProtectedRoute requireAdmin={true}><OrdersManagementScreen /></ProtectedRoute>} />
+      <Route path="/admin/coupons" element={<ProtectedRoute requireAdmin={true}><AdminCouponsScreen /></ProtectedRoute>} />
+      <Route path="/admin/loyalty" element={<ProtectedRoute requireAdmin={true}><AdminLoyaltyDashboard /></ProtectedRoute>} />
+      <Route path="/admin/logs" element={<ProtectedRoute requireAdmin={true}><AdminLogsScreen /></ProtectedRoute>} />
+      <Route path="/admin/settings" element={<ProtectedRoute requireAdmin={true}><AdminSettingsScreen /></ProtectedRoute>} />
     </>
   );
 };

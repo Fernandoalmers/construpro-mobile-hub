@@ -1,216 +1,237 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Ticket, Tag, TrendingUp } from 'lucide-react';
-import AdminLayout from '@/components/admin/AdminLayout';
-import LoadingState from '@/components/common/LoadingState';
+import { Input } from '@/components/ui/input';
+import { Plus, Search } from 'lucide-react';
+import AdminLayout from '../AdminLayout';
 import CouponsTable from './CouponsTable';
 import CouponForm from './CouponForm';
-import PromotionalCouponsSection from './PromotionalCouponsSection';
-import { useIsAdmin } from '@/hooks/useIsAdmin';
-import { fetchAdminCoupons } from '@/services/promotionalCouponsService';
-
-export interface AdminCoupon {
-  id: string;
-  code: string;
-  name: string;
-  description?: string;
-  discount_type: 'percentage' | 'fixed';
-  discount_value: number;
-  min_order_value: number;
-  max_uses?: number;
-  used_count: number;
-  starts_at?: string;
-  expires_at?: string;
-  active: boolean;
-  created_at: string;
-  updated_at: string;
-}
+import LoadingState from '@/components/common/LoadingState';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { 
+  AdminCoupon, 
+  CreateCouponData,
+  fetchAdminCoupons, 
+  createCoupon, 
+  updateCoupon, 
+  deleteCoupon, 
+  toggleCouponStatus 
+} from '@/services/adminCouponsService';
 
 const AdminCouponsScreen: React.FC = () => {
-  const { isAdmin, isLoading: adminLoading } = useIsAdmin();
   const [coupons, setCoupons] = useState<AdminCoupon[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
+  const [filteredCoupons, setFilteredCoupons] = useState<AdminCoupon[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCoupon, setEditingCoupon] = useState<AdminCoupon | null>(null);
+  const [isFormLoading, setIsFormLoading] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [couponToDelete, setCouponToDelete] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isAdmin) {
-      loadCoupons();
-    }
-  }, [isAdmin]);
+    loadCoupons();
+  }, []);
+
+  useEffect(() => {
+    filterCoupons();
+  }, [coupons, searchTerm]);
 
   const loadCoupons = async () => {
+    setIsLoading(true);
     try {
-      setLoading(true);
       const data = await fetchAdminCoupons();
-      setCoupons(data as AdminCoupon[]);
+      setCoupons(data);
     } catch (error) {
       console.error('Error loading coupons:', error);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
+  };
+
+  const filterCoupons = () => {
+    if (!searchTerm.trim()) {
+      setFilteredCoupons(coupons);
+      return;
+    }
+
+    const filtered = coupons.filter(coupon =>
+      coupon.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      coupon.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (coupon.description && coupon.description.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+    setFilteredCoupons(filtered);
   };
 
   const handleCreateCoupon = () => {
     setEditingCoupon(null);
-    setShowForm(true);
+    setIsFormOpen(true);
   };
 
   const handleEditCoupon = (coupon: AdminCoupon) => {
     setEditingCoupon(coupon);
-    setShowForm(true);
+    setIsFormOpen(true);
   };
 
-  const handleFormClose = () => {
-    setShowForm(false);
-    setEditingCoupon(null);
-    loadCoupons();
-  };
-
-  const handleFormSubmit = async () => {
-    setShowForm(false);
-    setEditingCoupon(null);
-    await loadCoupons();
+  const handleFormSubmit = async (data: CreateCouponData) => {
+    setIsFormLoading(true);
+    try {
+      let success = false;
+      
+      if (editingCoupon) {
+        success = await updateCoupon(editingCoupon.id, data);
+      } else {
+        success = await createCoupon(data);
+      }
+      
+      if (success) {
+        setIsFormOpen(false);
+        setEditingCoupon(null);
+        await loadCoupons();
+      }
+    } catch (error) {
+      console.error('Error submitting form:', error);
+    } finally {
+      setIsFormLoading(false);
+    }
   };
 
   const handleFormCancel = () => {
-    setShowForm(false);
+    setIsFormOpen(false);
     setEditingCoupon(null);
   };
 
-  const handleDelete = async () => {
-    await loadCoupons();
+  const handleDeleteCoupon = (couponId: string) => {
+    setCouponToDelete(couponId);
+    setDeleteDialogOpen(true);
   };
 
-  const handleToggleStatus = async () => {
-    await loadCoupons();
+  const confirmDelete = async () => {
+    if (!couponToDelete) return;
+    
+    const success = await deleteCoupon(couponToDelete);
+    if (success) {
+      await loadCoupons();
+    }
+    
+    setDeleteDialogOpen(false);
+    setCouponToDelete(null);
   };
 
-  if (adminLoading) {
-    return <LoadingState text="Verificando permissões..." />;
-  }
+  const handleToggleStatus = async (couponId: string, active: boolean) => {
+    const success = await toggleCouponStatus(couponId, active);
+    if (success) {
+      await loadCoupons();
+    }
+  };
 
-  if (!isAdmin) {
+  if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Acesso Negado</h2>
-          <p className="text-gray-600">Você não tem permissão para acessar esta página.</p>
-        </div>
-      </div>
+      <AdminLayout currentSection="cupons">
+        <LoadingState text="Carregando cupons..." />
+      </AdminLayout>
     );
   }
-
-  const activeCount = coupons.filter(c => c.active).length;
-  const expiredCount = coupons.filter(c => c.expires_at && new Date(c.expires_at) < new Date()).length;
 
   return (
     <AdminLayout currentSection="cupons">
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Gerenciar Cupons</h1>
-            <p className="text-gray-600">Gerencie cupons de desconto e cupons promocionais</p>
+            <p className="text-gray-600">Crie e gerencie cupons de desconto</p>
+          </div>
+          <Button onClick={handleCreateCoupon} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Novo Cupom
+          </Button>
+        </div>
+
+        {/* Search */}
+        <div className="flex gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Buscar cupons por código, nome ou descrição..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
           </div>
         </div>
 
-        {/* Stats Cards */}
+        {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2">
-                <Ticket className="h-5 w-5 text-blue-500" />
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Total de Cupons</p>
-                  <p className="text-2xl font-bold">{coupons.length}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2">
-                <Tag className="h-5 w-5 text-green-500" />
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Cupons Ativos</p>
-                  <p className="text-2xl font-bold">{activeCount}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2">
-                <TrendingUp className="h-5 w-5 text-orange-500" />
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Cupons Expirados</p>
-                  <p className="text-2xl font-bold">{expiredCount}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2">
-                <Ticket className="h-5 w-5 text-purple-500" />
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Total de Usos</p>
-                  <p className="text-2xl font-bold">
-                    {coupons.reduce((sum, coupon) => sum + coupon.used_count, 0)}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="bg-white p-4 rounded-lg border">
+            <div className="text-2xl font-bold text-blue-600">{coupons.length}</div>
+            <div className="text-sm text-gray-600">Total de Cupons</div>
+          </div>
+          <div className="bg-white p-4 rounded-lg border">
+            <div className="text-2xl font-bold text-green-600">
+              {coupons.filter(c => c.active).length}
+            </div>
+            <div className="text-sm text-gray-600">Ativos</div>
+          </div>
+          <div className="bg-white p-4 rounded-lg border">
+            <div className="text-2xl font-bold text-red-600">
+              {coupons.filter(c => !c.active).length}
+            </div>
+            <div className="text-sm text-gray-600">Inativos</div>
+          </div>
+          <div className="bg-white p-4 rounded-lg border">
+            <div className="text-2xl font-bold text-orange-600">
+              {coupons.reduce((sum, c) => sum + c.used_count, 0)}
+            </div>
+            <div className="text-sm text-gray-600">Total de Usos</div>
+          </div>
         </div>
 
-        {/* Tabs */}
-        <Tabs defaultValue="coupons" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="coupons">Cupons de Desconto</TabsTrigger>
-            <TabsTrigger value="promotional">Cupons Promocionais</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="coupons" className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold">Cupons de Desconto</h2>
-              <Button onClick={handleCreateCoupon}>
-                <Plus className="h-4 w-4 mr-2" />
-                Novo Cupom
-              </Button>
-            </div>
-            
-            {loading ? (
-              <LoadingState text="Carregando cupons..." />
-            ) : (
-              <CouponsTable 
-                coupons={coupons} 
-                onEdit={handleEditCoupon}
-                onDelete={handleDelete}
-                onToggleStatus={handleToggleStatus}
-              />
-            )}
-          </TabsContent>
-          
-          <TabsContent value="promotional" className="space-y-4">
-            <PromotionalCouponsSection />
-          </TabsContent>
-        </Tabs>
-
-        {/* Coupon Form Modal */}
-        {showForm && (
-          <CouponForm
-            coupon={editingCoupon}
-            onSubmit={handleFormSubmit}
-            onCancel={handleFormCancel}
+        {/* Table */}
+        <div className="bg-white rounded-lg border">
+          <CouponsTable
+            coupons={filteredCoupons}
+            onEdit={handleEditCoupon}
+            onDelete={handleDeleteCoupon}
+            onToggleStatus={handleToggleStatus}
           />
-        )}
+        </div>
+
+        {/* Form Dialog */}
+        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {editingCoupon ? 'Editar Cupom' : 'Novo Cupom'}
+              </DialogTitle>
+            </DialogHeader>
+            <CouponForm
+              coupon={editingCoupon || undefined}
+              onSubmit={handleFormSubmit}
+              onCancel={handleFormCancel}
+              isLoading={isFormLoading}
+            />
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Dialog */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir este cupom? Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AdminLayout>
   );

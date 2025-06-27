@@ -29,9 +29,6 @@ export const FavoritesScreen = lazy(() => import('../components/profile/Favorite
 export const AddressScreen = lazy(() => import('../components/profile/AddressScreen'));
 export const SettingsScreen = lazy(() => import('../components/profile/SettingsScreen'));
 
-// Cupons Routes
-export const MeusCuponsScreen = lazy(() => import('../components/coupons/MeusCuponsScreen'));
-
 // Admin Routes - Chunked separately
 export const AdminDashboard = lazy(() => import('../components/admin/dashboard/AdminDashboard'));
 export const UsersManagement = lazy(() => import('../components/admin/users/UserManagementScreen'));
@@ -39,7 +36,6 @@ export const ProductsManagementScreen = lazy(() => import('../components/admin/P
 export const StoresManagementScreen = lazy(() => import('../components/admin/stores/StoresManagementScreen'));
 export const AdminCategoriesScreen = lazy(() => import('../components/admin/categories/AdminCategoriesScreen'));
 export const AdminRewardsScreen = lazy(() => import('../components/admin/rewards/AdminRewardsScreen'));
-export const AdminCouponsScreen = lazy(() => import('../components/admin/coupons/AdminCouponsScreen'));
 
 // Vendor Routes - Chunked separately
 export const VendorHomeScreen = lazy(() => import('../components/vendor/VendorHomeScreen'));
