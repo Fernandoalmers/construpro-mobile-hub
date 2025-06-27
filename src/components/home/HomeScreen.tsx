@@ -48,8 +48,8 @@ const HomeScreen: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <HomeHeader />
 
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      {/* Content - Added pb-20 to prevent bottom navigation overlap */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 pb-20">
         <WelcomeSection />
 
         <PointsBalanceCard
