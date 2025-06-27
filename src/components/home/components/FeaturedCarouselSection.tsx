@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { 
@@ -9,8 +9,11 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from '@/components/ui/carousel';
-import { ArrowRight, ShoppingBag, Gift, Percent } from 'lucide-react';
+import { ArrowRight, ShoppingBag, Gift, Percent, Play, Pause } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { type CarouselApi } from '@/components/ui/carousel';
+import { useCarouselAutoplay } from '@/hooks/useCarouselAutoplay';
+import CarouselIndicators from './CarouselIndicators';
 
 interface CarouselCard {
   id: string;
@@ -25,6 +28,18 @@ interface CarouselCard {
 
 const FeaturedCarouselSection: React.FC = () => {
   const navigate = useNavigate();
+  const [api, setApi] = useState<CarouselApi>();
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [totalSlides, setTotalSlides] = useState(0);
+
+  const {
+    isPlaying,
+    isPaused,
+    play,
+    pause,
+    handleInteractionStart,
+    handleInteractionEnd
+  } = useCarouselAutoplay(api, { delay: 3000 });
 
   const carouselCards: CarouselCard[] = [
     {
@@ -69,24 +84,61 @@ const FeaturedCarouselSection: React.FC = () => {
     }
   ];
 
+  const handleSlideSelect = useCallback((index: number) => {
+    api?.scrollTo(index);
+  }, [api]);
+
+  const toggleAutoplay = useCallback(() => {
+    if (isPlaying && !isPaused) {
+      pause();
+    } else {
+      play();
+    }
+  }, [isPlaying, isPaused, pause, play]);
+
+  React.useEffect(() => {
+    if (!api) return;
+
+    setTotalSlides(api.scrollSnapList().length);
+    setCurrentSlide(api.selectedScrollSnap());
+
+    api.on('select', () => {
+      setCurrentSlide(api.selectedScrollSnap());
+    });
+  }, [api]);
+
   return (
     <div className="mb-6">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-base font-semibold text-gray-900">Destaques</h3>
+        
+        {/* Play/Pause button - Mobile only */}
+        <button
+          onClick={toggleAutoplay}
+          className="md:hidden p-2 text-gray-600 hover:text-gray-800 transition-colors"
+          aria-label={isPlaying && !isPaused ? 'Pausar carrossel' : 'Reproduzir carrossel'}
+        >
+          {isPlaying && !isPaused ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+        </button>
       </div>
       
       {/* Mobile: Carousel - Hidden on desktop */}
       <div className="block md:hidden">
         <Carousel
+          setApi={setApi}
           opts={{
             align: "start",
             loop: true,
           }}
           className="w-full"
+          onMouseEnter={handleInteractionStart}
+          onMouseLeave={handleInteractionEnd}
+          onTouchStart={handleInteractionStart}
+          onTouchEnd={handleInteractionEnd}
         >
           <CarouselContent className="-ml-2">
             {carouselCards.map((card) => (
-              <CarouselItem key={card.id} className="pl-2 basis-full sm:basis-1/2">
+              <CarouselItem key={card.id} className="pl-2 basis-full">
                 <Card className="overflow-hidden group cursor-pointer hover:shadow-lg transition-all duration-300">
                   <CardContent className="p-0 relative h-48">
                     {/* Background Image */}
@@ -133,9 +185,19 @@ const FeaturedCarouselSection: React.FC = () => {
               </CarouselItem>
             ))}
           </CarouselContent>
-          <CarouselPrevious className="hidden sm:flex -left-4" />
-          <CarouselNext className="hidden sm:flex -right-4" />
+          
+          {/* Navigation Buttons - Now visible on mobile */}
+          <CarouselPrevious className="left-2 bg-white/80 hover:bg-white border-white/50 text-gray-800" />
+          <CarouselNext className="right-2 bg-white/80 hover:bg-white border-white/50 text-gray-800" />
         </Carousel>
+
+        {/* Indicators for mobile */}
+        <CarouselIndicators
+          api={api}
+          totalSlides={totalSlides}
+          currentSlide={currentSlide}
+          onSlideSelect={handleSlideSelect}
+        />
       </div>
 
       {/* Desktop: Grid layout - Hidden on mobile */}
