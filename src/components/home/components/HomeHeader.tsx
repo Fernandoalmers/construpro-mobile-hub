@@ -1,8 +1,8 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Smartphone } from 'lucide-react';
 import Avatar from '@/components/common/Avatar';
+import LazyImage from '@/components/common/LazyImage';
 import { useAuth } from '@/context/AuthContext';
 
 const HomeHeader: React.FC = () => {
@@ -14,8 +14,13 @@ const HomeHeader: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
-            <Smartphone className="h-8 w-8 text-royal-blue mr-2" />
-            <h1 className="text-xl font-bold text-gray-900">Matershop</h1>
+            <LazyImage
+              src="/matershop-logo.png"
+              alt="Matershop"
+              className="h-10 w-auto object-contain"
+              placeholderClassName="h-10 w-24 bg-gray-200 rounded"
+              onError={() => console.log('Erro ao carregar logo')}
+            />
           </div>
           <div className="flex items-center space-x-4">
             <Avatar
