@@ -51,7 +51,8 @@ import {
   VendorStoreConfigScreen,
   VendorProfileScreen,
   VendorGeneralSettingsScreen,
-  VendorDeliverySettingsScreen
+  VendorDeliverySettingsScreen,
+  MeusCuponsScreen
 } from './routes/RouteImports';
 import ConviteScreen from './components/referral/ConviteScreen';
 import AutoFixCodesPage from './pages/AutoFixCodes';
@@ -113,6 +114,7 @@ const App = () => (
           <Route path="/escanear" element={<ProtectedRoute><EscanearScreen /></ProtectedRoute>} />
           <Route path="/scan" element={<ProtectedRoute><EscanearScreen /></ProtectedRoute>} />
           <Route path="/suporte" element={<ProtectedRoute><SuporteScreen /></ProtectedRoute>} />
+          <Route path="/meus-cupons" element={<ProtectedRoute><MeusCuponsScreen /></ProtectedRoute>} />
           
           {/* Profile related routes */}
           <Route path="/profile/orders" element={<ProtectedRoute><OrdersScreen /></ProtectedRoute>} />
