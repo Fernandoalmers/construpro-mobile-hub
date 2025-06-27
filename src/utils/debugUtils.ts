@@ -48,16 +48,31 @@ export const debugUserData = async (userId: string) => {
       console.error('❌ [debugUtils] Auth error:', authError);
     }
     
+    // Check cart data
+    const { data: cart, error: cartError } = await supabase
+      .from('carts')
+      .select('*, cart_items(*)')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .single();
+      
+    console.log('🛒 [debugUtils] Cart data:', cart);
+    if (cartError) {
+      console.error('❌ [debugUtils] Cart error:', cartError);
+    }
+    
     return {
       profile,
       transactions,
       coupons,
       user,
+      cart,
       errors: {
         profileError,
         transactionsError,
         couponsError,
-        authError
+        authError,
+        cartError
       }
     };
   } catch (error) {
@@ -82,5 +97,58 @@ export const logDataFetch = (serviceName: string, data: any, error?: any) => {
   }
 };
 
+// System health check
+export const performSystemHealthCheck = async () => {
+  console.log('🏥 [debugUtils] Performing system health check...');
+  
+  const health = {
+    auth: false,
+    database: false,
+    cache: false,
+    timestamp: new Date().toISOString()
+  };
+  
+  try {
+    // Test auth
+    const { data: { user } } = await supabase.auth.getUser();
+    health.auth = !!user;
+    
+    // Test database
+    const { data: testQuery } = await supabase
+      .from('profiles')
+      .select('id')
+      .limit(1);
+    health.database = !!testQuery;
+    
+    // Test cache
+    const { data: cacheTest } = await supabase
+      .from('zip_cache')
+      .select('cep')
+      .limit(1);
+    health.cache = !!cacheTest;
+    
+  } catch (error) {
+    console.error('❌ [debugUtils] Health check error:', error);
+  }
+  
+  console.log('🏥 [debugUtils] System health:', health);
+  return health;
+};
+
+// Enhanced error reporting
+export const reportError = (error: Error, context: string, additionalData?: any) => {
+  console.error(`🚨 [debugUtils] Error in ${context}:`, {
+    message: error.message,
+    stack: error.stack,
+    timestamp: new Date().toISOString(),
+    context,
+    additionalData,
+    userAgent: navigator.userAgent,
+    url: window.location.href
+  });
+};
+
 // Function to be called from browser console for debugging
 (window as any).debugUserData = debugUserData;
+(window as any).performSystemHealthCheck = performSystemHealthCheck;
+(window as any).reportError = reportError;
