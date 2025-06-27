@@ -131,6 +131,31 @@ export const fetchAllPromotionalCoupons = async (): Promise<PromotionalCoupon[]>
   }
 };
 
+// Buscar cupons administrativos para seleção
+export const fetchAdminCoupons = async () => {
+  try {
+    console.log('[PromotionalCoupons] Fetching admin coupons...');
+    
+    const { data: coupons, error } = await supabase
+      .from('coupons')
+      .select('*')
+      .eq('active', true)
+      .order('created_at', { ascending: false });
+      
+    if (error) {
+      console.error('[PromotionalCoupons] Error fetching admin coupons:', error);
+      throw error;
+    }
+    
+    console.log(`[PromotionalCoupons] Found ${coupons?.length || 0} admin coupons`);
+    return coupons || [];
+  } catch (error) {
+    console.error('Error fetching admin coupons:', error);
+    toast.error('Erro ao carregar cupons administrativos');
+    return [];
+  }
+};
+
 // Criar cupom promocional
 export const createPromotionalCoupon = async (data: CreatePromotionalCouponData): Promise<boolean> => {
   try {
@@ -159,31 +184,6 @@ export const createPromotionalCoupon = async (data: CreatePromotionalCouponData)
   } catch (error) {
     console.error('Error creating promotional coupon:', error);
     toast.error('Erro ao criar cupom promocional');
-    return false;
-  }
-};
-
-// Atualizar cupom promocional
-export const updatePromotionalCoupon = async (id: string, data: Partial<CreatePromotionalCouponData>): Promise<boolean> => {
-  try {
-    console.log('[PromotionalCoupons] Updating promotional coupon:', id);
-    
-    const { error } = await supabase
-      .from('promotional_coupons')
-      .update(data)
-      .eq('id', id);
-      
-    if (error) {
-      console.error('[PromotionalCoupons] Error updating promotional coupon:', error);
-      toast.error('Erro ao atualizar cupom promocional');
-      return false;
-    }
-    
-    toast.success('Cupom promocional atualizado com sucesso');
-    return true;
-  } catch (error) {
-    console.error('Error updating promotional coupon:', error);
-    toast.error('Erro ao atualizar cupom promocional');
     return false;
   }
 };
@@ -287,41 +287,25 @@ export const formatExpiryDate = (date?: string): string => {
   return `Válido até ${expiryDate.toLocaleDateString('pt-BR')}`;
 };
 
-export const getCouponStatusColor = (coupon: PromotionalCoupon['coupon']): string => {
-  if (!coupon.active) return 'bg-red-100 text-red-800';
+export const getCouponStatusColor = (active: boolean, expires_at?: string): string => {
+  if (!active) return 'bg-red-100 text-red-800';
   
   const now = new Date();
   
-  if (coupon.starts_at && new Date(coupon.starts_at) > now) {
-    return 'bg-yellow-100 text-yellow-800';
-  }
-  
-  if (coupon.expires_at && new Date(coupon.expires_at) < now) {
-    return 'bg-gray-100 text-gray-800';
-  }
-  
-  if (coupon.max_uses && coupon.used_count >= coupon.max_uses) {
+  if (expires_at && new Date(expires_at) < now) {
     return 'bg-gray-100 text-gray-800';
   }
   
   return 'bg-green-100 text-green-800';
 };
 
-export const getCouponStatusText = (coupon: PromotionalCoupon['coupon']): string => {
-  if (!coupon.active) return 'Inativo';
+export const getCouponStatusText = (active: boolean, expires_at?: string): string => {
+  if (!active) return 'Inativo';
   
   const now = new Date();
   
-  if (coupon.starts_at && new Date(coupon.starts_at) > now) {
-    return 'Aguardando';
-  }
-  
-  if (coupon.expires_at && new Date(coupon.expires_at) < now) {
+  if (expires_at && new Date(expires_at) < now) {
     return 'Expirado';
-  }
-  
-  if (coupon.max_uses && coupon.used_count >= coupon.max_uses) {
-    return 'Esgotado';
   }
   
   return 'Ativo';

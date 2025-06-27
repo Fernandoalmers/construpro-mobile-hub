@@ -39,6 +39,7 @@ export const ProductsManagementScreen = lazy(() => import('../components/admin/P
 export const StoresManagementScreen = lazy(() => import('../components/admin/stores/StoresManagementScreen'));
 export const AdminCategoriesScreen = lazy(() => import('../components/admin/categories/AdminCategoriesScreen'));
 export const AdminRewardsScreen = lazy(() => import('../components/admin/rewards/AdminRewardsScreen'));
+export const AdminCouponsScreen = lazy(() => import('../components/admin/coupons/AdminCouponsScreen'));
 
 // Vendor Routes - Chunked separately
 export const VendorHomeScreen = lazy(() => import('../components/vendor/VendorHomeScreen'));

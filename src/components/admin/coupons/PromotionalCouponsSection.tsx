@@ -50,7 +50,23 @@ import {
   getCouponStatusColor,
   getCouponStatusText
 } from '@/services/promotionalCouponsService';
-import { AdminCoupon } from '@/services/adminCouponsService';
+
+interface AdminCoupon {
+  id: string;
+  code: string;
+  name: string;
+  description?: string;
+  discount_type: 'percentage' | 'fixed';
+  discount_value: number;
+  min_order_value: number;
+  max_uses?: number;
+  used_count: number;
+  starts_at?: string;
+  expires_at?: string;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
 const PromotionalCouponsSection: React.FC = () => {
   const [promotionalCoupons, setPromotionalCoupons] = useState<PromotionalCoupon[]>([]);
@@ -76,7 +92,7 @@ const PromotionalCouponsSection: React.FC = () => {
       
       // Filtrar cupons que ainda não são promocionais
       const promotionalCouponIds = promotionalData.map(pc => pc.coupon_id);
-      const available = couponsData.filter(coupon => 
+      const available = couponsData.filter((coupon: AdminCoupon) => 
         !promotionalCouponIds.includes(coupon.id) && coupon.active
       );
       

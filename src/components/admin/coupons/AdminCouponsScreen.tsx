@@ -10,7 +10,24 @@ import CouponsTable from './CouponsTable';
 import CouponForm from './CouponForm';
 import PromotionalCouponsSection from './PromotionalCouponsSection';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
-import { fetchAdminCoupons, AdminCoupon } from '@/services/adminCouponsService';
+import { fetchAdminCoupons } from '@/services/promotionalCouponsService';
+
+export interface AdminCoupon {
+  id: string;
+  code: string;
+  name: string;
+  description?: string;
+  discount_type: 'percentage' | 'fixed';
+  discount_value: number;
+  min_order_value: number;
+  max_uses?: number;
+  used_count: number;
+  starts_at?: string;
+  expires_at?: string;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
 const AdminCouponsScreen: React.FC = () => {
   const { isAdmin, isLoading: adminLoading } = useIsAdmin();
@@ -51,6 +68,25 @@ const AdminCouponsScreen: React.FC = () => {
     setShowForm(false);
     setEditingCoupon(null);
     loadCoupons();
+  };
+
+  const handleFormSubmit = async () => {
+    setShowForm(false);
+    setEditingCoupon(null);
+    await loadCoupons();
+  };
+
+  const handleFormCancel = () => {
+    setShowForm(false);
+    setEditingCoupon(null);
+  };
+
+  const handleDelete = async () => {
+    await loadCoupons();
+  };
+
+  const handleToggleStatus = async () => {
+    await loadCoupons();
   };
 
   if (adminLoading) {
@@ -156,7 +192,8 @@ const AdminCouponsScreen: React.FC = () => {
               <CouponsTable 
                 coupons={coupons} 
                 onEdit={handleEditCoupon}
-                onRefresh={loadCoupons}
+                onDelete={handleDelete}
+                onToggleStatus={handleToggleStatus}
               />
             )}
           </TabsContent>
@@ -170,7 +207,8 @@ const AdminCouponsScreen: React.FC = () => {
         {showForm && (
           <CouponForm
             coupon={editingCoupon}
-            onClose={handleFormClose}
+            onSubmit={handleFormSubmit}
+            onCancel={handleFormCancel}
           />
         )}
       </div>

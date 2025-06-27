@@ -15,7 +15,8 @@ import {
   OrdersScreen,
   FavoritesScreen,
   AddressScreen,
-  SettingsScreen
+  SettingsScreen,
+  MeusCuponsScreen
 } from './LazyRoutes';
 
 // Import directly as they are smaller components
@@ -35,7 +36,6 @@ import UserDataScreen from '../components/profile/UserDataScreen';
 import ReviewsScreen from '../components/profile/ReviewsScreen';
 import ReferralsScreen from '../components/profile/ReferralsScreen';
 import OrderDetailScreen from '../components/profile/OrderDetailScreen';
-import MeusCuponsScreen from '../components/coupons/MeusCuponsScreen';
 
 const UserLoadingWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <Suspense fallback={<LoadingState text="Carregando..." />}>
@@ -132,7 +132,13 @@ const UserRoutes: React.FC = () => {
       } />
       
       {/* Meus Cupons */}
-      <Route path="/meus-cupons" element={<ProtectedRoute><MeusCuponsScreen /></ProtectedRoute>} />
+      <Route path="/meus-cupons" element={
+        <ProtectedRoute>
+          <UserLoadingWrapper>
+            <MeusCuponsScreen />
+          </UserLoadingWrapper>
+        </ProtectedRoute>
+      } />
       
       {/* Smaller components - direct import */}
       <Route path="/convite" element={<ProtectedRoute><ConviteScreen /></ProtectedRoute>} />
