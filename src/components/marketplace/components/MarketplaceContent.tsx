@@ -60,12 +60,21 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
     return currentCategoryName || "Produtos disponíveis";
   };
 
+  // CORRIGIDO: Adicionar margem de segurança ao padding calculado
+  const safePaddingTop = dynamicPaddingTop + 8; // 8px de margem de segurança
+
+  console.log('[MarketplaceContent] Padding aplicado:', {
+    dynamicPaddingTop,
+    safePaddingTop,
+    currentCategoryName
+  });
+
   // NOVO: Loading state coordenado - não mostra produtos até verificação completa
   if (isLoading || !isInitialized) {
     return (
       <div 
         className="flex-1 pb-20"
-        style={{ paddingTop: `${dynamicPaddingTop}px` }}
+        style={{ paddingTop: `${safePaddingTop}px` }}
       >
         <div className="p-4">
           <div className="mb-4">
@@ -80,7 +89,7 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
   return (
     <div 
       className="flex-1 pb-20"
-      style={{ paddingTop: `${dynamicPaddingTop}px` }}
+      style={{ paddingTop: `${safePaddingTop}px` }}
     >
       <div className="p-4">
         {/* Indicador de zona de entrega */}
@@ -103,11 +112,11 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
                 )}
               </div>
               
-              {/* Botão Alterar CEP */}
+              {/* Botão Alterar CEP - MOBILE ONLY (Desktop tem no header) */}
               {currentCep && filteredProdutos.length > 0 && (
                 <button
                   onClick={handleChangeCep}
-                  className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-construPro-blue border border-construPro-blue rounded-md hover:bg-blue-50 transition-colors shrink-0"
+                  className="md:hidden flex items-center gap-1 px-2 py-1 text-xs font-medium text-construPro-blue border border-construPro-blue rounded-md hover:bg-blue-50 transition-colors shrink-0"
                 >
                   <MapPin className="w-3 h-3" />
                   Alterar CEP

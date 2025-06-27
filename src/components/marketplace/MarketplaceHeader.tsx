@@ -71,6 +71,7 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
   const [showCepModal, setShowCepModal] = useState(false);
   const topSectionRef = useRef<HTMLDivElement>(null);
   const bottomSectionRef = useRef<HTMLDivElement>(null);
+  const headerContainerRef = useRef<HTMLDivElement>(null);
 
   // Handler para alterar CEP usando o modal inteligente
   const handleChangeCep = () => {
@@ -82,26 +83,57 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
     await resolveZones(newCep);
   };
 
-  // Calculate and report only the always-visible section height
+  // CORRIGIDO: Calcular altura total do header considerando todas as seções
   useEffect(() => {
-    const calculateHeight = () => {
-      if (topSectionRef.current && onHeightChange) {
-        const height = topSectionRef.current.offsetHeight;
-        onHeightChange(height);
+    const calculateTotalHeight = () => {
+      if (!headerContainerRef.current || !onHeightChange) return;
+      
+      let totalHeight = 0;
+      
+      // Altura da seção superior (sempre visível)
+      if (topSectionRef.current) {
+        totalHeight += topSectionRef.current.offsetHeight;
       }
+      
+      // Altura da seção inferior (quando visível)
+      if (bottomSectionRef.current && !hideHeader) {
+        totalHeight += bottomSectionRef.current.offsetHeight;
+      }
+      
+      console.log('[MarketplaceHeader] Altura calculada:', {
+        topHeight: topSectionRef.current?.offsetHeight || 0,
+        bottomHeight: bottomSectionRef.current?.offsetHeight || 0,
+        hideHeader,
+        totalHeight
+      });
+      
+      onHeightChange(totalHeight);
     };
 
-    // Calculate height immediately and after DOM updates
-    const timeoutId = setTimeout(calculateHeight, 0);
-    calculateHeight();
+    // Calcular altura imediatamente
+    calculateTotalHeight();
     
-    window.addEventListener('resize', calculateHeight);
+    // Recalcular após mudanças no DOM
+    const timeoutId = setTimeout(calculateTotalHeight, 100);
+    
+    // Observar mudanças de tamanho
+    const resizeObserver = new ResizeObserver(() => {
+      calculateTotalHeight();
+    });
+    
+    if (headerContainerRef.current) {
+      resizeObserver.observe(headerContainerRef.current);
+    }
+    
+    // Listener para mudanças de janela
+    window.addEventListener('resize', calculateTotalHeight);
     
     return () => {
-      window.removeEventListener('resize', calculateHeight);
       clearTimeout(timeoutId);
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', calculateTotalHeight);
     };
-  }, [onHeightChange]);
+  }, [hideHeader, onHeightChange, selectedCategories.length, selectedLojas.length, selectedRatings.length, selectedSegments.length, selectedPriceRanges.length]);
 
   // Fix the store mapping to ensure proper format
   const lojasOptions = stores.map(store => ({
@@ -111,7 +143,10 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
 
   return (
     <>
-      <div className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 shadow-sm">
+      <div 
+        ref={headerContainerRef}
+        className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 shadow-sm"
+      >
         {/* Seção Superior - SEMPRE VISÍVEL (Busca + Navegação) */}
         <div 
           ref={topSectionRef}
