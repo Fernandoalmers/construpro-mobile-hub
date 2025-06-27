@@ -26,8 +26,8 @@ import { Badge } from '@/components/ui/badge';
 const HomeScreen: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { produtos, loading: produtosLoading } = useMarketplaceData();
-  const { rewards, loading: rewardsLoading } = useRewardsData();
+  const { products, isLoading: produtosLoading } = useMarketplaceData(null);
+  const { rewards, isLoading: rewardsLoading } = useRewardsData();
   const [userPoints, setUserPoints] = useState(0);
 
   useEffect(() => {
@@ -161,7 +161,7 @@ const HomeScreen: React.FC = () => {
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {produtos.slice(0, 4).map((produto) => (
+              {products.slice(0, 4).map((produto) => (
                 <Card 
                   key={produto.id}
                   className="cursor-pointer hover:shadow-md transition-shadow"
@@ -239,7 +239,7 @@ const HomeScreen: React.FC = () => {
                       </div>
                       <div className="flex-1">
                         <h4 className="font-medium text-gray-900 text-sm mb-1">
-                          {reward.item}
+                          {reward.titulo}
                         </h4>
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-gray-500">

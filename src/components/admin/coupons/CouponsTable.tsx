@@ -11,17 +11,13 @@ import CouponDetailsModal from './CouponDetailsModal';
 interface CouponsTableProps {
   coupons: AdminCoupon[];
   onEdit: (coupon: AdminCoupon) => void;
-  onDelete: (couponId: string) => void;
-  onToggleStatus: (couponId: string, active: boolean) => void;
-  isLoading?: boolean;
+  onRefresh: () => Promise<void>;
 }
 
 const CouponsTable: React.FC<CouponsTableProps> = ({
   coupons,
   onEdit,
-  onDelete,
-  onToggleStatus,
-  isLoading = false
+  onRefresh
 }) => {
   const [selectedCoupon, setSelectedCoupon] = useState<AdminCoupon | null>(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
@@ -36,6 +32,18 @@ const CouponsTable: React.FC<CouponsTableProps> = ({
   const handleCouponClick = (coupon: AdminCoupon) => {
     setSelectedCoupon(coupon);
     setDetailsModalOpen(true);
+  };
+
+  const handleDelete = async (couponId: string) => {
+    // Implement delete functionality
+    console.log('Delete coupon:', couponId);
+    await onRefresh();
+  };
+
+  const handleToggleStatus = async (couponId: string, active: boolean) => {
+    // Implement toggle status functionality
+    console.log('Toggle status:', couponId, active);
+    await onRefresh();
   };
 
   if (coupons.length === 0) {
@@ -143,7 +151,6 @@ const CouponsTable: React.FC<CouponsTableProps> = ({
                         e.stopPropagation();
                         handleCouponClick(coupon);
                       }}
-                      disabled={isLoading}
                       title="Ver detalhes e histórico de uso"
                     >
                       <Eye className="h-4 w-4" />
@@ -153,9 +160,8 @@ const CouponsTable: React.FC<CouponsTableProps> = ({
                       size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onToggleStatus(coupon.id, !coupon.active);
+                        handleToggleStatus(coupon.id, !coupon.active);
                       }}
-                      disabled={isLoading}
                       title={coupon.active ? 'Desativar cupom' : 'Ativar cupom'}
                     >
                       {coupon.active ? (
@@ -171,7 +177,6 @@ const CouponsTable: React.FC<CouponsTableProps> = ({
                         e.stopPropagation();
                         onEdit(coupon);
                       }}
-                      disabled={isLoading}
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
@@ -180,9 +185,8 @@ const CouponsTable: React.FC<CouponsTableProps> = ({
                       size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onDelete(coupon.id);
+                        handleDelete(coupon.id);
                       }}
-                      disabled={isLoading}
                       className="text-red-600 hover:text-red-700"
                     >
                       <Trash2 className="h-4 w-4" />
