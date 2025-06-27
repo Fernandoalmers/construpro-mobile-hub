@@ -15,10 +15,10 @@ const HomeHeader: React.FC = () => {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
             <LazyImage
-              src="/matershop-logo.png"
+              src="/lovable-uploads/31e08fbc-04d4-4249-b2cb-8a9cebdf3107.png"
               alt="Matershop"
-              className="h-10 w-auto object-contain"
-              placeholderClassName="h-10 w-24 bg-gray-200 rounded"
+              className="h-12 w-auto object-contain hover:scale-105 transition-transform duration-200"
+              placeholderClassName="h-12 w-32 bg-gray-200 rounded-md animate-pulse"
               onError={() => console.log('Erro ao carregar logo')}
             />
           </div>
