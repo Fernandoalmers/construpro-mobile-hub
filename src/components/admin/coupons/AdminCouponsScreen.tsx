@@ -10,8 +10,7 @@ import CouponsTable from './CouponsTable';
 import CouponForm from './CouponForm';
 import PromotionalCouponsSection from './PromotionalCouponsSection';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
-import { fetchAdminCoupons, AdminCoupon, deleteCoupon, toggleCouponStatus, createCoupon, updateCoupon } from '@/services/adminCouponsService';
-import { toast } from '@/components/ui/sonner';
+import { fetchAdminCoupons, AdminCoupon } from '@/services/adminCouponsService';
 
 const AdminCouponsScreen: React.FC = () => {
   const { isAdmin, isLoading: adminLoading } = useIsAdmin();
@@ -48,50 +47,10 @@ const AdminCouponsScreen: React.FC = () => {
     setShowForm(true);
   };
 
-  const handleDeleteCoupon = async (couponId: string) => {
-    try {
-      const success = await deleteCoupon(couponId);
-      if (success) {
-        await loadCoupons();
-      }
-    } catch (error) {
-      console.error('Error deleting coupon:', error);
-    }
-  };
-
-  const handleToggleStatus = async (couponId: string, active: boolean) => {
-    try {
-      const success = await toggleCouponStatus(couponId, active);
-      if (success) {
-        await loadCoupons();
-      }
-    } catch (error) {
-      console.error('Error toggling coupon status:', error);
-    }
-  };
-
-  const handleSubmitCoupon = async (data: any) => {
-    try {
-      let success = false;
-      if (editingCoupon) {
-        success = await updateCoupon(editingCoupon.id, data);
-      } else {
-        success = await createCoupon(data);
-      }
-      
-      if (success) {
-        setShowForm(false);
-        setEditingCoupon(null);
-        await loadCoupons();
-      }
-    } catch (error) {
-      console.error('Error submitting coupon:', error);
-    }
-  };
-
-  const handleCancelForm = () => {
+  const handleFormClose = () => {
     setShowForm(false);
     setEditingCoupon(null);
+    loadCoupons();
   };
 
   if (adminLoading) {
@@ -197,8 +156,7 @@ const AdminCouponsScreen: React.FC = () => {
               <CouponsTable 
                 coupons={coupons} 
                 onEdit={handleEditCoupon}
-                onDelete={handleDeleteCoupon}
-                onToggleStatus={handleToggleStatus}
+                onRefresh={loadCoupons}
               />
             )}
           </TabsContent>
@@ -212,8 +170,7 @@ const AdminCouponsScreen: React.FC = () => {
         {showForm && (
           <CouponForm
             coupon={editingCoupon}
-            onSubmit={handleSubmitCoupon}
-            onCancel={handleCancelForm}
+            onClose={handleFormClose}
           />
         )}
       </div>
