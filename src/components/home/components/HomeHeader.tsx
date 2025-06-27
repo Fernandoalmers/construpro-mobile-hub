@@ -11,18 +11,21 @@ const HomeHeader: React.FC = () => {
   const [placeholderError, setPlaceholderError] = useState(false);
 
   const handleLogoError = () => {
-    console.log('Erro ao carregar logo principal');
+    console.log('🚨 [HomeHeader] Erro ao carregar logo principal:', '/lovable-uploads/7520caa6-efbb-4176-9c9f-8d37f88c7ff1.png');
     setLogoError(true);
   };
 
   const handlePlaceholderError = () => {
-    console.log('Erro ao carregar placeholder');
+    console.log('🚨 [HomeHeader] Erro ao carregar placeholder');
     setPlaceholderError(true);
   };
 
   const renderLogo = () => {
+    console.log('🔍 [HomeHeader] Estado atual:', { logoError, placeholderError });
+    
     // Se ambas as imagens falharam, mostra logo CSS
     if (logoError && placeholderError) {
+      console.log('💡 [HomeHeader] Usando fallback CSS - ambas imagens falharam');
       return (
         <div className="h-12 flex items-center">
           <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent hover:scale-105 transition-transform duration-200 cursor-pointer">
@@ -34,6 +37,7 @@ const HomeHeader: React.FC = () => {
 
     // Se a logo principal falhou, tenta o placeholder
     if (logoError) {
+      console.log('⚠️ [HomeHeader] Logo principal falhou, tentando placeholder');
       return (
         <img
           src="/img/placeholder.png"
@@ -44,13 +48,15 @@ const HomeHeader: React.FC = () => {
       );
     }
 
-    // Tenta a nova logo da Matershop primeiro
+    // Tenta a nova logo da Matershop enviada pelo usuário
+    console.log('✅ [HomeHeader] Carregando nova logo da Matershop');
     return (
       <img
-        src="/lovable-uploads/5fbb87ad-f9c8-4314-8317-de0041c02936.png"
+        src="/lovable-uploads/7520caa6-efbb-4176-9c9f-8d37f88c7ff1.png"
         alt="Matershop"
         className="h-12 w-auto object-contain hover:scale-105 transition-transform duration-200"
         onError={handleLogoError}
+        onLoad={() => console.log('🎉 [HomeHeader] Logo carregada com sucesso!')}
       />
     );
   };
