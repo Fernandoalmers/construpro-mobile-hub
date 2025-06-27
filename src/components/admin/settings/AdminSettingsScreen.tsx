@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { SecurityFixButton } from '@/components/admin/SecurityFixButton';
 import { SecurityDashboard } from '@/components/admin/security/SecurityDashboard';
+import LogoUploadSection from './LogoUploadSection';
 
 const AdminSettingsScreen: React.FC = () => {
   return (
@@ -14,6 +15,11 @@ const AdminSettingsScreen: React.FC = () => {
       </div>
 
       <div className="grid gap-6">
+        {/* Logo Upload Section */}
+        <LogoUploadSection />
+
+        <Separator />
+
         {/* Security Dashboard */}
         <SecurityDashboard />
 

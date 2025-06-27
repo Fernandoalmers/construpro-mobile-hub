@@ -3,15 +3,17 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Avatar from '@/components/common/Avatar';
 import { useAuth } from '@/context/AuthContext';
+import { useSiteLogo } from '@/hooks/useSiteLogo';
 
 const HomeHeader: React.FC = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
+  const { logoUrl, isLoading: logoLoading } = useSiteLogo();
   const [logoError, setLogoError] = useState(false);
   const [placeholderError, setPlaceholderError] = useState(false);
 
   const handleLogoError = () => {
-    console.log('🚨 [HomeHeader] Erro ao carregar logo principal:', '/lovable-uploads/7520caa6-efbb-4176-9c9f-8d37f88c7ff1.png');
+    console.log('🚨 [HomeHeader] Erro ao carregar logo principal:', logoUrl);
     setLogoError(true);
   };
 
@@ -21,7 +23,7 @@ const HomeHeader: React.FC = () => {
   };
 
   const renderLogo = () => {
-    console.log('🔍 [HomeHeader] Estado atual:', { logoError, placeholderError });
+    console.log('🔍 [HomeHeader] Estado atual:', { logoUrl, logoError, placeholderError, logoLoading });
     
     // Se ambas as imagens falharam, mostra logo CSS
     if (logoError && placeholderError) {
@@ -48,11 +50,13 @@ const HomeHeader: React.FC = () => {
       );
     }
 
-    // Tenta a nova logo da Matershop enviada pelo usuário
-    console.log('✅ [HomeHeader] Carregando nova logo da Matershop');
+    // Usar logo do banco de dados ou fallback para a logo atual
+    const currentLogoUrl = logoUrl || '/lovable-uploads/7520caa6-efbb-4176-9c9f-8d37f88c7ff1.png';
+    console.log('✅ [HomeHeader] Carregando logo:', currentLogoUrl);
+    
     return (
       <img
-        src="/lovable-uploads/7520caa6-efbb-4176-9c9f-8d37f88c7ff1.png"
+        src={currentLogoUrl}
         alt="Matershop"
         className="h-12 w-auto object-contain hover:scale-105 transition-transform duration-200"
         onError={handleLogoError}
