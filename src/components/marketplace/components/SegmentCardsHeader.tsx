@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Construction, Zap, GlassWater, Square, Truck, Wrench, ShoppingBag } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -162,7 +161,7 @@ const SegmentCardsHeader: React.FC<SegmentCardsHeaderProps> = ({
     return (
       <div className="w-full pb-2">
         {/* Mobile: scroll horizontal */}
-        <div className="flex md:hidden space-x-4 px-4 overflow-x-auto border-2 border-yellow-200">
+        <div className="flex md:hidden space-x-4 px-4 overflow-x-auto">
           {[1, 2, 3, 4].map(i => (
             <div key={i} className="animate-pulse flex flex-col items-center min-w-[80px]">
               <div className="w-12 h-12 rounded-full bg-gray-200 mb-2"></div>
@@ -172,7 +171,7 @@ const SegmentCardsHeader: React.FC<SegmentCardsHeaderProps> = ({
         </div>
         
         {/* Desktop: grid layout */}
-        <div className="hidden md:grid grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4 px-4 border-2 border-yellow-200">
+        <div className="hidden md:grid grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4 px-4">
           {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
             <div key={i} className="animate-pulse flex flex-col items-center">
               <div className="w-12 h-12 rounded-full bg-gray-200 mb-2"></div>
@@ -197,7 +196,7 @@ const SegmentCardsHeader: React.FC<SegmentCardsHeaderProps> = ({
   return (
     <div className="w-full pb-2">
       {/* Mobile: horizontal scroll layout - Hidden on desktop */}
-      <div className="flex md:hidden space-x-4 px-4 py-3 overflow-x-auto border-2 border-orange-200">
+      <div className="flex md:hidden space-x-4 px-4 py-3 overflow-x-auto">
         {allSegments.map(segment => (
           <SegmentCard
             key={segment.id}
@@ -212,7 +211,7 @@ const SegmentCardsHeader: React.FC<SegmentCardsHeaderProps> = ({
       </div>
       
       {/* Desktop: grid layout - Hidden on mobile */}
-      <div className="hidden md:grid grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4 px-4 py-3 border-2 border-orange-200">
+      <div className="hidden md:grid grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4 px-4 py-3">
         {allSegments.map(segment => (
           <SegmentCard
             key={segment.id}

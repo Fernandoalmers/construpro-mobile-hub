@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -10,6 +11,7 @@ import { getProductSegments, ProductSegment } from '@/services/admin/productSegm
 
 // Import store data
 import stores from '@/data/lojas.json';
+
 const MarketplaceHomeScreen: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -36,13 +38,11 @@ const MarketplaceHomeScreen: React.FC = () => {
     };
     fetchSegments();
   }, []);
+
   useEffect(() => {
     const fetchStores = async () => {
       try {
-        const {
-          data,
-          error
-        } = await supabase.from('stores').select('*');
+        const { data, error } = await supabase.from('stores').select('*');
         if (error) throw error;
         if (data && data.length > 0) {
           setStoreData(data);
@@ -89,6 +89,7 @@ const MarketplaceHomeScreen: React.FC = () => {
       return <ShoppingBag size={24} />;
     }
   };
+
   const handleCategoryClick = (segmentId?: string) => {
     if (!segmentId) {
       navigate('/marketplace/products');
@@ -101,35 +102,50 @@ const MarketplaceHomeScreen: React.FC = () => {
     console.log(`[MarketplaceHomeScreen] Navigating to marketplace with segment_id: ${segmentId}`);
     navigate(`/marketplace/products?${queryParams.toString()}`);
   };
+
   if (loading) {
     return <LoadingState text="Carregando segmentos..." />;
   }
+
   if (error) {
     return <ErrorState title="Erro" message={error} />;
   }
-  return <div className="flex flex-col min-h-screen bg-gray-50 pb-20">
+
+  return (
+    <div className="flex flex-col min-h-screen bg-gray-50 pb-20">
       {/* Header */}
       <div className="p-4 pt-8 bg-construPro-blue">
         <h1 className="text-2xl font-bold text-white mb-4">Loja</h1>
         
-        <CustomInput isSearch placeholder="Buscar produtos" onClick={() => navigate('/marketplace/products')} className="mb-2 cursor-pointer" readOnly />
+        <CustomInput 
+          isSearch 
+          placeholder="Buscar produtos" 
+          onClick={() => navigate('/marketplace/products')} 
+          className="mb-2 cursor-pointer" 
+          readOnly 
+        />
       </div>
       
       {/* Segment blocks */}
       <div className="p-4">
         <h2 className="font-bold text-lg mb-3">Segmentos</h2>
         
-        <div className="grid grid-cols-1 gap-4">
+        {/* Mobile: single column - Desktop: responsive grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Render segments from database */}
           {segments.filter(segment => segment.status === 'ativo').map(segment => {
-          // Use image from database or fallback
-          const imageUrl = segment.image_url || getFallbackImage(segment.nome);
-          return <div key={segment.id} className="cursor-pointer" onClick={() => handleCategoryClick(segment.id)}>
-                <div className="relative h-40 rounded-lg overflow-hidden shadow-md" style={{
-              backgroundImage: `url(${imageUrl})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center'
-            }}>
+            // Use image from database or fallback
+            const imageUrl = segment.image_url || getFallbackImage(segment.nome);
+            return (
+              <div key={segment.id} className="cursor-pointer" onClick={() => handleCategoryClick(segment.id)}>
+                <div 
+                  className="relative h-40 rounded-lg overflow-hidden shadow-md"
+                  style={{
+                    backgroundImage: `url(${imageUrl})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center'
+                  }}
+                >
                   {/* Gradient overlay for better text visibility */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
                   
@@ -143,16 +159,20 @@ const MarketplaceHomeScreen: React.FC = () => {
                     <span className="text-white font-medium">{segment.nome}</span>
                   </div>
                 </div>
-              </div>;
-        })}
+              </div>
+            );
+          })}
           
           {/* Ver todos segment */}
           <div className="cursor-pointer" onClick={() => navigate('/marketplace/products')}>
-            <div className="relative h-40 rounded-lg overflow-hidden shadow-md" style={{
-            backgroundImage: `url(${getFallbackImage('todos')})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center'
-          }}>
+            <div 
+              className="relative h-40 rounded-lg overflow-hidden shadow-md"
+              style={{
+                backgroundImage: `url(${getFallbackImage('todos')})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center'
+              }}
+            >
               {/* Gradient overlay for better text visibility */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
               
@@ -177,6 +197,8 @@ const MarketplaceHomeScreen: React.FC = () => {
           Acumule pontos em todas as compras e troque por produtos exclusivos!
         </p>
       </div>
-    </div>;
+    </div>
+  );
 };
+
 export default MarketplaceHomeScreen;

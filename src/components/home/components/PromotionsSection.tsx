@@ -8,9 +8,6 @@ import { Gift } from 'lucide-react';
 const PromotionsSection: React.FC = () => {
   const navigate = useNavigate();
 
-  // Debug log to confirm component is loading
-  console.log('[PromotionsSection] Component loaded - checking layout responsiveness');
-
   const promotionalOffers = [
     {
       title: "Ganhe 500 pontos",
@@ -49,7 +46,7 @@ const PromotionsSection: React.FC = () => {
       {/* Mobile: vertical stack - Hidden on desktop */}
       <div className="block md:hidden space-y-2">
         {promotionalOffers.map((offer, index) => (
-          <Card key={index} className="cursor-pointer hover:shadow-sm transition-shadow border-2 border-blue-200">
+          <Card key={index} className="cursor-pointer hover:shadow-sm transition-shadow">
             <CardContent className="p-3">
               <div className="flex items-center space-x-3">
                 <div className={`${offer.color} w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0`}>
@@ -70,7 +67,7 @@ const PromotionsSection: React.FC = () => {
       </div>
 
       {/* Desktop: grid layout - Hidden on mobile */}
-      <div className="hidden md:grid grid-cols-1 lg:grid-cols-3 gap-4 border-2 border-red-200">
+      <div className="hidden md:grid grid-cols-1 lg:grid-cols-3 gap-4">
         {promotionalOffers.map((offer, index) => (
           <Card key={index} className="cursor-pointer hover:shadow-sm transition-shadow">
             <CardContent className="p-4">

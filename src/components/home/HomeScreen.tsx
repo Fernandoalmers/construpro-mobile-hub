@@ -15,9 +15,6 @@ const HomeScreen: React.FC = () => {
   const { products, isLoading: produtosLoading } = useMarketplaceData(null);
   const { rewards, isLoading: rewardsLoading } = useRewardsData();
   
-  // Debug log to confirm main screen is loading
-  console.log('[HomeScreen] Component loaded - applying pb-24 for bottom menu');
-  
   // Use real data from Supabase - same logic as points page
   const {
     userPoints,
@@ -51,8 +48,8 @@ const HomeScreen: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <HomeHeader />
 
-      {/* Content - Added pb-24 to prevent bottom navigation overlap with debug border */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 pb-24 border-4 border-red-500">
+      {/* Content - Added pb-24 to prevent bottom navigation overlap */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 pb-24">
         <WelcomeSection />
 
         <PointsBalanceCard
