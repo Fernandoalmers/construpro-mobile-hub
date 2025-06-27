@@ -312,6 +312,7 @@ export type Database = {
           max_uses: number | null
           min_order_value: number | null
           name: string
+          show_in_vitrine: boolean
           starts_at: string | null
           updated_at: string | null
           used_count: number | null
@@ -328,6 +329,7 @@ export type Database = {
           max_uses?: number | null
           min_order_value?: number | null
           name: string
+          show_in_vitrine?: boolean
           starts_at?: string | null
           updated_at?: string | null
           used_count?: number | null
@@ -344,6 +346,7 @@ export type Database = {
           max_uses?: number | null
           min_order_value?: number | null
           name?: string
+          show_in_vitrine?: boolean
           starts_at?: string | null
           updated_at?: string | null
           used_count?: number | null
