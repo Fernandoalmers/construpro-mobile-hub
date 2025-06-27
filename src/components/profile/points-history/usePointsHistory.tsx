@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/sonner';
 import { 
   calculateMonthlyPoints, 
   calculateLevelInfo, 
@@ -22,13 +21,12 @@ export const usePointsHistory = () => {
   // Call refreshProfile when component mounts to ensure we have the latest data
   useEffect(() => {
     if (user) {
-      console.log('🔄 [usePointsHistory] Refreshing profile for user:', user.id);
       refreshProfile();
     }
   }, [user, refreshProfile]);
   
   // Fetch transactions from Supabase with security filtering
-  const { data: transactions = [], isLoading, refetch, error } = useQuery({
+  const { data: transactions = [], isLoading, refetch } = useQuery({
     queryKey: ['pointsHistory', user?.id],
     queryFn: async () => {
       if (!user) {
@@ -38,56 +36,32 @@ export const usePointsHistory = () => {
       
       console.log(`🔍 [usePointsHistory] Fetching points history for user: ${user.id}`);
       
-      try {
-        // RLS irá automaticamente filtrar apenas as transações do usuário logado
-        const { data, error } = await supabase
-          .from('points_transactions')
-          .select('*')
-          .eq('user_id', user.id) // Filtro explícito adicional por segurança
-          .order('data', { ascending: false });
-        
-        if (error) {
-          console.error('❌ [usePointsHistory] Error fetching points history:', error);
-          throw error;
-        }
-        
-        console.log(`✅ [usePointsHistory] Retrieved ${data?.length || 0} transactions for user`);
-        
-        if (!data || data.length === 0) {
-          console.log('⚠️ [usePointsHistory] No transactions found, creating sample data might be needed');
-        }
-        
-        return data as Transaction[];
-      } catch (error) {
-        console.error('❌ [usePointsHistory] Exception in queryFn:', error);
-        throw error;
+      // RLS irá automaticamente filtrar apenas as transações do usuário logado
+      const { data, error } = await supabase
+        .from('points_transactions')
+        .select('*')
+        .eq('user_id', user.id) // Filtro explícito adicional por segurança
+        .order('data', { ascending: false });
+      
+      if (error) {
+        console.error('❌ [usePointsHistory] Error fetching points history:', error);
+        return [];
       }
+      
+      console.log(`✅ [usePointsHistory] Retrieved ${data?.length || 0} transactions for user`);
+      return data as Transaction[];
     },
-    enabled: !!user, // Only fetch if authenticated
-    retry: 2,
-    retryDelay: 1000
+    enabled: !!user // Only fetch if authenticated
   });
-  
-  // Handle query errors using useEffect since onError is deprecated
-  useEffect(() => {
-    if (error) {
-      console.error('❌ [usePointsHistory] Query error detected:', error);
-      toast.error('Erro ao carregar histórico de pontos');
-    }
-  }, [error]);
   
   // Calculate monthly points and level info
   const monthlyPoints = calculateMonthlyPoints(transactions);
   const levelInfo = calculateLevelInfo(monthlyPoints);
   const currentMonth = getCurrentMonthName();
   
-  console.log(`📊 [usePointsHistory] Calculated stats - Monthly: ${monthlyPoints}, Level: ${levelInfo.currentLevel}`);
-  
   // Apply filters
   const getFilteredTransactions = () => {
     let filteredTransactions = [...transactions];
-    
-    console.log(`🔍 [usePointsHistory] Applying filters - Type: ${typeFilter}, Origin: ${originFilter}, Period: ${periodFilter}`);
     
     // Apply type filter (ganho/resgate)
     if (typeFilter === "ganho") {
@@ -125,7 +99,6 @@ export const usePointsHistory = () => {
       );
     }
     
-    console.log(`✅ [usePointsHistory] Filtered transactions: ${filteredTransactions.length} of ${transactions.length}`);
     return filteredTransactions;
   };
 
@@ -141,12 +114,9 @@ export const usePointsHistory = () => {
     .filter(t => t.pontos < 0)
     .reduce((sum, t) => sum + Math.abs(t.pontos), 0);
 
-  console.log(`📊 [usePointsHistory] Stats - Total: ${totalPoints}, Earned: ${totalEarned}, Redeemed: ${totalRedeemed}`);
-
   return {
     transactions: getFilteredTransactions(),
     isLoading,
-    error,
     refetch,
     levelInfo,
     currentMonth,

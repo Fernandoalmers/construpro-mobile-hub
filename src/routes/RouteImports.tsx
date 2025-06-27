@@ -1,100 +1,70 @@
 
-import { lazy } from 'react';
-import React from 'react';
+// Public route components
+export { default as LoginScreen } from '../components/LoginScreen';
+export { default as SignUpScreen } from '../components/SignupScreen';
+export { default as OnboardingScreen } from '../components/OnboardingScreen';
+export { default as ForgotPasswordScreen } from '../components/auth/ForgotPasswordScreen';
 
-// Public Routes
-export const LoginScreen = lazy(() => import('../components/LoginScreen'));
-export const SignUpScreen = lazy(() => import('../components/SignupScreen'));
-export const ForgotPasswordScreen = React.lazy(() => import('@/components/auth/ForgotPasswordScreen'));
-export const ResetPasswordScreen = React.lazy(() => import('@/components/auth/ResetPasswordScreen'));
-export const OnboardingScreen = lazy(() => import('../components/OnboardingScreen'));
+// Auth flow components
+export { default as ProfileSelectionScreen } from '../components/auth/ProfileSelectionScreen';
+export { default as ProfessionalProfileScreen } from '../components/auth/ProfessionalProfileScreen';
 
-// Auth Routes
-export const ProfileSelectionScreen = lazy(() => import('../components/auth/ProfileSelectionScreen'));
-export const ProfessionalProfileScreen = lazy(() => import('../components/auth/ProfessionalProfileScreen'));
+// Protected route components
+export { default as HomeScreen } from '../components/home/HomeScreen';
+export { default as ProfileScreen } from '../components/profile/ProfileScreen';
+export { default as ServicesScreen } from '../components/services/ServicesScreen';
+export { default as ComprasScreen } from '../components/profile/ComprasScreen';
+export { default as EscanearScreen } from '../components/scan/EscanearScreen';
+export { default as SuporteScreen } from '../components/support/SuporteScreen';
 
-// User Routes
-export const HomeScreen = lazy(() => import('../components/home/HomeScreen'));
-export const MarketplaceScreen = lazy(() => import('../components/marketplace/MarketplaceScreen'));
-export const ProdutoScreen = lazy(() => import('../components/marketplace/ProdutoScreen'));
-export const CartScreen = lazy(() => import('../components/marketplace/CartScreen'));
-export const CheckoutScreen = lazy(() => import('../components/marketplace/CheckoutScreen'));
-export const OrderConfirmationScreen = lazy(() => import('../components/marketplace/OrderConfirmationScreen'));
-export const MeusCuponsScreen = lazy(() => import('../components/cupons/MeusCuponsScreen'));
+// Profile related screens
+export { default as OrdersScreen } from '../components/profile/OrdersScreen';
+export { default as OrderDetailScreen } from '../components/profile/OrderDetailScreen';
+export { default as AddressScreen } from '../components/profile/AddressScreen';
+export { default as PhysicalPurchasesScreen } from '../components/profile/PhysicalPurchasesScreen';
+export { default as PointsHistoryScreen } from '../components/profile/PointsHistoryScreen';
+export { default as ReferralsScreen } from '../components/profile/ReferralsScreen';
+export { default as FavoritesScreen } from '../components/profile/FavoritesScreen';
+export { default as SettingsScreen } from '../components/profile/SettingsScreen';
+export { default as UserDataScreen } from '../components/profile/UserDataScreen';
+export { default as ReviewsScreen } from '../components/profile/ReviewsScreen';
 
-// Profile Routes
-export const ProfileScreen = lazy(() => import('../components/profile/ProfileScreen'));
-export const PointsHistoryScreen = lazy(() => import('../components/profile/PointsHistoryScreen'));
-export const OrdersScreen = lazy(() => import('../components/profile/OrdersScreen'));
-export const FavoritesScreen = lazy(() => import('../components/profile/FavoritesScreen'));
-export const AddressScreen = lazy(() => import('../components/profile/AddressScreen'));
-export const SettingsScreen = lazy(() => import('../components/profile/SettingsScreen'));
+// Rewards screens
+export { default as RewardsScreen } from '../components/resgates/ResgatesScreen';
+export { default as RewardDetailScreen } from '../components/resgates/ResgateDetailScreen';
+export { default as HistoricoResgatesScreen } from '../components/resgates/HistoricoResgatesScreen';
 
-// Services imports
-import ServicesScreen from '../components/services/ServicesScreen';
-export { ServicesScreen };
+// Store and Product screens
+export { default as StoreDetailScreen } from '../components/marketplace/ProdutoScreen';
+export { default as ProdutoScreen } from '../components/marketplace/ProdutoScreen';
 
-// Quick access imports
-import ComprasScreen from '../components/profile/ComprasScreen';
-import EscanearScreen from '../components/scan/EscanearScreen';
-import SuporteScreen from '../components/support/SuporteScreen';
-export { ComprasScreen, EscanearScreen, SuporteScreen };
+// Cart and Checkout screens
+export { default as CartScreen } from '../components/marketplace/CartScreen';
+export { default as CheckoutScreen } from '../components/marketplace/CheckoutScreen';
+export { default as OrderConfirmationScreen } from '../components/marketplace/OrderConfirmationScreen';
 
-// Profile related imports
-import OrderDetailScreen from '../components/profile/OrderDetailScreen';
-import PhysicalPurchasesScreen from '../components/profile/PhysicalPurchasesScreen';
-import ReferralsScreen from '../components/profile/ReferralsScreen';
-import UserDataScreen from '../components/profile/UserDataScreen';
-import ReviewsScreen from '../components/profile/ReviewsScreen';
-export { 
-  OrderDetailScreen, 
-  PhysicalPurchasesScreen, 
-  ReferralsScreen, 
-  UserDataScreen, 
-  ReviewsScreen 
-};
+// Vendor screens
+export { default as VendorModeScreen } from '../components/vendor/VendorModeScreen';
+export { default as ProductManagementScreen } from '../components/vendor/ProductManagementScreen';
+export { default as ProdutoFormScreen } from '../components/vendor/ProdutoFormScreen';
+export { default as ProdutoEditScreen } from '../components/vendor/ProdutoEditScreen';
+export { default as ClientesVendorScreen } from '../components/vendor/ClientesVendorScreen';
+export { default as ConfiguracoesVendorScreen } from '../components/vendor/ConfiguracoesVendorScreen';
+export { default as AjustePontosVendorScreen } from '../components/vendor/AjustePontosVendorScreen';
+export { default as VendorOrderDetailScreen } from '../components/vendor/VendorOrderDetailScreen';
 
-// Rewards imports
-import RewardsScreen from '../components/resgates/ResgatesScreen';
-import RewardDetailScreen from '../components/resgates/ResgateDetailScreen';
-import HistoricoResgatesScreen from '../components/resgates/HistoricoResgatesScreen';
-export { RewardsScreen, RewardDetailScreen, HistoricoResgatesScreen };
+// New vendor configuration screens
+export { default as VendorStoreConfigScreen } from '../components/vendor/VendorStoreConfigScreen';
+export { default as VendorProfileScreen } from '../components/vendor/VendorProfileScreen';
+export { default as VendorGeneralSettingsScreen } from '../components/vendor/VendorGeneralSettingsScreen';
+export { default as VendorDeliverySettingsScreen } from '../components/vendor/VendorDeliverySettingsScreen';
 
-// Store and Product imports
-import StoreDetailScreen from '../components/marketplace/StoreDetailScreen';
-export { StoreDetailScreen };
+// Marketplace screens
+export { default as MarketplaceScreenWrapper } from '../components/marketplace/MarketplaceScreenWrapper';
 
-// Cart and Checkout imports (already exported above)
+// Vendor Delivery Management Components
+export { default as VendorDeliveryZonesScreen } from '../components/vendor/delivery/VendorDeliveryZonesScreen';
+export { default as ProductRestrictionsScreen } from '../components/vendor/delivery/ProductRestrictionsScreen';
 
-// Marketplace imports
-import MarketplaceScreenWrapper from '../components/marketplace/MarketplaceScreenWrapper';
-export { MarketplaceScreenWrapper };
-
-// Admin Routes - Chunked separately
-export const AdminDashboard = lazy(() => import('../components/admin/dashboard/AdminDashboard'));
-export const UsersManagement = lazy(() => import('../components/admin/users/UserManagementScreen'));
-export const ProductsManagementScreen = lazy(() => import('../components/admin/ProductsManagementScreen'));
-export const StoresManagementScreen = lazy(() => import('../components/admin/stores/StoresManagementScreen'));
-export const AdminCategoriesScreen = lazy(() => import('../components/admin/categories/AdminCategoriesScreen'));
-export const AdminRewardsScreen = lazy(() => import('../components/admin/rewards/AdminRewardsScreen'));
-export const CuponsVitrineScreen = lazy(() => import('../components/admin/cupons-vitrine/CuponsVitrineScreen'));
-
-// Vendor Routes - Chunked separately
-export const VendorHomeScreen = lazy(() => import('../components/vendor/VendorHomeScreen'));
-export const VendorModeScreen = lazy(() => import('../components/vendor/VendorModeScreen'));
-export const VendorOrdersScreen = lazy(() => import('../components/vendor/VendorOrdersScreen'));
-export const ProductManagementScreen = lazy(() => import('../components/vendor/ProductManagementScreen'));
-export const ProdutoFormScreen = lazy(() => import('../components/vendor/ProdutoFormScreen'));
-export const ProdutoEditScreen = lazy(() => import('../components/vendor/ProdutoEditScreen'));
-export const ClientesVendorScreen = lazy(() => import('../components/vendor/ClientesVendorScreen'));
-export const ConfiguracoesVendorScreen = lazy(() => import('../components/vendor/ConfiguracoesVendorScreen'));
-export const AjustePontosVendorScreen = lazy(() => import('../components/vendor/AjustePontosVendorScreen'));
-export const VendorOrderDetailScreen = lazy(() => import('../components/vendor/VendorOrderDetailScreen'));
-
-// Additional vendor screens
-export const VendorDeliveryZonesScreen = lazy(() => import('../components/vendor/delivery/VendorDeliveryZonesScreen'));
-export const ProductRestrictionsScreen = lazy(() => import('../components/vendor/delivery/ProductRestrictionsScreen'));
-export const VendorStoreConfigScreen = lazy(() => import('../components/vendor/VendorStoreConfigScreen'));
-export const VendorProfileScreen = lazy(() => import('../components/vendor/VendorProfileScreen'));
-export const VendorGeneralSettingsScreen = lazy(() => import('../components/vendor/VendorGeneralSettingsScreen'));
-export const VendorDeliverySettingsScreen = lazy(() => import('../components/vendor/VendorDeliverySettingsScreen'));
+// Not Found
+export { default as NotFoundScreen } from '../pages/NotFound';
