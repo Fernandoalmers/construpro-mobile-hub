@@ -26,8 +26,8 @@ import { Badge } from '@/components/ui/badge';
 const HomeScreen: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { produtos, loading: produtosLoading } = useMarketplaceData();
-  const { rewards, loading: rewardsLoading } = useRewardsData();
+  const marketplaceData = useMarketplaceData();
+  const { rewards, isLoading: rewardsLoading } = useRewardsData();
   const [userPoints, setUserPoints] = useState(0);
 
   useEffect(() => {
@@ -70,6 +70,10 @@ const HomeScreen: React.FC = () => {
   const handleQuickAccess = (path: string) => {
     navigate(path);
   };
+
+  // Usar as propriedades corretas do hook
+  const produtos = marketplaceData.produtos || [];
+  const produtosLoading = marketplaceData.loading || false;
 
   return (
     <div className="min-h-screen bg-gray-50">

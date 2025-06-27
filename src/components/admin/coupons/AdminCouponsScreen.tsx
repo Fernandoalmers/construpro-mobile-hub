@@ -156,7 +156,6 @@ const AdminCouponsScreen: React.FC = () => {
               <CouponsTable 
                 coupons={coupons} 
                 onEdit={handleEditCoupon}
-                onRefresh={loadCoupons}
               />
             )}
           </TabsContent>
@@ -170,7 +169,6 @@ const AdminCouponsScreen: React.FC = () => {
         {showForm && (
           <CouponForm
             coupon={editingCoupon}
-            onClose={handleFormClose}
           />
         )}
       </div>
