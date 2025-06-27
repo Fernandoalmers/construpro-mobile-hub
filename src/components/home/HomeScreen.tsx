@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
@@ -25,8 +26,8 @@ import { Badge } from '@/components/ui/badge';
 const HomeScreen: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const marketplaceData = useMarketplaceData(null);
-  const { rewards, isLoading: rewardsLoading } = useRewardsData();
+  const { produtos, loading: produtosLoading } = useMarketplaceData();
+  const { rewards, loading: rewardsLoading } = useRewardsData();
   const [userPoints, setUserPoints] = useState(0);
 
   useEffect(() => {
@@ -69,10 +70,6 @@ const HomeScreen: React.FC = () => {
   const handleQuickAccess = (path: string) => {
     navigate(path);
   };
-
-  // Usar as propriedades corretas do hook
-  const products = marketplaceData.products || [];
-  const produtosLoading = marketplaceData.isLoading || false;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -164,7 +161,7 @@ const HomeScreen: React.FC = () => {
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {products.slice(0, 4).map((produto) => (
+              {produtos.slice(0, 4).map((produto) => (
                 <Card 
                   key={produto.id}
                   className="cursor-pointer hover:shadow-md transition-shadow"
@@ -242,7 +239,7 @@ const HomeScreen: React.FC = () => {
                       </div>
                       <div className="flex-1">
                         <h4 className="font-medium text-gray-900 text-sm mb-1">
-                          {reward.titulo}
+                          {reward.item}
                         </h4>
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-gray-500">

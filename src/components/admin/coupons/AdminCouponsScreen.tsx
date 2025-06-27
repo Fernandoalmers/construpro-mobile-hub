@@ -10,8 +10,7 @@ import CouponsTable from './CouponsTable';
 import CouponForm from './CouponForm';
 import PromotionalCouponsSection from './PromotionalCouponsSection';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
-import { fetchAdminCoupons, AdminCoupon, deleteCoupon, toggleCouponStatus, createCoupon, updateCoupon, CreateCouponData } from '@/services/adminCouponsService';
-import { toast } from '@/components/ui/sonner';
+import { fetchAdminCoupons, AdminCoupon } from '@/services/adminCouponsService';
 
 const AdminCouponsScreen: React.FC = () => {
   const { isAdmin, isLoading: adminLoading } = useIsAdmin();
@@ -48,57 +47,10 @@ const AdminCouponsScreen: React.FC = () => {
     setShowForm(true);
   };
 
-  const handleDeleteCoupon = async (couponId: string) => {
-    try {
-      const success = await deleteCoupon(couponId);
-      if (success) {
-        await loadCoupons();
-        toast.success('Cupom excluído com sucesso');
-      }
-    } catch (error) {
-      console.error('Error deleting coupon:', error);
-      toast.error('Erro ao excluir cupom');
-    }
-  };
-
-  const handleToggleStatus = async (couponId: string, active: boolean) => {
-    try {
-      const success = await toggleCouponStatus(couponId, active);
-      if (success) {
-        await loadCoupons();
-        toast.success(`Cupom ${active ? 'ativado' : 'desativado'} com sucesso`);
-      }
-    } catch (error) {
-      console.error('Error toggling coupon status:', error);
-      toast.error('Erro ao alterar status do cupom');
-    }
-  };
-
-  const handleFormSubmit = async (data: CreateCouponData) => {
-    try {
-      let success;
-      if (editingCoupon) {
-        success = await updateCoupon(editingCoupon.id, data);
-        toast.success('Cupom atualizado com sucesso');
-      } else {
-        success = await createCoupon(data);
-        toast.success('Cupom criado com sucesso');
-      }
-      
-      if (success) {
-        setShowForm(false);
-        setEditingCoupon(null);
-        await loadCoupons();
-      }
-    } catch (error) {
-      console.error('Error saving coupon:', error);
-      toast.error('Erro ao salvar cupom');
-    }
-  };
-
-  const handleFormCancel = () => {
+  const handleFormClose = () => {
     setShowForm(false);
     setEditingCoupon(null);
+    loadCoupons();
   };
 
   if (adminLoading) {
@@ -204,8 +156,7 @@ const AdminCouponsScreen: React.FC = () => {
               <CouponsTable 
                 coupons={coupons} 
                 onEdit={handleEditCoupon}
-                onDelete={handleDeleteCoupon}
-                onToggleStatus={handleToggleStatus}
+                onRefresh={loadCoupons}
               />
             )}
           </TabsContent>
@@ -219,8 +170,7 @@ const AdminCouponsScreen: React.FC = () => {
         {showForm && (
           <CouponForm
             coupon={editingCoupon}
-            onSubmit={handleFormSubmit}
-            onCancel={handleFormCancel}
+            onClose={handleFormClose}
           />
         )}
       </div>
