@@ -22,14 +22,3 @@ export const updateFavicon = (logoUrl: string) => {
     console.error('❌ [FaviconUtils] Erro ao atualizar favicon:', error);
   }
 };
-
-/**
- * Hook para atualizar favicon automaticamente quando a logo mudar
- */
-export const useFaviconUpdater = (logoUrl: string | null) => {
-  React.useEffect(() => {
-    if (logoUrl) {
-      updateFavicon(logoUrl);
-    }
-  }, [logoUrl]);
-};
