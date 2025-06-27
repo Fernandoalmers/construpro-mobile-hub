@@ -44,10 +44,10 @@ const HomeHeader: React.FC = () => {
       );
     }
 
-    // Tenta a logo principal primeiro
+    // Tenta a nova logo da Matershop primeiro
     return (
       <img
-        src="/lovable-uploads/31e08fbc-04d4-4249-b2cb-8a9cebdf3107.png"
+        src="/lovable-uploads/5fbb87ad-f9c8-4314-8317-de0041c02936.png"
         alt="Matershop"
         className="h-12 w-auto object-contain hover:scale-105 transition-transform duration-200"
         onError={handleLogoError}
