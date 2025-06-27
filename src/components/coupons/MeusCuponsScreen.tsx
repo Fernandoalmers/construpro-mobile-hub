@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -96,8 +97,8 @@ const MeusCuponsScreen: React.FC = () => {
         </div>
       </div>
 
-      {/* Content */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Content - Added pb-20 to prevent bottom navigation overlap */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-20">
         {coupons.length === 0 ? (
           <div className="text-center py-12">
             <Ticket className="h-16 w-16 text-gray-300 mx-auto mb-4" />
