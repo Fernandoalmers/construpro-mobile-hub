@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,7 +36,7 @@ const HomeScreen: React.FC = () => {
   const { products, isLoading: produtosLoading } = useMarketplaceData(null);
   const { rewards, isLoading: rewardsLoading } = useRewardsData();
   
-  // Usar dados reais do Supabase
+  // Usar dados reais do Supabase - agora com a mesma lógica da página de pontos
   const {
     userPoints,
     monthlyPoints,
@@ -49,6 +49,21 @@ const HomeScreen: React.FC = () => {
     hasTransactions,
     refreshData
   } = useHomeScreenData();
+
+  // Debug: Log valores para comparação com página de pontos
+  useEffect(() => {
+    if (!pointsLoading) {
+      console.log('🏠 [HomeScreen] Dados atualizados:', {
+        userPoints,
+        monthlyPoints,
+        currentLevel: currentLevel.name,
+        levelProgress,
+        pointsToNextLevel,
+        nextLevelName,
+        currentMonth
+      });
+    }
+  }, [userPoints, monthlyPoints, currentLevel, levelProgress, pointsToNextLevel, nextLevelName, currentMonth, pointsLoading]);
 
   const quickAccessItems = [
     {
@@ -134,7 +149,7 @@ const HomeScreen: React.FC = () => {
           </p>
         </div>
 
-        {/* Saldo de Pontos - Usando dados reais */}
+        {/* Saldo de Pontos - Usando exatamente a mesma lógica da página de pontos */}
         <Card className="mb-4 bg-gradient-to-r from-royal-blue to-royal-blue/80 text-white">
           <CardContent className="p-4">
             {pointsLoading ? (
@@ -175,14 +190,23 @@ const HomeScreen: React.FC = () => {
                   </Button>
                 </div>
 
-                {/* Progresso do nível baseado em pontos mensais */}
-                {nextLevelName && (
+                {/* Progresso do nível - usando exatamente a mesma lógica */}
+                {nextLevelName && pointsToNextLevel > 0 && (
                   <div className="mt-3">
                     <div className="flex justify-between text-xs text-white/80 mb-1">
                       <span>Nível {currentMonth}: {nextLevelName}</span>
                       <span>{pointsToNextLevel} pontos restantes</span>
                     </div>
                     <Progress value={levelProgress} className="h-1 bg-white/20" />
+                  </div>
+                )}
+
+                {/* Informação sobre pontos mensais */}
+                {hasTransactions && (
+                  <div className="mt-2 text-center">
+                    <p className="text-white/80 text-xs">
+                      {monthlyPoints} pontos conquistados em {currentMonth}
+                    </p>
                   </div>
                 )}
 

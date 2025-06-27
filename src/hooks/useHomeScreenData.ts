@@ -1,7 +1,6 @@
 
 import { useMemo } from 'react';
 import { usePointsHistory } from '@/components/profile/points-history/usePointsHistory';
-import { calculateMonthlyPoints, calculateLevelInfo, getCurrentMonthName } from '@/utils/pointsCalculations';
 
 export const useHomeScreenData = () => {
   const {
@@ -10,20 +9,29 @@ export const useHomeScreenData = () => {
     totalPoints,
     totalEarned,
     totalRedeemed,
+    levelInfo,
+    currentMonth,
     refreshProfile
   } = usePointsHistory();
 
   const homeData = useMemo(() => {
-    // Calcular pontos mensais usando a lógica correta
-    const monthlyPoints = calculateMonthlyPoints(transactions);
+    // Calcular pontos mensais usando exatamente a mesma lógica do usePointsHistory
+    const currentDate = new Date();
+    const currentMonthNumber = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
     
-    // Calcular informações do nível usando pontos mensais
-    const levelInfo = calculateLevelInfo(monthlyPoints);
+    const monthlyPoints = transactions
+      .filter(t => {
+        const transactionDate = new Date(t.data);
+        return (
+          transactionDate.getMonth() === currentMonthNumber &&
+          transactionDate.getFullYear() === currentYear &&
+          t.pontos > 0 // Only count positive points (earned)
+        );
+      })
+      .reduce((sum, t) => sum + t.pontos, 0);
     
-    // Obter nome do mês atual
-    const currentMonth = getCurrentMonthName();
-    
-    // Determinar cor e dados do nível para a interface
+    // Determinar cor e dados do nível para a interface usando exatamente os mesmos dados
     const getLevelDisplayData = () => {
       const levelColors = {
         bronze: 'bg-orange-600',
@@ -49,13 +57,13 @@ export const useHomeScreenData = () => {
     const levelDisplay = getLevelDisplayData();
 
     return {
-      // Dados reais do usuário
+      // Dados reais do usuário - usando exatamente os mesmos valores do usePointsHistory
       userPoints: totalPoints,
       monthlyPoints,
       totalEarned,
       totalRedeemed,
       
-      // Informações do nível baseadas em pontos mensais
+      // Informações do nível - usando exatamente os mesmos cálculos
       currentLevel: levelDisplay,
       levelProgress: levelDisplay.progress,
       pointsToNextLevel: levelDisplay.pointsToNext,
@@ -69,7 +77,16 @@ export const useHomeScreenData = () => {
       // Funções
       refreshData: refreshProfile
     };
-  }, [transactions, totalPoints, totalEarned, totalRedeemed, isLoading, refreshProfile]);
+  }, [
+    transactions, 
+    totalPoints, 
+    totalEarned, 
+    totalRedeemed, 
+    levelInfo,
+    currentMonth,
+    isLoading, 
+    refreshProfile
+  ]);
 
   return homeData;
 };
