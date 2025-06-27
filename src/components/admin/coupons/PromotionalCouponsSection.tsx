@@ -231,7 +231,7 @@ const PromotionalCouponsSection: React.FC = () => {
                           Código: <span className="font-mono">{coupon.code}</span>
                         </p>
                         <p className="text-sm text-gray-600">
-                          Desconto: {formatDiscount(coupon.discount_type, coupon.discount_value)}
+                          Desconto: {formatDiscount(`${coupon.discount_type}:${coupon.discount_value}`)}
                         </p>
                         <p className="text-sm text-gray-600">
                           {formatExpiryDate(coupon.expires_at)}
@@ -366,7 +366,7 @@ const PromotionalCouponsSection: React.FC = () => {
                         </div>
                         <div className="flex items-center space-x-4 text-sm text-gray-600">
                           <span>Código: <span className="font-mono">{coupon.code}</span></span>
-                          <span>Desconto: {formatDiscount(coupon.discount_type, coupon.discount_value)}</span>
+                          <span>Desconto: {formatDiscount(`${coupon.discount_type}:${coupon.discount_value}`)}</span>
                           <span>{formatExpiryDate(coupon.expires_at)}</span>
                         </div>
                       </div>

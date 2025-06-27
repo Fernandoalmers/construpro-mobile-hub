@@ -47,10 +47,10 @@ const AdminCouponsScreen: React.FC = () => {
     setShowForm(true);
   };
 
-  const handleFormClose = () => {
+  const handleFormClose = async () => {
     setShowForm(false);
     setEditingCoupon(null);
-    loadCoupons();
+    await loadCoupons();
   };
 
   const handleDeleteCoupon = (couponId: string) => {
@@ -183,7 +183,7 @@ const AdminCouponsScreen: React.FC = () => {
         {showForm && (
           <CouponForm
             coupon={editingCoupon}
-            onSave={handleFormClose}
+            onSubmit={handleFormClose}
             onCancel={handleFormClose}
           />
         )}
