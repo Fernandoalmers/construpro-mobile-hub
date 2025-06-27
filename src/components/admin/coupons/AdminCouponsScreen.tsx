@@ -46,7 +46,7 @@ const AdminCouponsScreen: React.FC = () => {
     try {
       setLoading(true);
       const data = await fetchAdminCoupons();
-      setCoupons(data);
+      setCoupons(data as AdminCoupon[]);
     } catch (error) {
       console.error('Error loading coupons:', error);
     } finally {

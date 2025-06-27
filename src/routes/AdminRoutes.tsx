@@ -1,7 +1,7 @@
 
 import React, { Suspense } from 'react';
 import { Route } from 'react-router-dom';
-import { AdminRoute } from '../components/routes/AdminRoute';
+import AdminRoute from '../components/routes/AdminRoute';
 import LoadingState from '@/components/common/LoadingState';
 import {
   AdminDashboard,
@@ -19,7 +19,6 @@ import OrdersManagementScreen from '../components/admin/orders/OrdersManagementS
 import AdminLogsScreen from '../components/admin/AdminLogs';
 import AdminSettingsScreen from '../components/admin/settings/AdminSettingsScreen';
 import AdminLoyaltyDashboard from '../components/admin/loyalty/AdminLoyaltyDashboard';
-import SecurityDashboard from '../components/admin/security/SecurityDashboard';
 
 const AdminLoadingWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <Suspense fallback={<LoadingState text="Carregando painel administrativo..." />}>
@@ -93,7 +92,6 @@ const AdminRoutes: React.FC = () => {
       <Route path="/admin/logs" element={<AdminRoute><AdminLogsScreen /></AdminRoute>} />
       <Route path="/admin/settings" element={<AdminRoute><AdminSettingsScreen /></AdminRoute>} />
       <Route path="/admin/loyalty" element={<AdminRoute><AdminLoyaltyDashboard /></AdminRoute>} />
-      <Route path="/admin/security" element={<AdminRoute><SecurityDashboard /></AdminRoute>} />
     </>
   );
 };

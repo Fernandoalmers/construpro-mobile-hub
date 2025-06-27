@@ -132,7 +132,22 @@ export const fetchAllPromotionalCoupons = async (): Promise<PromotionalCoupon[]>
 };
 
 // Buscar cupons administrativos para seleção
-export const fetchAdminCoupons = async () => {
+export const fetchAdminCoupons = async (): Promise<Array<{
+  id: string;
+  code: string;
+  name: string;
+  description?: string;
+  discount_type: 'percentage' | 'fixed';
+  discount_value: number;
+  min_order_value: number;
+  max_uses?: number;
+  used_count: number;
+  starts_at?: string;
+  expires_at?: string;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}>> => {
   try {
     console.log('[PromotionalCoupons] Fetching admin coupons...');
     
@@ -148,7 +163,14 @@ export const fetchAdminCoupons = async () => {
     }
     
     console.log(`[PromotionalCoupons] Found ${coupons?.length || 0} admin coupons`);
-    return coupons || [];
+    
+    // Garantir que discount_type seja do tipo correto
+    const typedCoupons = (coupons || []).map(coupon => ({
+      ...coupon,
+      discount_type: coupon.discount_type as 'percentage' | 'fixed'
+    }));
+    
+    return typedCoupons;
   } catch (error) {
     console.error('Error fetching admin coupons:', error);
     toast.error('Erro ao carregar cupons administrativos');

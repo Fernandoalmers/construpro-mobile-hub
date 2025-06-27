@@ -92,11 +92,11 @@ const PromotionalCouponsSection: React.FC = () => {
       
       // Filtrar cupons que ainda não são promocionais
       const promotionalCouponIds = promotionalData.map(pc => pc.coupon_id);
-      const available = couponsData.filter((coupon: AdminCoupon) => 
+      const available = couponsData.filter((coupon) => 
         !promotionalCouponIds.includes(coupon.id) && coupon.active
       );
       
-      setAvailableCoupons(available);
+      setAvailableCoupons(available as AdminCoupon[]);
     } catch (error) {
       console.error('Error loading promotional coupons:', error);
       toast.error('Erro ao carregar cupons promocionais');
