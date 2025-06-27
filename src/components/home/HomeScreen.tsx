@@ -19,70 +19,22 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { useMarketplaceData } from '@/hooks/useMarketplaceData';
+import { useRewardsData } from '@/hooks/useRewardsData';
 
 const HomeScreen: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [produtos, setProdutos] = useState<any[]>([]);
-  const [rewards, setRewards] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [rewardsLoading, setRewardsLoading] = useState(true);
   const [userPoints, setUserPoints] = useState(0);
 
+  // Use real hooks instead of simulated data
+  const { products, isLoading: productsLoading } = useMarketplaceData(null);
+  const { rewards, isLoading: rewardsLoading } = useRewardsData();
+
   useEffect(() => {
-    // Simular carregamento de dados
-    const loadData = async () => {
-      try {
-        // Simular produtos
-        const produtosData = [
-          {
-            id: '1',
-            nome: 'Produto Exemplo 1',
-            preco_normal: 99.90,
-            pontos_consumidor: 10,
-            imagens: []
-          },
-          {
-            id: '2',
-            nome: 'Produto Exemplo 2',
-            preco_normal: 149.90,
-            pontos_consumidor: 15,
-            imagens: []
-          }
-        ];
-        
-        // Simular recompensas
-        const rewardsData = [
-          {
-            id: '1',
-            nome: 'Desconto 10%',
-            pontos: 100,
-            categoria: 'Desconto'
-          },
-          {
-            id: '2',
-            nome: 'Frete Grátis',
-            pontos: 50,
-            categoria: 'Frete'
-          }
-        ];
-        
-        setProdutos(produtosData);
-        setRewards(rewardsData);
-        setLoading(false);
-        setRewardsLoading(false);
-        
-        // Simular pontos do usuário
-        const points = Math.floor(Math.random() * 5000);
-        setUserPoints(points);
-      } catch (error) {
-        console.error('Error loading data:', error);
-        setLoading(false);
-        setRewardsLoading(false);
-      }
-    };
-    
-    loadData();
+    // Simulate user points - this can be replaced with real points fetching later
+    const points = Math.floor(Math.random() * 5000);
+    setUserPoints(points);
   }, []);
 
   const quickAccessItems = [
@@ -196,7 +148,7 @@ const HomeScreen: React.FC = () => {
             </Button>
           </div>
           
-          {loading ? (
+          {productsLoading ? (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[...Array(4)].map((_, i) => (
                 <Card key={i}>
@@ -210,7 +162,7 @@ const HomeScreen: React.FC = () => {
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {produtos.slice(0, 4).map((produto) => (
+              {products.slice(0, 4).map((produto) => (
                 <Card 
                   key={produto.id}
                   className="cursor-pointer hover:shadow-md transition-shadow"
@@ -288,7 +240,7 @@ const HomeScreen: React.FC = () => {
                       </div>
                       <div className="flex-1">
                         <h4 className="font-medium text-gray-900 text-sm mb-1">
-                          {reward.nome}
+                          {reward.titulo}
                         </h4>
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-gray-500">
