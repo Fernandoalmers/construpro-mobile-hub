@@ -75,65 +75,117 @@ const FeaturedCarouselSection: React.FC = () => {
         <h3 className="text-base font-semibold text-gray-900">Destaques</h3>
       </div>
       
-      <Carousel
-        opts={{
-          align: "start",
-          loop: true,
-        }}
-        className="w-full"
-      >
-        <CarouselContent className="-ml-2 md:-ml-4">
-          {carouselCards.map((card) => (
-            <CarouselItem key={card.id} className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/3">
-              <Card className="overflow-hidden group cursor-pointer hover:shadow-lg transition-all duration-300">
-                <CardContent className="p-0 relative h-48">
-                  {/* Background Image */}
-                  <div 
-                    className="absolute inset-0 bg-cover bg-center transition-transform duration-300 group-hover:scale-105"
-                    style={{ backgroundImage: `url(${card.image})` }}
-                  />
-                  
-                  {/* Gradient Overlay */}
-                  <div className={`absolute inset-0 bg-gradient-to-br ${card.gradient}`} />
-                  
-                  {/* Content */}
-                  <div className="relative h-full flex flex-col justify-between p-4 text-white">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h4 className="text-lg font-bold mb-1 leading-tight">
-                          {card.title}
-                        </h4>
-                        <p className="text-sm opacity-90 leading-snug">
-                          {card.subtitle}
-                        </p>
-                      </div>
-                      {card.icon && (
-                        <div className="ml-2 opacity-80">
-                          {card.icon}
-                        </div>
-                      )}
-                    </div>
+      {/* Mobile: Carousel */}
+      <div className="block md:hidden">
+        <Carousel
+          opts={{
+            align: "start",
+            loop: true,
+          }}
+          className="w-full"
+        >
+          <CarouselContent className="-ml-2">
+            {carouselCards.map((card) => (
+              <CarouselItem key={card.id} className="pl-2 basis-full sm:basis-1/2">
+                <Card className="overflow-hidden group cursor-pointer hover:shadow-lg transition-all duration-300">
+                  <CardContent className="p-0 relative h-48">
+                    {/* Background Image */}
+                    <div 
+                      className="absolute inset-0 bg-cover bg-center transition-transform duration-300 group-hover:scale-105"
+                      style={{ backgroundImage: `url(${card.image})` }}
+                    />
                     
-                    <div className="mt-4">
-                      <Button
-                        onClick={card.buttonAction}
-                        variant="secondary"
-                        size="sm"
-                        className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm transition-all duration-200"
-                      >
-                        {card.buttonText}
-                        <ArrowRight className="ml-1 h-3 w-3" />
-                      </Button>
+                    {/* Gradient Overlay */}
+                    <div className={`absolute inset-0 bg-gradient-to-br ${card.gradient}`} />
+                    
+                    {/* Content */}
+                    <div className="relative h-full flex flex-col justify-between p-4 text-white">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="text-lg font-bold mb-1 leading-tight">
+                            {card.title}
+                          </h4>
+                          <p className="text-sm opacity-90 leading-snug">
+                            {card.subtitle}
+                          </p>
+                        </div>
+                        {card.icon && (
+                          <div className="ml-2 opacity-80">
+                            {card.icon}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="mt-4">
+                        <Button
+                          onClick={card.buttonAction}
+                          variant="secondary"
+                          size="sm"
+                          className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm transition-all duration-200"
+                        >
+                          {card.buttonText}
+                          <ArrowRight className="ml-1 h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
+                  </CardContent>
+                </Card>
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+          <CarouselPrevious className="hidden sm:flex -left-4" />
+          <CarouselNext className="hidden sm:flex -right-4" />
+        </Carousel>
+      </div>
+
+      {/* Desktop: Grid layout */}
+      <div className="hidden md:grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {carouselCards.map((card) => (
+          <Card key={card.id} className="overflow-hidden group cursor-pointer hover:shadow-lg transition-all duration-300">
+            <CardContent className="p-0 relative h-48">
+              {/* Background Image */}
+              <div 
+                className="absolute inset-0 bg-cover bg-center transition-transform duration-300 group-hover:scale-105"
+                style={{ backgroundImage: `url(${card.image})` }}
+              />
+              
+              {/* Gradient Overlay */}
+              <div className={`absolute inset-0 bg-gradient-to-br ${card.gradient}`} />
+              
+              {/* Content */}
+              <div className="relative h-full flex flex-col justify-between p-4 text-white">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h4 className="text-lg font-bold mb-1 leading-tight">
+                      {card.title}
+                    </h4>
+                    <p className="text-sm opacity-90 leading-snug">
+                      {card.subtitle}
+                    </p>
                   </div>
-                </CardContent>
-              </Card>
-            </CarouselItem>
-          ))}
-        </CarouselContent>
-        <CarouselPrevious className="hidden sm:flex -left-4 lg:-left-6" />
-        <CarouselNext className="hidden sm:flex -right-4 lg:-right-6" />
-      </Carousel>
+                  {card.icon && (
+                    <div className="ml-2 opacity-80">
+                      {card.icon}
+                    </div>
+                  )}
+                </div>
+                
+                <div className="mt-4">
+                  <Button
+                    onClick={card.buttonAction}
+                    variant="secondary"
+                    size="sm"
+                    className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm transition-all duration-200"
+                  >
+                    {card.buttonText}
+                    <ArrowRight className="ml-1 h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 };

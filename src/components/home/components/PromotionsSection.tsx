@@ -43,7 +43,8 @@ const PromotionsSection: React.FC = () => {
         </Button>
       </div>
       
-      <div className="space-y-2">
+      {/* Mobile: vertical stack */}
+      <div className="space-y-2 md:hidden">
         {promotionalOffers.map((offer, index) => (
           <Card key={index} className="cursor-pointer hover:shadow-sm transition-shadow">
             <CardContent className="p-3">
@@ -58,6 +59,29 @@ const PromotionsSection: React.FC = () => {
                 <div className="text-right flex-shrink-0">
                   <p className="text-xs text-gray-500">Válido até</p>
                   <p className="text-xs font-medium text-gray-700">{offer.validUntil}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Desktop: grid layout */}
+      <div className="hidden md:grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {promotionalOffers.map((offer, index) => (
+          <Card key={index} className="cursor-pointer hover:shadow-sm transition-shadow">
+            <CardContent className="p-4">
+              <div className="flex flex-col items-center text-center space-y-3">
+                <div className={`${offer.color} w-12 h-12 rounded-full flex items-center justify-center`}>
+                  <Gift className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900 text-sm mb-1">{offer.title}</h4>
+                  <p className="text-xs text-gray-600 mb-2">{offer.subtitle}</p>
+                  <div className="text-center">
+                    <p className="text-xs text-gray-500">Válido até</p>
+                    <p className="text-xs font-medium text-gray-700">{offer.validUntil}</p>
+                  </div>
                 </div>
               </div>
             </CardContent>

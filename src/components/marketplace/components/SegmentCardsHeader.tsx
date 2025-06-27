@@ -61,7 +61,7 @@ const SegmentCard: React.FC<SegmentCardProps> = ({
   return (
     <div 
       className={cn(
-        "flex flex-col items-center p-3 rounded-lg cursor-pointer transition-all", 
+        "flex flex-col items-center p-3 rounded-lg cursor-pointer transition-all min-w-[80px]", 
         isSelected ? "bg-construPro-blue text-white" : "bg-white hover:bg-gray-50"
       )} 
       onClick={() => onClick(id)}
@@ -157,9 +157,20 @@ const SegmentCardsHeader: React.FC<SegmentCardsHeaderProps> = ({
 
   if (loading) {
     return (
-      <div className="w-full overflow-x-auto pb-2">
-        <div className="flex space-x-4 px-4">
+      <div className="w-full pb-2">
+        {/* Mobile: scroll horizontal */}
+        <div className="flex md:hidden space-x-4 px-4 overflow-x-auto">
           {[1, 2, 3, 4].map(i => (
+            <div key={i} className="animate-pulse flex flex-col items-center min-w-[80px]">
+              <div className="w-12 h-12 rounded-full bg-gray-200 mb-2"></div>
+              <div className="w-16 h-3 bg-gray-200 rounded"></div>
+            </div>
+          ))}
+        </div>
+        
+        {/* Desktop: grid layout */}
+        <div className="hidden md:grid grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4 px-4">
+          {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
             <div key={i} className="animate-pulse flex flex-col items-center">
               <div className="w-12 h-12 rounded-full bg-gray-200 mb-2"></div>
               <div className="w-16 h-3 bg-gray-200 rounded"></div>
@@ -170,29 +181,44 @@ const SegmentCardsHeader: React.FC<SegmentCardsHeaderProps> = ({
     );
   }
 
+  const allSegments = [
+    {
+      id: "all",
+      nome: "Todos",
+      image_url: null,
+      status: 'ativo' as const
+    },
+    ...segments
+  ];
+
   return (
-    <div className="w-full overflow-x-auto pb-2">
-      <div className="flex space-x-4 px-4 py-3">
-        {/* "Todos" segment card */}
-        <SegmentCard
-          key="all"
-          id="all"
-          title="Todos"
-          icon={<ShoppingBag size={24} />}
-          onClick={onSegmentClick}
-          isSelected={selectedSegment === null || selectedSegment === "all"}
-        />
-        
-        {/* Render all segments from the database */}
-        {segments.map(segment => (
+    <div className="w-full pb-2">
+      {/* Mobile: horizontal scroll layout */}
+      <div className="flex md:hidden space-x-4 px-4 py-3 overflow-x-auto">
+        {allSegments.map(segment => (
           <SegmentCard
             key={segment.id}
             id={segment.id}
             title={segment.nome}
             imageUrl={segment.image_url}
-            icon={getIconForSegment(segment.nome)}
+            icon={segment.id === "all" ? <ShoppingBag size={24} /> : getIconForSegment(segment.nome)}
             onClick={onSegmentClick}
-            isSelected={selectedSegment === segment.id}
+            isSelected={segment.id === "all" ? (selectedSegment === null || selectedSegment === "all") : selectedSegment === segment.id}
+          />
+        ))}
+      </div>
+      
+      {/* Desktop: grid layout */}
+      <div className="hidden md:grid grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4 px-4 py-3">
+        {allSegments.map(segment => (
+          <SegmentCard
+            key={segment.id}
+            id={segment.id}
+            title={segment.nome}
+            imageUrl={segment.image_url}
+            icon={segment.id === "all" ? <ShoppingBag size={24} /> : getIconForSegment(segment.nome)}
+            onClick={onSegmentClick}
+            isSelected={segment.id === "all" ? (selectedSegment === null || selectedSegment === "all") : selectedSegment === segment.id}
           />
         ))}
       </div>

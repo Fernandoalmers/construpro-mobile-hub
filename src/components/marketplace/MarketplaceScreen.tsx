@@ -121,40 +121,42 @@ const MarketplaceScreen: React.FC = () => {
   }
 
   return (
-    <MarketplaceDisplay
-      headerHeight={headerHeight}
-      setHeaderHeight={setHeaderHeight}
-      viewType={viewType}
-      setViewType={setViewType}
-      term={term}
-      selectedCategories={selectedCategories}
-      selectedLojas={selectedLojas}
-      selectedRatings={selectedRatings}
-      selectedSegments={selectedSegments}
-      selectedPriceRanges={selectedPriceRanges}
-      selectedSegmentId={selectedSegmentId}
-      categories={categories}
-      ratingOptions={ratingOptions}
-      priceRangeOptions={priceRangeOptions}
-      segmentOptions={segmentOptions}
-      safeStores={safeStores}
-      handleSearchInputChange={handleSearchInputChange}
-      handleExplicitSearch={handleExplicitSearch}
-      handleLojaClick={handleLojaClick}
-      handleCategoryClick={handleCategoryClick}
-      handleRatingClick={handleRatingClick}
-      handleSegmentClick={handleSegmentClick}
-      handlePriceRangeClick={handlePriceRangeClick}
-      clearFilters={clearFilters}
-      handleLojaCardClick={handleLojaCardClick}
-      currentCategoryName={currentCategoryName}
-      filteredProdutos={filteredProdutos}
-      isLoading={isLoading}
-      displayedProducts={displayedProducts}
-      hasMore={hasMore}
-      isLoadingMore={isLoadingMore}
-      loadMoreProducts={loadMoreProducts}
-    />
+    <div className="pb-24">
+      <MarketplaceDisplay
+        headerHeight={headerHeight}
+        setHeaderHeight={setHeaderHeight}
+        viewType={viewType}
+        setViewType={setViewType}
+        term={term}
+        selectedCategories={selectedCategories}
+        selectedLojas={selectedLojas}
+        selectedRatings={selectedRatings}
+        selectedSegments={selectedSegments}
+        selectedPriceRanges={selectedPriceRanges}
+        selectedSegmentId={selectedSegmentId}
+        categories={categories}
+        ratingOptions={ratingOptions}
+        priceRangeOptions={priceRangeOptions}
+        segmentOptions={segmentOptions}
+        safeStores={safeStores}
+        handleSearchInputChange={handleSearchInputChange}
+        handleExplicitSearch={handleExplicitSearch}
+        handleLojaClick={handleLojaClick}
+        handleCategoryClick={handleCategoryClick}
+        handleRatingClick={handleRatingClick}
+        handleSegmentClick={handleSegmentClick}
+        handlePriceRangeClick={handlePriceRangeClick}
+        clearFilters={clearFilters}
+        handleLojaCardClick={handleLojaCardClick}
+        currentCategoryName={currentCategoryName}
+        filteredProdutos={filteredProdutos}
+        isLoading={isLoading}
+        displayedProducts={displayedProducts}
+        hasMore={hasMore}
+        isLoadingMore={isLoadingMore}
+        loadMoreProducts={loadMoreProducts}
+      />
+    </div>
   );
 };
 
