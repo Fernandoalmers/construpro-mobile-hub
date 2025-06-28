@@ -26,6 +26,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const loadUserProfile = async (userId: string): Promise<UserProfile | null> => {
     try {
@@ -54,8 +55,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const refreshProfile = async (): Promise<UserProfile | null> => {
-    if (user?.id) {
-      console.log('[AuthContext] 🔄 Refreshing profile...');
+    if (!user?.id || isRefreshing) {
+      console.log('[AuthContext] Skipping refresh - no user or already refreshing');
+      return profile;
+    }
+    
+    setIsRefreshing(true);
+    console.log('[AuthContext] 🔄 Refreshing profile...');
+    
+    try {
       const updatedProfile = await loadUserProfile(user.id);
       
       // NOVO: Disparar evento quando perfil é atualizado via refresh
@@ -71,8 +79,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       return updatedProfile;
+    } catch (error) {
+      console.error('[AuthContext] Error refreshing profile:', error);
+      return profile;
+    } finally {
+      setIsRefreshing(false);
     }
-    return null;
   };
 
   const login = async (email: string, password: string) => {

@@ -57,13 +57,13 @@ const HomeScreenWrapper: React.FC = () => {
         return;
       }
       
-      // If we have a user but no profile, try to fetch profile with timeout
+      // If we have a user but no profile, try to fetch profile with shorter timeout
       if (user && !profile) {
         console.log(`[${timestamp}] [HomeScreenWrapper] Usuário encontrado mas sem perfil, buscando perfil...`);
         
-        // Create a promise that rejects after timeout
+        // Create a promise that rejects after shorter timeout (8 seconds)
         const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('Timeout ao carregar perfil')), 15000); // 15 seconds
+          setTimeout(() => reject(new Error('Timeout ao carregar perfil')), 8000);
         });
         
         // Race between profile fetch and timeout
@@ -109,8 +109,8 @@ const HomeScreenWrapper: React.FC = () => {
     
     console.log(`[HomeScreenWrapper] Tentativa de retry #${newRetryCount}`);
     
-    // Exponential backoff for retries
-    const delay = Math.min(1000 * Math.pow(2, newRetryCount - 1), 10000); // Max 10 seconds
+    // More conservative retry delay - max 5 seconds
+    const delay = Math.min(1000 * newRetryCount, 5000);
     
     if (newRetryCount > 1) {
       console.log(`[HomeScreenWrapper] Aguardando ${delay}ms antes do retry...`);

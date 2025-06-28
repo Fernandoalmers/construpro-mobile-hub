@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from '@/components/ui/sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { User, MapPin, Phone, Mail, Star, Gift, ShoppingBag, Heart, Settings, FileText, CreditCard, Users, Package, MessageCircle, RefreshCw, Camera, Store } from 'lucide-react';
+import { getSafeAvatarUrl } from '@/utils/avatarUtils';
 
 const ProfileScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -145,7 +146,8 @@ const ProfileScreen: React.FC = () => {
   const isVendor = profile.tipo_perfil === 'vendedor' || profile.tipo_perfil === 'lojista';
   const displayName = isVendor && vendorProfile?.nome_loja ? vendorProfile.nome_loja : profile.nome || 'Usuário';
   const displayEmail = isVendor && vendorProfile?.email ? vendorProfile.email : profile.email;
-  const displayAvatar = isVendor && vendorProfile?.logo ? vendorProfile.logo : profile.avatar;
+  const rawDisplayAvatar = isVendor && vendorProfile?.logo ? vendorProfile.logo : profile.avatar;
+  const displayAvatar = getSafeAvatarUrl(rawDisplayAvatar);
 
   const menuItems = [
     {
@@ -232,7 +234,7 @@ const ProfileScreen: React.FC = () => {
           <div className="flex items-center space-x-4">
             <div className="relative">
               <EnhancedAvatar
-                src={displayAvatar || ''}
+                src={displayAvatar}
                 alt={displayName || 'Avatar'}
                 fallback={displayName}
                 size="xl"
