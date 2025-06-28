@@ -4,11 +4,12 @@ import { useAuth } from '@/context/AuthContext';
 import { useVendorProfile } from '@/hooks/useVendorProfile';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import EnhancedAvatar from '@/components/common/EnhancedAvatar';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/components/ui/sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { User, MapPin, Phone, Mail, Star, Gift, ShoppingBag, Heart, Settings, FileText, CreditCard, Users, Package, MessageCircle, RefreshCw, Camera, Store } from 'lucide-react';
+
 const ProfileScreen: React.FC = () => {
   const navigate = useNavigate();
   const {
@@ -22,6 +23,7 @@ const ProfileScreen: React.FC = () => {
     vendorProfile
   } = useVendorProfile();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
   console.log("ProfileScreen: Rendering with state:", {
     hasProfile: !!profile,
     isLoading,
@@ -30,10 +32,12 @@ const ProfileScreen: React.FC = () => {
     hasVendorProfile: !!vendorProfile,
     vendorProfile: vendorProfile
   });
+
   const handleRefreshProfile = async () => {
     console.log("ProfileScreen: Refreshing profile...");
     await refreshProfile();
   };
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -42,12 +46,15 @@ const ProfileScreen: React.FC = () => {
       console.error('Erro ao fazer logout:', error);
     }
   };
+
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
   };
+
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !profile?.id) return;
+
     try {
       // Validate file type
       if (!file.type.startsWith('image/')) {
@@ -60,6 +67,7 @@ const ProfileScreen: React.FC = () => {
         toast.error('A imagem deve ter no máximo 2MB');
         return;
       }
+
       console.log('Uploading avatar for user:', profile.id);
 
       // Create unique filename
@@ -68,11 +76,10 @@ const ProfileScreen: React.FC = () => {
       const filePath = `${profile.id}/${fileName}`;
 
       // Upload to Supabase Storage
-      const {
-        error: uploadError
-      } = await supabase.storage.from('avatars').upload(filePath, file, {
-        upsert: true
-      });
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+
       if (uploadError) {
         console.error('Upload error:', uploadError);
         toast.error('Erro ao fazer upload da imagem');
@@ -80,18 +87,17 @@ const ProfileScreen: React.FC = () => {
       }
 
       // Get public URL
-      const {
-        data
-      } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const { data } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
       if (!data?.publicUrl) {
         toast.error('Erro ao obter URL da imagem');
         return;
       }
 
       // Update profile with new avatar URL
-      await updateProfile({
-        avatar: data.publicUrl
-      });
+      await updateProfile({ avatar: data.publicUrl });
       toast.success('Avatar atualizado com sucesso!');
     } catch (error) {
       console.error('Error uploading avatar:', error);
@@ -101,17 +107,20 @@ const ProfileScreen: React.FC = () => {
 
   // Show loading state
   if (isLoading) {
-    return <div className="flex items-center justify-center min-h-screen">
+    return (
+      <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4" />
           <h2 className="text-lg font-semibold">Carregando perfil...</h2>
         </div>
-      </div>;
+      </div>
+    );
   }
 
   // Show error state if no profile after loading
   if (!profile) {
-    return <div className="flex items-center justify-center min-h-screen p-4">
+    return (
+      <div className="flex items-center justify-center min-h-screen p-4">
         <div className="text-center max-w-md">
           <User className="w-16 h-16 mx-auto mb-4 text-gray-400" />
           <h2 className="text-xl font-semibold mb-2">Erro ao carregar perfil</h2>
@@ -128,7 +137,8 @@ const ProfileScreen: React.FC = () => {
             </Button>
           </div>
         </div>
-      </div>;
+      </div>
+    );
   }
 
   // Determine if user is a vendor and get appropriate display info
@@ -136,61 +146,72 @@ const ProfileScreen: React.FC = () => {
   const displayName = isVendor && vendorProfile?.nome_loja ? vendorProfile.nome_loja : profile.nome || 'Usuário';
   const displayEmail = isVendor && vendorProfile?.email ? vendorProfile.email : profile.email;
   const displayAvatar = isVendor && vendorProfile?.logo ? vendorProfile.logo : profile.avatar;
-  const menuItems = [{
-    icon: User,
-    title: 'Dados Pessoais',
-    description: 'Gerencie suas informações pessoais',
-    onClick: () => navigate('/profile/user-data'),
-    color: 'text-blue-600'
-  }, {
-    icon: MapPin,
-    title: 'Endereços',
-    description: 'Gerencie seus endereços de entrega',
-    onClick: () => navigate('/profile/addresses'),
-    color: 'text-green-600'
-  }, {
-    icon: ShoppingBag,
-    title: 'Meus Pedidos',
-    description: 'Acompanhe seus pedidos online',
-    onClick: () => navigate('/profile/orders'),
-    color: 'text-orange-600'
-  }, {
-    icon: Package,
-    title: 'Compras Físicas',
-    description: 'Histórico de compras nas lojas',
-    onClick: () => navigate('/profile/physical-purchases'),
-    color: 'text-purple-600'
-  }, {
-    icon: Star,
-    title: 'Histórico de Pontos',
-    description: 'Acompanhe seus pontos acumulados',
-    onClick: () => navigate('/profile/points-history'),
-    color: 'text-yellow-600'
-  }, {
-    icon: Users,
-    title: 'Indicações',
-    description: 'Convide amigos e ganhe pontos',
-    onClick: () => navigate('/profile/referrals'),
-    color: 'text-pink-600'
-  }, {
-    icon: Heart,
-    title: 'Favoritos',
-    description: 'Produtos que você curtiu',
-    onClick: () => navigate('/profile/favorites'),
-    color: 'text-red-600'
-  }, {
-    icon: FileText,
-    title: 'Avaliações',
-    description: 'Suas avaliações de produtos',
-    onClick: () => navigate('/profile/reviews'),
-    color: 'text-indigo-600'
-  }, {
-    icon: Settings,
-    title: 'Configurações',
-    description: 'Preferências do aplicativo',
-    onClick: () => navigate('/profile/settings'),
-    color: 'text-gray-600'
-  }];
+
+  const menuItems = [
+    {
+      icon: User,
+      title: 'Dados Pessoais',
+      description: 'Gerencie suas informações pessoais',
+      onClick: () => navigate('/profile/user-data'),
+      color: 'text-blue-600'
+    },
+    {
+      icon: MapPin,
+      title: 'Endereços',
+      description: 'Gerencie seus endereços de entrega',
+      onClick: () => navigate('/profile/addresses'),
+      color: 'text-green-600'
+    },
+    {
+      icon: ShoppingBag,
+      title: 'Meus Pedidos',
+      description: 'Acompanhe seus pedidos online',
+      onClick: () => navigate('/profile/orders'),
+      color: 'text-orange-600'
+    },
+    {
+      icon: Package,
+      title: 'Compras Físicas',
+      description: 'Histórico de compras nas lojas',
+      onClick: () => navigate('/profile/physical-purchases'),
+      color: 'text-purple-600'
+    },
+    {
+      icon: Star,
+      title: 'Histórico de Pontos',
+      description: 'Acompanhe seus pontos acumulados',
+      onClick: () => navigate('/profile/points-history'),
+      color: 'text-yellow-600'
+    },
+    {
+      icon: Users,
+      title: 'Indicações',
+      description: 'Convide amigos e ganhe pontos',
+      onClick: () => navigate('/profile/referrals'),
+      color: 'text-pink-600'
+    },
+    {
+      icon: Heart,
+      title: 'Favoritos',
+      description: 'Produtos que você curtiu',
+      onClick: () => navigate('/profile/favorites'),
+      color: 'text-red-600'
+    },
+    {
+      icon: FileText,
+      title: 'Avaliações',
+      description: 'Suas avaliações de produtos',
+      onClick: () => navigate('/profile/reviews'),
+      color: 'text-indigo-600'
+    },
+    {
+      icon: Settings,
+      title: 'Configurações',
+      description: 'Preferências do aplicativo',
+      onClick: () => navigate('/profile/settings'),
+      color: 'text-gray-600'
+    }
+  ];
 
   // Add vendor-specific menu items
   if (isVendor) {
@@ -202,18 +223,23 @@ const ProfileScreen: React.FC = () => {
       color: 'text-construPro-orange'
     });
   }
-  return <div className="min-h-screen bg-gray-50 pb-20">
+
+  return (
+    <div className="min-h-screen bg-gray-50 pb-20">
       {/* Header com informações do usuário */}
       <div className="bg-construPro-blue text-white">
         <div className="p-6 bg-construPro-blue">
           <div className="flex items-center space-x-4">
             <div className="relative">
-              <Avatar className="w-20 h-20 border-4 border-white cursor-pointer hover:opacity-80 transition-opacity" onClick={handleAvatarClick}>
-                <AvatarImage src={displayAvatar || ''} alt={displayName || 'Avatar'} />
-                <AvatarFallback className="bg-construPro-orange text-white text-lg font-bold">
-                  {displayName?.charAt(0)?.toUpperCase() || 'U'}
-                </AvatarFallback>
-              </Avatar>
+              <EnhancedAvatar
+                src={displayAvatar || ''}
+                alt={displayName || 'Avatar'}
+                fallback={displayName}
+                size="xl"
+                className="border-4 border-white cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={handleAvatarClick}
+                showLoadingIndicator={true}
+              />
               <div className="absolute -bottom-1 -right-1 bg-construPro-orange rounded-full p-1.5 cursor-pointer hover:bg-orange-600 transition-colors" onClick={handleAvatarClick}>
                 <Camera className="w-3 h-3 text-white" />
               </div>
@@ -241,12 +267,19 @@ const ProfileScreen: React.FC = () => {
       </div>
 
       {/* Hidden file input */}
-      <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileChange}
+        className="hidden"
+      />
 
       {/* Menu de opções */}
       <div className="p-4">
         <div className="grid gap-3">
-          {menuItems.map((item, index) => <Card key={index} className="hover:shadow-md transition-shadow cursor-pointer" onClick={item.onClick}>
+          {menuItems.map((item, index) => (
+            <Card key={index} className="hover:shadow-md transition-shadow cursor-pointer" onClick={item.onClick}>
               <CardContent className="flex items-center p-4">
                 <div className={`w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center mr-4 ${item.color}`}>
                   <item.icon className="w-5 h-5" />
@@ -256,7 +289,8 @@ const ProfileScreen: React.FC = () => {
                   <p className="text-sm text-gray-500">{item.description}</p>
                 </div>
               </CardContent>
-            </Card>)}
+            </Card>
+          ))}
         </div>
 
         {/* Ações do perfil */}
@@ -272,6 +306,8 @@ const ProfileScreen: React.FC = () => {
           <p className="mt-1">Versão 1.0.0</p>
         </div>
       </div>
-    </div>;
+    </div>
+  );
 };
+
 export default ProfileScreen;

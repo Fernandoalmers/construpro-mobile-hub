@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Avatar from '@/components/common/Avatar';
+import EnhancedAvatar from '@/components/common/EnhancedAvatar';
 import { useAuth } from '@/context/AuthContext';
 import { useSiteLogo } from '@/hooks/useSiteLogo';
 
@@ -45,12 +45,13 @@ const HomeHeader: React.FC = () => {
             {renderLogo()}
           </div>
           <div className="flex items-center space-x-4">
-            <Avatar
+            <EnhancedAvatar
               src={profile?.avatar}
               alt={profile?.nome || 'Usuario'}
               fallback={profile?.nome}
               size="sm"
               onClick={() => navigate('/profile')}
+              showLoadingIndicator={true}
             />
           </div>
         </div>
