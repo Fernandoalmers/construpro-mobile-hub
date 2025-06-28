@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Avatar as ShadcnAvatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
-import { User, RefreshCw } from 'lucide-react';
+import { User } from 'lucide-react';
 
 interface EnhancedAvatarProps {
   src?: string;
@@ -21,10 +21,10 @@ const EnhancedAvatar: React.FC<EnhancedAvatarProps> = ({
   size = 'md',
   className,
   onClick,
-  showLoadingIndicator = true,
+  showLoadingIndicator = false,
 }) => {
-  const [imageStatus, setImageStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
-  const [currentSrc, setCurrentSrc] = useState<string | undefined>(src);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   const sizeClassMap = {
     sm: 'h-8 w-8',
@@ -40,46 +40,34 @@ const EnhancedAvatar: React.FC<EnhancedAvatarProps> = ({
     xl: 32
   };
 
-  const loadingSizeMap = {
-    sm: 'w-3 h-3',
-    md: 'w-4 h-4',
-    lg: 'w-5 h-5',
-    xl: 'w-6 h-6'
-  };
-
   // Get initials from fallback text
   const initials = fallback 
     ? fallback.split(' ').map(name => name[0]).join('').toUpperCase().slice(0, 2)
     : 'U';
 
-  // Reset state when src changes
+  // Reset states when src changes
   useEffect(() => {
-    if (src !== currentSrc) {
-      setCurrentSrc(src);
-      setImageStatus(src ? 'loading' : 'error');
+    if (src) {
+      console.log('🖼️ [EnhancedAvatar] Nova URL de avatar:', src);
+      setImageLoaded(false);
+      setImageError(false);
+    } else {
+      console.log('🖼️ [EnhancedAvatar] Sem URL de avatar, usando fallback');
+      setImageLoaded(false);
+      setImageError(true);
     }
-  }, [src, currentSrc]);
-
-  // Set timeout for loading
-  useEffect(() => {
-    if (imageStatus === 'loading' && currentSrc) {
-      const timeout = setTimeout(() => {
-        console.log('⏰ [EnhancedAvatar] Timeout na imagem:', currentSrc);
-        setImageStatus('error');
-      }, 5000); // Reduzido para 5 segundos
-
-      return () => clearTimeout(timeout);
-    }
-  }, [imageStatus, currentSrc]);
+  }, [src]);
 
   const handleImageLoad = () => {
-    console.log('✅ [EnhancedAvatar] Imagem carregada:', currentSrc);
-    setImageStatus('loaded');
+    console.log('✅ [EnhancedAvatar] Avatar carregado com sucesso:', src);
+    setImageLoaded(true);
+    setImageError(false);
   };
 
   const handleImageError = () => {
-    console.log('❌ [EnhancedAvatar] Erro na imagem:', currentSrc);
-    setImageStatus('error');
+    console.log('❌ [EnhancedAvatar] Erro ao carregar avatar:', src);
+    setImageLoaded(false);
+    setImageError(true);
   };
 
   return (
@@ -91,33 +79,25 @@ const EnhancedAvatar: React.FC<EnhancedAvatarProps> = ({
       )} 
       onClick={onClick}
     >
-      {/* Mostrar loading apenas se habilitado e carregando */}
-      {imageStatus === 'loading' && showLoadingIndicator && currentSrc && (
-        <AvatarFallback className="bg-gray-100 flex items-center justify-center">
-          <RefreshCw className={cn("animate-spin text-gray-400", loadingSizeMap[size])} />
-        </AvatarFallback>
-      )}
-
-      {/* Mostrar imagem se carregada */}
-      {imageStatus === 'loaded' && currentSrc && (
+      {/* Always try to show image first if src exists */}
+      {src && !imageError && (
         <AvatarImage 
-          src={currentSrc} 
+          src={src} 
           alt={alt} 
           onLoad={handleImageLoad} 
           onError={handleImageError}
+          className="object-cover"
         />
       )}
 
-      {/* Mostrar fallback se erro ou sem imagem */}
-      {(imageStatus === 'error' || !currentSrc || (imageStatus === 'loading' && !showLoadingIndicator)) && (
-        <AvatarFallback className="bg-construPro-orange text-white flex items-center justify-center">
-          {fallback ? (
-            <span className="font-medium">{initials}</span>
-          ) : (
-            <User size={iconSizeMap[size]} />
-          )}
-        </AvatarFallback>
-      )}
+      {/* Show fallback if no src, error, or as backup */}
+      <AvatarFallback className="bg-construPro-orange text-white flex items-center justify-center">
+        {fallback ? (
+          <span className="font-medium text-sm">{initials}</span>
+        ) : (
+          <User size={iconSizeMap[size]} />
+        )}
+      </AvatarFallback>
     </ShadcnAvatar>
   );
 };

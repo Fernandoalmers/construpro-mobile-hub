@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from '@/components/ui/sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { User, MapPin, Phone, Mail, Star, Gift, ShoppingBag, Heart, Settings, FileText, CreditCard, Users, Package, MessageCircle, RefreshCw, Camera, Store } from 'lucide-react';
-import { getSafeAvatarUrl } from '@/utils/avatarUtils';
+import { getSafeAvatarUrl, addCacheBuster } from '@/utils/avatarUtils';
 
 const ProfileScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -25,17 +25,18 @@ const ProfileScreen: React.FC = () => {
   } = useVendorProfile();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  console.log("ProfileScreen: Rendering with state:", {
+  console.log("🖼️ [ProfileScreen] Renderizando com estado:", {
     hasProfile: !!profile,
     isLoading,
     profileId: profile?.id,
     userRole: profile?.tipo_perfil,
     hasVendorProfile: !!vendorProfile,
-    avatar: profile?.avatar ? 'presente' : 'ausente'
+    avatar: profile?.avatar ? 'presente' : 'ausente',
+    avatarUrl: profile?.avatar
   });
 
   const handleRefreshProfile = async () => {
-    console.log("ProfileScreen: Refreshing profile...");
+    console.log("🔄 [ProfileScreen] Refreshing profile...");
     await refreshProfile();
   };
 
@@ -67,7 +68,7 @@ const ProfileScreen: React.FC = () => {
         return;
       }
 
-      console.log('Uploading avatar for user:', profile.id);
+      console.log('📤 [ProfileScreen] Fazendo upload do avatar para usuário:', profile.id);
 
       const fileExt = file.name.split('.').pop();
       const fileName = `avatar-${Date.now()}.${fileExt}`;
@@ -78,7 +79,7 @@ const ProfileScreen: React.FC = () => {
         .upload(filePath, file, { upsert: true });
 
       if (uploadError) {
-        console.error('Upload error:', uploadError);
+        console.error('❌ [ProfileScreen] Erro no upload:', uploadError);
         toast.error('Erro ao fazer upload da imagem');
         return;
       }
@@ -92,10 +93,19 @@ const ProfileScreen: React.FC = () => {
         return;
       }
 
+      console.log('✅ [ProfileScreen] Upload concluído, URL:', data.publicUrl);
+
+      // Atualizar perfil com nova URL do avatar
       await updateProfile({ avatar: data.publicUrl });
+      
+      // Force refresh para garantir propagação
+      setTimeout(() => {
+        refreshProfile();
+      }, 500);
+      
       toast.success('Avatar atualizado com sucesso!');
     } catch (error) {
-      console.error('Error uploading avatar:', error);
+      console.error('❌ [ProfileScreen] Erro ao atualizar avatar:', error);
       toast.error('Erro ao atualizar avatar');
     }
   };
@@ -140,6 +150,14 @@ const ProfileScreen: React.FC = () => {
   const displayEmail = isVendor && vendorProfile?.email ? vendorProfile.email : profile.email;
   const rawDisplayAvatar = isVendor && vendorProfile?.logo ? vendorProfile.logo : profile.avatar;
   const displayAvatar = getSafeAvatarUrl(rawDisplayAvatar);
+
+  console.log('🖼️ [ProfileScreen] Avatar para exibição:', {
+    raw: rawDisplayAvatar,
+    processed: displayAvatar,
+    isVendor,
+    profileAvatar: profile.avatar,
+    vendorLogo: vendorProfile?.logo
+  });
 
   const menuItems = [
     {
@@ -231,7 +249,6 @@ const ProfileScreen: React.FC = () => {
                 size="xl"
                 className="border-4 border-white cursor-pointer hover:opacity-80 transition-opacity"
                 onClick={handleAvatarClick}
-                showLoadingIndicator={true}
               />
               <div className="absolute -bottom-1 -right-1 bg-construPro-orange rounded-full p-1.5 cursor-pointer hover:bg-orange-600 transition-colors" onClick={handleAvatarClick}>
                 <Camera className="w-3 h-3 text-white" />

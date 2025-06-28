@@ -30,74 +30,66 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   // Refs para controle de estado
   const isRefreshingRef = useRef(false);
-  const refreshTimeoutRef = useRef<NodeJS.Timeout>();
 
   const loadUserProfile = async (userId: string): Promise<UserProfile | null> => {
     try {
-      console.log('[AuthContext] Loading user profile for:', userId);
+      console.log('🔄 [AuthContext] Carregando perfil do usuário:', userId);
       const userProfile = await getUserProfile();
       
       if (userProfile) {
         setProfile(userProfile);
-        console.log('[AuthContext] Profile loaded successfully:', {
+        console.log('✅ [AuthContext] Perfil carregado:', {
           id: userProfile.id,
           nome: userProfile.nome,
-          avatar: userProfile.avatar ? 'presente' : 'ausente'
+          avatar: userProfile.avatar ? 'presente' : 'ausente',
+          avatarUrl: userProfile.avatar
         });
         return userProfile;
       } else {
-        console.warn('[AuthContext] No profile found for user');
+        console.warn('⚠️ [AuthContext] Nenhum perfil encontrado');
         setProfile(null);
         return null;
       }
     } catch (error) {
-      console.error('[AuthContext] Error loading profile:', error);
+      console.error('❌ [AuthContext] Erro ao carregar perfil:', error);
       setProfile(null);
       return null;
     }
   };
 
-  // Debounced refresh profile para evitar chamadas múltiplas
+  // Refresh profile sem debounce - propagação imediata
   const refreshProfile = useCallback(async (): Promise<UserProfile | null> => {
     if (!user?.id || isRefreshingRef.current) {
-      console.log('[AuthContext] Skipping refresh - no user or already refreshing');
+      console.log('🚫 [AuthContext] Skipping refresh - sem usuário ou já refreshing');
       return profile;
     }
     
-    // Limpar timeout anterior
-    if (refreshTimeoutRef.current) {
-      clearTimeout(refreshTimeoutRef.current);
-    }
+    isRefreshingRef.current = true;
+    console.log('🔄 [AuthContext] Refreshing profile imediatamente...');
     
-    // Debounce de 300ms
-    return new Promise((resolve) => {
-      refreshTimeoutRef.current = setTimeout(async () => {
-        isRefreshingRef.current = true;
-        console.log('[AuthContext] 🔄 Refreshing profile...');
+    try {
+      const updatedProfile = await loadUserProfile(user.id);
+      
+      if (updatedProfile) {
+        console.log('✅ [AuthContext] Profile refreshed, disparando evento:', updatedProfile.avatar);
         
-        try {
-          const updatedProfile = await loadUserProfile(user.id);
-          
-          if (updatedProfile) {
-            console.log('[AuthContext] 📡 Profile refreshed successfully');
-            window.dispatchEvent(new CustomEvent('profile-updated', {
-              detail: { 
-                profile: updatedProfile, 
-                timestamp: Date.now(),
-                source: 'refresh'
-              }
-            }));
+        // Disparar evento customizado imediatamente
+        window.dispatchEvent(new CustomEvent('profile-updated', {
+          detail: { 
+            profile: updatedProfile, 
+            timestamp: Date.now(),
+            source: 'refresh'
           }
-          
-          resolve(updatedProfile);
-        } catch (error) {
-          console.error('[AuthContext] Error refreshing profile:', error);
-          resolve(profile);
-        } finally {
-          isRefreshingRef.current = false;
-        }
-      }, 300);
-    });
+        }));
+      }
+      
+      return updatedProfile;
+    } catch (error) {
+      console.error('❌ [AuthContext] Erro ao refresh profile:', error);
+      return profile;
+    } finally {
+      isRefreshingRef.current = false;
+    }
   }, [user?.id, profile]);
 
   const login = async (email: string, password: string) => {
@@ -113,7 +105,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
-    console.log('[AuthContext] Logging out');
+    console.log('🚪 [AuthContext] Fazendo logout');
     setIsLoading(true);
     try {
       await supabase.auth.signOut();
@@ -121,7 +113,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(null);
       setProfile(null);
     } catch (error) {
-      console.error('[AuthContext] Error logging out:', error);
+      console.error('❌ [AuthContext] Erro no logout:', error);
     } finally {
       setIsLoading(false);
     }
@@ -129,11 +121,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateProfile = async (data: any): Promise<UserProfile | null> => {
     try {
+      console.log('🔄 [AuthContext] Atualizando perfil com dados:', data);
       const updatedProfile = await updateUserProfile(data);
+      
+      // Atualizar estado imediatamente
       setProfile(updatedProfile);
+      console.log('✅ [AuthContext] Perfil atualizado localmente:', {
+        avatar: updatedProfile.avatar,
+        timestamp: Date.now()
+      });
+      
+      // Disparar evento imediatamente
+      window.dispatchEvent(new CustomEvent('profile-updated', {
+        detail: { 
+          profile: updatedProfile, 
+          source: 'update',
+          timestamp: Date.now()
+        }
+      }));
+      
       return updatedProfile;
     } catch (error) {
-      console.error('[AuthContext] Error updating profile:', error);
+      console.error('❌ [AuthContext] Erro ao atualizar perfil:', error);
       throw error;
     }
   };
@@ -143,7 +152,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await updateUserProfile(data);
       await refreshProfile();
     } catch (error) {
-      console.error('[AuthContext] Error updating user:', error);
+      console.error('❌ [AuthContext] Erro ao atualizar usuário:', error);
       throw error;
     }
   };
@@ -152,7 +161,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (!user?.id) return;
 
-    console.log('[AuthContext] 📡 Configurando listener realtime para perfil:', user.id);
+    console.log('📡 [AuthContext] Configurando listener realtime para:', user.id);
     
     const channel = supabase
       .channel('profile-changes')
@@ -165,7 +174,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           filter: `id=eq.${user.id}`
         },
         async (payload) => {
-          console.log('[AuthContext] 📡 Perfil atualizado via realtime');
+          console.log('📡 [AuthContext] Perfil atualizado via realtime:', payload.new);
           
           const newProfile = payload.new as UserProfile;
           setProfile(newProfile);
@@ -183,7 +192,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .subscribe();
 
     return () => {
-      console.log('[AuthContext] 📡 Removendo listener realtime do perfil');
+      console.log('📡 [AuthContext] Removendo listener realtime');
       supabase.removeChannel(channel);
     };
   }, [user?.id]);
@@ -195,7 +204,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!isMounted) return;
       
-      console.log('[AuthContext] Initial session:', {
+      console.log('🔑 [AuthContext] Sessão inicial:', {
         hasSession: !!session,
         userId: session?.user?.id
       });
@@ -218,18 +227,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
       
-      console.log('[AuthContext] Auth state changed:', event);
+      console.log('🔄 [AuthContext] Auth state changed:', event);
       
       setSession(session);
       setUser(session?.user ?? null);
       
       if (event === 'SIGNED_IN' && session?.user?.id) {
-        // Carregar perfil de forma não-bloqueante
-        setTimeout(() => {
-          if (isMounted) {
-            loadUserProfile(session.user.id);
-          }
-        }, 100);
+        // Carregar perfil imediatamente
+        loadUserProfile(session.user.id);
       } else if (event === 'SIGNED_OUT') {
         setProfile(null);
       }
@@ -241,9 +246,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       isMounted = false;
       subscription.unsubscribe();
-      if (refreshTimeoutRef.current) {
-        clearTimeout(refreshTimeoutRef.current);
-      }
     };
   }, []);
 

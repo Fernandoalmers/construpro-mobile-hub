@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import EnhancedAvatar from '@/components/common/EnhancedAvatar';
 import { useAuth } from '@/context/AuthContext';
 import { useSiteLogo } from '@/hooks/useSiteLogo';
+import { getSafeAvatarUrl } from '@/utils/avatarUtils';
 
 const HomeHeader: React.FC = () => {
   const navigate = useNavigate();
@@ -15,6 +16,15 @@ const HomeHeader: React.FC = () => {
     console.log('🚨 [HomeHeader] Erro ao carregar logo:', logoUrl);
     setLogoError(true);
   };
+
+  const safeAvatarUrl = getSafeAvatarUrl(profile?.avatar);
+
+  console.log('🖼️ [HomeHeader] Avatar do usuário:', {
+    raw: profile?.avatar,
+    processed: safeAvatarUrl,
+    profileId: profile?.id,
+    profileName: profile?.nome
+  });
 
   const renderLogo = () => {
     console.log('🔍 [HomeHeader] Estado atual:', { logoUrl, logoError, logoLoading });
@@ -46,12 +56,11 @@ const HomeHeader: React.FC = () => {
           </div>
           <div className="flex items-center space-x-4">
             <EnhancedAvatar
-              src={profile?.avatar}
+              src={safeAvatarUrl}
               alt={profile?.nome || 'Usuario'}
               fallback={profile?.nome}
               size="sm"
               onClick={() => navigate('/profile')}
-              showLoadingIndicator={true}
             />
           </div>
         </div>
