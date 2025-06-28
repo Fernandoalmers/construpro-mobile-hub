@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useCart } from '@/hooks/use-cart';
@@ -150,7 +149,7 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
         {/* Seção Superior - SEMPRE VISÍVEL (Busca + Navegação) */}
         <div 
           ref={topSectionRef}
-          className="bg-construPro-blue relative z-50"
+          className="bg-gradient-to-r from-royal-blue to-royal-blue/80 relative z-50"
         >
           <div className="p-2 sm:p-4 pt-4 sm:pt-8">
             {/* Header Top with Back Button, Title, CEP Button, View Selector and Cart */}
@@ -177,7 +176,7 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
         {/* Seção Inferior - OCULTÁVEL (Filtros) */}
         <motion.div 
           ref={bottomSectionRef}
-          className="bg-construPro-blue relative z-40 overflow-hidden"
+          className="bg-gradient-to-r from-royal-blue to-royal-blue/80 relative z-40 overflow-hidden"
           initial={{ maxHeight: '500px' }}
           animate={{ 
             maxHeight: hideHeader ? '0px' : '500px'
