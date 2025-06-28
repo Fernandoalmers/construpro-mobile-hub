@@ -49,16 +49,23 @@ export const useProductFilter = ({
     }
   }, []);
 
-  // Memoize filtered products using external search term
+  // Memoize filtered products using external search term - FIXED TO SEARCH ONLY IN NAME AND DESCRIPTION
   const filteredProductsMemo = useMemo(() => {
     console.log('[useProductFilter] Recalculating filtered products with search term:', externalSearchTerm);
     let filtered = [...produtos];
     
-    // Filter by external search term (from useMarketplaceSearch)
+    // Filter by external search term (ONLY search in product name and description)
     if (externalSearchTerm && externalSearchTerm.trim()) {
-      filtered = filtered.filter(produto => 
-        produto.nome.toLowerCase().includes(externalSearchTerm.toLowerCase())
-      );
+      const searchTerm = externalSearchTerm.toLowerCase();
+      filtered = filtered.filter(produto => {
+        const nameMatch = produto.nome?.toLowerCase().includes(searchTerm);
+        const descriptionMatch = produto.descricao?.toLowerCase().includes(searchTerm);
+        
+        console.log('[useProductFilter] Product:', produto.nome, 'Name match:', nameMatch, 'Description match:', descriptionMatch);
+        
+        // ONLY search in name and description, NOT in categories
+        return nameMatch || descriptionMatch;
+      });
       console.log('[useProductFilter] After search filter:', filtered.length, 'products');
     }
     

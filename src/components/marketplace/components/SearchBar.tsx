@@ -1,3 +1,4 @@
+
 import React, { useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import SearchResults from './SearchResults';
@@ -50,7 +51,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
       console.log('[SearchBar] Fetching search results for query:', query);
       setIsSearching(true);
       
-      // Search in the 'produtos' table with correct column names
+      // FIXED: Search ONLY in product name and description, NOT in categories
       const { data, error } = await supabase
         .from('produtos')
         .select(`
@@ -62,7 +63,8 @@ const SearchBar: React.FC<SearchBarProps> = ({
           descricao,
           imagens
         `)
-        .ilike('nome', `%${query.trim()}%`)
+        .or(`nome.ilike.%${query.trim()}%,descricao.ilike.%${query.trim()}%`)
+        .eq('status', 'aprovado')
         .limit(5);
         
       if (error) {
