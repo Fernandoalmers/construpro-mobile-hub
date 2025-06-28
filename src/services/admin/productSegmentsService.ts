@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 
@@ -12,19 +13,19 @@ export interface ProductSegment {
 }
 
 // Timeout wrapper para queries
-const withTimeout = <T>(promise: Promise<T>, timeoutMs: number = 10000): Promise<T> => {
+const withTimeout = <T>(promise: Promise<T>, timeoutMs: number = 8000): Promise<T> => {
   return Promise.race([
     promise,
     new Promise<T>((_, reject) => 
-      setTimeout(() => reject(new Error('Query timeout')), timeoutMs)
+      setTimeout(() => reject(new Error('Query timeout - Supabase não respondeu a tempo')), timeoutMs)
     )
   ]);
 };
 
-// Retry wrapper
+// Retry wrapper com backoff exponencial
 const withRetry = async <T>(
   fn: () => Promise<T>, 
-  maxRetries: number = 3, 
+  maxRetries: number = 2, 
   delay: number = 1000
 ): Promise<T> => {
   let lastError: Error;
@@ -34,10 +35,12 @@ const withRetry = async <T>(
       return await fn();
     } catch (error) {
       lastError = error as Error;
-      console.warn(`Attempt ${i + 1} failed:`, error);
+      console.warn(`🔄 [productSegmentsService] Tentativa ${i + 1}/${maxRetries} falhou:`, error);
       
       if (i < maxRetries - 1) {
-        await new Promise(resolve => setTimeout(resolve, delay * (i + 1)));
+        const backoffDelay = delay * Math.pow(2, i);
+        console.log(`⏳ [productSegmentsService] Aguardando ${backoffDelay}ms antes da próxima tentativa...`);
+        await new Promise(resolve => setTimeout(resolve, backoffDelay));
       }
     }
   }
@@ -72,9 +75,9 @@ const FALLBACK_SEGMENTS: ProductSegment[] = [
 
 export const getProductSegments = async (): Promise<ProductSegment[]> => {
   try {
-    console.log('🔄 [SegmentsService] Iniciando busca de segmentos...');
+    console.log('🔄 [productSegmentsService] Iniciando busca de segmentos...');
     
-    // Query otimizada sem contagem de categorias (para evitar timeout)
+    // Query otimizada sem contagem de categorias para evitar timeout
     const fetchSegments = async () => {
       const { data, error } = await supabase
         .from('product_segments')
@@ -92,41 +95,61 @@ export const getProductSegments = async (): Promise<ProductSegment[]> => {
       1500
     );
     
-    console.log('✅ [SegmentsService] Segmentos carregados:', segments.length);
+    console.log('✅ [productSegmentsService] Segmentos carregados:', segments.length);
     
     // Se não há segmentos, retornar fallback
     if (!segments || segments.length === 0) {
-      console.warn('⚠️ [SegmentsService] Nenhum segmento encontrado, usando fallback');
+      console.warn('⚠️ [productSegmentsService] Nenhum segmento encontrado, usando fallback');
       return FALLBACK_SEGMENTS;
     }
     
     // Tentar buscar contagem de categorias de forma assíncrona (não bloqueante)
     setTimeout(async () => {
       try {
-        await Promise.all(
-          segments.map(async (segment) => {
+        console.log('📊 [productSegmentsService] Iniciando contagem de categorias em background...');
+        const countsPromises = segments.map(async (segment) => {
+          try {
             const { count } = await supabase
               .from('product_categories')
               .select('id', { count: 'exact', head: true })
               .eq('segmento_id', segment.id);
             
-            segment.categorias_count = count || 0;
-          })
-        );
-        console.log('📊 [SegmentsService] Contagem de categorias atualizada');
+            return { segmentId: segment.id, count: count || 0 };
+          } catch (error) {
+            console.warn(`⚠️ [productSegmentsService] Erro ao contar categorias do segmento ${segment.id}:`, error);
+            return { segmentId: segment.id, count: 0 };
+          }
+        });
+        
+        const counts = await Promise.all(countsPromises);
+        console.log('📊 [productSegmentsService] Contagens de categorias obtidas:', counts);
+        
+        // Atualizar segments com contagens (isso não afeta o retorno da função principal)
+        counts.forEach(({ segmentId, count }) => {
+          const segment = segments.find(s => s.id === segmentId);
+          if (segment) {
+            segment.categorias_count = count;
+          }
+        });
+        
       } catch (error) {
-        console.warn('⚠️ [SegmentsService] Erro ao buscar contagem de categorias:', error);
+        console.warn('⚠️ [productSegmentsService] Erro geral na contagem de categorias:', error);
       }
-    }, 0);
+    }, 100); // Executar após 100ms para não bloquear
     
     return segments;
     
   } catch (error) {
-    console.error('❌ [SegmentsService] Erro ao buscar segmentos:', error);
+    console.error('❌ [productSegmentsService] Erro ao buscar segmentos:', error);
     
     // Em caso de erro, retornar segmentos de fallback
-    console.log('🔄 [SegmentsService] Usando segmentos de fallback devido ao erro');
-    toast.error('Erro ao carregar segmentos. Usando dados básicos.');
+    console.log('🔄 [productSegmentsService] Usando segmentos de fallback devido ao erro');
+    
+    // Mostrar toast apenas se não for um erro de timeout comum
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+    if (!errorMessage.includes('timeout') && !errorMessage.includes('connection')) {
+      toast.error('Erro ao carregar segmentos. Usando dados básicos.');
+    }
     
     return FALLBACK_SEGMENTS;
   }
