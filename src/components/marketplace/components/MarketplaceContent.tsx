@@ -1,15 +1,15 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import GridProductView from './GridProductView';
-import ListProductView from './ListProductView';
 import LoadingState from '../../common/LoadingState';
 import EmptyProductState from './EmptyProductState';
 import EmptySegmentState from './EmptySegmentState';
 import SmartCepModal from './SmartCepModal';
+import PageTitleSection from './PageTitleSection';
+import NoDeliveryState from './NoDeliveryState';
+import ProductsDisplay from './ProductsDisplay';
 import { useDeliveryZones } from '@/hooks/useDeliveryZones';
 import { useMarketplaceFilters } from '@/hooks/useMarketplaceFilters';
-import { MapPin } from 'lucide-react';
 
 interface MarketplaceContentProps {
   dynamicPaddingTop: number;
@@ -23,7 +23,6 @@ interface MarketplaceContentProps {
   clearFilters: () => void;
   viewType: 'grid' | 'list';
   onLojaClick?: (lojaId: string) => void;
-  // NOVO: Adicionar props para controle de segmentos
   setSelectedSegmentId?: (id: string | null) => void;
   updateSegmentURL?: (id: string | null) => void;
 }
@@ -58,7 +57,7 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
     await resolveZones(newCep);
   };
 
-  // NOVO: Determinar se estamos em um segmento específico sem produtos
+  // Determinar se estamos em um segmento específico sem produtos
   const isSpecificSegmentWithoutProducts = () => {
     return currentCategoryName && 
            currentCategoryName !== "Todos os Produtos" && 
@@ -67,9 +66,8 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
            !hasDefinedCepWithoutCoverage;
   };
 
-  // CORRIGIDO: Handlers para o estado vazio de segmento
+  // Handlers para o estado vazio de segmento
   const handleViewAllCategories = () => {
-    // Limpar segmento específico para mostrar todos os produtos
     if (setSelectedSegmentId) {
       setSelectedSegmentId(null);
     }
@@ -83,7 +81,7 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
     navigate('/', { replace: true });
   };
 
-  // NOVO: Determinar título baseado no estado atual
+  // Determinar título baseado no estado atual
   const getPageTitle = () => {
     if (hasDefinedCepWithoutCoverage) {
       return "Nenhum lojista atende esse endereço";
@@ -92,8 +90,8 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
     return currentCategoryName || "Produtos disponíveis";
   };
 
-  // CORRIGIDO: Adicionar margem de segurança ao padding calculado
-  const safePaddingTop = dynamicPaddingTop + 8; // 8px de margem de segurança
+  // Adicionar margem de segurança ao padding calculado
+  const safePaddingTop = dynamicPaddingTop + 8;
 
   console.log('[MarketplaceContent] Padding aplicado:', {
     dynamicPaddingTop,
@@ -102,7 +100,7 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
     isSpecificSegment: isSpecificSegmentWithoutProducts()
   });
 
-  // NOVO: Loading state coordenado - não mostra produtos até verificação completa
+  // Loading state coordenado - não mostra produtos até verificação completa
   if (isLoading || !isInitialized) {
     return (
       <div 
@@ -124,34 +122,16 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
       <div className="p-4">
         {/* Título da página */}
         {!hasDefinedCepWithoutCoverage && !isSpecificSegmentWithoutProducts() && (
-          <div className="mb-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <h2 className="text-lg font-semibold text-gray-800">
-                  {getPageTitle()}
-                </h2>
-                {hasActiveZones && currentCep && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    CEP {currentCep.replace(/(\d{5})(\d{3})/, '$1-$2')}
-                  </p>
-                )}
-              </div>
-              
-              {/* Botão Alterar CEP - MOBILE ONLY (Desktop tem no header) */}
-              {currentCep && filteredProdutos.length > 0 && (
-                <button
-                  onClick={handleChangeCep}
-                  className="md:hidden flex items-center gap-1 px-2 py-1 text-xs font-medium text-construPro-blue border border-construPro-blue rounded-md hover:bg-blue-50 transition-colors shrink-0"
-                >
-                  <MapPin className="w-3 h-3" />
-                  Alterar CEP
-                </button>
-              )}
-            </div>
-          </div>
+          <PageTitleSection
+            title={getPageTitle()}
+            currentCep={currentCep}
+            hasActiveZones={hasActiveZones}
+            onChangeCep={handleChangeCep}
+            showProducts={filteredProdutos.length > 0}
+          />
         )}
 
-        {/* NOVO: Estado específico para segmento sem produtos */}
+        {/* Estado específico para segmento sem produtos */}
         {isSpecificSegmentWithoutProducts() && (
           <EmptySegmentState
             segmentName={currentCategoryName}
@@ -162,63 +142,30 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
 
         {/* Estado quando CEP definido mas sem vendedores que atendem */}
         {hasDefinedCepWithoutCoverage && (
-          <div className="text-center py-12">
-            <div className="max-w-sm mx-auto">
-              <div className="mb-4">
-                <div className="w-16 h-16 mx-auto bg-red-100 rounded-full flex items-center justify-center">
-                  <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                </div>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Nenhum lojista atende esse endereço
-              </h3>
-              <p className="text-gray-600 mb-6">
-                Não encontramos vendedores que fazem entrega para o CEP {currentCep?.replace(/(\d{5})(\d{3})/, '$1-$2')}. 
-                Tente um CEP diferente.
-              </p>
-              <div className="space-y-3">
-                <button
-                  onClick={handleChangeCep}
-                  className="w-full bg-construPro-blue text-white px-6 py-3 rounded-lg font-medium hover:bg-construPro-blue-dark transition-colors"
-                >
-                  Alterar CEP
-                </button>
-              </div>
-            </div>
-          </div>
+          <NoDeliveryState
+            currentCep={currentCep}
+            onChangeCep={handleChangeCep}
+          />
         )}
 
-        {/* Estado vazio padrão (sem CEP definido e sem produtos) */}
+        {/* Estado vazio padrão */}
         {!hasDefinedCepWithoutCoverage && !currentCep && filteredProdutos.length === 0 && !isSpecificSegmentWithoutProducts() && (
           <EmptyProductState 
             clearFilters={clearFilters}
           />
         )}
 
-        {/* Lista de produtos - só mostra se não há problema de cobertura e não é segmento vazio */}
+        {/* Lista de produtos */}
         {!hasDefinedCepWithoutCoverage && !isSpecificSegmentWithoutProducts() && filteredProdutos.length > 0 && (
-          <>
-            {viewType === 'grid' ? (
-              <GridProductView
-                products={displayedProducts}
-                hasMore={hasMore}
-                isLoadingMore={isLoadingMore}
-                loadMore={loadMoreProducts}
-                onLojaClick={onLojaClick}
-              />
-            ) : (
-              <ListProductView
-                products={displayedProducts}
-                hasMore={hasMore}
-                isLoadingMore={isLoadingMore}
-                loadMore={loadMoreProducts}
-                onLojaClick={onLojaClick}
-              />
-            )}
-          </>
+          <ProductsDisplay
+            viewType={viewType}
+            products={filteredProdutos}
+            displayedProducts={displayedProducts}
+            hasMore={hasMore}
+            isLoadingMore={isLoadingMore}
+            loadMoreProducts={loadMoreProducts}
+            onLojaClick={onLojaClick}
+          />
         )}
       </div>
 
