@@ -1,4 +1,3 @@
-
 import React, { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -239,8 +238,8 @@ const ProfileScreen: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       {/* Header com informações do usuário */}
-      <div className="bg-gradient-to-r from-royal-blue to-royal-blue/80 text-white">
-        <div className="p-6 bg-gradient-to-r from-royal-blue to-royal-blue/80">
+      <div className="bg-construPro-blue text-white">
+        <div className="p-6 bg-construPro-blue">
           <div className="flex items-center space-x-4">
             <div className="relative">
               <EnhancedAvatar
