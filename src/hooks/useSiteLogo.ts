@@ -1,17 +1,14 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { updateFavicon } from '@/utils/faviconUtils';
 
 export const useSiteLogo = () => {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const updateLogoAndFavicon = (newLogoUrl: string | null) => {
+  const updateLogo = (newLogoUrl: string | null) => {
     setLogoUrl(newLogoUrl);
-    if (newLogoUrl) {
-      updateFavicon(newLogoUrl);
-    }
+    // Removido: updateFavicon(newLogoUrl) - favicon permanece estático
   };
 
   const fetchLogo = async () => {
@@ -27,7 +24,7 @@ export const useSiteLogo = () => {
       }
 
       const fetchedLogoUrl = data?.logo_url || null;
-      updateLogoAndFavicon(fetchedLogoUrl);
+      updateLogo(fetchedLogoUrl);
     } catch (error) {
       console.error('Error fetching logo:', error);
     } finally {
@@ -51,7 +48,7 @@ export const useSiteLogo = () => {
         (payload) => {
           console.log('Site settings changed:', payload);
           if (payload.new && 'logo_url' in payload.new) {
-            updateLogoAndFavicon(payload.new.logo_url);
+            updateLogo(payload.new.logo_url);
           }
         }
       )
