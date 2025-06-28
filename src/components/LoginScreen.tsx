@@ -51,19 +51,23 @@ const LoginScreen: React.FC = () => {
   const renderLogo = () => {
     if (logoVariantUrl && !logoError && !logoLoading) {
       return (
-        <img
-          src={logoVariantUrl}
-          alt="Matershop"
-          className="h-12 w-auto object-contain mb-2"
-          onError={handleLogoError}
-          onLoad={() => console.log('✅ [LoginScreen] Logo variante carregada com sucesso!')}
-        />
+        <div className="flex items-center justify-center mb-4">
+          <img
+            src={logoVariantUrl}
+            alt="Matershop"
+            className="h-20 w-auto object-contain"
+            onError={handleLogoError}
+            onLoad={() => console.log('✅ [LoginScreen] Logo variante carregada com sucesso!')}
+          />
+        </div>
       );
     }
 
     // Fallback para texto se não houver logo variante ou erro
     return (
-      <h1 className="text-3xl font-bold text-white">Matershop</h1>
+      <div className="flex items-center justify-center mb-4">
+        <h1 className="text-3xl font-bold text-white">Matershop</h1>
+      </div>
     );
   };
 
@@ -123,7 +127,7 @@ const LoginScreen: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <div className="py-16 rounded-b-3xl bg-construPro-blue">
-        <div className="text-center mb-8">
+        <div className="text-center">
           {renderLogo()}
           <p className="text-white opacity-80 mt-2">Materiais, clube e recompensas</p>
         </div>
