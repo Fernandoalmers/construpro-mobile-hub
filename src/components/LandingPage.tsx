@@ -5,16 +5,50 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Smartphone, Gift, Settings, CheckCircle, Star, ArrowRight, Users, TrendingUp, Award, MapPin, Truck, ShieldCheck } from 'lucide-react';
 import LazyImage from '@/components/common/LazyImage';
+import { useSiteLogo } from '@/hooks/useSiteLogo';
 
 const LandingPage = () => {
   const navigate = useNavigate();
   const showMultisegmentHero = process.env.NEXT_PUBLIC_SHOW_MULTISEGMENT_HERO !== 'false';
+  const { logoUrl, isLoading: logoLoading } = useSiteLogo();
   
   const handleSignUp = () => {
     navigate('/signup');
   };
   const handleLogin = () => {
     navigate('/login');
+  };
+
+  const renderLogo = () => {
+    // Se ainda está carregando, mostrar espaço reservado
+    if (logoLoading) {
+      return (
+        <div className="h-8 w-32 bg-gray-200 animate-pulse rounded"></div>
+      );
+    }
+
+    // Usar logo do banco de dados ou fallback para a logo padrão
+    const currentLogoUrl = logoUrl || '/lovable-uploads/7520caa6-efbb-4176-9c9f-8d37f88c7ff1.png';
+    
+    return (
+      <img
+        src={currentLogoUrl}
+        alt="Matershop"
+        className="h-8 w-auto object-contain hover:scale-105 transition-transform duration-200"
+        onError={(e) => {
+          // Se falhar, tentar o placeholder
+          e.currentTarget.src = '/img/placeholder.png';
+          e.currentTarget.onerror = () => {
+            // Se o placeholder também falhar, mostrar texto como último recurso
+            e.currentTarget.style.display = 'none';
+            const textFallback = document.createElement('h1');
+            textFallback.className = 'text-2xl font-bold text-royal-blue';
+            textFallback.textContent = 'Matershop';
+            e.currentTarget.parentNode?.appendChild(textFallback);
+          };
+        }}
+      />
+    );
   };
   
   return (
@@ -44,7 +78,7 @@ const LandingPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-royal-blue" itemProp="name">Matershop</h1>
+              {renderLogo()}
             </div>
             <div className="flex items-center space-x-4">
               <Button variant="outline" onClick={handleLogin} className="border-royal-blue text-royal-blue hover:bg-royal-blue hover:text-white">
@@ -349,7 +383,9 @@ const LandingPage = () => {
       <footer className="py-12 bg-black">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h3 className="text-2xl font-bold text-white mb-4">Matershop</h3>
+            <div className="flex justify-center mb-4">
+              {renderLogo()}
+            </div>
             <p className="text-gray-400 mb-6">
               {showMultisegmentHero ? 
                 'O marketplace de negócios locais (começamos pela construção)' :
