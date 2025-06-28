@@ -8,13 +8,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Gift, Star, Clock, CheckCircle, AlertCircle, Sparkles } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { redeemReward } from '@/services/rewardsService';
 import LoadingState from '@/components/common/LoadingState';
 import ErrorState from '@/components/common/ErrorState';
 import { formatCurrency } from '@/utils/formatCurrency';
-import { RedemptionCard } from './components/RedemptionCard';
-import { RedemptionHeader } from './components/RedemptionHeader';
-import { RedemptionEmptyState } from './components/RedemptionEmptyState';
+import RedemptionCard from './components/RedemptionCard';
+import RedemptionHeader from './components/RedemptionHeader';
+import RedemptionEmptyState from './components/RedemptionEmptyState';
 
 const ResgatesScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -37,12 +37,12 @@ const ResgatesScreen: React.FC = () => {
 
     const available = rewards.filter(reward => 
       reward.status === 'ativo' && 
-      reward.pontos_necessarios <= userPoints
+      reward.pontos <= userPoints
     );
 
     const upcoming = rewards.filter(reward => 
       reward.status === 'ativo' && 
-      reward.pontos_necessarios > userPoints
+      reward.pontos > userPoints
     );
 
     return { availableRewards: available, upcomingRewards: upcoming };
@@ -60,7 +60,7 @@ const ResgatesScreen: React.FC = () => {
       return;
     }
 
-    if (userPoints < reward.pontos_necessarios) {
+    if (userPoints < reward.pontos) {
       toast.error('Você não tem pontos suficientes para este resgate');
       return;
     }
@@ -68,27 +68,12 @@ const ResgatesScreen: React.FC = () => {
     setRedeemingId(rewardId);
 
     try {
-      const { data, error } = await supabase.rpc('redeem_reward', {
-        user_id: profile.id,
-        reward_id: rewardId
+      const success = await redeemReward({
+        rewardId,
+        pontos: reward.pontos
       });
 
-      if (error) {
-        console.error('Erro ao resgatar recompensa:', error);
-        
-        if (error.message?.includes('insufficient_points')) {
-          toast.error('Pontos insuficientes para este resgate');
-        } else if (error.message?.includes('reward_not_found')) {
-          toast.error('Recompensa não encontrada');
-        } else if (error.message?.includes('reward_inactive')) {
-          toast.error('Esta recompensa não está mais disponível');
-        } else {
-          toast.error('Erro ao processar resgate. Tente novamente.');
-        }
-        return;
-      }
-
-      if (data?.success) {
+      if (success) {
         toast.success('Resgate realizado com sucesso!');
         navigate('/historico-resgates');
       } else {
@@ -125,7 +110,23 @@ const ResgatesScreen: React.FC = () => {
             <h1 className="text-2xl font-bold">Resgates</h1>
           </div>
           
-          <RedemptionHeader userPoints={userPoints} />
+          <div className="flex items-center justify-between bg-white/10 rounded-lg p-4">
+            <div className="flex items-center">
+              <Gift className="w-6 h-6 mr-2" />
+              <div>
+                <p className="text-sm opacity-90">Seus pontos</p>
+                <p className="text-2xl font-bold">{userPoints}</p>
+              </div>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => navigate('/profile/points-history')}
+              className="border-white/30 text-white hover:bg-white/10"
+            >
+              Ver histórico
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -142,13 +143,26 @@ const ResgatesScreen: React.FC = () => {
             </div>
             <div className="grid gap-3">
               {availableRewards.map((reward) => (
-                <RedemptionCard
-                  key={reward.id}
-                  reward={reward}
-                  userPoints={userPoints}
-                  onRedeem={handleRedeem}
-                  isRedeeming={redeemingId === reward.id}
-                />
+                <Card key={reward.id} className="hover:shadow-md transition-shadow">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <h3 className="font-medium text-gray-900">{reward.titulo}</h3>
+                        <p className="text-sm text-gray-500 mt-1">{reward.descricao}</p>
+                        <Badge className="mt-2 bg-construPro-orange text-white">
+                          {reward.pontos} pontos
+                        </Badge>
+                      </div>
+                      <Button
+                        onClick={() => handleRedeem(reward.id)}
+                        disabled={redeemingId === reward.id}
+                        className="ml-4"
+                      >
+                        {redeemingId === reward.id ? 'Resgatando...' : 'Resgatar'}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           </div>
@@ -165,13 +179,27 @@ const ResgatesScreen: React.FC = () => {
             </div>
             <div className="grid gap-3">
               {upcomingRewards.map((reward) => (
-                <RedemptionCard
-                  key={reward.id}
-                  reward={reward}
-                  userPoints={userPoints}
-                  onRedeem={handleRedeem}
-                  isRedeeming={false}
-                />
+                <Card key={reward.id} className="opacity-75">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <h3 className="font-medium text-gray-900">{reward.titulo}</h3>
+                        <p className="text-sm text-gray-500 mt-1">{reward.descricao}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <Badge variant="outline">
+                            {reward.pontos} pontos
+                          </Badge>
+                          <span className="text-xs text-gray-500">
+                            Faltam {reward.pontos - userPoints} pontos
+                          </span>
+                        </div>
+                      </div>
+                      <Button variant="outline" disabled>
+                        Indisponível
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           </div>
@@ -179,7 +207,19 @@ const ResgatesScreen: React.FC = () => {
 
         {/* Estado Vazio */}
         {availableRewards.length === 0 && upcomingRewards.length === 0 && (
-          <RedemptionEmptyState />
+          <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+            <div className="w-16 h-16 bg-construPro-blue/10 rounded-full flex items-center justify-center mb-4">
+              <Gift className="h-8 w-8 text-construPro-blue" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma recompensa disponível</h3>
+            <p className="text-gray-500 mb-6 max-w-sm">Continue acumulando pontos para desbloquear recompensas incríveis!</p>
+            <Button 
+              onClick={() => navigate('/marketplace')}
+              className="bg-construPro-blue hover:bg-construPro-blue/90"
+            >
+              Explorar Produtos
+            </Button>
+          </div>
         )}
 
         {/* Link para Histórico */}
