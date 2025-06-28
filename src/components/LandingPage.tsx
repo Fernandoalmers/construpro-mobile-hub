@@ -23,7 +23,7 @@ const LandingPage = () => {
     // Se ainda está carregando, mostrar espaço reservado
     if (logoLoading) {
       return (
-        <div className="h-8 w-32 bg-gray-200 animate-pulse rounded"></div>
+        <div className="h-12 w-40 bg-gray-200 animate-pulse rounded"></div>
       );
     }
 
@@ -34,7 +34,7 @@ const LandingPage = () => {
       <img
         src={currentLogoUrl}
         alt="Matershop"
-        className="h-8 w-auto object-contain hover:scale-105 transition-transform duration-200"
+        className="h-12 w-auto object-contain hover:scale-105 transition-transform duration-200"
         onError={(e) => {
           // Se falhar, tentar o placeholder
           e.currentTarget.src = '/img/placeholder.png';
@@ -99,24 +99,24 @@ const LandingPage = () => {
             <div>
               {showMultisegmentHero ? (
                 <>
-                  <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 leading-tight mb-6" itemProp="description">
+                  <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 leading-tight mb-6" itemProp="description">
                     Tudo do seu bairro a um clique: da{' '}
                     <span className="text-royal-blue">obra</span> ao{' '}
                     <span className="text-orange-points">dia a dia</span>.
                   </h1>
-                  <p className="text-xl text-gray-600 mb-8 leading-relaxed">
+                  <p className="text-lg text-gray-600 mb-8 leading-relaxed">
                     Compare preços, ganhe pontos e receba em casa produtos de lojas parceiras da sua região.
                   </p>
                 </>
               ) : (
                 <>
-                  <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 leading-tight mb-6">
+                  <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 leading-tight mb-6">
                     Matershop conecta você às{' '}
                     <span className="text-royal-blue">melhores ofertas</span> e{' '}
                     <span className="text-orange-points">recompensas</span> da
                     construção civil
                   </h1>
-                  <p className="text-xl text-gray-600 mb-8 leading-relaxed">
+                  <p className="text-lg text-gray-600 mb-8 leading-relaxed">
                     Cadastre-se grátis, garanta descontos exclusivos e acumule pontos online e nas lojas físicas parceiras.
                   </p>
                 </>
@@ -166,7 +166,7 @@ const LandingPage = () => {
       <section id="benefits" className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
               {showMultisegmentHero ? 'Por que escolher nosso marketplace?' : 'Por que escolher a Matershop?'}
             </h2>
           </div>
@@ -176,7 +176,7 @@ const LandingPage = () => {
                 <Card className="border-0 shadow-lg rounded-lg hover:shadow-xl transition-shadow">
                   <CardContent className="p-8 text-center">
                     <Award className="h-12 w-12 text-orange-points mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">
                       Pontuação inteligente em cada compra
                     </h3>
                     <p className="text-gray-600">
@@ -188,7 +188,7 @@ const LandingPage = () => {
                 <Card className="border-0 shadow-lg rounded-lg hover:shadow-xl transition-shadow">
                   <CardContent className="p-8 text-center">
                     <Truck className="h-12 w-12 text-orange-points mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">
                       Entrega expressa no CEP que você escolher
                     </h3>
                     <p className="text-gray-600">
@@ -200,7 +200,7 @@ const LandingPage = () => {
                 <Card className="border-0 shadow-lg rounded-lg hover:shadow-xl transition-shadow">
                   <CardContent className="p-8 text-center">
                     <ShieldCheck className="h-12 w-12 text-orange-points mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">
                       Negócios verificados • Suporte local
                     </h3>
                     <p className="text-gray-600">
@@ -214,7 +214,7 @@ const LandingPage = () => {
                 <Card className="border-0 shadow-lg rounded-lg hover:shadow-xl transition-shadow">
                   <CardContent className="p-8 text-center">
                     <Gift className="h-12 w-12 text-orange-points mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">
                       Cupons exclusivos
                     </h3>
                     <p className="text-gray-600">
@@ -226,7 +226,7 @@ const LandingPage = () => {
                 <Card className="border-0 shadow-lg rounded-lg hover:shadow-xl transition-shadow">
                   <CardContent className="p-8 text-center">
                     <Award className="h-12 w-12 text-orange-points mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">
                       Pontos que viram prêmios/recompensas
                     </h3>
                     <p className="text-gray-600">
@@ -238,7 +238,7 @@ const LandingPage = () => {
                 <Card className="border-0 shadow-lg rounded-lg hover:shadow-xl transition-shadow">
                   <CardContent className="p-8 text-center">
                     <Settings className="h-12 w-12 text-orange-points mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">
                       Gestão em um só lugar
                     </h3>
                     <p className="text-gray-600">
@@ -256,10 +256,10 @@ const LandingPage = () => {
       <section id="how-it-works" className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
               Como funciona
             </h2>
-            <p className="text-xl text-gray-600">
+            <p className="text-lg text-gray-600">
               Em 4 passos simples você já está economizando
             </p>
           </div>
@@ -304,13 +304,13 @@ const LandingPage = () => {
               <p className="text-center text-gray-600 mt-4">Dashboard Profissional</p>
             </div>
             <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">
                 Feito sob medida para quem vive de obra
               </h2>
               <div className="space-y-4">
                 {["Compare preços sem sair da obra", "Ganhe até 3× mais pontos como profissional", "Dashboard único com todos os seus pedidos e pontos", "Programa de indicação: convide colegas, ganhe pontos extras"].map((benefit, index) => <div key={index} className="flex items-start">
                     <CheckCircle className="h-6 w-6 text-orange-points mr-3 mt-0.5 flex-shrink-0" />
-                    <p className="text-lg text-gray-700">{benefit}</p>
+                    <p className="text-base text-gray-700">{benefit}</p>
                   </div>)}
               </div>
               <Button onClick={handleSignUp} size="lg" className="bg-royal-blue hover:bg-royal-blue/90 text-white mt-8 px-8 py-4 rounded-lg">
@@ -325,7 +325,7 @@ const LandingPage = () => {
       <section id="testimonials" className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
               O que dizem nossos usuários
             </h2>
           </div>
@@ -363,10 +363,10 @@ const LandingPage = () => {
       {/* Final CTA Section */}
       <section id="final-cta" className="py-20 bg-royal-blue">
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-          <h2 className="text-4xl font-bold text-white mb-6">
+          <h2 className="text-3xl font-bold text-white mb-6">
             Pronto para economizar e ganhar recompensas?
           </h2>
-          <p className="text-xl text-blue-100 mb-8">
+          <p className="text-lg text-blue-100 mb-8">
             {showMultisegmentHero ? 
               'Junte-se a milhares que já descobriram os melhores negócios da região' :
               'Junte-se a milhares de profissionais e consumidores que já economizam com a Matershop'
