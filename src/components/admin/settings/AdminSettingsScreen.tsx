@@ -5,6 +5,8 @@ import { Separator } from '@/components/ui/separator';
 import { SecurityFixButton } from '@/components/admin/SecurityFixButton';
 import { SecurityDashboard } from '@/components/admin/security/SecurityDashboard';
 import LogoUploadSection from './LogoUploadSection';
+import FaviconUploadSection from './FaviconUploadSection';
+import LogoVariantUploadSection from './LogoVariantUploadSection';
 
 const AdminSettingsScreen: React.FC = () => {
   return (
@@ -15,8 +17,22 @@ const AdminSettingsScreen: React.FC = () => {
       </div>
 
       <div className="grid gap-6">
-        {/* Logo Upload Section */}
-        <LogoUploadSection />
+        {/* Seção de Identidade Visual */}
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-800">Identidade Visual</h2>
+            <p className="text-sm text-gray-600">Gerencie logos, favicon e elementos visuais do site</p>
+          </div>
+          
+          {/* Logo Principal */}
+          <LogoUploadSection />
+          
+          {/* Logo Variante */}
+          <LogoVariantUploadSection />
+          
+          {/* Favicon */}
+          <FaviconUploadSection />
+        </div>
 
         <Separator />
 

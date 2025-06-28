@@ -1752,23 +1752,35 @@ export type Database = {
       site_settings: {
         Row: {
           created_at: string
+          favicon_filename: string | null
+          favicon_url: string | null
           id: string
           logo_filename: string | null
           logo_url: string | null
+          logo_variant_filename: string | null
+          logo_variant_url: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
+          favicon_filename?: string | null
+          favicon_url?: string | null
           id?: string
           logo_filename?: string | null
           logo_url?: string | null
+          logo_variant_filename?: string | null
+          logo_variant_url?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
+          favicon_filename?: string | null
+          favicon_url?: string | null
           id?: string
           logo_filename?: string | null
           logo_url?: string | null
+          logo_variant_filename?: string | null
+          logo_variant_url?: string | null
           updated_at?: string
         }
         Relationships: []
