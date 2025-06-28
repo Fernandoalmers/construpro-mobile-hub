@@ -1,32 +1,48 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useLogoCache } from './useLogoCache';
 
 export const useSiteLogo = () => {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { cacheLogo, getCachedLogo, isLogoCached } = useLogoCache();
 
-  const updateLogo = (newLogoUrl: string | null) => {
+  const updateLogo = async (newLogoUrl: string | null) => {
     console.log('🔄 [useSiteLogo] Atualizando logo:', newLogoUrl);
     setLogoUrl(newLogoUrl);
+    
+    // Salvar no cache se válida
+    if (newLogoUrl) {
+      await cacheLogo('main_logo', newLogoUrl);
+    }
   };
 
   const fetchLogo = async () => {
     try {
+      // Verificar cache primeiro
+      const cachedLogo = getCachedLogo('main_logo');
+      if (cachedLogo) {
+        console.log('📦 [useSiteLogo] Usando logo do cache:', cachedLogo);
+        setLogoUrl(cachedLogo);
+        setIsLoading(false);
+        return;
+      }
+
       console.log('🔍 [useSiteLogo] Buscando logo do banco...');
       const { data, error } = await supabase
         .from('site_settings')
         .select('logo_url')
         .single();
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+      if (error && error.code !== 'PGRST116') {
         console.error('❌ [useSiteLogo] Erro ao buscar logo:', error);
         return;
       }
 
       const fetchedLogoUrl = data?.logo_url || null;
       console.log('✅ [useSiteLogo] Logo encontrada:', fetchedLogoUrl);
-      updateLogo(fetchedLogoUrl);
+      await updateLogo(fetchedLogoUrl);
     } catch (error) {
       console.error('❌ [useSiteLogo] Erro inesperado:', error);
     } finally {
@@ -68,6 +84,7 @@ export const useSiteLogo = () => {
   return {
     logoUrl,
     isLoading,
+    isLogoCached: isLogoCached('main_logo'),
     refetch: fetchLogo
   };
 };
