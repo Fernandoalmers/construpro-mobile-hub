@@ -20,6 +20,7 @@ const MarketplaceHomeScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [storeData, setStoreData] = useState<any[]>(stores);
   const [segments, setSegments] = useState<ProductSegment[]>([]);
+  const [retryCount, setRetryCount] = useState(0);
   const { getCachedSegmentImage, cacheSegmentImage } = useSegmentImageCache();
   
   // Precarregar imagens de segmentos
@@ -43,33 +44,51 @@ const MarketplaceHomeScreen: React.FC = () => {
     }
   };
 
-  // Fetch segments on component mount to get real segment data with images
-  useEffect(() => {
-    const fetchSegments = async () => {
-      try {
-        setLoading(true);
+  // Fetch segments with retry functionality
+  const fetchSegmentsWithRetry = async (attempt: number = 1) => {
+    try {
+      console.log(`🔄 [MarketplaceHomeScreen] Tentativa ${attempt} de carregar segmentos...`);
+      setLoading(true);
+      setError(null);
 
-        // Fetch segments from database with images
-        const segmentsData = await getProductSegments();
-        console.log('[MarketplaceHomeScreen] Fetched segments:', segmentsData);
+      // Fetch segments from database with timeout handling
+      const segmentsData = await getProductSegments();
+      console.log('[MarketplaceHomeScreen] Segmentos carregados:', segmentsData.length);
         
-        // Cache images for active segments
-        const activeSegments = segmentsData.filter(segment => segment.status === 'ativo');
-        activeSegments.forEach(segment => {
-          if (segment.image_url) {
-            cacheSegmentImage(segment.id, segment.image_url);
-          }
-        });
+      // Cache images for active segments
+      const activeSegments = segmentsData.filter(segment => segment.status === 'ativo');
+      activeSegments.forEach(segment => {
+        if (segment.image_url) {
+          cacheSegmentImage(segment.id, segment.image_url);
+        }
+      });
         
-        setSegments(activeSegments);
-      } catch (err) {
-        console.error('Error fetching segments:', err);
-        setError('Falha ao carregar segmentos. Por favor, tente novamente.');
-      } finally {
-        setLoading(false);
+      setSegments(activeSegments);
+      setRetryCount(0);
+    } catch (err) {
+      console.error(`❌ [MarketplaceHomeScreen] Erro na tentativa ${attempt}:`, err);
+      
+      if (attempt < 3) {
+        // Retry with exponential backoff
+        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+        console.log(`⏳ [MarketplaceHomeScreen] Tentando novamente em ${delay}ms...`);
+        
+        setTimeout(() => {
+          setRetryCount(attempt);
+          fetchSegmentsWithRetry(attempt + 1);
+        }, delay);
+      } else {
+        console.error('💥 [MarketplaceHomeScreen] Todas as tentativas falharam');
+        setError('Erro ao carregar segmentos. Verifique sua conexão.');
       }
-    };
-    fetchSegments();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch segments on component mount
+  useEffect(() => {
+    fetchSegmentsWithRetry(1);
   }, [cacheSegmentImage]);
 
   useEffect(() => {
@@ -82,7 +101,7 @@ const MarketplaceHomeScreen: React.FC = () => {
         }
       } catch (err) {
         console.error('Error fetching stores:', err);
-        setError('Falha ao carregar lojas. Por favor, tente novamente.');
+        // Não definir erro aqui para não bloquear a interface por causa das lojas
       }
     };
     fetchStores();
@@ -101,12 +120,59 @@ const MarketplaceHomeScreen: React.FC = () => {
     navigate(`/marketplace/products?${queryParams.toString()}`);
   };
 
-  if (loading) {
-    return <LoadingState text="Carregando segmentos..." />;
+  const handleRetry = () => {
+    fetchSegmentsWithRetry(1);
+  };
+
+  if (loading && segments.length === 0) {
+    return (
+      <div className="flex flex-col min-h-screen bg-gray-50 pb-20">
+        <div className="p-4 pt-8 bg-construPro-blue">
+          <h1 className="text-2xl font-bold text-white mb-4">Loja</h1>
+          <CustomInput 
+            isSearch 
+            placeholder="Buscar produtos" 
+            onClick={() => navigate('/marketplace/products')} 
+            className="mb-2 cursor-pointer" 
+            readOnly 
+          />
+        </div>
+        
+        <div className="p-4">
+          <LoadingState 
+            text={retryCount > 0 ? `Tentativa ${retryCount + 1} - Carregando segmentos...` : "Carregando segmentos..."} 
+          />
+        </div>
+      </div>
+    );
   }
 
-  if (error) {
-    return <ErrorState title="Erro" message={error} />;
+  if (error && segments.length === 0) {
+    return (
+      <div className="flex flex-col min-h-screen bg-gray-50 pb-20">
+        <div className="p-4 pt-8 bg-construPro-blue">
+          <h1 className="text-2xl font-bold text-white mb-4">Loja</h1>
+          <CustomInput 
+            isSearch 
+            placeholder="Buscar produtos" 
+            onClick={() => navigate('/marketplace/products')} 
+            className="mb-2 cursor-pointer" 
+            readOnly 
+          />
+        </div>
+        
+        <div className="p-4">
+          <ErrorState 
+            title="Problema de Conexão" 
+            message={error}
+            actionButton={{
+              label: "Tentar Novamente",
+              onClick: handleRetry
+            }}
+          />
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -126,7 +192,17 @@ const MarketplaceHomeScreen: React.FC = () => {
       
       {/* Segment blocks */}
       <div className="p-4">
-        <h2 className="font-bold text-lg mb-3">Segmentos</h2>
+        <div className="flex justify-between items-center mb-3">
+          <h2 className="font-bold text-lg">Segmentos</h2>
+          {error && segments.length > 0 && (
+            <button 
+              onClick={handleRetry}
+              className="text-sm text-construPro-blue hover:underline"
+            >
+              Atualizar
+            </button>
+          )}
+        </div>
         
         {/* Mobile: single column - Desktop: responsive grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

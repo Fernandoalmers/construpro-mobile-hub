@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 
@@ -12,35 +11,124 @@ export interface ProductSegment {
   categorias_count?: number;
 }
 
+// Timeout wrapper para queries
+const withTimeout = <T>(promise: Promise<T>, timeoutMs: number = 10000): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => 
+      setTimeout(() => reject(new Error('Query timeout')), timeoutMs)
+    )
+  ]);
+};
+
+// Retry wrapper
+const withRetry = async <T>(
+  fn: () => Promise<T>, 
+  maxRetries: number = 3, 
+  delay: number = 1000
+): Promise<T> => {
+  let lastError: Error;
+  
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error as Error;
+      console.warn(`Attempt ${i + 1} failed:`, error);
+      
+      if (i < maxRetries - 1) {
+        await new Promise(resolve => setTimeout(resolve, delay * (i + 1)));
+      }
+    }
+  }
+  
+  throw lastError!;
+};
+
+// Segmentos de fallback com ícones básicos
+const FALLBACK_SEGMENTS: ProductSegment[] = [
+  {
+    id: 'material-construcao',
+    nome: 'Material de Construção',
+    status: 'ativo',
+    image_url: '/lovable-uploads/1b629f74-0778-46a1-bb6a-4c30301e733e.png'
+  },
+  {
+    id: 'eletrica',
+    nome: 'Elétrica',
+    status: 'ativo'
+  },
+  {
+    id: 'vidracaria',
+    nome: 'Vidraçaria',
+    status: 'ativo'
+  },
+  {
+    id: 'marmoraria',
+    nome: 'Marmoraria',
+    status: 'ativo'
+  }
+];
+
 export const getProductSegments = async (): Promise<ProductSegment[]> => {
   try {
-    const { data, error } = await supabase
-      .from('product_segments')
-      .select('*')
-      .order('nome');
+    console.log('🔄 [SegmentsService] Iniciando busca de segmentos...');
     
-    if (error) throw error;
-    
-    // Buscar contagem de categorias para cada segmento
-    const segmentsWithCount = await Promise.all(
-      data.map(async (segment) => {
-        const { count } = await supabase
-          .from('product_categories')
-          .select('id', { count: 'exact', head: true })
-          .eq('segmento_id', segment.id);
-        
-        return {
-          ...segment,
-          categorias_count: count || 0
-        };
-      })
+    // Query otimizada sem contagem de categorias (para evitar timeout)
+    const fetchSegments = async () => {
+      const { data, error } = await supabase
+        .from('product_segments')
+        .select('id, nome, image_url, status, created_at, updated_at')
+        .order('nome');
+      
+      if (error) throw error;
+      return data || [];
+    };
+
+    // Tentar com timeout e retry
+    const segments = await withRetry(
+      () => withTimeout(fetchSegments(), 8000),
+      2,
+      1500
     );
     
-    console.log('[SegmentsService] Segments with category count:', segmentsWithCount);
-    return segmentsWithCount;
+    console.log('✅ [SegmentsService] Segmentos carregados:', segments.length);
+    
+    // Se não há segmentos, retornar fallback
+    if (!segments || segments.length === 0) {
+      console.warn('⚠️ [SegmentsService] Nenhum segmento encontrado, usando fallback');
+      return FALLBACK_SEGMENTS;
+    }
+    
+    // Tentar buscar contagem de categorias de forma assíncrona (não bloqueante)
+    setTimeout(async () => {
+      try {
+        await Promise.all(
+          segments.map(async (segment) => {
+            const { count } = await supabase
+              .from('product_categories')
+              .select('id', { count: 'exact', head: true })
+              .eq('segmento_id', segment.id);
+            
+            segment.categorias_count = count || 0;
+          })
+        );
+        console.log('📊 [SegmentsService] Contagem de categorias atualizada');
+      } catch (error) {
+        console.warn('⚠️ [SegmentsService] Erro ao buscar contagem de categorias:', error);
+      }
+    }, 0);
+    
+    return segments;
+    
   } catch (error) {
-    console.error('Error fetching segments:', error);
-    throw error;
+    console.error('❌ [SegmentsService] Erro ao buscar segmentos:', error);
+    
+    // Em caso de erro, retornar segmentos de fallback
+    console.log('🔄 [SegmentsService] Usando segmentos de fallback devido ao erro');
+    toast.error('Erro ao carregar segmentos. Usando dados básicos.');
+    
+    return FALLBACK_SEGMENTS;
   }
 };
 
