@@ -43,7 +43,7 @@ const MarketplaceHeaderTop: React.FC<MarketplaceHeaderTopProps> = ({
           <ArrowLeft size={20} className="sm:hidden" />
           <ArrowLeft size={24} className="hidden sm:block" />
         </button>
-        <h1 className="text-lg sm:text-2xl font-bold text-white">Produtos</h1>
+        <h1 className="text-lg sm:text-2xl font-bold text-white">Loja</h1>
       </div>
       
       {/* Right side - CEP button (desktop only), View selector and Cart button */}
