@@ -1,4 +1,5 @@
 
+
 import React, { useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import SearchResults from './SearchResults';
@@ -48,7 +49,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
   
   const fetchSearchResults = async (query: string) => {
     try {
-      console.log('[SearchBar] Fetching search results for query:', query);
+      console.log('[SearchBar] 🔍 Fetching search results for query:', query);
       setIsSearching(true);
       
       // FIXED: Search ONLY in product name and description, NOT in categories
@@ -61,7 +62,8 @@ const SearchBar: React.FC<SearchBarProps> = ({
           preco_promocional,
           vendedor_id,
           descricao,
-          imagens
+          imagens,
+          categoria
         `)
         .or(`nome.ilike.%${query.trim()}%,descricao.ilike.%${query.trim()}%`)
         .eq('status', 'aprovado')
@@ -74,7 +76,19 @@ const SearchBar: React.FC<SearchBarProps> = ({
         return;
       }
       
-      console.log('[SearchBar] Search results:', data);
+      console.log('[SearchBar] 🔍 Search results for "' + query + '":', data?.length || 0, 'products found');
+      
+      // Log each product found to debug the issue
+      if (data && data.length > 0) {
+        data.forEach((produto, index) => {
+          console.log(`[SearchBar] 📦 Product ${index + 1}:`, {
+            nome: produto.nome,
+            categoria: produto.categoria,
+            nameMatch: produto.nome?.toLowerCase().includes(query.toLowerCase()),
+            descriptionMatch: produto.descricao?.toLowerCase().includes(query.toLowerCase())
+          });
+        });
+      }
       
       // Map the results to the expected format
       const mappedResults = Array.isArray(data) ? data.map(produto => {
@@ -115,7 +129,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
   // Handle explicit search via button click or Enter key
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('[SearchBar] Search form submitted with term:', searchTerm);
+    console.log('[SearchBar] 🔍 Search form submitted with term:', searchTerm);
     
     if (searchTerm.trim().length < 2) {
       console.log('[SearchBar] Search term too short, not searching');

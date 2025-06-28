@@ -96,7 +96,7 @@ export const useOptimizedProductFilter = (products: any[] = []) => {
     }
   }, []);
 
-  // Memoized filtered products with safety checks - MOVED loadMore callback OUT of this useMemo
+  // FIXED: Memoized filtered products with search ONLY in name and description
   const filteredProducts = useMemo(() => {
     console.log('[useOptimizedProductFilter] Starting filter with products:', safeProducts?.length || 0);
     
@@ -107,13 +107,22 @@ export const useOptimizedProductFilter = (products: any[] = []) => {
 
     let filtered = [...safeProducts];
 
-    // Search filter
+    // FIXED: Search filter - ONLY search in product name and description, NOT in categories
     if (state.searchTerm?.trim()) {
       const searchLower = state.searchTerm.toLowerCase();
-      filtered = filtered.filter(produto => 
-        produto?.nome?.toLowerCase().includes(searchLower) ||
-        produto?.categoria?.toLowerCase().includes(searchLower)
-      );
+      console.log('[useOptimizedProductFilter] 🔍 Searching for:', searchLower);
+      
+      filtered = filtered.filter(produto => {
+        const nameMatch = produto?.nome?.toLowerCase().includes(searchLower);
+        const descriptionMatch = produto?.descricao?.toLowerCase().includes(searchLower);
+        
+        console.log('[useOptimizedProductFilter] Product:', produto.nome, 'Category:', produto.categoria, 'Name match:', nameMatch, 'Description match:', descriptionMatch);
+        
+        // ONLY search in name and description, NOT in categories
+        return nameMatch || descriptionMatch;
+      });
+      
+      console.log('[useOptimizedProductFilter] ✅ After search filter:', filtered.length, 'products found');
     }
 
     // Category filter
@@ -158,11 +167,11 @@ export const useOptimizedProductFilter = (products: any[] = []) => {
       );
     }
 
-    console.log('[useOptimizedProductFilter] Filtered products:', filtered?.length || 0);
+    console.log('[useOptimizedProductFilter] Final filtered products:', filtered?.length || 0);
     return filtered || [];
   }, [safeProducts, state, isPriceInRange]);
 
-  // FIXED: loadMore callback moved OUTSIDE of useMemo to avoid hooks-in-hooks error
+  // loadMore callback moved OUTSIDE of useMemo to avoid hooks-in-hooks error
   const loadMore = useCallback(() => {
     const currentDisplayed = Array.isArray(displayedProducts) ? displayedProducts.length : 0;
     const totalFiltered = Array.isArray(filteredProducts) ? filteredProducts.length : 0;
@@ -190,7 +199,10 @@ export const useOptimizedProductFilter = (products: any[] = []) => {
 
   // Action creators with safety checks
   const actions = useMemo(() => ({
-    setSearchTerm: (term: string) => dispatch({ type: 'SET_SEARCH', payload: term || '' }),
+    setSearchTerm: (term: string) => {
+      console.log('[useOptimizedProductFilter] 🔍 Setting search term:', term);
+      dispatch({ type: 'SET_SEARCH', payload: term || '' });
+    },
     toggleCategory: (categoryId: string) => {
       if (categoryId) dispatch({ type: 'TOGGLE_CATEGORY', payload: categoryId });
     },

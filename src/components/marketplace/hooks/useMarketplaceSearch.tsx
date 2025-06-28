@@ -44,7 +44,7 @@ export function useMarketplaceSearch() {
   
   const { term, setTerm, handleSubmit } = useProductSearch(fetchProducts);
   
-  // Quick search functionality
+  // FIXED: Quick search functionality - ONLY search in name and description
   const handleQuickSearch = async (term: string) => {
     console.log('[useMarketplaceSearch] ⚡ Quick search for:', term);
     if (!term || term.trim().length < 2) {
@@ -52,19 +52,22 @@ export function useMarketplaceSearch() {
     }
     
     try {
+      // FIXED: Search ONLY in product name and description, NOT in categories
       const { data, error } = await supabase
         .from('produtos')
-        .select('id')
-        .ilike('nome', `%${term}%`)
+        .select('id, nome, categoria')
+        .or(`nome.ilike.%${term}%,descricao.ilike.%${term}%`)
         .eq('status', 'aprovado')
         .limit(1)
         .single();
       
       if (error || !data) {
         console.error('[useMarketplaceSearch] Quick search error:', error);
+        console.log('[useMarketplaceSearch] 🔍 Quick search - no results found for:', term);
         return;
       }
       
+      console.log('[useMarketplaceSearch] ✅ Quick search found product:', data.nome, 'Category:', data.categoria);
       navigate(`/produto/${data.id}`);
     } catch (error) {
       console.error('[useMarketplaceSearch] Error in quick search:', error);
