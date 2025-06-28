@@ -10,48 +10,20 @@ const HomeHeader: React.FC = () => {
   const { profile } = useAuth();
   const { logoUrl, isLoading: logoLoading } = useSiteLogo();
   const [logoError, setLogoError] = useState(false);
-  const [placeholderError, setPlaceholderError] = useState(false);
 
   const handleLogoError = () => {
-    console.log('🚨 [HomeHeader] Erro ao carregar logo principal:', logoUrl);
+    console.log('🚨 [HomeHeader] Erro ao carregar logo:', logoUrl);
     setLogoError(true);
   };
 
-  const handlePlaceholderError = () => {
-    console.log('🚨 [HomeHeader] Erro ao carregar placeholder');
-    setPlaceholderError(true);
-  };
-
   const renderLogo = () => {
-    console.log('🔍 [HomeHeader] Estado atual:', { logoUrl, logoError, placeholderError, logoLoading });
+    console.log('🔍 [HomeHeader] Estado atual:', { logoUrl, logoError, logoLoading });
     
-    // Se ambas as imagens falharam, mostra logo CSS
-    if (logoError && placeholderError) {
-      console.log('💡 [HomeHeader] Usando fallback CSS - ambas imagens falharam');
-      return (
-        <div className="h-12 flex items-center">
-          <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent hover:scale-105 transition-transform duration-200 cursor-pointer">
-            Matershop
-          </div>
-        </div>
-      );
-    }
-
-    // Se a logo principal falhou, tenta o placeholder
-    if (logoError) {
-      console.log('⚠️ [HomeHeader] Logo principal falhou, tentando placeholder');
-      return (
-        <img
-          src="/img/placeholder.png"
-          alt="Matershop"
-          className="h-12 w-auto object-contain hover:scale-105 transition-transform duration-200"
-          onError={handlePlaceholderError}
-        />
-      );
-    }
-
-    // Usar logo do banco de dados ou fallback para a logo atual
-    const currentLogoUrl = logoUrl || '/lovable-uploads/7520caa6-efbb-4176-9c9f-8d37f88c7ff1.png';
+    // Determinar qual logo usar - prioridade: logo do banco de dados ou logo padrão
+    const currentLogoUrl = logoUrl && !logoError 
+      ? logoUrl 
+      : '/lovable-uploads/7520caa6-efbb-4176-9c9f-8d37f88c7ff1.png';
+    
     console.log('✅ [HomeHeader] Carregando logo:', currentLogoUrl);
     
     return (
