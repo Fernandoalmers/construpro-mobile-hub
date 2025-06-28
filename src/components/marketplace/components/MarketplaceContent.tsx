@@ -1,9 +1,11 @@
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import GridProductView from './GridProductView';
 import ListProductView from './ListProductView';
 import LoadingState from '../../common/LoadingState';
 import EmptyProductState from './EmptyProductState';
+import EmptySegmentState from './EmptySegmentState';
 import SmartCepModal from './SmartCepModal';
 import { useDeliveryZones } from '@/hooks/useDeliveryZones';
 import { useMarketplaceFilters } from '@/hooks/useMarketplaceFilters';
@@ -36,6 +38,7 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
   viewType,
   onLojaClick
 }) => {
+  const navigate = useNavigate();
   const { hasActiveZones, currentCep, resolveZones, isInitialized } = useDeliveryZones();
   const { hasDefinedCepWithoutCoverage } = useMarketplaceFilters();
   const [showCepModal, setShowCepModal] = useState(false);
@@ -48,6 +51,26 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
   // Handler para quando CEP é alterado no modal
   const handleCepChange = async (newCep: string) => {
     await resolveZones(newCep);
+  };
+
+  // NOVO: Determinar se estamos em um segmento específico sem produtos
+  const isSpecificSegmentWithoutProducts = () => {
+    return currentCategoryName && 
+           currentCategoryName !== "Todos os Produtos" && 
+           currentCategoryName !== "Produtos disponíveis" &&
+           filteredProdutos.length === 0 &&
+           !hasDefinedCepWithoutCoverage;
+  };
+
+  // NOVO: Handlers para o estado vazio de segmento
+  const handleViewAllCategories = () => {
+    clearFilters();
+    // Limpar URL params se necessário
+    navigate('/', { replace: true });
+  };
+
+  const handleBackToHome = () => {
+    navigate('/', { replace: true });
   };
 
   // NOVO: Determinar título baseado no estado atual
@@ -65,7 +88,8 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
   console.log('[MarketplaceContent] Padding aplicado:', {
     dynamicPaddingTop,
     safePaddingTop,
-    currentCategoryName
+    currentCategoryName,
+    isSpecificSegment: isSpecificSegmentWithoutProducts()
   });
 
   // NOVO: Loading state coordenado - não mostra produtos até verificação completa
@@ -89,7 +113,7 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
     >
       <div className="p-4">
         {/* Título da página */}
-        {!hasDefinedCepWithoutCoverage && (
+        {!hasDefinedCepWithoutCoverage && !isSpecificSegmentWithoutProducts() && (
           <div className="mb-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
@@ -115,6 +139,15 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
               )}
             </div>
           </div>
+        )}
+
+        {/* NOVO: Estado específico para segmento sem produtos */}
+        {isSpecificSegmentWithoutProducts() && (
+          <EmptySegmentState
+            segmentName={currentCategoryName}
+            onViewAllCategories={handleViewAllCategories}
+            onBackToHome={handleBackToHome}
+          />
         )}
 
         {/* Estado quando CEP definido mas sem vendedores que atendem */}
@@ -149,14 +182,14 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
         )}
 
         {/* Estado vazio padrão (sem CEP definido e sem produtos) */}
-        {!hasDefinedCepWithoutCoverage && !currentCep && filteredProdutos.length === 0 && (
+        {!hasDefinedCepWithoutCoverage && !currentCep && filteredProdutos.length === 0 && !isSpecificSegmentWithoutProducts() && (
           <EmptyProductState 
             clearFilters={clearFilters}
           />
         )}
 
-        {/* Lista de produtos - só mostra se não há problema de cobertura */}
-        {!hasDefinedCepWithoutCoverage && filteredProdutos.length > 0 && (
+        {/* Lista de produtos - só mostra se não há problema de cobertura e não é segmento vazio */}
+        {!hasDefinedCepWithoutCoverage && !isSpecificSegmentWithoutProducts() && filteredProdutos.length > 0 && (
           <>
             {viewType === 'grid' ? (
               <GridProductView
