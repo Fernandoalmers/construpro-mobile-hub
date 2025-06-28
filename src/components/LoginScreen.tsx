@@ -7,11 +7,13 @@ import { ArrowRight, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { toast } from "@/components/ui/sonner";
 import { securityService } from '@/services/securityService';
+import { useLogoVariant } from '@/hooks/useLogoVariant';
 
 const LoginScreen: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, isAuthenticated, isLoading } = useAuth();
+  const { logoVariantUrl, isLoading: logoLoading } = useLogoVariant();
   
   const [loginData, setLoginData] = useState({
     email: '',
@@ -20,6 +22,7 @@ const LoginScreen: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loggingIn, setLoggingIn] = useState(false);
+  const [logoError, setLogoError] = useState(false);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -38,6 +41,30 @@ const LoginScreen: React.FC = () => {
     }));
     // Clear error when user types
     if (error) setError(null);
+  };
+
+  const handleLogoError = () => {
+    console.log('🚨 [LoginScreen] Erro ao carregar logo variante:', logoVariantUrl);
+    setLogoError(true);
+  };
+
+  const renderLogo = () => {
+    if (logoVariantUrl && !logoError && !logoLoading) {
+      return (
+        <img
+          src={logoVariantUrl}
+          alt="Matershop"
+          className="h-12 w-auto object-contain mb-2"
+          onError={handleLogoError}
+          onLoad={() => console.log('✅ [LoginScreen] Logo variante carregada com sucesso!')}
+        />
+      );
+    }
+
+    // Fallback para texto se não houver logo variante ou erro
+    return (
+      <h1 className="text-3xl font-bold text-white">Matershop</h1>
+    );
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -97,7 +124,7 @@ const LoginScreen: React.FC = () => {
     <div className="min-h-screen flex flex-col bg-white">
       <div className="py-16 rounded-b-3xl bg-construPro-blue">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white">Matershop</h1>
+          {renderLogo()}
           <p className="text-white opacity-80 mt-2">Materiais, clube e recompensas</p>
         </div>
       </div>
