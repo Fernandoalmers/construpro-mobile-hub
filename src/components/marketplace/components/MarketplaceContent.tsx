@@ -4,7 +4,6 @@ import GridProductView from './GridProductView';
 import ListProductView from './ListProductView';
 import LoadingState from '../../common/LoadingState';
 import EmptyProductState from './EmptyProductState';
-import DeliveryZoneIndicator from './DeliveryZoneIndicator';
 import SmartCepModal from './SmartCepModal';
 import { useDeliveryZones } from '@/hooks/useDeliveryZones';
 import { useMarketplaceFilters } from '@/hooks/useMarketplaceFilters';
@@ -77,9 +76,6 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
         style={{ paddingTop: `${safePaddingTop}px` }}
       >
         <div className="p-4">
-          <div className="mb-4">
-            <DeliveryZoneIndicator />
-          </div>
           <LoadingState type="skeleton" text="Verificando produtos disponíveis..." count={6} />
         </div>
       </div>
@@ -92,11 +88,6 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
       style={{ paddingTop: `${safePaddingTop}px` }}
     >
       <div className="p-4">
-        {/* Indicador de zona de entrega */}
-        <div className="mb-4">
-          <DeliveryZoneIndicator />
-        </div>
-
         {/* Título da página */}
         {!hasDefinedCepWithoutCoverage && (
           <div className="mb-4">
