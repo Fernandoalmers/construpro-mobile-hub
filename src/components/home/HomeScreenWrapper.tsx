@@ -62,7 +62,7 @@ const HomeScreenWrapper: React.FC = () => {
         console.log(`[${timestamp}] [HomeScreenWrapper] Usuário encontrado mas sem perfil, buscando perfil...`);
         
         // Create a promise that rejects after timeout
-        const timeoutPromise = new Promise((_, reject) => {
+        const timeoutPromise = new Promise<never>((_, reject) => {
           setTimeout(() => reject(new Error('Timeout ao carregar perfil')), 15000); // 15 seconds
         });
         
