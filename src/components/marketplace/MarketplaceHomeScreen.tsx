@@ -7,9 +7,6 @@ import { supabase } from '@/integrations/supabase/client';
 import LoadingState from '../common/LoadingState';
 import ErrorState from '../common/ErrorState';
 import { getProductSegments, ProductSegment } from '@/services/admin/productSegmentsService';
-import { useSegmentImageCache } from '@/hooks/useSegmentImageCache';
-import { useSegmentPreloader } from '@/hooks/useSegmentPreloader';
-import OptimizedSegmentCard from '@/components/common/OptimizedSegmentCard';
 
 // Import store data
 import stores from '@/data/lojas.json';
@@ -20,11 +17,6 @@ const MarketplaceHomeScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [storeData, setStoreData] = useState<any[]>(stores);
   const [segments, setSegments] = useState<ProductSegment[]>([]);
-  const [retryCount, setRetryCount] = useState(0);
-  const { getCachedSegmentImage, cacheSegmentImage } = useSegmentImageCache();
-  
-  // Precarregar imagens de segmentos
-  useSegmentPreloader();
 
   // Map segment names to icons
   const getIconForSegment = (segmentName: string) => {
@@ -44,43 +36,23 @@ const MarketplaceHomeScreen: React.FC = () => {
     }
   };
 
-  // Fetch segments with retry functionality
-  const fetchSegmentsWithRetry = async (attempt: number = 1) => {
+  // Fetch segments with fallback robusto
+  const fetchSegments = async () => {
     try {
-      console.log(`🔄 [MarketplaceHomeScreen] Tentativa ${attempt} de carregar segmentos...`);
+      console.log('🔄 [MarketplaceHomeScreen] Carregando segmentos...');
       setLoading(true);
       setError(null);
 
-      // Fetch segments from database with timeout handling
+      // Usar o serviço otimizado que já tem fallbacks
       const segmentsData = await getProductSegments();
       console.log('[MarketplaceHomeScreen] Segmentos carregados:', segmentsData.length);
         
-      // Cache images for active segments
+      // Filtrar apenas segmentos ativos
       const activeSegments = segmentsData.filter(segment => segment.status === 'ativo');
-      activeSegments.forEach(segment => {
-        if (segment.image_url) {
-          cacheSegmentImage(segment.id, segment.image_url);
-        }
-      });
-        
       setSegments(activeSegments);
-      setRetryCount(0);
     } catch (err) {
-      console.error(`❌ [MarketplaceHomeScreen] Erro na tentativa ${attempt}:`, err);
-      
-      if (attempt < 3) {
-        // Retry with exponential backoff
-        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
-        console.log(`⏳ [MarketplaceHomeScreen] Tentando novamente em ${delay}ms...`);
-        
-        setTimeout(() => {
-          setRetryCount(attempt);
-          fetchSegmentsWithRetry(attempt + 1);
-        }, delay);
-      } else {
-        console.error('💥 [MarketplaceHomeScreen] Todas as tentativas falharam');
-        setError('Erro ao carregar segmentos. Verifique sua conexão.');
-      }
+      console.error('❌ [MarketplaceHomeScreen] Erro ao carregar segmentos:', err);
+      setError('Erro ao carregar categorias. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -88,8 +60,8 @@ const MarketplaceHomeScreen: React.FC = () => {
 
   // Fetch segments on component mount
   useEffect(() => {
-    fetchSegmentsWithRetry(1);
-  }, [cacheSegmentImage]);
+    fetchSegments();
+  }, []);
 
   useEffect(() => {
     const fetchStores = async () => {
@@ -121,7 +93,7 @@ const MarketplaceHomeScreen: React.FC = () => {
   };
 
   const handleRetry = () => {
-    fetchSegmentsWithRetry(1);
+    fetchSegments();
   };
 
   if (loading && segments.length === 0) {
@@ -140,7 +112,7 @@ const MarketplaceHomeScreen: React.FC = () => {
         
         <div className="p-4">
           <LoadingState 
-            text={retryCount > 0 ? `Tentativa ${retryCount + 1} - Carregando segmentos...` : "Carregando segmentos..."} 
+            text="Carregando categorias..." 
           />
         </div>
       </div>
@@ -193,7 +165,7 @@ const MarketplaceHomeScreen: React.FC = () => {
       {/* Segment blocks */}
       <div className="p-4">
         <div className="flex justify-between items-center mb-3">
-          <h2 className="font-bold text-lg">Segmentos</h2>
+          <h2 className="font-bold text-lg">Categorias</h2>
           {error && segments.length > 0 && (
             <button 
               onClick={handleRetry}
@@ -204,40 +176,44 @@ const MarketplaceHomeScreen: React.FC = () => {
           )}
         </div>
         
-        {/* Mobile: single column - Desktop: responsive grid */}
+        {/* Grid responsivo */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Render segments from database using OptimizedSegmentCard */}
+          {/* Render segments from database */}
           {segments.map(segment => (
             <div 
               key={segment.id} 
               className="cursor-pointer" 
               onClick={() => handleCategoryClick(segment.id)}
             >
-              <div 
-                className="relative h-40 rounded-lg overflow-hidden shadow-md bg-gray-200"
-              >
-                {/* Optimized segment card content */}
+              <div className="relative h-40 rounded-lg overflow-hidden shadow-md bg-gray-200">
+                {/* Imagem ou gradiente de fallback */}
                 <div className="absolute inset-0">
-                  {getCachedSegmentImage(segment.id) || segment.image_url ? (
+                  {segment.image_url ? (
                     <img
-                      src={getCachedSegmentImage(segment.id) || segment.image_url!}
-                      alt={`Imagem do segmento ${segment.nome}`}
+                      src={segment.image_url}
+                      alt={`Categoria ${segment.nome}`}
                       className="w-full h-full object-cover"
                       loading="lazy"
+                      onError={(e) => {
+                        // Fallback para gradiente se imagem falhar
+                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                      }}
                     />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-construPro-blue to-construPro-blue/80 flex items-center justify-center">
-                      <div className="text-white text-4xl">
-                        {getIconForSegment(segment.nome)}
-                      </div>
+                  ) : null}
+                  
+                  {/* Gradiente de fallback */}
+                  <div className={`w-full h-full bg-gradient-to-br from-construPro-blue to-construPro-blue/80 flex items-center justify-center ${segment.image_url ? 'hidden' : ''}`}>
+                    <div className="text-white text-4xl">
+                      {getIconForSegment(segment.nome)}
                     </div>
-                  )}
+                  </div>
                 </div>
                 
-                {/* Gradient overlay for better text visibility */}
+                {/* Gradient overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
                 
-                {/* Content positioned at bottom */}
+                {/* Content */}
                 <div className="absolute bottom-0 left-0 right-0 p-3 flex flex-col items-start">
                   <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center mb-2 shadow-md">
                     <span className="text-construPro-blue">
@@ -252,10 +228,7 @@ const MarketplaceHomeScreen: React.FC = () => {
           
           {/* Ver todos segment */}
           <div className="cursor-pointer" onClick={() => navigate('/marketplace/products')}>
-            <div 
-              className="relative h-40 rounded-lg overflow-hidden shadow-md bg-gradient-to-br from-construPro-orange to-construPro-orange/80"
-            >
-              {/* Content positioned at bottom */}
+            <div className="relative h-40 rounded-lg overflow-hidden shadow-md bg-gradient-to-br from-construPro-orange to-construPro-orange/80">
               <div className="absolute bottom-0 left-0 right-0 p-3 flex flex-col items-start">
                 <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center mb-2 shadow-md">
                   <span className="text-construPro-blue">

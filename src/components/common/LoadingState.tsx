@@ -1,40 +1,62 @@
 
 import React from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 
-type LoadingStateProps = {
-  type?: 'spinner' | 'skeleton';
+interface LoadingStateProps {
   text?: string;
+  type?: 'spinner' | 'skeleton' | 'dots';
   count?: number;
-  className?: string;
-};
+}
 
-const LoadingState: React.FC<LoadingStateProps> = ({
+const LoadingState: React.FC<LoadingStateProps> = ({ 
+  text = "Carregando...", 
   type = 'spinner',
-  text = 'Carregando...',
-  count = 1,
-  className = ''
+  count = 3
 }) => {
   if (type === 'skeleton') {
     return (
-      <div className={`p-6 space-y-4 ${className}`}>
-        {[...Array(count)].map((_, i) => (
-          <div key={i} className="bg-white rounded-md shadow-sm p-3 flex animate-pulse">
-            <div className="w-24 h-24 bg-gray-200 rounded-md mr-3"></div>
-            <div className="flex-1">
-              <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-              <div className="h-3 bg-gray-200 rounded w-1/4 mb-3"></div>
-              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+      <div className="space-y-4">
+        {text && (
+          <p className="text-sm text-gray-500 mb-4">{text}</p>
+        )}
+        {Array.from({ length: count }).map((_, i) => (
+          <div key={i} className="flex items-center space-x-4">
+            <Skeleton className="h-12 w-12 rounded-full" />
+            <div className="space-y-2 flex-1">
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
             </div>
           </div>
         ))}
       </div>
     );
   }
-  
+
+  if (type === 'dots') {
+    return (
+      <div className="flex flex-col items-center justify-center p-8">
+        <div className="flex space-x-1 mb-4">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className="w-2 h-2 bg-construPro-blue rounded-full animate-pulse"
+              style={{
+                animationDelay: `${i * 0.2}s`,
+                animationDuration: '1s'
+              }}
+            />
+          ))}
+        </div>
+        <p className="text-sm text-gray-500">{text}</p>
+      </div>
+    );
+  }
+
+  // Default spinner type
   return (
-    <div className={`flex flex-col items-center justify-center h-64 ${className}`}>
-      <div className="w-12 h-12 border-4 border-construPro-blue border-t-transparent rounded-full animate-spin mb-4"></div>
-      <p className="text-gray-500">{text}</p>
+    <div className="flex flex-col items-center justify-center p-8">
+      <div className="w-8 h-8 border-2 border-construPro-blue border-t-transparent rounded-full animate-spin mb-4"></div>
+      <p className="text-sm text-gray-500">{text}</p>
     </div>
   );
 };

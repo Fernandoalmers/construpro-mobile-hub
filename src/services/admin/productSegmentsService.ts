@@ -11,8 +11,8 @@ export interface ProductSegment {
   categorias_count?: number;
 }
 
-// Timeout wrapper para queries
-const withTimeout = <T>(promise: Promise<T>, timeoutMs: number = 8000): Promise<T> => {
+// Timeout wrapper para queries com timeout reduzido
+const withTimeout = <T>(promise: Promise<T>, timeoutMs: number = 5000): Promise<T> => {
   return Promise.race([
     promise,
     new Promise<T>((_, reject) => 
@@ -21,11 +21,11 @@ const withTimeout = <T>(promise: Promise<T>, timeoutMs: number = 8000): Promise<
   ]);
 };
 
-// Retry wrapper com backoff exponencial
+// Retry wrapper com backoff exponencial mais agressivo
 const withRetry = async <T>(
   fn: () => Promise<T>, 
-  maxRetries: number = 2, 
-  delay: number = 1000
+  maxRetries: number = 3, 
+  delay: number = 500
 ): Promise<T> => {
   let lastError: Error;
   
@@ -47,51 +47,79 @@ const withRetry = async <T>(
   throw lastError!;
 };
 
-// Segmentos de fallback com ícones básicos
+// Health check do Supabase
+const checkSupabaseHealth = async (): Promise<boolean> => {
+  try {
+    const { error } = await supabase.from('product_segments').select('count', { count: 'exact', head: true });
+    return !error;
+  } catch {
+    return false;
+  }
+};
+
+// Segmentos de fallback melhorados com ícones
 const FALLBACK_SEGMENTS: ProductSegment[] = [
   {
     id: 'material-construcao',
     nome: 'Material de Construção',
     status: 'ativo',
-    image_url: '/lovable-uploads/1b629f74-0778-46a1-bb6a-4c30301e733e.png'
+    image_url: '/lovable-uploads/1b629f74-0778-46a1-bb6a-4c30301e733e.png',
+    categorias_count: 0
   },
   {
     id: 'eletrica',
     nome: 'Elétrica',
-    status: 'ativo'
+    status: 'ativo',
+    categorias_count: 0
   },
   {
     id: 'vidracaria',
     nome: 'Vidraçaria',
-    status: 'ativo'
+    status: 'ativo',
+    categorias_count: 0
   },
   {
     id: 'marmoraria',
     nome: 'Marmoraria',
-    status: 'ativo'
+    status: 'ativo',
+    categorias_count: 0
+  },
+  {
+    id: 'equipamentos',
+    nome: 'Aluguel de Equipamentos',
+    status: 'ativo',
+    categorias_count: 0
   }
 ];
 
 export const getProductSegments = async (): Promise<ProductSegment[]> => {
   try {
-    console.log('🔄 [productSegmentsService] Iniciando busca de segmentos...');
+    console.log('🔄 [productSegmentsService] Iniciando busca otimizada de segmentos...');
+    
+    // Health check rápido
+    const isHealthy = await withTimeout(checkSupabaseHealth(), 2000);
+    if (!isHealthy) {
+      console.warn('⚠️ [productSegmentsService] Supabase não está saudável, usando fallback');
+      return FALLBACK_SEGMENTS;
+    }
     
     // Query otimizada sem contagem de categorias para evitar timeout
     const fetchSegments = async () => {
       const { data, error } = await supabase
         .from('product_segments')
         .select('id, nome, image_url, status, created_at, updated_at')
+        .eq('status', 'ativo')
         .order('nome');
       
       if (error) throw error;
       return data || [];
     };
 
-    // Tentar com timeout e retry
+    // Tentar com timeout e retry reduzidos
     const rawSegments = await withRetry(
-      () => withTimeout(fetchSegments(), 8000),
-      2,
-      1500
+      () => withTimeout(fetchSegments(), 5000),
+      3,
+      500
     );
     
     console.log('✅ [productSegmentsService] Segmentos carregados:', rawSegments.length);
@@ -102,60 +130,19 @@ export const getProductSegments = async (): Promise<ProductSegment[]> => {
       return FALLBACK_SEGMENTS;
     }
     
-    // Convert to ProductSegment[] type to allow categorias_count assignment
+    // Convert to ProductSegment[] type
     const segments: ProductSegment[] = rawSegments.map(segment => ({
       ...segment,
-      categorias_count: undefined // Initialize with undefined, will be set asynchronously
+      categorias_count: 0 // Initialize with 0 instead of undefined
     }));
-    
-    // Tentar buscar contagem de categorias de forma assíncrona (não bloqueante)
-    setTimeout(async () => {
-      try {
-        console.log('📊 [productSegmentsService] Iniciando contagem de categorias em background...');
-        const countsPromises = segments.map(async (segment) => {
-          try {
-            const { count } = await supabase
-              .from('product_categories')
-              .select('id', { count: 'exact', head: true })
-              .eq('segmento_id', segment.id);
-            
-            return { segmentId: segment.id, count: count || 0 };
-          } catch (error) {
-            console.warn(`⚠️ [productSegmentsService] Erro ao contar categorias do segmento ${segment.id}:`, error);
-            return { segmentId: segment.id, count: 0 };
-          }
-        });
-        
-        const counts = await Promise.all(countsPromises);
-        console.log('📊 [productSegmentsService] Contagens de categorias obtidas:', counts);
-        
-        // Atualizar segments com contagens (isso não afeta o retorno da função principal)
-        counts.forEach(({ segmentId, count }) => {
-          const segment = segments.find(s => s.id === segmentId);
-          if (segment) {
-            segment.categorias_count = count;
-          }
-        });
-        
-      } catch (error) {
-        console.warn('⚠️ [productSegmentsService] Erro geral na contagem de categorias:', error);
-      }
-    }, 100); // Executar após 100ms para não bloquear
     
     return segments;
     
   } catch (error) {
     console.error('❌ [productSegmentsService] Erro ao buscar segmentos:', error);
     
-    // Em caso de erro, retornar segmentos de fallback
+    // Sempre retornar segmentos de fallback em caso de erro
     console.log('🔄 [productSegmentsService] Usando segmentos de fallback devido ao erro');
-    
-    // Mostrar toast apenas se não for um erro de timeout comum
-    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-    if (!errorMessage.includes('timeout') && !errorMessage.includes('connection')) {
-      toast.error('Erro ao carregar segmentos. Usando dados básicos.');
-    }
-    
     return FALLBACK_SEGMENTS;
   }
 };

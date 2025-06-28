@@ -24,10 +24,10 @@ export const useOptimizedMarketplace = () => {
   const { currentZones, hasActiveZones, currentCep, isLoading: zonesLoading, isInitialized: zonesInitialized } = useDeliveryZones();
   const { shouldShowAllProducts, isFilteredByZone, hasDefinedCepWithoutCoverage } = useMarketplaceFilters();
   
-  // NOVO: Aguarda inicialização das zonas antes de prosseguir
+  // Aguarda inicialização das zonas antes de prosseguir
   const shouldFetchProducts = zonesInitialized && !zonesLoading;
   
-  // ESTABILIZADO: IDs dos vendedores com cache inteligente
+  // IDs dos vendedores com cache inteligente
   const availableVendorIds = useMemo(() => {
     if (hasDefinedCepWithoutCoverage) {
       return [];
@@ -44,7 +44,7 @@ export const useOptimizedMarketplace = () => {
     return undefined;
   }, [currentZones, hasActiveZones, currentCep, shouldShowAllProducts, hasDefinedCepWithoutCoverage]);
 
-  // OTIMIZADO: Query de produtos que aguarda resolução das zonas
+  // Query de produtos otimizada com fallback robusto
   const { 
     data: products = [], 
     isLoading: productsLoading,
@@ -57,7 +57,7 @@ export const useOptimizedMarketplace = () => {
       hasDefinedCepWithoutCoverage ? 'no-coverage' : 'with-coverage'
     ],
     queryFn: async () => {
-      console.log('[useOptimizedMarketplace] 🔄 Executando query de produtos com filtros:', {
+      console.log('[useOptimizedMarketplace] 🔄 Carregando produtos com filtros:', {
         currentCep,
         availableVendorIds: availableVendorIds?.length || 'all',
         hasDefinedCepWithoutCoverage
@@ -68,19 +68,30 @@ export const useOptimizedMarketplace = () => {
         return [];
       }
       
-      const result = await getMarketplaceProducts(availableVendorIds);
-      console.log('[useOptimizedMarketplace] ✅ Produtos carregados:', result.length);
-      return result;
+      try {
+        const result = await getMarketplaceProducts(availableVendorIds);
+        console.log('[useOptimizedMarketplace] ✅ Produtos carregados:', result.length);
+        return result;
+      } catch (error) {
+        console.error('[useOptimizedMarketplace] ❌ Erro ao carregar produtos:', error);
+        // Retornar array vazio em vez de rejeitar para manter a interface funcional
+        return [];
+      }
     },
     staleTime: 2 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
-    enabled: shouldFetchProducts, // NOVO: só executa após inicialização das zonas
-    retry: 1,
+    enabled: shouldFetchProducts,
+    retry: (failureCount, error) => {
+      // Retry até 2 vezes, mas não para erros de rede básicos
+      if (failureCount >= 2) return false;
+      if (error?.message?.includes('timeout')) return true;
+      return failureCount < 1;
+    },
   });
 
-  // ESTABILIZADO: Queries paralelas otimizadas
+  // Query de lojas com fallback
   const { 
     data: stores = [], 
     isLoading: storesLoading,
@@ -90,7 +101,7 @@ export const useOptimizedMarketplace = () => {
       try {
         return await getStores();
       } catch (error) {
-        console.warn('[useOptimizedMarketplace] ⚠️ Erro ao carregar lojas:', error);
+        console.warn('[useOptimizedMarketplace] ⚠️ Erro ao carregar lojas, usando fallback:', error);
         return [];
       }
     },
@@ -101,6 +112,7 @@ export const useOptimizedMarketplace = () => {
     retry: 1,
   });
 
+  // Query de segmentos com fallback robusto
   const { 
     data: segments = [], 
     isLoading: segmentsLoading 
@@ -108,10 +120,18 @@ export const useOptimizedMarketplace = () => {
     queryKey: ['product-segments'],
     queryFn: async () => {
       try {
-        return await getProductSegments();
+        const result = await getProductSegments();
+        console.log('[useOptimizedMarketplace] ✅ Segmentos carregados:', result.length);
+        return result;
       } catch (error) {
-        console.warn('[useOptimizedMarketplace] ⚠️ Erro ao carregar segmentos:', error);
-        return [];
+        console.warn('[useOptimizedMarketplace] ⚠️ Erro ao carregar segmentos, usando fallback:', error);
+        // Retornar segmentos básicos como fallback
+        return [
+          { id: 'material-construcao', nome: 'Material de Construção', status: 'ativo' },
+          { id: 'eletrica', nome: 'Elétrica', status: 'ativo' },
+          { id: 'vidracaria', nome: 'Vidraçaria', status: 'ativo' },
+          { id: 'marmoraria', nome: 'Marmoraria', status: 'ativo' }
+        ];
       }
     },
     staleTime: 15 * 60 * 1000,
@@ -121,14 +141,14 @@ export const useOptimizedMarketplace = () => {
     retry: 1,
   });
 
-  // NOVO: Loading coordenado que aguarda zonas E produtos
+  // Loading coordenado
   const isLoadingData = zonesLoading || !zonesInitialized || (shouldFetchProducts && productsLoading);
 
-  // ESTABILIZADO: Dados consolidados memoizados
+  // Dados consolidados memoizados
   const marketplaceData: OptimizedMarketplaceData = useMemo(() => ({
-    products,
-    stores: stores || [],
-    segments: segments || [],
+    products: Array.isArray(products) ? products : [],
+    stores: Array.isArray(stores) ? stores : [],
+    segments: Array.isArray(segments) ? segments : [],
     isLoading: isLoadingData,
     error: productsError?.message || null,
     hasDeliveryRestriction: hasActiveZones,
