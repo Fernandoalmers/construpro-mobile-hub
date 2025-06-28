@@ -28,6 +28,7 @@ const OptimizedMarketplaceScreen: React.FC = () => {
     selectedPriceRanges,
     selectedSegmentId,
     selectedSegments,
+    setSelectedSegmentId,
     
     // Filter options
     categories,
@@ -119,6 +120,19 @@ const OptimizedMarketplaceScreen: React.FC = () => {
         clearFilters={actions?.clearFilters || (() => {})}
         viewType={viewType}
         onLojaClick={handleLojaCardClick}
+        setSelectedSegmentId={setSelectedSegmentId}
+        updateSegmentURL={(segmentId: string | null) => {
+          // Extract updateSegmentURL from hook logic
+          if (segmentId === null) {
+            // Clear segment selection
+            setSelectedSegmentId(null);
+            // Update URL to remove segment parameter
+            const searchParams = new URLSearchParams(window.location.search);
+            searchParams.delete('categoria');
+            const newUrl = `${window.location.pathname}${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
+            window.history.replaceState({}, '', newUrl);
+          }
+        }}
       />
     </div>
   );

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useOptimizedMarketplace } from '@/hooks/useOptimizedMarketplace';
@@ -90,6 +89,18 @@ export const useMarketplaceScreenLogic = () => {
     { id: "preco-5", label: "Acima de R$ 500" }
   ], []);
   
+  // Update URL when segment changes
+  const updateSegmentURL = useCallback((segmentId: string | null) => {
+    const searchParams = new URLSearchParams(location.search);
+    if (segmentId) {
+      searchParams.set('categoria', segmentId);
+    } else {
+      searchParams.delete('categoria');
+    }
+    const newUrl = `${location.pathname}${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
+    navigate(newUrl, { replace: true });
+  }, [location.search, location.pathname, navigate]);
+
   // Handle segment clicks with safety checks
   const handleSegmentClick = useCallback((segmentId: string) => {
     if (segmentId === "all") {
@@ -161,6 +172,7 @@ export const useMarketplaceScreenLogic = () => {
     selectedPriceRanges,
     selectedSegmentId,
     selectedSegments,
+    setSelectedSegmentId,
     
     // Filter options
     ratingOptions,
@@ -182,6 +194,7 @@ export const useMarketplaceScreenLogic = () => {
     // Handlers
     handleSegmentClick,
     handleLojaCardClick,
-    getCurrentDisplayName
+    getCurrentDisplayName,
+    updateSegmentURL
   };
 };
