@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 
@@ -89,19 +88,25 @@ export const getProductSegments = async (): Promise<ProductSegment[]> => {
     };
 
     // Tentar com timeout e retry
-    const segments = await withRetry(
+    const rawSegments = await withRetry(
       () => withTimeout(fetchSegments(), 8000),
       2,
       1500
     );
     
-    console.log('✅ [productSegmentsService] Segmentos carregados:', segments.length);
+    console.log('✅ [productSegmentsService] Segmentos carregados:', rawSegments.length);
     
     // Se não há segmentos, retornar fallback
-    if (!segments || segments.length === 0) {
+    if (!rawSegments || rawSegments.length === 0) {
       console.warn('⚠️ [productSegmentsService] Nenhum segmento encontrado, usando fallback');
       return FALLBACK_SEGMENTS;
     }
+    
+    // Convert to ProductSegment[] type to allow categorias_count assignment
+    const segments: ProductSegment[] = rawSegments.map(segment => ({
+      ...segment,
+      categorias_count: undefined // Initialize with undefined, will be set asynchronously
+    }));
     
     // Tentar buscar contagem de categorias de forma assíncrona (não bloqueante)
     setTimeout(async () => {
