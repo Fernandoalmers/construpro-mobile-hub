@@ -1,13 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card } from '@/components/ui/card';
 import CustomInput from '../common/CustomInput';
-import { Search, Box, Plug, GlassWater, Hammer, ShoppingBag, Construction } from 'lucide-react';
+import { ShoppingBag } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import LoadingState from '../common/LoadingState';
 import ErrorState from '../common/ErrorState';
 import { getProductSegments, ProductSegment } from '@/services/admin/productSegmentsService';
+import { useSegmentImageCache } from '@/hooks/useSegmentImageCache';
+import { useSegmentPreloader } from '@/hooks/useSegmentPreloader';
+import OptimizedSegmentCard from '@/components/common/OptimizedSegmentCard';
 
 // Import store data
 import stores from '@/data/lojas.json';
@@ -18,6 +20,28 @@ const MarketplaceHomeScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [storeData, setStoreData] = useState<any[]>(stores);
   const [segments, setSegments] = useState<ProductSegment[]>([]);
+  const { getCachedSegmentImage, cacheSegmentImage } = useSegmentImageCache();
+  
+  // Precarregar imagens de segmentos
+  useSegmentPreloader();
+
+  // Map segment names to icons
+  const getIconForSegment = (segmentName: string) => {
+    const nameToLower = segmentName.toLowerCase();
+    if (nameToLower.includes('material') && nameToLower.includes('constru')) {
+      return <ShoppingBag size={24} />;
+    } else if (nameToLower.includes('elétri') || nameToLower.includes('eletri')) {
+      return <ShoppingBag size={24} />;
+    } else if (nameToLower.includes('vidro') || nameToLower.includes('vidraç')) {
+      return <ShoppingBag size={24} />;
+    } else if (nameToLower.includes('marmor')) {
+      return <ShoppingBag size={24} />;
+    } else if (nameToLower.includes('aluguel') || nameToLower.includes('equipamento')) {
+      return <ShoppingBag size={24} />;
+    } else {
+      return <ShoppingBag size={24} />;
+    }
+  };
 
   // Fetch segments on component mount to get real segment data with images
   useEffect(() => {
@@ -28,7 +52,16 @@ const MarketplaceHomeScreen: React.FC = () => {
         // Fetch segments from database with images
         const segmentsData = await getProductSegments();
         console.log('[MarketplaceHomeScreen] Fetched segments:', segmentsData);
-        setSegments(segmentsData);
+        
+        // Cache images for active segments
+        const activeSegments = segmentsData.filter(segment => segment.status === 'ativo');
+        activeSegments.forEach(segment => {
+          if (segment.image_url) {
+            cacheSegmentImage(segment.id, segment.image_url);
+          }
+        });
+        
+        setSegments(activeSegments);
       } catch (err) {
         console.error('Error fetching segments:', err);
         setError('Falha ao carregar segmentos. Por favor, tente novamente.');
@@ -37,7 +70,7 @@ const MarketplaceHomeScreen: React.FC = () => {
       }
     };
     fetchSegments();
-  }, []);
+  }, [cacheSegmentImage]);
 
   useEffect(() => {
     const fetchStores = async () => {
@@ -54,41 +87,6 @@ const MarketplaceHomeScreen: React.FC = () => {
     };
     fetchStores();
   }, []);
-
-  // Fallback images para segmentos sem imagem no banco
-  const getFallbackImage = (segmentName: string) => {
-    const nameToLower = segmentName.toLowerCase();
-    if (nameToLower.includes('material') && nameToLower.includes('constru')) {
-      return '/lovable-uploads/1b629f74-0778-46a1-bb6a-4c30301e733e.png';
-    } else if (nameToLower.includes('elétri') || nameToLower.includes('eletri')) {
-      return 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=300';
-    } else if (nameToLower.includes('vidro') || nameToLower.includes('vidraç')) {
-      return 'https://images.unsplash.com/photo-1496307653780-42ee777d4833?auto=format&fit=crop&w=300';
-    } else if (nameToLower.includes('marmor')) {
-      return 'https://images.unsplash.com/photo-1466442929976-97f336a657be?auto=format&fit=crop&w=300';
-    } else if (nameToLower.includes('aluguel') || nameToLower.includes('equipamento')) {
-      return 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&w=300';
-    }
-    return 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=300'; // Default fallback
-  };
-
-  // Map segment names to icons
-  const getIconForSegment = (segmentName: string) => {
-    const nameToLower = segmentName.toLowerCase();
-    if (nameToLower.includes('material') && nameToLower.includes('constru')) {
-      return <Construction size={24} />;
-    } else if (nameToLower.includes('elétri') || nameToLower.includes('eletri')) {
-      return <Plug size={24} />;
-    } else if (nameToLower.includes('vidro') || nameToLower.includes('vidraç')) {
-      return <GlassWater size={24} />;
-    } else if (nameToLower.includes('marmor')) {
-      return <Box size={24} />;
-    } else if (nameToLower.includes('aluguel') || nameToLower.includes('equipamento')) {
-      return <Hammer size={24} />;
-    } else {
-      return <ShoppingBag size={24} />;
-    }
-  };
 
   const handleCategoryClick = (segmentId?: string) => {
     if (!segmentId) {
@@ -132,50 +130,55 @@ const MarketplaceHomeScreen: React.FC = () => {
         
         {/* Mobile: single column - Desktop: responsive grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Render segments from database */}
-          {segments.filter(segment => segment.status === 'ativo').map(segment => {
-            // Use image from database or fallback
-            const imageUrl = segment.image_url || getFallbackImage(segment.nome);
-            return (
-              <div key={segment.id} className="cursor-pointer" onClick={() => handleCategoryClick(segment.id)}>
-                <div 
-                  className="relative h-40 rounded-lg overflow-hidden shadow-md"
-                  style={{
-                    backgroundImage: `url(${imageUrl})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center'
-                  }}
-                >
-                  {/* Gradient overlay for better text visibility */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
-                  
-                  {/* Content positioned at bottom */}
-                  <div className="absolute bottom-0 left-0 right-0 p-3 flex flex-col items-start">
-                    <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center mb-2 shadow-md">
-                      <span className="text-construPro-blue">
+          {/* Render segments from database using OptimizedSegmentCard */}
+          {segments.map(segment => (
+            <div 
+              key={segment.id} 
+              className="cursor-pointer" 
+              onClick={() => handleCategoryClick(segment.id)}
+            >
+              <div 
+                className="relative h-40 rounded-lg overflow-hidden shadow-md bg-gray-200"
+              >
+                {/* Optimized segment card content */}
+                <div className="absolute inset-0">
+                  {getCachedSegmentImage(segment.id) || segment.image_url ? (
+                    <img
+                      src={getCachedSegmentImage(segment.id) || segment.image_url!}
+                      alt={`Imagem do segmento ${segment.nome}`}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-construPro-blue to-construPro-blue/80 flex items-center justify-center">
+                      <div className="text-white text-4xl">
                         {getIconForSegment(segment.nome)}
-                      </span>
+                      </div>
                     </div>
-                    <span className="text-white font-medium">{segment.nome}</span>
+                  )}
+                </div>
+                
+                {/* Gradient overlay for better text visibility */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                
+                {/* Content positioned at bottom */}
+                <div className="absolute bottom-0 left-0 right-0 p-3 flex flex-col items-start">
+                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center mb-2 shadow-md">
+                    <span className="text-construPro-blue">
+                      {getIconForSegment(segment.nome)}
+                    </span>
                   </div>
+                  <span className="text-white font-medium">{segment.nome}</span>
                 </div>
               </div>
-            );
-          })}
+            </div>
+          ))}
           
           {/* Ver todos segment */}
           <div className="cursor-pointer" onClick={() => navigate('/marketplace/products')}>
             <div 
-              className="relative h-40 rounded-lg overflow-hidden shadow-md"
-              style={{
-                backgroundImage: `url(${getFallbackImage('todos')})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center'
-              }}
+              className="relative h-40 rounded-lg overflow-hidden shadow-md bg-gradient-to-br from-construPro-orange to-construPro-orange/80"
             >
-              {/* Gradient overlay for better text visibility */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
-              
               {/* Content positioned at bottom */}
               <div className="absolute bottom-0 left-0 right-0 p-3 flex flex-col items-start">
                 <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center mb-2 shadow-md">
