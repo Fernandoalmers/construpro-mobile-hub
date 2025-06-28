@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Avatar as ShadcnAvatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { User, RefreshCw } from 'lucide-react';
@@ -24,9 +24,7 @@ const EnhancedAvatar: React.FC<EnhancedAvatarProps> = ({
   showLoadingIndicator = true,
 }) => {
   const [imageStatus, setImageStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
-  const [hasRetried, setHasRetried] = useState(false);
-  const timeoutRef = useRef<NodeJS.Timeout>();
-  const mountedRef = useRef(true);
+  const [currentSrc, setCurrentSrc] = useState<string | undefined>(src);
 
   const sizeClassMap = {
     sm: 'h-8 w-8',
@@ -35,91 +33,54 @@ const EnhancedAvatar: React.FC<EnhancedAvatarProps> = ({
     xl: 'h-24 w-24'
   };
 
+  const iconSizeMap = {
+    sm: 16,
+    md: 20,
+    lg: 24,
+    xl: 32
+  };
+
+  const loadingSizeMap = {
+    sm: 'w-3 h-3',
+    md: 'w-4 h-4',
+    lg: 'w-5 h-5',
+    xl: 'w-6 h-6'
+  };
+
+  // Get initials from fallback text
   const initials = fallback 
     ? fallback.split(' ').map(name => name[0]).join('').toUpperCase().slice(0, 2)
     : 'U';
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      mountedRef.current = false;
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, []);
-
   // Reset state when src changes
   useEffect(() => {
-    if (!src) {
-      setImageStatus('error');
-      setHasRetried(false);
-      return;
+    if (src !== currentSrc) {
+      setCurrentSrc(src);
+      setImageStatus(src ? 'loading' : 'error');
     }
+  }, [src, currentSrc]);
 
-    setImageStatus('loading');
-    setHasRetried(false);
-    
-    // Clear any existing timeout
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-    
-    // Set a 5-second timeout for image loading
-    timeoutRef.current = setTimeout(() => {
-      if (mountedRef.current) {
-        console.log('⏰ [EnhancedAvatar] Timeout de carregamento da imagem:', src);
+  // Set timeout for loading
+  useEffect(() => {
+    if (imageStatus === 'loading' && currentSrc) {
+      const timeout = setTimeout(() => {
+        console.log('⏰ [EnhancedAvatar] Timeout na imagem:', currentSrc);
         setImageStatus('error');
-      }
-    }, 5000);
-    
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, [src]);
+      }, 5000); // Reduzido para 5 segundos
+
+      return () => clearTimeout(timeout);
+    }
+  }, [imageStatus, currentSrc]);
 
   const handleImageLoad = () => {
-    if (!mountedRef.current) return;
-    
-    console.log('✅ [EnhancedAvatar] Imagem carregada com sucesso:', src);
+    console.log('✅ [EnhancedAvatar] Imagem carregada:', currentSrc);
     setImageStatus('loaded');
-    
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
   };
 
   const handleImageError = () => {
-    if (!mountedRef.current) return;
-    
-    console.log('❌ [EnhancedAvatar] Erro ao carregar imagem:', src);
-    
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-
-    // Only retry once and only for network-like errors
-    if (!hasRetried && src) {
-      console.log('🔄 [EnhancedAvatar] Tentando uma vez mais...');
-      setHasRetried(true);
-      
-      // Simple retry after 1 second without cache buster
-      setTimeout(() => {
-        if (mountedRef.current) {
-          setImageStatus('loading');
-        }
-      }, 1000);
-    } else {
-      setImageStatus('error');
-    }
+    console.log('❌ [EnhancedAvatar] Erro na imagem:', currentSrc);
+    setImageStatus('error');
   };
-
-  // Determine what to render based on current state
-  const shouldShowLoading = imageStatus === 'loading' && showLoadingIndicator && !hasRetried;
-  const shouldShowImage = imageStatus === 'loaded' && src;
-  const shouldShowFallback = imageStatus === 'error' || !src || (imageStatus === 'loading' && hasRetried);
 
   return (
     <ShadcnAvatar 
@@ -130,30 +91,30 @@ const EnhancedAvatar: React.FC<EnhancedAvatarProps> = ({
       )} 
       onClick={onClick}
     >
-      {shouldShowLoading && (
+      {/* Mostrar loading apenas se habilitado e carregando */}
+      {imageStatus === 'loading' && showLoadingIndicator && currentSrc && (
         <AvatarFallback className="bg-gray-100 flex items-center justify-center">
-          <RefreshCw className={cn(
-            "animate-spin text-gray-400",
-            size === 'sm' ? 'w-3 h-3' : size === 'md' ? 'w-4 h-4' : 'w-6 h-6'
-          )} />
+          <RefreshCw className={cn("animate-spin text-gray-400", loadingSizeMap[size])} />
         </AvatarFallback>
       )}
 
-      {shouldShowImage && (
+      {/* Mostrar imagem se carregada */}
+      {imageStatus === 'loaded' && currentSrc && (
         <AvatarImage 
-          src={src} 
+          src={currentSrc} 
           alt={alt} 
           onLoad={handleImageLoad} 
           onError={handleImageError}
         />
       )}
 
-      {shouldShowFallback && (
+      {/* Mostrar fallback se erro ou sem imagem */}
+      {(imageStatus === 'error' || !currentSrc || (imageStatus === 'loading' && !showLoadingIndicator)) && (
         <AvatarFallback className="bg-construPro-orange text-white flex items-center justify-center">
-          {src ? (
-            <User size={size === 'sm' ? 16 : size === 'md' ? 20 : 24} />
+          {fallback ? (
+            <span className="font-medium">{initials}</span>
           ) : (
-            initials
+            <User size={iconSizeMap[size]} />
           )}
         </AvatarFallback>
       )}

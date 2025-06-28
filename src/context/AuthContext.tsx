@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { getUserProfile, UserProfile, updateUserProfile } from '@/services/userService';
@@ -26,7 +27,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Refs para controle de estado
+  const isRefreshingRef = useRef(false);
+  const refreshTimeoutRef = useRef<NodeJS.Timeout>();
 
   const loadUserProfile = async (userId: string): Promise<UserProfile | null> => {
     try {
@@ -38,8 +42,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('[AuthContext] Profile loaded successfully:', {
           id: userProfile.id,
           nome: userProfile.nome,
-          is_admin: userProfile.is_admin,
-          endereco_principal: userProfile.endereco_principal?.cep ? 'presente' : 'ausente'
+          avatar: userProfile.avatar ? 'presente' : 'ausente'
         });
         return userProfile;
       } else {
@@ -54,38 +57,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const refreshProfile = async (): Promise<UserProfile | null> => {
-    if (!user?.id || isRefreshing) {
+  // Debounced refresh profile para evitar chamadas múltiplas
+  const refreshProfile = useCallback(async (): Promise<UserProfile | null> => {
+    if (!user?.id || isRefreshingRef.current) {
       console.log('[AuthContext] Skipping refresh - no user or already refreshing');
       return profile;
     }
     
-    setIsRefreshing(true);
-    console.log('[AuthContext] 🔄 Refreshing profile...');
-    
-    try {
-      const updatedProfile = await loadUserProfile(user.id);
-      
-      // NOVO: Disparar evento quando perfil é atualizado via refresh
-      if (updatedProfile) {
-        console.log('[AuthContext] 📡 Disparando evento de atualização de perfil...');
-        window.dispatchEvent(new CustomEvent('profile-updated', {
-          detail: { 
-            profile: updatedProfile, 
-            timestamp: Date.now(),
-            source: 'refresh'
-          }
-        }));
-      }
-      
-      return updatedProfile;
-    } catch (error) {
-      console.error('[AuthContext] Error refreshing profile:', error);
-      return profile;
-    } finally {
-      setIsRefreshing(false);
+    // Limpar timeout anterior
+    if (refreshTimeoutRef.current) {
+      clearTimeout(refreshTimeoutRef.current);
     }
-  };
+    
+    // Debounce de 300ms
+    return new Promise((resolve) => {
+      refreshTimeoutRef.current = setTimeout(async () => {
+        isRefreshingRef.current = true;
+        console.log('[AuthContext] 🔄 Refreshing profile...');
+        
+        try {
+          const updatedProfile = await loadUserProfile(user.id);
+          
+          if (updatedProfile) {
+            console.log('[AuthContext] 📡 Profile refreshed successfully');
+            window.dispatchEvent(new CustomEvent('profile-updated', {
+              detail: { 
+                profile: updatedProfile, 
+                timestamp: Date.now(),
+                source: 'refresh'
+              }
+            }));
+          }
+          
+          resolve(updatedProfile);
+        } catch (error) {
+          console.error('[AuthContext] Error refreshing profile:', error);
+          resolve(profile);
+        } finally {
+          isRefreshingRef.current = false;
+        }
+      }, 300);
+    });
+  }, [user?.id, profile]);
 
   const login = async (email: string, password: string) => {
     try {
@@ -135,7 +148,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // MELHORADO: Listener para mudanças no perfil em tempo real com eventos customizados
+  // Realtime listener otimizado
   useEffect(() => {
     if (!user?.id) return;
 
@@ -152,38 +165,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           filter: `id=eq.${user.id}`
         },
         async (payload) => {
-          console.log('[AuthContext] 📡 Perfil atualizado via realtime:', payload);
+          console.log('[AuthContext] 📡 Perfil atualizado via realtime');
           
-          // Verificar se o endereco_principal mudou
           const newProfile = payload.new as UserProfile;
-          const oldProfile = payload.old as UserProfile;
-          
-          const newCep = newProfile.endereco_principal?.cep;
-          const oldCep = oldProfile.endereco_principal?.cep;
-          
-          // Atualizar o profile state imediatamente
           setProfile(newProfile);
           
-          if (newCep !== oldCep) {
-            console.log('[AuthContext] 🏠 Endereço principal mudou via realtime:', { oldCep, newCep });
-            
-            // Disparar evento customizado para sincronização entre páginas
-            window.dispatchEvent(new CustomEvent('primary-address-changed', {
-              detail: { 
-                newCep, 
-                oldCep, 
-                profile: newProfile,
-                source: 'realtime',
-                timestamp: Date.now()
-              }
-            }));
-          }
-          
-          // Disparar evento geral de atualização de perfil
+          // Disparar evento customizado
           window.dispatchEvent(new CustomEvent('profile-updated', {
             detail: { 
               profile: newProfile, 
-              oldProfile,
               source: 'realtime',
               timestamp: Date.now()
             }
@@ -207,8 +197,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       console.log('[AuthContext] Initial session:', {
         hasSession: !!session,
-        userId: session?.user?.id,
-        userEmail: session?.user?.email
+        userId: session?.user?.id
       });
       
       setSession(session);
@@ -229,23 +218,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
       
-      console.log('[AuthContext] Auth state changed:', {
-        event,
-        hasSession: !!session,
-        userId: session?.user?.id,
-        userEmail: session?.user?.email
-      });
+      console.log('[AuthContext] Auth state changed:', event);
       
       setSession(session);
       setUser(session?.user ?? null);
       
       if (event === 'SIGNED_IN' && session?.user?.id) {
-        // Use setTimeout to defer the profile loading and avoid blocking
+        // Carregar perfil de forma não-bloqueante
         setTimeout(() => {
           if (isMounted) {
             loadUserProfile(session.user.id);
           }
-        }, 0);
+        }, 100);
       } else if (event === 'SIGNED_OUT') {
         setProfile(null);
       }
@@ -253,9 +237,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(false);
     });
 
+    // Cleanup
     return () => {
       isMounted = false;
       subscription.unsubscribe();
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
     };
   }, []);
 

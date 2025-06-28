@@ -31,7 +31,7 @@ const ProfileScreen: React.FC = () => {
     profileId: profile?.id,
     userRole: profile?.tipo_perfil,
     hasVendorProfile: !!vendorProfile,
-    vendorProfile: vendorProfile
+    avatar: profile?.avatar ? 'presente' : 'ausente'
   });
 
   const handleRefreshProfile = async () => {
@@ -57,13 +57,11 @@ const ProfileScreen: React.FC = () => {
     if (!file || !profile?.id) return;
 
     try {
-      // Validate file type
       if (!file.type.startsWith('image/')) {
         toast.error('Por favor, selecione um arquivo de imagem');
         return;
       }
 
-      // Validate file size (2MB limit)
       if (file.size > 2 * 1024 * 1024) {
         toast.error('A imagem deve ter no máximo 2MB');
         return;
@@ -71,12 +69,10 @@ const ProfileScreen: React.FC = () => {
 
       console.log('Uploading avatar for user:', profile.id);
 
-      // Create unique filename
       const fileExt = file.name.split('.').pop();
       const fileName = `avatar-${Date.now()}.${fileExt}`;
       const filePath = `${profile.id}/${fileName}`;
 
-      // Upload to Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, file, { upsert: true });
@@ -87,7 +83,6 @@ const ProfileScreen: React.FC = () => {
         return;
       }
 
-      // Get public URL
       const { data } = supabase.storage
         .from('avatars')
         .getPublicUrl(filePath);
@@ -97,7 +92,6 @@ const ProfileScreen: React.FC = () => {
         return;
       }
 
-      // Update profile with new avatar URL
       await updateProfile({ avatar: data.publicUrl });
       toast.success('Avatar atualizado com sucesso!');
     } catch (error) {
@@ -106,7 +100,6 @@ const ProfileScreen: React.FC = () => {
     }
   };
 
-  // Show loading state
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -118,7 +111,6 @@ const ProfileScreen: React.FC = () => {
     );
   }
 
-  // Show error state if no profile after loading
   if (!profile) {
     return (
       <div className="flex items-center justify-center min-h-screen p-4">
@@ -142,7 +134,7 @@ const ProfileScreen: React.FC = () => {
     );
   }
 
-  // Determine if user is a vendor and get appropriate display info
+  // Determinar dados de exibição
   const isVendor = profile.tipo_perfil === 'vendedor' || profile.tipo_perfil === 'lojista';
   const displayName = isVendor && vendorProfile?.nome_loja ? vendorProfile.nome_loja : profile.nome || 'Usuário';
   const displayEmail = isVendor && vendorProfile?.email ? vendorProfile.email : profile.email;
@@ -215,7 +207,6 @@ const ProfileScreen: React.FC = () => {
     }
   ];
 
-  // Add vendor-specific menu items
   if (isVendor) {
     menuItems.unshift({
       icon: Store,
@@ -268,7 +259,6 @@ const ProfileScreen: React.FC = () => {
         </div>
       </div>
 
-      {/* Hidden file input */}
       <input
         ref={fileInputRef}
         type="file"
@@ -295,14 +285,12 @@ const ProfileScreen: React.FC = () => {
           ))}
         </div>
 
-        {/* Ações do perfil */}
         <div className="mt-6 space-y-3">
           <Button onClick={handleLogout} variant="outline" className="w-full text-red-600 border-red-200 hover:bg-red-50">
             Sair da conta
           </Button>
         </div>
 
-        {/* Informações adicionais */}
         <div className="mt-6 text-center text-sm text-gray-500">
           <p>Matershop - Sua construção em boas mãos</p>
           <p className="mt-1">Versão 1.0.0</p>

@@ -1,59 +1,62 @@
+
 /**
  * Utilities for handling avatar URLs and validation
  */
 
+// Cache para URLs validadas (evita validações repetidas)
+const validatedUrls = new Map<string, { isValid: boolean; timestamp: number }>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 /**
- * Validates if an avatar URL is accessible and valid
+ * Valida se um avatar URL é acessível - versão simplificada
  */
 export const validateAvatarUrl = async (url: string): Promise<boolean> => {
   if (!url || typeof url !== 'string') {
     return false;
   }
 
-  // Basic URL format validation
+  // Verificar cache primeiro
+  const cached = validatedUrls.get(url);
+  if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION) {
+    return cached.isValid;
+  }
+
+  // Validação básica de formato
   try {
     new URL(url);
   } catch {
-    console.log('[AvatarUtils] Invalid URL format:', url);
+    console.log('[AvatarUtils] URL inválida:', url);
+    validatedUrls.set(url, { isValid: false, timestamp: Date.now() });
     return false;
   }
 
-  // Check if URL is accessible (with timeout)
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+  // Verificar se é uma URL de imagem válida (sem fazer fetch)
+  const isImageUrl = /\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(url) || 
+                     url.includes('supabase') || 
+                     url.includes('storage');
 
-    const response = await fetch(url, {
-      method: 'HEAD',
-      signal: controller.signal,
-      cache: 'no-cache'
-    });
-
-    clearTimeout(timeoutId);
-    
-    const isValid = response.ok && response.headers.get('content-type')?.startsWith('image/');
-    console.log('[AvatarUtils] URL validation result:', { url, isValid, status: response.status });
-    
-    return isValid;
-  } catch (error) {
-    console.log('[AvatarUtils] URL validation failed:', { url, error: error instanceof Error ? error.message : 'Unknown error' });
-    return false;
-  }
+  validatedUrls.set(url, { isValid: isImageUrl, timestamp: Date.now() });
+  return isImageUrl;
 };
 
 /**
- * Generates a safe avatar URL with fallback handling
+ * Gera uma URL de avatar segura
  */
 export const getSafeAvatarUrl = (avatarUrl: string | null | undefined): string | undefined => {
   if (!avatarUrl || typeof avatarUrl !== 'string') {
     return undefined;
   }
 
-  // Remove potential query parameters that might cause issues
   try {
     const url = new URL(avatarUrl);
-    // Keep only essential query parameters
-    const allowedParams = ['t', 'token'];
+    
+    // Se for do Supabase, manter como está
+    if (url.hostname.includes('supabase')) {
+      return avatarUrl;
+    }
+    
+    // Para outras URLs, limpar parâmetros desnecessários
+    const allowedParams = ['t', 'token', 'v'];
     const searchParams = new URLSearchParams();
     
     allowedParams.forEach(param => {
@@ -65,22 +68,31 @@ export const getSafeAvatarUrl = (avatarUrl: string | null | undefined): string |
     url.search = searchParams.toString();
     return url.toString();
   } catch {
-    // If URL parsing fails, return the original (might still work)
+    // Se não conseguir parsear, retornar a URL original
     return avatarUrl;
   }
 };
 
 /**
- * Adds cache busting parameter to avatar URL
+ * Adiciona cache busting apenas quando necessário
  */
-export const addCacheBuster = (url: string): string => {
+export const addCacheBuster = (url: string, force: boolean = false): string => {
+  if (!force) return url;
+  
   try {
     const urlObj = new URL(url);
     urlObj.searchParams.set('cb', Date.now().toString());
     return urlObj.toString();
   } catch {
-    // If URL parsing fails, append query parameter manually
     const separator = url.includes('?') ? '&' : '?';
     return `${url}${separator}cb=${Date.now()}`;
   }
+};
+
+/**
+ * Limpa o cache de URLs validadas
+ */
+export const clearAvatarCache = (): void => {
+  validatedUrls.clear();
+  console.log('[AvatarUtils] Cache de avatares limpo');
 };
