@@ -23,6 +23,9 @@ interface MarketplaceContentProps {
   clearFilters: () => void;
   viewType: 'grid' | 'list';
   onLojaClick?: (lojaId: string) => void;
+  // NOVO: Adicionar props para controle de segmentos
+  setSelectedSegmentId?: (id: string | null) => void;
+  updateSegmentURL?: (id: string | null) => void;
 }
 
 const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
@@ -36,7 +39,9 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
   loadMoreProducts,
   clearFilters,
   viewType,
-  onLojaClick
+  onLojaClick,
+  setSelectedSegmentId,
+  updateSegmentURL
 }) => {
   const navigate = useNavigate();
   const { hasActiveZones, currentCep, resolveZones, isInitialized } = useDeliveryZones();
@@ -62,11 +67,16 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
            !hasDefinedCepWithoutCoverage;
   };
 
-  // NOVO: Handlers para o estado vazio de segmento
+  // CORRIGIDO: Handlers para o estado vazio de segmento
   const handleViewAllCategories = () => {
+    // Limpar segmento específico para mostrar todos os produtos
+    if (setSelectedSegmentId) {
+      setSelectedSegmentId(null);
+    }
+    if (updateSegmentURL) {
+      updateSegmentURL(null);
+    }
     clearFilters();
-    // Limpar URL params se necessário
-    navigate('/', { replace: true });
   };
 
   const handleBackToHome = () => {
