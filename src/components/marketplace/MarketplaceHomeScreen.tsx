@@ -1,83 +1,27 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
-import CustomInput from '../common/CustomInput';
 import { ShoppingBag } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import CustomInput from '../common/CustomInput';
 import LoadingState from '../common/LoadingState';
 import ErrorState from '../common/ErrorState';
-import { getProductSegments, ProductSegment } from '@/services/admin/productSegmentsService';
+import SegmentCard from './components/SegmentCard';
+import { useMarketplaceSegments } from '@/hooks/useMarketplaceSegments';
+import { useConnectivityDiagnostic } from '@/hooks/useConnectivityDiagnostic';
 
-// Import store data
-import stores from '@/data/lojas.json';
-
-const MarketplaceHomeScreen: React.FC = () => {
+// Componente de conteúdo com Suspense para carregamento suave
+const MarketplaceContent: React.FC = () => {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [storeData, setStoreData] = useState<any[]>(stores);
-  const [segments, setSegments] = useState<ProductSegment[]>([]);
+  const { data: segments, isLoading, error, refetch } = useMarketplaceSegments();
+  const { isOnline, supabaseHealthy } = useConnectivityDiagnostic();
 
-  // Map segment names to icons
-  const getIconForSegment = (segmentName: string) => {
-    const nameToLower = segmentName.toLowerCase();
-    if (nameToLower.includes('material') && nameToLower.includes('constru')) {
-      return <ShoppingBag size={24} />;
-    } else if (nameToLower.includes('elétri') || nameToLower.includes('eletri')) {
-      return <ShoppingBag size={24} />;
-    } else if (nameToLower.includes('vidro') || nameToLower.includes('vidraç')) {
-      return <ShoppingBag size={24} />;
-    } else if (nameToLower.includes('marmor')) {
-      return <ShoppingBag size={24} />;
-    } else if (nameToLower.includes('aluguel') || nameToLower.includes('equipamento')) {
-      return <ShoppingBag size={24} />;
-    } else {
-      return <ShoppingBag size={24} />;
-    }
-  };
+  console.log('🔄 [MarketplaceContent] Renderizando com:', {
+    segmentsCount: segments?.length || 0,
+    isLoading,
+    isOnline,
+    supabaseHealthy
+  });
 
-  // Fetch segments with fallback robusto
-  const fetchSegments = async () => {
-    try {
-      console.log('🔄 [MarketplaceHomeScreen] Carregando segmentos...');
-      setLoading(true);
-      setError(null);
-
-      // Usar o serviço otimizado que já tem fallbacks
-      const segmentsData = await getProductSegments();
-      console.log('[MarketplaceHomeScreen] Segmentos carregados:', segmentsData.length);
-        
-      // Filtrar apenas segmentos ativos
-      const activeSegments = segmentsData.filter(segment => segment.status === 'ativo');
-      setSegments(activeSegments);
-    } catch (err) {
-      console.error('❌ [MarketplaceHomeScreen] Erro ao carregar segmentos:', err);
-      setError('Erro ao carregar categorias. Tente novamente.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Fetch segments on component mount
-  useEffect(() => {
-    fetchSegments();
-  }, []);
-
-  useEffect(() => {
-    const fetchStores = async () => {
-      try {
-        const { data, error } = await supabase.from('stores').select('*');
-        if (error) throw error;
-        if (data && data.length > 0) {
-          setStoreData(data);
-        }
-      } catch (err) {
-        console.error('Error fetching stores:', err);
-        // Não definir erro aqui para não bloquear a interface por causa das lojas
-      }
-    };
-    fetchStores();
-  }, []);
 
   const handleCategoryClick = (segmentId?: string) => {
     if (!segmentId) {
@@ -93,33 +37,12 @@ const MarketplaceHomeScreen: React.FC = () => {
   };
 
   const handleRetry = () => {
-    fetchSegments();
+    console.log('🔄 [MarketplaceContent] Tentando novamente...');
+    refetch();
   };
 
-  if (loading && segments.length === 0) {
-    return (
-      <div className="flex flex-col min-h-screen bg-gray-50 pb-20">
-        <div className="p-4 pt-8 bg-construPro-blue">
-          <h1 className="text-2xl font-bold text-white mb-4">Loja</h1>
-          <CustomInput 
-            isSearch 
-            placeholder="Buscar produtos" 
-            onClick={() => navigate('/marketplace/products')} 
-            className="mb-2 cursor-pointer" 
-            readOnly 
-          />
-        </div>
-        
-        <div className="p-4">
-          <LoadingState 
-            text="Carregando categorias..." 
-          />
-        </div>
-      </div>
-    );
-  }
-
-  if (error && segments.length === 0) {
+  // Mostrar erro apenas se não há dados de fallback e conexão falhou
+  if (error && (!segments || segments.length === 0) && !isOnline) {
     return (
       <div className="flex flex-col min-h-screen bg-gray-50 pb-20">
         <div className="p-4 pt-8 bg-construPro-blue">
@@ -136,7 +59,7 @@ const MarketplaceHomeScreen: React.FC = () => {
         <div className="p-4">
           <ErrorState 
             title="Problema de Conexão" 
-            message={error}
+            message="Verifique sua conexão com a internet"
             actionButton={{
               label: "Tentar Novamente",
               onClick: handleRetry
@@ -176,66 +99,39 @@ const MarketplaceHomeScreen: React.FC = () => {
           )}
         </div>
         
-        {/* Grid responsivo */}
+        {/* Grid responsivo com loading indicator */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Render segments from database */}
-          {segments.map(segment => (
-            <div 
-              key={segment.id} 
-              className="cursor-pointer" 
-              onClick={() => handleCategoryClick(segment.id)}
-            >
-              <div className="relative h-40 rounded-lg overflow-hidden shadow-md bg-gray-200">
-                {/* Imagem ou gradiente de fallback */}
-                <div className="absolute inset-0">
-                  {segment.image_url ? (
-                    <img
-                      src={segment.image_url}
-                      alt={`Categoria ${segment.nome}`}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                      onError={(e) => {
-                        // Fallback para gradiente se imagem falhar
-                        e.currentTarget.style.display = 'none';
-                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                      }}
-                    />
-                  ) : null}
-                  
-                  {/* Gradiente de fallback */}
-                  <div className={`w-full h-full bg-gradient-to-br from-construPro-blue to-construPro-blue/80 flex items-center justify-center ${segment.image_url ? 'hidden' : ''}`}>
-                    <div className="text-white text-4xl">
-                      {getIconForSegment(segment.nome)}
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Gradient overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
-                
-                {/* Content */}
-                <div className="absolute bottom-0 left-0 right-0 p-3 flex flex-col items-start">
-                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center mb-2 shadow-md">
-                    <span className="text-construPro-blue">
-                      {getIconForSegment(segment.nome)}
-                    </span>
-                  </div>
-                  <span className="text-white font-medium">{segment.nome}</span>
-                </div>
+          {/* Indicador de conectividade se necessário */}
+          {!supabaseHealthy && segments && segments.length > 0 && (
+            <div className="col-span-full mb-2">
+              <div className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded flex items-center">
+                ⚠️ Modo offline - mostrando dados em cache
               </div>
             </div>
+          )}
+          
+          {/* Render segments usando o novo componente */}
+          {segments && segments.map(segment => (
+            <SegmentCard
+              key={segment.id}
+              segment={segment}
+              onClick={() => handleCategoryClick(segment.id)}
+            />
           ))}
           
           {/* Ver todos segment */}
-          <div className="cursor-pointer" onClick={() => navigate('/marketplace/products')}>
+          <div 
+            className="cursor-pointer transform transition-transform duration-200 hover:scale-105" 
+            onClick={() => navigate('/marketplace/products')}
+          >
             <div className="relative h-40 rounded-lg overflow-hidden shadow-md bg-gradient-to-br from-construPro-orange to-construPro-orange/80">
-              <div className="absolute bottom-0 left-0 right-0 p-3 flex flex-col items-start">
-                <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center mb-2 shadow-md">
+              <div className="absolute bottom-0 left-0 right-0 p-3 flex flex-col items-start z-10">
+                <div className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center mb-2 shadow-lg">
                   <span className="text-construPro-blue">
                     <ShoppingBag size={24} />
                   </span>
                 </div>
-                <span className="text-white font-medium">Ver todos</span>
+                <span className="text-white font-medium text-sm drop-shadow-md">Ver todos</span>
               </div>
             </div>
           </div>
@@ -250,6 +146,40 @@ const MarketplaceHomeScreen: React.FC = () => {
         </p>
       </div>
     </div>
+  );
+};
+
+// Componente principal com Suspense
+const MarketplaceHomeScreen: React.FC = () => {
+  const navigate = useNavigate();
+
+  return (
+    <Suspense 
+      fallback={
+        <div className="flex flex-col min-h-screen bg-gray-50 pb-20">
+          <div className="p-4 pt-8 bg-construPro-blue">
+            <h1 className="text-2xl font-bold text-white mb-4">Loja</h1>
+            <CustomInput 
+              isSearch 
+              placeholder="Buscar produtos" 
+              onClick={() => navigate('/marketplace/products')} 
+              className="mb-2 cursor-pointer" 
+              readOnly 
+            />
+          </div>
+          
+          <div className="p-4">
+            <LoadingState 
+              text="Carregando categorias..." 
+              type="skeleton"
+              count={4}
+            />
+          </div>
+        </div>
+      }
+    >
+      <MarketplaceContent />
+    </Suspense>
   );
 };
 
