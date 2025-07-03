@@ -83,13 +83,19 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({
             <div className="flex items-center">
               <h2 className="text-xl font-bold">Avaliações</h2>
               <div className="flex items-center ml-3">
-                {[...Array(5)].map((_, i) => (
-                  <Star
-                    key={i}
-                    size={16}
-                    className={`${i < 4 ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
-                  />
-                ))}
+                {(() => {
+                  const averageRating = reviews.length > 0 
+                    ? Math.round(reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length)
+                    : 0;
+                  
+                  return [...Array(5)].map((_, i) => (
+                    <Star
+                      key={i}
+                      size={16}
+                      className={`${i < averageRating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
+                    />
+                  ));
+                })()}
                 <span className="ml-2 text-sm">({reviews.length || 0})</span>
               </div>
             </div>
