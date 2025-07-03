@@ -4,6 +4,7 @@ import { Truck, Shield, Star, MessageCircle, ChevronDown, ChevronUp } from 'luci
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import AddReviewModal from './AddReviewModal';
 
 interface ProductDetailsProps {
   description: string;
@@ -16,16 +17,38 @@ interface ProductDetailsProps {
   }[];
   canReview?: boolean;
   onAddReview?: () => void;
+  productId: string;
+  productName: string;
+  onReviewAdded?: () => void;
 }
 
 const ProductDetails: React.FC<ProductDetailsProps> = ({ 
   description, 
   reviews = [], 
   canReview = false,
-  onAddReview
+  onAddReview,
+  productId,
+  productName,
+  onReviewAdded
 }) => {
   const [descriptionExpanded, setDescriptionExpanded] = useState(true);
   const [reviewsExpanded, setReviewsExpanded] = useState(false);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+
+  const handleAddReview = () => {
+    if (onAddReview) {
+      onAddReview();
+    } else {
+      setIsReviewModalOpen(true);
+    }
+  };
+
+  const handleReviewAdded = () => {
+    setIsReviewModalOpen(false);
+    if (onReviewAdded) {
+      onReviewAdded();
+    }
+  };
 
   return (
     <>
@@ -101,20 +124,20 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({
                   <MessageCircle className="mx-auto h-12 w-12 text-gray-300 mb-3" />
                   <p className="text-gray-500 mb-4">Ainda não há avaliações para este produto</p>
                   
-                  {canReview && onAddReview && (
-                    <Button onClick={onAddReview} variant="outline">
+                  {canReview && (
+                    <Button onClick={handleAddReview} variant="outline">
                       Seja o primeiro a avaliar
                     </Button>
                   )}
                 </div>
               )}
               
-              {canReview && reviews.length > 0 && onAddReview && (
+              {canReview && reviews.length > 0 && (
                 <div className="mt-4 pt-4 border-t border-gray-100">
                   <Button 
                     variant="outline" 
                     className="w-full"
-                    onClick={onAddReview}
+                    onClick={handleAddReview}
                   >
                     Escrever uma avaliação
                   </Button>
@@ -163,6 +186,15 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({
           </CardContent>
         </Card>
       </div>
+
+      {/* Add Review Modal */}
+      <AddReviewModal
+        isOpen={isReviewModalOpen}
+        onClose={() => setIsReviewModalOpen(false)}
+        productId={productId}
+        productName={productName}
+        onReviewAdded={handleReviewAdded}
+      />
     </>
   );
 };

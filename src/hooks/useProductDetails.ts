@@ -17,12 +17,13 @@ interface ProductDetailsState {
     minDays: number;
     maxDays: number;
   };
+  refetchReviews: () => Promise<void>;
 }
 
 export function useProductDetails(id: string | undefined, isAuthenticated: boolean): ProductDetailsState {
   // Use our separated hooks
   const { product, loading, error } = useProductFetch(id);
-  const reviews = useProductReviews(id);
+  const { reviews, refetchReviews } = useProductReviews(id);
   const isFavorited = useProductFavorite(id, isAuthenticated);
   const estimatedDelivery = useDeliveryEstimate(product);
   
@@ -40,6 +41,7 @@ export function useProductDetails(id: string | undefined, isAuthenticated: boole
     error,
     isFavorited,
     reviews,
-    estimatedDelivery
+    estimatedDelivery,
+    refetchReviews
   };
 }

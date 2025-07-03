@@ -26,6 +26,7 @@ interface ProdutoContentProps {
   onQuantityChange: (delta: number) => void;
   validateQuantity: () => void;
   onProductActionSuccess: () => void;
+  onReviewAdded?: () => Promise<void>;
 }
 
 const ProdutoContent: React.FC<ProdutoContentProps> = ({
@@ -37,7 +38,8 @@ const ProdutoContent: React.FC<ProdutoContentProps> = ({
   estimatedDelivery,
   onQuantityChange,
   validateQuantity,
-  onProductActionSuccess
+  onProductActionSuccess,
+  onReviewAdded
 }) => {
   const navigate = useNavigate();
 
@@ -113,6 +115,9 @@ const ProdutoContent: React.FC<ProdutoContentProps> = ({
         description={produto.descricao}
         reviews={reviews}
         canReview={isAuthenticated}
+        productId={produto.id}
+        productName={produto.nome}
+        onReviewAdded={onReviewAdded}
         onAddReview={() => {
           if (!isAuthenticated) {
             navigate('/login', { state: { from: `/produto/${produto.id}` } });

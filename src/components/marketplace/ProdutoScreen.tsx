@@ -20,7 +20,7 @@ const ProdutoScreen: React.FC = () => {
   const { isAuthenticated } = useAuth();
   
   // Use our custom hooks
-  const { product: produto, loading, error, isFavorited, reviews, estimatedDelivery } = useProductDetails(id, isAuthenticated);
+  const { product: produto, loading, error, isFavorited, reviews, estimatedDelivery, refetchReviews } = useProductDetails(id, isAuthenticated);
   const { showCartPopup, handleProductActionSuccess } = useCartPopup();
   const { quantidade, handleQuantityChange, validateQuantity } = useQuantityState({ 
     produto,
@@ -64,6 +64,7 @@ const ProdutoScreen: React.FC = () => {
         onQuantityChange={handleQuantityChange}
         validateQuantity={validateQuantity}
         onProductActionSuccess={handleProductActionSuccess}
+        onReviewAdded={refetchReviews}
       />
       
       {/* Cart popup when item is added to cart */}
