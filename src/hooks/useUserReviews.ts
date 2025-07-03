@@ -68,11 +68,19 @@ export function useUserReviews() {
         const productImages = product?.imagens as string[] | null;
         const mainImage = productImages && productImages.length > 0 ? productImages[0] : undefined;
 
+        // Debug log para verificar o valor original da nota
+        console.log('[useUserReviews] Review data:', {
+          id: review.id,
+          produto_nome: product?.nome,
+          nota_original: review.nota,
+          nota_type: typeof review.nota
+        });
+
         return {
           id: review.id,
           produto_nome: product?.nome || 'Produto não encontrado',
           produto_id: review.produto_id,
-          avaliacao: review.nota,
+          avaliacao: Number(review.nota), // Garantir que é número
           comentario: review.comentario || '',
           data_avaliacao: review.data,
           produto_imagem: mainImage

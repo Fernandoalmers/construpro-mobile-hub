@@ -18,6 +18,12 @@ const ReviewsScreen: React.FC = () => {
   const { reviews, loading, error, refetch } = useUserReviews();
 
   const renderStars = (rating: number) => {
+    console.log('[ReviewsScreen] renderStars called with:', {
+      rating,
+      type: typeof rating,
+      isNumber: !isNaN(rating)
+    });
+    
     return Array.from({ length: 5 }, (_, index) => (
       <Star
         key={index}
@@ -145,8 +151,11 @@ const ReviewsScreen: React.FC = () => {
                   <h3 className="font-medium text-gray-900 mb-1">{review.produto_nome}</h3>
                   
                   <div className="flex items-center gap-2 mb-2">
-                    <div className="flex">
+                    <div className="flex items-center gap-1">
                       {renderStars(review.avaliacao)}
+                      <span className="text-xs bg-red-100 text-red-800 px-1 rounded ml-1">
+                        {review.avaliacao}
+                      </span>
                     </div>
                     <span className="text-sm text-gray-600">
                       {new Date(review.data_avaliacao).toLocaleDateString('pt-BR')}
