@@ -5,52 +5,17 @@ import { ArrowLeft, Star, Filter, Calendar, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useUserReviews } from '@/hooks/useUserReviews';
+import LoadingState from '@/components/common/LoadingState';
+import ErrorState from '@/components/common/ErrorState';
 
-interface Review {
-  id: string;
-  produto_nome: string;
-  produto_id: string;
-  avaliacao: number;
-  comentario: string;
-  data_avaliacao: string;
-  produto_imagem?: string;
-}
 
 const ReviewsScreen: React.FC = () => {
   const navigate = useNavigate();
   const [ratingFilter, setRatingFilter] = useState<string>('all');
   const [dateFilter, setDateFilter] = useState<string>('all');
-
-  // Mock data - em produção viria da API
-  const [reviews] = useState<Review[]>([
-    {
-      id: '1',
-      produto_nome: 'Furadeira Bosch GSB 550 RE',
-      produto_id: 'prod-1',
-      avaliacao: 5,
-      comentario: 'Excelente produto, muito resistente e potente. Recomendo!',
-      data_avaliacao: '2024-01-15T10:30:00Z',
-      produto_imagem: '/placeholder.svg'
-    },
-    {
-      id: '2',
-      produto_nome: 'Parafusos Phillips 6x40mm',
-      produto_id: 'prod-2',
-      avaliacao: 4,
-      comentario: 'Boa qualidade, chegou rápido.',
-      data_avaliacao: '2024-01-10T14:20:00Z',
-      produto_imagem: '/placeholder.svg'
-    },
-    {
-      id: '3',
-      produto_nome: 'Tinta Acrílica Branca 18L',
-      produto_id: 'prod-3',
-      avaliacao: 5,
-      comentario: 'Tinta de ótima qualidade, cobertura excelente!',
-      data_avaliacao: '2024-01-05T09:15:00Z',
-      produto_imagem: '/placeholder.svg'
-    }
-  ]);
+  
+  const { reviews, loading, error, refetch } = useUserReviews();
 
   const renderStars = (rating: number) => {
     return Array.from({ length: 5 }, (_, index) => (
@@ -88,6 +53,20 @@ const ReviewsScreen: React.FC = () => {
     
     return true;
   });
+
+  if (loading) {
+    return <LoadingState text="Carregando suas avaliações..." />;
+  }
+
+  if (error) {
+    return (
+      <ErrorState 
+        title="Erro ao carregar avaliações" 
+        message={error}
+        onRetry={refetch}
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 pb-20">
