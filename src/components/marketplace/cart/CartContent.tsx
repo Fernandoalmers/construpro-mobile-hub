@@ -35,7 +35,7 @@ const CartContent: React.FC<CartContentProps> = ({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Seção de cupons */}
       <CouponSection
         appliedCoupon={appliedCoupon}
@@ -46,7 +46,7 @@ const CartContent: React.FC<CartContentProps> = ({
       />
 
       {/* Itens do carrinho agrupados por loja */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         {Object.entries(itemsByStore).map(([storeId, storeGroup]) => (
           <StoreCartGroup
             key={storeId}

@@ -110,10 +110,10 @@ const CartScreen: React.FC = () => {
   });
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-gray-50 to-blue-50/30">
       <CartHeader />
 
-      <div className="flex-1 p-4 max-w-2xl mx-auto w-full">
+      <div className="flex-1 p-3 max-w-2xl mx-auto w-full">
         {cartIsEmpty ? (
           <EmptyCart />
         ) : (
@@ -143,7 +143,7 @@ const CartScreen: React.FC = () => {
         )}
       </div>
       
-      {!cartIsEmpty && <div className="h-24" />}
+      {!cartIsEmpty && <div className="h-20" />}
     </div>
   );
 };

@@ -45,34 +45,34 @@ const StoreCartGroup: React.FC<StoreCartGroupProps> = ({
   const displayName = store.nome || `Loja ${store.id.substring(0, 4)}`;
   
   return (
-    <div className="mb-3">
-      {/* Store header - mais compacto */}
-      <div className="flex items-center mb-2 px-2 py-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-md border-l-3 border-blue-500">
+    <div className="mb-4">
+      {/* Store header - modernizado */}
+      <div className="flex items-center mb-3 px-3 py-2.5 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-l-4 border-blue-500 shadow-sm">
         {store.logo_url ? (
           <img 
             src={store.logo_url} 
             alt={displayName}
-            className="w-6 h-6 rounded-full object-cover mr-2 border border-white shadow-sm"
+            className="w-8 h-8 rounded-full object-cover mr-3 border-2 border-white shadow-md"
             onError={(e) => {
-              (e.target as HTMLImageElement).src = 'https://via.placeholder.com/24';
+              (e.target as HTMLImageElement).src = 'https://via.placeholder.com/32';
             }}
           />
         ) : (
-          <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center mr-2 border border-white shadow-sm">
-            <Building size={12} className="text-blue-600" />
+          <div className="w-8 h-8 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center mr-3 border-2 border-white shadow-md">
+            <Building size={16} className="text-blue-600" />
           </div>
         )}
         <div className="flex-1">
-          <h2 className="font-semibold text-xs text-gray-800">{displayName}</h2>
-          <p className="text-xs text-gray-600 flex items-center gap-1">
-            <MapPin className="w-2.5 h-2.5" />
+          <h2 className="font-bold text-sm text-gray-800">{displayName}</h2>
+          <p className="text-xs text-gray-600 flex items-center gap-1 bg-white/50 px-2 py-0.5 rounded-full w-fit">
+            <MapPin className="w-3 h-3" />
             {items.length} {items.length === 1 ? 'produto' : 'produtos'} • R$ {storeSubtotal.toFixed(2)}
           </p>
         </div>
       </div>
       
-      {/* Store items - espaçamento reduzido */}
-      <div className="space-y-1.5">
+      {/* Store items - espaçamento otimizado */}
+      <div className="space-y-2">
         {items.map(item => (
           <CartItem 
             key={item.id} 
