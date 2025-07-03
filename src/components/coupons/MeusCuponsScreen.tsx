@@ -126,56 +126,49 @@ const MeusCuponsScreen: React.FC = () => {
               </p>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {coupons.map((promotionalCoupon) => {
                 const { coupon } = promotionalCoupon;
                 const isCopied = copiedCoupon === coupon.code;
                 
                 return (
                   <Card key={promotionalCoupon.id} className="relative overflow-hidden hover:shadow-lg transition-shadow">
-                    <CardHeader className="pb-3 bg-gradient-to-r from-orange-points to-orange-points/80 text-white">
-                      <CardTitle className="flex items-center justify-between">
-                        <span className="text-lg font-bold">{coupon.name}</span>
-                        <div className="flex items-center text-sm">
+                    <CardHeader className="pb-2 bg-gradient-to-r from-orange-points to-orange-points/80 text-white">
+                      <CardTitle className="flex items-center justify-between text-sm">
+                        <span className="font-bold truncate mr-2">{coupon.name}</span>
+                        <div className="flex items-center text-xs">
                           {coupon.discount_type === 'percentage' ? (
-                            <Percent className="h-4 w-4 mr-1" />
+                            <Percent className="h-3 w-3 mr-1" />
                           ) : (
-                            <DollarSign className="h-4 w-4 mr-1" />
+                            <DollarSign className="h-3 w-3 mr-1" />
                           )}
                           {formatDiscount(coupon.discount_type, coupon.discount_value)}
                         </div>
                       </CardTitle>
                     </CardHeader>
                     
-                    <CardContent className="pt-4">
-                      <div className="space-y-3">
+                    <CardContent className="pt-3 pb-3">
+                      <div className="space-y-2">
                         {/* Código do Cupom */}
-                        <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-3 text-center">
-                          <div className="text-xs text-gray-500 mb-1">CÓDIGO</div>
-                          <div className="text-lg font-mono font-bold text-gray-900 tracking-wider">
+                        <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-2 text-center">
+                          <div className="text-xs text-gray-500 mb-0.5">CÓDIGO</div>
+                          <div className="text-sm font-mono font-bold text-gray-900 tracking-wider">
                             {coupon.code}
                           </div>
                         </div>
 
                         {/* Descrição */}
                         {coupon.description && (
-                          <p className="text-sm text-gray-600 text-center">
+                          <p className="text-xs text-gray-600 text-center line-clamp-2">
                             {coupon.description}
                           </p>
                         )}
 
-                        {/* Informações */}
-                        <div className="space-y-2 text-sm">
-                          <div className="flex items-center justify-between">
-                            <span className="text-gray-500">Desconto:</span>
-                            <span className="font-medium text-gray-900">
-                              {formatDiscount(coupon.discount_type, coupon.discount_value)}
-                            </span>
-                          </div>
-                          
+                        {/* Informações compactas */}
+                        <div className="space-y-1 text-xs">
                           {coupon.min_order_value > 0 && (
                             <div className="flex items-center justify-between">
-                              <span className="text-gray-500">Compra mínima:</span>
+                              <span className="text-gray-500">Mín.:</span>
                               <span className="font-medium text-gray-900">
                                 R$ {coupon.min_order_value.toFixed(2)}
                               </span>
@@ -185,16 +178,16 @@ const MeusCuponsScreen: React.FC = () => {
                           <div className="flex items-center justify-between">
                             <span className="text-gray-500 flex items-center">
                               <Calendar className="h-3 w-3 mr-1" />
-                              Validade:
+                              Até:
                             </span>
-                            <span className="font-medium text-gray-900 text-xs">
+                            <span className="font-medium text-gray-900">
                               {formatExpiryDate(coupon.expires_at)}
                             </span>
                           </div>
 
                           {coupon.max_uses && (
                             <div className="flex items-center justify-between">
-                              <span className="text-gray-500">Usos restantes:</span>
+                              <span className="text-gray-500">Restantes:</span>
                               <span className="font-medium text-gray-900">
                                 {Math.max(0, coupon.max_uses - coupon.used_count)}
                               </span>
@@ -202,9 +195,10 @@ const MeusCuponsScreen: React.FC = () => {
                           )}
                         </div>
 
-                        {/* Botão Copiar */}
+                        {/* Botão Copiar compacto */}
                         <Button
                           onClick={() => handleCopyCoupon(coupon.code)}
+                          size="sm"
                           className={`w-full transition-colors ${
                             isCopied 
                               ? 'bg-green-500 hover:bg-green-600 text-white' 
@@ -214,13 +208,13 @@ const MeusCuponsScreen: React.FC = () => {
                         >
                           {isCopied ? (
                             <>
-                              <Check className="h-4 w-4 mr-2" />
+                              <Check className="h-3 w-3 mr-1" />
                               Copiado!
                             </>
                           ) : (
                             <>
-                              <Copy className="h-4 w-4 mr-2" />
-                              Copiar Código
+                              <Copy className="h-3 w-3 mr-1" />
+                              Copiar
                             </>
                           )}
                         </Button>
