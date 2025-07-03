@@ -134,7 +134,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({
             </div>
             <div>
               <h3 className="font-bold text-sm">Entrega rápida</h3>
-              <p className="text-xs text-gray-600">Enviamos para Capelinha/MG e cidades vizinhas com entrega realizada por parceiros locais mais próximos.</p>
+              <p className="text-xs text-gray-600">Entregamos através de parceiros locais nas regiões atendidas por cada vendedor. Informe seu CEP para conferir a disponibilidade de entrega.</p>
             </div>
           </CardContent>
         </Card>
