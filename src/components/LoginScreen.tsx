@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowRight, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { toast } from "@/components/ui/sonner";
 import { securityService } from '@/services/securityService';
@@ -52,13 +52,19 @@ const LoginScreen: React.FC = () => {
     if (logoVariantUrl && !logoError && !logoLoading) {
       return (
         <div className="flex items-center justify-center mb-4">
-          <img
-            src={logoVariantUrl}
-            alt="Matershop"
-            className="h-20 w-auto object-contain"
-            onError={handleLogoError}
-            onLoad={() => console.log('✅ [LoginScreen] Logo variante carregada com sucesso!')}
-          />
+          <button
+            onClick={() => navigate('/')}
+            className="cursor-pointer hover:opacity-80 transition-opacity"
+            type="button"
+          >
+            <img
+              src={logoVariantUrl}
+              alt="Matershop"
+              className="h-20 w-auto object-contain"
+              onError={handleLogoError}
+              onLoad={() => console.log('✅ [LoginScreen] Logo variante carregada com sucesso!')}
+            />
+          </button>
         </div>
       );
     }
@@ -66,7 +72,13 @@ const LoginScreen: React.FC = () => {
     // Fallback para texto se não houver logo variante ou erro
     return (
       <div className="flex items-center justify-center mb-4">
-        <h1 className="text-3xl font-bold text-white">Matershop</h1>
+        <button
+          onClick={() => navigate('/')}
+          className="cursor-pointer hover:opacity-80 transition-opacity"
+          type="button"
+        >
+          <h1 className="text-3xl font-bold text-white">Matershop</h1>
+        </button>
       </div>
     );
   };
@@ -126,7 +138,19 @@ const LoginScreen: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      <div className="py-16 rounded-b-3xl bg-construPro-blue">
+      <div className="py-16 rounded-b-3xl bg-construPro-blue relative">
+        {/* Botão de voltar para a página inicial */}
+        <Button
+          onClick={() => navigate('/')}
+          variant="ghost"
+          size="sm"
+          className="absolute top-4 left-4 text-white hover:bg-white/10 flex items-center gap-2"
+          type="button"
+        >
+          <ArrowLeft size={18} />
+          <span className="hidden sm:inline">Voltar ao início</span>
+        </Button>
+        
         <div className="text-center">
           {renderLogo()}
           <p className="text-white opacity-80 mt-2">Materiais, clube e recompensas</p>
