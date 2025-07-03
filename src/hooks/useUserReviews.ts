@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { deleteReview as deleteReviewService } from '@/services/reviewService';
 
 export interface UserReview {
   id: string;
@@ -100,10 +101,25 @@ export function useUserReviews() {
     fetchUserReviews();
   }, []);
 
+  const deleteReview = async (reviewId: string) => {
+    try {
+      setLoading(true);
+      await deleteReviewService(reviewId);
+      // Remover a avaliação do estado local
+      setReviews(prev => prev.filter(review => review.id !== reviewId));
+    } catch (error) {
+      console.error('Error deleting review:', error);
+      setError(error instanceof Error ? error.message : 'Erro ao excluir avaliação');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     reviews,
     loading,
     error,
-    refetch: fetchUserReviews
+    refetch: fetchUserReviews,
+    deleteReview
   };
 }

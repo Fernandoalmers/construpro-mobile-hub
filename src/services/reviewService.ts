@@ -63,6 +63,42 @@ export const submitReview = async (productId: string, rating: number, comment: s
   }
 };
 
+export const deleteReview = async (reviewId: string): Promise<void> => {
+  // Verificar se o usuário está autenticado
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    throw new Error('Usuário não autenticado');
+  }
+
+  // Verificar se a avaliação existe e pertence ao usuário
+  const { data: existingReview, error: checkError } = await supabase
+    .from('product_reviews')
+    .select('id, cliente_id')
+    .eq('id', reviewId)
+    .single();
+
+  if (checkError) {
+    console.error('Erro ao verificar avaliação:', checkError);
+    throw new Error('Avaliação não encontrada');
+  }
+
+  if (existingReview.cliente_id !== user.id) {
+    throw new Error('Você só pode excluir suas próprias avaliações');
+  }
+
+  // Deletar a avaliação
+  const { error: deleteError } = await supabase
+    .from('product_reviews')
+    .delete()
+    .eq('id', reviewId);
+
+  if (deleteError) {
+    console.error('Erro ao excluir avaliação:', deleteError);
+    throw new Error('Erro ao excluir avaliação');
+  }
+};
+
 export const canUserReviewProduct = async (productId: string): Promise<boolean> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
