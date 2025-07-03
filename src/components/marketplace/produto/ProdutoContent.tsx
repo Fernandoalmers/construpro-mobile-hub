@@ -118,12 +118,6 @@ const ProdutoContent: React.FC<ProdutoContentProps> = ({
         productId={produto.id}
         productName={produto.nome}
         onReviewAdded={onReviewAdded}
-        onAddReview={() => {
-          if (!isAuthenticated) {
-            navigate('/login', { state: { from: `/produto/${produto.id}` } });
-            return;
-          }
-        }}
       />
       
       {/* Back button */}
