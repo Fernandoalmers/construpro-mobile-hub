@@ -57,41 +57,37 @@ const checkSupabaseHealth = async (): Promise<boolean> => {
   }
 };
 
-// Segmentos de fallback melhorados com imagens reais
+// Segmentos de fallback melhorados com ícones
 const FALLBACK_SEGMENTS: ProductSegment[] = [
   {
     id: 'material-construcao',
     nome: 'Material de Construção',
     status: 'ativo',
-    image_url: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&q=80',
+    image_url: '/lovable-uploads/1b629f74-0778-46a1-bb6a-4c30301e733e.png',
     categorias_count: 0
   },
   {
     id: 'eletrica',
     nome: 'Elétrica',
     status: 'ativo',
-    image_url: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800&q=80',
     categorias_count: 0
   },
   {
     id: 'vidracaria',
     nome: 'Vidraçaria',
     status: 'ativo',
-    image_url: 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=800&q=80',
     categorias_count: 0
   },
   {
     id: 'marmoraria',
     nome: 'Marmoraria',
     status: 'ativo',
-    image_url: 'https://images.unsplash.com/photo-1615971677499-5467cbab01c0?w=800&q=80',
     categorias_count: 0
   },
   {
     id: 'equipamentos',
     nome: 'Aluguel de Equipamentos',
     status: 'ativo',
-    image_url: 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=800&q=80',
     categorias_count: 0
   }
 ];
