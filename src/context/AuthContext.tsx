@@ -221,26 +221,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!isMounted) return;
-      
-      console.log('🔄 [AuthContext] Auth state changed:', event);
-      
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (event === 'SIGNED_IN' && session?.user?.id) {
-        // Carregar perfil imediatamente
-        loadUserProfile(session.user.id);
-      } else if (event === 'SIGNED_OUT') {
-        setProfile(null);
-      }
-      
+  // Listen for auth changes
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange(async (event, session) => {
+    if (!isMounted) return;
+    
+    console.log('🔄 [AuthContext] Auth state changed:', event);
+    
+    setSession(session);
+    setUser(session?.user ?? null);
+    
+    if (event === 'SIGNED_IN' && session?.user?.id) {
+      // Carregar perfil imediatamente e só definir loading como false depois
+      loadUserProfile(session.user.id).finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
+    } else if (event === 'SIGNED_OUT') {
+      setProfile(null);
       setIsLoading(false);
-    });
+    } else {
+      // Para outros eventos que não precisam carregar perfil
+      setIsLoading(false);
+    }
+  });
 
     // Cleanup
     return () => {
