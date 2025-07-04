@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Star, ShoppingBag, Trash2 } from 'lucide-react';
 import Card from '../../common/Card';
 import CustomButton from '../../common/CustomButton';
+import { trackProductView } from '@/hooks/product/useProductTracking';
 
 interface Product {
   id: string;
@@ -76,7 +77,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
       <div 
         className="h-40 bg-center bg-cover cursor-pointer"
         style={{ backgroundImage: `url(${getProductImageUrl(product)})` }}
-        onClick={() => navigate(`/marketplace/produto/${product.id}`)}
+        onClick={() => {
+          trackProductView(product.id);
+          navigate(`/marketplace/produto/${product.id}`);
+        }}
       />
       <div className="p-3">
         <h3 className="font-medium truncate">{product.nome}</h3>

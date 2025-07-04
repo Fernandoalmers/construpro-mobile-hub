@@ -8,6 +8,7 @@ import { toast } from "@/components/ui/sonner";
 import { useAuth } from '../../../context/AuthContext';
 import ProductCard from './ProductCard';
 import EmptyState from './EmptyState';
+import FavoritesLoadingSkeleton from './FavoritesLoadingSkeleton';
 
 interface FavoritesContentProps {
   activeTab: string;
@@ -45,12 +46,12 @@ const FavoritesContent: React.FC<FavoritesContentProps> = ({
       return favoriteId;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['favorites'] });
+      queryClient.invalidateQueries({ queryKey: ['favorites', user?.id] });
       toast.success('Produto removido dos favoritos');
     },
     onError: (error) => {
       console.error('Remove favorite mutation error:', error);
-      toast.error(`Erro ao remover favorito: ${error}`);
+      toast.error(`Erro ao remover favorito: ${error.message || error}`);
     }
   });
 
@@ -133,11 +134,7 @@ const FavoritesContent: React.FC<FavoritesContentProps> = ({
   };
 
   if (isLoading) {
-    return (
-      <div className="flex justify-center my-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-construPro-blue"></div>
-      </div>
-    );
+    return <FavoritesLoadingSkeleton />;
   }
 
   return (

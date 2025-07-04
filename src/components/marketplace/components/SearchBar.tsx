@@ -6,6 +6,8 @@ import SearchResults from './SearchResults';
 import { useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/context/AuthContext';
+import { trackProductView } from '@/hooks/product/useProductTracking';
 
 interface SearchBarProps {
   searchTerm: string;
@@ -122,6 +124,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
   
   const handleResultClick = (productId: string) => {
     console.log('[SearchBar] Search result clicked, navigating to product:', productId);
+    trackProductView(productId);
     navigate(`/produto/${productId}`);
     setShowResults(false);
   };

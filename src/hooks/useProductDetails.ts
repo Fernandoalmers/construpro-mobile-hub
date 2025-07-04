@@ -30,7 +30,12 @@ export function useProductDetails(id: string | undefined, isAuthenticated: boole
   // Track product view when authenticated
   useEffect(() => {
     if (id && isAuthenticated && product) {
-      trackProductView(id);
+      // Add small delay to ensure product loaded
+      const timer = setTimeout(() => {
+        trackProductView(id);
+      }, 500);
+      
+      return () => clearTimeout(timer);
     }
   }, [id, isAuthenticated, product]);
   

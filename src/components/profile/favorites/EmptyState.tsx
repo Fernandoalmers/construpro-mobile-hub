@@ -17,7 +17,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({ type }) => {
         return {
           icon: <Clock className="mx-auto text-gray-400 mb-3" size={40} />,
           title: 'Nenhum produto visualizado recentemente',
-          description: null
+          description: 'Explore produtos na loja para vê-los aqui.'
         };
       case 'favorites':
         return {
@@ -28,8 +28,8 @@ const EmptyState: React.FC<EmptyStateProps> = ({ type }) => {
       case 'frequent':
         return {
           icon: <ShoppingBag className="mx-auto text-gray-400 mb-3" size={40} />,
-          title: 'Nenhum produto frequente',
-          description: 'Continue comprando para construir seu histórico.'
+          title: 'Nenhum produto comprado ainda',
+          description: 'Faça pedidos para ver seus produtos mais comprados aqui.'
         };
     }
   };

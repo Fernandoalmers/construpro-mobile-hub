@@ -27,7 +27,7 @@ export const useFavoritesData = () => {
   const { user } = useAuth();
   
   return useQuery({
-    queryKey: ['favorites'],
+    queryKey: ['favorites', user?.id],
     queryFn: async () => {
       try {
         console.log('Fetching favorites for user:', user?.id);

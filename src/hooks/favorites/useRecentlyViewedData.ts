@@ -27,7 +27,7 @@ export const useRecentlyViewedData = () => {
   const { user } = useAuth();
   
   return useQuery({
-    queryKey: ['recentlyViewed'],
+    queryKey: ['recentlyViewed', user?.id],
     queryFn: async () => {
       try {
         const { data: recentData, error: recentError } = await supabase
@@ -43,6 +43,7 @@ export const useRecentlyViewedData = () => {
         }
         
         if (!recentData || recentData.length === 0) {
+          console.log('No recently viewed data found, returning empty array');
           return [];
         }
 

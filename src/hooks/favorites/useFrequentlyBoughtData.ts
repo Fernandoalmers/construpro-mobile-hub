@@ -25,13 +25,28 @@ export const useFrequentlyBoughtData = () => {
   const { user } = useAuth();
   
   return useQuery({
-    queryKey: ['frequentlyBought'],
+    queryKey: ['frequentlyBought', user?.id],
     queryFn: async () => {
       try {
+        // Primeiro buscar pedidos do usuário
+        const { data: userOrders, error: ordersError } = await supabase
+          .from('orders')
+          .select('id')
+          .eq('cliente_id', user?.id || '');
+          
+        if (ordersError) throw ordersError;
+        
+        if (!userOrders || userOrders.length === 0) {
+          return [];
+        }
+        
+        const orderIds = userOrders.map(order => order.id);
+        
+        // Agora buscar itens desses pedidos
         const { data: orderItems, error: orderItemsError } = await supabase
           .from('order_items')
           .select('produto_id, quantidade')
-          .eq('order_id', user?.id || '');
+          .in('order_id', orderIds);
           
         if (orderItemsError) throw orderItemsError;
         
