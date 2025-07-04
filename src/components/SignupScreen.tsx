@@ -44,7 +44,7 @@ const SignupScreen: React.FC = () => {
     telefone: '',
     referralCode: '',
     especialidade_profissional: '',
-    tipo_perfil: 'consumidor' as ProfileType
+    tipo_perfil: '' as ProfileType | ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -149,6 +149,10 @@ const SignupScreen: React.FC = () => {
   };
 
   const validateForm = () => {
+    if (!formData.tipo_perfil) {
+      toast.error('Selecione um tipo de perfil');
+      return false;
+    }
     if (!formData.nome.trim()) {
       toast.error('Nome é obrigatório');
       return false;
@@ -453,26 +457,28 @@ const SignupScreen: React.FC = () => {
           />
 
           {/* CPF ou CNPJ baseado no tipo de perfil */}
-          {formData.tipo_perfil === 'lojista' ? (
-            <CustomInput
-              label="CNPJ"
-              name="cnpj"
-              value={formData.cnpj}
-              onChange={handleCNPJChange}
-              placeholder="00.000.000/0000-00"
-              maxLength={18}
-              required
-            />
-          ) : (
-            <CustomInput
-              label="CPF"
-              name="cpf"
-              value={formData.cpf}
-              onChange={handleCPFChange}
-              placeholder="000.000.000-00"
-              maxLength={14}
-              required
-            />
+          {formData.tipo_perfil && (
+            formData.tipo_perfil === 'lojista' ? (
+              <CustomInput
+                label="CNPJ"
+                name="cnpj"
+                value={formData.cnpj}
+                onChange={handleCNPJChange}
+                placeholder="00.000.000/0000-00"
+                maxLength={18}
+                required
+              />
+            ) : (
+              <CustomInput
+                label="CPF"
+                name="cpf"
+                value={formData.cpf}
+                onChange={handleCPFChange}
+                placeholder="000.000.000-00"
+                maxLength={14}
+                required
+              />
+            )
           )}
 
           <CustomInput
