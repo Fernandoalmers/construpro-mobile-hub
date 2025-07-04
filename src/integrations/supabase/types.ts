@@ -407,7 +407,7 @@ export type Database = {
             foreignKeyName: "favorites_produto_id_fkey"
             columns: ["produto_id"]
             isOneToOne: false
-            referencedRelation: "products"
+            referencedRelation: "produtos"
             referencedColumns: ["id"]
           },
           {
