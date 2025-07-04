@@ -7,6 +7,8 @@ import { toast } from '@/components/ui/sonner';
 import CustomInput from './common/CustomInput';
 import CustomButton from './common/CustomButton';
 import Card from './common/Card';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 import { referralService } from '@/services/pointsService';
 
 type ProfileType = 'consumidor' | 'lojista' | 'profissional';
@@ -373,76 +375,62 @@ const SignupScreen: React.FC = () => {
           {/* Profile Type Selection */}
           <div className="mb-6">
             <h3 className="text-lg font-medium text-gray-800 mb-3">Escolha seu tipo de perfil</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Consumidor Card */}
-              <Card
-                className={`p-4 cursor-pointer border-2 transition-all ${
-                  formData.tipo_perfil === 'consumidor'
-                    ? 'border-construPro-blue bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-                onClick={() => handleProfileTypeSelect('consumidor')}
-              >
-                <div className="flex flex-col items-center text-center">
-                  <User
-                    size={40}
-                    className={`mb-3 ${
-                      formData.tipo_perfil === 'consumidor' ? 'text-construPro-blue' : 'text-gray-500'
-                    }`}
-                  />
-                  <h4 className="font-medium text-gray-800 mb-2">Consumidor</h4>
-                  <p className="text-sm text-gray-600">
-                    Para comprar produtos e acumular pontos
-                  </p>
-                </div>
-              </Card>
+            <RadioGroup 
+              value={formData.tipo_perfil} 
+              onValueChange={(value) => handleProfileTypeSelect(value as ProfileType)}
+              className="space-y-3"
+            >
+              {/* Consumidor Option */}
+              <div className={`flex items-center space-x-4 p-4 rounded-lg border transition-all ${
+                formData.tipo_perfil === 'consumidor'
+                  ? 'border-primary bg-primary/5'
+                  : 'border-muted bg-muted/10 hover:border-muted-foreground/20'
+              }`}>
+                <RadioGroupItem value="consumidor" id="consumidor" />
+                <User
+                  size={24}
+                  className={formData.tipo_perfil === 'consumidor' ? 'text-primary' : 'text-muted-foreground'}
+                />
+                <Label htmlFor="consumidor" className="flex-1 cursor-pointer">
+                  <div className="font-medium text-foreground">Consumidor</div>
+                  <div className="text-sm text-muted-foreground">Para comprar produtos e acumular pontos</div>
+                </Label>
+              </div>
 
-              {/* Vendedor Card */}
-              <Card
-                className={`p-4 cursor-pointer border-2 transition-all ${
-                  formData.tipo_perfil === 'lojista'
-                    ? 'border-construPro-blue bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-                onClick={() => handleProfileTypeSelect('lojista')}
-              >
-                <div className="flex flex-col items-center text-center">
-                  <Store
-                    size={40}
-                    className={`mb-3 ${
-                      formData.tipo_perfil === 'lojista' ? 'text-construPro-blue' : 'text-gray-500'
-                    }`}
-                  />
-                  <h4 className="font-medium text-gray-800 mb-2">Vendedor</h4>
-                  <p className="text-sm text-gray-600">
-                    Para vender produtos e gerenciar sua loja
-                  </p>
-                </div>
-              </Card>
+              {/* Vendedor Option */}
+              <div className={`flex items-center space-x-4 p-4 rounded-lg border transition-all ${
+                formData.tipo_perfil === 'lojista'
+                  ? 'border-primary bg-primary/5'
+                  : 'border-muted bg-muted/10 hover:border-muted-foreground/20'
+              }`}>
+                <RadioGroupItem value="lojista" id="lojista" />
+                <Store
+                  size={24}
+                  className={formData.tipo_perfil === 'lojista' ? 'text-primary' : 'text-muted-foreground'}
+                />
+                <Label htmlFor="lojista" className="flex-1 cursor-pointer">
+                  <div className="font-medium text-foreground">Vendedor</div>
+                  <div className="text-sm text-muted-foreground">Para vender produtos e gerenciar sua loja</div>
+                </Label>
+              </div>
 
-              {/* Profissional Card */}
-              <Card
-                className={`p-4 cursor-pointer border-2 transition-all ${
-                  formData.tipo_perfil === 'profissional'
-                    ? 'border-construPro-blue bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-                onClick={() => handleProfileTypeSelect('profissional')}
-              >
-                <div className="flex flex-col items-center text-center">
-                  <Briefcase
-                    size={40}
-                    className={`mb-3 ${
-                      formData.tipo_perfil === 'profissional' ? 'text-construPro-blue' : 'text-gray-500'
-                    }`}
-                  />
-                  <h4 className="font-medium text-gray-800 mb-2">Profissional</h4>
-                  <p className="text-sm text-gray-600">
-                    Para oferecer serviços especializados
-                  </p>
-                </div>
-              </Card>
-            </div>
+              {/* Profissional Option */}
+              <div className={`flex items-center space-x-4 p-4 rounded-lg border transition-all ${
+                formData.tipo_perfil === 'profissional'
+                  ? 'border-primary bg-primary/5'
+                  : 'border-muted bg-muted/10 hover:border-muted-foreground/20'
+              }`}>
+                <RadioGroupItem value="profissional" id="profissional" />
+                <Briefcase
+                  size={24}
+                  className={formData.tipo_perfil === 'profissional' ? 'text-primary' : 'text-muted-foreground'}
+                />
+                <Label htmlFor="profissional" className="flex-1 cursor-pointer">
+                  <div className="font-medium text-foreground">Profissional</div>
+                  <div className="text-sm text-muted-foreground">Para oferecer serviços especializados</div>
+                </Label>
+              </div>
+            </RadioGroup>
           </div>
 
           <CustomInput
