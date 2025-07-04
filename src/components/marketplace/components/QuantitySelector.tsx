@@ -15,28 +15,39 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
   quantidade,
   onQuantityChange
 }) => {
-  // Determine if this is a product sold by area (m²)
-  const isM2Product = produto?.unidade_medida?.toLowerCase().includes('m²') || 
-                     produto?.unidade_medida?.toLowerCase().includes('m2');
+  // Get unit type
+  const unidadeMedida = produto?.unidade_medida?.toLowerCase();
+  
+  // Determine if this is a special unit that allows fractions
+  const isM2Product = unidadeMedida?.includes('m²') || unidadeMedida?.includes('m2');
+  const isBarraProduct = unidadeMedida?.includes('barra');
+  const isRoloProduct = unidadeMedida?.includes('rolo');
+  const isFractionalProduct = isM2Product || isBarraProduct || isRoloProduct || 
+                             unidadeMedida?.includes('litro') || unidadeMedida?.includes('kg');
   
   // Get the step value based on unit type
   const getStepValue = () => {
-    if (isM2Product) {
-      if (produto?.unidade_medida) {
-        // Extract numeric value from unit measure if present
-        const match = produto.unidade_medida.match(/(\d+(\.\d+)?)/);
-        return match ? parseFloat(match[0]) : 1;
-      }
-      return 1;
+    if (isBarraProduct) return 0.5; // Permite meia barra
+    if (isRoloProduct) return 0.1; // Permite décimos de rolo
+    
+    if (isM2Product && produto?.unidade_medida) {
+      // Extract numeric value from unit measure if present
+      const match = produto.unidade_medida.match(/(\d+(\.\d+)?)/);
+      return match ? parseFloat(match[0]) : 1;
     }
-    return 1;
+    
+    if (unidadeMedida?.includes('litro') || unidadeMedida?.includes('kg')) {
+      return 0.1; // Permite décimos
+    }
+    
+    return 1; // Default para unidade, caixa, pacote, saco
   };
   
   const step = getStepValue();
   const unitLabel = produto?.unidade_medida || 'unidade';
   
   // Format the quantity display
-  const displayQuantity = isM2Product 
+  const displayQuantity = isFractionalProduct 
     ? `${quantidade} ${unitLabel}`
     : `${quantidade} ${quantidade === 1 ? 'unidade' : 'unidades'}`;
 
@@ -71,10 +82,13 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
         </div>
       </div>
       
-      {/* Add explanation for m² products */}
-      {isM2Product && (
+      {/* Add explanation for fractional products */}
+      {isFractionalProduct && step !== 1 && (
         <div className="text-xs text-gray-500 ml-1">
-          Incrementos de {step} {unitLabel}
+          {isBarraProduct && 'Pode ser vendido em meias barras (0.5)'}
+          {isRoloProduct && 'Vendido por metragem fracionada'}
+          {isM2Product && `Incrementos de ${step} ${unitLabel}`}
+          {(unidadeMedida?.includes('litro') || unidadeMedida?.includes('kg')) && 'Permite quantidades decimais'}
         </div>
       )}
     </div>

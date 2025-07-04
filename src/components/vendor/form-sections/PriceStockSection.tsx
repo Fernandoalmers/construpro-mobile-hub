@@ -23,6 +23,27 @@ interface PriceStockSectionProps {
 
 const PriceStockSection: React.FC<PriceStockSectionProps> = ({ form }) => {
   const watchUnidadeVenda = form.watch('unidadeVenda');
+  
+  // Define step and parse function based on unit type
+  const allowsFractionalStock = ['barra', 'rolo', 'm2', 'litro', 'kg'].includes(watchUnidadeVenda);
+  const stockStep = allowsFractionalStock ? 0.1 : 1;
+  const parseValue = allowsFractionalStock ? parseFloat : parseInt;
+  
+  // Get unit display for stock
+  const getUnitDisplay = (unit: string) => {
+    switch (unit) {
+      case 'm2': return 'm²';
+      case 'unidade': return 'un.';
+      case 'barra': return 'barras';
+      case 'saco': return 'sacos';
+      case 'rolo': return 'rolos';
+      case 'litro': return 'L';
+      case 'kg': return 'kg';
+      case 'caixa': return 'cx.';
+      case 'pacote': return 'pct.';
+      default: return unit;
+    }
+  };
 
   return (
     <AccordionItem value="item-4">
@@ -40,7 +61,7 @@ const PriceStockSection: React.FC<PriceStockSectionProps> = ({ form }) => {
               name="preco"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Preço por {watchUnidadeVenda === 'm2' ? 'm²' : watchUnidadeVenda}*</FormLabel>
+                  <FormLabel>Preço por {getUnitDisplay(watchUnidadeVenda)}*</FormLabel>
                   <FormControl>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
@@ -71,14 +92,15 @@ const PriceStockSection: React.FC<PriceStockSectionProps> = ({ form }) => {
                     <div className="flex items-center space-x-2">
                       <Input 
                         type="number"
-                        step="1"
+                        step={stockStep}
                         min="0"
-                        onChange={e => field.onChange(parseInt(e.target.value))}
+                        onChange={e => field.onChange(parseValue(e.target.value))}
                         value={field.value || ''}
                         className="w-full"
+                        placeholder={allowsFractionalStock ? "0.0" : "0"}
                       />
                       <span className="bg-gray-100 px-3 py-2 rounded border text-gray-600 whitespace-nowrap">
-                        {watchUnidadeVenda === 'm2' ? 'm²' : watchUnidadeVenda === 'unidade' ? 'un.' : watchUnidadeVenda}
+                        {getUnitDisplay(watchUnidadeVenda)}
                       </span>
                     </div>
                   </FormControl>
@@ -86,6 +108,11 @@ const PriceStockSection: React.FC<PriceStockSectionProps> = ({ form }) => {
                   {form.getValues('estoque') === 0 && (
                     <p className="text-xs text-amber-600 mt-1">
                       Produto ficará indisponível para compra com estoque zero.
+                    </p>
+                  )}
+                  {allowsFractionalStock && (
+                    <p className="text-xs text-blue-600 mt-1">
+                      Este tipo de produto permite estoque fracionado (ex: 2.5 {getUnitDisplay(watchUnidadeVenda)}).
                     </p>
                   )}
                 </FormItem>

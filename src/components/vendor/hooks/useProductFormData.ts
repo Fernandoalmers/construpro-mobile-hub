@@ -18,6 +18,9 @@ export interface ProductFormData {
   sku?: string;
   codigoBarras?: string;
   imagens: string[];
+  unidadeMedida: string;
+  valorConversao?: number | null;
+  controleQuantidade: string;
 }
 
 interface UseProductFormDataProps {
@@ -40,7 +43,10 @@ export const useProductFormData = (initialData?: any) => {
     pontosProfissional: 0,
     sku: '',
     codigoBarras: '',
-    imagens: []
+    imagens: [],
+    unidadeMedida: 'unidade',
+    valorConversao: null,
+    controleQuantidade: 'livre'
   });
 
   const [currentSegmentId, setCurrentSegmentId] = useState<string | null>(null);
@@ -117,7 +123,10 @@ export const useProductFormData = (initialData?: any) => {
       pontosProfissional: data.pontos_profissional || 0,
       sku: data.sku || '',
       codigoBarras: data.codigo_barras || '',
-      imagens: processedImages
+      imagens: processedImages,
+      unidadeMedida: data.unidade_medida || 'unidade',
+      valorConversao: data.valor_conversao || null,
+      controleQuantidade: data.controle_quantidade || 'livre'
     };
     
     console.log('[useProductFormData] Initialized form data:', initialFormData);

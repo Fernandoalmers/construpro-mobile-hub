@@ -21,13 +21,31 @@ export const getConversionFieldLabel = (unidadeVenda: string) => {
     case 'm2': return 'Área por caixa (m²)';
     case 'litro': return 'Volume por embalagem (litros)';
     case 'kg': return 'Peso por embalagem (kg)';
+    case 'barra': return 'Comprimento por barra (metros)';
+    case 'saco': return 'Peso por saco (kg)';
+    case 'rolo': return 'Metragem por rolo (metros)';
     default: return 'Valor por embalagem';
   }
 };
 
 // Check if conversion value is required
 export const isConversionRequired = (unidadeVenda: string) => {
-  return ['m2', 'litro', 'kg'].includes(unidadeVenda);
+  return ['m2', 'litro', 'kg', 'barra', 'saco', 'rolo'].includes(unidadeVenda);
+};
+
+// Get step value for quantity based on unit type
+export const getQuantityStep = (unidadeVenda: string, valorConversao?: number) => {
+  switch(unidadeVenda) {
+    case 'barra': return 0.5; // Permite meia barra
+    case 'rolo': return 0.1; // Permite décimos de rolo
+    case 'm2': return valorConversao || 1; // Múltiplos da área por caixa
+    default: return 1;
+  }
+};
+
+// Check if fractional quantities are allowed
+export const allowsFractionalQuantities = (unidadeVenda: string) => {
+  return ['barra', 'rolo', 'm2', 'litro', 'kg'].includes(unidadeVenda);
 };
 
 // Get variant options based on variant type

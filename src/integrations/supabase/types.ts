@@ -1005,6 +1005,7 @@ export type Database = {
         Row: {
           categoria: string
           codigo_barras: string | null
+          controle_quantidade: string | null
           created_at: string | null
           descricao: string
           estoque: number
@@ -1022,12 +1023,15 @@ export type Database = {
           segmento_id: string | null
           sku: string | null
           status: string
+          unidade_medida: string | null
           updated_at: string | null
+          valor_conversao: number | null
           vendedor_id: string
         }
         Insert: {
           categoria: string
           codigo_barras?: string | null
+          controle_quantidade?: string | null
           created_at?: string | null
           descricao: string
           estoque?: number
@@ -1045,12 +1049,15 @@ export type Database = {
           segmento_id?: string | null
           sku?: string | null
           status?: string
+          unidade_medida?: string | null
           updated_at?: string | null
+          valor_conversao?: number | null
           vendedor_id: string
         }
         Update: {
           categoria?: string
           codigo_barras?: string | null
+          controle_quantidade?: string | null
           created_at?: string | null
           descricao?: string
           estoque?: number
@@ -1068,7 +1075,9 @@ export type Database = {
           segmento_id?: string | null
           sku?: string | null
           status?: string
+          unidade_medida?: string | null
           updated_at?: string | null
+          valor_conversao?: number | null
           vendedor_id?: string
         }
         Relationships: [

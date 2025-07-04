@@ -23,13 +23,13 @@ const productFormSchema = z.object({
   codigo_barras: z.string().optional(),
   
   // Unit and Packaging
-  unidadeVenda: z.enum(['unidade', 'm2', 'litro', 'kg', 'caixa', 'pacote']),
+  unidadeVenda: z.enum(['unidade', 'm2', 'litro', 'kg', 'caixa', 'pacote', 'barra', 'saco', 'rolo']),
   valorConversao: z.number().optional().nullable(),
   controleQuantidade: z.enum(['multiplo', 'livre']),
   
   // Stock and Price
   preco: z.number().min(0.01, { message: 'O preço deve ser maior que zero' }),
-  estoque: z.number().int().min(0, { message: 'O estoque não pode ser negativo' }),
+  estoque: z.number().min(0, { message: 'O estoque não pode ser negativo' }),
   precoPromocional: z.number().optional().nullable(),
   
   // Promotion Fields
@@ -133,9 +133,9 @@ export const useProdutoForm = ({ isEditing = false, productId, initialData }: Us
         tags: initialData.tags || [],
         sku: initialData.sku || '',
         codigo_barras: initialData.codigo_barras || '',
-        unidadeVenda: initialData.unidadeVenda || 'unidade',
-        valorConversao: initialData.valorConversao || null,
-        controleQuantidade: initialData.controleQuantidade || 'livre',
+        unidadeVenda: initialData.unidade_medida || 'unidade',
+        valorConversao: initialData.valor_conversao || null,
+        controleQuantidade: initialData.controle_quantidade || 'livre',
         preco: initialData.preco_normal || 0,
         estoque: initialData.estoque || 0,
         precoPromocional: initialData.preco_promocional || null,
@@ -237,6 +237,9 @@ export const useProdutoForm = ({ isEditing = false, productId, initialData }: Us
         promocao_inicio: values.promocaoAtiva ? values.promocaoInicio : null,
         promocao_fim: values.promocaoAtiva ? values.promocaoFim : null,
         estoque: values.estoque,
+        unidade_medida: values.unidadeVenda,
+        valor_conversao: values.valorConversao,
+        controle_quantidade: values.controleQuantidade,
         pontos_consumidor: values.pontosConsumidor,
         pontos_profissional: values.pontosProfissional,
         imagens: existingImages, // Start with existing images only

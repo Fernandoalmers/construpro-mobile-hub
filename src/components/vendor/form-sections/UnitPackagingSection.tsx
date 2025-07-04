@@ -53,9 +53,9 @@ const UnitPackagingSection: React.FC<UnitPackagingSectionProps> = ({ form }) => 
                     field.onChange(value);
                     form.setValue('valorConversao', null);
                     
-                    if (value === 'm2') {
-                      form.setValue('controleQuantidade', 'multiplo');
-                    }
+                     if (['m2', 'barra', 'rolo'].includes(value)) {
+                       form.setValue('controleQuantidade', 'multiplo');
+                     }
                   }} 
                   defaultValue={field.value}
                   value={field.value}
@@ -72,6 +72,9 @@ const UnitPackagingSection: React.FC<UnitPackagingSectionProps> = ({ form }) => 
                     <SelectItem value="kg">Quilograma (kg)</SelectItem>
                     <SelectItem value="caixa">Caixa</SelectItem>
                     <SelectItem value="pacote">Pacote</SelectItem>
+                    <SelectItem value="barra">Barra</SelectItem>
+                    <SelectItem value="saco">Saco</SelectItem>
+                    <SelectItem value="rolo">Rolo</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -89,11 +92,16 @@ const UnitPackagingSection: React.FC<UnitPackagingSectionProps> = ({ form }) => 
                   <FormControl>
                     <Input 
                       type="number" 
-                      step={watchUnidadeVenda === 'm2' ? 0.01 : 0.1}
+                      step={['m2', 'barra', 'rolo'].includes(watchUnidadeVenda) ? 0.01 : 0.1}
                       min={0.01}
                       onChange={(e) => field.onChange(parseFloat(e.target.value))}
                       value={field.value !== null ? field.value : ''}
-                      placeholder={watchUnidadeVenda === 'm2' ? "Ex: 2.5" : "Ex: 5"}
+                      placeholder={
+                        watchUnidadeVenda === 'm2' ? "Ex: 2.5" :
+                        watchUnidadeVenda === 'barra' ? "Ex: 3.0" :
+                        watchUnidadeVenda === 'rolo' ? "Ex: 50.0" :
+                        "Ex: 5"
+                      }
                     />
                   </FormControl>
                   <FormMessage />
@@ -112,7 +120,7 @@ const UnitPackagingSection: React.FC<UnitPackagingSectionProps> = ({ form }) => 
                   onValueChange={field.onChange} 
                   defaultValue={field.value}
                   value={field.value}
-                  disabled={watchUnidadeVenda === 'm2'}
+                  disabled={['m2', 'barra', 'rolo'].includes(watchUnidadeVenda)}
                 >
                   <FormControl>
                     <SelectTrigger>
@@ -124,9 +132,11 @@ const UnitPackagingSection: React.FC<UnitPackagingSectionProps> = ({ form }) => 
                     <SelectItem value="livre">Livre (qualquer valor)</SelectItem>
                   </SelectContent>
                 </Select>
-                {watchUnidadeVenda === 'm2' && (
+                {['m2', 'barra', 'rolo'].includes(watchUnidadeVenda) && (
                   <p className="text-xs text-amber-600 mt-1">
-                    Produtos vendidos em m² exigem controle por múltiplos da embalagem.
+                    {watchUnidadeVenda === 'm2' && 'Produtos vendidos em m² exigem controle por múltiplos da embalagem.'}
+                    {watchUnidadeVenda === 'barra' && 'Barras podem ser vendidas em frações (ex: 0.5 para meia barra).'}
+                    {watchUnidadeVenda === 'rolo' && 'Rolos podem ser vendidos por metragem fracionada.'}
                   </p>
                 )}
                 <FormMessage />

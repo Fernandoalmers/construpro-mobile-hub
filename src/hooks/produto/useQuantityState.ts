@@ -14,16 +14,29 @@ export function useQuantityState({ produto, defaultValue = 1 }: UseQuantityState
   const getStepValue = () => {
     if (!produto) return 1;
     
-    const isM2Product = produto.unidade_medida?.toLowerCase().includes('m²') || 
-                        produto.unidade_medida?.toLowerCase().includes('m2');
+    const unidadeMedida = produto.unidade_medida?.toLowerCase();
     
+    // Handle different unit types
+    if (unidadeMedida?.includes('barra')) {
+      return 0.5; // Permite meia barra
+    }
+    
+    if (unidadeMedida?.includes('rolo')) {
+      return 0.1; // Permite décimos de rolo
+    }
+    
+    const isM2Product = unidadeMedida?.includes('m²') || unidadeMedida?.includes('m2');
     if (isM2Product && produto.unidade_medida) {
       // Extract numeric value from unit measure if present
       const match = produto.unidade_medida.match(/(\d+(\.\d+)?)/);
       return match ? parseFloat(match[0]) : 1;
     }
     
-    return 1;
+    if (unidadeMedida?.includes('litro') || unidadeMedida?.includes('kg')) {
+      return 0.1; // Permite décimos para líquidos e peso
+    }
+    
+    return 1; // Default para unidade, caixa, pacote, saco
   };
 
   // Enforce stock limits on quantity
