@@ -61,12 +61,12 @@ export const approveStore = async (storeId: string): Promise<boolean> => {
     
     console.log('[StoreStatusManager] Store found:', existingStore);
     
-    // Check if store is already approved
-    if (existingStore.status === 'aprovado' || existingStore.status === 'ativo') {
-      console.log('[StoreStatusManager] Store already approved:', existingStore.status);
+    // Check if store is already active
+    if (existingStore.status === 'ativo') {
+      console.log('[StoreStatusManager] Store already active:', existingStore.status);
       toast({
         title: "Informação",
-        description: "Esta loja já está aprovada",
+        description: "Esta loja já está ativa",
         variant: "default"
       });
       return true; // Return true as the desired state is already achieved
@@ -74,7 +74,7 @@ export const approveStore = async (storeId: string): Promise<boolean> => {
     
     // Update the store status with explicit timestamp
     const updateData = { 
-      status: 'aprovado', 
+      status: 'ativo', 
       updated_at: new Date().toISOString() 
     };
     
