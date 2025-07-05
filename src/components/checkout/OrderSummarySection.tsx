@@ -123,7 +123,7 @@ const OrderSummarySection: React.FC<OrderSummarySectionProps> = ({
                   <div className="w-4 h-4 animate-spin rounded-full border border-blue-500 border-t-transparent"></div>
                   <span className="text-sm">Calculando...</span>
                 </div>
-              ) : Object.values(storeDeliveries).some(d => !d.deliveryAvailable || d.error) ? (
+              ) : Object.values(storeDeliveries).some(d => !d.deliveryAvailable || d.error) || storeGroups.some(store => !storeDeliveries[store.loja.id]) ? (
                 <span className="text-sm text-gray-500">A calcular</span>
               ) : shipping === 0 ? (
                 'Grátis'
