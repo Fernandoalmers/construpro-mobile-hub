@@ -59,20 +59,12 @@ export const useMarketplaceScreenLogic = () => {
     actions
   } = useOptimizedProductFilter(segmentFilteredProducts);
   
-  // CORRIGIDO: Sync search term with safety check - SEM useEffect para evitar loop
-  const syncSearchTerm = useCallback(() => {
-    if (actions?.setSearchTerm && searchTerm !== term) {
+  // Sincronização direta do searchTerm sem useEffect para evitar loops
+  useEffect(() => {
+    if (actions?.setSearchTerm && term !== undefined) {
       actions.setSearchTerm(term || '');
     }
-  }, [actions?.setSearchTerm, searchTerm, term]);
-  
-  // Chamar sync apenas uma vez quando necessário
-  useEffect(() => {
-    syncSearchTerm();
-  }, [syncSearchTerm]);
-
-  // REMOVIDO: useEffect problemático que causava loop infinito (linhas 66-74)
-  // O auto-search agora é feito apenas no useMarketplaceSearch
+  }, [term, actions?.setSearchTerm]);
   
   // Static filter options
   const ratingOptions = useMemo(() => [

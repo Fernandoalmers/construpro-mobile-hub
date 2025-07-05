@@ -19,25 +19,6 @@ export const useMarketplaceDataProcessor = ({
   const safeProducts = useMemo(() => {
     console.log('[MarketplaceDataProcessor] Products received:', products?.length || 0);
     
-    // DEBUG BEABA: Contar produtos da loja Beaba
-    const beabaProducts = Array.isArray(products) ? products.filter(p => 
-      p?.store_name?.toLowerCase().includes('beaba') || 
-      p?.vendedores?.nome_loja?.toLowerCase().includes('beaba')
-    ) : [];
-    
-    console.log('[MarketplaceDataProcessor] 🔍 BEABA DEBUG - Produtos da Beaba recebidos:', beabaProducts.length);
-    
-    if (beabaProducts.length > 0) {
-      console.log('[MarketplaceDataProcessor] 🔍 BEABA DEBUG - Lista de produtos:', 
-        beabaProducts.map(p => ({ 
-          id: p.id, 
-          nome: p.nome, 
-          loja: p.store_name || p.vendedores?.nome_loja,
-          vendor_id: p.vendedor_id
-        }))
-      );
-    }
-    
     return Array.isArray(products) ? products : [];
   }, [products]);
   

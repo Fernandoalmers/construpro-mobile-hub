@@ -28,34 +28,21 @@ export const useOptimizedMarketplace = () => {
   // Aguarda inicialização das zonas antes de prosseguir
   const shouldFetchProducts = zonesInitialized && !zonesLoading;
   
-  // IDs dos vendedores com cache inteligente - DEBUG BEABA
+  // IDs dos vendedores com cache inteligente
   const availableVendorIds = useMemo(() => {
-    console.log('[useOptimizedMarketplace] 🔍 BEABA DEBUG - Calculando vendedores disponíveis:', {
-      hasDefinedCepWithoutCoverage,
-      shouldShowAllProducts,
-      currentCep,
-      hasActiveZones,
-      zonesCount: currentZones.length,
-      zoneVendors: currentZones.map(z => z.vendor_id)
-    });
-    
     if (hasDefinedCepWithoutCoverage) {
-      console.log('[useOptimizedMarketplace] 🚫 BEABA DEBUG - CEP sem cobertura, retornando array vazio');
       return [];
     }
     
     if (shouldShowAllProducts || !currentCep) {
-      console.log('[useOptimizedMarketplace] 🌍 BEABA DEBUG - Mostrando todos os produtos (sem filtro por zona)');
       return undefined;
     }
     
     if (hasActiveZones && currentZones.length > 0) {
       const vendorIds = currentZones.map(zone => zone.vendor_id);
-      console.log('[useOptimizedMarketplace] 🎯 BEABA DEBUG - Filtrando por vendedores das zonas:', vendorIds);
       return vendorIds;
     }
     
-    console.log('[useOptimizedMarketplace] ⚠️ BEABA DEBUG - Condição não coberta, retornando undefined');
     return undefined;
   }, [currentZones, hasActiveZones, currentCep, shouldShowAllProducts, hasDefinedCepWithoutCoverage]);
 
@@ -102,18 +89,6 @@ export const useOptimizedMarketplace = () => {
             console.log('[useOptimizedMarketplace] 🔄 Fallback funcionou, produtos encontrados:', fallbackResult.length);
             result = fallbackResult;
           }
-        }
-        
-        // NOVO: Validação de integridade específica para Beaba
-        const beabaProducts = result.filter(p => 
-          p?.store_name?.toLowerCase().includes('beaba') || 
-          p?.vendedores?.nome_loja?.toLowerCase().includes('beaba')
-        );
-        
-        if (beabaProducts.length > 0) {
-          console.log('[useOptimizedMarketplace] 🔍 BEABA DEBUG - Produtos da Beaba carregados:', beabaProducts.length);
-        } else if (availableVendorIds && availableVendorIds.length > 0) {
-          console.warn('[useOptimizedMarketplace] ⚠️ BEABA DEBUG - Nenhum produto da Beaba encontrado, mas vendedores filtrados:', availableVendorIds);
         }
         
         return result;
