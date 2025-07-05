@@ -20,9 +20,9 @@ export function useCartQuantityLogic(item: CartItem) {
   const getStepValue = () => {
     if (!produto) return 1;
     
-    // For products with multiple packaging control, step is always 1 (representing 1 box/package)
-    if (isMultiplePackaging) {
-      return 1;
+    // For products with multiple packaging control, step is valor_conversao (m² per box)
+    if (isMultiplePackaging && produto.valor_conversao && produto.valor_conversao > 0) {
+      return produto.valor_conversao;
     }
     
     // Use valor_conversao when available (for m², kg, litro, etc.)
@@ -48,10 +48,11 @@ export function useCartQuantityLogic(item: CartItem) {
       const quantidade = item.quantidade;
       
       if (isMultiplePackaging) {
-        // For multiple packaging, quantidade represents number of boxes
+        // For multiple packaging, quantidade represents m² (not boxes)
+        const boxes = quantidade / produto.valor_conversao;
         return {
-          boxes: quantidade,
-          m2: quantidade * produto.valor_conversao,
+          boxes: Math.round(boxes * 10) / 10,
+          m2: quantidade,
           m2PerBox: produto.valor_conversao
         };
       } else {
@@ -75,10 +76,9 @@ export function useCartQuantityLogic(item: CartItem) {
     const unitLabel = produto?.unidade_medida || 'unidade';
     
     if (packagingInfo) {
-      const boxesText = packagingInfo.boxes === 1 ? 'caixa' : 'caixas';
       if (isMultiplePackaging) {
-        // Show boxes for multiple packaging
-        return `${packagingInfo.boxes} ${boxesText}`;
+        // Show m² for multiple packaging
+        return `${packagingInfo.m2} m²`;
       } else {
         // Show m² for free quantity
         return `${packagingInfo.m2} m²`;
@@ -102,8 +102,8 @@ export function useCartQuantityLogic(item: CartItem) {
     if (!produto) return 1;
     
     if (isMultiplePackaging && produto.valor_conversao) {
-      // For multiple packaging, calculate available boxes based on stock and valor_conversao
-      return Math.floor(produto.estoque / produto.valor_conversao);
+      // For multiple packaging, stock is in m² (quantidade represents m²)
+      return produto.estoque;
     }
     
     return produto.estoque || 1;
@@ -111,7 +111,7 @@ export function useCartQuantityLogic(item: CartItem) {
   
   // Calculate minimum quantity
   const getMinQuantity = () => {
-    return isMultiplePackaging ? 1 : step;
+    return isMultiplePackaging && produto?.valor_conversao ? produto.valor_conversao : step;
   };
   
   return {
