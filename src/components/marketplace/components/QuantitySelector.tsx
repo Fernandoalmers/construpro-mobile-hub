@@ -27,14 +27,13 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
   
   // Get the step value based on unit type
   const getStepValue = () => {
+    // Use valor_conversao when available (for m², kg, litro, etc.)
+    if (produto?.valor_conversao && produto.valor_conversao > 0) {
+      return produto.valor_conversao;
+    }
+    
     if (isBarraProduct) return 0.5; // Permite meia barra
     if (isRoloProduct) return 0.1; // Permite décimos de rolo
-    
-    if (isM2Product && produto?.unidade_medida) {
-      // Extract numeric value from unit measure if present
-      const match = produto.unidade_medida.match(/(\d+(\.\d+)?)/);
-      return match ? parseFloat(match[0]) : 1;
-    }
     
     if (unidadeMedida?.includes('litro') || unidadeMedida?.includes('kg')) {
       return 0.1; // Permite décimos
@@ -46,10 +45,34 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
   const step = getStepValue();
   const unitLabel = produto?.unidade_medida || 'unidade';
   
+  // Calculate boxes for m² products
+  const getBoxInfo = () => {
+    if (isM2Product && produto?.valor_conversao && produto.valor_conversao > 0) {
+      const boxes = quantidade / produto.valor_conversao;
+      return {
+        m2: quantidade,
+        boxes: Math.round(boxes * 10) / 10, // Round to 1 decimal place
+        m2PerBox: produto.valor_conversao
+      };
+    }
+    return null;
+  };
+  
+  const boxInfo = getBoxInfo();
+  
   // Format the quantity display
-  const displayQuantity = isFractionalProduct 
-    ? `${quantidade} ${unitLabel}`
-    : `${quantidade} ${quantidade === 1 ? 'unidade' : 'unidades'}`;
+  const displayQuantity = (() => {
+    if (boxInfo) {
+      const boxesText = boxInfo.boxes === 1 ? 'caixa' : 'caixas';
+      return `${boxInfo.m2} m² (${boxInfo.boxes} ${boxesText})`;
+    }
+    
+    if (isFractionalProduct) {
+      return `${quantidade} ${unitLabel}`;
+    }
+    
+    return `${quantidade} ${quantidade === 1 ? 'unidade' : 'unidades'}`;
+  })();
 
   return (
     <div className="flex flex-col mb-4">
@@ -87,7 +110,8 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
         <div className="text-xs text-gray-500 ml-1">
           {isBarraProduct && 'Pode ser vendido em meias barras (0.5)'}
           {isRoloProduct && 'Vendido por metragem fracionada'}
-          {isM2Product && `Incrementos de ${step} ${unitLabel}`}
+          {boxInfo && `Cada caixa contém ${boxInfo.m2PerBox} m² - Incrementos de ${step} m²`}
+          {!boxInfo && isM2Product && `Incrementos de ${step} m²`}
           {(unidadeMedida?.includes('litro') || unidadeMedida?.includes('kg')) && 'Permite quantidades decimais'}
         </div>
       )}

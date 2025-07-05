@@ -16,6 +16,11 @@ export function useQuantityState({ produto, defaultValue = 1 }: UseQuantityState
     
     const unidadeMedida = produto.unidade_medida?.toLowerCase();
     
+    // Use valor_conversao when available (for m², kg, litro, etc.)
+    if (produto.valor_conversao && produto.valor_conversao > 0) {
+      return produto.valor_conversao;
+    }
+    
     // Handle different unit types
     if (unidadeMedida?.includes('barra')) {
       return 0.5; // Permite meia barra
@@ -23,13 +28,6 @@ export function useQuantityState({ produto, defaultValue = 1 }: UseQuantityState
     
     if (unidadeMedida?.includes('rolo')) {
       return 0.1; // Permite décimos de rolo
-    }
-    
-    const isM2Product = unidadeMedida?.includes('m²') || unidadeMedida?.includes('m2');
-    if (isM2Product && produto.unidade_medida) {
-      // Extract numeric value from unit measure if present
-      const match = produto.unidade_medida.match(/(\d+(\.\d+)?)/);
-      return match ? parseFloat(match[0]) : 1;
     }
     
     if (unidadeMedida?.includes('litro') || unidadeMedida?.includes('kg')) {
