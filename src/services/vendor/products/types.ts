@@ -42,6 +42,9 @@ export interface VendorProductInput {
   segmento?: string;
   sku?: string;
   codigo_barras?: string;
+  unidade_medida?: string;
+  valor_conversao?: number | null;
+  controle_quantidade?: string;
 }
 
 export interface ProductImage {
