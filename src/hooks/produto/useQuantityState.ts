@@ -8,11 +8,19 @@ interface UseQuantityStateProps {
 }
 
 export function useQuantityState({ produto, defaultValue = 1 }: UseQuantityStateProps) {
+  // Check if product is sold by multiples of packaging
+  const isMultiplePackaging = produto?.controle_quantidade === 'multiplo';
+  
   const [quantidade, setQuantidade] = useState(defaultValue);
 
-  // Calculate the step value based on unit type
+  // Calculate the step value based on unit type and packaging control
   const getStepValue = () => {
     if (!produto) return 1;
+    
+    // For products with multiple packaging control, step is always 1 (representing 1 box/package)
+    if (isMultiplePackaging) {
+      return 1;
+    }
     
     const unidadeMedida = produto.unidade_medida?.toLowerCase();
     
@@ -39,16 +47,28 @@ export function useQuantityState({ produto, defaultValue = 1 }: UseQuantityState
 
   // Enforce stock limits on quantity
   useEffect(() => {
-    if (produto && quantidade > (produto.estoque || 0)) {
+    if (produto && isMultiplePackaging) {
+      // For multiple packaging, calculate available boxes based on stock and valor_conversao
+      const availableBoxes = produto.valor_conversao ? Math.floor(produto.estoque / produto.valor_conversao) : produto.estoque;
+      if (quantidade > availableBoxes) {
+        setQuantidade(Math.max(1, availableBoxes));
+      }
+    } else if (produto && quantidade > (produto.estoque || 0)) {
       setQuantidade(Math.max(1, produto.estoque || 0));
     }
-  }, [produto, quantidade]);
+  }, [produto, quantidade, isMultiplePackaging]);
 
   const handleQuantityChange = (delta: number) => {
     const step = getStepValue();
-    
     const newValue = quantidade + (delta * step);
-    if (newValue >= step && (!produto || newValue <= (produto.estoque || step))) {
+    
+    if (isMultiplePackaging && produto) {
+      // For multiple packaging, check against available boxes
+      const availableBoxes = produto.valor_conversao ? Math.floor(produto.estoque / produto.valor_conversao) : produto.estoque;
+      if (newValue >= 1 && newValue <= availableBoxes) {
+        setQuantidade(newValue);
+      }
+    } else if (newValue >= step && (!produto || newValue <= (produto.estoque || step))) {
       setQuantidade(newValue);
     }
   };

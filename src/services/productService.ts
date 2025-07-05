@@ -46,6 +46,7 @@ export interface Product {
   status: string;
   unidade_medida?: string;
   valor_conversao?: number;
+  controle_quantidade?: string;
   codigo_barras?: string;
   sku?: string;
   avaliacao?: number;
@@ -79,6 +80,7 @@ interface ProductDatabaseRecord {
   sku?: string | null;
   unidade_medida?: string | null;
   valor_conversao?: number | null;
+  controle_quantidade?: string | null;
   created_at?: string;
   updated_at?: string;
   vendedores?: {
@@ -135,6 +137,7 @@ const transformToProduct = (record: ProductDatabaseRecord): Product => {
     status: record.status,
     unidade_medida: record.unidade_medida || undefined,
     valor_conversao: record.valor_conversao || undefined,
+    controle_quantidade: record.controle_quantidade || undefined,
     codigo_barras: record.codigo_barras || undefined,
     sku: record.sku || undefined
   };
@@ -194,7 +197,8 @@ export const getProducts = async (filters = {}): Promise<Product[]> => {
         codigo_barras: rawRecord.codigo_barras,
         sku: rawRecord.sku,
         unidade_medida: rawRecord.unidade_medida,
-        valor_conversao: rawRecord.valor_conversao
+        valor_conversao: rawRecord.valor_conversao,
+        controle_quantidade: rawRecord.controle_quantidade
       };
       
       // Transform the record and add it to our products array
@@ -258,6 +262,7 @@ export const getProductById = async (id: string): Promise<Product | null> => {
       sku: rawRecord.sku,
       unidade_medida: rawRecord.unidade_medida,
       valor_conversao: rawRecord.valor_conversao,
+      controle_quantidade: rawRecord.controle_quantidade,
       vendedores: rawRecord.vendedores
     };
     
