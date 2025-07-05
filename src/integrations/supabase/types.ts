@@ -2287,6 +2287,10 @@ export type Database = {
         Args: { order_id: string; vendor_id: string }
         Returns: boolean
       }
+      check_order_integrity: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       check_product_delivery_restriction: {
         Args: {
           p_vendor_id: string
@@ -2319,6 +2323,13 @@ export type Database = {
         Returns: {
           deleted_count: number
           error_message: string
+        }[]
+      }
+      cleanup_orphan_orders: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          deleted_count: number
+          orphan_order_ids: string[]
         }[]
       }
       commit_transaction: {

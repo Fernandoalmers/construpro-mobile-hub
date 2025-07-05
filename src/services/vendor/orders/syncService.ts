@@ -12,16 +12,29 @@ interface SyncResult {
 export class OrderSyncService {
   
   /**
-   * Sincronização melhorada de pedidos
+   * Sincronização melhorada de pedidos com limpeza de órfãos
    */
   async syncMissingOrders(): Promise<SyncResult> {
     const errors: string[] = [];
     let syncedCount = 0;
 
     try {
-      console.log('🔄 [OrderSyncService] Iniciando sincronização de pedidos...');
+      console.log('🔄 [OrderSyncService] Iniciando sincronização melhorada de pedidos...');
       
-      // Primeiro, verificar se há pedidos não sincronizados
+      // Primeiro, limpar pedidos órfãos se existirem
+      const { data: cleanupResult, error: cleanupError } = await supabase.rpc('cleanup_orphan_orders');
+      
+      if (cleanupError) {
+        console.warn('⚠️ [OrderSyncService] Aviso na limpeza de órfãos:', cleanupError);
+        errors.push(`Aviso na limpeza: ${cleanupError.message}`);
+      } else if (cleanupResult && cleanupResult.length > 0) {
+        const cleanup = cleanupResult[0];
+        if (cleanup.deleted_count > 0) {
+          console.log(`🧹 [OrderSyncService] Removidos ${cleanup.deleted_count} pedidos órfãos`);
+        }
+      }
+      
+      // Verificar se há pedidos não sincronizados após limpeza
       const { data: missingOrders, error: checkError } = await supabase.rpc('check_sync_integrity');
       
       if (checkError) {
@@ -42,7 +55,7 @@ export class OrderSyncService {
 
       console.log(`📊 [OrderSyncService] Encontrados ${integrityCheck.missing_pedidos} pedidos para sincronizar`);
 
-      // Executar migração melhorada
+      // Executar migração melhorada (que agora inclui limpeza automática)
       const { data: migrationResult, error: migrationError } = await supabase.rpc('migrate_missing_orders_to_pedidos');
       
       if (migrationError) {
@@ -62,6 +75,9 @@ export class OrderSyncService {
         console.warn(`⚠️ [OrderSyncService] Ainda há ${postSync.missing_pedidos} pedidos não sincronizados`);
         errors.push(`${postSync.missing_pedidos} pedidos ainda não sincronizados`);
       }
+
+      // Executar verificação de integridade adicional
+      await this.performIntegrityCheck();
 
       return {
         success: true,
@@ -83,6 +99,18 @@ export class OrderSyncService {
         message: 'Erro durante a sincronização',
         errors
       };
+    }
+  }
+
+  /**
+   * Executa verificação de integridade adicional
+   */
+  private async performIntegrityCheck(): Promise<void> {
+    try {
+      await supabase.rpc('check_order_integrity');
+      console.log('🔍 [OrderSyncService] Verificação de integridade executada');
+    } catch (error) {
+      console.warn('⚠️ [OrderSyncService] Aviso na verificação de integridade:', error);
     }
   }
 
