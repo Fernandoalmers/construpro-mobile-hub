@@ -8,7 +8,6 @@ import SmartCepModal from './SmartCepModal';
 import PageTitleSection from './PageTitleSection';
 import NoDeliveryState from './NoDeliveryState';
 import ProductsDisplay from './ProductsDisplay';
-
 import { useDeliveryZones } from '@/hooks/useDeliveryZones';
 import { useMarketplaceFilters } from '@/hooks/useMarketplaceFilters';
 
@@ -177,7 +176,6 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
         onCepChange={handleCepChange}
         currentCep={currentCep}
       />
-
     </div>
   );
 };

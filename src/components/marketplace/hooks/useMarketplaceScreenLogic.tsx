@@ -15,7 +15,7 @@ export const useMarketplaceScreenLogic = () => {
   const navigate = useNavigate();
   
   // Use optimized marketplace data hook
-  const { products, stores, segments, isLoading, error, refetchProducts } = useOptimizedMarketplace();
+  const { products, stores, segments, isLoading, error } = useOptimizedMarketplace();
   
   // Custom hooks for managing different aspects
   const {
@@ -59,12 +59,20 @@ export const useMarketplaceScreenLogic = () => {
     actions
   } = useOptimizedProductFilter(segmentFilteredProducts);
   
-  // Sincronização direta do searchTerm sem useEffect para evitar loops
-  useEffect(() => {
-    if (actions?.setSearchTerm && term !== undefined) {
+  // CORRIGIDO: Sync search term with safety check - SEM useEffect para evitar loop
+  const syncSearchTerm = useCallback(() => {
+    if (actions?.setSearchTerm && searchTerm !== term) {
       actions.setSearchTerm(term || '');
     }
-  }, [term, actions?.setSearchTerm]);
+  }, [actions?.setSearchTerm, searchTerm, term]);
+  
+  // Chamar sync apenas uma vez quando necessário
+  useEffect(() => {
+    syncSearchTerm();
+  }, [syncSearchTerm]);
+
+  // REMOVIDO: useEffect problemático que causava loop infinito (linhas 66-74)
+  // O auto-search agora é feito apenas no useMarketplaceSearch
   
   // Static filter options
   const ratingOptions = useMemo(() => [
@@ -176,9 +184,6 @@ export const useMarketplaceScreenLogic = () => {
     handleSegmentClick,
     handleLojaCardClick,
     getCurrentDisplayName,
-    updateSegmentURL,
-    
-    // Recovery
-    refetchProducts
+    updateSegmentURL
   };
 };

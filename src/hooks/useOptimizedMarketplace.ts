@@ -17,7 +17,6 @@ interface OptimizedMarketplaceData {
   currentDeliveryZone: string | null;
   isFilteredByZone: boolean;
   hasDefinedCepWithoutCoverage: boolean;
-  refetchProducts?: () => Promise<any>;
 }
 
 export const useOptimizedMarketplace = () => {
@@ -39,35 +38,29 @@ export const useOptimizedMarketplace = () => {
     }
     
     if (hasActiveZones && currentZones.length > 0) {
-      const vendorIds = currentZones.map(zone => zone.vendor_id);
-      return vendorIds;
+      return currentZones.map(zone => zone.vendor_id);
     }
     
     return undefined;
   }, [currentZones, hasActiveZones, currentCep, shouldShowAllProducts, hasDefinedCepWithoutCoverage]);
 
-  // Query de produtos otimizada com fallback robusto e recovery
+  // Query de produtos otimizada com fallback robusto
   const { 
     data: products = [], 
     isLoading: productsLoading,
     error: productsError,
-    refetch: refetchProducts,
   } = useQuery({
     queryKey: [
       'marketplace-products', 
       currentCep || 'all',
-      // CORRIGIDO: Usar IDs específicos em vez do length
-      availableVendorIds?.length ? availableVendorIds.sort().join(',') : 'all',
-      hasDefinedCepWithoutCoverage ? 'no-coverage' : 'with-coverage',
-      // NOVO: Adicionar timestamp de inicialização para evitar cache stale
-      zonesInitialized ? 'initialized' : 'not-initialized'
+      availableVendorIds?.length || 'all',
+      hasDefinedCepWithoutCoverage ? 'no-coverage' : 'with-coverage'
     ],
     queryFn: async () => {
       console.log('[useOptimizedMarketplace] 🔄 Carregando produtos com filtros:', {
         currentCep,
         availableVendorIds: availableVendorIds?.length || 'all',
-        hasDefinedCepWithoutCoverage,
-        zonesInitialized
+        hasDefinedCepWithoutCoverage
       });
       
       if (hasDefinedCepWithoutCoverage) {
@@ -76,67 +69,27 @@ export const useOptimizedMarketplace = () => {
       }
       
       try {
-        // NOVO: Tentar com filtros primeiro
-        let result = await getMarketplaceProducts(availableVendorIds);
-        console.log('[useOptimizedMarketplace] ✅ Produtos carregados com filtros:', result.length);
-        
-        // NOVO: Se não encontrou produtos mas esperava encontrar, tentar sem filtros
-        if (result.length === 0 && availableVendorIds && availableVendorIds.length > 0) {
-          console.warn('[useOptimizedMarketplace] ⚠️ Nenhum produto com filtros, tentando sem filtros...');
-          const fallbackResult = await getMarketplaceProducts();
-          
-          if (fallbackResult.length > 0) {
-            console.log('[useOptimizedMarketplace] 🔄 Fallback funcionou, produtos encontrados:', fallbackResult.length);
-            result = fallbackResult;
-          }
-        }
-        
+        const result = await getMarketplaceProducts(availableVendorIds);
+        console.log('[useOptimizedMarketplace] ✅ Produtos carregados:', result.length);
         return result;
       } catch (error) {
         console.error('[useOptimizedMarketplace] ❌ Erro ao carregar produtos:', error);
-        
-        // NOVO: Tentar fallback sem filtros em caso de erro
-        try {
-          console.log('[useOptimizedMarketplace] 🔄 Tentando fallback sem filtros devido ao erro...');
-          const fallbackResult = await getMarketplaceProducts();
-          console.log('[useOptimizedMarketplace] ✅ Fallback sem filtros funcionou:', fallbackResult.length);
-          return fallbackResult;
-        } catch (fallbackError) {
-          console.error('[useOptimizedMarketplace] ❌ Fallback também falhou:', fallbackError);
-          return [];
-        }
+        // Retornar array vazio em vez de rejeitar para manter a interface funcional
+        return [];
       }
     },
     staleTime: 2 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
-    // CORRIGIDO: Só buscar quando zonas estão inicializadas E há CEP válido
-    enabled: shouldFetchProducts && (zonesInitialized || !currentCep),
+    enabled: shouldFetchProducts,
     retry: (failureCount, error) => {
-      // NOVO: Retry mais agressivo para problemas de dados
-      if (failureCount >= 3) return false;
+      // Retry até 2 vezes, mas não para erros de rede básicos
+      if (failureCount >= 2) return false;
       if (error?.message?.includes('timeout')) return true;
-      if (error?.message?.includes('network')) return failureCount < 2;
-      return failureCount < 2;
+      return failureCount < 1;
     },
   });
-
-  // NOVO: Auto-retry quando produtos esperados não aparecem
-  useEffect(() => {
-    if (zonesInitialized && !productsLoading && !productsError && 
-        hasActiveZones && availableVendorIds && availableVendorIds.length > 0 && 
-        products.length === 0) {
-      
-      console.warn('[useOptimizedMarketplace] 🚨 Auto-retry: esperava produtos mas recebeu 0');
-      const timer = setTimeout(() => {
-        console.log('[useOptimizedMarketplace] 🔄 Executando auto-retry...');
-        refetchProducts();
-      }, 1000);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [zonesInitialized, productsLoading, productsError, hasActiveZones, availableVendorIds, products.length, refetchProducts]);
 
   // Query de lojas com fallback
   const { 
@@ -201,10 +154,8 @@ export const useOptimizedMarketplace = () => {
     hasDeliveryRestriction: hasActiveZones,
     currentDeliveryZone: currentCep,
     isFilteredByZone,
-    hasDefinedCepWithoutCoverage,
-    // NOVO: Expor função de refetch para recovery
-    refetchProducts,
-  }), [products, stores, segments, isLoadingData, productsError, hasActiveZones, currentCep, isFilteredByZone, hasDefinedCepWithoutCoverage, refetchProducts]);
+    hasDefinedCepWithoutCoverage
+  }), [products, stores, segments, isLoadingData, productsError, hasActiveZones, currentCep, isFilteredByZone, hasDefinedCepWithoutCoverage]);
 
   return marketplaceData;
 };

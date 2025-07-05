@@ -18,7 +18,6 @@ export const useMarketplaceDataProcessor = ({
   // Ensure data safety with default values
   const safeProducts = useMemo(() => {
     console.log('[MarketplaceDataProcessor] Products received:', products?.length || 0);
-    
     return Array.isArray(products) ? products : [];
   }, [products]);
   
