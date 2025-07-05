@@ -30,6 +30,7 @@ interface MarketplaceContentProps {
   allProducts?: any[];
   allStores?: any[];
   marketplaceError?: string | null;
+  refetchProducts?: () => Promise<any>;
 }
 
 const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
@@ -48,7 +49,8 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
   updateSegmentURL,
   allProducts = [],
   allStores = [],
-  marketplaceError = null
+  marketplaceError = null,
+  refetchProducts
 }) => {
   const navigate = useNavigate();
   const { hasActiveZones, currentCep, resolveZones, isInitialized } = useDeliveryZones();
@@ -191,6 +193,7 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
         stores={allStores}
         isLoading={isLoading}
         error={marketplaceError}
+        refetchProducts={refetchProducts}
       />
     </div>
   );

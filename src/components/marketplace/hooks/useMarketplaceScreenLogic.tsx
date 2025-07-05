@@ -15,7 +15,7 @@ export const useMarketplaceScreenLogic = () => {
   const navigate = useNavigate();
   
   // Use optimized marketplace data hook
-  const { products, stores, segments, isLoading, error } = useOptimizedMarketplace();
+  const { products, stores, segments, isLoading, error, refetchProducts } = useOptimizedMarketplace();
   
   // Custom hooks for managing different aspects
   const {
@@ -184,6 +184,9 @@ export const useMarketplaceScreenLogic = () => {
     handleSegmentClick,
     handleLojaCardClick,
     getCurrentDisplayName,
-    updateSegmentURL
+    updateSegmentURL,
+    
+    // Recovery
+    refetchProducts
   };
 };

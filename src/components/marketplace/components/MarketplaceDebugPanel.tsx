@@ -12,13 +12,15 @@ interface MarketplaceDebugPanelProps {
   stores: any[];
   isLoading: boolean;
   error: string | null;
+  refetchProducts?: () => Promise<any>;
 }
 
 const MarketplaceDebugPanel: React.FC<MarketplaceDebugPanelProps> = ({
   products,
   stores,
   isLoading,
-  error
+  error,
+  refetchProducts
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const queryClient = useQueryClient();
@@ -47,9 +49,21 @@ const MarketplaceDebugPanel: React.FC<MarketplaceDebugPanelProps> = ({
     queryClient.refetchQueries({ queryKey: ['marketplace-products'] });
   };
 
+  const handleClearCache = () => {
+    console.log('[MarketplaceDebugPanel] 🗑️ Limpando todo o cache...');
+    queryClient.invalidateQueries();
+    queryClient.clear();
+    // Force page reload to ensure clean state
+    window.location.reload();
+  };
+
   const handleShowAllProducts = () => {
     console.log('[MarketplaceDebugPanel] 🌍 Forçando exibição de todos os produtos...');
-    // Isso pode ser implementado se necessário
+    queryClient.invalidateQueries({ queryKey: ['marketplace-products'] });
+    queryClient.refetchQueries({ 
+      queryKey: ['marketplace-products'],
+      exact: false
+    });
   };
 
   if (!isExpanded) {
@@ -200,6 +214,26 @@ const MarketplaceDebugPanel: React.FC<MarketplaceDebugPanelProps> = ({
             >
               <RefreshCw className="w-3 h-3 mr-1" />
               Forçar Refresh
+            </Button>
+            
+            <Button
+              onClick={handleClearCache}
+              variant="destructive"
+              size="sm"
+              className="w-full"
+              disabled={isLoading}
+            >
+              🗑️ Limpar Cache
+            </Button>
+            
+            <Button
+              onClick={handleShowAllProducts}
+              variant="default"
+              size="sm"
+              className="w-full"
+              disabled={isLoading}
+            >
+              🌍 Ver Todos Produtos
             </Button>
           </div>
         </div>
