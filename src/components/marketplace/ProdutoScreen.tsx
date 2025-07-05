@@ -43,6 +43,15 @@ const ProdutoScreen: React.FC = () => {
 
   // Log product data for debugging
   console.log("Produto data:", produto);
+  
+  // Debug log for quantity selector - REMOVE AFTER FIXING
+  console.log('🔍 [ProdutoScreen] Produto passado para QuantitySelector:', {
+    id: produto?.id,
+    nome: produto?.nome,
+    controle_quantidade: produto?.controle_quantidade,
+    valor_conversao: produto?.valor_conversao,
+    unidade_medida: produto?.unidade_medida
+  });
 
   return (
     <div className="bg-gray-100 min-h-screen pb-16">

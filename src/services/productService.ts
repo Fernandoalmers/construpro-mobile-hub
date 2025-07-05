@@ -91,6 +91,15 @@ interface ProductDatabaseRecord {
 
 // Transform database record to Product type
 const transformToProduct = (record: ProductDatabaseRecord): Product => {
+  // Debug logs - REMOVE AFTER FIXING
+  console.log('🔍 [productService] Transformando produto:', {
+    id: record.id,
+    nome: record.nome,
+    controle_quantidade: record.controle_quantidade,
+    valor_conversao: record.valor_conversao,
+    unidade_medida: record.unidade_medida
+  });
+
   // Process images array
   let imagens: string[] = [];
   
@@ -141,6 +150,15 @@ const transformToProduct = (record: ProductDatabaseRecord): Product => {
     codigo_barras: record.codigo_barras || undefined,
     sku: record.sku || undefined
   };
+
+  // Debug log final product - REMOVE AFTER FIXING
+  console.log('🔍 [productService] Produto transformado:', {
+    id: product.id,
+    nome: product.nome,
+    controle_quantidade: product.controle_quantidade,
+    valor_conversao: product.valor_conversao,
+    unidade_medida: product.unidade_medida
+  });
 
   return product;
 };

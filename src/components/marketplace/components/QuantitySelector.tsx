@@ -15,6 +15,16 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
   quantidade,
   onQuantityChange
 }) => {
+  // Debug logs - REMOVE AFTER FIXING
+  console.log('🔍 [QuantitySelector] Produto recebido:', {
+    id: produto?.id,
+    nome: produto?.nome,
+    controle_quantidade: produto?.controle_quantidade,
+    valor_conversao: produto?.valor_conversao,
+    unidade_medida: produto?.unidade_medida,
+    produto_completo: produto
+  });
+
   // Get unit type
   const unidadeMedida = produto?.unidade_medida?.toLowerCase();
   
@@ -27,6 +37,14 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
   const isRoloProduct = unidadeMedida?.includes('rolo');
   const isFractionalProduct = isM2Product || isBarraProduct || isRoloProduct || 
                              unidadeMedida?.includes('litro') || unidadeMedida?.includes('kg');
+  
+  // Debug logs for conditions - REMOVE AFTER FIXING
+  console.log('🔍 [QuantitySelector] Condições calculadas:', {
+    unidadeMedida,
+    isMultiplePackaging,
+    isM2Product,
+    isFractionalProduct
+  });
   
   // Get the step value based on unit type and packaging control
   const getStepValue = () => {
@@ -97,6 +115,15 @@ const QuantitySelector: React.FC<QuantitySelectorProps> = ({
     
     return `${quantidade} ${quantidade === 1 ? 'unidade' : 'unidades'}`;
   })();
+
+  // Debug logs for final calculations - REMOVE AFTER FIXING
+  console.log('🔍 [QuantitySelector] Cálculos finais:', {
+    step,
+    unitLabel,
+    packagingInfo,
+    displayQuantity,
+    quantidade
+  });
 
   return (
     <div className="flex flex-col mb-4">
