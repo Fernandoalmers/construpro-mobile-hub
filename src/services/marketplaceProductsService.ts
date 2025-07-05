@@ -99,18 +99,6 @@ export const getMarketplaceProducts = async (vendorIds?: string[]): Promise<Mark
       const storeName = storeInfo?.nome_loja || 'Loja não identificada';
       const storeId = storeInfo?.id || product.vendedor_id;
 
-      // DEBUG BEABA: Log específico para loja Beaba
-      if (storeName.toLowerCase().includes('beaba')) {
-        console.log('[marketplaceProductsService] 🔍 BEABA DEBUG - Produto encontrado:', {
-          id: product.id,
-          nome: product.nome,
-          loja: storeName,
-          vendor_id: product.vendedor_id,
-          status: product.status,
-          estoque: product.estoque
-        });
-      }
-
       // Processar imagens
       let processedImages: string[] = [];
       if (product.imagens) {
@@ -160,24 +148,13 @@ export const getMarketplaceProducts = async (vendorIds?: string[]): Promise<Mark
     // Log consolidado do resultado
     const storeCount = new Set(processedProducts.map(p => p.store_id)).size;
     const promotionCount = processedProducts.filter(p => p.promocao_ativa).length;
-    const beabaProductsCount = processedProducts.filter(p => 
-      p.store_name?.toLowerCase().includes('beaba')
-    ).length;
     
     console.log('[marketplaceProductsService] ✅ Processamento concluído:', {
       produtos: processedProducts.length,
       lojas: storeCount,
       promocoes: promotionCount,
-      produtosBeaba: beabaProductsCount,
       tempoProcessamento: 'otimizado em lote'
     });
-
-    // DEBUG BEABA: Log específico se encontrar produtos da Beaba
-    if (beabaProductsCount > 0) {
-      console.log('[marketplaceProductsService] 🔍 BEABA DEBUG - Produtos da Beaba processados com sucesso:', beabaProductsCount);
-    } else {
-      console.warn('[marketplaceProductsService] ⚠️ BEABA DEBUG - Nenhum produto da Beaba encontrado na resposta final');
-    }
 
     return processedProducts;
 
