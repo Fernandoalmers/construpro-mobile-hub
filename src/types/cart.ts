@@ -27,6 +27,9 @@ export interface CartItem {
     promocao_ativa?: boolean;
     promocao_inicio?: string;
     promocao_fim?: string;
+    valor_conversao?: number;
+    controle_quantidade?: string;
+    unidade_medida?: string;
   };
 }
 

@@ -62,7 +62,10 @@ export async function processCartItems(
         imagens,
         promocao_ativa,
         promocao_inicio,
-        promocao_fim
+        promocao_fim,
+        valor_conversao,
+        controle_quantidade,
+        unidade_medida
       `)
       .in('id', productIds);
 
@@ -140,7 +143,10 @@ export async function processCartItems(
           status: produto.status,
           promocao_ativa: produto.promocao_ativa,
           promocao_inicio: produto.promocao_inicio,
-          promocao_fim: produto.promocao_fim
+          promocao_fim: produto.promocao_fim,
+          valor_conversao: produto.valor_conversao,
+          controle_quantidade: produto.controle_quantidade,
+          unidade_medida: produto.unidade_medida
         }
       };
     }).filter(Boolean) as CartItem[]; // Remove null items
