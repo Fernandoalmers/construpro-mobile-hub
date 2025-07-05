@@ -7,6 +7,7 @@ export interface ProductFormData {
   descricao: string;
   categoria: string;
   segmento: string;
+  segmentoId?: string; // Add segmentoId field
   preco: number;
   estoque: number;
   precoPromocional?: number | null;
@@ -33,6 +34,7 @@ export const useProductFormData = (initialData?: any) => {
     descricao: '',
     categoria: '',
     segmento: '',
+    segmentoId: '',
     preco: 0,
     estoque: 0,
     precoPromocional: null,
@@ -71,14 +73,19 @@ export const useProductFormData = (initialData?: any) => {
   }, []);
 
   const handleSegmentIdChange = useCallback((segmentId: string) => {
+    console.log('[useProductFormData] Segment ID changed to:', segmentId);
     setCurrentSegmentId(segmentId);
-  }, []);
+    // Also update the form data with the segment ID
+    handleInputChange('segmentoId', segmentId);
+  }, [handleInputChange]);
 
   const handleSegmentNameChange = useCallback((segmentName: string) => {
+    console.log('[useProductFormData] Segment name changed to:', segmentName);
     handleInputChange('segmento', segmentName);
   }, [handleInputChange]);
 
   const handleCategoryChange = useCallback((category: string) => {
+    console.log('[useProductFormData] Category changed to:', category);
     handleInputChange('categoria', category);
   }, [handleInputChange]);
 
@@ -113,6 +120,7 @@ export const useProductFormData = (initialData?: any) => {
       descricao: data.descricao || '',
       categoria: data.categoria || '',
       segmento: data.segmento || '',
+      segmentoId: data.segmento_id || '',
       preco: data.preco_normal || data.preco || 0,
       estoque: data.estoque || 0,
       precoPromocional: data.preco_promocional || null,

@@ -33,30 +33,83 @@ export const useProductSave = ({
 }: UseProductSaveProps) => {
   const [uploadingImages, setUploadingImages] = useState(false);
 
+  // Função para validar e limpar dados antes do salvamento
+  const validateAndCleanData = (formData: ProductFormData) => {
+    console.log('[useProductSave] Validating form data:', formData);
+    
+    // Validar campos obrigatórios
+    if (!formData.nome || formData.nome.trim() === '') {
+      throw new Error('Nome do produto é obrigatório');
+    }
+    
+    if (!formData.descricao || formData.descricao.trim() === '') {
+      throw new Error('Descrição do produto é obrigatória');
+    }
+    
+    if (!formData.categoria || formData.categoria.trim() === '') {
+      throw new Error('Categoria do produto é obrigatória');
+    }
+    
+    if (!formData.segmento || formData.segmento.trim() === '') {
+      throw new Error('Segmento do produto é obrigatório');
+    }
+    
+    if (!formData.preco || formData.preco <= 0) {
+      throw new Error('Preço deve ser maior que zero');
+    }
+    
+    // Validar unidade de medida
+    const validUnits = ['unidade', 'm2', 'litro', 'kg', 'caixa', 'pacote', 'barra', 'saco', 'rolo'];
+    const unidadeMedida = formData.unidadeMedida || 'unidade';
+    
+    if (!validUnits.includes(unidadeMedida)) {
+      console.warn('[useProductSave] Invalid unit, defaulting to "unidade":', unidadeMedida);
+    }
+    
+    // Validar estoque
+    const estoque = Math.max(0, Number(formData.estoque) || 0);
+    
+    console.log('[useProductSave] Validation passed, cleaned data ready');
+    
+    return {
+      ...formData,
+      nome: formData.nome.trim(),
+      descricao: formData.descricao.trim(),
+      categoria: formData.categoria.trim(),
+      segmento: formData.segmento.trim(),
+      unidadeMedida: validUnits.includes(unidadeMedida) ? unidadeMedida : 'unidade',
+      estoque
+    };
+  };
+
   const handleSave = async (formData: ProductFormData) => {
     try {
       setLoading(true);
       console.log('[useProductSave] Starting save process:', { isEditing, formData });
 
+      // Validar e limpar dados
+      const cleanedData = validateAndCleanData(formData);
+      console.log('[useProductSave] Cleaned data:', cleanedData);
+
       // Improved promotion validation - more flexible for editing
-      if (formData.promocaoAtiva) {
-        if (!formData.precoPromocional || formData.precoPromocional <= 0) {
+      if (cleanedData.promocaoAtiva) {
+        if (!cleanedData.precoPromocional || cleanedData.precoPromocional <= 0) {
           toast.error('O preço promocional deve ser maior que zero');
           return;
         }
         
-        if (formData.precoPromocional >= formData.preco) {
+        if (cleanedData.precoPromocional >= cleanedData.preco) {
           toast.error('O preço promocional deve ser menor que o preço normal');
           return;
         }
         
-        if (!formData.promocaoInicio || !formData.promocaoFim) {
+        if (!cleanedData.promocaoInicio || !cleanedData.promocaoFim) {
           toast.error('Defina as datas de início e fim da promoção');
           return;
         }
         
-        const startDate = new Date(formData.promocaoInicio);
-        const endDate = new Date(formData.promocaoFim);
+        const startDate = new Date(cleanedData.promocaoInicio);
+        const endDate = new Date(cleanedData.promocaoFim);
         const now = new Date();
         
         if (startDate >= endDate) {
@@ -79,25 +132,30 @@ export const useProductSave = ({
 
       // Prepare product data with correct field mapping (frontend camelCase -> backend snake_case)
       const productData = {
-        id: formData.id, // Important: include ID for updates
-        nome: formData.nome,
-        descricao: formData.descricao,
-        categoria: formData.categoria,
-        segmento: formData.segmento,
-        preco_normal: formData.preco, // Map preco -> preco_normal
-        preco_promocional: formData.promocaoAtiva ? formData.precoPromocional : null,
-        promocao_ativa: formData.promocaoAtiva,
-        promocao_inicio: formData.promocaoAtiva && formData.promocaoInicio ? formData.promocaoInicio : null,
-        promocao_fim: formData.promocaoAtiva && formData.promocaoFim ? formData.promocaoFim : null,
-        pontos_consumidor: formData.pontosConsumidor, // Map pontosConsumidor -> pontos_consumidor
-        pontos_profissional: formData.pontosProfissional, // Map pontosProfissional -> pontos_profissional
-        sku: formData.sku,
-        codigo_barras: formData.codigoBarras, // Map codigoBarras -> codigo_barras
-        estoque: formData.estoque,
-        imagens: [...existingImages] // Start with existing images
+        id: cleanedData.id, // Important: include ID for updates
+        nome: cleanedData.nome,
+        descricao: cleanedData.descricao,
+        categoria: cleanedData.categoria,
+        segmento: cleanedData.segmento,
+        preco_normal: cleanedData.preco, // Map preco -> preco_normal
+        preco_promocional: cleanedData.promocaoAtiva ? cleanedData.precoPromocional : null,
+        promocao_ativa: cleanedData.promocaoAtiva,
+        promocao_inicio: cleanedData.promocaoAtiva && cleanedData.promocaoInicio ? cleanedData.promocaoInicio : null,
+        promocao_fim: cleanedData.promocaoAtiva && cleanedData.promocaoFim ? cleanedData.promocaoFim : null,
+        pontos_consumidor: cleanedData.pontosConsumidor || 0, // Map pontosConsumidor -> pontos_consumidor
+        pontos_profissional: cleanedData.pontosProfissional || 0, // Map pontosProfissional -> pontos_profissional
+        sku: cleanedData.sku?.trim() || null,
+        codigo_barras: cleanedData.codigoBarras?.trim() || null, // Map codigoBarras -> codigo_barras
+        estoque: cleanedData.estoque,
+        unidade_medida: cleanedData.unidadeMedida, // Map unidadeMedida -> unidade_medida
+        valor_conversao: cleanedData.valorConversao,
+        controle_quantidade: cleanedData.controleQuantidade || 'livre',
+        imagens: [...existingImages], // Start with existing images
+        // Ensure we have a valid segmento_id if available
+        segmento_id: cleanedData.segmentoId || null
       };
 
-      console.log('[useProductSave] Mapped product data for save:', productData);
+      console.log('[useProductSave] Final product data for save:', productData);
 
       // Save the product first - função detecta automaticamente se é update pelo id
       const savedProduct = await saveVendorProduct(productData);
@@ -172,7 +230,7 @@ export const useProductSave = ({
 
       console.log('[useProductSave] Save completed successfully');
       
-      const successMessage = formData.promocaoAtiva 
+      const successMessage = cleanedData.promocaoAtiva 
         ? (isEditing ? 'Produto e promoção atualizados com sucesso!' : 'Produto salvo com promoção ativa!') 
         : (isEditing ? 'Produto atualizado com sucesso!' : 'Produto criado com sucesso!');
       
@@ -196,6 +254,21 @@ export const useProductSave = ({
           errorMessage = supabaseError.message;
         } else if (supabaseError.error_description) {
           errorMessage = supabaseError.error_description;
+        } else if (supabaseError.code) {
+          // Handle specific database error codes
+          switch (supabaseError.code) {
+            case '23505':
+              errorMessage = 'SKU ou código de barras já existe. Use valores únicos.';
+              break;
+            case '23503':
+              errorMessage = 'Categoria ou segmento inválido. Verifique os dados.';
+              break;
+            case '23514':
+              errorMessage = 'Dados inválidos. Verifique preços e quantidades.';
+              break;
+            default:
+              errorMessage = `Erro no banco de dados (${supabaseError.code})`;
+          }
         }
       }
       

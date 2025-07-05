@@ -32,15 +32,37 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
     const isUpdate = !!productData.id;
     console.log(`[productSaver] ${isUpdate ? 'Updating' : 'Creating'} product for vendor ID:`, vendor.id);
     
-    // Validate required fields
-    if (!productData.nome || !productData.categoria) {
-      throw new Error('Nome e categoria são obrigatórios');
+    // Enhanced validation of required fields
+    if (!productData.nome || productData.nome.trim() === '') {
+      throw new Error('Nome do produto é obrigatório');
     }
     
-    // Ensure categoria is not undefined before saving
-    if (!productData.categoria) {
-      productData.categoria = 'Geral'; // Default category if none provided
+    if (!productData.descricao || productData.descricao.trim() === '') {
+      throw new Error('Descrição do produto é obrigatória');
     }
+    
+    if (!productData.categoria || productData.categoria.trim() === '') {
+      throw new Error('Categoria do produto é obrigatória');
+    }
+    
+    if (!productData.segmento || productData.segmento.trim() === '') {
+      throw new Error('Segmento do produto é obrigatório');
+    }
+    
+    if (!productData.preco_normal || productData.preco_normal <= 0) {
+      throw new Error('Preço deve ser maior que zero');
+    }
+    
+    // Validate and clean unit of measurement
+    const validUnits = ['unidade', 'm2', 'litro', 'kg', 'caixa', 'pacote', 'barra', 'saco', 'rolo'];
+    const unidadeMedida = productData.unidade_medida || 'unidade';
+    
+    if (!validUnits.includes(unidadeMedida)) {
+      console.warn('[productSaver] Invalid unit, using default:', unidadeMedida);
+    }
+    
+    // Validate stock (allow decimal values)
+    const estoque = Math.max(0, Number(productData.estoque) || 0);
     
     // FIXED: Properly handle images array - save as proper JSON array, not escaped string
     let imagensArray: string[] = [];
@@ -104,14 +126,14 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
       }
     }
     
-    // Prepare data for insert/update with proper field mapping
+    // Prepare data for insert/update with proper field mapping and validation
     const dbData = {
       nome: productData.nome.trim(),
-      descricao: productData.descricao?.trim() || '',
-      categoria: productData.categoria,
-      segmento: productData.segmento || '',
+      descricao: productData.descricao.trim(),
+      categoria: productData.categoria.trim(),
+      segmento: productData.segmento.trim(),
       preco_normal: productData.preco_normal,
-      estoque: productData.estoque || 0,
+      estoque,
       vendedor_id: vendor.id,
       // When updating, set status to 'pendente' to require re-approval
       status: isUpdate ? 'pendente' as const : 'pendente' as const,
@@ -126,9 +148,13 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
       preco_promocional: productData.promocao_ativa ? productData.preco_promocional : null,
       promocao_inicio: promocaoInicio,
       promocao_fim: promocaoFim,
-      // Points mapping
+      // Points mapping with defaults
       pontos_consumidor: productData.pontos_consumidor || 0,
       pontos_profissional: productData.pontos_profissional || 0,
+      // Unit and measurement fields with validation
+      unidade_medida: validUnits.includes(unidadeMedida) ? unidadeMedida : 'unidade',
+      valor_conversao: productData.valor_conversao || null,
+      controle_quantidade: productData.controle_quantidade || 'livre',
       // Segment mapping
       segmento_id: productData.segmento_id || null
     };
@@ -185,6 +211,15 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
       
       if (error.code === '23514') {
         throw new Error('Dados inválidos: verifique preços e quantidades.');
+      }
+      
+      if (error.code === '23502') {
+        // NOT NULL violation
+        const field = error.message.includes('nome') ? 'nome' :
+                     error.message.includes('categoria') ? 'categoria' :
+                     error.message.includes('segmento') ? 'segmento' :
+                     error.message.includes('preco_normal') ? 'preço' : 'campo obrigatório';
+        throw new Error(`${field} é obrigatório e não pode estar vazio.`);
       }
       
       // Generic database error
