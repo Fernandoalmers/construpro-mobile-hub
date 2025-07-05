@@ -31,6 +31,16 @@ const ProductActions: React.FC<ProductActionsProps> = ({
   const [addingToCart, setAddingToCart] = React.useState(false);
   const [buyingNow, setBuyingNow] = React.useState(false);
 
+  // Calculate the real quantity to send to cart
+  const calculateRealQuantity = (quantidade: number, produto: any): number => {
+    // For products with multiple packaging control, convert boxes to real units (m², kg, etc.)
+    if (produto?.controle_quantidade === 'multiplo' && produto?.valor_conversao) {
+      return quantidade * produto.valor_conversao;
+    }
+    // For other products, use quantity directly
+    return quantidade;
+  };
+
   const handleAddToCartClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -55,8 +65,12 @@ const ProductActions: React.FC<ProductActionsProps> = ({
       setAddingToCart(true);
       console.log("ProductActions: Using UNIFIED useCart().addToCart - should SUM quantities");
       
+      // Calculate real quantity for cart (convert boxes to m² if needed)
+      const realQuantity = calculateRealQuantity(quantidade, produto);
+      console.log(`ProductActions: Converting quantity - Display: ${quantidade}, Sending to cart: ${realQuantity}`);
+      
       // Use the unified cart hook to handle adding to cart
-      await addToCart(produto.id, quantidade);
+      await addToCart(produto.id, realQuantity);
       
       if (onSuccess) {
         console.log("Product added to cart successfully, calling onSuccess");
@@ -94,8 +108,12 @@ const ProductActions: React.FC<ProductActionsProps> = ({
       setBuyingNow(true);
       console.log("ProductActions: Adding to cart then navigating");
       
+      // Calculate real quantity for cart (convert boxes to m² if needed)
+      const realQuantity = calculateRealQuantity(quantidade, produto);
+      console.log(`ProductActions: Converting quantity for buy now - Display: ${quantidade}, Sending to cart: ${realQuantity}`);
+      
       // Add to cart first, then navigate
-      await addToCart(produto.id, quantidade);
+      await addToCart(produto.id, realQuantity);
       navigate('/cart');
     } catch (error: any) {
       console.error("Error buying now:", error);
