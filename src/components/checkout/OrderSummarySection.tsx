@@ -117,12 +117,14 @@ const OrderSummarySection: React.FC<OrderSummarySectionProps> = ({
               <Truck className="h-4 w-4 text-gray-500" />
               <span className="text-gray-600">Frete Total</span>
             </div>
-            <span className={shipping === 0 ? 'text-green-600' : ''}>
-              {isCalculatingDelivery ? (
+            <span className={shipping === 0 && !isCalculatingDelivery && !Object.values(storeDeliveries).some(d => d.loading) ? 'text-green-600' : ''}>
+              {isCalculatingDelivery || Object.values(storeDeliveries).some(d => d.loading) ? (
                 <div className="flex items-center gap-1">
                   <div className="w-4 h-4 animate-spin rounded-full border border-blue-500 border-t-transparent"></div>
                   <span className="text-sm">Calculando...</span>
                 </div>
+              ) : Object.values(storeDeliveries).some(d => !d.deliveryAvailable || d.error) ? (
+                <span className="text-sm text-gray-500">A calcular</span>
               ) : shipping === 0 ? (
                 'Grátis'
               ) : (
