@@ -56,26 +56,39 @@ export const useProductSave = ({
 
   // Função para validar e limpar dados antes do salvamento
   const validateAndCleanData = (formData: ProductFormData) => {
-    console.log('[useProductSave] Validating form data:', formData);
+    console.log('[useProductSave] Validating form data:', {
+      nome: formData.nome,
+      descricao: formData.descricao,
+      categoria: formData.categoria,
+      segmento: formData.segmento,
+      preco: formData.preco,
+      unidadeMedida: formData.unidadeMedida,
+      valorConversao: formData.valorConversao
+    });
     
     // Validar campos obrigatórios
     if (!formData.nome || formData.nome.trim() === '') {
+      console.error('[useProductSave] Missing nome field');
       throw new Error('Nome do produto é obrigatório');
     }
     
     if (!formData.descricao || formData.descricao.trim() === '') {
+      console.error('[useProductSave] Missing descricao field');
       throw new Error('Descrição do produto é obrigatória');
     }
     
     if (!formData.categoria || formData.categoria.trim() === '') {
+      console.error('[useProductSave] Missing categoria field');
       throw new Error('Categoria do produto é obrigatória');
     }
     
     if (!formData.segmento || formData.segmento.trim() === '') {
+      console.error('[useProductSave] Missing segmento field');
       throw new Error('Segmento do produto é obrigatório');
     }
     
     if (!formData.preco || formData.preco <= 0) {
+      console.error('[useProductSave] Invalid preco field:', formData.preco);
       throw new Error('Preço deve ser maior que zero');
     }
     
@@ -125,7 +138,15 @@ export const useProductSave = ({
   const handleSave = async (formData: ProductFormData) => {
     try {
       setLoading(true);
-      console.log('[useProductSave] Starting save process:', { isEditing, formData });
+      console.log('[useProductSave] Starting save process:', { 
+        isEditing, 
+        formDataKeys: Object.keys(formData),
+        hasId: !!formData.id,
+        categoria: formData.categoria,
+        segmento: formData.segmento,
+        unidadeMedida: formData.unidadeMedida,
+        valorConversao: formData.valorConversao
+      });
 
       // Validar e limpar dados
       const cleanedData = validateAndCleanData(formData);
@@ -195,7 +216,20 @@ export const useProductSave = ({
         segmento_id: cleanedData.segmentoId || null
       };
 
-      console.log('[useProductSave] Final product data for save:', productData);
+      console.log('[useProductSave] Final product data for save:', {
+        ...productData,
+        imagens: `Array with ${productData.imagens.length} images`,
+        validation: {
+          hasNome: !!productData.nome,
+          hasDescricao: !!productData.descricao,
+          hasCategoria: !!productData.categoria,
+          hasSegmento: !!productData.segmento,
+          hasPreco: productData.preco_normal > 0,
+          unidadeMedida: productData.unidade_medida,
+          valorConversao: productData.valor_conversao,
+          controleQuantidade: productData.controle_quantidade
+        }
+      });
 
       // Save the product first - função detecta automaticamente se é update pelo id
       const savedProduct = await saveVendorProduct(productData);
@@ -287,10 +321,14 @@ export const useProductSave = ({
       let errorMessage = 'Erro desconhecido';
       
       if (error instanceof Error) {
+        console.error('[useProductSave] Error object:', error);
+        console.error('[useProductSave] Error stack:', error.stack);
         errorMessage = error.message;
       } else if (typeof error === 'string') {
+        console.error('[useProductSave] String error:', error);
         errorMessage = error;
       } else if (error && typeof error === 'object') {
+        console.error('[useProductSave] Object error:', error);
         // Handle Supabase errors
         const supabaseError = error as any;
         if (supabaseError.message) {
@@ -309,13 +347,16 @@ export const useProductSave = ({
             case '23514':
               errorMessage = 'Dados inválidos. Verifique preços e quantidades.';
               break;
+            case '23502':
+              errorMessage = 'Campo obrigatório está vazio. Verifique todos os campos.';
+              break;
             default:
-              errorMessage = `Erro no banco de dados (${supabaseError.code})`;
+              errorMessage = `Erro no banco de dados (${supabaseError.code}): ${supabaseError.message || 'Erro desconhecido'}`;
           }
         }
       }
       
-      console.error('[useProductSave] Processed error message:', errorMessage);
+      console.error('[useProductSave] Final processed error message:', errorMessage);
       toast.error('Erro ao salvar produto: ' + errorMessage);
     } finally {
       setLoading(false);

@@ -7,7 +7,10 @@ import { VendorProduct, VendorProductInput } from './types';
  */
 export const saveVendorProduct = async (productData: VendorProductInput): Promise<VendorProduct | null> => {
   try {
-    console.log('[productSaver] Saving product data:', productData);
+    console.log('[productSaver] Starting saveVendorProduct with data:', {
+      ...productData,
+      imagens: `Array with ${productData.imagens?.length || 0} images`
+    });
     
     // Get the current authenticated user
     const { data: { user } } = await supabase.auth.getUser();
@@ -26,30 +29,38 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
     
     if (vendorError || !vendor) {
       console.error('[productSaver] Error getting vendor ID:', vendorError);
+      console.error('[productSaver] Vendor query result:', { vendor, user_id: user.id });
       throw new Error('Perfil de vendedor não encontrado');
     }
+    
+    console.log('[productSaver] Vendor found:', vendor.id);
     
     const isUpdate = !!productData.id;
     console.log(`[productSaver] ${isUpdate ? 'Updating' : 'Creating'} product for vendor ID:`, vendor.id);
     
     // Enhanced validation of required fields
     if (!productData.nome || productData.nome.trim() === '') {
+      console.error('[productSaver] Missing nome field');
       throw new Error('Nome do produto é obrigatório');
     }
     
     if (!productData.descricao || productData.descricao.trim() === '') {
+      console.error('[productSaver] Missing descricao field');
       throw new Error('Descrição do produto é obrigatória');
     }
     
     if (!productData.categoria || productData.categoria.trim() === '') {
+      console.error('[productSaver] Missing categoria field');
       throw new Error('Categoria do produto é obrigatória');
     }
     
     if (!productData.segmento || productData.segmento.trim() === '') {
+      console.error('[productSaver] Missing segmento field');
       throw new Error('Segmento do produto é obrigatório');
     }
     
     if (!productData.preco_normal || productData.preco_normal <= 0) {
+      console.error('[productSaver] Invalid preco_normal:', productData.preco_normal);
       throw new Error('Preço deve ser maior que zero');
     }
     
@@ -89,8 +100,10 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
           'saco': 'peso por saco (kg)',
           'rolo': 'metragem por rolo (metros)'
         };
+        console.error('[productSaver] Missing valor_conversao for unit:', unidadeMedida);
         throw new Error(`Para produtos vendidos em ${unidadeMedida}, é obrigatório informar ${unitLabels[unidadeMedida]}`);
       }
+      console.log('[productSaver] Conversion validation passed for unit:', unidadeMedida, 'valor_conversao:', productData.valor_conversao);
     }
     
     // Validate stock (allow decimal values)
@@ -213,6 +226,7 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
     let result;
     if (isUpdate) {
       console.log('[productSaver] Updating product with ID:', productData.id);
+      console.log('[productSaver] Update data being sent to Supabase:', JSON.stringify(dbData, null, 2));
       result = await supabase
         .from('produtos')
         .update(dbData)
@@ -221,6 +235,7 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
         .single();
     } else {
       console.log('[productSaver] Creating new product');
+      console.log('[productSaver] Insert data being sent to Supabase:', JSON.stringify(dbData, null, 2));
       result = await supabase
         .from('produtos')
         .insert(dbData)
