@@ -66,57 +66,54 @@ export const useProductSave = ({
       valorConversao: formData.valorConversao
     });
     
-    // Validar campos obrigatórios
+    // Validar campos obrigatórios com mensagens específicas
+    const errors: string[] = [];
+    
     if (!formData.nome || formData.nome.trim() === '') {
-      console.error('[useProductSave] Missing nome field');
-      throw new Error('Nome do produto é obrigatório');
+      errors.push('Nome do produto é obrigatório');
     }
     
     if (!formData.descricao || formData.descricao.trim() === '') {
-      console.error('[useProductSave] Missing descricao field');
-      throw new Error('Descrição do produto é obrigatória');
+      errors.push('Descrição do produto é obrigatória');
     }
     
     if (!formData.categoria || formData.categoria.trim() === '') {
-      console.error('[useProductSave] Missing categoria field');
-      throw new Error('Categoria do produto é obrigatória');
+      errors.push('Categoria do produto é obrigatória');
     }
     
     if (!formData.segmento || formData.segmento.trim() === '') {
-      console.error('[useProductSave] Missing segmento field');
-      throw new Error('Segmento do produto é obrigatório');
+      errors.push('Segmento do produto é obrigatório');
     }
     
     if (!formData.preco || formData.preco <= 0) {
-      console.error('[useProductSave] Invalid preco field:', formData.preco);
-      throw new Error('Preço deve ser maior que zero');
+      errors.push('Preço deve ser maior que zero');
     }
     
     // Normalizar unidade de medida
     const normalizedUnit = normalizeUnit(formData.unidadeMedida || 'unidade');
     console.log('[useProductSave] Normalized unit:', { original: formData.unidadeMedida, normalized: normalizedUnit });
     
-    // Validar campos específicos para m2
-    if (normalizedUnit === 'm2') {
-      if (!formData.valorConversao || formData.valorConversao <= 0) {
-        throw new Error('Para produtos vendidos em m², é obrigatório informar a área por caixa');
-      }
-      console.log('[useProductSave] m2 validation passed:', { valorConversao: formData.valorConversao });
-    }
-    
-    // Validar campos específicos para outras unidades que requerem conversão
-    const unitsRequiringConversion = ['litro', 'kg', 'barra', 'saco', 'rolo'];
+    // Validar campos específicos para unidades que requerem conversão
+    const unitsRequiringConversion = ['m2', 'litro', 'kg', 'barra', 'saco', 'rolo'];
     if (unitsRequiringConversion.includes(normalizedUnit)) {
       if (!formData.valorConversao || formData.valorConversao <= 0) {
         const unitLabels: { [key: string]: string } = {
-          'litro': 'volume por embalagem',
-          'kg': 'peso por embalagem',
-          'barra': 'comprimento por barra',
-          'saco': 'peso por saco',
-          'rolo': 'metragem por rolo'
+          'm2': 'Área por caixa (m²)',
+          'litro': 'Volume por embalagem (litros)',
+          'kg': 'Peso por embalagem (kg)',
+          'barra': 'Comprimento por barra (metros)',
+          'saco': 'Peso por saco (kg)',
+          'rolo': 'Metragem por rolo (metros)'
         };
-        throw new Error(`Para produtos vendidos em ${normalizedUnit}, é obrigatório informar ${unitLabels[normalizedUnit]}`);
+        errors.push(`Para produtos vendidos em ${normalizedUnit}, é obrigatório informar: ${unitLabels[normalizedUnit]}`);
       }
+    }
+    
+    // Se há erros, mostrar todos de uma vez
+    if (errors.length > 0) {
+      const errorMessage = errors.join('\n• ');
+      console.error('[useProductSave] Validation errors:', errors);
+      throw new Error('Campos obrigatórios:\n• ' + errorMessage);
     }
     
     // Validar estoque

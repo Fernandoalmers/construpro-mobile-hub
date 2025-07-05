@@ -12,12 +12,22 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
       imagens: `Array with ${productData.imagens?.length || 0} images`
     });
     
+    // Enhanced input validation
+    if (!productData || typeof productData !== 'object') {
+      throw new Error('Dados do produto são obrigatórios');
+    }
+    
     // Get the current authenticated user
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError) {
+      console.error('[productSaver] Auth error:', authError);
+      throw new Error('Erro de autenticação: ' + authError.message);
+    }
     
     if (!user) {
       console.error('[productSaver] No authenticated user found');
-      throw new Error('Usuário não autenticado');
+      throw new Error('Usuário não autenticado. Faça login novamente.');
     }
     
     // Get the vendor profile
@@ -247,6 +257,12 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
     
     if (error) {
       console.error('[productSaver] Database error:', error);
+      console.error('[productSaver] Error details:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      });
       
       // Handle specific database errors with user-friendly messages
       if (error.code === '23505') {
@@ -260,6 +276,9 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
       }
       
       if (error.code === '23503') {
+        if (error.message.includes('vendedor_id')) {
+          throw new Error('Perfil de vendedor não encontrado. Faça login novamente.');
+        }
         throw new Error('Erro de referência: verifique se categoria e segmento existem.');
       }
       
@@ -268,16 +287,21 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
       }
       
       if (error.code === '23502') {
-        // NOT NULL violation
+        // NOT NULL violation - identify specific field
         const field = error.message.includes('nome') ? 'nome' :
                      error.message.includes('categoria') ? 'categoria' :
                      error.message.includes('segmento') ? 'segmento' :
-                     error.message.includes('preco_normal') ? 'preço' : 'campo obrigatório';
+                     error.message.includes('preco_normal') ? 'preço' :
+                     error.message.includes('vendedor_id') ? 'vendedor' : 'campo obrigatório';
         throw new Error(`${field} é obrigatório e não pode estar vazio.`);
       }
       
-      // Generic database error
-      throw new Error(`Erro no banco de dados: ${error.message}`);
+      if (error.code === '42501') {
+        throw new Error('Permissão negada. Verifique se você tem acesso de vendedor.');
+      }
+      
+      // Generic database error with more context
+      throw new Error(`Erro no banco de dados (${error.code || 'UNKNOWN'}): ${error.message || 'Erro desconhecido'}`);
     }
     
     if (!data) {
