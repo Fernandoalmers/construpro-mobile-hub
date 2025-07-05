@@ -2458,6 +2458,18 @@ export type Database = {
         Args: { event_type: string; details?: Json; user_id_param?: string }
         Returns: undefined
       }
+      mask_cpf: {
+        Args: { cpf_value: string }
+        Returns: string
+      }
+      mask_email: {
+        Args: { email_value: string }
+        Returns: string
+      }
+      mask_phone: {
+        Args: { phone_value: string }
+        Returns: string
+      }
       migrate_missing_orders_to_pedidos: {
         Args: Record<PropertyKey, never>
         Returns: number

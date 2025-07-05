@@ -10,7 +10,7 @@ export const searchAllProfiles = async (query: string): Promise<VendorCustomer[]
     console.log('🔍 [searchAllProfiles] Starting search with query:', query);
     
     // Validate query length
-    if (!query || query.length < 3) {
+    if (!query || query.length < 6) {
       console.log('📭 [searchAllProfiles] Query too short:', query);
       return [];
     }
@@ -35,8 +35,8 @@ export const searchAllProfiles = async (query: string): Promise<VendorCustomer[]
         toast.error('Usuário não está cadastrado como vendedor');
       } else if (profilesError.message.includes('not active or approved')) {
         toast.error('Vendedor não está ativo ou aprovado');
-      } else if (profilesError.message.includes('at least 3 characters')) {
-        toast.error('Digite pelo menos 3 caracteres para buscar');
+      } else if (profilesError.message.includes('at least 6 characters')) {
+        toast.error('Digite pelo menos 6 caracteres para buscar');
       } else {
         toast.error('Erro ao buscar usuários: ' + profilesError.message);
       }

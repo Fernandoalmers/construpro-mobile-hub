@@ -33,27 +33,9 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
   const [noResultsFound, setNoResultsFound] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
 
-  // Format CPF with dots and dash
-  const formatCPF = (cpf: string | undefined) => {
-    if (!cpf || cpf.length !== 11) return cpf;
-    return `${cpf.slice(0, 3)}.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-${cpf.slice(9)}`;
-  };
-
-  // Format phone number with Brazilian style
-  const formatPhone = (phone: string | undefined) => {
-    if (!phone) return phone;
-    const digits = phone.replace(/\D/g, '');
-    if (digits.length === 11) {
-      return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-    } else if (digits.length === 10) {
-      return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-    }
-    return phone;
-  };
-
   // Enhanced search with debounce
   useEffect(() => {
-    if (!searchTerm || searchTerm.length < 3) {
+    if (!searchTerm || searchTerm.length < 6) {
       setShowSearchResults(false);
       setNoResultsFound(false);
       setSearchError(null);
@@ -104,7 +86,7 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
   };
 
   const handleSearch = () => {
-    if (searchTerm.length >= 3) {
+    if (searchTerm.length >= 6) {
       setIsSearching(true);
       setNoResultsFound(false);
       setSearchError(null);
@@ -123,7 +105,7 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
           setIsSearching(false);
         });
     } else {
-      toast.error('Digite pelo menos 3 caracteres para buscar todos os usuários');
+      toast.error('Digite pelo menos 6 caracteres para buscar todos os usuários');
     }
   };
 
@@ -229,7 +211,7 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
       <div className="flex gap-2 mb-1">
         <div className="relative flex-1">
           <CustomInput
-            placeholder="Nome, CPF, e-mail ou telefone (busca todos os usuários)"
+            placeholder="Nome, CPF, e-mail ou telefone (mín. 6 caracteres)"
             value={searchTerm}
             onChange={handleSearchChange}
             isSearch
@@ -247,7 +229,7 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
         </div>
         <Button 
           onClick={handleSearch} 
-          disabled={searchTerm.length < 3 || isSearching}
+          disabled={searchTerm.length < 6 || isSearching}
           className="flex items-center gap-2"
         >
           {isSearching ? <Loader2 className="animate-spin h-4 w-4" /> : <Search className="h-4 w-4" />}
@@ -255,9 +237,9 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
         </Button>
       </div>
       
-      {searchTerm && searchTerm.length < 3 && (
+      {searchTerm && searchTerm.length < 6 && (
         <p className="text-xs text-gray-500 mt-1">
-          Digite pelo menos 3 caracteres para buscar todos os usuários
+          Digite pelo menos 6 caracteres para buscar todos os usuários
         </p>
       )}
       
@@ -311,9 +293,9 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
                       )}
                     </p>
                     <div className="text-xs text-gray-500 flex flex-wrap gap-x-2">
-                      {customer.cpf && <span className="truncate">CPF: {formatCPF(customer.cpf)}</span>}
+                      {customer.cpf && <span className="truncate">CPF: {customer.cpf}</span>}
                       {customer.email && <span className="truncate">{customer.email}</span>}
-                      {customer.telefone && <span className="truncate">{formatPhone(customer.telefone)}</span>}
+                      {customer.telefone && <span className="truncate">{customer.telefone}</span>}
                     </div>
                     {isFrequentCustomer(customer) && customer.total_gasto > 0 && (
                       <div className="text-xs text-gray-400 mt-1">
@@ -342,7 +324,7 @@ const CustomerSearch: React.FC<CustomerSearchProps> = ({ onSelectCustomer }) => 
         </div>
       )}
       
-      {noResultsFound && !isSearching && searchTerm.length >= 3 && !searchError && (
+      {noResultsFound && !isSearching && searchTerm.length >= 6 && !searchError && (
         <div className="mt-4 text-center py-6 bg-gray-50 rounded-lg border border-gray-200">
           <User className="mx-auto h-8 w-8 text-gray-400" />
           <p className="mt-2 text-sm text-gray-700 font-medium">
