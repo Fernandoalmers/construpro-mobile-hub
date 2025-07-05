@@ -38,11 +38,21 @@ serve(async (req) => {
   }
 
   try {
+    console.log('=== ORDER PROCESSING EDGE FUNCTION START ===')
+    console.log('Request method:', req.method)
+    console.log('Request headers:', Object.fromEntries(req.headers.entries()))
+    
     const requestData = await req.json()
-    console.log('Request data received:', requestData)
+    console.log('=== REQUEST DATA RECEIVED ===')
+    console.log('Full request data:', JSON.stringify(requestData, null, 2))
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('Missing environment variables:', { supabaseUrl: !!supabaseUrl, supabaseServiceKey: !!supabaseServiceKey })
+      throw new Error('Server configuration error')
+    }
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
@@ -50,44 +60,86 @@ serve(async (req) => {
         persistSession: false
       }
     })
+    console.log('✅ Service client created successfully')
 
-    // Get the authenticated user
+    // Enhanced authentication validation
     const authHeader = req.headers.get('authorization')
     if (!authHeader) {
+      console.error('❌ No authorization header provided')
       throw new Error('No authorization header provided')
     }
 
     const token = authHeader.replace('Bearer ', '')
+    if (!token || token.length < 10) {
+      console.error('❌ Invalid token format')
+      throw new Error('Invalid token format')
+    }
+    
+    console.log('🔐 Creating user client with token (length:', token.length, ')')
     const userClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
       auth: { autoRefreshToken: false, persistSession: false },
       global: { headers: { Authorization: `Bearer ${token}` } }
     })
 
+    console.log('🔍 Validating user authentication...')
     const { data: { user }, error: userError } = await userClient.auth.getUser()
-    if (userError || !user) {
-      throw new Error('Invalid user token')
+    
+    if (userError) {
+      console.error('❌ User authentication error:', userError)
+      throw new Error(`Authentication failed: ${userError.message}`)
     }
+    
+    if (!user) {
+      console.error('❌ No user found from token')
+      throw new Error('Invalid user token - no user found')
+    }
+    
+    console.log('✅ User authenticated successfully:', { id: user.id, email: user.email })
 
     // Handle different actions
     if (requestData.action === 'create_order') {
-      console.log('Processing create_order action')
+      console.log('=== PROCESSING CREATE_ORDER ACTION ===')
       
       const orderData = requestData as CreateOrderRequest
+      console.log('Order data structure:', {
+        hasItems: !!orderData.items,
+        itemsLength: orderData.items?.length,
+        hasEnderecoEntrega: !!orderData.endereco_entrega,
+        valorTotal: orderData.valor_total,
+        pontosGanhos: orderData.pontos_ganhos,
+        formaPagamento: orderData.forma_pagamento
+      })
       
-      // Validate required fields
+      // Enhanced field validation with detailed logging
       if (!orderData.items || orderData.items.length === 0) {
+        console.error('❌ Validation failed: No items provided')
         throw new Error('Order items are required')
       }
       
       if (!orderData.endereco_entrega) {
+        console.error('❌ Validation failed: No delivery address provided')
         throw new Error('Delivery address is required')
       }
       
+      // Validate address structure
+      const endereco = orderData.endereco_entrega
+      if (!endereco.rua || !endereco.cidade || !endereco.estado || !endereco.cep) {
+        console.error('❌ Address validation failed:', {
+          hasRua: !!endereco.rua,
+          hasCidade: !!endereco.cidade,
+          hasEstado: !!endereco.estado,
+          hasCep: !!endereco.cep,
+          fullAddress: endereco
+        })
+        throw new Error('Incomplete delivery address - missing required fields')
+      }
+      
       if (!orderData.valor_total || orderData.valor_total <= 0) {
+        console.error('❌ Validation failed: Invalid order total:', orderData.valor_total)
         throw new Error('Order total must be greater than zero')
       }
 
-      console.log('Creating order for user:', user.id)
+      console.log('✅ All validations passed. Creating order for user:', user.id)
       
       // Create the main order
       const { data: order, error: orderError } = await supabase
@@ -134,11 +186,14 @@ serve(async (req) => {
 
       console.log('Order items created successfully')
 
-      // Update inventory
+      // Update inventory with enhanced error handling
+      console.log('=== UPDATING INVENTORY ===')
       let inventoryUpdated = true
       try {
         for (const item of orderData.items) {
-          const { error: inventoryError } = await supabase.rpc(
+          console.log(`Updating inventory for product: ${item.produto_id}, quantity: ${item.quantidade}`)
+          
+          const { data: rpcData, error: inventoryError } = await supabase.rpc(
             'update_inventory_on_order',
             { 
               p_produto_id: item.produto_id, 
@@ -147,14 +202,24 @@ serve(async (req) => {
           )
           
           if (inventoryError) {
-            console.error('Error updating inventory for product:', item.produto_id, inventoryError)
+            console.error('❌ Error updating inventory for product:', item.produto_id, inventoryError)
+            console.error('RPC Error details:', {
+              code: inventoryError.code,
+              message: inventoryError.message,
+              details: inventoryError.details,
+              hint: inventoryError.hint
+            })
             inventoryUpdated = false
+          } else {
+            console.log(`✅ Inventory updated successfully for product: ${item.produto_id}`)
           }
         }
       } catch (error) {
-        console.error('Exception updating inventory:', error)
+        console.error('❌ Exception updating inventory:', error)
         inventoryUpdated = false
       }
+      
+      console.log('Inventory update completed. Success:', inventoryUpdated)
 
       // Register points transaction
       let pointsRegistered = true

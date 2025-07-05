@@ -9,29 +9,67 @@ export async function createOrder(orderData: CreateOrderPayload): Promise<string
     console.log('=== Starting Order Creation ===');
     console.log('Raw order data received:', orderData);
     
-    // Verify user session before making the request
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    // Enhanced session verification with retry
+    console.log('=== Verifying User Session ===');
+    let session = null;
+    let sessionError = null;
+    
+    // Try to get session, with one refresh attempt if needed
+    ({ data: { session }, error: sessionError } = await supabase.auth.getSession());
     
     if (sessionError || !session) {
-      console.error('No valid session found:', sessionError);
-      toast.error('Sessão expirada. Por favor, faça login novamente.');
-      throw new Error('Sessão de autenticação inválida ou expirada');
+      console.warn('Initial session check failed, attempting refresh...', sessionError);
+      
+      // Try refreshing the session once
+      const { error: refreshError } = await supabase.auth.refreshSession();
+      if (!refreshError) {
+        // Try getting session again after refresh
+        ({ data: { session }, error: sessionError } = await supabase.auth.getSession());
+      }
+      
+      if (sessionError || !session) {
+        console.error('Session verification failed after refresh:', sessionError);
+        toast.error('Sessão expirada. Por favor, faça login novamente.');
+        throw new Error('Sessão de autenticação inválida ou expirada');
+      }
     }
     
-    console.log('Valid session found for user:', session.user.id);
+    console.log('✅ Valid session found for user:', session.user.id);
     
-    // Validate required order data
+    // Enhanced validation with detailed logging
+    console.log('=== Validating Order Data ===');
+    console.log('Items count:', orderData.items?.length);
+    console.log('Address provided:', !!orderData.endereco_entrega);
+    console.log('Order total:', orderData.valor_total);
+    
     if (!orderData.items || orderData.items.length === 0) {
+      console.error('❌ Validation failed: No items in order');
       throw new Error('Itens do pedido são obrigatórios');
     }
     
     if (!orderData.endereco_entrega) {
+      console.error('❌ Validation failed: No delivery address');
       throw new Error('Endereço de entrega é obrigatório');
     }
     
+    // Validate address completeness
+    const addr = orderData.endereco_entrega;
+    if (!addr.rua || !addr.cidade || !addr.estado || !addr.cep) {
+      console.error('❌ Address validation failed:', {
+        rua: !!addr.rua,
+        cidade: !!addr.cidade,
+        estado: !!addr.estado,
+        cep: !!addr.cep
+      });
+      throw new Error('Endereço de entrega incompleto - campos obrigatórios em falta');
+    }
+    
     if (!orderData.valor_total || orderData.valor_total <= 0) {
+      console.error('❌ Validation failed: Invalid total value:', orderData.valor_total);
       throw new Error('Valor total deve ser maior que zero');
     }
+    
+    console.log('✅ All order data validations passed');
     
     // Prepare order data as a plain JavaScript object (not JSON string)
     const orderPayload = {
