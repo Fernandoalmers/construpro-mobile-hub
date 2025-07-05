@@ -34,10 +34,12 @@ const ProductCategorySelect: React.FC<ProductCategorySelectProps> = ({
   const [filteredCategories, setFilteredCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const previousSegmentId = useRef<string>('');
+  const isFirstRender = useRef<boolean>(true);
 
   console.log('[ProductCategorySelect] Component rendered with segmentId:', segmentId);
   console.log('[ProductCategorySelect] Current value:', value);
   console.log('[ProductCategorySelect] Previous segmentId:', previousSegmentId.current);
+  console.log('[ProductCategorySelect] Is first render:', isFirstRender.current);
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -63,11 +65,14 @@ const ProductCategorySelect: React.FC<ProductCategorySelectProps> = ({
   useEffect(() => {
     console.log('[ProductCategorySelect] Filtering categories for segmentId:', segmentId);
     console.log('[ProductCategorySelect] Previous segmentId was:', previousSegmentId.current);
+    console.log('[ProductCategorySelect] Is first render:', isFirstRender.current);
     
     if (!segmentId || segmentId.trim() === '') {
       console.log('[ProductCategorySelect] No segmentId provided, showing all categories');
       setFilteredCategories(categories);
-      previousSegmentId.current = '';
+      if (!isFirstRender.current) {
+        previousSegmentId.current = '';
+      }
       return;
     }
 
@@ -79,6 +84,14 @@ const ProductCategorySelect: React.FC<ProductCategorySelectProps> = ({
     
     console.log('[ProductCategorySelect] Filtered categories:', filtered);
     setFilteredCategories(filtered);
+
+    // Skip clearing logic on first render to avoid clearing during initialization
+    if (isFirstRender.current) {
+      console.log('[ProductCategorySelect] First render - skipping category clearing logic');
+      previousSegmentId.current = segmentId;
+      isFirstRender.current = false;
+      return;
+    }
 
     // Only clear selection if segment actually changed AND current category is not valid for new segment
     const segmentActuallyChanged = previousSegmentId.current !== '' && previousSegmentId.current !== segmentId;

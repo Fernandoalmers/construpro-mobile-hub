@@ -50,11 +50,9 @@ const GeneralInformationSection: React.FC<GeneralInformationSectionProps> = ({
     setCurrentSegmentId(newSegmentId);
     onSegmentIdChange(newSegmentId);
     
-    // Clear category when segment changes
-    if (form.getValues('categoria')) {
-      console.log('[GeneralInformationSection] Clearing category due to segment change');
-      form.setValue('categoria', '');
-    }
+    // Let ProductCategorySelect handle its own category clearing logic
+    // to avoid conflicts and unnecessary clearing
+    console.log('[GeneralInformationSection] Segment ID updated, letting category selector handle validation');
   };
 
   return (
