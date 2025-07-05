@@ -5,6 +5,52 @@ import ProductImageDisplay from '../orders/ProductImageDisplay';
 import { PedidoItem } from '@/services/vendor/orders/pedidosService';
 import { Package, Hash, Barcode } from 'lucide-react';
 
+// Helper function to format quantity based on unit type
+const formatQuantidade = (quantidade: number, unidadeMedida: string = 'unidade'): string => {
+  const qty = Number(quantidade);
+  const isInteger = qty % 1 === 0;
+  
+  // Format the number part
+  const formattedQty = isInteger ? qty.toString() : qty.toFixed(2);
+  
+  // Determine the unit suffix
+  const getUnitSuffix = (unit: string): string => {
+    switch (unit.toLowerCase()) {
+      case 'quilograma':
+      case 'kg':
+        return ' kg';
+      case 'grama':
+      case 'g':
+        return ' g';
+      case 'litro':
+      case 'l':
+        return ' L';
+      case 'mililitro':
+      case 'ml':
+        return ' ml';
+      case 'metro':
+      case 'm':
+        return ' m';
+      case 'metro_quadrado':
+      case 'm²':
+      case 'm2':
+        return ' m²';
+      case 'centimetro':
+      case 'cm':
+        return ' cm';
+      case 'pacote':
+        return qty === 1 ? ' pacote' : ' pacotes';
+      case 'caixa':
+        return qty === 1 ? ' caixa' : ' caixas';
+      case 'unidade':
+      default:
+        return ' un';
+    }
+  };
+  
+  return formattedQty + getUnitSuffix(unidadeMedida);
+};
+
 interface OrderItemsListProps {
   items: PedidoItem[];
 }
@@ -34,12 +80,12 @@ const OrderItemsList: React.FC<OrderItemsListProps> = ({ items }) => {
                 
                 {/* Grid de informações - responsivo */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-                  {/* Quantidade */}
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Package size={16} className="text-gray-500 flex-shrink-0" />
-                    <span className="text-gray-600 flex-shrink-0">Quantidade:</span>
-                    <span className="font-medium text-gray-900">{item.quantidade} un</span>
-                  </div>
+                   {/* Quantidade */}
+                   <div className="flex items-center gap-2 min-w-0">
+                     <Package size={16} className="text-gray-500 flex-shrink-0" />
+                     <span className="text-gray-600 flex-shrink-0">Quantidade:</span>
+                     <span className="font-medium text-gray-900">{formatQuantidade(item.quantidade, item.produto?.unidade_medida || 'unidade')}</span>
+                   </div>
                   
                   {/* Preço unitário */}
                   <div className="flex items-center gap-2 min-w-0">

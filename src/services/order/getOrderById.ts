@@ -94,7 +94,7 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
     // Get order data with improved query - incluindo os novos campos de desconto
     const { data: orderData, error: orderError } = await supabase
       .from('orders')
-      .select(`
+        .select(`
         *,
         order_items (
           *,
@@ -104,7 +104,8 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
             imagens,
             descricao,
             preco_normal,
-            categoria
+            categoria,
+            unidade_medida
           )
         )
       `)
@@ -167,7 +168,8 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
           imagem_url: imageUrl,
           descricao: productData?.descricao || '',
           preco_normal: productData?.preco_normal || item.preco_unitario,
-          categoria: productData?.categoria || ''
+          categoria: productData?.categoria || '',
+          unidade_medida: productData?.unidade_medida || 'unidade'
         };
         
         console.log(`[getOrderById] Processed product ${item.produto_id}:`, {
@@ -241,7 +243,7 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
       if (productIds.length > 0) {
         const { data: productsData } = await supabase
           .from('produtos')
-          .select('id, nome, imagens, descricao, preco_normal, categoria')
+          .select('id, nome, imagens, descricao, preco_normal, categoria, unidade_medida')
           .in('id', productIds);
         
         const productsMap = new Map((productsData || []).map(p => [p.id, p]));
@@ -267,7 +269,8 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
               imagem_url: imageUrl,
               descricao: productData?.descricao || '',
               preco_normal: productData?.preco_normal || item.preco_unitario,
-              categoria: productData?.categoria || ''
+              categoria: productData?.categoria || '',
+              unidade_medida: productData?.unidade_medida || 'unidade'
             }
           };
         });

@@ -32,6 +32,7 @@ export interface ProductData {
   preco_normal: number;
   categoria: string;
   preco_promocional?: number;
+  unidade_medida?: string;
 }
 
 export interface OrderItem {

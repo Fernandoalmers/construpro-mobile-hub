@@ -21,6 +21,7 @@ export interface PedidoItem {
     preco_normal?: number;
     sku?: string | null;
     codigo_barras?: string | null;
+    unidade_medida?: string;
   };
 }
 
@@ -56,7 +57,7 @@ const fetchProductWithImages = async (produto_id: string) => {
   try {
     const { data: produtoData, error: produtoError } = await supabase
       .from('produtos')
-      .select('nome, imagens')
+      .select('nome, imagens, unidade_medida')
       .eq('id', produto_id)
       .single();
     
@@ -91,7 +92,8 @@ const fetchProductWithImages = async (produto_id: string) => {
     
     const result = {
       nome: produtoData.nome,
-      imagens: normalizedImages
+      imagens: normalizedImages,
+      unidade_medida: produtoData.unidade_medida || 'unidade'
     };
     
     return result;

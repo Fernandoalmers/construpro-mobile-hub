@@ -8,6 +8,52 @@ interface OrderItemsListProps {
   items: OrderItem[];
 }
 
+// Helper function to format quantity based on unit type
+const formatQuantity = (quantidade: number, unidadeMedida: string = 'unidade'): string => {
+  const qty = Number(quantidade);
+  const isInteger = qty % 1 === 0;
+  
+  // Format the number part
+  const formattedQty = isInteger ? qty.toString() : qty.toFixed(2);
+  
+  // Determine the unit suffix
+  const getUnitSuffix = (unit: string, qty: number): string => {
+    switch (unit.toLowerCase()) {
+      case 'quilograma':
+      case 'kg':
+        return ' kg';
+      case 'grama':
+      case 'g':
+        return ' g';
+      case 'litro':
+      case 'l':
+        return ' L';
+      case 'mililitro':
+      case 'ml':
+        return ' ml';
+      case 'metro':
+      case 'm':
+        return ' m';
+      case 'metro_quadrado':
+      case 'm²':
+      case 'm2':
+        return ' m²';
+      case 'centimetro':
+      case 'cm':
+        return ' cm';
+      case 'pacote':
+        return qty === 1 ? ' pacote' : ' pacotes';
+      case 'caixa':
+        return qty === 1 ? ' caixa' : ' caixas';
+      case 'unidade':
+      default:
+        return qty === 1 ? ' un' : ' un';
+    }
+  };
+  
+  return formattedQty + getUnitSuffix(unidadeMedida, qty);
+};
+
 const OrderItemsList: React.FC<OrderItemsListProps> = ({ items }) => {
   // Log detailed info about items for debugging
   React.useEffect(() => {
@@ -72,7 +118,9 @@ const OrderItemsList: React.FC<OrderItemsListProps> = ({ items }) => {
                   <h4 className="font-medium text-sm line-clamp-2">{item.produto?.nome || 'Produto'}</h4>
                   <div className="mt-2 text-gray-600 text-sm">
                     <div className="flex justify-between items-center">
-                      <span>Quantidade: {item.quantidade}x</span>
+                      <span>
+                        Quantidade: {formatQuantity(item.quantidade, item.produto?.unidade_medida || 'unidade')}
+                      </span>
                       <span>R$ {Number(item.preco_unitario).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between items-center mt-1">

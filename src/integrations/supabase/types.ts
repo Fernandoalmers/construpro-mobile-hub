@@ -2280,11 +2280,11 @@ export type Database = {
         Returns: undefined
       }
       can_access_order: {
-        Args: { order_id: string }
+        Args: { p_order_id: string }
         Returns: boolean
       }
       can_vendor_access_order: {
-        Args: { order_id: string; vendor_id: string }
+        Args: { p_order_id: string; p_vendor_id: string }
         Returns: boolean
       }
       check_order_integrity: {
