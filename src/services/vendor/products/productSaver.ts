@@ -53,12 +53,44 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
       throw new Error('Preço deve ser maior que zero');
     }
     
-    // Validate and clean unit of measurement
-    const validUnits = ['unidade', 'm2', 'litro', 'kg', 'caixa', 'pacote', 'barra', 'saco', 'rolo'];
-    const unidadeMedida = productData.unidade_medida || 'unidade';
+    // Validate and clean unit of measurement with normalization
+    const normalizeUnit = (unit: string): string => {
+      const unitMap: { [key: string]: string } = {
+        'Metro quadrado (m²)': 'm2',
+        'm²': 'm2',
+        'metro_quadrado': 'm2',
+        'metro quadrado': 'm2',
+        'Litro': 'litro',
+        'Quilograma (kg)': 'kg',
+        'kg': 'kg',
+        'Caixa': 'caixa',
+        'Pacote': 'pacote',
+        'Barra': 'barra',
+        'Saco': 'saco',
+        'Rolo': 'rolo',
+        'Unidade': 'unidade'
+      };
+      
+      return unitMap[unit] || unit.toLowerCase();
+    };
     
-    if (!validUnits.includes(unidadeMedida)) {
-      console.warn('[productSaver] Invalid unit, using default:', unidadeMedida);
+    const unidadeMedida = normalizeUnit(productData.unidade_medida || 'unidade');
+    console.log('[productSaver] Normalized unit:', { original: productData.unidade_medida, normalized: unidadeMedida });
+    
+    // Validate required conversion values for specific units
+    const unitsRequiringConversion = ['m2', 'litro', 'kg', 'barra', 'saco', 'rolo'];
+    if (unitsRequiringConversion.includes(unidadeMedida)) {
+      if (!productData.valor_conversao || productData.valor_conversao <= 0) {
+        const unitLabels: { [key: string]: string } = {
+          'm2': 'área por caixa (m²)',
+          'litro': 'volume por embalagem (litros)',
+          'kg': 'peso por embalagem (kg)',
+          'barra': 'comprimento por barra (metros)',
+          'saco': 'peso por saco (kg)',
+          'rolo': 'metragem por rolo (metros)'
+        };
+        throw new Error(`Para produtos vendidos em ${unidadeMedida}, é obrigatório informar ${unitLabels[unidadeMedida]}`);
+      }
     }
     
     // Validate stock (allow decimal values)
@@ -126,6 +158,13 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
       }
     }
     
+    // Auto-set controle_quantidade based on unit type
+    let controleQuantidade = productData.controle_quantidade || 'livre';
+    if (['m2', 'barra', 'rolo'].includes(unidadeMedida)) {
+      controleQuantidade = 'multiplo';
+      console.log('[productSaver] Auto-set controle_quantidade to multiplo for unit:', unidadeMedida);
+    }
+    
     // Prepare data for insert/update with proper field mapping and validation
     const dbData = {
       nome: productData.nome.trim(),
@@ -152,9 +191,9 @@ export const saveVendorProduct = async (productData: VendorProductInput): Promis
       pontos_consumidor: productData.pontos_consumidor || 0,
       pontos_profissional: productData.pontos_profissional || 0,
       // Unit and measurement fields with validation
-      unidade_medida: validUnits.includes(unidadeMedida) ? unidadeMedida : 'unidade',
+      unidade_medida: unidadeMedida,
       valor_conversao: productData.valor_conversao || null,
-      controle_quantidade: productData.controle_quantidade || 'livre',
+      controle_quantidade: controleQuantidade,
       // Segment mapping
       segmento_id: productData.segmento_id || null
     };

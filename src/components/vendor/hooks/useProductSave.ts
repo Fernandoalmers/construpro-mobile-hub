@@ -33,6 +33,27 @@ export const useProductSave = ({
 }: UseProductSaveProps) => {
   const [uploadingImages, setUploadingImages] = useState(false);
 
+  // Função para normalizar unidade de medida
+  const normalizeUnit = (unit: string): string => {
+    const unitMap: { [key: string]: string } = {
+      'Metro quadrado (m²)': 'm2',
+      'm²': 'm2',
+      'metro_quadrado': 'm2',
+      'metro quadrado': 'm2',
+      'Litro': 'litro',
+      'Quilograma (kg)': 'kg',
+      'kg': 'kg',
+      'Caixa': 'caixa',
+      'Pacote': 'pacote',
+      'Barra': 'barra',
+      'Saco': 'saco',
+      'Rolo': 'rolo',
+      'Unidade': 'unidade'
+    };
+    
+    return unitMap[unit] || unit.toLowerCase();
+  };
+
   // Função para validar e limpar dados antes do salvamento
   const validateAndCleanData = (formData: ProductFormData) => {
     console.log('[useProductSave] Validating form data:', formData);
@@ -58,12 +79,31 @@ export const useProductSave = ({
       throw new Error('Preço deve ser maior que zero');
     }
     
-    // Validar unidade de medida
-    const validUnits = ['unidade', 'm2', 'litro', 'kg', 'caixa', 'pacote', 'barra', 'saco', 'rolo'];
-    const unidadeMedida = formData.unidadeMedida || 'unidade';
+    // Normalizar unidade de medida
+    const normalizedUnit = normalizeUnit(formData.unidadeMedida || 'unidade');
+    console.log('[useProductSave] Normalized unit:', { original: formData.unidadeMedida, normalized: normalizedUnit });
     
-    if (!validUnits.includes(unidadeMedida)) {
-      console.warn('[useProductSave] Invalid unit, defaulting to "unidade":', unidadeMedida);
+    // Validar campos específicos para m2
+    if (normalizedUnit === 'm2') {
+      if (!formData.valorConversao || formData.valorConversao <= 0) {
+        throw new Error('Para produtos vendidos em m², é obrigatório informar a área por caixa');
+      }
+      console.log('[useProductSave] m2 validation passed:', { valorConversao: formData.valorConversao });
+    }
+    
+    // Validar campos específicos para outras unidades que requerem conversão
+    const unitsRequiringConversion = ['litro', 'kg', 'barra', 'saco', 'rolo'];
+    if (unitsRequiringConversion.includes(normalizedUnit)) {
+      if (!formData.valorConversao || formData.valorConversao <= 0) {
+        const unitLabels: { [key: string]: string } = {
+          'litro': 'volume por embalagem',
+          'kg': 'peso por embalagem',
+          'barra': 'comprimento por barra',
+          'saco': 'peso por saco',
+          'rolo': 'metragem por rolo'
+        };
+        throw new Error(`Para produtos vendidos em ${normalizedUnit}, é obrigatório informar ${unitLabels[normalizedUnit]}`);
+      }
     }
     
     // Validar estoque
@@ -77,7 +117,7 @@ export const useProductSave = ({
       descricao: formData.descricao.trim(),
       categoria: formData.categoria.trim(),
       segmento: formData.segmento.trim(),
-      unidadeMedida: validUnits.includes(unidadeMedida) ? unidadeMedida : 'unidade',
+      unidadeMedida: normalizedUnit,
       estoque
     };
   };
@@ -148,8 +188,8 @@ export const useProductSave = ({
         codigo_barras: cleanedData.codigoBarras?.trim() || null, // Map codigoBarras -> codigo_barras
         estoque: cleanedData.estoque,
         unidade_medida: cleanedData.unidadeMedida, // Map unidadeMedida -> unidade_medida
-        valor_conversao: cleanedData.valorConversao,
-        controle_quantidade: cleanedData.controleQuantidade || 'livre',
+        valor_conversao: cleanedData.valorConversao || null,
+        controle_quantidade: cleanedData.controleQuantidade || (['m2', 'barra', 'rolo'].includes(cleanedData.unidadeMedida) ? 'multiplo' : 'livre'),
         imagens: [...existingImages], // Start with existing images
         // Ensure we have a valid segmento_id if available
         segmento_id: cleanedData.segmentoId || null
@@ -220,7 +260,10 @@ export const useProductSave = ({
         precoPromocional: savedProduct.preco_promocional,
         promocaoAtiva: savedProduct.promocao_ativa || false,
         pontosConsumidor: savedProduct.pontos_consumidor || prev.pontosConsumidor,
-        pontosProfissional: savedProduct.pontos_profissional || prev.pontosProfissional
+        pontosProfissional: savedProduct.pontos_profissional || prev.pontosProfissional,
+        unidadeMedida: savedProduct.unidade_medida || prev.unidadeMedida,
+        valorConversao: savedProduct.valor_conversao || prev.valorConversao,
+        controleQuantidade: savedProduct.controle_quantidade || prev.controleQuantidade
       }));
 
       // Update image states

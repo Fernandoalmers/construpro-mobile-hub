@@ -67,10 +67,45 @@ export const useProductFormData = (initialData?: any) => {
         console.log('[useProductFormData] Cleared promotional data');
       }
       
+      // Auto-set controle_quantidade based on unit
+      if (field === 'unidadeMedida') {
+        const normalizedUnit = normalizeUnit(value);
+        if (['m2', 'barra', 'rolo'].includes(normalizedUnit)) {
+          newData.controleQuantidade = 'multiplo';
+          console.log('[useProductFormData] Auto-set controle_quantidade to multiplo for unit:', normalizedUnit);
+        } else {
+          // Only change if it was previously set to multiplo due to unit requirements
+          if (prev.controleQuantidade === 'multiplo' && ['m2', 'barra', 'rolo'].includes(normalizeUnit(prev.unidadeMedida))) {
+            newData.controleQuantidade = 'livre';
+          }
+        }
+      }
+      
       console.log('[useProductFormData] Updated form data:', newData);
       return newData;
     });
   }, []);
+
+  // Função para normalizar unidade de medida
+  const normalizeUnit = (unit: string): string => {
+    const unitMap: { [key: string]: string } = {
+      'Metro quadrado (m²)': 'm2',
+      'm²': 'm2',
+      'metro_quadrado': 'm2',
+      'metro quadrado': 'm2',
+      'Litro': 'litro',
+      'Quilograma (kg)': 'kg',
+      'kg': 'kg',
+      'Caixa': 'caixa',
+      'Pacote': 'pacote',
+      'Barra': 'barra',
+      'Saco': 'saco',
+      'Rolo': 'rolo',
+      'Unidade': 'unidade'
+    };
+    
+    return unitMap[unit] || unit.toLowerCase();
+  };
 
   const handleSegmentIdChange = useCallback((segmentId: string) => {
     console.log('[useProductFormData] Segment ID changed to:', segmentId);
@@ -114,6 +149,9 @@ export const useProductFormData = (initialData?: any) => {
       }
     }
     
+    // Normalize unit from database
+    const normalizedUnit = normalizeUnit(data.unidade_medida || 'unidade');
+    
     const initialFormData: ProductFormData = {
       id: data.id || undefined, // Include the product ID for editing
       nome: data.nome || '',
@@ -132,9 +170,9 @@ export const useProductFormData = (initialData?: any) => {
       sku: data.sku || '',
       codigoBarras: data.codigo_barras || '',
       imagens: processedImages,
-      unidadeMedida: data.unidade_medida || 'unidade',
+      unidadeMedida: normalizedUnit,
       valorConversao: data.valor_conversao || null,
-      controleQuantidade: data.controle_quantidade || 'livre'
+      controleQuantidade: data.controle_quantidade || (['m2', 'barra', 'rolo'].includes(normalizedUnit) ? 'multiplo' : 'livre')
     };
     
     console.log('[useProductFormData] Initialized form data:', initialFormData);
