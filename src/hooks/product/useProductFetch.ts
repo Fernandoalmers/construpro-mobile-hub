@@ -154,6 +154,8 @@ export function useProductFetch(id: string | undefined) {
           vendedor_id: data.vendedor_id, // FIX: Correctly map vendedor_id
           status: data.status as "pendente" | "aprovado" | "rejeitado",
           unidade_medida: 'unidade_medida' in data ? String(data.unidade_medida) : 'unidade',
+          controle_quantidade: data.controle_quantidade,
+          valor_conversao: data.valor_conversao,
           codigo_barras: data.codigo_barras,
           sku: data.sku,
         };
