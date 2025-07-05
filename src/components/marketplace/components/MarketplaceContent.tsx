@@ -8,6 +8,7 @@ import SmartCepModal from './SmartCepModal';
 import PageTitleSection from './PageTitleSection';
 import NoDeliveryState from './NoDeliveryState';
 import ProductsDisplay from './ProductsDisplay';
+import MarketplaceDebugPanel from './MarketplaceDebugPanel';
 import { useDeliveryZones } from '@/hooks/useDeliveryZones';
 import { useMarketplaceFilters } from '@/hooks/useMarketplaceFilters';
 
@@ -25,6 +26,10 @@ interface MarketplaceContentProps {
   onLojaClick?: (lojaId: string) => void;
   setSelectedSegmentId?: (id: string | null) => void;
   updateSegmentURL?: (id: string | null) => void;
+  // NOVO: Dados para debug
+  allProducts?: any[];
+  allStores?: any[];
+  marketplaceError?: string | null;
 }
 
 const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
@@ -40,7 +45,10 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
   viewType,
   onLojaClick,
   setSelectedSegmentId,
-  updateSegmentURL
+  updateSegmentURL,
+  allProducts = [],
+  allStores = [],
+  marketplaceError = null
 }) => {
   const navigate = useNavigate();
   const { hasActiveZones, currentCep, resolveZones, isInitialized } = useDeliveryZones();
@@ -175,6 +183,14 @@ const MarketplaceContent: React.FC<MarketplaceContentProps> = ({
         onOpenChange={setShowCepModal}
         onCepChange={handleCepChange}
         currentCep={currentCep}
+      />
+
+      {/* Painel de Debug para Loja Beaba */}
+      <MarketplaceDebugPanel
+        products={allProducts}
+        stores={allStores}
+        isLoading={isLoading}
+        error={marketplaceError}
       />
     </div>
   );

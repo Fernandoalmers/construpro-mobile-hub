@@ -27,20 +27,34 @@ export const useOptimizedMarketplace = () => {
   // Aguarda inicialização das zonas antes de prosseguir
   const shouldFetchProducts = zonesInitialized && !zonesLoading;
   
-  // IDs dos vendedores com cache inteligente
+  // IDs dos vendedores com cache inteligente - DEBUG BEABA
   const availableVendorIds = useMemo(() => {
+    console.log('[useOptimizedMarketplace] 🔍 BEABA DEBUG - Calculando vendedores disponíveis:', {
+      hasDefinedCepWithoutCoverage,
+      shouldShowAllProducts,
+      currentCep,
+      hasActiveZones,
+      zonesCount: currentZones.length,
+      zoneVendors: currentZones.map(z => z.vendor_id)
+    });
+    
     if (hasDefinedCepWithoutCoverage) {
+      console.log('[useOptimizedMarketplace] 🚫 BEABA DEBUG - CEP sem cobertura, retornando array vazio');
       return [];
     }
     
     if (shouldShowAllProducts || !currentCep) {
+      console.log('[useOptimizedMarketplace] 🌍 BEABA DEBUG - Mostrando todos os produtos (sem filtro por zona)');
       return undefined;
     }
     
     if (hasActiveZones && currentZones.length > 0) {
-      return currentZones.map(zone => zone.vendor_id);
+      const vendorIds = currentZones.map(zone => zone.vendor_id);
+      console.log('[useOptimizedMarketplace] 🎯 BEABA DEBUG - Filtrando por vendedores das zonas:', vendorIds);
+      return vendorIds;
     }
     
+    console.log('[useOptimizedMarketplace] ⚠️ BEABA DEBUG - Condição não coberta, retornando undefined');
     return undefined;
   }, [currentZones, hasActiveZones, currentCep, shouldShowAllProducts, hasDefinedCepWithoutCoverage]);
 
@@ -53,14 +67,18 @@ export const useOptimizedMarketplace = () => {
     queryKey: [
       'marketplace-products', 
       currentCep || 'all',
-      availableVendorIds?.length || 'all',
-      hasDefinedCepWithoutCoverage ? 'no-coverage' : 'with-coverage'
+      // CORRIGIDO: Usar IDs específicos em vez do length
+      availableVendorIds?.length ? availableVendorIds.sort().join(',') : 'all',
+      hasDefinedCepWithoutCoverage ? 'no-coverage' : 'with-coverage',
+      // NOVO: Adicionar timestamp de inicialização para evitar cache stale
+      zonesInitialized ? 'initialized' : 'not-initialized'
     ],
     queryFn: async () => {
       console.log('[useOptimizedMarketplace] 🔄 Carregando produtos com filtros:', {
         currentCep,
         availableVendorIds: availableVendorIds?.length || 'all',
-        hasDefinedCepWithoutCoverage
+        hasDefinedCepWithoutCoverage,
+        zonesInitialized
       });
       
       if (hasDefinedCepWithoutCoverage) {
@@ -71,6 +89,19 @@ export const useOptimizedMarketplace = () => {
       try {
         const result = await getMarketplaceProducts(availableVendorIds);
         console.log('[useOptimizedMarketplace] ✅ Produtos carregados:', result.length);
+        
+        // NOVO: Validação de integridade específica para Beaba
+        const beabaProducts = result.filter(p => 
+          p?.store_name?.toLowerCase().includes('beaba') || 
+          p?.vendedores?.nome_loja?.toLowerCase().includes('beaba')
+        );
+        
+        if (beabaProducts.length > 0) {
+          console.log('[useOptimizedMarketplace] 🔍 BEABA DEBUG - Produtos da Beaba carregados:', beabaProducts.length);
+        } else if (availableVendorIds && availableVendorIds.length > 0) {
+          console.warn('[useOptimizedMarketplace] ⚠️ BEABA DEBUG - Nenhum produto da Beaba encontrado, mas vendedores filtrados:', availableVendorIds);
+        }
+        
         return result;
       } catch (error) {
         console.error('[useOptimizedMarketplace] ❌ Erro ao carregar produtos:', error);
@@ -82,7 +113,8 @@ export const useOptimizedMarketplace = () => {
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
-    enabled: shouldFetchProducts,
+    // CORRIGIDO: Só buscar quando zonas estão inicializadas E há CEP válido
+    enabled: shouldFetchProducts && (zonesInitialized || !currentCep),
     retry: (failureCount, error) => {
       // Retry até 2 vezes, mas não para erros de rede básicos
       if (failureCount >= 2) return false;
