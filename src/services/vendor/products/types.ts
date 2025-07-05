@@ -21,6 +21,9 @@ export interface VendorProduct {
   codigo_barras?: string;
   created_at?: string;
   updated_at?: string;
+  unidade_medida?: string;
+  valor_conversao?: number | null;
+  controle_quantidade?: string;
 }
 
 export interface VendorProductInput {
