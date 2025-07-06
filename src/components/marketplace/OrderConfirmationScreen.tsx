@@ -38,15 +38,25 @@ const OrderConfirmationScreen: React.FC = () => {
         setLoading(true);
         console.log(`Buscando detalhes do pedido ${orderId} (tentativa: ${retryCount + 1})`);
         
-        // Try with increased timeout for first attempt
-        let order: OrderData | null;
+        let order: OrderData | null = null;
         
         try {
-          // First try with direct method
-          order = await orderService.getOrderByIdDirect(orderId);
-        } catch (directError) {
-          console.log("Error with direct method, falling back to regular method", directError);
-          order = await orderService.getOrderById(orderId);
+          // First try the improved RPC method
+          order = await orderService.getOrderByIdRPC(orderId);
+          console.log('✅ Order retrieved using RPC method');
+        } catch (rpcError) {
+          console.log("RPC method failed, trying direct method", rpcError);
+          
+          try {
+            // Fallback to direct method
+            order = await orderService.getOrderByIdDirect(orderId);
+            console.log('✅ Order retrieved using direct method');
+          } catch (directError) {
+            console.log("Direct method failed, trying regular method", directError);
+            // Final fallback to regular method
+            order = await orderService.getOrderById(orderId);
+            console.log('✅ Order retrieved using regular method');
+          }
         }
         
         if (!order) {
