@@ -36,7 +36,7 @@ const OrderConfirmationScreen: React.FC = () => {
     const fetchOrderDetails = async () => {
       try {
         setLoading(true);
-        console.log(`Buscando detalhes do pedido ${orderId} (tentativa: ${retryCount + 1})`);
+        console.log(`🔍 Buscando detalhes do pedido ${orderId} (tentativa: ${retryCount + 1})`);
         
         let order: OrderData | null = null;
         
@@ -45,14 +45,14 @@ const OrderConfirmationScreen: React.FC = () => {
           order = await orderService.getOrderByIdRPC(orderId);
           console.log('✅ Order retrieved using RPC method');
         } catch (rpcError) {
-          console.log("RPC method failed, trying direct method", rpcError);
+          console.log("⚠️ RPC method failed, trying direct method", rpcError);
           
           try {
             // Fallback to direct method
             order = await orderService.getOrderByIdDirect(orderId);
             console.log('✅ Order retrieved using direct method');
           } catch (directError) {
-            console.log("Direct method failed, trying regular method", directError);
+            console.log("⚠️ Direct method failed, trying regular method", directError);
             // Final fallback to regular method
             order = await orderService.getOrderById(orderId);
             console.log('✅ Order retrieved using regular method');
@@ -63,31 +63,45 @@ const OrderConfirmationScreen: React.FC = () => {
           throw new Error('Pedido não encontrado');
         }
         
-        console.log('Detalhes do pedido recuperados:', order);
+        console.log('📋 Detalhes do pedido recuperados:', {
+          id: order.id,
+          status: order.status,
+          valor_total: order.valor_total,
+          pontos_ganhos: order.pontos_ganhos,
+          itemsCount: order.items?.length || 0
+        });
+        
         setOrderDetails(order);
 
         // IMPORTANTE: Atualizar o perfil do usuário para obter o saldo de pontos atualizado
-        await refreshProfile();
+        try {
+          await refreshProfile();
+          console.log('✅ Profile refreshed successfully');
+        } catch (profileError) {
+          console.warn('⚠️ Failed to refresh profile:', profileError);
+          // Don't fail the whole process if profile refresh fails
+        }
         
         setLoading(false);
+        setError(null);
+        
       } catch (err: any) {
-        console.error('Error fetching order details:', err);
+        console.error('❌ Error fetching order details:', err);
         
         // If we've tried less than 3 times, retry after a delay
         if (retryCount < 2) {
-          console.log(`Tentando novamente em 1 segundo (tentativa ${retryCount + 1})`);
-          setRetryCount(prev => prev + 1);
+          console.log(`🔄 Tentando novamente em 2 segundos (tentativa ${retryCount + 1}/3)`);
           setTimeout(() => {
-            // This will trigger the useEffect again
-            fetchOrderDetails();
-          }, 1000);
+            setRetryCount(prev => prev + 1);
+          }, 2000);
         } else {
-          setError(err.message || 'Não foi possível carregar os detalhes do pedido');
+          const errorMessage = err.message || 'Não foi possível carregar os detalhes do pedido';
+          setError(errorMessage);
           setLoading(false);
           
           // Show toast for better visibility
           toast.error('Erro ao carregar confirmação do pedido', {
-            description: err.message || 'Verifique sua conexão e tente novamente'
+            description: errorMessage + '. Verifique sua conexão e tente novamente'
           });
         }
       }
@@ -110,7 +124,7 @@ const OrderConfirmationScreen: React.FC = () => {
     return (
       <CheckoutErrorState 
         error={error || "Pedido não encontrado"}
-        attemptCount={retryCount}
+        attemptCount={retryCount + 1}
         onRetry={handleRetry}
       />
     );
