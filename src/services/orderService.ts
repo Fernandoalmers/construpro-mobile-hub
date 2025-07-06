@@ -41,8 +41,10 @@ export const orderService = {
         return null;
       }
       
-      console.log(`✅ [orderService.getOrderByIdRPC] Successfully retrieved order with ${data.items?.length || 0} items`);
-      return data as OrderData;
+      // Safely cast the Json response to OrderData
+      const orderData = data as unknown as OrderData;
+      console.log(`✅ [orderService.getOrderByIdRPC] Successfully retrieved order with ${orderData.items?.length || 0} items`);
+      return orderData;
       
     } catch (error) {
       console.error('❌ [orderService.getOrderByIdRPC] Error:', error);
