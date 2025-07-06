@@ -7,7 +7,25 @@ import { OrderData, CreateOrderPayload, OrderResponse } from './order/types';
 
 export const orderService = {
   async createOrder(orderData: CreateOrderPayload): Promise<OrderResponse> {
-    return createOrder(orderData);
+    try {
+      const orderId = await createOrder(orderData);
+      if (orderId) {
+        return {
+          success: true,
+          order: { id: orderId }
+        };
+      } else {
+        return {
+          success: false,
+          error: 'Failed to create order'
+        };
+      }
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Failed to create order'
+      };
+    }
   },
 
   async getOrders(): Promise<OrderData[]> {
