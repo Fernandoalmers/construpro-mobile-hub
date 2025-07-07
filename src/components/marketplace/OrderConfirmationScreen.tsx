@@ -41,9 +41,10 @@ const OrderConfirmationScreen: React.FC = () => {
         let order: OrderData | null = null;
         
         try {
-          // First try the improved RPC method
+          // First try the corrected RPC method
+          console.log('🔄 Trying RPC method with corrected parameter...');
           order = await orderService.getOrderByIdRPC(orderId);
-          console.log('✅ Order retrieved using RPC method');
+          console.log('✅ Order retrieved using corrected RPC method');
         } catch (rpcError) {
           console.log("⚠️ RPC method failed, trying direct method", rpcError);
           

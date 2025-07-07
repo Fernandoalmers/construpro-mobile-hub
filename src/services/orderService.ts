@@ -40,13 +40,13 @@ export const orderService = {
     return getOrderByIdDirect(orderId);
   },
 
-  // Enhanced method that uses the improved RPC function
+  // Enhanced method that uses the improved RPC function with better error handling
   async getOrderByIdRPC(orderId: string): Promise<OrderData | null> {
     try {
       console.log(`🔍 [orderService.getOrderByIdRPC] Fetching order: ${orderId}`);
       
       const { data, error } = await supabase.rpc('get_order_by_id', { 
-        order_id: orderId 
+        p_order_id: orderId 
       });
       
       if (error) {
