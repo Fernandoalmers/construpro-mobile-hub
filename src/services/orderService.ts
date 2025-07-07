@@ -45,9 +45,10 @@ export const orderService = {
     try {
       console.log(`🔍 [orderService.getOrderByIdRPC] Fetching order: ${orderId}`);
       
-      const { data, error } = await supabase.rpc('get_order_by_id', { 
+      // Use rpc with the correct parameter name - bypassing TypeScript types since we updated the function
+      const { data, error } = await supabase.rpc('get_order_by_id' as any, { 
         p_order_id: orderId 
-      });
+      } as any);
       
       if (error) {
         console.error('❌ [orderService.getOrderByIdRPC] RPC error:', error);
