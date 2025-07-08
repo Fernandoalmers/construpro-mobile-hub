@@ -71,47 +71,45 @@ export async function createOrder(orderData: CreateOrderPayload): Promise<string
     
     console.log('✅ All order data validations passed');
     
-    // Prepare order data as a plain JavaScript object (not JSON string)
+    // Prepare order data to match edge function's expected structure: { orderData, items }
     const orderPayload = {
-      action: 'create_order',
+      orderData: {
+        cliente_id: session.user.id,
+        valor_total: Number(orderData.valor_total),
+        status: 'Confirmado',
+        forma_pagamento: orderData.forma_pagamento,
+        endereco_entrega: {
+          rua: orderData.endereco_entrega.rua || '',
+          numero: orderData.endereco_entrega.numero || '',
+          complemento: orderData.endereco_entrega.complemento || '',
+          bairro: orderData.endereco_entrega.bairro || '',
+          cidade: orderData.endereco_entrega.cidade || '',
+          estado: orderData.endereco_entrega.estado || '',
+          cep: orderData.endereco_entrega.cep || '',
+          ponto_referencia: orderData.endereco_entrega.ponto_referencia || ''
+        },
+        pontos_ganhos: Number(orderData.pontos_ganhos || 0),
+        cupom_codigo: orderData.cupom_aplicado?.code || null,
+        desconto_aplicado: Number(orderData.desconto || 0),
+        reference_id: null
+      },
       items: orderData.items.map(item => ({
         produto_id: item.produto_id,
         quantidade: item.quantidade,
         preco_unitario: item.preco,
-        subtotal: item.subtotal || item.preco * item.quantidade,
-        pontos: item.produto?.pontos || 0
-      })),
-      endereco_entrega: {
-        rua: orderData.endereco_entrega.rua || '',
-        numero: orderData.endereco_entrega.numero || '',
-        complemento: orderData.endereco_entrega.complemento || '',
-        bairro: orderData.endereco_entrega.bairro || '',
-        cidade: orderData.endereco_entrega.cidade || '',
-        estado: orderData.endereco_entrega.estado || '',
-        cep: orderData.endereco_entrega.cep || '',
-        ponto_referencia: orderData.endereco_entrega.ponto_referencia || ''
-      },
-      forma_pagamento: orderData.forma_pagamento,
-      valor_total: Number(orderData.valor_total),
-      pontos_ganhos: Number(orderData.pontos_ganhos || 0),
-      cupom_aplicado: orderData.cupom_aplicado ? {
-        id: orderData.cupom_aplicado.code,
-        code: orderData.cupom_aplicado.code,
-        discount: Number(orderData.cupom_aplicado.discount || 0)
-      } : null,
-      desconto: Number(orderData.desconto || 0),
-      status: 'Confirmado'
+        subtotal: item.subtotal || item.preco * item.quantidade
+      }))
     };
     
     console.log('=== Prepared Order Payload ===');
     console.log('Payload object:', orderPayload);
     console.log('Payload is object:', typeof orderPayload === 'object');
-    console.log('Payload action:', orderPayload.action);
+    console.log('Payload cliente_id:', orderPayload.orderData.cliente_id);
     console.log('Payload items count:', orderPayload.items.length);
     
     // Validate payload structure before sending
-    if (!orderPayload.action) {
-      throw new Error('Action field is missing from payload');
+    if (!orderPayload.orderData.cliente_id) {
+      throw new Error('Cliente ID is missing from payload');
     }
     
     if (!orderPayload.items || orderPayload.items.length === 0) {
