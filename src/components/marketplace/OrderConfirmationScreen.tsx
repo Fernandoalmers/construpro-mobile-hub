@@ -27,9 +27,24 @@ const OrderConfirmationScreen: React.FC = () => {
   const { refreshProfile } = useAuth();
 
   useEffect(() => {
+    // Validate orderId first
     if (!orderId) {
       setError('ID do pedido não encontrado');
       setLoading(false);
+      return;
+    }
+    
+    // Check if orderId is a valid UUID
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(orderId)) {
+      console.error('❌ [OrderConfirmationScreen] Invalid UUID in URL:', orderId);
+      setError('ID do pedido inválido. Redirecionando para pedidos...');
+      setLoading(false);
+      
+      // Redirect to orders page after 3 seconds
+      setTimeout(() => {
+        window.location.href = '/orders';
+      }, 3000);
       return;
     }
 
@@ -61,7 +76,7 @@ const OrderConfirmationScreen: React.FC = () => {
         }
         
         if (!order) {
-          throw new Error('Pedido não encontrado');
+          throw new Error('Pedido não encontrado ou sem acesso');
         }
         
         console.log('📋 Detalhes do pedido recuperados:', {
@@ -96,7 +111,17 @@ const OrderConfirmationScreen: React.FC = () => {
             setRetryCount(prev => prev + 1);
           }, 2000);
         } else {
-          const errorMessage = err.message || 'Não foi possível carregar os detalhes do pedido';
+          let errorMessage = err.message || 'Não foi possível carregar os detalhes do pedido';
+          
+          // Provide specific error messages
+          if (err.message?.includes('não encontrado')) {
+            errorMessage = 'Pedido não encontrado ou sem acesso';
+          } else if (err.message?.includes('RPC')) {
+            errorMessage = 'Erro na consulta do pedido. Tente novamente.';
+          } else if (err.message?.includes('network') || err.message?.includes('fetch')) {
+            errorMessage = 'Erro de conexão. Verifique sua internet.';
+          }
+          
           setError(errorMessage);
           setLoading(false);
           

@@ -156,8 +156,8 @@ export async function createOrder(orderData: CreateOrderPayload): Promise<string
             throw new Error('Erro de autenticação: faça login novamente');
           }
           
-          if (retryResult.data?.success && retryResult.data?.order?.id) {
-            return retryResult.data.order.id;
+          if (retryResult.data?.success && retryResult.data?.orderId) {
+            return retryResult.data.orderId;
           }
         }
         
@@ -178,7 +178,7 @@ export async function createOrder(orderData: CreateOrderPayload): Promise<string
     }
     
     // Check for error in the returned data
-    if (!data?.success || !data?.order?.id) {
+    if (!data?.success || !data?.orderId) {
       const errorMsg = data?.error || 'Resposta inválida do servidor';
       console.error('=== Invalid Response ===');
       console.error('Data received:', data);
@@ -187,7 +187,7 @@ export async function createOrder(orderData: CreateOrderPayload): Promise<string
     }
     
     console.log('=== Order Creation Successful ===');
-    console.log('Order ID:', data.order.id);
+    console.log('Order ID:', data.orderId);
     
     // Add informative toast messages about inventory and points
     if (data.inventoryUpdated === false) {
@@ -215,8 +215,8 @@ export async function createOrder(orderData: CreateOrderPayload): Promise<string
     
     // Success!
     console.log("=== Order Creation Complete ===");
-    console.log("Order ID returned:", data.order.id);
-    return data.order.id;
+    console.log("Order ID returned:", data.orderId);
+    return data.orderId;
   } catch (error: any) {
     console.error("=== Error in createOrder ===");
     console.error("Error details:", error);

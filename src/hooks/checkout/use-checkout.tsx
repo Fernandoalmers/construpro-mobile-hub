@@ -379,9 +379,18 @@ export function useCheckout() {
         throw new Error(orderResponse.error || 'Falha ao processar pedido');
       }
       
+      // Fix: Extract orderId correctly from response structure
       const orderId = orderResponse.order?.id;
-      if (!orderId) {
-        throw new Error('Falha ao processar pedido - ID não retornado');
+      if (!orderId || typeof orderId !== 'string') {
+        console.error('❌ [useCheckout] Invalid order ID returned:', { orderId, orderResponse });
+        throw new Error('Falha ao processar pedido - ID inválido retornado');
+      }
+      
+      // Validate UUID format
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(orderId)) {
+        console.error('❌ [useCheckout] Invalid UUID format:', orderId);
+        throw new Error('Falha ao processar pedido - ID com formato inválido');
       }
       
       console.log('✅ [useCheckout] Order created successfully:', orderId);
