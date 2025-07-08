@@ -151,7 +151,7 @@ const VendorOrderDetailScreen: React.FC = () => {
   const displayOrderCode = pedido.order_id || pedido.id;
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-100">
+    <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
       {/* Header - usar order_id como código principal */}
       <OrderHeader 
         orderId={displayOrderCode} 

@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Package, Search, Filter, RefreshCw, Zap } from 'lucide-react';
+import { ChevronLeft, Package, Search, Filter, RefreshCw, Zap, Clock, TrendingUp } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,32 +41,71 @@ const VendorOrdersScreen: React.FC = () => {
     return matchesSearch && matchesStatus;
   }) || [];
   
-  // Format date
+  // Format date with time since creation
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR', {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric"
-    });
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) {
+      const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+      return `${diffInMinutes}min atrás`;
+    } else if (diffInHours < 24) {
+      return `${diffInHours}h atrás`;
+    } else {
+      return date.toLocaleDateString('pt-BR', {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric"
+      });
+    }
   };
   
-  // Get status badge
+  // Get status badge with improved colors and icons
   const getStatusBadge = (status: string) => {
     switch(status.toLowerCase()) {
       case "entregue":
-        return { color: "bg-green-100 text-green-800", icon: Package };
+        return { 
+          color: "bg-emerald-100 text-emerald-800 border-emerald-200", 
+          icon: Package,
+          textColor: "text-emerald-700"
+        };
       case "enviado":
-        return { color: "bg-blue-100 text-blue-800", icon: Package };
+        return { 
+          color: "bg-blue-100 text-blue-800 border-blue-200", 
+          icon: TrendingUp,
+          textColor: "text-blue-700"
+        };
       case "processando":
-        return { color: "bg-yellow-100 text-yellow-800", icon: Package };
+        return { 
+          color: "bg-amber-100 text-amber-800 border-amber-200", 
+          icon: Clock,
+          textColor: "text-amber-700"
+        };
       case "confirmado":
-        return { color: "bg-purple-100 text-purple-800", icon: Package };
+        return { 
+          color: "bg-purple-100 text-purple-800 border-purple-200", 
+          icon: Package,
+          textColor: "text-purple-700"
+        };
       case "pendente":
-        return { color: "bg-orange-100 text-orange-800", icon: Package };
+        return { 
+          color: "bg-orange-100 text-orange-800 border-orange-200", 
+          icon: Clock,
+          textColor: "text-orange-700"
+        };
       case "cancelado":
-        return { color: "bg-red-100 text-red-800", icon: Package };
+        return { 
+          color: "bg-red-100 text-red-800 border-red-200", 
+          icon: Package,
+          textColor: "text-red-700"
+        };
       default:
-        return { color: "bg-gray-100 text-gray-800", icon: Package };
+        return { 
+          color: "bg-gray-100 text-gray-800 border-gray-200", 
+          icon: Package,
+          textColor: "text-gray-700"
+        };
     }
   };
 
@@ -74,7 +113,7 @@ const VendorOrdersScreen: React.FC = () => {
   if (vendorProfileStatus === 'checking') {
     return (
       <div className="flex flex-col min-h-screen bg-gray-100">
-        <div className="bg-white p-4 flex items-center shadow-sm">
+        <div className="bg-white p-4 flex items-center shadow-sm border-b">
           <button onClick={() => navigate('/vendor')} className="mr-4">
             <ChevronLeft size={24} />
           </button>
@@ -91,7 +130,7 @@ const VendorOrdersScreen: React.FC = () => {
   if (vendorProfileStatus === 'not_found') {
     return (
       <div className="flex flex-col min-h-screen bg-gray-100">
-        <div className="bg-white p-4 flex items-center shadow-sm">
+        <div className="bg-white p-4 flex items-center shadow-sm border-b">
           <button onClick={() => navigate('/vendor')} className="mr-4">
             <ChevronLeft size={24} />
           </button>
@@ -115,82 +154,96 @@ const VendorOrdersScreen: React.FC = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-20">
-      {/* Header */}
-      <div className="bg-white p-4 flex items-center justify-between shadow-sm">
-        <div className="flex items-center">
-          <button onClick={() => navigate('/vendor')} className="mr-4">
-            <ChevronLeft size={24} />
-          </button>
-          <h1 className="text-xl font-bold">Meus Pedidos</h1>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={checkSyncIntegrity}
-            disabled={isCheckingSync}
-          >
-            <RefreshCw size={16} className={isCheckingSync ? 'animate-spin' : ''} />
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={isLoading}
-          >
-            <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
-          </Button>
-        </div>
-      </div>
-      
-      {/* Sync Status */}
-      <div className="bg-white p-3 border-b">
-        <div className="flex items-center justify-between">
-          <SyncStatusIndicator 
-            syncStatus={syncStatus} 
-            isChecking={isCheckingSync} 
-          />
-          {syncStatus && (
-            <span className="text-xs text-gray-500">
-              Última verificação: {new Date(syncStatus.last_check).toLocaleTimeString('pt-BR')}
-            </span>
-          )}
-        </div>
-      </div>
-      
-      {/* Filters */}
-      <div className="bg-white p-4 space-y-3 border-b">
-        <div className="flex gap-3">
-          <div className="flex-1 relative">
-            <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <Input
-              placeholder="Buscar por ID ou cliente..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+      {/* Enhanced Header */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="p-4 flex items-center justify-between">
+          <div className="flex items-center">
+            <button onClick={() => navigate('/vendor')} className="mr-4">
+              <ChevronLeft size={24} />
+            </button>
+            <div>
+              <h1 className="text-xl font-bold">Meus Pedidos</h1>
+              {pedidos && pedidos.length > 0 && (
+                <p className="text-sm text-gray-500">{filteredOrders.length} de {pedidos.length} pedidos</p>
+              )}
+            </div>
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos</SelectItem>
-              <SelectItem value="pendente">Pendente</SelectItem>
-              <SelectItem value="confirmado">Confirmado</SelectItem>
-              <SelectItem value="processando">Processando</SelectItem>
-              <SelectItem value="enviado">Enviado</SelectItem>
-              <SelectItem value="entregue">Entregue</SelectItem>
-              <SelectItem value="cancelado">Cancelado</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={checkSyncIntegrity}
+              disabled={isCheckingSync}
+              className="flex items-center gap-1"
+            >
+              <RefreshCw size={16} className={isCheckingSync ? 'animate-spin' : ''} />
+              Verificar
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isLoading}
+              className="flex items-center gap-1"
+            >
+              <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
+              Atualizar
+            </Button>
+          </div>
+        </div>
+        
+        {/* Sync Status - Improved layout */}
+        <div className="px-4 pb-3">
+          <div className="flex items-center justify-between">
+            <SyncStatusIndicator 
+              syncStatus={syncStatus} 
+              isChecking={isCheckingSync} 
+            />
+            {syncStatus && (
+              <span className="text-xs text-gray-500">
+                Última verificação: {new Date(syncStatus.last_check).toLocaleTimeString('pt-BR')}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+      
+      {/* Enhanced Filters */}
+      <div className="bg-white border-b">
+        <div className="p-4 space-y-3">
+          <div className="flex gap-3">
+            <div className="flex-1 relative">
+              <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <Input
+                placeholder="Buscar por ID ou cliente..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                <SelectItem value="pendente">Pendente</SelectItem>
+                <SelectItem value="confirmado">Confirmado</SelectItem>
+                <SelectItem value="processando">Processando</SelectItem>
+                <SelectItem value="enviado">Enviado</SelectItem>
+                <SelectItem value="entregue">Entregue</SelectItem>
+                <SelectItem value="cancelado">Cancelado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
       
       <div className="p-6 space-y-4">
-        {/* Enhanced Sync Actions */}
+        {/* Sync Actions - Improved presentation */}
         {(pedidos?.length === 0 || (syncStatus && syncStatus.missing_pedidos > 0)) && !isLoading && (
-          <Card className="p-4 text-center">
+          <Card className="p-6 text-center border-dashed">
+            <Package className="mx-auto text-gray-400 mb-3" size={40} />
             <h3 className="font-medium mb-2">
               {syncStatus && syncStatus.missing_pedidos > 0 
                 ? `${syncStatus.missing_pedidos} pedidos não sincronizados`
@@ -246,10 +299,10 @@ const VendorOrdersScreen: React.FC = () => {
           </Card>
         )}
         
-        {/* Orders List */}
+        {/* Orders List - Enhanced cards */}
         {!isLoading && !error && filteredOrders.length === 0 && pedidos?.length > 0 && (
           <Card className="p-6 text-center">
-            <Package className="mx-auto text-gray-400 mb-3" size={40} />
+            <Search className="mx-auto text-gray-400 mb-3" size={40} />
             <h3 className="text-lg font-medium text-gray-700">Nenhum pedido encontrado</h3>
             <p className="text-gray-500 mt-1">Tente ajustar os filtros de busca</p>
           </Card>
@@ -262,33 +315,47 @@ const VendorOrdersScreen: React.FC = () => {
           return (
             <Card 
               key={pedido.id} 
-              className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+              className="p-4 cursor-pointer hover:bg-gray-50 transition-all duration-200 hover:shadow-md border-l-4 border-l-transparent hover:border-l-blue-500"
               onClick={() => navigate(`/vendor/orders/${pedido.id}`)}
             >
               <div className="flex justify-between items-start mb-3">
-                <div>
-                  <h3 className="font-medium">Pedido #{pedido.id.substring(0, 8)}</h3>
-                  <p className="text-sm text-gray-500">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-semibold">#{pedido.id.substring(0, 8).toUpperCase()}</h3>
+                    <Badge className={`${statusInfo.color} border text-xs`}>
+                      <StatusIcon size={12} className="mr-1" />
+                      {pedido.status}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-gray-600">
                     {pedido.cliente?.nome || 'Cliente não identificado'}
                   </p>
                 </div>
-                <Badge className={statusInfo.color}>
-                  <StatusIcon size={12} className="mr-1" />
-                  {pedido.status}
-                </Badge>
+                <div className="text-right">
+                  <div className="font-semibold text-lg">
+                    R$ {Number(pedido.valor_total).toFixed(2)}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {formatDate(pedido.created_at)}
+                  </div>
+                </div>
               </div>
               
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-600">
-                  {formatDate(pedido.created_at)}
-                </span>
-                <span className="font-medium">
-                  R$ {Number(pedido.valor_total).toFixed(2)}
-                </span>
-              </div>
-              
-              <div className="mt-2 text-xs text-gray-500">
-                {pedido.itens?.length || 0} {pedido.itens?.length === 1 ? 'item' : 'itens'}
+              <div className="flex justify-between items-center text-sm border-t pt-3 mt-3">
+                <div className="flex items-center gap-4">
+                  <span className="text-gray-600">
+                    <Package size={14} className="inline mr-1" />
+                    {pedido.itens?.length || 0} {pedido.itens?.length === 1 ? 'item' : 'itens'}
+                  </span>
+                  {pedido.forma_pagamento && (
+                    <span className="text-gray-600 capitalize">
+                      {pedido.forma_pagamento.replace('_', ' ')}
+                    </span>
+                  )}
+                </div>
+                <div className={`text-xs font-medium ${statusInfo.textColor}`}>
+                  Ver detalhes →
+                </div>
               </div>
             </Card>
           );
