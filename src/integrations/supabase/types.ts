@@ -2507,6 +2507,7 @@ export type Database = {
           vendor_id: string
           zone_name: string
           delivery_fee: number
+          delivery_time: string
         }[]
       }
       rollback_transaction: {

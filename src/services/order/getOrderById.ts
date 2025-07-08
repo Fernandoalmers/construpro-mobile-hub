@@ -137,7 +137,7 @@ async function calculateVendorFreight(vendorIds: string[], customerCep: string):
       };
 
     if (error) {
-      console.error('[calculateVendorFreight] Error fetching delivery zones:', error);
+      console.error('[calculateVendorFreight] ❌ Error fetching delivery zones:', error);
       return vendorIds.map(id => ({
         vendedor_id: id,
         valor_frete: 0,
@@ -146,9 +146,9 @@ async function calculateVendorFreight(vendorIds: string[], customerCep: string):
       }));
     }
 
-    console.log('[calculateVendorFreight] Delivery zones found:', deliveryZones?.length || 0);
+    console.log('[calculateVendorFreight] ✅ Delivery zones found:', deliveryZones?.length || 0);
     if (deliveryZones && deliveryZones.length > 0) {
-      console.log('[calculateVendorFreight] Zone details:', deliveryZones.map(z => ({
+      console.log('[calculateVendorFreight] 📋 Zone details:', deliveryZones.map(z => ({
         vendor_id: z.vendor_id,
         zone_name: z.zone_name,
         delivery_fee: z.delivery_fee,
@@ -173,7 +173,7 @@ async function calculateVendorFreight(vendorIds: string[], customerCep: string):
     const shippingInfo: ShippingInfo[] = vendorIds.map(vendorId => {
       const zone = deliveryZones?.find((z: DeliveryZoneResult) => z.vendor_id === vendorId);
       
-      console.log(`[calculateVendorFreight] Processing vendor ${vendorId}:`, {
+      console.log(`[calculateVendorFreight] 🏪 Processing vendor ${vendorId}:`, {
         foundZone: !!zone,
         zoneName: zone?.zone_name,
         deliveryTime: zone?.delivery_time,
@@ -181,6 +181,7 @@ async function calculateVendorFreight(vendorIds: string[], customerCep: string):
       });
       
       if (zone) {
+        console.log(`[calculateVendorFreight] ✅ Zone found for vendor ${vendorId}: "${zone.delivery_time}"`);
         return {
           vendedor_id: vendorId,
           valor_frete: zone.delivery_fee || 0,
@@ -189,7 +190,7 @@ async function calculateVendorFreight(vendorIds: string[], customerCep: string):
           zone_name: zone.zone_name
         };
       } else {
-        console.log(`[calculateVendorFreight] No zone found for vendor ${vendorId}, using free shipping`);
+        console.log(`[calculateVendorFreight] ❌ No zone found for vendor ${vendorId}, using free shipping`);
         return {
           vendedor_id: vendorId,
           valor_frete: 0,
@@ -199,11 +200,11 @@ async function calculateVendorFreight(vendorIds: string[], customerCep: string):
       }
     });
 
-    console.log('[calculateVendorFreight] Final shipping info calculated:', shippingInfo);
+    console.log('[calculateVendorFreight] 🚚 Final shipping info calculated:', shippingInfo);
     return shippingInfo;
 
   } catch (error) {
-    console.error('[calculateVendorFreight] Unexpected error:', error);
+    console.error('[calculateVendorFreight] ❌ Unexpected error:', error);
     return vendorIds.map(id => ({
       vendedor_id: id,
       valor_frete: 0,
