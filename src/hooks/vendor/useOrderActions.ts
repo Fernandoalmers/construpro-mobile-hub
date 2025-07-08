@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { updateOrderStatus as updateOrderStatusService } from '@/services/vendor/orders/orderStatusUpdater';
 import { toast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 
 export const useOrderActions = (orderId: string) => {
   const [isUpdating, setIsUpdating] = useState(false);
@@ -11,135 +10,131 @@ export const useOrderActions = (orderId: string) => {
 
   const updateStatusMutation = useMutation({
     mutationFn: async (newStatus: string) => {
-      console.log('🔄 [useOrderActions] Iniciando atualização de status:', newStatus);
-      console.log('🔄 [useOrderActions] Order ID:', orderId);
+      console.log('🔄 [useOrderActions] Starting status update mutation:', {
+        orderId,
+        newStatus,
+        timestamp: new Date().toISOString()
+      });
       
       setIsUpdating(true);
       
-      // Verificar autenticação atual antes de tentar atualizar
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      console.log('👤 [useOrderActions] Usuário autenticado:', user?.email);
-      
-      if (authError || !user) {
-        console.error('❌ [useOrderActions] Erro de autenticação:', authError);
-        throw new Error('Usuário não autenticado');
-      }
-      
-      // Verificar se o usuário tem um vendedor associado
-      const { data: vendorData, error: vendorError } = await supabase
-        .from('vendedores')
-        .select('id, nome_loja, usuario_id')
-        .eq('usuario_id', user.id)
-        .single();
-      
-      console.log('🏪 [useOrderActions] Dados do vendedor:', vendorData);
-      
-      if (vendorError || !vendorData) {
-        console.error('❌ [useOrderActions] Erro ao buscar vendedor:', vendorError);
-        throw new Error('Vendedor não encontrado para o usuário atual');
-      }
-      
-      console.log('🚀 [useOrderActions] Chamando serviço de atualização...');
       const success = await updateOrderStatusService(orderId, newStatus);
       if (!success) {
-        throw new Error('Falha ao atualizar status do pedido');
+        throw new Error('Failed to update order status');
       }
       
-      console.log('✅ [useOrderActions] Status atualizado com sucesso para:', newStatus);
+      console.log('✅ [useOrderActions] Status update completed successfully');
       return success;
     },
     onSuccess: (_, newStatus) => {
-      console.log('✅ [useOrderActions] Mutação bem-sucedida, novo status:', newStatus);
+      console.log('✅ [useOrderActions] Mutation successful, invalidating queries...');
       
-      toast({
-        title: "Status atualizado",
-        description: `Status alterado com sucesso`,
-      });
-      
-      // Invalidar múltiplas queries para garantir atualização
+      // Invalidate all related queries
       queryClient.invalidateQueries({ queryKey: ['vendorPedidoDetails', orderId] });
       queryClient.invalidateQueries({ queryKey: ['vendorPedidos'] });
       queryClient.invalidateQueries({ queryKey: ['vendorOrders'] });
       
-      // Forçar refresh da página de detalhes após um pequeno delay
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
+      // Show success notification
+      toast({
+        title: "Status atualizado",
+        description: `Status alterado para "${newStatus}" com sucesso`,
+      });
     },
     onError: (error) => {
-      console.error('❌ [useOrderActions] Erro na mutação:', error);
+      console.error('❌ [useOrderActions] Mutation error:', {
+        error: error,
+        message: error.message,
+        orderId
+      });
       
-      let errorMessage = 'Erro ao atualizar status';
+      // Error handling with user-friendly messages
+      let errorMessage = 'Erro ao atualizar status do pedido';
       if (error instanceof Error) {
-        if (error.message.includes('autenticado')) {
+        if (error.message.includes('autenticado') || error.message.includes('authentication')) {
           errorMessage = 'Sessão expirada. Faça login novamente.';
-        } else if (error.message.includes('Vendedor não encontrado')) {
+        } else if (error.message.includes('permissão') || error.message.includes('permission')) {
           errorMessage = 'Você não tem permissão para alterar este pedido.';
-        } else if (error.message.includes('constraint') || error.message.includes('violates check')) {
-          errorMessage = 'Erro de validação de status. Tente novamente.';
-        } else if (error.message.includes('order_id') || error.message.includes('trigger')) {
-          errorMessage = 'Erro de sincronização entre sistemas. Tente novamente.';
-        } else {
+        } else if (error.message.includes('não encontrado') || error.message.includes('not found')) {
+          errorMessage = 'Pedido não encontrado.';
+        } else if (error.message.includes('finalizado') || error.message.includes('final status')) {
+          errorMessage = 'Não é possível alterar o status de um pedido finalizado.';
+        } else if (error.message.includes('conexão') || error.message.includes('network')) {
+          errorMessage = 'Erro de conexão. Verifique sua internet.';
+        } else if (error.message !== 'Failed to update order status') {
           errorMessage = error.message;
         }
       }
       
       toast({
-        title: "Erro",
+        title: "Erro na atualização",
         description: errorMessage,
         variant: "destructive",
       });
     },
     onSettled: () => {
       setIsUpdating(false);
-      console.log('🏁 [useOrderActions] Mutação finalizada');
+      console.log('🏁 [useOrderActions] Mutation settled, updating state');
     },
     retry: (failureCount, error) => {
-      // Retry apenas para erros específicos que podem ser temporários
+      // Only retry for network-related errors
       if (error instanceof Error) {
-        const shouldRetry = error.message.includes('sincronização') || 
-                           error.message.includes('trigger') ||
-                           error.message.includes('order_id');
-        return shouldRetry && failureCount < 2;
+        const shouldRetry = error.message.includes('network') || 
+                           error.message.includes('timeout') ||
+                           error.message.includes('conexão');
+        const shouldRetryResult = shouldRetry && failureCount < 2;
+        console.log('🔄 [useOrderActions] Retry decision:', {
+          shouldRetry,
+          failureCount,
+          errorMessage: error.message,
+          willRetry: shouldRetryResult
+        });
+        return shouldRetryResult;
       }
       return false;
     },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 3000),
+    retryDelay: (attemptIndex) => {
+      const delay = Math.min(1000 * 2 ** attemptIndex, 5000);
+      console.log('⏳ [useOrderActions] Retry delay:', { attemptIndex, delay });
+      return delay;
+    },
   });
 
   const getNextStatus = (currentStatus: string): string | null => {
-    // Mapear status padronizado para próximo status interno
     const statusFlow = {
       'pendente': 'confirmado',
       'confirmado': 'processando', 
-      'em separação': 'enviado',
       'processando': 'enviado',
-      'enviado': 'entregue',
-      'em trânsito': 'entregue'
+      'enviado': 'entregue'
     };
-    return statusFlow[currentStatus.toLowerCase()] || null;
+    
+    const nextStatus = statusFlow[currentStatus.toLowerCase()] || null;
+    console.log('🔄 [useOrderActions] Status flow:', { currentStatus, nextStatus });
+    return nextStatus;
   };
 
   const getStatusButtonText = (currentStatus: string): string => {
     const buttonTexts = {
       'pendente': 'Confirmar Pedido',
       'confirmado': 'Iniciar Processamento',
-      'em separação': 'Marcar como Enviado',
       'processando': 'Marcar como Enviado', 
-      'enviado': 'Marcar como Entregue',
-      'em trânsito': 'Marcar como Entregue'
+      'enviado': 'Marcar como Entregue'
     };
     return buttonTexts[currentStatus.toLowerCase()] || '';
   };
 
   const canUpdateStatus = (currentStatus: string): boolean => {
     const finalStates = ['entregue', 'cancelado'];
-    return !finalStates.includes(currentStatus.toLowerCase());
+    const canUpdate = !finalStates.includes(currentStatus.toLowerCase());
+    console.log('🔍 [useOrderActions] Status update validation:', { currentStatus, canUpdate });
+    return canUpdate;
   };
 
   const updateOrderStatus = (newStatus: string) => {
-    console.log('🔄 [useOrderActions] Chamando mutação para status:', newStatus);
-    console.log('🔄 [useOrderActions] Estado isUpdating antes:', isUpdating);
+    console.log('🚀 [useOrderActions] Triggering status update:', {
+      orderId,
+      newStatus,
+      isCurrentlyUpdating: isUpdating
+    });
     updateStatusMutation.mutate(newStatus);
   };
 
