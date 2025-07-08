@@ -1,20 +1,21 @@
+
 import React from 'react';
 import { OrderItem } from '@/services/order/types';
 import StoreInfoSection from './StoreInfoSection';
 import LazyImage from '@/components/common/LazyImage';
+import { formatCurrency } from '@/utils/formatCurrency';
 
 interface GroupedOrderItemsProps {
   items: OrderItem[];
+  shippingInfo?: Array<{
+    vendedor_id: string;
+    valor_frete: number;
+    prazo_entrega?: string;
+    zona_entrega?: string;
+  }>;
 }
 
-const GroupedOrderItems: React.FC<GroupedOrderItemsProps> = ({ items }) => {
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
-  };
-
+const GroupedOrderItems: React.FC<GroupedOrderItemsProps> = ({ items, shippingInfo = [] }) => {
   // Group items by vendor
   const itemsByVendor = items.reduce((acc, item) => {
     const vendorId = item.vendedor_id || 'unknown';
@@ -40,13 +41,19 @@ const GroupedOrderItems: React.FC<GroupedOrderItemsProps> = ({ items }) => {
           sum + (item.subtotal || item.preco_unitario * item.quantidade), 0
         );
 
+        // Find shipping info for this vendor
+        const vendorShipping = shippingInfo.find(s => s.vendedor_id === group.vendor.id);
+        const shippingCost = vendorShipping?.valor_frete || 0;
+        const deliveryTime = vendorShipping?.prazo_entrega;
+
         return (
           <div key={group.vendor.id || groupIndex}>
             <StoreInfoSection
               vendor={group.vendor}
               itemCount={group.items.length}
               subtotal={groupSubtotal}
-              shippingCost={0} // For now, assuming free shipping
+              shippingCost={shippingCost}
+              deliveryTime={deliveryTime}
             />
 
             <div className="bg-white rounded-lg shadow-sm border p-4 space-y-4">

@@ -35,6 +35,7 @@ export interface ShippingInfo {
   valor_frete: number;
   prazo_entrega?: string;
   zona_entrega?: string;
+  zone_name?: string;
 }
 
 export interface ProductData {
@@ -59,6 +60,7 @@ export interface OrderItem {
   produto?: ProductData;
   vendedor_id?: string;
   vendedor?: VendorInfo;
+  valor_frete?: number; // Freight cost for this item's vendor
 }
 
 export interface OrderData {

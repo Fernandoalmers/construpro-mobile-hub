@@ -1,5 +1,6 @@
+
 import { supabase } from '@/integrations/supabase/client';
-import { OrderData, OrderItem, ProductData, VendorInfo } from './types';
+import { OrderData, OrderItem, ProductData, VendorInfo, ShippingInfo } from './types';
 
 // Helper function to extract and validate image URLs
 const extractImageUrls = (imagensData: any): string[] => {
@@ -86,6 +87,76 @@ export function getProductImageUrl(product: any): string | null {
   return null;
 }
 
+// Helper function to calculate freight for vendors
+async function calculateVendorFreight(vendorIds: string[], customerCep: string): Promise<ShippingInfo[]> {
+  console.log('[calculateVendorFreight] Calculating freight for vendors:', vendorIds, 'CEP:', customerCep);
+  
+  if (!customerCep || vendorIds.length === 0) {
+    console.log('[calculateVendorFreight] No CEP or vendors provided');
+    return vendorIds.map(id => ({
+      vendedor_id: id,
+      valor_frete: 0,
+      prazo_entrega: 'A calcular',
+      zona_entrega: 'N/A'
+    }));
+  }
+
+  try {
+    // Clean the CEP for the query
+    const cleanCep = customerCep.replace(/\D/g, '');
+    
+    // Use the existing resolve_delivery_zones function
+    const { data: deliveryZones, error } = await supabase
+      .rpc('resolve_delivery_zones', { user_cep: cleanCep });
+
+    if (error) {
+      console.error('[calculateVendorFreight] Error fetching delivery zones:', error);
+      return vendorIds.map(id => ({
+        vendedor_id: id,
+        valor_frete: 0,
+        prazo_entrega: 'A calcular',
+        zona_entrega: 'Erro no cálculo'
+      }));
+    }
+
+    console.log('[calculateVendorFreight] Delivery zones found:', deliveryZones);
+
+    // Create shipping info for each vendor
+    const shippingInfo: ShippingInfo[] = vendorIds.map(vendorId => {
+      const zone = deliveryZones?.find((z: any) => z.vendor_id === vendorId);
+      
+      if (zone) {
+        return {
+          vendedor_id: vendorId,
+          valor_frete: zone.delivery_fee || 0,
+          prazo_entrega: 'Até 5 dias úteis', // Default delivery time
+          zona_entrega: zone.zone_name || 'Zona padrão',
+          zone_name: zone.zone_name
+        };
+      } else {
+        return {
+          vendedor_id: vendorId,
+          valor_frete: 0,
+          prazo_entrega: 'A calcular',
+          zona_entrega: 'Frete grátis'
+        };
+      }
+    });
+
+    console.log('[calculateVendorFreight] Calculated shipping info:', shippingInfo);
+    return shippingInfo;
+
+  } catch (error) {
+    console.error('[calculateVendorFreight] Unexpected error:', error);
+    return vendorIds.map(id => ({
+      vendedor_id: id,
+      valor_frete: 0,
+      prazo_entrega: 'Erro no cálculo',
+      zona_entrega: 'N/A'
+    }));
+  }
+}
+
 export async function getOrderById(orderId: string): Promise<OrderData | null> {
   try {
     console.log(`🔍 [getOrderById] Fetching order: ${orderId}`);
@@ -127,20 +198,13 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
       id: orderData.id,
       hasItems: !!orderData.order_items,
       itemsCount: orderData.order_items?.length || 0,
-      orderItemsStructure: orderData.order_items?.map(item => ({
-        id: item.id,
-        produto_id: item.produto_id,
-        quantidade: item.quantidade,
-        preco_unitario: item.preco_unitario,
-        subtotal: item.subtotal,
-        hasProduto: !!item.produtos,
-        hasVendedor: !!item.produtos?.vendedores
-      }))
+      enderecoEntrega: orderData.endereco_entrega
     });
     
     // Process order items if they exist
     const orderItems: OrderItem[] = [];
     let valorProdutos = 0;
+    const vendorIds: string[] = [];
     
     if (orderData.order_items && Array.isArray(orderData.order_items)) {
       console.log(`📦 [getOrderById] Processing ${orderData.order_items.length} items`);
@@ -149,20 +213,17 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
         const productData = item.produtos;
         const vendorData = productData?.vendedores;
         
+        // Collect unique vendor IDs for freight calculation
+        if (productData?.vendedor_id && !vendorIds.includes(productData.vendedor_id)) {
+          vendorIds.push(productData.vendedor_id);
+        }
+        
         console.log(`[getOrderById] Processing item ${item.id}:`, {
           produto_id: item.produto_id,
           quantidade: item.quantidade,
           preco_unitario: item.preco_unitario,
           subtotal: item.subtotal,
-          productData: productData ? {
-            id: productData.id,
-            nome: productData.nome,
-            hasImagens: !!productData.imagens
-          } : 'No product data',
-          vendorData: vendorData ? {
-            id: vendorData.id,
-            nome_loja: vendorData.nome_loja
-          } : 'No vendor data'
+          vendorId: productData?.vendedor_id
         });
         
         // FIXED: Use extractImageUrls for consistent image processing
@@ -192,14 +253,6 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
           telefone: vendorData.telefone
         } : undefined;
         
-        console.log(`[getOrderById] Processed product ${item.produto_id}:`, {
-          nome: produto.nome,
-          hasImageUrl: !!produto.imagem_url,
-          imageUrl: produto.imagem_url,
-          imagensCount: produto.imagens.length,
-          vendorNome: vendedor?.nome_loja
-        });
-        
         const orderItem: OrderItem = {
           id: item.id,
           produto_id: item.produto_id,
@@ -218,16 +271,32 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
       console.warn(`⚠️ [getOrderById] No order_items found or items is not an array`);
     }
     
-    // Calculate shipping info (simplified - in a real scenario this would come from shipping zones)
-    const valorFreteTotal = 0; // For now, assuming free shipping
+    // Calculate freight for all vendors involved
+    let shippingInfo: ShippingInfo[] = [];
+    let valorFreteTotal = 0;
     
-    console.log(`✅ [getOrderById] Successfully processed order with ${orderItems.length} items`);
+    if (vendorIds.length > 0 && orderData.endereco_entrega?.cep) {
+      console.log(`🚚 [getOrderById] Calculating freight for vendors: ${vendorIds.join(', ')}`);
+      shippingInfo = await calculateVendorFreight(vendorIds, orderData.endereco_entrega.cep);
+      valorFreteTotal = shippingInfo.reduce((total, info) => total + info.valor_frete, 0);
+      
+      // Add freight info to order items
+      orderItems.forEach(item => {
+        const freight = shippingInfo.find(s => s.vendedor_id === item.vendedor_id);
+        if (freight) {
+          item.valor_frete = freight.valor_frete;
+        }
+      });
+    }
+    
+    console.log(`✅ [getOrderById] Successfully processed order with ${orderItems.length} items, freight: R$ ${valorFreteTotal}`);
     
     return {
       ...orderData,
       items: orderItems,
       valor_produtos: valorProdutos,
-      valor_frete_total: valorFreteTotal
+      valor_frete_total: valorFreteTotal,
+      shipping_info: shippingInfo
     };
     
   } catch (error) {
@@ -288,10 +357,16 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
         const productsMap = new Map((productsData || []).map(p => [p.id, p]));
         
         let valorProdutos = 0;
+        const vendorIds: string[] = [];
         
         orderData.items = orderData.items.map((item: any) => {
           const productData = productsMap.get(item.produto_id);
           const vendorData = productData?.vendedores;
+          
+          // Collect unique vendor IDs
+          if (productData?.vendedor_id && !vendorIds.includes(productData.vendedor_id)) {
+            vendorIds.push(productData.vendedor_id);
+          }
           
           // FIXED: Use extractImageUrls for consistent image processing
           const imagens = extractImageUrls(productData?.imagens);
@@ -329,14 +404,33 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
           };
         });
 
+        // Calculate freight
+        let shippingInfo: ShippingInfo[] = [];
+        let valorFreteTotal = 0;
+        
+        if (vendorIds.length > 0 && orderData.endereco_entrega?.cep) {
+          shippingInfo = await calculateVendorFreight(vendorIds, orderData.endereco_entrega.cep);
+          valorFreteTotal = shippingInfo.reduce((total, info) => total + info.valor_frete, 0);
+          
+          // Add freight info to order items
+          orderData.items.forEach((item: any) => {
+            const freight = shippingInfo.find(s => s.vendedor_id === item.vendedor_id);
+            if (freight) {
+              item.valor_frete = freight.valor_frete;
+            }
+          });
+        }
+
         orderData.valor_produtos = valorProdutos;
-        orderData.valor_frete_total = 0; // For now, assuming free shipping
+        orderData.valor_frete_total = valorFreteTotal;
+        orderData.shipping_info = shippingInfo;
       }
     } else {
       // If items don't exist or aren't an array, set empty array
       orderData.items = [];
       orderData.valor_produtos = 0;
       orderData.valor_frete_total = 0;
+      orderData.shipping_info = [];
     }
     
     console.log(`✅ [getOrderByIdDirect] Successfully processed order with ${orderData.items.length} items`);

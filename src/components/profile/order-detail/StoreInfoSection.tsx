@@ -1,29 +1,25 @@
 
 import React from 'react';
-import { Store, Phone, MapPin } from 'lucide-react';
+import { Store, Phone, MapPin, Truck } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { VendorInfo } from '@/services/order/types';
+import { formatCurrency } from '@/utils/formatCurrency';
 
 interface StoreInfoSectionProps {
   vendor: VendorInfo;
   itemCount: number;
   subtotal: number;
   shippingCost?: number;
+  deliveryTime?: string;
 }
 
 const StoreInfoSection: React.FC<StoreInfoSectionProps> = ({
   vendor,
   itemCount,
   subtotal,
-  shippingCost = 0
+  shippingCost = 0,
+  deliveryTime
 }) => {
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
-  };
-
   return (
     <Card className="p-4 mb-3">
       <div className="flex items-start justify-between mb-3">
@@ -53,17 +49,27 @@ const StoreInfoSection: React.FC<StoreInfoSectionProps> = ({
           {shippingCost > 0 && (
             <div className="text-sm text-gray-500">+ {formatCurrency(shippingCost)} frete</div>
           )}
+          {shippingCost === 0 && (
+            <div className="text-sm text-green-600">Frete grátis</div>
+          )}
         </div>
       </div>
 
-      {vendor.telefone && (
-        <div className="border-t pt-3 space-y-2">
+      <div className="border-t pt-3 space-y-2">
+        {vendor.telefone && (
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Phone size={16} />
             <span>{vendor.telefone}</span>
           </div>
-        </div>
-      )}
+        )}
+        
+        {deliveryTime && (
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Truck size={16} />
+            <span>Entrega: {deliveryTime}</span>
+          </div>
+        )}
+      </div>
     </Card>
   );
 };

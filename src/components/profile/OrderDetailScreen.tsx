@@ -45,17 +45,19 @@ const OrderDetailScreen: React.FC = () => {
         valorFreteTotal: orderData.valor_frete_total,
         descontoAplicado: orderData.desconto_aplicado,
         cupomCodigo: orderData.cupom_codigo,
-        pontos_ganhos: orderData.pontos_ganhos
+        pontos_ganhos: orderData.pontos_ganhos,
+        shippingInfo: orderData.shipping_info
       });
       
-      // If we have items, check vendors
+      // If we have items, check vendors and freight
       if (orderData.items && orderData.items.length > 0) {
         const vendorsInfo = orderData.items.map(item => ({
           produto_id: item.produto_id,
           vendedor_id: item.vendedor_id,
-          vendor_name: item.vendedor?.nome_loja || 'N/A'
+          vendor_name: item.vendedor?.nome_loja || 'N/A',
+          valor_frete: item.valor_frete || 0
         }));
-        console.log("🏪 [OrderDetailScreen] Vendors info:", vendorsInfo);
+        console.log("🏪 [OrderDetailScreen] Vendors and freight info:", vendorsInfo);
       }
     }
   }, [orderData]);
@@ -110,7 +112,8 @@ const OrderDetailScreen: React.FC = () => {
     valorProdutos: order.valor_produtos,
     valorFreteTotal: order.valor_frete_total,
     descontoAplicado: order.desconto_aplicado,
-    cupomCodigo: order.cupom_codigo
+    cupomCodigo: order.cupom_codigo,
+    shippingInfoCount: order.shipping_info?.length || 0
   });
 
   return (
@@ -128,7 +131,10 @@ const OrderDetailScreen: React.FC = () => {
         {/* Grouped Order Items by Vendor */}
         {orderItems.length > 0 && (
           <div className="mb-4">
-            <GroupedOrderItems items={orderItems} />
+            <GroupedOrderItems 
+              items={orderItems} 
+              shippingInfo={order.shipping_info}
+            />
           </div>
         )}
 
