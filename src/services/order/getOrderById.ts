@@ -87,6 +87,28 @@ export function getProductImageUrl(product: any): string | null {
   return null;
 }
 
+// Helper function to safely extract CEP from endereco_entrega
+function extractCepFromAddress(endereco: any): string | null {
+  if (!endereco) return null;
+  
+  // If it's a string, try to parse as JSON
+  if (typeof endereco === 'string') {
+    try {
+      const parsed = JSON.parse(endereco);
+      return parsed?.cep || null;
+    } catch {
+      return null;
+    }
+  }
+  
+  // If it's already an object
+  if (typeof endereco === 'object' && endereco !== null) {
+    return endereco.cep || null;
+  }
+  
+  return null;
+}
+
 // Helper function to calculate freight for vendors
 async function calculateVendorFreight(vendorIds: string[], customerCep: string): Promise<ShippingInfo[]> {
   console.log('[calculateVendorFreight] Calculating freight for vendors:', vendorIds, 'CEP:', customerCep);
@@ -275,18 +297,23 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
     let shippingInfo: ShippingInfo[] = [];
     let valorFreteTotal = 0;
     
-    if (vendorIds.length > 0 && orderData.endereco_entrega?.cep) {
-      console.log(`🚚 [getOrderById] Calculating freight for vendors: ${vendorIds.join(', ')}`);
-      shippingInfo = await calculateVendorFreight(vendorIds, orderData.endereco_entrega.cep);
-      valorFreteTotal = shippingInfo.reduce((total, info) => total + info.valor_frete, 0);
+    if (vendorIds.length > 0) {
+      // Use the helper function to safely extract CEP
+      const customerCep = extractCepFromAddress(orderData.endereco_entrega);
       
-      // Add freight info to order items
-      orderItems.forEach(item => {
-        const freight = shippingInfo.find(s => s.vendedor_id === item.vendedor_id);
-        if (freight) {
-          item.valor_frete = freight.valor_frete;
-        }
-      });
+      if (customerCep) {
+        console.log(`🚚 [getOrderById] Calculating freight for vendors: ${vendorIds.join(', ')}`);
+        shippingInfo = await calculateVendorFreight(vendorIds, customerCep);
+        valorFreteTotal = shippingInfo.reduce((total, info) => total + info.valor_frete, 0);
+        
+        // Add freight info to order items
+        orderItems.forEach(item => {
+          const freight = shippingInfo.find(s => s.vendedor_id === item.vendedor_id);
+          if (freight) {
+            item.valor_frete = freight.valor_frete;
+          }
+        });
+      }
     }
     
     console.log(`✅ [getOrderById] Successfully processed order with ${orderItems.length} items, freight: R$ ${valorFreteTotal}`);
@@ -408,17 +435,22 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
         let shippingInfo: ShippingInfo[] = [];
         let valorFreteTotal = 0;
         
-        if (vendorIds.length > 0 && orderData.endereco_entrega?.cep) {
-          shippingInfo = await calculateVendorFreight(vendorIds, orderData.endereco_entrega.cep);
-          valorFreteTotal = shippingInfo.reduce((total, info) => total + info.valor_frete, 0);
+        if (vendorIds.length > 0) {
+          // Use the helper function to safely extract CEP
+          const customerCep = extractCepFromAddress(orderData.endereco_entrega);
           
-          // Add freight info to order items
-          orderData.items.forEach((item: any) => {
-            const freight = shippingInfo.find(s => s.vendedor_id === item.vendedor_id);
-            if (freight) {
-              item.valor_frete = freight.valor_frete;
-            }
-          });
+          if (customerCep) {
+            shippingInfo = await calculateVendorFreight(vendorIds, customerCep);
+            valorFreteTotal = shippingInfo.reduce((total, info) => total + info.valor_frete, 0);
+            
+            // Add freight info to order items
+            orderData.items.forEach((item: any) => {
+              const freight = shippingInfo.find(s => s.vendedor_id === item.vendedor_id);
+              if (freight) {
+                item.valor_frete = freight.valor_frete;
+              }
+            });
+          }
         }
 
         orderData.valor_produtos = valorProdutos;
