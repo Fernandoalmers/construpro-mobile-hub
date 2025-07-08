@@ -23,6 +23,21 @@ export interface CreateOrderPayload {
   desconto?: number;
 }
 
+export interface VendorInfo {
+  id: string;
+  nome_loja: string;
+  logo?: string;
+  telefone?: string;
+  endereco?: string;
+}
+
+export interface ShippingInfo {
+  vendedor_id: string;
+  valor_frete: number;
+  prazo_entrega?: string;
+  zona_entrega?: string;
+}
+
 export interface ProductData {
   id: string;
   nome: string;
@@ -43,6 +58,8 @@ export interface OrderItem {
   subtotal?: number;
   pontos?: number;
   produto?: ProductData;
+  vendedor_id?: string;
+  vendedor?: VendorInfo;
 }
 
 export interface OrderData {
@@ -60,6 +77,10 @@ export interface OrderData {
   // Novos campos para desconto de cupom
   desconto_aplicado?: number;
   cupom_codigo?: string;
+  // Novos campos para informações de loja e frete
+  shipping_info?: ShippingInfo[];
+  valor_produtos?: number;
+  valor_frete_total?: number;
 }
 
 export interface OrderResponse {

@@ -8,13 +8,13 @@ import LoadingState from '../common/LoadingState';
 import { OrderData } from '@/services/order/types';
 import OrderDetailHeader from './order-detail/OrderDetailHeader';
 import OrderSummary from './order-detail/OrderSummary';
-import OrderItemsList from '../marketplace/order-confirmation/OrderItemsList';
 import Card from '../common/Card';
-import OrderTotal from './order-detail/OrderTotal';
 import OrderActionButtons from './order-detail/OrderActionButtons';
 import { useNavigate } from 'react-router-dom';
 import CustomButton from '../common/CustomButton';
 import DeliveryAddressDisplay from '../marketplace/order-confirmation/DeliveryAddressDisplay';
+import GroupedOrderItems from './order-detail/GroupedOrderItems';
+import OrderBreakdown from './order-detail/OrderBreakdown';
 
 const OrderDetailScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -41,42 +41,21 @@ const OrderDetailScreen: React.FC = () => {
         hasItems: !!orderData.items,
         itemsCount: orderData.items?.length || 0,
         valorTotal: orderData.valor_total,
+        valorProdutos: orderData.valor_produtos,
+        valorFreteTotal: orderData.valor_frete_total,
         descontoAplicado: orderData.desconto_aplicado,
         cupomCodigo: orderData.cupom_codigo,
-        cupomCodigoType: typeof orderData.cupom_codigo,
         pontos_ganhos: orderData.pontos_ganhos
       });
       
-      // If we have items, check the first one for debugging
+      // If we have items, check vendors
       if (orderData.items && orderData.items.length > 0) {
-        const firstItem = orderData.items[0];
-        console.log("📦 [OrderDetailScreen] First item details:", {
-          id: firstItem.id,
-          produto_id: firstItem.produto_id,
-          preco_unitario: firstItem.preco_unitario,
-          quantidade: firstItem.quantidade,
-          subtotal: firstItem.subtotal,
-          produto: firstItem.produto ? {
-            nome: firstItem.produto.nome,
-            hasImage: !!firstItem.produto.imagem_url,
-            hasImagens: !!firstItem.produto.imagens && 
-                       Array.isArray(firstItem.produto.imagens) && 
-                       firstItem.produto.imagens.length > 0
-          } : 'No product data'
-        });
-      } else {
-        console.warn("⚠️ [OrderDetailScreen] No items found in order data");
-      }
-      
-      // Debug discount data specifically
-      if (orderData.cupom_codigo || orderData.desconto_aplicado) {
-        console.log("🎫 [OrderDetailScreen] Discount data:", {
-          cupom_codigo: orderData.cupom_codigo,
-          cupom_codigo_length: orderData.cupom_codigo?.length,
-          desconto_aplicado: orderData.desconto_aplicado,
-          desconto_aplicado_type: typeof orderData.desconto_aplicado,
-          desconto_aplicado_number: Number(orderData.desconto_aplicado)
-        });
+        const vendorsInfo = orderData.items.map(item => ({
+          produto_id: item.produto_id,
+          vendedor_id: item.vendedor_id,
+          vendor_name: item.vendedor?.nome_loja || 'N/A'
+        }));
+        console.log("🏪 [OrderDetailScreen] Vendors info:", vendorsInfo);
       }
     }
   }, [orderData]);
@@ -128,6 +107,8 @@ const OrderDetailScreen: React.FC = () => {
     orderId: order.id,
     itemsCount: orderItems.length,
     valorTotal: order.valor_total,
+    valorProdutos: order.valor_produtos,
+    valorFreteTotal: order.valor_frete_total,
     descontoAplicado: order.desconto_aplicado,
     cupomCodigo: order.cupom_codigo
   });
@@ -144,14 +125,30 @@ const OrderDetailScreen: React.FC = () => {
           <OrderSummary order={order} />
         </div>
         
-        {/* Order Items and Address - Using same structure as OrderConfirmationScreen */}
-        <div className="mb-4 p-4 bg-white rounded-lg shadow">
-          <OrderItemsList items={orderItems} />
-          
-          {order.endereco_entrega && (
-            <DeliveryAddressDisplay endereco={order.endereco_entrega} />
-          )}
+        {/* Grouped Order Items by Vendor */}
+        {orderItems.length > 0 && (
+          <div className="mb-4">
+            <GroupedOrderItems items={orderItems} />
+          </div>
+        )}
+
+        {/* Order Breakdown */}
+        <div className="mb-4">
+          <OrderBreakdown
+            valorProdutos={order.valor_produtos || 0}
+            valorFreteTotal={order.valor_frete_total || 0}
+            descontoAplicado={order.desconto_aplicado || 0}
+            valorTotal={order.valor_total}
+            cupomCodigo={order.cupom_codigo}
+          />
         </div>
+        
+        {/* Delivery Address */}
+        {order.endereco_entrega && (
+          <div className="mb-4 p-4 bg-white rounded-lg shadow">
+            <DeliveryAddressDisplay endereco={order.endereco_entrega} />
+          </div>
+        )}
       </div>
       
       {/* Actions - Fixed at the bottom */}

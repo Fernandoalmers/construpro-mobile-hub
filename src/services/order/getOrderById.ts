@@ -1,6 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { OrderData, OrderItem, ProductData } from './types';
+import { OrderData, OrderItem, ProductData, VendorInfo } from './types';
 
 // Helper function to extract and validate image URLs
 const extractImageUrls = (imagensData: any): string[] => {
@@ -91,7 +91,7 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
   try {
     console.log(`🔍 [getOrderById] Fetching order: ${orderId}`);
     
-    // Get order data with improved query - incluindo os novos campos de desconto
+    // Get order data with improved query - incluindo os novos campos de desconto e informações de vendedor
     const { data: orderData, error: orderError } = await supabase
       .from('orders')
         .select(`
@@ -105,7 +105,15 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
             descricao,
             preco_normal,
             categoria,
-            unidade_medida
+            unidade_medida,
+            vendedor_id,
+            vendedores (
+              id,
+              nome_loja,
+              logo,
+              telefone,
+              endereco
+            )
           )
         )
       `)
@@ -127,18 +135,21 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
         quantidade: item.quantidade,
         preco_unitario: item.preco_unitario,
         subtotal: item.subtotal,
-        hasProduto: !!item.produtos
+        hasProduto: !!item.produtos,
+        hasVendedor: !!item.produtos?.vendedores
       }))
     });
     
     // Process order items if they exist
     const orderItems: OrderItem[] = [];
+    let valorProdutos = 0;
     
     if (orderData.order_items && Array.isArray(orderData.order_items)) {
       console.log(`📦 [getOrderById] Processing ${orderData.order_items.length} items`);
       
       for (const item of orderData.order_items) {
         const productData = item.produtos;
+        const vendorData = productData?.vendedores;
         
         console.log(`[getOrderById] Processing item ${item.id}:`, {
           produto_id: item.produto_id,
@@ -149,7 +160,11 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
             id: productData.id,
             nome: productData.nome,
             hasImagens: !!productData.imagens
-          } : 'No product data'
+          } : 'No product data',
+          vendorData: vendorData ? {
+            id: vendorData.id,
+            nome_loja: vendorData.nome_loja
+          } : 'No vendor data'
         });
         
         // FIXED: Use extractImageUrls for consistent image processing
@@ -171,32 +186,51 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
           categoria: productData?.categoria || '',
           unidade_medida: productData?.unidade_medida || 'unidade'
         };
+
+        const vendedor: VendorInfo | undefined = vendorData ? {
+          id: vendorData.id,
+          nome_loja: vendorData.nome_loja,
+          logo: vendorData.logo,
+          telefone: vendorData.telefone,
+          endereco: vendorData.endereco
+        } : undefined;
         
         console.log(`[getOrderById] Processed product ${item.produto_id}:`, {
           nome: produto.nome,
           hasImageUrl: !!produto.imagem_url,
           imageUrl: produto.imagem_url,
-          imagensCount: produto.imagens.length
+          imagensCount: produto.imagens.length,
+          vendorNome: vendedor?.nome_loja
         });
         
-        orderItems.push({
+        const orderItem: OrderItem = {
           id: item.id,
           produto_id: item.produto_id,
           quantidade: item.quantidade,
           preco_unitario: item.preco_unitario,
           subtotal: item.subtotal,
-          produto
-        });
+          produto,
+          vendedor_id: productData?.vendedor_id,
+          vendedor
+        };
+
+        orderItems.push(orderItem);
+        valorProdutos += item.subtotal || (item.preco_unitario * item.quantidade);
       }
     } else {
       console.warn(`⚠️ [getOrderById] No order_items found or items is not an array`);
     }
     
+    // Calculate shipping info (simplified - in a real scenario this would come from shipping zones)
+    const valorFreteTotal = 0; // For now, assuming free shipping
+    
     console.log(`✅ [getOrderById] Successfully processed order with ${orderItems.length} items`);
     
     return {
       ...orderData,
-      items: orderItems
+      items: orderItems,
+      valor_produtos: valorProdutos,
+      valor_frete_total: valorFreteTotal
     };
     
   } catch (error) {
@@ -237,19 +271,31 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
     
     // Process items if they exist and are in the correct format
     if (orderData.items && Array.isArray(orderData.items)) {
-      // Get product details for items
+      // Get product and vendor details for items
       const productIds = orderData.items.map((item: any) => item.produto_id);
       
       if (productIds.length > 0) {
         const { data: productsData } = await supabase
           .from('produtos')
-          .select('id, nome, imagens, descricao, preco_normal, categoria, unidade_medida')
+          .select(`
+            id, nome, imagens, descricao, preco_normal, categoria, unidade_medida, vendedor_id,
+            vendedores (
+              id,
+              nome_loja,
+              logo,
+              telefone,
+              endereco
+            )
+          `)
           .in('id', productIds);
         
         const productsMap = new Map((productsData || []).map(p => [p.id, p]));
         
+        let valorProdutos = 0;
+        
         orderData.items = orderData.items.map((item: any) => {
           const productData = productsMap.get(item.produto_id);
+          const vendorData = productData?.vendedores;
           
           // FIXED: Use extractImageUrls for consistent image processing
           const imagens = extractImageUrls(productData?.imagens);
@@ -259,6 +305,17 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
           if (imageUrl && imageUrl.startsWith('blob:')) {
             console.warn(`[getOrderByIdDirect] Blob URL detected for product ${item.produto_id}: ${imageUrl.substring(0, 50)}...`);
           }
+
+          const vendedor: VendorInfo | undefined = vendorData ? {
+            id: vendorData.id,
+            nome_loja: vendorData.nome_loja,
+            logo: vendorData.logo,
+            telefone: vendorData.telefone,
+            endereco: vendorData.endereco
+          } : undefined;
+          
+          const subtotal = item.subtotal || (item.preco_unitario * item.quantidade);
+          valorProdutos += subtotal;
           
           return {
             ...item,
@@ -271,13 +328,20 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
               preco_normal: productData?.preco_normal || item.preco_unitario,
               categoria: productData?.categoria || '',
               unidade_medida: productData?.unidade_medida || 'unidade'
-            }
+            },
+            vendedor_id: productData?.vendedor_id,
+            vendedor
           };
         });
+
+        orderData.valor_produtos = valorProdutos;
+        orderData.valor_frete_total = 0; // For now, assuming free shipping
       }
     } else {
       // If items don't exist or aren't an array, set empty array
       orderData.items = [];
+      orderData.valor_produtos = 0;
+      orderData.valor_frete_total = 0;
     }
     
     console.log(`✅ [getOrderByIdDirect] Successfully processed order with ${orderData.items.length} items`);
