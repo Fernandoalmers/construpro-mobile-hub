@@ -40,15 +40,15 @@ export const orderService = {
     return getOrderByIdDirect(orderId);
   },
 
-  // Enhanced method that uses the improved RPC function with better error handling
+  // Use the correct parameter name that matches the RPC function
   async getOrderByIdRPC(orderId: string): Promise<OrderData | null> {
     try {
       console.log(`🔍 [orderService.getOrderByIdRPC] Fetching order: ${orderId}`);
       
-      // Use rpc with the correct parameter name - bypassing TypeScript types since we updated the function
-      const { data, error } = await supabase.rpc('get_order_by_id' as any, { 
-        p_order_id: orderId 
-      } as any);
+      // Use the correct parameter name 'order_id' instead of 'p_order_id'
+      const { data, error } = await supabase.rpc('get_order_by_id', { 
+        order_id: orderId 
+      });
       
       if (error) {
         console.error('❌ [orderService.getOrderByIdRPC] RPC error:', error);
@@ -60,7 +60,6 @@ export const orderService = {
         return null;
       }
       
-      // Safely cast the Json response to OrderData
       const orderData = data as unknown as OrderData;
       console.log(`✅ [orderService.getOrderByIdRPC] Successfully retrieved order with ${orderData.items?.length || 0} items`);
       return orderData;

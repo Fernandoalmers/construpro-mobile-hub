@@ -1,6 +1,6 @@
 
--- Fix the get_order_by_id RPC function parameter ambiguity issue
-CREATE OR REPLACE FUNCTION public.get_order_by_id(p_order_id uuid)
+-- Fix the get_order_by_id RPC function parameter name issue
+CREATE OR REPLACE FUNCTION public.get_order_by_id(order_id uuid)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -13,7 +13,7 @@ BEGIN
   -- Get the order data with explicit table aliases
   SELECT to_jsonb(o.*) INTO order_data
   FROM public.orders o
-  WHERE o.id = p_order_id;
+  WHERE o.id = order_id;
   
   IF order_data IS NULL THEN
     RETURN NULL;
@@ -43,7 +43,7 @@ BEGIN
   )::JSONB INTO order_items
   FROM public.order_items oi
   LEFT JOIN public.produtos p ON oi.produto_id = p.id
-  WHERE oi.order_id = p_order_id;
+  WHERE oi.order_id = order_id;
   
   -- Merge order data with items
   IF order_items IS NOT NULL THEN

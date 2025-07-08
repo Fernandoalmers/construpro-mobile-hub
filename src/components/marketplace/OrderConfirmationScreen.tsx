@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
 import LoadingState from '../common/LoadingState';
@@ -26,52 +26,59 @@ const OrderConfirmationScreen: React.FC = () => {
   const [retryCount, setRetryCount] = useState(0);
   const { refreshProfile } = useAuth();
 
-  useEffect(() => {
-    // Validate orderId first
-    if (!orderId) {
-      setError('ID do pedido não encontrado');
-      setLoading(false);
-      return;
-    }
-    
-    // Check if orderId is a valid UUID
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(orderId)) {
-      console.error('❌ [OrderConfirmationScreen] Invalid UUID in URL:', orderId);
-      setError('ID do pedido inválido. Redirecionando para pedidos...');
-      setLoading(false);
-      
-      // Redirect to orders page after 3 seconds
-      setTimeout(() => {
-        window.location.href = '/orders';
-      }, 3000);
-      return;
-    }
+  // Memoize the refresh function to prevent unnecessary re-renders
+  const refreshProfileMemo = useCallback(() => {
+    refreshProfile().catch(error => {
+      console.warn('⚠️ Failed to refresh profile:', error);
+    });
+  }, [refreshProfile]);
 
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
     const fetchOrderDetails = async () => {
+      // Validate orderId first
+      if (!orderId) {
+        setError('ID do pedido não encontrado');
+        setLoading(false);
+        return;
+      }
+      
+      // Check if orderId is a valid UUID
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(orderId)) {
+        console.error('❌ [OrderConfirmationScreen] Invalid UUID in URL:', orderId);
+        setError('ID do pedido inválido. Redirecionando para pedidos...');
+        setLoading(false);
+        
+        // Redirect to orders page after 3 seconds
+        timeoutId = setTimeout(() => {
+          window.location.href = '/orders';
+        }, 3000);
+        return;
+      }
+
       try {
         setLoading(true);
         console.log(`🔍 Buscando detalhes do pedido ${orderId} (tentativa: ${retryCount + 1})`);
         
         let order: OrderData | null = null;
         
+        // Try RPC method first with corrected parameter
         try {
-          // First try the corrected RPC method
-          console.log('🔄 Trying RPC method with corrected parameter...');
+          console.log('🔄 Trying RPC method...');
           order = await orderService.getOrderByIdRPC(orderId);
-          console.log('✅ Order retrieved using corrected RPC method');
+          console.log('✅ Order retrieved using RPC method');
         } catch (rpcError) {
           console.log("⚠️ RPC method failed, trying direct method", rpcError);
           
+          // Fallback to direct method if RPC fails
           try {
-            // Fallback to direct method
-            order = await orderService.getOrderByIdDirect(orderId);
+            order = await orderService.getOrderById(orderId);
             console.log('✅ Order retrieved using direct method');
           } catch (directError) {
-            console.log("⚠️ Direct method failed, trying regular method", directError);
-            // Final fallback to regular method
-            order = await orderService.getOrderById(orderId);
-            console.log('✅ Order retrieved using regular method');
+            console.log("⚠️ All methods failed", directError);
+            throw directError;
           }
         }
         
@@ -88,18 +95,11 @@ const OrderConfirmationScreen: React.FC = () => {
         });
         
         setOrderDetails(order);
-
-        // IMPORTANTE: Atualizar o perfil do usuário para obter o saldo de pontos atualizado
-        try {
-          await refreshProfile();
-          console.log('✅ Profile refreshed successfully');
-        } catch (profileError) {
-          console.warn('⚠️ Failed to refresh profile:', profileError);
-          // Don't fail the whole process if profile refresh fails
-        }
-        
         setLoading(false);
         setError(null);
+        
+        // Refresh profile in background without blocking the UI
+        refreshProfileMemo();
         
       } catch (err: any) {
         console.error('❌ Error fetching order details:', err);
@@ -107,7 +107,7 @@ const OrderConfirmationScreen: React.FC = () => {
         // If we've tried less than 3 times, retry after a delay
         if (retryCount < 2) {
           console.log(`🔄 Tentando novamente em 2 segundos (tentativa ${retryCount + 1}/3)`);
-          setTimeout(() => {
+          timeoutId = setTimeout(() => {
             setRetryCount(prev => prev + 1);
           }, 2000);
         } else {
@@ -134,7 +134,14 @@ const OrderConfirmationScreen: React.FC = () => {
     };
 
     fetchOrderDetails();
-  }, [orderId, retryCount, refreshProfile]);
+    
+    // Cleanup timeout on unmount
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [orderId, retryCount]); // Removed refreshProfile from dependencies
 
   const handleRetry = () => {
     setLoading(true);
