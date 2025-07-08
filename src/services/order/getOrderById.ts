@@ -151,7 +151,7 @@ async function calculateVendorFreight(vendorIds: string[], customerCep: string):
         return {
           vendedor_id: vendorId,
           valor_frete: zone.delivery_fee || 0,
-          prazo_entrega: 'Até 5 dias úteis', // Default delivery time
+          prazo_entrega: zone.delivery_time || 'Até 5 dias úteis', // Use actual delivery time from DB
           zona_entrega: zone.zone_name || 'Zona padrão',
           zone_name: zone.zone_name
         };
@@ -177,6 +177,44 @@ async function calculateVendorFreight(vendorIds: string[], customerCep: string):
       zona_entrega: 'N/A'
     }));
   }
+}
+
+// Helper function to calculate proportional coupon discount per vendor
+function calculateVendorCouponDiscounts(
+  items: OrderItem[], 
+  totalCouponDiscount: number, 
+  vendorIds: string[]
+): Record<string, number> {
+  if (!totalCouponDiscount || totalCouponDiscount <= 0) {
+    return {};
+  }
+
+  // Group items by vendor and calculate subtotals
+  const vendorSubtotals: Record<string, number> = {};
+  let totalOrderValue = 0;
+
+  items.forEach(item => {
+    const vendorId = item.vendedor_id || 'unknown';
+    const subtotal = item.subtotal || (item.preco_unitario * item.quantidade);
+    vendorSubtotals[vendorId] = (vendorSubtotals[vendorId] || 0) + subtotal;
+    totalOrderValue += subtotal;
+  });
+
+  // Calculate proportional discount for each vendor
+  const vendorDiscounts: Record<string, number> = {};
+  
+  vendorIds.forEach(vendorId => {
+    const vendorSubtotal = vendorSubtotals[vendorId] || 0;
+    if (vendorSubtotal > 0 && totalOrderValue > 0) {
+      const proportion = vendorSubtotal / totalOrderValue;
+      vendorDiscounts[vendorId] = Math.round(totalCouponDiscount * proportion * 100) / 100;
+    } else {
+      vendorDiscounts[vendorId] = 0;
+    }
+  });
+
+  console.log('[calculateVendorCouponDiscounts] Vendor discounts calculated:', vendorDiscounts);
+  return vendorDiscounts;
 }
 
 export async function getOrderById(orderId: string): Promise<OrderData | null> {
@@ -220,7 +258,9 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
       id: orderData.id,
       hasItems: !!orderData.order_items,
       itemsCount: orderData.order_items?.length || 0,
-      enderecoEntrega: orderData.endereco_entrega
+      enderecoEntrega: orderData.endereco_entrega,
+      cupomCodigo: orderData.cupom_codigo,
+      descontoAplicado: orderData.desconto_aplicado
     });
     
     // Process order items if they exist
@@ -306,11 +346,25 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
         shippingInfo = await calculateVendorFreight(vendorIds, customerCep);
         valorFreteTotal = shippingInfo.reduce((total, info) => total + info.valor_frete, 0);
         
-        // Add freight info to order items
+        // Calculate coupon discounts per vendor
+        const vendorCouponDiscounts = calculateVendorCouponDiscounts(
+          orderItems, 
+          orderData.desconto_aplicado || 0, 
+          vendorIds
+        );
+        
+        // Add freight info and coupon discount to shipping info
+        shippingInfo = shippingInfo.map(info => ({
+          ...info,
+          desconto_cupom: vendorCouponDiscounts[info.vendedor_id] || 0
+        }));
+        
+        // Add freight info and coupon discount to order items
         orderItems.forEach(item => {
           const freight = shippingInfo.find(s => s.vendedor_id === item.vendedor_id);
           if (freight) {
             item.valor_frete = freight.valor_frete;
+            item.desconto_cupom = freight.desconto_cupom;
           }
         });
       }
@@ -443,11 +497,25 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
             shippingInfo = await calculateVendorFreight(vendorIds, customerCep);
             valorFreteTotal = shippingInfo.reduce((total, info) => total + info.valor_frete, 0);
             
-            // Add freight info to order items
+            // Calculate coupon discounts per vendor
+            const vendorCouponDiscounts = calculateVendorCouponDiscounts(
+              orderData.items, 
+              orderData.desconto_aplicado || 0, 
+              vendorIds
+            );
+            
+            // Add coupon discount to shipping info
+            shippingInfo = shippingInfo.map(info => ({
+              ...info,
+              desconto_cupom: vendorCouponDiscounts[info.vendedor_id] || 0
+            }));
+            
+            // Add freight info and coupon discount to order items
             orderData.items.forEach((item: any) => {
               const freight = shippingInfo.find(s => s.vendedor_id === item.vendedor_id);
               if (freight) {
                 item.valor_frete = freight.valor_frete;
+                item.desconto_cupom = freight.desconto_cupom;
               }
             });
           }

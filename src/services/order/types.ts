@@ -36,6 +36,7 @@ export interface ShippingInfo {
   prazo_entrega?: string;
   zona_entrega?: string;
   zone_name?: string;
+  desconto_cupom?: number; // Added per-vendor coupon discount
 }
 
 export interface ProductData {
@@ -61,6 +62,7 @@ export interface OrderItem {
   vendedor_id?: string;
   vendedor?: VendorInfo;
   valor_frete?: number; // Freight cost for this item's vendor
+  desconto_cupom?: number; // Added per-item coupon discount
 }
 
 export interface OrderData {

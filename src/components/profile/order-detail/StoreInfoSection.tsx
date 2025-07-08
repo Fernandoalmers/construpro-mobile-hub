@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Store, Phone, MapPin, Truck } from 'lucide-react';
+import { Store, Phone, MapPin, Truck, Tag } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { VendorInfo } from '@/services/order/types';
 import { formatCurrency } from '@/utils/formatCurrency';
@@ -11,6 +11,7 @@ interface StoreInfoSectionProps {
   subtotal: number;
   shippingCost?: number;
   deliveryTime?: string;
+  couponDiscount?: number;
 }
 
 const StoreInfoSection: React.FC<StoreInfoSectionProps> = ({
@@ -18,7 +19,8 @@ const StoreInfoSection: React.FC<StoreInfoSectionProps> = ({
   itemCount,
   subtotal,
   shippingCost = 0,
-  deliveryTime
+  deliveryTime,
+  couponDiscount = 0
 }) => {
   return (
     <Card className="p-4 mb-3">
@@ -46,6 +48,16 @@ const StoreInfoSection: React.FC<StoreInfoSectionProps> = ({
         <div className="text-right">
           <div className="text-sm text-gray-600">Subtotal</div>
           <div className="font-semibold text-lg">{formatCurrency(subtotal)}</div>
+          
+          {/* Coupon discount */}
+          {couponDiscount > 0 && (
+            <div className="text-sm text-green-600 flex items-center gap-1">
+              <Tag size={12} />
+              <span>-{formatCurrency(couponDiscount)} cupom</span>
+            </div>
+          )}
+          
+          {/* Shipping cost */}
           {shippingCost > 0 && (
             <div className="text-sm text-gray-500">+ {formatCurrency(shippingCost)} frete</div>
           )}

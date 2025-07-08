@@ -46,19 +46,19 @@ const OrderBreakdown: React.FC<OrderBreakdownProps> = ({
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Truck size={16} className="text-gray-500" />
-            <span className="text-gray-600">Frete</span>
+            <span className="text-gray-600">Frete total</span>
           </div>
           <span className="font-medium">
             {valorFreteTotal > 0 ? formatCurrency(valorFreteTotal) : 'Grátis'}
           </span>
         </div>
 
-        {/* Desconto */}
+        {/* Desconto total do cupom */}
         {hasDiscount && (
           <div className="flex justify-between items-center text-green-600">
             <div className="flex items-center gap-2">
               <Tag size={16} />
-              <span>Desconto ({cupomCodigo})</span>
+              <span>Desconto total ({cupomCodigo})</span>
             </div>
             <span className="font-medium">-{formatCurrency(descontoAplicado)}</span>
           </div>

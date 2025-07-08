@@ -12,6 +12,7 @@ interface GroupedOrderItemsProps {
     valor_frete: number;
     prazo_entrega?: string;
     zona_entrega?: string;
+    desconto_cupom?: number;
   }>;
 }
 
@@ -45,6 +46,7 @@ const GroupedOrderItems: React.FC<GroupedOrderItemsProps> = ({ items, shippingIn
         const vendorShipping = shippingInfo.find(s => s.vendedor_id === group.vendor.id);
         const shippingCost = vendorShipping?.valor_frete || 0;
         const deliveryTime = vendorShipping?.prazo_entrega;
+        const couponDiscount = vendorShipping?.desconto_cupom || 0;
 
         return (
           <div key={group.vendor.id || groupIndex}>
@@ -54,6 +56,7 @@ const GroupedOrderItems: React.FC<GroupedOrderItemsProps> = ({ items, shippingIn
               subtotal={groupSubtotal}
               shippingCost={shippingCost}
               deliveryTime={deliveryTime}
+              couponDiscount={couponDiscount}
             />
 
             <div className="bg-white rounded-lg shadow-sm border p-4 space-y-4">
