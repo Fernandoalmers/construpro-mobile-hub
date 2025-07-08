@@ -55,9 +55,36 @@ const OrderDetailScreen: React.FC = () => {
           produto_id: item.produto_id,
           vendedor_id: item.vendedor_id,
           vendor_name: item.vendedor?.nome_loja || 'N/A',
-          valor_frete: item.valor_frete || 0
+          valor_frete: item.valor_frete || 0,
+          desconto_cupom: item.desconto_cupom || 0
         }));
         console.log("🏪 [OrderDetailScreen] Vendors and freight info:", vendorsInfo);
+      }
+
+      // Log shipping info details
+      if (orderData.shipping_info && orderData.shipping_info.length > 0) {
+        console.log("🚚 [OrderDetailScreen] Shipping info details:");
+        orderData.shipping_info.forEach(shipping => {
+          console.log(`  Vendor ${shipping.vendedor_id}:`, {
+            prazo_entrega: shipping.prazo_entrega,
+            valor_frete: shipping.valor_frete,
+            zona_entrega: shipping.zona_entrega,
+            desconto_cupom: shipping.desconto_cupom
+          });
+        });
+      }
+
+      // Log coupon information if present
+      if (orderData.cupom_codigo) {
+        console.log("🎫 [OrderDetailScreen] Coupon applied:", {
+          codigo: orderData.cupom_codigo,
+          desconto_total: orderData.desconto_aplicado,
+          has_shipping_info: !!orderData.shipping_info,
+          vendor_discounts: orderData.shipping_info?.map(s => ({
+            vendor: s.vendedor_id,
+            desconto: s.desconto_cupom
+          }))
+        });
       }
     }
   }, [orderData]);

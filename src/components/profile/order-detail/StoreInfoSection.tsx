@@ -22,6 +22,13 @@ const StoreInfoSection: React.FC<StoreInfoSectionProps> = ({
   deliveryTime,
   couponDiscount = 0
 }) => {
+  console.log('[StoreInfoSection] Rendering for vendor:', {
+    vendorName: vendor.nome_loja,
+    deliveryTime,
+    shippingCost,
+    couponDiscount
+  });
+
   return (
     <Card className="p-4 mb-3">
       <div className="flex items-start justify-between mb-3">
@@ -49,9 +56,9 @@ const StoreInfoSection: React.FC<StoreInfoSectionProps> = ({
           <div className="text-sm text-gray-600">Subtotal</div>
           <div className="font-semibold text-lg">{formatCurrency(subtotal)}</div>
           
-          {/* Coupon discount */}
+          {/* Coupon discount per vendor */}
           {couponDiscount > 0 && (
-            <div className="text-sm text-green-600 flex items-center gap-1">
+            <div className="text-sm text-green-600 flex items-center gap-1 justify-end">
               <Tag size={12} />
               <span>-{formatCurrency(couponDiscount)} cupom</span>
             </div>

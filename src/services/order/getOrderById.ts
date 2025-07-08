@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { OrderData, OrderItem, ProductData, VendorInfo, ShippingInfo } from './types';
 import { DeliveryZoneResult } from '@/utils/delivery/types';
@@ -126,8 +127,9 @@ async function calculateVendorFreight(vendorIds: string[], customerCep: string):
   try {
     // Clean the CEP for the query
     const cleanCep = customerCep.replace(/\D/g, '');
+    console.log('[calculateVendorFreight] Clean CEP for delivery zones lookup:', cleanCep);
     
-    // Use the existing resolve_delivery_zones function with proper typing
+    // Use the updated resolve_delivery_zones function with proper typing
     const { data: deliveryZones, error } = await supabase
       .rpc('resolve_delivery_zones', { user_cep: cleanCep }) as { 
         data: DeliveryZoneResult[] | null, 
@@ -139,16 +141,44 @@ async function calculateVendorFreight(vendorIds: string[], customerCep: string):
       return vendorIds.map(id => ({
         vendedor_id: id,
         valor_frete: 0,
-        prazo_entrega: 'A calcular',
+        prazo_entrega: 'Erro no cálculo',
         zona_entrega: 'Erro no cálculo'
       }));
     }
 
-    console.log('[calculateVendorFreight] Delivery zones found:', deliveryZones);
+    console.log('[calculateVendorFreight] Delivery zones found:', deliveryZones?.length || 0);
+    if (deliveryZones && deliveryZones.length > 0) {
+      console.log('[calculateVendorFreight] Zone details:', deliveryZones.map(z => ({
+        vendor_id: z.vendor_id,
+        zone_name: z.zone_name,
+        delivery_fee: z.delivery_fee,
+        delivery_time: z.delivery_time
+      })));
+    } else {
+      console.log('[calculateVendorFreight] ⚠️ Nenhuma zona encontrada para CEP:', cleanCep);
+      // Verificar se existem zonas cadastradas no sistema
+      const { data: allZones } = await supabase
+        .from('vendor_delivery_zones')
+        .select('zone_name, zone_type, zone_value, vendor_id, delivery_time')
+        .eq('active', true)
+        .limit(5);
+      
+      console.log('[calculateVendorFreight] Zonas cadastradas no sistema:', allZones?.length || 0);
+      if (allZones && allZones.length > 0) {
+        console.log('[calculateVendorFreight] Exemplos de zonas:', allZones);
+      }
+    }
 
     // Create shipping info for each vendor
     const shippingInfo: ShippingInfo[] = vendorIds.map(vendorId => {
       const zone = deliveryZones?.find((z: DeliveryZoneResult) => z.vendor_id === vendorId);
+      
+      console.log(`[calculateVendorFreight] Processing vendor ${vendorId}:`, {
+        foundZone: !!zone,
+        zoneName: zone?.zone_name,
+        deliveryTime: zone?.delivery_time,
+        deliveryFee: zone?.delivery_fee
+      });
       
       if (zone) {
         return {
@@ -159,6 +189,7 @@ async function calculateVendorFreight(vendorIds: string[], customerCep: string):
           zone_name: zone.zone_name
         };
       } else {
+        console.log(`[calculateVendorFreight] No zone found for vendor ${vendorId}, using free shipping`);
         return {
           vendedor_id: vendorId,
           valor_frete: 0,
@@ -168,7 +199,7 @@ async function calculateVendorFreight(vendorIds: string[], customerCep: string):
       }
     });
 
-    console.log('[calculateVendorFreight] Calculated shipping info:', shippingInfo);
+    console.log('[calculateVendorFreight] Final shipping info calculated:', shippingInfo);
     return shippingInfo;
 
   } catch (error) {
@@ -188,7 +219,14 @@ function calculateVendorCouponDiscounts(
   totalCouponDiscount: number, 
   vendorIds: string[]
 ): Record<string, number> {
+  console.log('[calculateVendorCouponDiscounts] Input:', {
+    totalCouponDiscount,
+    vendorIds,
+    itemsCount: items.length
+  });
+  
   if (!totalCouponDiscount || totalCouponDiscount <= 0) {
+    console.log('[calculateVendorCouponDiscounts] No discount to apply');
     return {};
   }
 
@@ -203,6 +241,9 @@ function calculateVendorCouponDiscounts(
     totalOrderValue += subtotal;
   });
 
+  console.log('[calculateVendorCouponDiscounts] Vendor subtotals:', vendorSubtotals);
+  console.log('[calculateVendorCouponDiscounts] Total order value:', totalOrderValue);
+
   // Calculate proportional discount for each vendor
   const vendorDiscounts: Record<string, number> = {};
   
@@ -211,12 +252,13 @@ function calculateVendorCouponDiscounts(
     if (vendorSubtotal > 0 && totalOrderValue > 0) {
       const proportion = vendorSubtotal / totalOrderValue;
       vendorDiscounts[vendorId] = Math.round(totalCouponDiscount * proportion * 100) / 100;
+      console.log(`[calculateVendorCouponDiscounts] Vendor ${vendorId}: ${vendorSubtotal} (${(proportion * 100).toFixed(1)}%) = ${vendorDiscounts[vendorId]} discount`);
     } else {
       vendorDiscounts[vendorId] = 0;
     }
   });
 
-  console.log('[calculateVendorCouponDiscounts] Vendor discounts calculated:', vendorDiscounts);
+  console.log('[calculateVendorCouponDiscounts] Final vendor discounts:', vendorDiscounts);
   return vendorDiscounts;
 }
 
