@@ -56,20 +56,12 @@ const StoreInfoSection: React.FC<StoreInfoSectionProps> = ({
         </div>
       </div>
 
-      {(vendor.telefone || vendor.endereco) && (
+      {vendor.telefone && (
         <div className="border-t pt-3 space-y-2">
-          {vendor.telefone && (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <Phone size={16} />
-              <span>{vendor.telefone}</span>
-            </div>
-          )}
-          {vendor.endereco && (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <MapPin size={16} />
-              <span>{vendor.endereco}</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Phone size={16} />
+            <span>{vendor.telefone}</span>
+          </div>
         </div>
       )}
     </Card>

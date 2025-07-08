@@ -28,7 +28,6 @@ export interface VendorInfo {
   nome_loja: string;
   logo?: string;
   telefone?: string;
-  endereco?: string;
 }
 
 export interface ShippingInfo {

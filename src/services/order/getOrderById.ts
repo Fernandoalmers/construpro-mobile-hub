@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { OrderData, OrderItem, ProductData, VendorInfo } from './types';
 
@@ -111,8 +110,7 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
               id,
               nome_loja,
               logo,
-              telefone,
-              endereco
+              telefone
             )
           )
         )
@@ -191,8 +189,7 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
           id: vendorData.id,
           nome_loja: vendorData.nome_loja,
           logo: vendorData.logo,
-          telefone: vendorData.telefone,
-          endereco: vendorData.endereco
+          telefone: vendorData.telefone
         } : undefined;
         
         console.log(`[getOrderById] Processed product ${item.produto_id}:`, {
@@ -283,8 +280,7 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
               id,
               nome_loja,
               logo,
-              telefone,
-              endereco
+              telefone
             )
           `)
           .in('id', productIds);
@@ -310,8 +306,7 @@ export async function getOrderByIdDirect(orderId: string): Promise<OrderData | n
             id: vendorData.id,
             nome_loja: vendorData.nome_loja,
             logo: vendorData.logo,
-            telefone: vendorData.telefone,
-            endereco: vendorData.endereco
+            telefone: vendorData.telefone
           } : undefined;
           
           const subtotal = item.subtotal || (item.preco_unitario * item.quantidade);
