@@ -371,8 +371,15 @@ export function useCheckout() {
       });
       
       // FLUXO OTIMIZADO: 1. Criar pedido
-      const orderId = await orderService.createOrder(orderData);
+      console.log('🛒 [useCheckout] Calling orderService.createOrder with data:', orderData);
+      const orderResponse = await orderService.createOrder(orderData);
+      console.log('🛒 [useCheckout] Order service response:', orderResponse);
       
+      if (!orderResponse.success) {
+        throw new Error(orderResponse.error || 'Falha ao processar pedido');
+      }
+      
+      const orderId = orderResponse.order?.id;
       if (!orderId) {
         throw new Error('Falha ao processar pedido - ID não retornado');
       }
