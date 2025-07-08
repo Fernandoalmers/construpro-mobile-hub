@@ -25,3 +25,12 @@ export interface StoreLocationInfo {
   ibge?: string;
   zona?: string;
 }
+
+// Updated interface to match the new database function
+export interface DeliveryZoneResult {
+  zone_id: string;
+  vendor_id: string;
+  zone_name: string;
+  delivery_fee: number;
+  delivery_time: string;
+}
