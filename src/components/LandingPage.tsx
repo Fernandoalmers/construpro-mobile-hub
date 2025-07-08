@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -6,71 +5,59 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Smartphone, Gift, Settings, CheckCircle, Star, ArrowRight, Users, TrendingUp, Award, MapPin, Truck, ShieldCheck } from 'lucide-react';
 import LazyImage from '@/components/common/LazyImage';
 import { useSiteLogo } from '@/hooks/useSiteLogo';
-
 const LandingPage = () => {
   const navigate = useNavigate();
   const showMultisegmentHero = process.env.NEXT_PUBLIC_SHOW_MULTISEGMENT_HERO !== 'false';
-  const { logoUrl, isLoading: logoLoading } = useSiteLogo();
-  
+  const {
+    logoUrl,
+    isLoading: logoLoading
+  } = useSiteLogo();
   const handleSignUp = () => {
     navigate('/signup');
   };
   const handleLogin = () => {
     navigate('/login');
   };
-
   const renderLogo = () => {
     // Se ainda está carregando, mostrar espaço reservado
     if (logoLoading) {
-      return (
-        <div className="h-12 w-40 bg-gray-200 animate-pulse rounded"></div>
-      );
+      return <div className="h-12 w-40 bg-gray-200 animate-pulse rounded"></div>;
     }
 
     // Usar logo do banco de dados ou fallback para a logo padrão
     const currentLogoUrl = logoUrl || '/lovable-uploads/7520caa6-efbb-4176-9c9f-8d37f88c7ff1.png';
-    
-    return (
-      <img
-        src={currentLogoUrl}
-        alt="Matershop"
-        className="h-12 w-auto object-contain hover:scale-105 transition-transform duration-200"
-        onError={(e) => {
-          // Se falhar, tentar o placeholder
-          e.currentTarget.src = '/img/placeholder.png';
-          e.currentTarget.onerror = () => {
-            // Se o placeholder também falhar, mostrar texto como último recurso
-            e.currentTarget.style.display = 'none';
-            const textFallback = document.createElement('h1');
-            textFallback.className = 'text-2xl font-bold text-royal-blue';
-            textFallback.textContent = 'Matershop';
-            e.currentTarget.parentNode?.appendChild(textFallback);
-          };
-        }}
-      />
-    );
+    return <img src={currentLogoUrl} alt="Matershop" className="h-12 w-auto object-contain hover:scale-105 transition-transform duration-200" onError={e => {
+      // Se falhar, tentar o placeholder
+      e.currentTarget.src = '/img/placeholder.png';
+      e.currentTarget.onerror = () => {
+        // Se o placeholder também falhar, mostrar texto como último recurso
+        e.currentTarget.style.display = 'none';
+        const textFallback = document.createElement('h1');
+        textFallback.className = 'text-2xl font-bold text-royal-blue';
+        textFallback.textContent = 'Matershop';
+        e.currentTarget.parentNode?.appendChild(textFallback);
+      };
+    }} />;
   };
-  
-  return (
-    <div className="min-h-screen bg-white" itemScope itemType="https://schema.org/LocalBusiness">
+  return <div className="min-h-screen bg-white" itemScope itemType="https://schema.org/LocalBusiness">
       {/* Schema.org structured data */}
       <script type="application/ld+json">
         {JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "LocalBusiness",
-          "name": "Matershop",
-          "description": "Marketplace de negócios locais começando pela construção",
-          "url": "https://www.matershop.com.br",
-          "telephone": "+55-11-99999-9999",
-          "address": {
-            "@type": "PostalAddress",
-            "addressCountry": "BR"
-          },
-          "openingHours": "Mo-Fr 08:00-18:00",
-          "priceRange": "$$",
-          "paymentAccepted": ["Cash", "Credit Card", "Debit Card", "Pix"],
-          "currenciesAccepted": "BRL"
-        })}
+        "@context": "https://schema.org",
+        "@type": "LocalBusiness",
+        "name": "Matershop",
+        "description": "Marketplace de negócios locais começando pela construção",
+        "url": "https://www.matershop.com.br",
+        "telephone": "+55-11-99999-9999",
+        "address": {
+          "@type": "PostalAddress",
+          "addressCountry": "BR"
+        },
+        "openingHours": "Mo-Fr 08:00-18:00",
+        "priceRange": "$$",
+        "paymentAccepted": ["Cash", "Credit Card", "Debit Card", "Pix"],
+        "currenciesAccepted": "BRL"
+      })}
       </script>
 
       {/* Navigation */}
@@ -97,8 +84,7 @@ const LandingPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              {showMultisegmentHero ? (
-                <>
+              {showMultisegmentHero ? <>
                   <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 leading-tight mb-6" itemProp="description">
                     Tudo do seu bairro a um clique: da{' '}
                     <span className="text-royal-blue">obra</span> ao{' '}
@@ -107,9 +93,7 @@ const LandingPage = () => {
                   <p className="text-lg text-gray-600 mb-8 leading-relaxed">
                     Compare preços, ganhe pontos e receba em casa produtos de lojas parceiras da sua região.
                   </p>
-                </>
-              ) : (
-                <>
+                </> : <>
                   <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 leading-tight mb-6">
                     Matershop conecta você às{' '}
                     <span className="text-royal-blue">melhores ofertas</span> e{' '}
@@ -119,8 +103,7 @@ const LandingPage = () => {
                   <p className="text-lg text-gray-600 mb-8 leading-relaxed">
                     Cadastre-se grátis, garanta descontos exclusivos e acumule pontos online e nas lojas físicas parceiras.
                   </p>
-                </>
-              )}
+                </>}
               
               <div className="space-y-4">
                 <Button onClick={handleSignUp} size="lg" className="bg-orange-points hover:bg-orange-points/90 text-white text-lg px-8 py-4 rounded-lg shadow-lg">
@@ -133,8 +116,7 @@ const LandingPage = () => {
               </div>
 
               {/* Benefits Bullets */}
-              {showMultisegmentHero && (
-                <div className="mt-8 space-y-3">
+              {showMultisegmentHero && <div className="mt-8 space-y-3">
                   <div className="flex items-center text-gray-700">
                     <Award className="h-5 w-5 text-orange-points mr-3 flex-shrink-0" />
                     <span className="font-medium">Pontuação inteligente em cada compra</span>
@@ -147,16 +129,10 @@ const LandingPage = () => {
                     <ShieldCheck className="h-5 w-5 text-orange-points mr-3 flex-shrink-0" />
                     <span className="font-medium">Negócios verificados • Suporte local</span>
                   </div>
-                </div>
-              )}
+                </div>}
             </div>
             <div className="relative">
-              <LazyImage 
-                src="/lovable-uploads/2a4834bb-9836-4472-83f1-737a07c2d9c8.png"
-                alt="App Matershop - Marketplace de negócios locais"
-                className="w-full max-w-md mx-auto rounded-2xl object-contain"
-                placeholderClassName="w-full max-w-md mx-auto rounded-2xl"
-              />
+              <LazyImage src="/lovable-uploads/2a4834bb-9836-4472-83f1-737a07c2d9c8.png" alt="App Matershop - Marketplace de negócios locais" className="w-full max-w-md mx-auto rounded-2xl object-contain" placeholderClassName="w-full max-w-md mx-auto rounded-2xl" />
             </div>
           </div>
         </div>
@@ -171,8 +147,7 @@ const LandingPage = () => {
             </h2>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
-            {showMultisegmentHero ? (
-              <>
+            {showMultisegmentHero ? <>
                 <Card className="border-0 shadow-lg rounded-lg hover:shadow-xl transition-shadow">
                   <CardContent className="p-8 text-center">
                     <Award className="h-12 w-12 text-orange-points mx-auto mb-4" />
@@ -208,9 +183,7 @@ const LandingPage = () => {
                     </p>
                   </CardContent>
                 </Card>
-              </>
-            ) : (
-              <>
+              </> : <>
                 <Card className="border-0 shadow-lg rounded-lg hover:shadow-xl transition-shadow">
                   <CardContent className="p-8 text-center">
                     <Gift className="h-12 w-12 text-orange-points mx-auto mb-4" />
@@ -246,8 +219,7 @@ const LandingPage = () => {
                     </p>
                   </CardContent>
                 </Card>
-              </>
-            )}
+              </>}
           </div>
         </div>
       </section>
@@ -367,10 +339,7 @@ const LandingPage = () => {
             Pronto para economizar e ganhar recompensas?
           </h2>
           <p className="text-lg text-blue-100 mb-8">
-            {showMultisegmentHero ? 
-              'Junte-se a milhares que já descobriram os melhores negócios da região' :
-              'Junte-se a milhares de profissionais e consumidores que já economizam com a Matershop'
-            }
+            {showMultisegmentHero ? 'Junte-se a milhares que já descobriram os melhores negócios da região' : 'Junte-se a milhares de profissionais e consumidores que já economizam com a Matershop'}
           </p>
           <Button onClick={handleSignUp} size="lg" className="bg-orange-points hover:bg-orange-points/90 text-white text-xl px-12 py-6 rounded-lg shadow-xl">
             Cadastre-se agora
@@ -380,17 +349,14 @@ const LandingPage = () => {
       </section>
 
       {/* Footer */}
-      <footer className="py-12 bg-black">
+      <footer className="py-12 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <div className="flex justify-center mb-4">
               {renderLogo()}
             </div>
             <p className="text-gray-400 mb-6">
-              {showMultisegmentHero ? 
-                'O marketplace de negócios locais (começamos pela construção)' :
-                'Marketplace e Clube de Compras Inteligentes para Profissionais e Consumidores da Construção'
-              }
+              {showMultisegmentHero ? 'O marketplace de negócios locais (começamos pela construção)' : 'Marketplace e Clube de Compras Inteligentes para Profissionais e Consumidores da Construção'}
             </p>
             <div className="flex justify-center space-x-6">
               <Button variant="outline" onClick={handleLogin} className="border-gray-600 text-gray-300 bg-orange-points">
@@ -400,8 +366,6 @@ const LandingPage = () => {
           </div>
         </div>
       </footer>
-    </div>
-  );
+    </div>;
 };
-
 export default LandingPage;
