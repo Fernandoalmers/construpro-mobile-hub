@@ -1,6 +1,6 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { OrderData, OrderItem, ProductData, VendorInfo, ShippingInfo } from './types';
+import { DeliveryZoneResult } from '@/utils/delivery/types';
 
 // Helper function to extract and validate image URLs
 const extractImageUrls = (imagensData: any): string[] => {
@@ -127,9 +127,12 @@ async function calculateVendorFreight(vendorIds: string[], customerCep: string):
     // Clean the CEP for the query
     const cleanCep = customerCep.replace(/\D/g, '');
     
-    // Use the existing resolve_delivery_zones function
+    // Use the existing resolve_delivery_zones function with proper typing
     const { data: deliveryZones, error } = await supabase
-      .rpc('resolve_delivery_zones', { user_cep: cleanCep });
+      .rpc('resolve_delivery_zones', { user_cep: cleanCep }) as { 
+        data: DeliveryZoneResult[] | null, 
+        error: any 
+      };
 
     if (error) {
       console.error('[calculateVendorFreight] Error fetching delivery zones:', error);
@@ -145,13 +148,13 @@ async function calculateVendorFreight(vendorIds: string[], customerCep: string):
 
     // Create shipping info for each vendor
     const shippingInfo: ShippingInfo[] = vendorIds.map(vendorId => {
-      const zone = deliveryZones?.find((z: any) => z.vendor_id === vendorId);
+      const zone = deliveryZones?.find((z: DeliveryZoneResult) => z.vendor_id === vendorId);
       
       if (zone) {
         return {
           vendedor_id: vendorId,
           valor_frete: zone.delivery_fee || 0,
-          prazo_entrega: zone.delivery_time || 'Até 5 dias úteis', // Use actual delivery time from DB
+          prazo_entrega: zone.delivery_time || 'Até 5 dias úteis',
           zona_entrega: zone.zone_name || 'Zona padrão',
           zone_name: zone.zone_name
         };
