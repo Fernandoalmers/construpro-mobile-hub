@@ -2,16 +2,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 
-// Mapeamento de status interno para status padronizado
-const STATUS_MAPPING = {
-  'pendente': 'confirmado',
-  'confirmado': 'processando', 
-  'processando': 'enviado',
-  'enviado': 'entregue',
-  'entregue': 'entregue', // já finalizado
-  'cancelado': 'cancelado' // já finalizado
-};
-
 export const updateOrderStatus = async (id: string, newInternalStatus: string): Promise<boolean> => {
   try {
     console.log('🔄 [OrderStatusUpdater] Iniciando atualização de status:', { 
@@ -81,24 +71,13 @@ export const updateOrderStatus = async (id: string, newInternalStatus: string): 
       return false;
     }
 
-    // Validar transição de status
-    const currentStatus = pedidoCheck.status.toLowerCase();
-    const finalStatuses = ['entregue', 'cancelado'];
-    
-    if (finalStatuses.includes(currentStatus)) {
-      console.error('❌ [OrderStatusUpdater] Não é possível atualizar status final:', currentStatus);
-      toast.error('Não é possível alterar o status de um pedido finalizado');
-      return false;
-    }
-
     console.log('✅ [OrderStatusUpdater] Permissões verificadas, chamando Edge Function...');
     
-    // Preparar payload para Edge Function
+    // Preparar payload simplificado para Edge Function
     const functionPayload = {
       pedido_id: id,
       vendedor_id: vendorData.id,
-      new_status: newInternalStatus,
-      order_id_to_update: pedidoCheck.order_id
+      new_status: newInternalStatus
     };
 
     console.log('📡 [OrderStatusUpdater] Payload da Edge Function:', JSON.stringify(functionPayload, null, 2));
@@ -111,7 +90,7 @@ export const updateOrderStatus = async (id: string, newInternalStatus: string): 
       tokenLength: session.session?.access_token?.length || 0
     });
     
-    // Chamada para Edge Function com dados validados
+    // Chamada para Edge Function
     console.log('📞 [OrderStatusUpdater] Invocando Edge Function update-pedido-status-safe...');
     const { data: functionResult, error: functionError } = await supabase.functions.invoke('update-pedido-status-safe', {
       body: functionPayload
@@ -132,15 +111,17 @@ export const updateOrderStatus = async (id: string, newInternalStatus: string): 
         status: functionError.status
       });
       
-      // Tentar extrair uma mensagem de erro mais específica
+      // Mensagem de erro mais específica baseada no step
       let errorMessage = 'Erro ao atualizar status do pedido';
       if (functionError.message) {
-        if (functionError.message.includes('constraint')) {
-          errorMessage = 'Erro de validação de status. Verifique se a transição é válida.';
-        } else if (functionError.message.includes('permission')) {
+        if (functionError.message.includes('environment')) {
+          errorMessage = 'Erro de configuração do servidor. Contate o suporte.';
+        } else if (functionError.message.includes('permission') || functionError.message.includes('Acesso negado')) {
           errorMessage = 'Sem permissão para alterar este pedido.';
-        } else if (functionError.message.includes('not found')) {
+        } else if (functionError.message.includes('not found') || functionError.message.includes('não encontrado')) {
           errorMessage = 'Pedido não encontrado.';
+        } else if (functionError.message.includes('JSON')) {
+          errorMessage = 'Erro de comunicação. Tente novamente.';
         } else {
           errorMessage = `Erro: ${functionError.message}`;
         }
@@ -153,6 +134,8 @@ export const updateOrderStatus = async (id: string, newInternalStatus: string): 
     if (!functionResult?.success) {
       console.error('❌ [OrderStatusUpdater] Edge Function retornou erro:', functionResult);
       const errorMsg = functionResult?.error || functionResult?.message || 'Erro desconhecido na atualização';
+      const step = functionResult?.step || 'unknown';
+      console.error('❌ [OrderStatusUpdater] Erro no step:', step);
       toast.error(`Erro ao atualizar status: ${errorMsg}`);
       return false;
     }
