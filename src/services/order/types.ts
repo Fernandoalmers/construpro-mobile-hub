@@ -8,6 +8,7 @@ export interface ProductData {
   preco_normal: number;
   categoria: string;
   unidade_medida: string;
+  preco_promocional?: number; // Add this missing field
 }
 
 export interface VendorInfo {
@@ -74,4 +75,40 @@ export interface OrderData {
     created_at: string;
     vendor_info: VendorInfo;
   }>;
+}
+
+// ADD MISSING TYPES FOR CREATE ORDER
+export interface CreateOrderPayload {
+  items: Array<{
+    produto_id: string;
+    quantidade: number;
+    preco: number;
+    subtotal?: number;
+  }>;
+  endereco_entrega: {
+    rua: string;
+    numero: string;
+    complemento?: string;
+    bairro: string;
+    cidade: string;
+    estado: string;
+    cep: string;
+    ponto_referencia?: string;
+  };
+  valor_total: number;
+  forma_pagamento: string;
+  pontos_ganhos?: number;
+  cupom_aplicado?: {
+    code: string;
+    discount: number;
+  };
+  desconto?: number;
+}
+
+export interface OrderResponse {
+  success: boolean;
+  order?: {
+    id: string;
+  };
+  error?: string;
 }
