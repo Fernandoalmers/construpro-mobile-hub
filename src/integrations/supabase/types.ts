@@ -615,6 +615,7 @@ export type Database = {
           order_id: string | null
           reference_id: string | null
           status: string
+          updated_at: string
           usuario_id: string
           valor_total: number
           vendedor_id: string
@@ -630,6 +631,7 @@ export type Database = {
           order_id?: string | null
           reference_id?: string | null
           status?: string
+          updated_at?: string
           usuario_id: string
           valor_total: number
           vendedor_id: string
@@ -645,6 +647,7 @@ export type Database = {
           order_id?: string | null
           reference_id?: string | null
           status?: string
+          updated_at?: string
           usuario_id?: string
           valor_total?: number
           vendedor_id?: string
