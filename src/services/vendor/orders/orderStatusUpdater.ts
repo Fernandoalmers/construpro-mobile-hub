@@ -91,7 +91,11 @@ export const updateOrderStatus = async (id: string, newInternalStatus: string): 
       functionResult,
       functionError,
       hasData: !!functionResult,
-      hasError: !!functionError
+      hasError: !!functionError,
+      resultType: typeof functionResult,
+      resultSuccess: functionResult?.success,
+      resultError: functionResult?.error,
+      resultStep: functionResult?.step
     });
 
     if (functionError) {

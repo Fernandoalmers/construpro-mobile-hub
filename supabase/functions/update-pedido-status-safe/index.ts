@@ -129,16 +129,34 @@ Deno.serve(async (req) => {
         )
       }
 
-      if (!functionResult || !functionResult.success) {
+      // Check if function result indicates success
+      console.log('🔍 Analyzing function result:', {
+        hasResult: !!functionResult,
+        isObject: typeof functionResult === 'object',
+        success: functionResult?.success,
+        fullResult: functionResult
+      })
+
+      if (!functionResult || functionResult.success === false) {
         const errorMessage = functionResult?.error || 'Erro desconhecido na função'
-        console.error('❌ STEP 5 FAILED: Função retornou erro:', functionResult)
+        console.error('❌ STEP 5 FAILED: Função retornou erro:', {
+          functionResult,
+          errorMessage,
+          hasSuccess: 'success' in (functionResult || {}),
+          successValue: functionResult?.success
+        })
         
         return new Response(
           JSON.stringify({ 
             success: false,
             error: errorMessage,
             step: 'postgres_function_business_error',
-            details: functionResult
+            details: functionResult,
+            debugInfo: {
+              hasResult: !!functionResult,
+              successValue: functionResult?.success,
+              errorValue: functionResult?.error
+            }
           }),
           { 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
