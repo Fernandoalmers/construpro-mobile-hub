@@ -76,7 +76,7 @@ export async function getVendorOrders(filters: OrderFilters = {}): Promise<Vendo
       .from('pedidos')
       .select(`
         *,
-        profiles!pedidos_usuario_id_fkey(nome, email, telefone)
+        profiles!usuario_id(nome, email, telefone)
       `)
       .eq('vendedor_id', vendorData)
       .order('created_at', { ascending: false });
