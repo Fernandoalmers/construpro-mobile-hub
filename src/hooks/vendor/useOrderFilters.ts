@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { VendorOrder } from '@/services/vendor/orders';
+import { VendorOrder } from '@/services/vendor/orders/types';
 
 export const orderStatuses = [
   { value: 'pendente', label: 'Pendente' },

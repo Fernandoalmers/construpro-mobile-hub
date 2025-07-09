@@ -1,7 +1,7 @@
 
 import React, { useEffect } from 'react';
 import { Search } from 'lucide-react';
-import { VendorOrder } from '@/services/vendor/orders';
+import { VendorOrder } from '@/services/vendor/orders/types';
 import OrderItem from '../OrderItem';
 import ListEmptyState from '@/components/common/ListEmptyState';
 

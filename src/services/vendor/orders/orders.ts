@@ -1,26 +1,40 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { VendorCustomer } from '../../vendorCustomersService';
 
 export interface OrderItem {
   id: string;
+  pedido_id?: string; // Legacy field
+  order_id?: string;
   produto_id: string;
   quantidade: number;
   preco_unitario: number;
-  subtotal: number;
+  total: number;
+  subtotal?: number;
   created_at?: string;
+  produto?: any;
+  produtos?: any; // Keep this for backward compatibility
 }
 
 export interface VendorOrder {
   id: string;
-  usuario_id: string;
-  vendedor_id: string;
+  vendedor_id?: string;
+  usuario_id?: string; // Legacy field
+  cliente_id?: string;
+  valor_total: number;
   status: string;
   forma_pagamento: string;
   endereco_entrega: any;
-  valor_total: number;
+  created_at: string;
+  data_criacao?: string; // Added to be compatible with both property names
+  data_entrega_estimada?: string;
+  pontos_ganhos?: number;
+  rastreio?: string; // Made optional as it doesn't exist in the database
+  cliente?: VendorCustomer;
+  itens?: OrderItem[];
+  items?: OrderItem[]; // Alias for itens for compatibility
   cupom_codigo?: string;
   desconto_aplicado?: number;
-  created_at: string;
   cliente_nome?: string;
   cliente_email?: string;
   cliente_telefone?: string;
@@ -28,7 +42,11 @@ export interface VendorOrder {
 }
 
 export interface OrderFilters {
-  status?: string;
+  status?: string | string[];
+  startDate?: string;
+  endDate?: string;
+  search?: string;
+  searchTerm?: string;
   limit?: number;
   offset?: number;
 }
