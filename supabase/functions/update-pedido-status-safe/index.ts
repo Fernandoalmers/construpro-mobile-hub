@@ -64,13 +64,23 @@ Deno.serve(async (req) => {
       order_id_to_update 
     })
 
-    // Validate that the pedido exists and belongs to the vendor
-    console.log('🔍 [update-pedido-status-safe] Validating pedido ownership...')
+    // NOVA LÓGICA: Verificar se o vendedor tem produtos neste pedido
+    console.log('🔍 [update-pedido-status-safe] Validating vendor ownership of products in order...')
     const { data: pedidoCheck, error: pedidoCheckError } = await supabaseClient
       .from('pedidos')
-      .select('id, vendedor_id, status, order_id')
+      .select(`
+        id, 
+        vendedor_id, 
+        status, 
+        order_id,
+        itens_pedido!inner (
+          produto_id,
+          produtos!inner (
+            vendedor_id
+          )
+        )
+      `)
       .eq('id', pedido_id)
-      .eq('vendedor_id', vendedor_id)
       .single()
 
     if (pedidoCheckError || !pedidoCheck) {
@@ -78,8 +88,8 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: pedidoCheckError ? 'Pedido not found or access denied' : 'Pedido not found',
-          details: pedidoCheckError?.message || 'No pedido found with provided ID and vendor ID'
+          error: 'Pedido not found or access denied',
+          details: pedidoCheckError?.message || 'No pedido found with provided ID'
         }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -88,10 +98,35 @@ Deno.serve(async (req) => {
       )
     }
 
-    console.log('✅ [update-pedido-status-safe] Pedido validation successful:', {
+    // Verificar se o vendedor possui produtos neste pedido
+    const vendorOwnsProducts = pedidoCheck.itens_pedido?.some(item => 
+      item.produtos?.vendedor_id === vendedor_id
+    ) || pedidoCheck.vendedor_id === vendedor_id;
+
+    if (!vendorOwnsProducts) {
+      console.error('❌ [update-pedido-status-safe] Vendor does not own products in this order:', {
+        pedido_vendedor_id: pedidoCheck.vendedor_id,
+        requesting_vendedor_id: vendedor_id,
+        has_products: false
+      })
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: 'Access denied: You do not have products in this order',
+          details: 'Vendor can only update orders containing their own products'
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 403 
+        }
+      )
+    }
+
+    console.log('✅ [update-pedido-status-safe] Vendor ownership validated:', {
       current_status: pedidoCheck.status,
       new_status: new_status,
-      order_id: pedidoCheck.order_id
+      order_id: pedidoCheck.order_id,
+      vendor_owns_products: vendorOwnsProducts
     })
 
     // Validate status transition
@@ -142,26 +177,54 @@ Deno.serve(async (req) => {
     }
     console.log('✅ [update-pedido-status-safe] Pedidos table updated successfully')
 
-    // Step 2: Update orders table if order_id exists
+    // Step 2: Calculate aggregated status for the main order
+    console.log('📊 [update-pedido-status-safe] Calculating aggregated order status...')
     const finalOrderId = order_id_to_update || pedidoCheck.order_id
+    
     if (finalOrderId) {
-      console.log('📝 [update-pedido-status-safe] Updating orders table with order_id:', finalOrderId)
-      const { error: ordersError } = await supabaseClient
-        .from('orders')
-        .update({ status: new_status })
-        .eq('id', finalOrderId)
+      // Get all pedidos for this order
+      const { data: allPedidos, error: allPedidosError } = await supabaseClient
+        .from('pedidos')
+        .select('status, vendedor_id')
+        .eq('order_id', finalOrderId)
 
-      if (ordersError) {
-        console.warn('⚠️ [update-pedido-status-safe] Warning updating orders table:', {
-          error: ordersError,
-          order_id: finalOrderId,
-          message: ordersError.message
+      if (!allPedidosError && allPedidos && allPedidos.length > 0) {
+        // Calculate smart aggregated status
+        const statuses = allPedidos.map(p => p.status.toLowerCase())
+        let aggregatedStatus = 'pendente'
+
+        if (statuses.every(s => s === 'entregue')) {
+          aggregatedStatus = 'entregue'
+        } else if (statuses.every(s => s === 'cancelado')) {
+          aggregatedStatus = 'cancelado'
+        } else if (statuses.some(s => s === 'enviado')) {
+          aggregatedStatus = 'enviado'
+        } else if (statuses.some(s => s === 'processando')) {
+          aggregatedStatus = 'processando'
+        } else if (statuses.some(s => s === 'confirmado')) {
+          aggregatedStatus = 'confirmado'
+        }
+
+        console.log('📊 [update-pedido-status-safe] Calculated aggregated status:', {
+          individual_statuses: statuses,
+          aggregated_status: aggregatedStatus
         })
-        // Don't fail the entire operation if orders update fails
-        // The pedidos table is the primary source of truth
-        console.log('ℹ️ [update-pedido-status-safe] Continuing with success, pedidos table updated')
-      } else {
-        console.log('✅ [update-pedido-status-safe] Orders table updated successfully')
+
+        // Update orders table with aggregated status
+        const { error: ordersError } = await supabaseClient
+          .from('orders')
+          .update({ status: aggregatedStatus })
+          .eq('id', finalOrderId)
+
+        if (ordersError) {
+          console.warn('⚠️ [update-pedido-status-safe] Warning updating orders table:', {
+            error: ordersError,
+            order_id: finalOrderId,
+            message: ordersError.message
+          })
+        } else {
+          console.log('✅ [update-pedido-status-safe] Orders table updated with aggregated status:', aggregatedStatus)
+        }
       }
     } else {
       console.log('ℹ️ [update-pedido-status-safe] No order_id found, skipping orders table update')

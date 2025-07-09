@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { OrderData, OrderItem, ProductData, VendorInfo, ShippingInfo } from './types';
 import { DeliveryZoneResult } from '@/utils/delivery/types';
@@ -308,6 +307,35 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
       cupomCodigo: orderData.cupom_codigo,
       descontoAplicado: orderData.desconto_aplicado
     });
+
+    // NOVA FUNCIONALIDADE: Buscar status por vendedor dos pedidos
+    console.log('🔍 [getOrderById] Fetching vendor-specific statuses...');
+    const { data: vendorPedidos, error: vendorPedidosError } = await supabase
+      .from('pedidos')
+      .select(`
+        vendedor_id,
+        status,
+        created_at,
+        vendedores (
+          id,
+          nome_loja,
+          logo,
+          telefone
+        )
+      `)
+      .eq('order_id', orderId);
+
+    let vendorStatuses: Record<string, any> = {};
+    if (!vendorPedidosError && vendorPedidos) {
+      vendorPedidos.forEach(pedido => {
+        vendorStatuses[pedido.vendedor_id] = {
+          status: pedido.status,
+          created_at: pedido.created_at,
+          vendor_info: pedido.vendedores
+        };
+      });
+      console.log('✅ [getOrderById] Vendor statuses loaded:', vendorStatuses);
+    }
     
     // Process order items if they exist
     const orderItems: OrderItem[] = [];
@@ -369,7 +397,10 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
           subtotal: item.subtotal,
           produto,
           vendedor_id: productData?.vendedor_id,
-          vendedor
+          vendedor,
+          // ADICIONAR STATUS DO VENDEDOR ESPECÍFICO
+          vendor_status: vendorStatuses[productData?.vendedor_id]?.status || orderData.status,
+          vendor_status_info: vendorStatuses[productData?.vendedor_id]
         };
 
         orderItems.push(orderItem);
@@ -402,7 +433,10 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
         // Add freight info and coupon discount to shipping info
         shippingInfo = shippingInfo.map(info => ({
           ...info,
-          desconto_cupom: vendorCouponDiscounts[info.vendedor_id] || 0
+          desconto_cupom: vendorCouponDiscounts[info.vendedor_id] || 0,
+          // ADICIONAR STATUS DO VENDEDOR
+          vendor_status: vendorStatuses[info.vendedor_id]?.status || orderData.status,
+          vendor_status_info: vendorStatuses[info.vendedor_id]
         }));
         
         // Add freight info and coupon discount to order items
@@ -423,7 +457,9 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
       items: orderItems,
       valor_produtos: valorProdutos,
       valor_frete_total: valorFreteTotal,
-      shipping_info: shippingInfo
+      shipping_info: shippingInfo,
+      // ADICIONAR INFORMAÇÕES DE STATUS POR VENDEDOR
+      vendor_statuses: vendorStatuses
     };
     
   } catch (error) {
@@ -432,7 +468,6 @@ export async function getOrderById(orderId: string): Promise<OrderData | null> {
   }
 }
 
-// Direct method for better reliability
 export async function getOrderByIdDirect(orderId: string): Promise<OrderData | null> {
   try {
     console.log(`🔍 [getOrderByIdDirect] Fetching order directly: ${orderId}`);
