@@ -1,7 +1,7 @@
 
-import { getVendorOrders, updateOrderStatus, VendorOrder, OrderItem, OrderFilters } from './vendor/orders';
-import { fetchDirectVendorOrdersWithDebug } from './vendor/orders/utils/ordersFetcher';
+// Re-export from the correct location to maintain compatibility
+export { getVendorOrders, updateOrderStatus, fetchDirectVendorOrdersWithDebug } from './vendor/orders';
+export type { VendorOrder, OrderItem, OrderFilters } from './vendor/orders';
 
-// Add a direct export of the debug-enabled function for transparency in diagnostics
-export { getVendorOrders, updateOrderStatus, fetchDirectVendorOrdersWithDebug };
-export type { VendorOrder, OrderItem, OrderFilters };
+// Mark as deprecated
+console.warn('adminOrdersService.ts is deprecated. Import directly from ./vendor/orders instead.');

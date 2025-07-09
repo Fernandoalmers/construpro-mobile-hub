@@ -100,6 +100,9 @@ export const useOrderActions = (orderId: string) => {
   });
 
   const getNextStatus = (currentStatus: string): string | null => {
+    // Normalize status to lowercase for comparison
+    const normalizedStatus = currentStatus.toLowerCase();
+    
     const statusFlow = {
       'pendente': 'confirmado',
       'confirmado': 'processando', 
@@ -107,25 +110,30 @@ export const useOrderActions = (orderId: string) => {
       'enviado': 'entregue'
     };
     
-    const nextStatus = statusFlow[currentStatus.toLowerCase()] || null;
-    console.log('🔄 [useOrderActions] Status flow:', { currentStatus, nextStatus });
+    const nextStatus = statusFlow[normalizedStatus] || null;
+    console.log('🔄 [useOrderActions] Status flow:', { currentStatus, normalizedStatus, nextStatus });
     return nextStatus;
   };
 
   const getStatusButtonText = (currentStatus: string): string => {
+    // Normalize status to lowercase for comparison
+    const normalizedStatus = currentStatus.toLowerCase();
+    
     const buttonTexts = {
       'pendente': 'Confirmar Pedido',
       'confirmado': 'Iniciar Processamento',
       'processando': 'Marcar como Enviado', 
       'enviado': 'Marcar como Entregue'
     };
-    return buttonTexts[currentStatus.toLowerCase()] || '';
+    return buttonTexts[normalizedStatus] || '';
   };
 
   const canUpdateStatus = (currentStatus: string): boolean => {
+    // Normalize status to lowercase for comparison
+    const normalizedStatus = currentStatus.toLowerCase();
     const finalStates = ['entregue', 'cancelado'];
-    const canUpdate = !finalStates.includes(currentStatus.toLowerCase());
-    console.log('🔍 [useOrderActions] Status update validation:', { currentStatus, canUpdate });
+    const canUpdate = !finalStates.includes(normalizedStatus);
+    console.log('🔍 [useOrderActions] Status update validation:', { currentStatus, normalizedStatus, canUpdate });
     return canUpdate;
   };
 

@@ -1,7 +1,4 @@
 
-import { getVendorOrders } from './ordersFetcher';
-import { updateOrderStatus } from './orderStatusUpdater';
-import type { VendorOrder, OrderItem, OrderFilters } from './types';
-
-export { getVendorOrders, updateOrderStatus };
-export type { VendorOrder, OrderItem, OrderFilters };
+// Main vendor orders service entry point
+export { getVendorOrders, updateOrderStatus, type VendorOrder, type OrderItem, type OrderFilters } from './orders';
+export { fetchDirectVendorOrdersWithDebug } from './utils/ordersFetcher';
