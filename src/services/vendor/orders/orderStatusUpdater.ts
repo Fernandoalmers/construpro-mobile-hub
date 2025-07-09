@@ -73,7 +73,7 @@ export const updateOrderStatus = async (id: string, newInternalStatus: string): 
 
     console.log('✅ [OrderStatusUpdater] Permissões verificadas, chamando Edge Function...');
     
-    // Preparar payload simplificado para Edge Function
+    // Preparar payload para Edge Function
     const functionPayload = {
       pedido_id: id,
       vendedor_id: vendorData.id,
@@ -81,14 +81,6 @@ export const updateOrderStatus = async (id: string, newInternalStatus: string): 
     };
 
     console.log('📡 [OrderStatusUpdater] Payload da Edge Function:', JSON.stringify(functionPayload, null, 2));
-    
-    // Obter session token para debug
-    const { data: session } = await supabase.auth.getSession();
-    console.log('🔑 [OrderStatusUpdater] Session info:', {
-      hasSession: !!session.session,
-      hasAccessToken: !!session.session?.access_token,
-      tokenLength: session.session?.access_token?.length || 0
-    });
     
     // Chamada para Edge Function
     console.log('📞 [OrderStatusUpdater] Invocando Edge Function update-pedido-status-safe...');
@@ -113,6 +105,7 @@ export const updateOrderStatus = async (id: string, newInternalStatus: string): 
       
       // Mensagem de erro mais específica baseada no step
       let errorMessage = 'Erro ao atualizar status do pedido';
+      
       if (functionError.message) {
         if (functionError.message.includes('environment')) {
           errorMessage = 'Erro de configuração do servidor. Contate o suporte.';
@@ -122,6 +115,8 @@ export const updateOrderStatus = async (id: string, newInternalStatus: string): 
           errorMessage = 'Pedido não encontrado.';
         } else if (functionError.message.includes('JSON')) {
           errorMessage = 'Erro de comunicação. Tente novamente.';
+        } else if (functionError.message.includes('Status inválido')) {
+          errorMessage = `Status inválido: ${newInternalStatus}. Use: pendente, confirmado, processando, enviado, entregue, cancelado`;
         } else {
           errorMessage = `Erro: ${functionError.message}`;
         }
@@ -136,7 +131,18 @@ export const updateOrderStatus = async (id: string, newInternalStatus: string): 
       const errorMsg = functionResult?.error || functionResult?.message || 'Erro desconhecido na atualização';
       const step = functionResult?.step || 'unknown';
       console.error('❌ [OrderStatusUpdater] Erro no step:', step);
-      toast.error(`Erro ao atualizar status: ${errorMsg}`);
+      
+      // Tratar erros específicos baseados no step
+      let userMessage = errorMsg;
+      if (step === 'validate_status') {
+        userMessage = `Status inválido: ${newInternalStatus}. Use apenas: pendente, confirmado, processando, enviado, entregue, cancelado`;
+      } else if (step === 'check_permissions') {
+        userMessage = 'Sem permissão para alterar este pedido';
+      } else if (step === 'check_pedido_exists') {
+        userMessage = 'Pedido não encontrado';
+      }
+      
+      toast.error(`Erro ao atualizar status: ${userMessage}`);
       return false;
     }
 
