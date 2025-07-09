@@ -2540,6 +2540,14 @@ export type Database = {
         Args: { p_produto_id: string; p_quantidade: number }
         Returns: undefined
       }
+      update_pedido_status_secure: {
+        Args: {
+          p_pedido_id: string
+          p_vendedor_id: string
+          p_new_status: string
+        }
+        Returns: Json
+      }
       update_user_points: {
         Args: { user_id: string; points_to_add: number }
         Returns: undefined
