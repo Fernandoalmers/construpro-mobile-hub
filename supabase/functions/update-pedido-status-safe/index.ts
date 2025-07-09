@@ -6,7 +6,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Mapeamento de status da tabela pedidos para orders
+// CORRECTED: Mapeamento de status da tabela pedidos para orders
+// Baseado no constraint da tabela orders: 'Confirmado', 'Em Separação', 'Em Trânsito', 'Entregue', 'Cancelado'
 const STATUS_MAPPING = {
   'pendente': 'Confirmado',
   'confirmado': 'Confirmado', 
@@ -18,21 +19,34 @@ const STATUS_MAPPING = {
 }
 
 // Status válidos para pedidos
-const VALID_PEDIDOS_STATUS = ['pendente', 'confirmado', 'processando', 'enviado', 'entregue', 'cancelado']
+const VALID_PEDIDOS_STATUS = ['pendente', 'confirmado', 'processando', 'preparando', 'enviado', 'entregue', 'cancelado']
+
+// Status válidos para orders (conforme constraint)
+const VALID_ORDERS_STATUS = ['Confirmado', 'Em Separação', 'Em Trânsito', 'Entregue', 'Cancelado']
 
 // Função para mapear status de pedidos para orders
 function mapPedidoStatusToOrder(pedidoStatus: string): string {
-  const mappedStatus = STATUS_MAPPING[pedidoStatus.toLowerCase()]
+  const normalizedStatus = pedidoStatus.toLowerCase()
+  const mappedStatus = STATUS_MAPPING[normalizedStatus]
+  
   if (!mappedStatus) {
-    console.warn(`⚠️ [update-pedido-status-safe] Unmapped status: ${pedidoStatus}, defaulting to 'Confirmado'`)
+    console.warn(`⚠️ [update-pedido-status-safe] Status não mapeado: ${pedidoStatus}, usando fallback 'Confirmado'`)
     return 'Confirmado'
   }
+  
+  // Validar se o status mapeado é válido para orders
+  if (!VALID_ORDERS_STATUS.includes(mappedStatus)) {
+    console.error(`❌ [update-pedido-status-safe] Status mapeado inválido: ${mappedStatus}, usando fallback 'Confirmado'`)
+    return 'Confirmado'
+  }
+  
+  console.log(`✅ [update-pedido-status-safe] Status mapeado: ${pedidoStatus} → ${mappedStatus}`)
   return mappedStatus
 }
 
-// Função para calcular status agregado
+// Função para calcular status agregado com mapeamento correto
 function calculateAggregatedOrderStatus(allPedidosStatuses: string[]): string {
-  console.log('📊 [update-pedido-status-safe] Calculating aggregated status from:', allPedidosStatuses)
+  console.log('📊 [update-pedido-status-safe] Calculando status agregado de:', allPedidosStatuses)
   
   if (allPedidosStatuses.length === 0) {
     return 'Confirmado'
@@ -40,6 +54,7 @@ function calculateAggregatedOrderStatus(allPedidosStatuses: string[]): string {
 
   // Mapear todos os status para o formato de orders
   const mappedStatuses = allPedidosStatuses.map(status => mapPedidoStatusToOrder(status))
+  console.log('📊 [update-pedido-status-safe] Status mapeados:', mappedStatuses)
   
   // Lógica de prioridade para status agregado
   if (mappedStatuses.every(s => s === 'Entregue')) {
@@ -106,13 +121,13 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Validate status
+    // Validate pedido status
     if (!VALID_PEDIDOS_STATUS.includes(new_status.toLowerCase())) {
-      console.error('❌ [update-pedido-status-safe] Invalid status:', new_status)
+      console.error('❌ [update-pedido-status-safe] Invalid pedido status:', new_status)
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: `Invalid status: ${new_status}`,
+          error: `Invalid pedido status: ${new_status}`,
           valid_statuses: VALID_PEDIDOS_STATUS
         }),
         { 
@@ -122,12 +137,19 @@ Deno.serve(async (req) => {
       )
     }
 
+    // Map the status for orders table
+    const mappedOrderStatus = mapPedidoStatusToOrder(new_status)
+    console.log('🔄 [update-pedido-status-safe] Status mapping:', { 
+      pedido_status: new_status,
+      mapped_order_status: mappedOrderStatus
+    })
+
     console.log('🔄 [update-pedido-status-safe] Starting validation process:', { 
       pedido_id, 
       vendedor_id, 
       new_status, 
-      order_id_to_update,
-      mapped_status: mapPedidoStatusToOrder(new_status)
+      mapped_order_status: mappedOrderStatus,
+      order_id_to_update
     })
 
     // STEP 1: Get basic pedido information first
@@ -156,7 +178,7 @@ Deno.serve(async (req) => {
     console.log('✅ [update-pedido-status-safe] Pedido found:', {
       id: pedidoBasic.id,
       vendedor_id: pedidoBasic.vendedor_id, 
-      status: pedidoBasic.status,
+      current_status: pedidoBasic.status,
       order_id: pedidoBasic.order_id
     })
 
@@ -278,8 +300,14 @@ Deno.serve(async (req) => {
           console.log('📊 [update-pedido-status-safe] Status calculation:', {
             individual_statuses: statuses,
             aggregated_status: aggregatedStatus,
-            mapping_applied: true
+            mapping_applied: true,
+            will_update_orders_table_with: aggregatedStatus
           })
+
+          // CRITICAL: Log exactly what status we're sending to orders table
+          console.log(`🎯 [update-pedido-status-safe] ABOUT TO UPDATE ORDERS TABLE WITH STATUS: "${aggregatedStatus}"`)
+          console.log(`🎯 [update-pedido-status-safe] Valid orders statuses are: ${JSON.stringify(VALID_ORDERS_STATUS)}`)
+          console.log(`🎯 [update-pedido-status-safe] Is status valid? ${VALID_ORDERS_STATUS.includes(aggregatedStatus)}`)
 
           // Update orders table with mapped aggregated status
           const { error: ordersError } = await supabaseClient
@@ -292,14 +320,19 @@ Deno.serve(async (req) => {
               error: ordersError,
               order_id: finalOrderId,
               message: ordersError.message,
-              attempted_status: aggregatedStatus
+              attempted_status: aggregatedStatus,
+              code: ordersError.code,
+              details: ordersError.details,
+              hint: ordersError.hint
             })
             return new Response(
               JSON.stringify({ 
                 success: false,
                 error: `Failed to update orders table: ${ordersError.message}`,
                 details: ordersError.details || ordersError,
-                attempted_status: aggregatedStatus
+                attempted_status: aggregatedStatus,
+                valid_statuses: VALID_ORDERS_STATUS,
+                code: ordersError.code
               }),
               { 
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -335,7 +368,7 @@ Deno.serve(async (req) => {
       message: `Status updated to ${new_status}`,
       pedido_id,
       new_status,
-      mapped_order_status: mapPedidoStatusToOrder(new_status),
+      mapped_order_status: mappedOrderStatus,
       updated_at: new Date().toISOString()
     }
 
