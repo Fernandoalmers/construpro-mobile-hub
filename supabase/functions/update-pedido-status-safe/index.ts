@@ -71,29 +71,56 @@ function calculateAggregatedOrderStatus(allPedidosStatuses: string[]): string {
 }
 
 Deno.serve(async (req) => {
+  console.log(`🚀 [update-pedido-status-safe] INÍCIO - ${req.method} ${req.url}`)
+  console.log(`🔍 [update-pedido-status-safe] Headers recebidos:`, Object.fromEntries(req.headers.entries()))
+  
   if (req.method === 'OPTIONS') {
+    console.log('✅ [update-pedido-status-safe] Respondendo CORS preflight')
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    console.log('🚀 [update-pedido-status-safe] Function started')
+    console.log('🔗 [update-pedido-status-safe] Criando cliente Supabase...')
     
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-    )
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    
+    console.log('🔧 [update-pedido-status-safe] Variáveis de ambiente:', {
+      supabaseUrl: supabaseUrl ? 'definida' : 'indefinida',
+      supabaseServiceKey: supabaseServiceKey ? 'definida' : 'indefinida'
+    })
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('❌ [update-pedido-status-safe] Variáveis de ambiente não configuradas')
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: 'Configuração do servidor inválida',
+          details: 'Variáveis de ambiente não configuradas'
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500 
+        }
+      )
+    }
+    
+    const supabaseClient = createClient(supabaseUrl, supabaseServiceKey)
+    console.log('✅ [update-pedido-status-safe] Cliente Supabase criado com sucesso')
 
     // Parse and validate request body
     let requestBody
     try {
-      requestBody = await req.json()
-      console.log('📝 [update-pedido-status-safe] Request body received:', JSON.stringify(requestBody))
+      const rawBody = await req.text()
+      console.log('📥 [update-pedido-status-safe] Raw body recebido:', rawBody)
+      requestBody = JSON.parse(rawBody)
+      console.log('📝 [update-pedido-status-safe] Request body parseado:', JSON.stringify(requestBody, null, 2))
     } catch (error) {
-      console.error('❌ [update-pedido-status-safe] Invalid JSON in request body:', error)
+      console.error('❌ [update-pedido-status-safe] Erro ao parsear JSON:', error)
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: 'Invalid JSON in request body',
+          error: 'JSON inválido no corpo da requisição',
           details: error.message
         }),
         { 
@@ -105,13 +132,24 @@ Deno.serve(async (req) => {
 
     const { pedido_id, vendedor_id, new_status, order_id_to_update } = requestBody
 
+    console.log('🔍 [update-pedido-status-safe] Parâmetros extraídos:', {
+      pedido_id,
+      vendedor_id,
+      new_status,
+      order_id_to_update
+    })
+
     // Validate required fields
     if (!pedido_id || !vendedor_id || !new_status) {
-      console.error('❌ [update-pedido-status-safe] Missing required fields:', { pedido_id, vendedor_id, new_status })
+      console.error('❌ [update-pedido-status-safe] Campos obrigatórios faltando:', { 
+        pedido_id: !!pedido_id, 
+        vendedor_id: !!vendedor_id, 
+        new_status: !!new_status 
+      })
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: 'Missing required fields: pedido_id, vendedor_id, new_status',
+          error: 'Campos obrigatórios faltando: pedido_id, vendedor_id, new_status',
           received: { pedido_id: !!pedido_id, vendedor_id: !!vendedor_id, new_status: !!new_status }
         }),
         { 
@@ -123,11 +161,11 @@ Deno.serve(async (req) => {
 
     // Validate pedido status
     if (!VALID_PEDIDOS_STATUS.includes(new_status.toLowerCase())) {
-      console.error('❌ [update-pedido-status-safe] Invalid pedido status:', new_status)
+      console.error('❌ [update-pedido-status-safe] Status de pedido inválido:', new_status)
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: `Invalid pedido status: ${new_status}`,
+          error: `Status de pedido inválido: ${new_status}`,
           valid_statuses: VALID_PEDIDOS_STATUS
         }),
         { 
@@ -139,219 +177,108 @@ Deno.serve(async (req) => {
 
     // Map the status for orders table
     const mappedOrderStatus = mapPedidoStatusToOrder(new_status)
-    console.log('🔄 [update-pedido-status-safe] Status mapping:', { 
+    console.log('🔄 [update-pedido-status-safe] Status mapeado:', { 
       pedido_status: new_status,
       mapped_order_status: mappedOrderStatus
     })
 
-    console.log('🔄 [update-pedido-status-safe] Starting validation process:', { 
-      pedido_id, 
-      vendedor_id, 
-      new_status, 
-      mapped_order_status: mappedOrderStatus,
-      order_id_to_update
-    })
+    console.log('🔄 [update-pedido-status-safe] STEP 1: Iniciando processo de validação...')
 
     // STEP 1: Get basic pedido information first
-    console.log('🔍 [update-pedido-status-safe] Step 1: Fetching pedido basic info...')
-    const { data: pedidoBasic, error: pedidoBasicError } = await supabaseClient
-      .from('pedidos')
-      .select('id, vendedor_id, status, order_id, usuario_id')
-      .eq('id', pedido_id)
-      .single()
+    console.log('🔍 [update-pedido-status-safe] Buscando informações básicas do pedido...')
+    try {
+      const { data: pedidoBasic, error: pedidoBasicError } = await supabaseClient
+        .from('pedidos')
+        .select('id, vendedor_id, status, order_id, usuario_id')
+        .eq('id', pedido_id)
+        .single()
 
-    if (pedidoBasicError || !pedidoBasic) {
-      console.error('❌ [update-pedido-status-safe] Pedido not found:', pedidoBasicError)
-      return new Response(
-        JSON.stringify({ 
-          success: false,
-          error: 'Pedido not found',
-          details: pedidoBasicError?.message || 'No pedido found with provided ID'
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 404 
-        }
-      )
-    }
-
-    console.log('✅ [update-pedido-status-safe] Pedido found:', {
-      id: pedidoBasic.id,
-      vendedor_id: pedidoBasic.vendedor_id, 
-      current_status: pedidoBasic.status,
-      order_id: pedidoBasic.order_id
-    })
-
-    // STEP 2: Check direct vendor ownership first (simpler check)
-    let vendorOwnsOrder = false
-    if (pedidoBasic.vendedor_id === vendedor_id) {
-      vendorOwnsOrder = true
-      console.log('✅ [update-pedido-status-safe] Direct vendor ownership confirmed')
-    } else {
-      console.log('🔍 [update-pedido-status-safe] Step 2: Checking vendor product ownership...')
-      
-      // STEP 3: Check if vendor has products in this order (simplified approach)
-      try {
-        // First get order items for this pedido
-        const { data: orderItems, error: itemsError } = await supabaseClient
-          .from('itens_pedido')
-          .select('produto_id')
-          .eq('pedido_id', pedido_id)
-
-        if (itemsError) {
-          console.error('⚠️ [update-pedido-status-safe] Error fetching order items:', itemsError)
-          // Continue with direct vendor check only
-        } else if (orderItems && orderItems.length > 0) {
-          console.log(`📦 [update-pedido-status-safe] Found ${orderItems.length} items in order`)
-          
-          // Get product IDs
-          const productIds = orderItems.map(item => item.produto_id)
-          
-          // Check if any products belong to this vendor
-          const { data: vendorProducts, error: productsError } = await supabaseClient
-            .from('produtos')
-            .select('id')
-            .eq('vendedor_id', vendedor_id)
-            .in('id', productIds)
-
-          if (productsError) {
-            console.error('⚠️ [update-pedido-status-safe] Error checking vendor products:', productsError)
-            // Continue with original logic
-          } else if (vendorProducts && vendorProducts.length > 0) {
-            vendorOwnsOrder = true
-            console.log(`✅ [update-pedido-status-safe] Vendor owns ${vendorProducts.length} products in this order`)
-          } else {
-            console.log('❌ [update-pedido-status-safe] Vendor has no products in this order')
-          }
-        }
-      } catch (error) {
-        console.error('⚠️ [update-pedido-status-safe] Error in product ownership check:', error)
-        // Continue with basic checks
-      }
-    }
-
-    // Final permission check
-    if (!vendorOwnsOrder) {
-      console.error('❌ [update-pedido-status-safe] Access denied:', {
-        pedido_vendedor_id: pedidoBasic.vendedor_id,
-        requesting_vendedor_id: vendedor_id,
-        has_products: false
+      console.log('📊 [update-pedido-status-safe] Resultado da busca do pedido:', {
+        pedidoBasic,
+        pedidoBasicError
       })
-      return new Response(
-        JSON.stringify({ 
-          success: false,
-          error: 'Access denied: You do not have permission to update this order',
-          details: 'Vendor can only update orders they own or contain their products'
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 403 
-        }
-      )
-    }
 
-    // STEP 4: Update pedidos table
-    console.log('📝 [update-pedido-status-safe] Step 4: Updating pedidos table...')
-    const { error: pedidosError } = await supabaseClient
-      .from('pedidos')
-      .update({ status: new_status })
-      .eq('id', pedido_id)
-
-    if (pedidosError) {
-      console.error('❌ [update-pedido-status-safe] Error updating pedidos table:', {
-        error: pedidosError,
-        code: pedidosError.code,
-        message: pedidosError.message,
-        details: pedidosError.details,
-        hint: pedidosError.hint
-      })
-      return new Response(
-        JSON.stringify({ 
-          success: false,
-          error: `Failed to update pedidos: ${pedidosError.message}`,
-          code: pedidosError.code,
-          details: pedidosError.details || pedidosError
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 500 
-        }
-      )
-    }
-    console.log('✅ [update-pedido-status-safe] Pedidos table updated successfully')
-
-    // STEP 5: Update aggregated status for main order
-    console.log('📊 [update-pedido-status-safe] Step 5: Calculating aggregated order status...')
-    const finalOrderId = order_id_to_update || pedidoBasic.order_id
-    
-    if (finalOrderId) {
-      try {
-        // Get all pedidos for this order
-        const { data: allPedidos, error: allPedidosError } = await supabaseClient
-          .from('pedidos')
-          .select('status, vendedor_id')
-          .eq('order_id', finalOrderId)
-
-        if (!allPedidosError && allPedidos && allPedidos.length > 0) {
-          // Calculate smart aggregated status with mapping
-          const statuses = allPedidos.map(p => p.status.toLowerCase())
-          const aggregatedStatus = calculateAggregatedOrderStatus(statuses)
-
-          console.log('📊 [update-pedido-status-safe] Status calculation:', {
-            individual_statuses: statuses,
-            aggregated_status: aggregatedStatus,
-            mapping_applied: true,
-            will_update_orders_table_with: aggregatedStatus
-          })
-
-          // CRITICAL: Log exactly what status we're sending to orders table
-          console.log(`🎯 [update-pedido-status-safe] ABOUT TO UPDATE ORDERS TABLE WITH STATUS: "${aggregatedStatus}"`)
-          console.log(`🎯 [update-pedido-status-safe] Valid orders statuses are: ${JSON.stringify(VALID_ORDERS_STATUS)}`)
-          console.log(`🎯 [update-pedido-status-safe] Is status valid? ${VALID_ORDERS_STATUS.includes(aggregatedStatus)}`)
-
-          // Update orders table with mapped aggregated status
-          const { error: ordersError } = await supabaseClient
-            .from('orders')
-            .update({ status: aggregatedStatus })
-            .eq('id', finalOrderId)
-
-          if (ordersError) {
-            console.error('❌ [update-pedido-status-safe] Error updating orders table:', {
-              error: ordersError,
-              order_id: finalOrderId,
-              message: ordersError.message,
-              attempted_status: aggregatedStatus,
-              code: ordersError.code,
-              details: ordersError.details,
-              hint: ordersError.hint
-            })
-            return new Response(
-              JSON.stringify({ 
-                success: false,
-                error: `Failed to update orders table: ${ordersError.message}`,
-                details: ordersError.details || ordersError,
-                attempted_status: aggregatedStatus,
-                valid_statuses: VALID_ORDERS_STATUS,
-                code: ordersError.code
-              }),
-              { 
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                status: 500 
-              }
-            )
-          } else {
-            console.log('✅ [update-pedido-status-safe] Orders table updated with mapped aggregated status:', aggregatedStatus)
-          }
-        } else {
-          console.warn('⚠️ [update-pedido-status-safe] No pedidos found for order:', finalOrderId)
-        }
-      } catch (error) {
-        console.error('❌ [update-pedido-status-safe] Error updating aggregated status:', error)
+      if (pedidoBasicError || !pedidoBasic) {
+        console.error('❌ [update-pedido-status-safe] Pedido não encontrado:', pedidoBasicError)
         return new Response(
           JSON.stringify({ 
             success: false,
-            error: `Error calculating aggregated status: ${error.message}`,
-            details: error
+            error: 'Pedido não encontrado',
+            details: pedidoBasicError?.message || 'Nenhum pedido encontrado com o ID fornecido'
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 404 
+          }
+        )
+      }
+
+      console.log('✅ [update-pedido-status-safe] Pedido encontrado:', {
+        id: pedidoBasic.id,
+        vendedor_id: pedidoBasic.vendedor_id, 
+        current_status: pedidoBasic.status,
+        order_id: pedidoBasic.order_id
+      })
+
+      // STEP 2: Simplified permission check
+      console.log('🔍 [update-pedido-status-safe] STEP 2: Verificando permissões...')
+      console.log('🔍 [update-pedido-status-safe] Comparando vendedores:', {
+        pedido_vendedor_id: pedidoBasic.vendedor_id,
+        request_vendedor_id: vendedor_id,
+        types: {
+          pedido_vendedor_type: typeof pedidoBasic.vendedor_id,
+          request_vendedor_type: typeof vendedor_id
+        }
+      })
+      
+      let vendorOwnsOrder = false
+      if (pedidoBasic.vendedor_id === vendedor_id) {
+        vendorOwnsOrder = true
+        console.log('✅ [update-pedido-status-safe] Permissão confirmada: vendedor é dono do pedido')
+      } else {
+        console.log('❌ [update-pedido-status-safe] Permissão negada: vendedor não é dono do pedido')
+      }
+
+      // Final permission check
+      if (!vendorOwnsOrder) {
+        console.error('❌ [update-pedido-status-safe] Acesso negado:', {
+          pedido_vendedor_id: pedidoBasic.vendedor_id,
+          requesting_vendedor_id: vendedor_id
+        })
+        return new Response(
+          JSON.stringify({ 
+            success: false,
+            error: 'Acesso negado: Você não tem permissão para atualizar este pedido',
+            details: 'Vendedor só pode atualizar pedidos próprios'
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 403 
+          }
+        )
+      }
+
+      // STEP 3: Update pedidos table
+      console.log('📝 [update-pedido-status-safe] STEP 3: Atualizando tabela pedidos...')
+      const { error: pedidosError } = await supabaseClient
+        .from('pedidos')
+        .update({ status: new_status })
+        .eq('id', pedido_id)
+
+      if (pedidosError) {
+        console.error('❌ [update-pedido-status-safe] Erro ao atualizar tabela pedidos:', {
+          error: pedidosError,
+          code: pedidosError.code,
+          message: pedidosError.message,
+          details: pedidosError.details,
+          hint: pedidosError.hint
+        })
+        return new Response(
+          JSON.stringify({ 
+            success: false,
+            error: `Falha ao atualizar pedidos: ${pedidosError.message}`,
+            code: pedidosError.code,
+            details: pedidosError.details || pedidosError
           }),
           { 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -359,31 +286,140 @@ Deno.serve(async (req) => {
           }
         )
       }
-    } else {
-      console.log('ℹ️ [update-pedido-status-safe] No order_id found, skipping orders table update')
-    }
+      console.log('✅ [update-pedido-status-safe] Tabela pedidos atualizada com sucesso')
 
-    const result = {
-      success: true, 
-      message: `Status updated to ${new_status}`,
-      pedido_id,
-      new_status,
-      mapped_order_status: mappedOrderStatus,
-      updated_at: new Date().toISOString()
-    }
+      // STEP 4: Update aggregated status for main order
+      console.log('📊 [update-pedido-status-safe] STEP 4: Calculando status agregado do pedido...')
+      const finalOrderId = order_id_to_update || pedidoBasic.order_id
+      
+      if (finalOrderId) {
+        try {
+          // Get all pedidos for this order
+          const { data: allPedidos, error: allPedidosError } = await supabaseClient
+            .from('pedidos')
+            .select('status, vendedor_id')
+            .eq('order_id', finalOrderId)
 
-    console.log('🎉 [update-pedido-status-safe] Operation completed successfully:', result)
+          console.log('📊 [update-pedido-status-safe] Todos os pedidos para o order_id:', {
+            finalOrderId,
+            allPedidos,
+            allPedidosError
+          })
 
-    return new Response(
-      JSON.stringify(result),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
+          if (!allPedidosError && allPedidos && allPedidos.length > 0) {
+            // Calculate smart aggregated status with mapping
+            const statuses = allPedidos.map(p => p.status.toLowerCase())
+            const aggregatedStatus = calculateAggregatedOrderStatus(statuses)
+
+            console.log('📊 [update-pedido-status-safe] Cálculo de status:', {
+              individual_statuses: statuses,
+              aggregated_status: aggregatedStatus,
+              mapping_applied: true,
+              will_update_orders_table_with: aggregatedStatus
+            })
+
+            // CRITICAL: Log exactly what status we're sending to orders table
+            console.log(`🎯 [update-pedido-status-safe] PRESTES A ATUALIZAR TABELA ORDERS COM STATUS: "${aggregatedStatus}"`)
+            console.log(`🎯 [update-pedido-status-safe] Status válidos para orders: ${JSON.stringify(VALID_ORDERS_STATUS)}`)
+            console.log(`🎯 [update-pedido-status-safe] Status é válido? ${VALID_ORDERS_STATUS.includes(aggregatedStatus)}`)
+
+            // Update orders table with mapped aggregated status
+            const { error: ordersError } = await supabaseClient
+              .from('orders')
+              .update({ status: aggregatedStatus })
+              .eq('id', finalOrderId)
+
+            if (ordersError) {
+              console.error('❌ [update-pedido-status-safe] Erro ao atualizar tabela orders:', {
+                error: ordersError,
+                order_id: finalOrderId,
+                message: ordersError.message,
+                attempted_status: aggregatedStatus,
+                code: ordersError.code,
+                details: ordersError.details,
+                hint: ordersError.hint
+              })
+              return new Response(
+                JSON.stringify({ 
+                  success: false,
+                  error: `Falha ao atualizar tabela orders: ${ordersError.message}`,
+                  details: ordersError.details || ordersError,
+                  attempted_status: aggregatedStatus,
+                  valid_statuses: VALID_ORDERS_STATUS,
+                  code: ordersError.code
+                }),
+                { 
+                  headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                  status: 500 
+                }
+              )
+            } else {
+              console.log('✅ [update-pedido-status-safe] Tabela orders atualizada com status agregado mapeado:', aggregatedStatus)
+            }
+          } else {
+            console.warn('⚠️ [update-pedido-status-safe] Nenhum pedido encontrado para o order:', finalOrderId)
+          }
+        } catch (error) {
+          console.error('❌ [update-pedido-status-safe] Erro ao atualizar status agregado:', error)
+          return new Response(
+            JSON.stringify({ 
+              success: false,
+              error: `Erro ao calcular status agregado: ${error.message}`,
+              details: error
+            }),
+            { 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 500 
+            }
+          )
+        }
+      } else {
+        console.log('ℹ️ [update-pedido-status-safe] Nenhum order_id encontrado, pulando atualização da tabela orders')
       }
-    )
+
+      const result = {
+        success: true, 
+        message: `Status atualizado para ${new_status}`,
+        pedido_id,
+        new_status,
+        mapped_order_status: mappedOrderStatus,
+        updated_at: new Date().toISOString()
+      }
+
+      console.log('🎉 [update-pedido-status-safe] Operação concluída com sucesso:', result)
+
+      return new Response(
+        JSON.stringify(result),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200 
+        }
+      )
+
+    } catch (dbError) {
+      console.error('💥 [update-pedido-status-safe] Erro de banco de dados:', {
+        error: dbError,
+        message: dbError.message,
+        stack: dbError.stack,
+        name: dbError.name
+      })
+      
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: 'Erro de banco de dados',
+          message: dbError.message || 'Erro desconhecido no banco de dados',
+          timestamp: new Date().toISOString()
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500 
+        }
+      )
+    }
 
   } catch (error) {
-    console.error('💥 [update-pedido-status-safe] Unexpected error:', {
+    console.error('💥 [update-pedido-status-safe] Erro inesperado:', {
       error: error,
       message: error.message,
       stack: error.stack,
@@ -393,8 +429,8 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: false,
-        error: 'Internal server error',
-        message: error.message || 'Unknown error occurred',
+        error: 'Erro interno do servidor',
+        message: error.message || 'Erro desconhecido',
         timestamp: new Date().toISOString()
       }),
       { 

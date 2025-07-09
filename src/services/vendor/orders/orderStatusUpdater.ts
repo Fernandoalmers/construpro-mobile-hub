@@ -14,7 +14,7 @@ const STATUS_MAPPING = {
 
 export const updateOrderStatus = async (id: string, newInternalStatus: string): Promise<boolean> => {
   try {
-    console.log('🔄 [OrderStatusUpdater] Starting status update:', { 
+    console.log('🔄 [OrderStatusUpdater] Iniciando atualização de status:', { 
       pedido_id: id, 
       new_status: newInternalStatus 
     });
@@ -27,7 +27,10 @@ export const updateOrderStatus = async (id: string, newInternalStatus: string): 
       return false;
     }
 
-    console.log('👤 [OrderStatusUpdater] User authenticated:', user.email);
+    console.log('👤 [OrderStatusUpdater] Usuário autenticado:', {
+      userId: user.id,
+      email: user.email
+    });
 
     const { data: vendorData, error: vendorError } = await supabase
       .from('vendedores')
@@ -36,14 +39,15 @@ export const updateOrderStatus = async (id: string, newInternalStatus: string): 
       .single();
 
     if (vendorError || !vendorData) {
-      console.error('❌ [OrderStatusUpdater] Vendor not found:', vendorError);
+      console.error('❌ [OrderStatusUpdater] Vendedor não encontrado:', vendorError);
       toast.error('Vendedor não encontrado para o usuário atual');
       return false;
     }
 
-    console.log('🏪 [OrderStatusUpdater] Vendor found:', {
+    console.log('🏪 [OrderStatusUpdater] Vendedor encontrado:', {
       id: vendorData.id,
-      nome_loja: vendorData.nome_loja
+      nome_loja: vendorData.nome_loja,
+      usuario_id: vendorData.usuario_id
     });
 
     // Verificar se o pedido pertence ao vendedor
@@ -54,21 +58,22 @@ export const updateOrderStatus = async (id: string, newInternalStatus: string): 
       .single();
 
     if (pedidoCheckError || !pedidoCheck) {
-      console.error('❌ [OrderStatusUpdater] Pedido not found:', pedidoCheckError);
+      console.error('❌ [OrderStatusUpdater] Pedido não encontrado:', pedidoCheckError);
       toast.error('Pedido não encontrado');
       return false;
     }
 
-    console.log('📦 [OrderStatusUpdater] Pedido data:', {
+    console.log('📦 [OrderStatusUpdater] Dados do pedido:', {
       pedido_id: id,
       vendedor_id: pedidoCheck.vendedor_id,
       current_status: pedidoCheck.status,
       new_status: newInternalStatus,
-      order_id: pedidoCheck.order_id
+      order_id: pedidoCheck.order_id,
+      usuario_id: pedidoCheck.usuario_id
     });
 
     if (pedidoCheck.vendedor_id !== vendorData.id) {
-      console.error('❌ [OrderStatusUpdater] Permission denied:', {
+      console.error('❌ [OrderStatusUpdater] Permissão negada:', {
         pedido_vendor: pedidoCheck.vendedor_id,
         user_vendor: vendorData.id
       });
@@ -81,14 +86,14 @@ export const updateOrderStatus = async (id: string, newInternalStatus: string): 
     const finalStatuses = ['entregue', 'cancelado'];
     
     if (finalStatuses.includes(currentStatus)) {
-      console.error('❌ [OrderStatusUpdater] Cannot update final status:', currentStatus);
+      console.error('❌ [OrderStatusUpdater] Não é possível atualizar status final:', currentStatus);
       toast.error('Não é possível alterar o status de um pedido finalizado');
       return false;
     }
 
-    console.log('✅ [OrderStatusUpdater] Permissions verified, calling Edge Function...');
+    console.log('✅ [OrderStatusUpdater] Permissões verificadas, chamando Edge Function...');
     
-    // Chamada para Edge Function com dados validados
+    // Preparar payload para Edge Function
     const functionPayload = {
       pedido_id: id,
       vendedor_id: vendorData.id,
@@ -96,17 +101,35 @@ export const updateOrderStatus = async (id: string, newInternalStatus: string): 
       order_id_to_update: pedidoCheck.order_id
     };
 
-    console.log('📡 [OrderStatusUpdater] Calling Edge Function with payload:', functionPayload);
+    console.log('📡 [OrderStatusUpdater] Payload da Edge Function:', JSON.stringify(functionPayload, null, 2));
     
+    // Obter session token para debug
+    const { data: session } = await supabase.auth.getSession();
+    console.log('🔑 [OrderStatusUpdater] Session info:', {
+      hasSession: !!session.session,
+      hasAccessToken: !!session.session?.access_token,
+      tokenLength: session.session?.access_token?.length || 0
+    });
+    
+    // Chamada para Edge Function com dados validados
+    console.log('📞 [OrderStatusUpdater] Invocando Edge Function update-pedido-status-safe...');
     const { data: functionResult, error: functionError } = await supabase.functions.invoke('update-pedido-status-safe', {
       body: functionPayload
     });
 
+    console.log('📥 [OrderStatusUpdater] Resposta da Edge Function:', {
+      functionResult,
+      functionError,
+      hasData: !!functionResult,
+      hasError: !!functionError
+    });
+
     if (functionError) {
-      console.error('❌ [OrderStatusUpdater] Edge Function error:', {
+      console.error('❌ [OrderStatusUpdater] Erro da Edge Function:', {
         error: functionError,
         message: functionError.message,
-        context: functionError.context
+        context: functionError.context,
+        status: functionError.status
       });
       
       // Tentar extrair uma mensagem de erro mais específica
@@ -128,21 +151,22 @@ export const updateOrderStatus = async (id: string, newInternalStatus: string): 
     }
 
     if (!functionResult?.success) {
-      console.error('❌ [OrderStatusUpdater] Edge Function returned error:', functionResult);
+      console.error('❌ [OrderStatusUpdater] Edge Function retornou erro:', functionResult);
       const errorMsg = functionResult?.error || functionResult?.message || 'Erro desconhecido na atualização';
       toast.error(`Erro ao atualizar status: ${errorMsg}`);
       return false;
     }
 
-    console.log('✅ [OrderStatusUpdater] Status updated successfully:', functionResult);
+    console.log('✅ [OrderStatusUpdater] Status atualizado com sucesso:', functionResult);
     toast.success(`Status atualizado para "${newInternalStatus}"`);
     return true;
     
   } catch (error) {
-    console.error('❌ [OrderStatusUpdater] Unexpected error:', {
+    console.error('❌ [OrderStatusUpdater] Erro inesperado:', {
       error: error,
       message: error.message,
-      stack: error.stack
+      stack: error.stack,
+      name: error.name
     });
     
     let errorMessage = 'Erro inesperado ao atualizar status do pedido';
