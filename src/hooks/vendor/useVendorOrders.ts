@@ -2,7 +2,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/components/ui/sonner';
-import { getVendorOrders, VendorOrder } from '@/services/vendor/orders/types';
+import { getVendorOrders } from '@/services/vendor/orders';
+import { VendorOrder } from '@/services/vendor/orders/types';
 import { getVendorProfile } from '@/services/vendorProfileService';
 import { supabase } from '@/integrations/supabase/client';
 
