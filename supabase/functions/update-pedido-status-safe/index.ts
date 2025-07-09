@@ -6,6 +6,55 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Mapeamento de status da tabela pedidos para orders
+const STATUS_MAPPING = {
+  'pendente': 'Confirmado',
+  'confirmado': 'Confirmado', 
+  'processando': 'Em Separação',
+  'preparando': 'Em Separação',
+  'enviado': 'Em Trânsito',
+  'entregue': 'Entregue',
+  'cancelado': 'Cancelado'
+}
+
+// Status válidos para pedidos
+const VALID_PEDIDOS_STATUS = ['pendente', 'confirmado', 'processando', 'enviado', 'entregue', 'cancelado']
+
+// Função para mapear status de pedidos para orders
+function mapPedidoStatusToOrder(pedidoStatus: string): string {
+  const mappedStatus = STATUS_MAPPING[pedidoStatus.toLowerCase()]
+  if (!mappedStatus) {
+    console.warn(`⚠️ [update-pedido-status-safe] Unmapped status: ${pedidoStatus}, defaulting to 'Confirmado'`)
+    return 'Confirmado'
+  }
+  return mappedStatus
+}
+
+// Função para calcular status agregado
+function calculateAggregatedOrderStatus(allPedidosStatuses: string[]): string {
+  console.log('📊 [update-pedido-status-safe] Calculating aggregated status from:', allPedidosStatuses)
+  
+  if (allPedidosStatuses.length === 0) {
+    return 'Confirmado'
+  }
+
+  // Mapear todos os status para o formato de orders
+  const mappedStatuses = allPedidosStatuses.map(status => mapPedidoStatusToOrder(status))
+  
+  // Lógica de prioridade para status agregado
+  if (mappedStatuses.every(s => s === 'Entregue')) {
+    return 'Entregue'
+  } else if (mappedStatuses.every(s => s === 'Cancelado')) {
+    return 'Cancelado'
+  } else if (mappedStatuses.some(s => s === 'Em Trânsito')) {
+    return 'Em Trânsito'
+  } else if (mappedStatuses.some(s => s === 'Em Separação')) {
+    return 'Em Separação'
+  } else {
+    return 'Confirmado'
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -57,11 +106,28 @@ Deno.serve(async (req) => {
       )
     }
 
+    // Validate status
+    if (!VALID_PEDIDOS_STATUS.includes(new_status.toLowerCase())) {
+      console.error('❌ [update-pedido-status-safe] Invalid status:', new_status)
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: `Invalid status: ${new_status}`,
+          valid_statuses: VALID_PEDIDOS_STATUS
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400 
+        }
+      )
+    }
+
     console.log('🔄 [update-pedido-status-safe] Starting validation process:', { 
       pedido_id, 
       vendedor_id, 
       new_status, 
-      order_id_to_update 
+      order_id_to_update,
+      mapped_status: mapPedidoStatusToOrder(new_status)
     })
 
     // STEP 1: Get basic pedido information first
@@ -162,23 +228,6 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Validate status transition
-    const validStatuses = ['pendente', 'confirmado', 'processando', 'enviado', 'entregue', 'cancelado']
-    if (!validStatuses.includes(new_status.toLowerCase())) {
-      console.error('❌ [update-pedido-status-safe] Invalid status:', new_status)
-      return new Response(
-        JSON.stringify({ 
-          success: false,
-          error: `Invalid status: ${new_status}`,
-          valid_statuses: validStatuses
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400 
-        }
-      )
-    }
-
     // STEP 4: Update pedidos table
     console.log('📝 [update-pedido-status-safe] Step 4: Updating pedidos table...')
     const { error: pedidosError } = await supabaseClient
@@ -222,48 +271,60 @@ Deno.serve(async (req) => {
           .eq('order_id', finalOrderId)
 
         if (!allPedidosError && allPedidos && allPedidos.length > 0) {
-          // Calculate smart aggregated status
+          // Calculate smart aggregated status with mapping
           const statuses = allPedidos.map(p => p.status.toLowerCase())
-          let aggregatedStatus = 'pendente'
+          const aggregatedStatus = calculateAggregatedOrderStatus(statuses)
 
-          if (statuses.every(s => s === 'entregue')) {
-            aggregatedStatus = 'entregue'
-          } else if (statuses.every(s => s === 'cancelado')) {
-            aggregatedStatus = 'cancelado'
-          } else if (statuses.some(s => s === 'enviado')) {
-            aggregatedStatus = 'enviado'
-          } else if (statuses.some(s => s === 'processando')) {
-            aggregatedStatus = 'processando'
-          } else if (statuses.some(s => s === 'confirmado')) {
-            aggregatedStatus = 'confirmado'
-          }
-
-          console.log('📊 [update-pedido-status-safe] Calculated aggregated status:', {
+          console.log('📊 [update-pedido-status-safe] Status calculation:', {
             individual_statuses: statuses,
-            aggregated_status: aggregatedStatus
+            aggregated_status: aggregatedStatus,
+            mapping_applied: true
           })
 
-          // Update orders table with aggregated status
+          // Update orders table with mapped aggregated status
           const { error: ordersError } = await supabaseClient
             .from('orders')
             .update({ status: aggregatedStatus })
             .eq('id', finalOrderId)
 
           if (ordersError) {
-            console.warn('⚠️ [update-pedido-status-safe] Warning updating orders table:', {
+            console.error('❌ [update-pedido-status-safe] Error updating orders table:', {
               error: ordersError,
               order_id: finalOrderId,
-              message: ordersError.message
+              message: ordersError.message,
+              attempted_status: aggregatedStatus
             })
+            return new Response(
+              JSON.stringify({ 
+                success: false,
+                error: `Failed to update orders table: ${ordersError.message}`,
+                details: ordersError.details || ordersError,
+                attempted_status: aggregatedStatus
+              }),
+              { 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 500 
+              }
+            )
           } else {
-            console.log('✅ [update-pedido-status-safe] Orders table updated with aggregated status:', aggregatedStatus)
+            console.log('✅ [update-pedido-status-safe] Orders table updated with mapped aggregated status:', aggregatedStatus)
           }
         } else {
           console.warn('⚠️ [update-pedido-status-safe] No pedidos found for order:', finalOrderId)
         }
       } catch (error) {
-        console.error('⚠️ [update-pedido-status-safe] Error updating aggregated status:', error)
-        // Don't fail the main operation for this
+        console.error('❌ [update-pedido-status-safe] Error updating aggregated status:', error)
+        return new Response(
+          JSON.stringify({ 
+            success: false,
+            error: `Error calculating aggregated status: ${error.message}`,
+            details: error
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 500 
+          }
+        )
       }
     } else {
       console.log('ℹ️ [update-pedido-status-safe] No order_id found, skipping orders table update')
@@ -274,6 +335,7 @@ Deno.serve(async (req) => {
       message: `Status updated to ${new_status}`,
       pedido_id,
       new_status,
+      mapped_order_status: mapPedidoStatusToOrder(new_status),
       updated_at: new Date().toISOString()
     }
 
