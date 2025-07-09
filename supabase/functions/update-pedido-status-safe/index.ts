@@ -57,39 +57,28 @@ Deno.serve(async (req) => {
       )
     }
 
-    console.log('🔄 [update-pedido-status-safe] Updating pedido status safely:', { 
+    console.log('🔄 [update-pedido-status-safe] Starting validation process:', { 
       pedido_id, 
       vendedor_id, 
       new_status, 
       order_id_to_update 
     })
 
-    // NOVA LÓGICA: Verificar se o vendedor tem produtos neste pedido
-    console.log('🔍 [update-pedido-status-safe] Validating vendor ownership of products in order...')
-    const { data: pedidoCheck, error: pedidoCheckError } = await supabaseClient
+    // STEP 1: Get basic pedido information first
+    console.log('🔍 [update-pedido-status-safe] Step 1: Fetching pedido basic info...')
+    const { data: pedidoBasic, error: pedidoBasicError } = await supabaseClient
       .from('pedidos')
-      .select(`
-        id, 
-        vendedor_id, 
-        status, 
-        order_id,
-        itens_pedido!inner (
-          produto_id,
-          produtos!inner (
-            vendedor_id
-          )
-        )
-      `)
+      .select('id, vendedor_id, status, order_id, usuario_id')
       .eq('id', pedido_id)
       .single()
 
-    if (pedidoCheckError || !pedidoCheck) {
-      console.error('❌ [update-pedido-status-safe] Pedido validation failed:', pedidoCheckError)
+    if (pedidoBasicError || !pedidoBasic) {
+      console.error('❌ [update-pedido-status-safe] Pedido not found:', pedidoBasicError)
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: 'Pedido not found or access denied',
-          details: pedidoCheckError?.message || 'No pedido found with provided ID'
+          error: 'Pedido not found',
+          details: pedidoBasicError?.message || 'No pedido found with provided ID'
         }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -98,22 +87,73 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Verificar se o vendedor possui produtos neste pedido
-    const vendorOwnsProducts = pedidoCheck.itens_pedido?.some(item => 
-      item.produtos?.vendedor_id === vendedor_id
-    ) || pedidoCheck.vendedor_id === vendedor_id;
+    console.log('✅ [update-pedido-status-safe] Pedido found:', {
+      id: pedidoBasic.id,
+      vendedor_id: pedidoBasic.vendedor_id, 
+      status: pedidoBasic.status,
+      order_id: pedidoBasic.order_id
+    })
 
-    if (!vendorOwnsProducts) {
-      console.error('❌ [update-pedido-status-safe] Vendor does not own products in this order:', {
-        pedido_vendedor_id: pedidoCheck.vendedor_id,
+    // STEP 2: Check direct vendor ownership first (simpler check)
+    let vendorOwnsOrder = false
+    if (pedidoBasic.vendedor_id === vendedor_id) {
+      vendorOwnsOrder = true
+      console.log('✅ [update-pedido-status-safe] Direct vendor ownership confirmed')
+    } else {
+      console.log('🔍 [update-pedido-status-safe] Step 2: Checking vendor product ownership...')
+      
+      // STEP 3: Check if vendor has products in this order (simplified approach)
+      try {
+        // First get order items for this pedido
+        const { data: orderItems, error: itemsError } = await supabaseClient
+          .from('itens_pedido')
+          .select('produto_id')
+          .eq('pedido_id', pedido_id)
+
+        if (itemsError) {
+          console.error('⚠️ [update-pedido-status-safe] Error fetching order items:', itemsError)
+          // Continue with direct vendor check only
+        } else if (orderItems && orderItems.length > 0) {
+          console.log(`📦 [update-pedido-status-safe] Found ${orderItems.length} items in order`)
+          
+          // Get product IDs
+          const productIds = orderItems.map(item => item.produto_id)
+          
+          // Check if any products belong to this vendor
+          const { data: vendorProducts, error: productsError } = await supabaseClient
+            .from('produtos')
+            .select('id')
+            .eq('vendedor_id', vendedor_id)
+            .in('id', productIds)
+
+          if (productsError) {
+            console.error('⚠️ [update-pedido-status-safe] Error checking vendor products:', productsError)
+            // Continue with original logic
+          } else if (vendorProducts && vendorProducts.length > 0) {
+            vendorOwnsOrder = true
+            console.log(`✅ [update-pedido-status-safe] Vendor owns ${vendorProducts.length} products in this order`)
+          } else {
+            console.log('❌ [update-pedido-status-safe] Vendor has no products in this order')
+          }
+        }
+      } catch (error) {
+        console.error('⚠️ [update-pedido-status-safe] Error in product ownership check:', error)
+        // Continue with basic checks
+      }
+    }
+
+    // Final permission check
+    if (!vendorOwnsOrder) {
+      console.error('❌ [update-pedido-status-safe] Access denied:', {
+        pedido_vendedor_id: pedidoBasic.vendedor_id,
         requesting_vendedor_id: vendedor_id,
         has_products: false
       })
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: 'Access denied: You do not have products in this order',
-          details: 'Vendor can only update orders containing their own products'
+          error: 'Access denied: You do not have permission to update this order',
+          details: 'Vendor can only update orders they own or contain their products'
         }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -121,13 +161,6 @@ Deno.serve(async (req) => {
         }
       )
     }
-
-    console.log('✅ [update-pedido-status-safe] Vendor ownership validated:', {
-      current_status: pedidoCheck.status,
-      new_status: new_status,
-      order_id: pedidoCheck.order_id,
-      vendor_owns_products: vendorOwnsProducts
-    })
 
     // Validate status transition
     const validStatuses = ['pendente', 'confirmado', 'processando', 'enviado', 'entregue', 'cancelado']
@@ -146,13 +179,12 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Step 1: Update pedidos table first
-    console.log('📝 [update-pedido-status-safe] Updating pedidos table...')
+    // STEP 4: Update pedidos table
+    console.log('📝 [update-pedido-status-safe] Step 4: Updating pedidos table...')
     const { error: pedidosError } = await supabaseClient
       .from('pedidos')
       .update({ status: new_status })
       .eq('id', pedido_id)
-      .eq('vendedor_id', vendedor_id)
 
     if (pedidosError) {
       console.error('❌ [update-pedido-status-safe] Error updating pedidos table:', {
@@ -177,54 +209,61 @@ Deno.serve(async (req) => {
     }
     console.log('✅ [update-pedido-status-safe] Pedidos table updated successfully')
 
-    // Step 2: Calculate aggregated status for the main order
-    console.log('📊 [update-pedido-status-safe] Calculating aggregated order status...')
-    const finalOrderId = order_id_to_update || pedidoCheck.order_id
+    // STEP 5: Update aggregated status for main order
+    console.log('📊 [update-pedido-status-safe] Step 5: Calculating aggregated order status...')
+    const finalOrderId = order_id_to_update || pedidoBasic.order_id
     
     if (finalOrderId) {
-      // Get all pedidos for this order
-      const { data: allPedidos, error: allPedidosError } = await supabaseClient
-        .from('pedidos')
-        .select('status, vendedor_id')
-        .eq('order_id', finalOrderId)
+      try {
+        // Get all pedidos for this order
+        const { data: allPedidos, error: allPedidosError } = await supabaseClient
+          .from('pedidos')
+          .select('status, vendedor_id')
+          .eq('order_id', finalOrderId)
 
-      if (!allPedidosError && allPedidos && allPedidos.length > 0) {
-        // Calculate smart aggregated status
-        const statuses = allPedidos.map(p => p.status.toLowerCase())
-        let aggregatedStatus = 'pendente'
+        if (!allPedidosError && allPedidos && allPedidos.length > 0) {
+          // Calculate smart aggregated status
+          const statuses = allPedidos.map(p => p.status.toLowerCase())
+          let aggregatedStatus = 'pendente'
 
-        if (statuses.every(s => s === 'entregue')) {
-          aggregatedStatus = 'entregue'
-        } else if (statuses.every(s => s === 'cancelado')) {
-          aggregatedStatus = 'cancelado'
-        } else if (statuses.some(s => s === 'enviado')) {
-          aggregatedStatus = 'enviado'
-        } else if (statuses.some(s => s === 'processando')) {
-          aggregatedStatus = 'processando'
-        } else if (statuses.some(s => s === 'confirmado')) {
-          aggregatedStatus = 'confirmado'
-        }
+          if (statuses.every(s => s === 'entregue')) {
+            aggregatedStatus = 'entregue'
+          } else if (statuses.every(s => s === 'cancelado')) {
+            aggregatedStatus = 'cancelado'
+          } else if (statuses.some(s => s === 'enviado')) {
+            aggregatedStatus = 'enviado'
+          } else if (statuses.some(s => s === 'processando')) {
+            aggregatedStatus = 'processando'
+          } else if (statuses.some(s => s === 'confirmado')) {
+            aggregatedStatus = 'confirmado'
+          }
 
-        console.log('📊 [update-pedido-status-safe] Calculated aggregated status:', {
-          individual_statuses: statuses,
-          aggregated_status: aggregatedStatus
-        })
-
-        // Update orders table with aggregated status
-        const { error: ordersError } = await supabaseClient
-          .from('orders')
-          .update({ status: aggregatedStatus })
-          .eq('id', finalOrderId)
-
-        if (ordersError) {
-          console.warn('⚠️ [update-pedido-status-safe] Warning updating orders table:', {
-            error: ordersError,
-            order_id: finalOrderId,
-            message: ordersError.message
+          console.log('📊 [update-pedido-status-safe] Calculated aggregated status:', {
+            individual_statuses: statuses,
+            aggregated_status: aggregatedStatus
           })
+
+          // Update orders table with aggregated status
+          const { error: ordersError } = await supabaseClient
+            .from('orders')
+            .update({ status: aggregatedStatus })
+            .eq('id', finalOrderId)
+
+          if (ordersError) {
+            console.warn('⚠️ [update-pedido-status-safe] Warning updating orders table:', {
+              error: ordersError,
+              order_id: finalOrderId,
+              message: ordersError.message
+            })
+          } else {
+            console.log('✅ [update-pedido-status-safe] Orders table updated with aggregated status:', aggregatedStatus)
+          }
         } else {
-          console.log('✅ [update-pedido-status-safe] Orders table updated with aggregated status:', aggregatedStatus)
+          console.warn('⚠️ [update-pedido-status-safe] No pedidos found for order:', finalOrderId)
         }
+      } catch (error) {
+        console.error('⚠️ [update-pedido-status-safe] Error updating aggregated status:', error)
+        // Don't fail the main operation for this
       }
     } else {
       console.log('ℹ️ [update-pedido-status-safe] No order_id found, skipping orders table update')
