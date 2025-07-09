@@ -6,16 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Mapeamento correto de status entre pedidos e orders
-const STATUS_MAPPING = {
-  'pendente': 'Pendente',
-  'confirmado': 'Confirmado',
-  'processando': 'Em Separação',
-  'enviado': 'Enviado',
-  'entregue': 'Entregue',
-  'cancelado': 'Cancelado'
-}
-
 Deno.serve(async (req) => {
   console.log(`🚀 [update-pedido-status-safe] INÍCIO - ${req.method} ${req.url}`)
   
@@ -101,19 +91,19 @@ Deno.serve(async (req) => {
 
     console.log('✅ STEP 3 SUCCESS: Campos obrigatórios validados')
 
-    // STEP 4: Validate status mapping
-    console.log('🔍 STEP 4: Validando mapeamento de status...')
+    // STEP 4: Validate status
+    console.log('🔍 STEP 4: Validando status...')
     
-    const mappedStatus = STATUS_MAPPING[new_status]
-    if (!mappedStatus) {
+    const validStatuses = ['pendente', 'confirmado', 'processando', 'enviado', 'entregue', 'cancelado']
+    if (!validStatuses.includes(new_status)) {
       console.error('❌ STEP 4 FAILED: Status inválido:', new_status)
-      console.error('Status válidos:', Object.keys(STATUS_MAPPING))
+      console.error('Status válidos:', validStatuses)
       return new Response(
         JSON.stringify({ 
           success: false,
           error: `Status inválido: ${new_status}`,
           step: 'validate_status',
-          valid_statuses: Object.keys(STATUS_MAPPING)
+          valid_statuses: validStatuses
         }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -122,7 +112,7 @@ Deno.serve(async (req) => {
       )
     }
 
-    console.log('✅ STEP 4 SUCCESS: Status mapeado:', { from: new_status, to: mappedStatus })
+    console.log('✅ STEP 4 SUCCESS: Status válido:', new_status)
 
     // STEP 5: Create Supabase client
     console.log('🔗 STEP 5: Criando cliente Supabase...')
@@ -136,7 +126,7 @@ Deno.serve(async (req) => {
     try {
       const { data: pedidoExists, error: pedidoError } = await supabaseClient
         .from('pedidos')
-        .select('id, vendedor_id, status, usuario_id, order_id')
+        .select('id, vendedor_id, status, usuario_id')
         .eq('id', pedido_id)
         .single()
 
@@ -164,8 +154,7 @@ Deno.serve(async (req) => {
       console.log('✅ STEP 6 SUCCESS: Pedido encontrado:', {
         id: pedidoExists.id,
         vendedor_id: pedidoExists.vendedor_id, 
-        current_status: pedidoExists.status,
-        order_id: pedidoExists.order_id
+        current_status: pedidoExists.status
       })
 
       // STEP 7: Permission check
@@ -192,7 +181,7 @@ Deno.serve(async (req) => {
 
       console.log('✅ STEP 7 SUCCESS: Permissões verificadas')
 
-      // STEP 8: Update pedido status
+      // STEP 8: Update pedido status (ONLY PEDIDOS TABLE - SIMPLIFIED)
       console.log('📝 STEP 8: Atualizando status do pedido na tabela pedidos...')
       
       const { error: updatePedidoError } = await supabaseClient
@@ -218,36 +207,16 @@ Deno.serve(async (req) => {
       }
 
       console.log('✅ STEP 8 SUCCESS: Pedido atualizado com sucesso')
-
-      // STEP 9: Update order status (se existir order_id)
-      if (pedidoExists.order_id) {
-        console.log('📝 STEP 9: Atualizando status na tabela orders...')
-        console.log('🔄 Mapeamento:', { new_status, mappedStatus })
-        
-        const { error: updateOrderError } = await supabaseClient
-          .from('orders')
-          .update({ status: mappedStatus })
-          .eq('id', pedidoExists.order_id)
-
-        if (updateOrderError) {
-          console.error('❌ STEP 9 FAILED: Erro ao atualizar order:', updateOrderError)
-          // Log mas não falha - o pedido já foi atualizado
-          console.log('⚠️ Pedido atualizado mas order não sincronizada')
-        } else {
-          console.log('✅ STEP 9 SUCCESS: Order atualizada com sucesso')
-        }
-      } else {
-        console.log('📝 STEP 9 SKIPPED: Pedido não tem order_id associado')
-      }
+      console.log('🎯 SIMPLIFICADO: Sincronização com tabela orders removida temporariamente')
 
       const result = {
         success: true, 
         message: `Status atualizado para ${new_status}`,
         pedido_id,
         new_status,
-        mapped_status: mappedStatus,
         updated_at: new Date().toISOString(),
-        step: 'success'
+        step: 'success',
+        note: 'Sincronização com tabela orders temporariamente desabilitada'
       }
 
       console.log('🎉 Operação concluída com sucesso:', result)

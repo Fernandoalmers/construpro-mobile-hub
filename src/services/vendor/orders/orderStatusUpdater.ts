@@ -43,7 +43,7 @@ export const updateOrderStatus = async (id: string, newInternalStatus: string): 
     // Verificar se o pedido pertence ao vendedor
     const { data: pedidoCheck, error: pedidoCheckError } = await supabase
       .from('pedidos')
-      .select('vendedor_id, usuario_id, order_id, status')
+      .select('vendedor_id, usuario_id, status')
       .eq('id', id)
       .single();
 
@@ -58,7 +58,6 @@ export const updateOrderStatus = async (id: string, newInternalStatus: string): 
       vendedor_id: pedidoCheck.vendedor_id,
       current_status: pedidoCheck.status,
       new_status: newInternalStatus,
-      order_id: pedidoCheck.order_id,
       usuario_id: pedidoCheck.usuario_id
     });
 
@@ -82,7 +81,7 @@ export const updateOrderStatus = async (id: string, newInternalStatus: string): 
 
     console.log('📡 [OrderStatusUpdater] Payload da Edge Function:', JSON.stringify(functionPayload, null, 2));
     
-    // Chamada para Edge Function
+    // Chamada para Edge Function (Simplificada - apenas tabela pedidos)
     console.log('📞 [OrderStatusUpdater] Invocando Edge Function update-pedido-status-safe...');
     const { data: functionResult, error: functionError } = await supabase.functions.invoke('update-pedido-status-safe', {
       body: functionPayload
@@ -147,6 +146,12 @@ export const updateOrderStatus = async (id: string, newInternalStatus: string): 
     }
 
     console.log('✅ [OrderStatusUpdater] Status atualizado com sucesso:', functionResult);
+    
+    // Exibir nota sobre simplificação se presente
+    if (functionResult.note) {
+      console.log('ℹ️ [OrderStatusUpdater] Nota:', functionResult.note);
+    }
+    
     toast.success(`Status atualizado para "${newInternalStatus}"`);
     return true;
     
