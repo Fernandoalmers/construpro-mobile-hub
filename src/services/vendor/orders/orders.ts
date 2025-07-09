@@ -71,15 +71,12 @@ export async function getVendorOrders(filters: OrderFilters = {}): Promise<Vendo
     
     console.log("🏪 [getVendorOrders] Vendor ID found:", vendorData);
     
-    // Fetch pedidos with customer info and items
+    // Fetch pedidos first
     const { data: pedidos, error: pedidosError } = await supabase
       .from('pedidos')
-      .select(`
-        *,
-        profiles!usuario_id(nome, email, telefone)
-      `)
+      .select('*')
       .eq('vendedor_id', vendorData)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false});
 
     if (pedidosError) {
       console.error('🚫 [getVendorOrders] Error fetching pedidos:', pedidosError);
@@ -95,6 +92,13 @@ export async function getVendorOrders(filters: OrderFilters = {}): Promise<Vendo
     // Transform the data to match VendorOrder interface
     const transformedOrders: VendorOrder[] = await Promise.all(
       pedidos.map(async (pedido) => {
+        // Fetch profile data for this pedido
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('nome, email, telefone')
+          .eq('id', pedido.usuario_id)
+          .single();
+
         // Fetch items for this pedido
         const { data: items, error: itemsError } = await supabase
           .from('itens_pedido')
@@ -122,13 +126,13 @@ export async function getVendorOrders(filters: OrderFilters = {}): Promise<Vendo
           data_entrega_estimada: pedido.data_entrega_estimada,
           cupom_codigo: pedido.cupom_codigo,
           desconto_aplicado: pedido.desconto_aplicado,
-          cliente: pedido.profiles ? {
+          cliente: profile ? {
             id: pedido.usuario_id,
             vendedor_id: pedido.vendedor_id,
             usuario_id: pedido.usuario_id,
-            nome: pedido.profiles.nome || 'Cliente',
-            email: pedido.profiles.email,
-            telefone: pedido.profiles.telefone,
+            nome: profile.nome || 'Cliente',
+            email: profile.email,
+            telefone: profile.telefone,
             total_gasto: 0,
             ultimo_pedido: pedido.created_at,
             created_at: pedido.created_at,
