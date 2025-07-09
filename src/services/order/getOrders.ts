@@ -139,6 +139,7 @@ export async function getOrders(): Promise<OrderData[]> {
           preco_normal,
           preco_promocional,
           categoria,
+          unidade_medida,
           vendedor_id
         `)
         .in('id', productIds);
@@ -175,6 +176,7 @@ export async function getOrders(): Promise<OrderData[]> {
           descricao: productFromMap?.descricao || '',
           preco_normal: Number(productFromMap?.preco_normal) || item.preco_unitario,
           categoria: productFromMap?.categoria || '',
+          unidade_medida: productFromMap?.unidade_medida || 'unidade',
           preco_promocional: productFromMap?.preco_promocional
         };
         
