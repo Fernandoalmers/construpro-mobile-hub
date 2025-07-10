@@ -26,7 +26,17 @@ const OrderBreakdown: React.FC<OrderBreakdownProps> = ({
     }).format(value);
   };
 
-  const hasDiscount = descontoAplicado > 0 && cupomCodigo;
+  const hasDiscount = descontoAplicado > 0;
+
+  // Add debug logs to help track the values
+  console.log('🧾 [OrderBreakdown] Received values:', {
+    valorProdutos,
+    valorFreteTotal,
+    descontoAplicado,
+    valorTotal,
+    cupomCodigo,
+    hasDiscount
+  });
 
   return (
     <Card className="p-4">
@@ -53,12 +63,14 @@ const OrderBreakdown: React.FC<OrderBreakdownProps> = ({
           </span>
         </div>
 
-        {/* Desconto total do cupom */}
+        {/* Desconto total */}
         {hasDiscount && (
           <div className="flex justify-between items-center text-green-600">
             <div className="flex items-center gap-2">
               <Tag size={16} />
-              <span>Desconto total ({cupomCodigo})</span>
+              <span>
+                {cupomCodigo ? `Desconto total (${cupomCodigo})` : 'Desconto aplicado'}
+              </span>
             </div>
             <span className="font-medium">-{formatCurrency(descontoAplicado)}</span>
           </div>
@@ -74,7 +86,7 @@ const OrderBreakdown: React.FC<OrderBreakdownProps> = ({
 
         {hasDiscount && (
           <div className="text-sm text-green-600 text-center bg-green-50 py-2 px-3 rounded-md">
-            ✅ Você economizou {formatCurrency(descontoAplicado)} com o cupom {cupomCodigo}
+            ✅ Você economizou {formatCurrency(descontoAplicado)}{cupomCodigo ? ` com o cupom ${cupomCodigo}` : ''}
           </div>
         )}
       </div>
