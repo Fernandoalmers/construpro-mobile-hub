@@ -24,12 +24,12 @@ const HomeHeader: React.FC = () => {
   return (
     <div className="bg-white shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-20">
           <div className="flex items-center">
             <OptimizedLogo
               src={logoUrl}
               alt="Matershop"
-              className="h-12 w-auto object-contain hover:scale-105 transition-transform duration-200"
+              className="h-16 sm:h-18 md:h-20 w-auto object-contain hover:scale-105 transition-transform duration-200"
               showSkeleton={logoLoading}
             />
           </div>
