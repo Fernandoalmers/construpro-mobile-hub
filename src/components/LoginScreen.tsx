@@ -129,7 +129,7 @@ const LoginScreen: React.FC = () => {
         
         <div className="text-center">
           {renderLogo()}
-          <p className="text-white opacity-80 mt-2">Materiais, clube e recompensas</p>
+          <p className="opacity-80 mt-2 text-black">Materiais, clube e recompensas</p>
         </div>
       </div>
 
