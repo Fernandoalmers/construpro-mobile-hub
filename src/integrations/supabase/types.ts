@@ -2535,6 +2535,19 @@ export type Database = {
         Args: { target_user_id: string; action: string; reason?: string }
         Returns: Json
       }
+      secure_insert_zip_cache: {
+        Args: {
+          p_cep: string
+          p_logradouro?: string
+          p_bairro?: string
+          p_localidade?: string
+          p_uf?: string
+          p_ibge?: string
+          p_latitude?: number
+          p_longitude?: number
+        }
+        Returns: boolean
+      }
       update_expired_promotions: {
         Args: Record<PropertyKey, never>
         Returns: undefined

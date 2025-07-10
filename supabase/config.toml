@@ -20,6 +20,9 @@ enabled = true
 [functions.update-pedido-status-safe]
 verify_jwt = true
 
+[functions.security-monitor]
+verify_jwt = false
+
 [db]
 port = 54322
 shadow_port = 54320

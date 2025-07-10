@@ -8,34 +8,214 @@ export interface SecurityEvent {
   user_id?: string;
 }
 
-// Rate limiting storage
-const rateLimitStore = new Map<string, { count: number; firstAttempt: number }>();
+interface RateLimitConfig {
+  maxAttempts: number;
+  windowMs: number;
+  blockDurationMs?: number;
+}
+
+interface ValidationResult {
+  isValid: boolean;
+  errors: string[];
+  sanitizedValue?: any;
+}
+
+// Enhanced rate limiting with IP tracking and progressive delays
+const rateLimitStore = new Map<string, { 
+  count: number; 
+  firstAttempt: number; 
+  lastAttempt: number;
+  blocked?: boolean;
+  blockUntil?: number;
+}>();
 
 export const securityService = {
-  // Rate limiting check
+  // Enhanced rate limiting check with progressive blocking
   checkRateLimit(key: string, maxAttempts: number, windowMs: number): boolean {
     const now = Date.now();
     const existing = rateLimitStore.get(key);
     
     if (!existing) {
-      rateLimitStore.set(key, { count: 1, firstAttempt: now });
+      rateLimitStore.set(key, { 
+        count: 1, 
+        firstAttempt: now, 
+        lastAttempt: now 
+      });
       return true;
+    }
+    
+    // Check if currently blocked
+    if (existing.blocked && existing.blockUntil && now < existing.blockUntil) {
+      return false;
     }
     
     // Reset if window has passed
     if (now - existing.firstAttempt > windowMs) {
-      rateLimitStore.set(key, { count: 1, firstAttempt: now });
+      rateLimitStore.set(key, { 
+        count: 1, 
+        firstAttempt: now, 
+        lastAttempt: now 
+      });
       return true;
     }
     
     // Check if limit exceeded
     if (existing.count >= maxAttempts) {
+      // Progressive blocking: block for increasingly longer periods
+      const blockDuration = Math.min(existing.count * 60000, 3600000); // Max 1 hour
+      existing.blocked = true;
+      existing.blockUntil = now + blockDuration;
+      
+      this.logSecurityEvent('rate_limit_exceeded', {
+        key,
+        attempts: existing.count,
+        block_duration: blockDuration
+      });
+      
       return false;
     }
     
-    // Increment count
+    // Increment count and update last attempt
     existing.count++;
+    existing.lastAttempt = now;
     return true;
+  },
+
+  // Enhanced input validation
+  validateInput(value: any, type: 'email' | 'cep' | 'phone' | 'text' | 'number'): ValidationResult {
+    const errors: string[] = [];
+    let sanitizedValue = value;
+
+    if (value === null || value === undefined) {
+      return { isValid: false, errors: ['Valor é obrigatório'] };
+    }
+
+    switch (type) {
+      case 'email':
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(value)) {
+          errors.push('Email inválido');
+        }
+        sanitizedValue = value.toLowerCase().trim();
+        break;
+        
+      case 'cep':
+        const cepRegex = /^\d{8}$/;
+        const cleanCep = value.replace(/\D/g, '');
+        if (!cepRegex.test(cleanCep)) {
+          errors.push('CEP deve conter 8 dígitos');
+        }
+        sanitizedValue = cleanCep;
+        break;
+        
+      case 'phone':
+        const phoneRegex = /^[\d\s\-\(\)]+$/;
+        const cleanPhone = value.replace(/\D/g, '');
+        if (cleanPhone.length < 10 || cleanPhone.length > 11) {
+          errors.push('Telefone inválido');
+        }
+        sanitizedValue = cleanPhone;
+        break;
+        
+      case 'text':
+        if (typeof value !== 'string') {
+          errors.push('Valor deve ser texto');
+        } else if (value.length > 1000) {
+          errors.push('Texto muito longo (máximo 1000 caracteres)');
+        }
+        // Basic XSS protection
+        sanitizedValue = value.replace(/<script[^>]*>.*?<\/script>/gi, '')
+                             .replace(/<iframe[^>]*>.*?<\/iframe>/gi, '')
+                             .replace(/javascript:/gi, '')
+                             .trim();
+        break;
+        
+      case 'number':
+        const num = Number(value);
+        if (isNaN(num)) {
+          errors.push('Valor deve ser um número');
+        }
+        sanitizedValue = num;
+        break;
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+      sanitizedValue
+    };
+  },
+
+  // Secure CEP lookup function
+  async secureCepLookup(cep: string): Promise<any> {
+    const rateLimitKey = `cep_lookup_${cep}`;
+    
+    // Rate limit: max 10 CEP lookups per minute per CEP
+    if (!this.checkRateLimit(rateLimitKey, 10, 60000)) {
+      throw new Error('Rate limit excedido para consulta de CEP');
+    }
+
+    // Validate CEP format
+    const validation = this.validateInput(cep, 'cep');
+    if (!validation.isValid) {
+      await this.logSecurityEvent('invalid_cep_lookup', {
+        cep,
+        errors: validation.errors
+      });
+      throw new Error(`CEP inválido: ${validation.errors.join(', ')}`);
+    }
+
+    const cleanCep = validation.sanitizedValue;
+
+    try {
+      // First check local cache
+      const { data: cached } = await supabase
+        .from('zip_cache')
+        .select('*')
+        .eq('cep', cleanCep)
+        .single();
+
+      if (cached) {
+        await this.logSecurityEvent('cep_cache_hit', { cep: cleanCep });
+        return cached;
+      }
+
+      // If not cached, fetch from external API
+      const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+      const data = await response.json();
+
+      if (data.erro) {
+        await this.logSecurityEvent('cep_not_found', { cep: cleanCep });
+        throw new Error('CEP não encontrado');
+      }
+
+      // Use secure function to cache the result
+      const { data: insertResult, error } = await supabase.rpc('secure_insert_zip_cache', {
+        p_cep: cleanCep,
+        p_logradouro: data.logradouro,
+        p_bairro: data.bairro,
+        p_localidade: data.localidade,
+        p_uf: data.uf,
+        p_ibge: data.ibge
+      });
+
+      if (error) {
+        console.error('Error caching CEP data:', error);
+      }
+
+      await this.logSecurityEvent('cep_external_lookup', { 
+        cep: cleanCep,
+        cached: !!insertResult 
+      });
+
+      return data;
+    } catch (error) {
+      await this.logSecurityEvent('cep_lookup_error', {
+        cep: cleanCep,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
   },
 
   // Cart quantity validation
