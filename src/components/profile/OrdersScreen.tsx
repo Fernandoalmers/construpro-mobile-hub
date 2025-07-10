@@ -98,6 +98,9 @@ const OrdersScreen: React.FC = () => {
         if (statusFilter === "emProcesso") {
           return ["Em Separação", "Confirmado", "Em Trânsito", "Processando", "confirmado", "processando", "enviado"].includes(order.status);
         }
+        if (statusFilter === "concluidos") {
+          return ["Entregue", "entregue", "Finalizado", "finalizado", "Concluído", "concluido"].includes(order.status);
+        }
         return order.status === statusFilter || order.status.toLowerCase() === statusFilter.toLowerCase();
       });
       
@@ -230,10 +233,10 @@ const OrdersScreen: React.FC = () => {
                   Em Processo
                 </TabsTrigger>
                 <TabsTrigger 
-                  value="entregue" 
+                  value="concluidos" 
                   className="flex-1 py-2 px-1 text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm"
                 >
-                  Entregues
+                  Concluídos
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -306,9 +309,6 @@ const OrdersScreen: React.FC = () => {
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs text-gray-500">
                           Pedido #{order.id.substring(0, 8)}
-                        </span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusBadge(order.status)}`}>
-                          {order.status}
                         </span>
                       </div>
                       <h3 className="font-medium text-sm line-clamp-1 mt-1">

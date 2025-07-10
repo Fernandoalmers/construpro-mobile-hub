@@ -66,15 +66,9 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({ order }) => {
     <div className="bg-white rounded-lg shadow p-4 mb-4">
       {/* Order Header */}
       <div className="border-b pb-3 mb-3">
-        <div className="flex justify-between items-start">
-          <div>
-            <h2 className="text-lg font-semibold">Pedido #{displayOrderId}</h2>
-            <p className="text-sm text-gray-600">{formattedDate}</p>
-          </div>
-          <span className={`px-2 py-1 rounded-full text-xs font-medium inline-flex items-center ${statusDisplay.color}`}>
-            <Clock size={12} className="mr-1" />
-            {statusDisplay.text}
-          </span>
+        <div>
+          <h2 className="text-lg font-semibold">Pedido #{displayOrderId}</h2>
+          <p className="text-sm text-gray-600">{formattedDate}</p>
         </div>
       </div>
 

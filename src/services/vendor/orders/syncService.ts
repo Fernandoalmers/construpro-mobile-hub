@@ -56,7 +56,7 @@ export class OrderSyncService {
       console.log(`📊 [OrderSyncService] Encontrados ${integrityCheck.missing_pedidos} pedidos para sincronizar`);
 
       // Executar migração melhorada (que agora inclui limpeza automática)
-      const { data: migrationResult, error: migrationError } = await supabase.rpc('migrate_missing_orders_to_pedidos');
+      const { data: migrationResult, error: migrationError } = await supabase.rpc('migrate_orders_to_pedidos');
       
       if (migrationError) {
         console.error('❌ [OrderSyncService] Erro na migração:', migrationError);
@@ -64,7 +64,7 @@ export class OrderSyncService {
         return { success: false, syncedCount: 0, message: 'Erro na migração', errors };
       }
 
-      syncedCount = migrationResult || 0;
+      syncedCount = typeof migrationResult === 'number' ? migrationResult : 0;
       console.log(`✅ [OrderSyncService] Sincronizados ${syncedCount} pedidos`);
 
       // Verificar novamente após sincronização
@@ -107,7 +107,7 @@ export class OrderSyncService {
    */
   private async performIntegrityCheck(): Promise<void> {
     try {
-      await supabase.rpc('check_order_integrity');
+      await supabase.rpc('check_sync_integrity');
       console.log('🔍 [OrderSyncService] Verificação de integridade executada');
     } catch (error) {
       console.warn('⚠️ [OrderSyncService] Aviso na verificação de integridade:', error);

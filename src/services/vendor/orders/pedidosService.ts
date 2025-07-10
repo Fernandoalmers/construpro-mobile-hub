@@ -456,13 +456,13 @@ export const getPedidoById = async (pedidoId: string): Promise<Pedido | null> =>
 export const migrateOrdersToPedidos = async (): Promise<{ success: boolean; count: number; message: string }> => {
   try {
     // Executar a função SQL de migração melhorada
-    const { data, error } = await supabase.rpc('migrate_missing_orders_to_pedidos');
+    const { data, error } = await supabase.rpc('migrate_orders_to_pedidos');
     
     if (error) {
       return { success: false, count: 0, message: "Erro durante a migração: " + error.message };
     }
     
-    const count = data || 0;
+    const count = typeof data === 'number' ? data : 0;
     
     return {
       success: true,
