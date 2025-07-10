@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Tag, Percent } from 'lucide-react';
+import { Tag, Percent, Truck } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 
@@ -10,6 +10,11 @@ interface OrderTotalsCardProps {
   hasDiscount: boolean;
   discountAmount: number;
   couponCode?: string | null;
+  shippingFee?: number;
+  shippingInfo?: {
+    zone_name: string;
+    delivery_time: string;
+  } | null;
 }
 
 const OrderTotalsCard: React.FC<OrderTotalsCardProps> = ({
@@ -17,7 +22,9 @@ const OrderTotalsCard: React.FC<OrderTotalsCardProps> = ({
   total,
   hasDiscount,
   discountAmount,
-  couponCode
+  couponCode,
+  shippingFee = 0,
+  shippingInfo
 }) => {
   return (
     <Card className="p-4">
@@ -31,11 +38,25 @@ const OrderTotalsCard: React.FC<OrderTotalsCardProps> = ({
           <span className="font-medium">R$ {subtotal.toFixed(2)}</span>
         </div>
         
+        {/* Shipping Fee */}
+        {shippingFee > 0 && (
+          <div className="flex justify-between text-sm">
+            <span className="flex items-center gap-2 text-gray-600">
+              <Truck size={16} />
+              <span>
+                Frete ({shippingInfo?.zone_name || 'Calculado'})
+                {shippingInfo?.delivery_time && ` - ${shippingInfo.delivery_time}`}:
+              </span>
+            </span>
+            <span className="font-medium">R$ {shippingFee.toFixed(2)}</span>
+          </div>
+        )}
+        
         {hasDiscount && (
           <div className="flex justify-between text-sm bg-green-50 p-2 rounded-md border-l-4 border-green-400">
             <span className="flex items-center gap-2 text-green-700 font-medium">
               <Tag size={16} />
-              <span>Desconto aplicado ({couponCode}):</span>
+              <span>Desconto aplicado{couponCode ? ` (${couponCode})` : ''}:</span>
             </span>
             <span className="font-semibold text-green-700">-R$ {discountAmount.toFixed(2)}</span>
           </div>

@@ -157,10 +157,41 @@ export class OrderDetailsService {
         };
       }) || [];
 
-      // Recalcular o valor total baseado apenas nos itens do vendedor
-      const valorTotalVendedor = itensCompletos.reduce((sum, item) => {
+      // Calcular o valor dos produtos do vendedor
+      const valorProdutosVendedor = itensCompletos.reduce((sum, item) => {
         return sum + (Number(item.total) || 0);
       }, 0);
+
+      // Calcular frete baseado na zona de entrega e endereço do cliente
+      let valorFrete = 0;
+      let infoFrete = null;
+      
+      if (pedido.endereco_entrega && pedido.endereco_entrega.cep) {
+        try {
+          // Buscar zona de entrega para este vendedor usando a função do banco
+          const { data: zones } = await supabase
+            .rpc('resolve_delivery_zones', { user_cep: pedido.endereco_entrega.cep });
+          
+          // Encontrar zona específica para este vendedor
+          const vendorZone = zones?.find((zone: any) => zone.vendor_id === vendorData.id);
+          
+          if (vendorZone) {
+            valorFrete = Number(vendorZone.delivery_fee) || 0;
+            infoFrete = {
+              zone_id: vendorZone.zone_id,
+              zone_name: vendorZone.zone_name,
+              delivery_time: vendorZone.delivery_time,
+              delivery_fee: vendorZone.delivery_fee
+            };
+            console.log('✅ [OrderDetailsService] Frete calculado:', valorFrete, 'para zona:', vendorZone.zone_name);
+          }
+        } catch (error) {
+          console.log('⚠️ [OrderDetailsService] Erro ao calcular frete:', error);
+        }
+      }
+
+      // Total do vendedor = produtos + frete
+      const valorTotalVendedor = valorProdutosVendedor + valorFrete;
 
       let clienteInfo = {
         id: pedido.usuario_id,
@@ -209,6 +240,9 @@ export class OrderDetailsService {
       const resultado: Pedido = {
         ...pedido,
         valor_total: valorTotalVendedor,
+        valor_produtos: valorProdutosVendedor,
+        valor_frete: valorFrete,
+        info_frete: infoFrete,
         itens: itensCompletos,
         cliente: clienteInfo
       };

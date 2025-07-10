@@ -195,11 +195,16 @@ const VendorOrderDetailScreen: React.FC = () => {
 
         {/* Order Totals - Only vendor's portion */}
         <OrderTotalsCard 
-          subtotal={subtotalBruto}
+          subtotal={pedido.valor_produtos || subtotalBruto}
           total={valorTotal}
           hasDiscount={hasDiscount}
           discountAmount={descontoAplicado}
           couponCode={pedido.cupom_codigo}
+          shippingFee={pedido.valor_frete || 0}
+          shippingInfo={pedido.info_frete ? {
+            zone_name: pedido.info_frete.zone_name,
+            delivery_time: pedido.info_frete.delivery_time
+          } : null}
         />
       </div>
     </div>

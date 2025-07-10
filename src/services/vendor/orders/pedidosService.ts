@@ -33,6 +33,14 @@ export interface Pedido {
   forma_pagamento: string;
   endereco_entrega: any;
   valor_total: number;
+  valor_produtos?: number; // Valor apenas dos produtos do vendedor
+  valor_frete?: number; // Valor do frete calculado
+  info_frete?: {
+    zone_id: string;
+    zone_name: string;
+    delivery_time: string;
+    delivery_fee: number;
+  } | null; // Informações da zona de entrega
   cupom_codigo?: string | null;
   desconto_aplicado?: number;
   created_at: string;
