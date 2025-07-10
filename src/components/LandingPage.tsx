@@ -21,19 +21,19 @@ const LandingPage = () => {
   const renderLogo = () => {
     // Se ainda está carregando, mostrar espaço reservado
     if (logoLoading) {
-      return <div className="h-12 w-40 bg-gray-200 animate-pulse rounded"></div>;
+      return <div className="h-14 sm:h-16 lg:h-20 w-40 bg-gray-200 animate-pulse rounded"></div>;
     }
 
     // Usar logo do banco de dados ou fallback para a logo padrão
     const currentLogoUrl = logoUrl || '/lovable-uploads/7520caa6-efbb-4176-9c9f-8d37f88c7ff1.png';
-    return <img src={currentLogoUrl} alt="Matershop" className="h-12 w-auto object-contain hover:scale-105 transition-transform duration-200" onError={e => {
+    return <img src={currentLogoUrl} alt="Matershop" className="h-14 sm:h-16 lg:h-20 w-auto object-contain hover:scale-105 transition-transform duration-200" onError={e => {
       // Se falhar, tentar o placeholder
       e.currentTarget.src = '/img/placeholder.png';
       e.currentTarget.onerror = () => {
         // Se o placeholder também falhar, mostrar texto como último recurso
         e.currentTarget.style.display = 'none';
         const textFallback = document.createElement('h1');
-        textFallback.className = 'text-2xl font-bold text-royal-blue';
+        textFallback.className = 'text-2xl sm:text-3xl lg:text-4xl font-bold text-royal-blue';
         textFallback.textContent = 'Matershop';
         e.currentTarget.parentNode?.appendChild(textFallback);
       };
@@ -63,7 +63,7 @@ const LandingPage = () => {
       {/* Navigation */}
       <nav className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+          <div className="flex justify-between items-center h-20">
             <div className="flex items-center">
               {renderLogo()}
             </div>
@@ -352,8 +352,10 @@ const LandingPage = () => {
       <footer className="py-12 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <div className="flex justify-center mb-4">
-              {renderLogo()}
+            <div className="flex justify-center mb-6">
+              <div className="h-16 sm:h-20 lg:h-24 w-auto">
+                {renderLogo()}
+              </div>
             </div>
             <p className="text-gray-400 mb-6">
               {showMultisegmentHero ? 'O marketplace de negócios locais (começamos pela construção)' : 'Marketplace e Clube de Compras Inteligentes para Profissionais e Consumidores da Construção'}
