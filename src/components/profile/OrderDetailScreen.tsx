@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom';
 import { Package, ChevronLeft } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { orderService } from '@/services/orderService';
+import { useOrderRealtimeSync } from '@/hooks/useOrderRealtimeSync';
 import LoadingState from '../common/LoadingState';
 import { OrderData } from '@/services/order/types';
 import OrderDetailHeader from './order-detail/OrderDetailHeader';
@@ -30,6 +31,12 @@ const OrderDetailScreen: React.FC = () => {
     queryFn: () => id ? orderService.getOrderById(id) : Promise.reject('No order ID provided'),
     staleTime: 5 * 60 * 1000, // 5 minutes
     enabled: !!id
+  });
+
+  // Enable real-time sync for this specific order
+  useOrderRealtimeSync({ 
+    orderId: id, 
+    mode: 'customer' 
   });
 
   // Add more detailed logging to help debug discount and data issues
