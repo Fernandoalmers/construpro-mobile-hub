@@ -56,17 +56,17 @@ const LoginScreen: React.FC = () => {
   };
   const renderLogo = () => {
     if (logoVariantUrl && !logoError && !logoLoading) {
-      return <div className="flex items-center justify-center mb-4">
+      return <div className="flex items-center justify-center mb-6">
           <button onClick={() => navigate('/')} className="cursor-pointer hover:opacity-80 transition-opacity" type="button">
-            <img src={logoVariantUrl} alt="Matershop" className="h-20 w-auto object-contain" onError={handleLogoError} onLoad={() => console.log('✅ [LoginScreen] Logo variante carregada com sucesso!')} />
+            <img src={logoVariantUrl} alt="Matershop" className="h-24 sm:h-32 lg:h-40 w-auto object-contain" onError={handleLogoError} onLoad={() => console.log('✅ [LoginScreen] Logo variante carregada com sucesso!')} />
           </button>
         </div>;
     }
 
     // Fallback para texto se não houver logo variante ou erro
-    return <div className="flex items-center justify-center mb-4">
+    return <div className="flex items-center justify-center mb-6">
         <button onClick={() => navigate('/')} className="cursor-pointer hover:opacity-80 transition-opacity" type="button">
-          <h1 className="text-3xl font-bold text-white">Matershop</h1>
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-black">Matershop</h1>
         </button>
       </div>;
   };
