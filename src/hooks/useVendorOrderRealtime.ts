@@ -11,22 +11,27 @@ export const useVendorOrderRealtime = (orderId?: string) => {
   useEffect(() => {
     if (!user?.id || !orderId) return;
 
-    console.log('🔄 [useVendorOrderRealtime] Setting up bidirectional real-time for order:', orderId);
+    console.log('🔄 [useVendorOrderRealtime] Setting up enhanced bidirectional real-time for order:', orderId);
 
-    // Buscar o order_id do pedido para usar na sincronização
-    const setupRealtimeWithOrderId = async () => {
+    // Buscar dados do pedido para configuração completa
+    const setupRealtimeWithOrderData = async () => {
       const { data: pedidoData } = await supabase
         .from('pedidos')
-        .select('order_id')
+        .select('order_id, usuario_id')
         .eq('id', orderId)
         .single();
 
-      const orderIdToListen = pedidoData?.order_id || orderId;
+      const orderIdToListen = pedidoData?.order_id;
+      const customerUserId = pedidoData?.usuario_id;
       
-      console.log('📡 [useVendorOrderRealtime] Listening to order_id:', orderIdToListen);
+      console.log('📡 [useVendorOrderRealtime] Setup data:', { 
+        pedidoId: orderId, 
+        orderId: orderIdToListen, 
+        customerId: customerUserId 
+      });
 
       const channel = supabase
-        .channel(`vendor-order-sync-${orderIdToListen}`)
+        .channel(`vendor-order-enhanced-${orderId}`)
         .on(
           'postgres_changes',
           {
@@ -37,9 +42,16 @@ export const useVendorOrderRealtime = (orderId?: string) => {
           },
           (payload) => {
             console.log('📡 [useVendorOrderRealtime] Pedidos table updated:', payload);
-            // Invalidate vendor order queries
+            
+            // Invalidate vendor queries
             queryClient.invalidateQueries({ queryKey: ['vendorPedidoDetails', orderId] });
             queryClient.invalidateQueries({ queryKey: ['vendorPedidos'] });
+            
+            // Invalidate customer queries if we have customer data
+            if (customerUserId && orderIdToListen) {
+              queryClient.invalidateQueries({ queryKey: ['userOrders'] });
+              queryClient.invalidateQueries({ queryKey: ['order', orderIdToListen] });
+            }
           }
         )
         .on(
@@ -48,25 +60,32 @@ export const useVendorOrderRealtime = (orderId?: string) => {
             event: 'UPDATE',
             schema: 'public',
             table: 'orders',
-            filter: `id=eq.${orderIdToListen}`
+            filter: orderIdToListen ? `id=eq.${orderIdToListen}` : undefined
           },
           (payload) => {
+            if (!orderIdToListen) return;
+            
             console.log('📡 [useVendorOrderRealtime] Orders table updated:', payload);
-            // Invalidate both vendor and customer queries for full sync
+            
+            // Invalidate all related queries for full sync
             queryClient.invalidateQueries({ queryKey: ['vendorPedidoDetails', orderId] });
+            queryClient.invalidateQueries({ queryKey: ['vendorPedidos'] });
             queryClient.invalidateQueries({ queryKey: ['userOrders'] });
-            queryClient.invalidateQueries({ queryKey: ['order'] });
+            queryClient.invalidateQueries({ queryKey: ['order', orderIdToListen] });
           }
         )
         .subscribe();
 
       return () => {
-        console.log('🔄 [useVendorOrderRealtime] Cleaning up bidirectional real-time subscription');
+        console.log('🔄 [useVendorOrderRealtime] Cleaning up enhanced real-time subscription');
         supabase.removeChannel(channel);
       };
     };
 
-    const cleanup = setupRealtimeWithOrderId();
+    const cleanup = setupRealtimeWithOrderData().catch(error => {
+      console.error('❌ [useVendorOrderRealtime] Error setting up real-time:', error);
+      return () => {};
+    });
     
     return () => {
       cleanup.then(cleanupFn => cleanupFn && cleanupFn());

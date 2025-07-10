@@ -13,7 +13,7 @@ import LoadingState from '../common/LoadingState';
 import ListEmptyState from '../common/ListEmptyState';
 import { OrderData } from '@/services/order/types';
 import ProductImage from '../admin/products/components/ProductImage';
-import { useCustomerOrderRealtime } from '@/hooks/useCustomerOrderRealtime';
+import { useOrderRealtimeSync } from '@/hooks/useOrderRealtimeSync';
 
 const OrdersScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -21,8 +21,8 @@ const OrdersScreen: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>("todos");
   const [debugMode, setDebugMode] = useState(false);
   
-  // Setup real-time updates for customer orders
-  useCustomerOrderRealtime();
+  // Setup enhanced real-time updates for customer orders
+  useOrderRealtimeSync({ mode: 'customer' });
   
   // Security check - redirect if not authenticated
   React.useEffect(() => {

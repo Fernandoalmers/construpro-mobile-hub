@@ -8,11 +8,15 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePedidosVendor } from '@/hooks/vendor/usePedidosVendor';
+import { useOrderRealtimeSync } from '@/hooks/useOrderRealtimeSync';
 import LoadingState from '../common/LoadingState';
 import SyncStatusIndicator from './orders/SyncStatusIndicator';
 
 const VendorOrdersScreen: React.FC = () => {
   const navigate = useNavigate();
+  
+  // Setup enhanced real-time updates for all vendor orders
+  useOrderRealtimeSync({ mode: 'vendor' });
   const { 
     pedidos, 
     isLoading, 

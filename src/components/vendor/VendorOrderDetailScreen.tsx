@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Package } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { orderDetailsService } from '@/services/vendor/orders/detailsService';
-import { useVendorOrderRealtime } from '@/hooks/useVendorOrderRealtime';
+import { useOrderRealtimeSync } from '@/hooks/useOrderRealtimeSync';
 import { toast } from '@/components/ui/sonner';
 import LoadingState from '../common/LoadingState';
 import { Card } from '@/components/ui/card';
@@ -39,8 +39,8 @@ const VendorOrderDetailScreen: React.FC = () => {
     }
   }, [id, navigate]);
   
-  // Setup real-time updates for this specific order
-  useVendorOrderRealtime(id);
+  // Setup enhanced real-time updates for this specific order
+  useOrderRealtimeSync({ pedidoId: id, mode: 'vendor' });
   
   // Fetch order details with improved error handling
   const { 

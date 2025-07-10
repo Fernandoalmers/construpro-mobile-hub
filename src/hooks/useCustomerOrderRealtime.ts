@@ -11,10 +11,10 @@ export const useCustomerOrderRealtime = () => {
   useEffect(() => {
     if (!user?.id) return;
 
-    console.log('🔄 [useCustomerOrderRealtime] Setting up enhanced real-time for customer orders');
+    console.log('🔄 [useCustomerOrderRealtime] Setting up optimized real-time for customer orders');
 
     const channel = supabase
-      .channel(`customer-orders-enhanced-${user.id}`)
+      .channel(`customer-orders-optimized-${user.id}`)
       .on(
         'postgres_changes',
         {
@@ -25,9 +25,13 @@ export const useCustomerOrderRealtime = () => {
         },
         (payload) => {
           console.log('📡 [useCustomerOrderRealtime] Orders table updated:', payload);
-          // Invalidate customer order queries
+          const orderId = payload.new?.id;
+          
+          // Invalidate specific order queries for better performance
+          if (orderId) {
+            queryClient.invalidateQueries({ queryKey: ['order', orderId] });
+          }
           queryClient.invalidateQueries({ queryKey: ['userOrders'] });
-          queryClient.invalidateQueries({ queryKey: ['order'] });
         }
       )
       .on(
@@ -35,19 +39,28 @@ export const useCustomerOrderRealtime = () => {
         {
           event: 'UPDATE',
           schema: 'public',
-          table: 'pedidos'
+          table: 'pedidos',
+          filter: `usuario_id=eq.${user.id}`
         },
         (payload) => {
-          console.log('📡 [useCustomerOrderRealtime] Pedidos table updated:', payload);
+          console.log('📡 [useCustomerOrderRealtime] Pedidos table updated (vendor change):', payload);
+          const pedidoId = payload.new?.id;
+          const orderId = payload.new?.order_id;
+          
           // Invalidate customer queries to reflect vendor changes
+          if (orderId) {
+            queryClient.invalidateQueries({ queryKey: ['order', orderId] });
+          }
+          if (pedidoId) {
+            queryClient.invalidateQueries({ queryKey: ['vendorPedidoDetails', pedidoId] });
+          }
           queryClient.invalidateQueries({ queryKey: ['userOrders'] });
-          queryClient.invalidateQueries({ queryKey: ['order'] });
         }
       )
       .subscribe();
 
     return () => {
-      console.log('🔄 [useCustomerOrderRealtime] Cleaning up enhanced real-time subscription');
+      console.log('🔄 [useCustomerOrderRealtime] Cleaning up optimized real-time subscription');
       supabase.removeChannel(channel);
     };
   }, [user?.id, queryClient]);
