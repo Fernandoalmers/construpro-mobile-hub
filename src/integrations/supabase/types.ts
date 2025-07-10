@@ -2295,10 +2295,6 @@ export type Database = {
         Args: { p_order_id: string; p_vendor_id: string }
         Returns: boolean
       }
-      check_order_integrity: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
       check_product_delivery_restriction: {
         Args: {
           p_vendor_id: string
@@ -2467,20 +2463,16 @@ export type Database = {
         Returns: undefined
       }
       mask_cpf: {
-        Args: { cpf_value: string }
+        Args: { cpf_input: string }
         Returns: string
       }
       mask_email: {
-        Args: { email_value: string }
+        Args: { email_input: string }
         Returns: string
       }
       mask_phone: {
-        Args: { phone_value: string }
+        Args: { phone_input: string }
         Returns: string
-      }
-      migrate_missing_orders_to_pedidos: {
-        Args: Record<PropertyKey, never>
-        Returns: number
       }
       migrate_orders_to_pedidos: {
         Args: Record<PropertyKey, never>
