@@ -158,25 +158,35 @@ export function useAddresses() {
     setIsAddModalOpen(true);
   };
 
-  // CORRIGIDO: Função para salvar endereços usando mutateAsync
+  // CORRIGIDO: Função para salvar endereços - removendo ID inválido
   const handleSaveAddress = async (address: Address) => {
     console.log('[useAddresses] 💾 Salvando endereço:', address);
     
-    // Determinar se é edição ou novo endereço
-    const isEdit = Boolean(address.id && editingAddress);
+    // Determinar se é edição ou novo endereço baseado em ID válido
+    const hasValidId = address.id && address.id !== '' && editingAddress?.id;
+    const isEdit = hasValidId;
     
     // Garantir que tem user_id
     if (!user?.id) {
       throw new Error('Usuário não autenticado');
     }
     
+    // Preparar dados para salvar
     const addressToSave = {
       ...address,
       user_id: user.id,
       cep: address.cep.replace(/\D/g, '') // Limpar CEP
     };
     
-    console.log('[useAddresses] 📋 Dados para salvar:', addressToSave);
+    // CORREÇÃO: Remover campos problemáticos para novos endereços
+    if (!isEdit) {
+      // Para novos endereços, remover id, created_at, updated_at
+      delete addressToSave.id;
+      delete addressToSave.created_at;
+      delete addressToSave.updated_at;
+    }
+    
+    console.log('[useAddresses] 📋 Dados para salvar:', { addressToSave, isEdit });
     
     // Usar mutateAsync para aguardar corretamente a Promise
     return await saveAddressMutation.mutateAsync({ address: addressToSave, isEdit });
@@ -206,7 +216,7 @@ export function useAddresses() {
     handleEditAddress,
     handleDeleteAddress,
     handleAddAddress,
-    handleSaveAddress, // CORRIGIDA: Agora usa mutateAsync
+    handleSaveAddress, // CORRIGIDA: Agora remove ID inválido
     handleSaveAddressOriginal, // Original para uso interno
     addAddress, // Restored for compatibility
     isSaving: saveAddressMutation.isPending,
