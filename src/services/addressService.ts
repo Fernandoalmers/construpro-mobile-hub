@@ -126,24 +126,77 @@ export const addressService = {
   },
 
   async addAddress(address: Omit<Address, 'id' | 'created_at' | 'updated_at'>): Promise<Address> {
-    const { data, error } = await supabase
-      .from('user_addresses')
-      .insert({
-        ...address,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .select()
-      .single();
+    console.log('[addressService] 🏠 Iniciando salvamento de endereço:', {
+      nome: address.nome,
+      cep: address.cep,
+      cidade: address.cidade,
+      principal: address.principal
+    });
 
-    if (error) throw error;
+    try {
+      // Usar a Edge Function para salvar o endereço
+      const { data, error } = await supabase.functions.invoke('address-management', {
+        body: {
+          nome: address.nome,
+          cep: address.cep,
+          logradouro: address.logradouro,
+          numero: address.numero,
+          complemento: address.complemento || '',
+          bairro: address.bairro,
+          cidade: address.cidade,
+          estado: address.estado,
+          principal: address.principal
+        }
+      });
 
-    // If this is the primary address, sync with profile
-    if (address.principal) {
-      await this.setPrimaryAddress(data.id, address.user_id);
+      if (error) {
+        console.error('[addressService] ❌ Erro na Edge Function:', error);
+        throw error;
+      }
+
+      if (!data.success) {
+        console.error('[addressService] ❌ Edge Function retornou erro:', data.error);
+        throw new Error(data.error);
+      }
+
+      console.log('[addressService] ✅ Endereço salvo com sucesso via Edge Function:', data.data.address.id);
+      return data.data.address;
+
+    } catch (error) {
+      console.error('[addressService] ❌ Erro ao salvar endereço:', error);
+      
+      // Fallback: tentar salvar diretamente no banco se a Edge Function falhar
+      console.log('[addressService] 🔄 Tentando fallback direto no banco...');
+      
+      try {
+        const { data, error: directError } = await supabase
+          .from('user_addresses')
+          .insert({
+            ...address,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+
+        if (directError) {
+          console.error('[addressService] ❌ Erro no fallback direto:', directError);
+          throw directError;
+        }
+
+        // Se este é o endereço principal, executar sincronização
+        if (address.principal) {
+          await this.setPrimaryAddress(data.id, address.user_id);
+        }
+
+        console.log('[addressService] ✅ Endereço salvo via fallback direto:', data.id);
+        return data;
+
+      } catch (fallbackError) {
+        console.error('[addressService] ❌ Fallback também falhou:', fallbackError);
+        throw fallbackError;
+      }
     }
-
-    return data;
   },
 
   async updateAddress(addressId: string, updates: Partial<Address>): Promise<Address> {

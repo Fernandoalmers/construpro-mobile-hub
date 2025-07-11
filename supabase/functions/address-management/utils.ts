@@ -1,72 +1,73 @@
 
-const corsHeaders = {
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+export const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface RequestContext {
-  user: { id: string };
-  headers: Headers;
+export function createSuccessResponse(data: any, headers: Record<string, string> = {}) {
+  return new Response(
+    JSON.stringify({ success: true, data }),
+    {
+      status: 200,
+      headers: { 
+        'Content-Type': 'application/json',
+        ...corsHeaders,
+        ...headers
+      }
+    }
+  );
 }
 
-export { corsHeaders };
+export function createErrorResponse(message: string, status: number = 400, headers: Record<string, string> = {}) {
+  return new Response(
+    JSON.stringify({ success: false, error: message }),
+    {
+      status,
+      headers: { 
+        'Content-Type': 'application/json',
+        ...corsHeaders,
+        ...headers
+      }
+    }
+  );
+}
 
-export async function createRequestContext(req: Request): Promise<RequestContext> {
+export async function createRequestContext(req: Request) {
   const authHeader = req.headers.get('Authorization');
   
-  if (!authHeader) {
-    console.log('[address-management] No authorization header found');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
     throw new Error('Unauthorized');
   }
 
-  // Extract token from Bearer header
   const token = authHeader.replace('Bearer ', '');
   
-  if (!token) {
-    console.log('[address-management] No token in authorization header');
-    throw new Error('Unauthorized');
-  }
-
-  try {
-    // Create a simple mock context for now
-    // In a real implementation, you would verify the JWT token
-    const context: RequestContext = {
-      user: { id: 'temp-user-id' }, // This should be extracted from JWT
-      headers: req.headers
-    };
-    
-    console.log('[address-management] Context created successfully');
-    return context;
-  } catch (error) {
-    console.error('[address-management] Error creating context:', error);
-    throw new Error('Unauthorized');
-  }
-}
-
-export function createErrorResponse(message: string, status: number, headers?: Record<string, string>) {
-  const responseHeaders = { ...corsHeaders, ...headers };
-  return new Response(
-    JSON.stringify({ error: message }), 
-    { 
-      status, 
-      headers: { 
-        ...responseHeaders,
-        'Content-Type': 'application/json'
+  // Criar cliente Supabase para a função
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
       }
     }
   );
-}
 
-export function createSuccessResponse(data: any, status: number = 200, headers?: Record<string, string>) {
-  const responseHeaders = { ...corsHeaders, ...headers };
-  return new Response(
-    JSON.stringify(data), 
-    { 
-      status, 
-      headers: { 
-        ...responseHeaders,
-        'Content-Type': 'application/json'
-      }
-    }
-  );
+  // Verificar e obter usuário do token
+  const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+  
+  if (userError || !user) {
+    console.error('[address-management] Auth error:', userError);
+    throw new Error('Unauthorized');
+  }
+
+  console.log('[address-management] Authenticated user:', user.id);
+
+  return {
+    user,
+    supabase,
+    token
+  };
 }
