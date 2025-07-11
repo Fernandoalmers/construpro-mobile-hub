@@ -158,7 +158,7 @@ export function useAddresses() {
     setIsAddModalOpen(true);
   };
 
-  // NOVA função para salvar endereços (usada pelo SmartCepModal)
+  // CORRIGIDO: Função para salvar endereços usando mutateAsync
   const handleSaveAddress = async (address: Address) => {
     console.log('[useAddresses] 💾 Salvando endereço:', address);
     
@@ -178,21 +178,8 @@ export function useAddresses() {
     
     console.log('[useAddresses] 📋 Dados para salvar:', addressToSave);
     
-    return new Promise((resolve, reject) => {
-      saveAddressMutation.mutate(
-        { address: addressToSave, isEdit },
-        {
-          onSuccess: (data) => {
-            console.log('[useAddresses] ✅ Endereço salvo com sucesso:', data);
-            resolve(data);
-          },
-          onError: (error) => {
-            console.error('[useAddresses] ❌ Erro ao salvar endereço:', error);
-            reject(error);
-          }
-        }
-      );
-    });
+    // Usar mutateAsync para aguardar corretamente a Promise
+    return await saveAddressMutation.mutateAsync({ address: addressToSave, isEdit });
   };
 
   // Função original mantida para compatibilidade
@@ -219,7 +206,7 @@ export function useAddresses() {
     handleEditAddress,
     handleDeleteAddress,
     handleAddAddress,
-    handleSaveAddress, // NOVA função para uso externo
+    handleSaveAddress, // CORRIGIDA: Agora usa mutateAsync
     handleSaveAddressOriginal, // Original para uso interno
     addAddress, // Restored for compatibility
     isSaving: saveAddressMutation.isPending,
