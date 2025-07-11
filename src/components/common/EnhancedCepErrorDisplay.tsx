@@ -1,14 +1,13 @@
 
-import React, { useState } from 'react';
-import { AlertCircle, Wifi, RefreshCw, Edit3, ExternalLink, Search, ChevronDown, ChevronUp } from 'lucide-react';
+import React from 'react';
+import { AlertCircle, Wifi, RefreshCw, Edit3, ExternalLink, CheckCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { useCepDiagnostics } from '@/hooks/useCepDiagnostics';
-import type { CepError } from '@/hooks/useCepLookup';
+import type { EnhancedCepError } from '@/hooks/useEnhancedCepLookup';
 
 interface EnhancedCepErrorDisplayProps {
-  error: CepError;
+  error: EnhancedCepError;
   onRetry?: () => void;
   onManualEntry?: () => void;
   onCepSuggestion?: (cep: string) => void;
@@ -24,9 +23,6 @@ const EnhancedCepErrorDisplay: React.FC<EnhancedCepErrorDisplayProps> = ({
   isRetrying = false,
   searchedCep
 }) => {
-  const { diagnostic, isRunning, runDiagnostic } = useCepDiagnostics();
-  const [showDiagnostic, setShowDiagnostic] = useState(false);
-
   const getErrorIcon = () => {
     switch (error.type) {
       case 'network':
@@ -71,30 +67,34 @@ const EnhancedCepErrorDisplay: React.FC<EnhancedCepErrorDisplayProps> = ({
     );
   };
 
-  const handleRunDiagnostic = async () => {
-    if (searchedCep) {
-      console.log('[EnhancedCepErrorDisplay] 🔍 Executando diagnóstico completo para:', searchedCep);
-      await runDiagnostic(searchedCep);
-      setShowDiagnostic(true);
-    }
-  };
-
-  const handleCepSuggestionClick = (cep: string) => {
-    if (onCepSuggestion) {
-      onCepSuggestion(cep);
-    }
-  };
-
-  const getApiStatusIcon = (status: string) => {
-    switch (status) {
-      case 'success':
-        return '✅';
+  const getSuggestions = () => {
+    switch (error.type) {
+      case 'validation':
+        return [
+          'Verifique se o CEP tem 8 dígitos',
+          'Use apenas números (ex: 39685000)',
+        ];
       case 'not_found':
-        return '❌';
-      case 'error':
-        return '💥';
+        return [
+          'Confirme se o CEP foi digitado corretamente',
+          'Verifique se é um CEP válido nos Correios',
+          'Tente um CEP próximo da sua região',
+        ];
+      case 'network':
+      case 'timeout':
+        return [
+          'Verifique sua conexão com a internet',
+          'Tente novamente em alguns segundos',
+          'Se persistir, use a entrada manual',
+        ];
+      case 'api_error':
+        return [
+          'Os serviços de CEP estão temporariamente indisponíveis',
+          'Tente novamente em alguns minutos',
+          'Use a entrada manual enquanto isso',
+        ];
       default:
-        return '⏳';
+        return ['Tente novamente ou use a entrada manual'];
     }
   };
 
@@ -102,7 +102,7 @@ const EnhancedCepErrorDisplay: React.FC<EnhancedCepErrorDisplayProps> = ({
     <Alert variant={getErrorVariant()} className="mb-4">
       <div className="flex items-start gap-3">
         {getErrorIcon()}
-        <div className="flex-1 space-y-3">
+        <div className="flex-1 space-y-2">
           <div className="flex items-center gap-2">
             <AlertTitle className="text-sm font-medium">
               Erro ao buscar CEP {searchedCep && `"${searchedCep}"`}
@@ -114,8 +114,46 @@ const EnhancedCepErrorDisplay: React.FC<EnhancedCepErrorDisplayProps> = ({
             {error.message}
           </AlertDescription>
 
-          {/* Quick Actions */}
-          <div className="flex flex-wrap gap-2">
+          {error.details && (
+            <details className="text-xs opacity-75">
+              <summary className="cursor-pointer">Detalhes técnicos</summary>
+              <p className="mt-1 font-mono">{error.details}</p>
+            </details>
+          )}
+
+          {/* Show suggestions for CEP similar to searched one */}
+          {error.suggestions && error.suggestions.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium">CEPs similares encontrados:</p>
+              <div className="flex flex-wrap gap-1">
+                {error.suggestions.map((suggestion, index) => (
+                  <Button
+                    key={index}
+                    size="sm"
+                    variant="outline"
+                    className="h-6 text-xs px-2"
+                    onClick={() => onCepSuggestion?.(suggestion)}
+                  >
+                    {suggestion}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <p className="text-xs font-medium">Sugestões:</p>
+            <ul className="text-xs space-y-1">
+              {getSuggestions().map((suggestion, index) => (
+                <li key={index} className="flex items-start gap-1">
+                  <span className="text-blue-500 font-bold">•</span>
+                  {suggestion}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="flex gap-2 pt-2">
             {error.canRetry && onRetry && (
               <Button
                 size="sm"
@@ -133,28 +171,6 @@ const EnhancedCepErrorDisplay: React.FC<EnhancedCepErrorDisplayProps> = ({
                   <>
                     <RefreshCw className="h-3 w-3 mr-1" />
                     Tentar Novamente
-                  </>
-                )}
-              </Button>
-            )}
-
-            {searchedCep && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleRunDiagnostic}
-                disabled={isRunning}
-                className="h-8 text-xs bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100"
-              >
-                {isRunning ? (
-                  <>
-                    <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
-                    Diagnosticando...
-                  </>
-                ) : (
-                  <>
-                    <Search className="h-3 w-3 mr-1" />
-                    Diagnóstico Avançado
                   </>
                 )}
               </Button>
@@ -182,98 +198,6 @@ const EnhancedCepErrorDisplay: React.FC<EnhancedCepErrorDisplayProps> = ({
               Consultar Correios
             </Button>
           </div>
-
-          {/* Diagnostic Results - MELHORADO */}
-          {diagnostic && showDiagnostic && (
-            <div className="mt-4 p-3 bg-gray-50 rounded-lg border">
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="font-medium text-sm">Diagnóstico Avançado</h4>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setShowDiagnostic(false)}
-                  className="h-6 w-6 p-0"
-                >
-                  <ChevronUp className="h-3 w-3" />
-                </Button>
-              </div>
-              
-              <div className="space-y-3 text-xs">
-                <p className="font-medium text-sm">{diagnostic.diagnosticMessage}</p>
-                
-                {/* API Status */}
-                <div className="grid grid-cols-3 gap-2 text-xs">
-                  <div className="flex items-center gap-1">
-                    <span>{getApiStatusIcon(diagnostic.viacepStatus)}</span>
-                    <span>ViaCEP</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span>{getApiStatusIcon(diagnostic.brasilApiStatus)}</span>
-                    <span>BrasilAPI</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span>{diagnostic.isValidFormat ? '✅' : '❌'}</span>
-                    <span>Formato</span>
-                  </div>
-                </div>
-
-                {/* External Verification Results */}
-                {diagnostic.externalVerification && (
-                  <div className="mt-2 p-2 bg-white rounded border">
-                    <p className="font-medium text-xs mb-1">Verificação Externa:</p>
-                    {diagnostic.externalVerification.viacep && (
-                      <p className="text-xs">
-                        🏛️ ViaCEP: {diagnostic.externalVerification.viacep.localidade} - {diagnostic.externalVerification.viacep.uf}
-                      </p>
-                    )}
-                    {diagnostic.externalVerification.brasilapi && (
-                      <p className="text-xs">
-                        🇧🇷 BrasilAPI: {diagnostic.externalVerification.brasilapi.city} - {diagnostic.externalVerification.brasilapi.state}
-                      </p>
-                    )}
-                    {diagnostic.externalVerification.discrepancy && (
-                      <p className="text-xs text-red-600 font-medium mt-1">
-                        ⚠️ Discrepância detectada entre APIs!
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {/* CEP Suggestions */}
-                {diagnostic.suggestedCeps.length > 0 && (
-                  <div className="mt-3">
-                    <p className="font-medium mb-2">CEPs similares para tentar:</p>
-                    <div className="flex flex-wrap gap-1">
-                      {diagnostic.suggestedCeps.map((cep) => (
-                        <Button
-                          key={cep}
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleCepSuggestionClick(cep)}
-                          className="h-6 px-2 text-xs"
-                        >
-                          {cep.replace(/(\d{5})(\d{3})/, '$1-$2')}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Collapsed Diagnostic Button */}
-          {diagnostic && !showDiagnostic && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setShowDiagnostic(true)}
-              className="h-8 text-xs text-gray-600"
-            >
-              <ChevronDown className="h-3 w-3 mr-1" />
-              Ver diagnóstico avançado
-            </Button>
-          )}
         </div>
       </div>
     </Alert>

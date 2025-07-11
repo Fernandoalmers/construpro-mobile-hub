@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -299,7 +298,7 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
       e.preventDefault();
     }
     
-    console.log("Iniciando salvamento com dados:", {
+    console.log("[AddAddressModal] Iniciando salvamento com dados:", {
       formData,
       isEditMode,
       cepValidatedForEdit,
@@ -308,7 +307,7 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
     
     // Validate form
     if (!validateForm()) {
-      console.error("Validação falhou:", validationErrors);
+      console.error("[AddAddressModal] Validação falhou:", validationErrors);
       toast({
         variant: "destructive",
         title: "Campos obrigatórios",
@@ -319,7 +318,7 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
     
     // Check authentication again before submitting
     if (!isAuthenticated) {
-      console.error("Usuário não autenticado durante envio");
+      console.error("[AddAddressModal] Usuário não autenticado durante envio");
       toast({
         variant: "destructive",
         title: "Erro de autenticação",
@@ -331,10 +330,22 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
     setIsSaving(true);
     
     try {
-      console.log("Enviando dados do endereço:", formData);
-      await onSave(formData);
+      console.log("[AddAddressModal] Chamando onSave com dados:", formData);
+      
+      // Preparar dados finais para salvamento
+      const addressToSave = {
+        ...formData,
+        user_id: user?.id || formData.user_id,
+        cep: formData.cep.replace(/\D/g, '') // Garantir que o CEP está sem formatação
+      };
+      
+      console.log("[AddAddressModal] Dados preparados para salvamento:", addressToSave);
+      
+      await onSave(addressToSave);
+      
+      console.log("[AddAddressModal] Salvamento concluído com sucesso");
     } catch (error) {
-      console.error('Erro ao salvar endereço:', error);
+      console.error('[AddAddressModal] Erro ao salvar endereço:', error);
       toast({
         variant: "destructive",
         title: "Erro ao salvar",
@@ -428,16 +439,12 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
                     <div className="flex items-center gap-2">
                       <CheckCircle size={14} className="text-green-600" />
                       <span className="text-sm text-green-600 font-medium">
-                        CEP válido encontrado com sistema aprimorado!
-                        {cepData.source && <span className="text-xs ml-1">(fonte: {cepData.source})</span>}
+                        CEP válido encontrado!
                       </span>
                     </div>
                     <div className="p-3 bg-green-50 rounded-lg border border-green-200">
                       <p className="text-sm font-medium">{cepData.logradouro}</p>
                       <p className="text-sm text-gray-600">{cepData.bairro}, {cepData.localidade} - {cepData.uf}</p>
-                      {cepData.confidence && (
-                        <p className="text-xs text-gray-500 mt-1">Confiança: {cepData.confidence}</p>
-                      )}
                     </div>
                   </div>
                 )}
@@ -446,7 +453,7 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
                   <div className="p-2 bg-blue-50 border border-blue-200 rounded-md">
                     <p className="text-sm text-blue-600 flex items-center gap-2">
                       <Loader2 size={14} className="animate-spin" />
-                      Buscando CEP com sistema aprimorado... Aguarde alguns segundos.
+                      Buscando CEP... Aguarde alguns segundos.
                     </p>
                   </div>
                 )}
@@ -457,15 +464,7 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="logradouro" className="flex items-center gap-2">
-                  Logradouro
-                  {cepData && (
-                    <span className="text-xs text-green-600 flex items-center gap-1">
-                      <Edit3 size={12} />
-                      editável
-                    </span>
-                  )}
-                </Label>
+                <Label htmlFor="logradouro">Logradouro</Label>
                 <Input
                   id="logradouro"
                   name="logradouro"
@@ -475,11 +474,6 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
                   className={validationErrors.logradouro ? "border-red-500" : cepData ? "bg-green-50" : ""}
                   required
                 />
-                {cepData && (
-                  <p className="text-xs text-green-600">
-                    ✓ Preenchido automaticamente - você pode editar se necessário
-                  </p>
-                )}
                 {validationErrors.logradouro && (
                   <p className="text-red-500 text-xs mt-1">{validationErrors.logradouro}</p>
                 )}
@@ -515,15 +509,7 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="bairro" className="flex items-center gap-2">
-                  Bairro
-                  {cepData && (
-                    <span className="text-xs text-green-600 flex items-center gap-1">
-                      <Edit3 size={12} />
-                      editável
-                    </span>
-                  )}
-                </Label>
+                <Label htmlFor="bairro">Bairro</Label>
                 <Input
                   id="bairro"
                   name="bairro"
@@ -533,11 +519,6 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
                   className={validationErrors.bairro ? "border-red-500" : cepData ? "bg-green-50" : ""}
                   required
                 />
-                {cepData && (
-                  <p className="text-xs text-green-600">
-                    ✓ Preenchido automaticamente - você pode editar se necessário
-                  </p>
-                )}
                 {validationErrors.bairro && (
                   <p className="text-red-500 text-xs mt-1">{validationErrors.bairro}</p>
                 )}
