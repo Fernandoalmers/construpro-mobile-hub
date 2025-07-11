@@ -25,14 +25,14 @@ export interface StoreLocationInfo {
   zona?: string;
 }
 
-// Updated DeliveryZone interface to include vendor_id
-export interface DeliveryZone {
+// Re-export the main type from the service
+export type { DeliveryZone } from '@/services/deliveryZoneService';
+
+// Keep DeliveryZoneResult for backward compatibility
+export interface DeliveryZoneResult {
   zone_id: string;
   vendor_id: string;
   zone_name: string;
   delivery_fee: number;
   delivery_time: string;
 }
-
-// Keep DeliveryZoneResult for backward compatibility
-export interface DeliveryZoneResult extends DeliveryZone {}

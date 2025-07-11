@@ -9,7 +9,7 @@ interface UseDeliveryZonesReturn {
   currentZones: DeliveryZone[];
   currentCep: string | null;
   isLoading: boolean;
-  isInitialized: boolean; // NOVO: indica se a inicialização foi concluída
+  isInitialized: boolean;
   error: string | null;
   resolveZones: (cep: string) => Promise<void>;
   clearZones: () => void;
@@ -23,7 +23,7 @@ export const useDeliveryZones = (): UseDeliveryZonesReturn => {
   const [currentZones, setCurrentZones] = useState<DeliveryZone[]>([]);
   const [currentCep, setCurrentCep] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false); // NOVO
+  const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // ESTABILIZADO: Função para obter CEP sem dependências reativas
@@ -90,7 +90,7 @@ export const useDeliveryZones = (): UseDeliveryZonesReturn => {
       throw err;
     } finally {
       setIsLoading(false);
-      setIsInitialized(true); // NOVO: marca como inicializado após primeira resolução
+      setIsInitialized(true);
     }
   }, [currentCep, currentZones.length, isInitialized, profile?.id, queryClient]);
 
@@ -163,7 +163,7 @@ export const useDeliveryZones = (): UseDeliveryZonesReturn => {
     currentZones,
     currentCep,
     isLoading,
-    isInitialized, // NOVO: expõe estado de inicialização
+    isInitialized,
     error,
     resolveZones,
     clearZones,
