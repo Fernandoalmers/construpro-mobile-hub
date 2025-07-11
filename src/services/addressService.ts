@@ -30,10 +30,10 @@ export const addressService = {
   },
 
   async setPrimaryAddress(addressId: string, userId: string): Promise<void> {
-    console.log('[addressService] 🏠 Iniciando definição de endereço principal:', { addressId, userId });
+    console.log('[addressService] 🏠 Definindo endereço principal:', { addressId, userId });
     
     try {
-      // PASSO 1: Buscar dados do endereço que será definido como principal
+      // Get address data that will be set as primary
       const { data: addressData, error: fetchError } = await supabase
         .from('user_addresses')
         .select('*')
@@ -45,13 +45,13 @@ export const addressService = {
         throw fetchError;
       }
 
-      console.log('[addressService] 📋 Dados do endereço encontrado:', {
+      console.log('[addressService] 📋 Endereço encontrado:', {
         nome: addressData.nome,
         cep: addressData.cep,
         cidade: addressData.cidade
       });
 
-      // PASSO 2: Desmarcar todos os outros endereços como principal
+      // Unset all other addresses as primary
       const { error: unsetError } = await supabase
         .from('user_addresses')
         .update({ 
@@ -68,7 +68,7 @@ export const addressService = {
 
       console.log('[addressService] ✅ Outros endereços desmarcados como principal');
 
-      // PASSO 3: Marcar o endereço selecionado como principal
+      // Set selected address as primary
       const { error: updateError } = await supabase
         .from('user_addresses')
         .update({ 
@@ -82,9 +82,9 @@ export const addressService = {
         throw updateError;
       }
 
-      console.log('[addressService] ✅ Endereço marcado como principal na tabela user_addresses');
+      console.log('[addressService] ✅ Endereço marcado como principal');
 
-      // PASSO 4: Atualizar o endereco_principal no perfil do usuário
+      // Update profile's endereco_principal
       const enderecoCompleto = {
         logradouro: addressData.logradouro,
         numero: addressData.numero,
@@ -104,20 +104,13 @@ export const addressService = {
         .eq('id', userId);
 
       if (profileError) {
-        console.error('[addressService] ❌ Erro ao atualizar endereco_principal no perfil:', profileError);
-        // Não vamos fazer throw aqui para não bloquear o fluxo
+        console.error('[addressService] ❌ Erro ao atualizar perfil:', profileError);
         console.warn('[addressService] ⚠️ Continuando sem sincronização do perfil');
       } else {
-        console.log('[addressService] ✅ Perfil atualizado com endereco_principal:', {
-          cep: enderecoCompleto.cep,
-          cidade: enderecoCompleto.cidade
-        });
+        console.log('[addressService] ✅ Perfil atualizado com endereco_principal');
       }
 
-      // PASSO 5: Aguardar um momento para garantir que as mudanças foram persistidas
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      console.log('[addressService] 🎉 Sincronização completa - endereço principal definido');
+      console.log('[addressService] 🎉 Endereço principal definido com sucesso');
 
     } catch (error) {
       console.error('[addressService] ❌ Erro geral ao definir endereço principal:', error);
@@ -126,76 +119,76 @@ export const addressService = {
   },
 
   async addAddress(address: Omit<Address, 'id' | 'created_at' | 'updated_at'>): Promise<Address> {
-    console.log('[addressService] 🏠 Iniciando salvamento de endereço:', {
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] [addressService] 🏠 INICIANDO salvamento de endereço:`, {
       nome: address.nome,
       cep: address.cep,
       cidade: address.cidade,
-      principal: address.principal
+      principal: address.principal,
+      user_id: address.user_id
     });
 
     try {
-      // Usar a Edge Function para salvar o endereço
-      const { data, error } = await supabase.functions.invoke('address-management', {
-        body: {
-          nome: address.nome,
-          cep: address.cep,
-          logradouro: address.logradouro,
-          numero: address.numero,
-          complemento: address.complemento || '',
-          bairro: address.bairro,
-          cidade: address.cidade,
-          estado: address.estado,
-          principal: address.principal
-        }
-      });
+      // Prepare address data with timestamps
+      const addressData = {
+        ...address,
+        cep: address.cep.replace(/\D/g, ''), // Clean CEP
+        created_at: timestamp,
+        updated_at: timestamp
+      };
+
+      console.log(`[${timestamp}] [addressService] 📤 Dados preparados para inserção:`, addressData);
+
+      // Direct insert to user_addresses table
+      const { data, error } = await supabase
+        .from('user_addresses')
+        .insert(addressData)
+        .select()
+        .single();
 
       if (error) {
-        console.error('[addressService] ❌ Erro na Edge Function:', error);
+        console.error(`[${timestamp}] [addressService] ❌ ERRO na inserção direta:`, {
+          error,
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
         throw error;
       }
 
-      if (!data.success) {
-        console.error('[addressService] ❌ Edge Function retornou erro:', data.error);
-        throw new Error(data.error);
+      if (!data) {
+        console.error(`[${timestamp}] [addressService] ❌ ERRO: Nenhum dado retornado após inserção`);
+        throw new Error('Nenhum endereço foi criado');
       }
 
-      console.log('[addressService] ✅ Endereço salvo com sucesso via Edge Function:', data.data.address.id);
-      return data.data.address;
+      console.log(`[${timestamp}] [addressService] ✅ SUCESSO na inserção:`, {
+        id: data.id,
+        nome: data.nome,
+        cep: data.cep,
+        principal: data.principal
+      });
+
+      // If this is the primary address, ensure it's properly set
+      if (address.principal) {
+        console.log(`[${timestamp}] [addressService] 🔄 Definindo como endereço principal...`);
+        await this.setPrimaryAddress(data.id, address.user_id);
+      }
+
+      console.log(`[${timestamp}] [addressService] 🎉 PROCESSO COMPLETO - endereço salvo:`, data.id);
+      return data;
 
     } catch (error) {
-      console.error('[addressService] ❌ Erro ao salvar endereço:', error);
-      
-      // Fallback: tentar salvar diretamente no banco se a Edge Function falhar
-      console.log('[addressService] 🔄 Tentando fallback direto no banco...');
-      
-      try {
-        const { data, error: directError } = await supabase
-          .from('user_addresses')
-          .insert({
-            ...address,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .select()
-          .single();
-
-        if (directError) {
-          console.error('[addressService] ❌ Erro no fallback direto:', directError);
-          throw directError;
+      console.error(`[${timestamp}] [addressService] ❌ ERRO GERAL no salvamento:`, {
+        error,
+        errorMessage: error instanceof Error ? error.message : 'Erro desconhecido',
+        addressData: {
+          nome: address.nome,
+          cep: address.cep,
+          user_id: address.user_id
         }
-
-        // Se este é o endereço principal, executar sincronização
-        if (address.principal) {
-          await this.setPrimaryAddress(data.id, address.user_id);
-        }
-
-        console.log('[addressService] ✅ Endereço salvo via fallback direto:', data.id);
-        return data;
-
-      } catch (fallbackError) {
-        console.error('[addressService] ❌ Fallback também falhou:', fallbackError);
-        throw fallbackError;
-      }
+      });
+      throw error;
     }
   },
 
