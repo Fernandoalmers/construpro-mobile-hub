@@ -72,7 +72,8 @@ function filterReducer(state: FilterState, action: FilterAction): FilterState {
   }
 }
 
-const PRODUCTS_PER_PAGE = 12;
+// CORRIGIDO: Aumentar significativamente o limite para garantir que todos os produtos sejam exibidos
+const PRODUCTS_PER_PAGE = 50;
 
 export const useOptimizedProductFilter = (products: any[] = []) => {
   const [state, dispatch] = useReducer(filterReducer, initialState);
@@ -176,12 +177,19 @@ export const useOptimizedProductFilter = (products: any[] = []) => {
     const currentDisplayed = Array.isArray(displayedProducts) ? displayedProducts.length : 0;
     const totalFiltered = Array.isArray(filteredProducts) ? filteredProducts.length : 0;
     
+    console.log('[useOptimizedProductFilter] 📈 LoadMore called:', {
+      currentDisplayed,
+      totalFiltered,
+      hasMore: currentDisplayed < totalFiltered,
+      nextPage: state.page + 1
+    });
+    
     if (currentDisplayed < totalFiltered) {
       dispatch({ type: 'SET_PAGE', payload: state.page + 1 });
     }
   }, [displayedProducts, filteredProducts, state.page]);
 
-  // Update displayed products based on pagination with safety checks
+  // CORRIGIDO: Update displayed products to show more products initially and load incrementally
   useEffect(() => {
     if (!Array.isArray(filteredProducts)) {
       console.warn('[useOptimizedProductFilter] filteredProducts is not an array:', filteredProducts);
@@ -193,7 +201,14 @@ export const useOptimizedProductFilter = (products: any[] = []) => {
     const endIndex = state.page * PRODUCTS_PER_PAGE;
     const newDisplayedProducts = filteredProducts.slice(startIndex, endIndex);
     
-    console.log('[useOptimizedProductFilter] Setting displayed products:', newDisplayedProducts?.length || 0);
+    console.log('[useOptimizedProductFilter] 📊 Setting displayed products:', {
+      filteredTotal: filteredProducts.length,
+      currentPage: state.page,
+      endIndex,
+      displayedCount: newDisplayedProducts.length,
+      hasMore: newDisplayedProducts.length < filteredProducts.length
+    });
+    
     setDisplayedProducts(newDisplayedProducts || []);
   }, [filteredProducts, state.page]);
 
@@ -224,11 +239,21 @@ export const useOptimizedProductFilter = (products: any[] = []) => {
     loadMore
   }), [loadMore]);
 
+  const hasMore = (Array.isArray(displayedProducts) ? displayedProducts.length : 0) < (Array.isArray(filteredProducts) ? filteredProducts.length : 0);
+
+  console.log('[useOptimizedProductFilter] 🎯 Final state:', {
+    totalProducts: safeProducts.length,
+    filteredProducts: filteredProducts.length,
+    displayedProducts: displayedProducts.length,
+    hasMore,
+    currentPage: state.page
+  });
+
   return {
     ...state,
     filteredProducts: Array.isArray(filteredProducts) ? filteredProducts : [],
     displayedProducts: Array.isArray(displayedProducts) ? displayedProducts : [],
-    hasMore: (Array.isArray(displayedProducts) ? displayedProducts.length : 0) < (Array.isArray(filteredProducts) ? filteredProducts.length : 0),
+    hasMore,
     isLoadingMore: false,
     actions
   };
