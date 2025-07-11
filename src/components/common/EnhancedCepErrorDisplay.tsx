@@ -1,13 +1,12 @@
-
 import React from 'react';
 import { AlertCircle, Wifi, RefreshCw, Edit3, ExternalLink, CheckCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import type { EnhancedCepError } from '@/hooks/useEnhancedCepLookup';
+import type { CepError } from '@/hooks/useEnhancedCepLookup';
 
 interface EnhancedCepErrorDisplayProps {
-  error: EnhancedCepError;
+  error: CepError;
   onRetry?: () => void;
   onManualEntry?: () => void;
   onCepSuggestion?: (cep: string) => void;
