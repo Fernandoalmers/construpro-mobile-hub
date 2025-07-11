@@ -38,7 +38,7 @@ export function useAddresses() {
 
   // Enhanced error formatting
   const formatErrorMessage = (error: any): string => {
-    console.error("Error in addresses:", error);
+    console.error("❌ [useAddresses] Error in addresses:", error);
     let errorMessage = 'Um erro inesperado ocorreu.';
     
     if (error instanceof Error) {
@@ -90,7 +90,7 @@ export function useAddresses() {
     queryKey: ['addresses'],
     queryFn: async () => {
       try {
-        console.log("🔄 Sincronizando endereços com servidor em background...");
+        console.log("🔄 [useAddresses] Sincronizando endereços com servidor em background...");
         
         if (!user?.id) {
           throw new Error('Usuário não autenticado');
@@ -104,12 +104,12 @@ export function useAddresses() {
         // Atualizar cache local também
         setCachedAddresses(data);
         
-        console.log("✅ Endereços sincronizados com sucesso:", data.length);
+        console.log("✅ [useAddresses] Endereços sincronizados com sucesso:", data.length);
         setErrorDetails(null);
         return data;
       } catch (err) {
         const errorMsg = formatErrorMessage(err);
-        console.error("❌ Erro ao sincronizar endereços:", errorMsg);
+        console.error("❌ [useAddresses] Erro ao sincronizar endereços:", errorMsg);
         throw err;
       }
     },
@@ -225,11 +225,11 @@ export function useAddresses() {
   const deleteAddressMutation = useMutation({
     mutationFn: async (addressId: string) => {
       try {
-        console.log(`🗑️ Removendo endereço: ${addressId}`);
+        console.log(`🗑️ [useAddresses] Removendo endereço: ${addressId}`);
         return await addressService.deleteAddress(addressId);
       } catch (err) {
         const errorMsg = formatErrorMessage(err);
-        console.error("❌ Erro ao remover endereço:", errorMsg);
+        console.error("❌ [useAddresses] Erro ao remover endereço:", errorMsg);
         throw err;
       }
     },
@@ -260,7 +260,8 @@ export function useAddresses() {
           addressId: data.address.id,
           nome: data.address.nome,
           cep: data.address.cep,
-          userId: user?.id
+          userId: user?.id,
+          timestamp: new Date().toISOString()
         });
         
         const validation = validateAddress(data.address);
@@ -275,7 +276,11 @@ export function useAddresses() {
           user_id: user?.id || data.address.user_id
         };
         
-        console.log("📤 [saveAddressMutation] Chamando serviço com dados limpos:", cleanedAddress);
+        console.log("📤 [saveAddressMutation] Enviando dados para o servidor:", {
+          cleanedAddress,
+          isEdit: data.isEdit,
+          timestamp: new Date().toISOString()
+        });
         
         let result;
         if (data.isEdit && data.address.id) {
@@ -286,16 +291,27 @@ export function useAddresses() {
           result = await addressService.addAddress(cleanedAddress);
         }
         
-        console.log("✅ [saveAddressMutation] Resposta do serviço:", result);
+        console.log("✅ [saveAddressMutation] Resposta do servidor:", {
+          result,
+          timestamp: new Date().toISOString()
+        });
         return result;
       } catch (err) {
         const errorMsg = formatErrorMessage(err);
-        console.error("❌ [saveAddressMutation] Erro ao salvar endereço:", errorMsg, err);
+        console.error("❌ [saveAddressMutation] Erro ao salvar endereço:", {
+          error: err,
+          errorMessage: errorMsg,
+          timestamp: new Date().toISOString()
+        });
         throw err;
       }
     },
     onSuccess: (result, variables) => {
-      console.log("🎉 [saveAddressMutation] Sucesso! Resultado:", result);
+      console.log("🎉 [saveAddressMutation] Sucesso! Resultado:", {
+        result,
+        variables,
+        timestamp: new Date().toISOString()
+      });
       
       // Invalidar queries e limpar cache
       console.log("🗂️ [saveAddressMutation] Invalidando queries e limpando cache...");
@@ -325,7 +341,8 @@ export function useAddresses() {
         error,
         variables,
         errorMessage: error?.message,
-        errorDetails: error
+        errorDetails: error,
+        timestamp: new Date().toISOString()
       });
       
       const errorMsg = formatErrorMessage(error);
@@ -370,7 +387,10 @@ export function useAddresses() {
   };
 
   const handleSaveAddress = (address: Address) => {
-    console.log("💾 [useAddresses] handleSaveAddress chamado com:", address);
+    console.log("💾 [useAddresses] handleSaveAddress chamado com:", {
+      address,
+      timestamp: new Date().toISOString()
+    });
     const isEdit = Boolean(editingAddress);
     console.log("🔄 [useAddresses] Disparando mutation, isEdit:", isEdit);
     saveAddressMutation.mutate({ address, isEdit });

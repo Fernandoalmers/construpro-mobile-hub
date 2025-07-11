@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface SegmentCacheEntry {
   url: string;
@@ -41,8 +41,8 @@ export const useSegmentImageCache = () => {
     }
   }, []);
 
-  // Precarregar imagem
-  const preloadImage = (url: string): Promise<boolean> => {
+  // Precarregar imagem - MEMOIZADA para evitar recriação
+  const preloadImage = useCallback((url: string): Promise<boolean> => {
     return new Promise((resolve) => {
       const img = new Image();
       img.onload = () => {
@@ -55,10 +55,10 @@ export const useSegmentImageCache = () => {
       };
       img.src = url;
     });
-  };
+  }, []);
 
-  // Salvar segmento no cache
-  const cacheSegmentImage = async (segmentId: string, url: string) => {
+  // Salvar segmento no cache - MEMOIZADA para evitar recriação
+  const cacheSegmentImage = useCallback(async (segmentId: string, url: string) => {
     console.log(`🔄 [useSegmentImageCache] Salvando segmento ${segmentId} no cache:`, url);
     
     // Precarregar a imagem
@@ -70,35 +70,38 @@ export const useSegmentImageCache = () => {
       preloaded
     };
 
-    const newCache = { ...cache, [segmentId]: entry };
-    setCache(newCache);
+    setCache(prevCache => {
+      const newCache = { ...prevCache, [segmentId]: entry };
+      
+      // Salvar no localStorage
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify(newCache));
+        console.log(`✅ [useSegmentImageCache] Segmento ${segmentId} salvo no cache com sucesso`);
+      } catch (error) {
+        console.error('❌ [useSegmentImageCache] Erro ao salvar cache:', error);
+      }
+      
+      return newCache;
+    });
+  }, [preloadImage]);
 
-    // Salvar no localStorage
-    try {
-      localStorage.setItem(CACHE_KEY, JSON.stringify(newCache));
-      console.log(`✅ [useSegmentImageCache] Segmento ${segmentId} salvo no cache com sucesso`);
-    } catch (error) {
-      console.error('❌ [useSegmentImageCache] Erro ao salvar cache:', error);
-    }
-  };
-
-  // Obter imagem do cache
-  const getCachedSegmentImage = (segmentId: string): string | null => {
+  // Obter imagem do cache - MEMOIZADA
+  const getCachedSegmentImage = useCallback((segmentId: string): string | null => {
     const entry = cache[segmentId];
     if (entry && entry.preloaded) {
       console.log(`📦 [useSegmentImageCache] Segmento ${segmentId} encontrado no cache:`, entry.url);
       return entry.url;
     }
     return null;
-  };
+  }, [cache]);
 
-  // Verificar se segmento está em cache
-  const isSegmentCached = (segmentId: string): boolean => {
+  // Verificar se segmento está em cache - MEMOIZADA
+  const isSegmentCached = useCallback((segmentId: string): boolean => {
     return !!cache[segmentId]?.preloaded;
-  };
+  }, [cache]);
 
-  // Precarregar múltiplas imagens
-  const preloadSegmentImages = async (segments: Array<{ id: string; image_url?: string | null }>) => {
+  // Precarregar múltiplas imagens - MEMOIZADA
+  const preloadSegmentImages = useCallback(async (segments: Array<{ id: string; image_url?: string | null }>) => {
     console.log('🚀 [useSegmentImageCache] Precarregando imagens de segmentos:', segments.length);
     
     const promises = segments
@@ -106,7 +109,7 @@ export const useSegmentImageCache = () => {
       .map(segment => cacheSegmentImage(segment.id, segment.image_url!));
     
     await Promise.all(promises);
-  };
+  }, [isSegmentCached, cacheSegmentImage]);
 
   return {
     cacheSegmentImage,

@@ -21,41 +21,64 @@ const SegmentCardsHeader: React.FC<SegmentCardsHeaderProps> = ({
   const [loading, setLoading] = useState(true);
   const { getCachedSegmentImage, cacheSegmentImage } = useSegmentImageCache();
 
+  // Se showSegmentCards for false, não renderizar nada e não executar efeitos
+  if (!showSegmentCards) {
+    return null;
+  }
+
   // Debug log to confirm component is loading
   console.log('[SegmentCardsHeader] Component loaded - checking layout responsiveness');
 
   useEffect(() => {
+    let isMounted = true; // Flag para evitar updates em componentes desmontados
+    
     const fetchSegments = async () => {
       try {
         console.log('[SegmentCardsHeader] Fetching segments...');
         const segmentsData = await getProductSegments();
+        
+        if (!isMounted) return; // Se componente foi desmontado, não continuar
+        
         console.log('[SegmentCardsHeader] Raw segments data:', segmentsData);
         
-        // Filter active segments and process cache
+        // Filter active segments
         const activeSegments = segmentsData.filter(segment => {
           const isActive = segment.status === 'ativo';
           console.log(`[SegmentCardsHeader] Segment ${segment.nome}: active=${isActive}, image_url=${segment.image_url}`);
-          
-          // Cache da imagem se disponível
-          if (isActive && segment.image_url) {
-            cacheSegmentImage(segment.id, segment.image_url);
-          }
-          
           return isActive;
         });
         
         console.log('[SegmentCardsHeader] Active segments:', activeSegments);
         setSegments(activeSegments);
+        
+        // Cache das imagens dos segmentos ativos - SEM await para evitar loop
+        activeSegments.forEach(segment => {
+          if (segment.image_url) {
+            // Executar cache em background sem bloquear
+            cacheSegmentImage(segment.id, segment.image_url).catch(error => {
+              console.warn(`[SegmentCardsHeader] Erro ao cachear imagem do segmento ${segment.id}:`, error);
+            });
+          }
+        });
+        
       } catch (error) {
+        if (!isMounted) return; // Se componente foi desmontado, não mostrar erro
+        
         console.error('[SegmentCardsHeader] Error fetching segments:', error);
         toast.error('Erro ao carregar segmentos');
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
     
     fetchSegments();
-  }, [cacheSegmentImage]);
+    
+    return () => {
+      isMounted = false; // Cleanup para evitar updates após desmontagem
+    };
+  }, []); // REMOVIDO cacheSegmentImage das dependências para evitar loop infinito
 
   // Map segment names to icons
   const getIconForSegment = (segmentName: string) => {
@@ -76,11 +99,6 @@ const SegmentCardsHeader: React.FC<SegmentCardsHeaderProps> = ({
       return <ShoppingBag size={24} />;
     }
   };
-
-  // Se showSegmentCards for false, não renderizar nada
-  if (!showSegmentCards) {
-    return null;
-  }
 
   if (loading) {
     return (
