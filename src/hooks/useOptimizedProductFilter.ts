@@ -73,7 +73,7 @@ function filterReducer(state: FilterState, action: FilterAction): FilterState {
 }
 
 // CORRIGIDO: Aumentar significativamente o limite para garantir que todos os produtos sejam exibidos
-const PRODUCTS_PER_PAGE = 50;
+const PRODUCTS_PER_PAGE = 100000;
 
 export const useOptimizedProductFilter = (products: any[] = []) => {
   const [state, dispatch] = useReducer(filterReducer, initialState);
