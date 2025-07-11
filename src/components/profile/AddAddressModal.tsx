@@ -19,7 +19,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useEnhancedCepLookup } from '@/hooks/useEnhancedCepLookup';
 import { formatCep } from '@/lib/cep';
 import EnhancedCepErrorDisplay from '@/components/common/EnhancedCepErrorDisplay';
-import { Search, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { Search, AlertCircle, CheckCircle, Loader2, Edit3 } from 'lucide-react';
 
 interface AddAddressModalProps {
   open: boolean;
@@ -457,7 +457,15 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="logradouro">Logradouro</Label>
+                <Label htmlFor="logradouro" className="flex items-center gap-2">
+                  Logradouro
+                  {cepData && (
+                    <span className="text-xs text-green-600 flex items-center gap-1">
+                      <Edit3 size={12} />
+                      editável
+                    </span>
+                  )}
+                </Label>
                 <Input
                   id="logradouro"
                   name="logradouro"
@@ -466,8 +474,12 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
                   onChange={handleChange}
                   className={validationErrors.logradouro ? "border-red-500" : cepData ? "bg-green-50" : ""}
                   required
-                  readOnly={!!cepData}
                 />
+                {cepData && (
+                  <p className="text-xs text-green-600">
+                    ✓ Preenchido automaticamente - você pode editar se necessário
+                  </p>
+                )}
                 {validationErrors.logradouro && (
                   <p className="text-red-500 text-xs mt-1">{validationErrors.logradouro}</p>
                 )}
@@ -503,7 +515,15 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="bairro">Bairro</Label>
+                <Label htmlFor="bairro" className="flex items-center gap-2">
+                  Bairro
+                  {cepData && (
+                    <span className="text-xs text-green-600 flex items-center gap-1">
+                      <Edit3 size={12} />
+                      editável
+                    </span>
+                  )}
+                </Label>
                 <Input
                   id="bairro"
                   name="bairro"
@@ -512,8 +532,12 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
                   onChange={handleChange}
                   className={validationErrors.bairro ? "border-red-500" : cepData ? "bg-green-50" : ""}
                   required
-                  readOnly={!!cepData}
                 />
+                {cepData && (
+                  <p className="text-xs text-green-600">
+                    ✓ Preenchido automaticamente - você pode editar se necessário
+                  </p>
+                )}
                 {validationErrors.bairro && (
                   <p className="text-red-500 text-xs mt-1">{validationErrors.bairro}</p>
                 )}
