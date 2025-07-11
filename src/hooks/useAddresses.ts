@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { addressService, Address } from '@/services/addressService';
@@ -112,12 +113,12 @@ export function useAddresses() {
         throw err;
       }
     },
-    retry: 1, // REDUZIDO: Menos tentativas
-    retryDelay: 2000, // AUMENTADO: Mais delay entre tentativas
-    staleTime: 2 * 60 * 1000, // AUMENTADO: 2 minutos
-    gcTime: 10 * 60 * 1000, // AUMENTADO: 10 minutos
+    retry: 1,
+    retryDelay: 2000,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
-    refetchOnMount: false, // ADICIONADO: Evitar refetch no mount
+    refetchOnMount: false,
     enabled: isCacheLoaded && !!user?.id
   });
 
@@ -250,14 +251,21 @@ export function useAddresses() {
     }
   });
 
-  // Save address mutation
+  // MELHORADO: Save address mutation com logs detalhados e handling aprimorado
   const saveAddressMutation = useMutation({
     mutationFn: async (data: { address: Address, isEdit: boolean }) => {
       try {
-        console.log("💾 Salvando endereço:", data.isEdit ? "Edição" : "Novo", data.address);
+        console.log("💾 [saveAddressMutation] Iniciando salvamento:", {
+          isEdit: data.isEdit,
+          addressId: data.address.id,
+          nome: data.address.nome,
+          cep: data.address.cep,
+          userId: user?.id
+        });
         
         const validation = validateAddress(data.address);
         if (!validation.isValid) {
+          console.error("❌ [saveAddressMutation] Validação falhou:", validation.errors);
           throw new Error(`Dados inválidos: ${validation.errors.join(', ')}`);
         }
         
@@ -267,21 +275,39 @@ export function useAddresses() {
           user_id: user?.id || data.address.user_id
         };
         
+        console.log("📤 [saveAddressMutation] Chamando serviço com dados limpos:", cleanedAddress);
+        
+        let result;
         if (data.isEdit && data.address.id) {
-          return await addressService.updateAddress(data.address.id, cleanedAddress);
+          console.log("✏️ [saveAddressMutation] Editando endereço existente");
+          result = await addressService.updateAddress(data.address.id, cleanedAddress);
         } else {
-          return await addressService.addAddress(cleanedAddress);
+          console.log("➕ [saveAddressMutation] Criando novo endereço");
+          result = await addressService.addAddress(cleanedAddress);
         }
+        
+        console.log("✅ [saveAddressMutation] Resposta do serviço:", result);
+        return result;
       } catch (err) {
         const errorMsg = formatErrorMessage(err);
-        console.error("❌ Erro ao salvar endereço:", errorMsg);
+        console.error("❌ [saveAddressMutation] Erro ao salvar endereço:", errorMsg, err);
         throw err;
       }
     },
     onSuccess: (result, variables) => {
-      console.log("✅ Endereço salvo com sucesso:", result);
-      queryClient.invalidateQueries({ queryKey: ['addresses'], refetchType: 'none' });
+      console.log("🎉 [saveAddressMutation] Sucesso! Resultado:", result);
+      
+      // Invalidar queries e limpar cache
+      console.log("🗂️ [saveAddressMutation] Invalidando queries e limpando cache...");
+      queryClient.invalidateQueries({ queryKey: ['addresses'] });
       addressCacheService.clearCache();
+      
+      // Forçar refetch imediato
+      console.log("🔄 [saveAddressMutation] Forçando refetch...");
+      setTimeout(() => {
+        refetch();
+      }, 100);
+      
       setErrorDetails(null);
       toast({
         title: variables.isEdit ? "✅ Endereço atualizado" : "✅ Endereço adicionado",
@@ -291,8 +317,17 @@ export function useAddresses() {
       });
       setIsAddModalOpen(false);
       setEditingAddress(null);
+      
+      console.log("✅ [saveAddressMutation] Processo de salvamento concluído com sucesso");
     },
-    onError: (error: any) => {
+    onError: (error: any, variables) => {
+      console.error("❌ [saveAddressMutation] Erro na mutation:", {
+        error,
+        variables,
+        errorMessage: error?.message,
+        errorDetails: error
+      });
+      
       const errorMsg = formatErrorMessage(error);
       toast({
         variant: "destructive",
@@ -335,14 +370,17 @@ export function useAddresses() {
   };
 
   const handleSaveAddress = (address: Address) => {
-    console.log("💾 handleSaveAddress chamado com:", address);
+    console.log("💾 [useAddresses] handleSaveAddress chamado com:", address);
     const isEdit = Boolean(editingAddress);
+    console.log("🔄 [useAddresses] Disparando mutation, isEdit:", isEdit);
     saveAddressMutation.mutate({ address, isEdit });
   };
 
   // Enhanced addAddress function for useCheckout
   const addAddress = async (formData: Partial<Address>): Promise<Address | null> => {
     try {
+      console.log("➕ [useAddresses] addAddress chamado com:", formData);
+      
       const fullAddress: Address = {
         id: '',
         user_id: user?.id || '',
@@ -362,16 +400,20 @@ export function useAddresses() {
 
       const validation = validateAddress(fullAddress);
       if (!validation.isValid) {
+        console.error("❌ [useAddresses] Validação falhou no addAddress:", validation.errors);
         throw new Error(`Dados inválidos: ${validation.errors.join(', ')}`);
       }
 
+      console.log("📤 [useAddresses] Chamando addressService.addAddress...");
       const result = await addressService.addAddress(fullAddress);
-      queryClient.invalidateQueries({ queryKey: ['addresses'], refetchType: 'none' });
+      console.log("✅ [useAddresses] Resultado do addAddress:", result);
+      
+      queryClient.invalidateQueries({ queryKey: ['addresses'] });
       addressCacheService.clearCache();
       
       return result;
     } catch (error) {
-      console.error("❌ Erro ao adicionar endereço:", error);
+      console.error("❌ [useAddresses] Erro ao adicionar endereço:", error);
       throw error;
     }
   };

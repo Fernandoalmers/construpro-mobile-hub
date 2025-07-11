@@ -298,16 +298,18 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
       e.preventDefault();
     }
     
-    console.log("[AddAddressModal] Iniciando salvamento com dados:", {
+    console.log("[AddAddressModal] 🚀 Iniciando processo de salvamento");
+    console.log("[AddAddressModal] 📋 Dados do formulário:", {
       formData,
       isEditMode,
       cepValidatedForEdit,
-      hasCepData: !!cepData
+      hasCepData: !!cepData,
+      userId: user?.id
     });
     
     // Validate form
     if (!validateForm()) {
-      console.error("[AddAddressModal] Validação falhou:", validationErrors);
+      console.error("[AddAddressModal] ❌ Validação do formulário falhou:", validationErrors);
       toast({
         variant: "destructive",
         title: "Campos obrigatórios",
@@ -318,7 +320,7 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
     
     // Check authentication again before submitting
     if (!isAuthenticated) {
-      console.error("[AddAddressModal] Usuário não autenticado durante envio");
+      console.error("[AddAddressModal] ❌ Usuário não autenticado durante envio");
       toast({
         variant: "destructive",
         title: "Erro de autenticação",
@@ -330,7 +332,7 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
     setIsSaving(true);
     
     try {
-      console.log("[AddAddressModal] Chamando onSave com dados:", formData);
+      console.log("[AddAddressModal] 📤 Preparando dados para envio");
       
       // Preparar dados finais para salvamento
       const addressToSave = {
@@ -339,13 +341,14 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
         cep: formData.cep.replace(/\D/g, '') // Garantir que o CEP está sem formatação
       };
       
-      console.log("[AddAddressModal] Dados preparados para salvamento:", addressToSave);
+      console.log("[AddAddressModal] 📦 Dados preparados para salvamento:", addressToSave);
+      console.log("[AddAddressModal] 🔄 Chamando onSave...");
       
       await onSave(addressToSave);
       
-      console.log("[AddAddressModal] Salvamento concluído com sucesso");
+      console.log("[AddAddressModal] ✅ onSave executado com sucesso!");
     } catch (error) {
-      console.error('[AddAddressModal] Erro ao salvar endereço:', error);
+      console.error('[AddAddressModal] ❌ Erro durante salvamento:', error);
       toast({
         variant: "destructive",
         title: "Erro ao salvar",
@@ -353,6 +356,7 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
       });
     } finally {
       setIsSaving(false);
+      console.log("[AddAddressModal] 🏁 Processo de salvamento finalizado");
     }
   };
 
