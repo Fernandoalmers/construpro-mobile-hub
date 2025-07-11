@@ -40,7 +40,6 @@ export function useAddresses() {
       return { addressId, newCep: addressToSet.cep };
     },
     onSuccess: async () => {
-      // Refresh profile and invalidate queries
       await refreshProfile();
       queryClient.invalidateQueries({ queryKey: ['addresses'] });
       
@@ -95,7 +94,6 @@ export function useAddresses() {
       }
     },
     onSuccess: (result, variables) => {
-      // Invalidate queries to refresh the list
       queryClient.invalidateQueries({ queryKey: ['addresses'] });
       
       toast({
@@ -105,7 +103,6 @@ export function useAddresses() {
           : "Endereço adicionado com sucesso."
       });
       
-      // Close modal and clear editing state
       setIsAddModalOpen(false);
       setEditingAddress(null);
     },
@@ -118,7 +115,21 @@ export function useAddresses() {
     }
   });
 
-  // Enhanced retry functionality
+  // Add address function (for compatibility)
+  const addAddress = useCallback(async (addressData: Partial<Address>) => {
+    if (!user?.id) {
+      throw new Error('Usuário não autenticado');
+    }
+
+    const addressToAdd = {
+      ...addressData,
+      user_id: user.id,
+      principal: addressData.principal ?? false
+    } as Omit<Address, 'id' | 'created_at' | 'updated_at'>;
+
+    return await addressService.addAddress(addressToAdd);
+  }, [user?.id]);
+
   const retryOperation = useCallback(async () => {
     toast({
       title: "🔄 Atualizando",
@@ -171,6 +182,7 @@ export function useAddresses() {
     handleDeleteAddress,
     handleAddAddress,
     handleSaveAddress,
+    addAddress, // Restored for compatibility
     isSaving: saveAddressMutation.isPending,
     saveError: saveAddressMutation.error,
     isSettingPrimary: setPrimaryAddressMutation.isPending,
