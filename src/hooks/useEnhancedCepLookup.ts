@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { lookupCepEnhanced, EnhancedCepData } from '@/lib/enhancedCep';
 
@@ -8,6 +7,7 @@ export interface CepError {
   details?: string;
   canRetry: boolean;
   suggestManual: boolean;
+  suggestions?: string[];
 }
 
 interface UseEnhancedCepLookupReturn {
