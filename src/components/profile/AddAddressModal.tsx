@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -18,7 +19,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useEnhancedCepLookup } from '@/hooks/useEnhancedCepLookup';
 import { formatCep } from '@/lib/cep';
 import EnhancedCepErrorDisplay from '@/components/common/EnhancedCepErrorDisplay';
-import { Search, AlertCircle, CheckCircle, Loader2, Edit3 } from 'lucide-react';
+import { Search, CheckCircle, Loader2 } from 'lucide-react';
 
 interface AddAddressModalProps {
   open: boolean;
@@ -60,13 +61,11 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
   
   useEffect(() => {
     if (initialData) {
-      console.log('[AddAddressModal] Editing address:', initialData);
       setFormData(initialData);
       setCepInput(initialData.cep || '');
       setIsEditMode(true);
       setCepValidatedForEdit(true);
     } else {
-      console.log('[AddAddressModal] Adding new address');
       setFormData({
         id: '',
         user_id: user?.id || '',
@@ -92,7 +91,6 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
 
   useEffect(() => {
     if (open && !isAuthenticated) {
-      console.error("Usuário não autenticado");
       toast({
         variant: "destructive",
         title: "Erro de autenticação",
@@ -105,7 +103,6 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
   // Auto-fill fields when CEP data is found
   useEffect(() => {
     if (cepData) {
-      console.log('[AddAddressModal] Preenchendo campos automaticamente com sistema aprimorado:', cepData);
       setFormData(prev => ({
         ...prev,
         cep: cepData.cep,
@@ -117,7 +114,7 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
       
       setCepValidatedForEdit(true);
       
-      // Limpar erros de validação dos campos preenchidos automaticamente
+      // Clear validation errors for auto-filled fields
       setValidationErrors(prev => {
         const updated = { ...prev };
         delete updated.cep;
@@ -132,7 +129,6 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
 
   const handleCepSearch = async () => {
     if (!cepInput.trim()) {
-      console.warn('[AddAddressModal] CEP vazio');
       toast({
         variant: "destructive",
         title: "CEP obrigatório",
@@ -141,11 +137,9 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
       return;
     }
     
-    console.log('[AddAddressModal] Buscando CEP com sistema aprimorado:', cepInput);
     const sanitizedCep = cepInput.replace(/\D/g, '');
     
     if (sanitizedCep.length !== 8) {
-      console.warn('[AddAddressModal] CEP inválido:', sanitizedCep.length);
       setValidationErrors(prev => ({ ...prev, cep: 'CEP deve ter 8 dígitos' }));
       toast({
         variant: "destructive",
@@ -179,7 +173,6 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
     // If user changes CEP significantly in edit mode, require revalidation
     const sanitizedCep = value.replace(/\D/g, '');
     if (isEditMode && initialData && sanitizedCep !== initialData.cep.replace(/\D/g, '')) {
-      console.log('[AddAddressModal] CEP changed in edit mode, requiring revalidation');
       setCepValidatedForEdit(false);
       clearData();
       // Clear fields that were auto-populated
@@ -203,8 +196,6 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
         estado: ''
       }));
     }
-    
-    console.log('[AddAddressModal] CEP alterado:', value, '-> sanitizado:', sanitizedCep);
   };
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -225,18 +216,15 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
   };
 
   const handleRetry = async () => {
-    console.log('[AddAddressModal] Tentando novamente com sistema aprimorado...');
     await retryLookup();
   };
 
   const handleManualEntry = () => {
-    console.log('[AddAddressModal] Permitindo entrada manual');
     setValidationErrors({});
     setCepValidatedForEdit(true);
   };
 
   const handleCepSuggestion = async (suggestedCep: string) => {
-    console.log('[AddAddressModal] Usando CEP sugerido:', suggestedCep);
     setCepInput(suggestedCep);
     const result = await lookupAddress(suggestedCep);
     if (result) {
@@ -281,14 +269,6 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
     // Set validation errors
     setValidationErrors(errors);
     
-    console.log('[AddAddressModal] Form validation:', {
-      isEditMode,
-      hasErrors: Object.keys(errors).length > 0,
-      errors,
-      cepValidatedForEdit,
-      hasCepData: !!cepData
-    });
-    
     // Return true if no errors
     return Object.keys(errors).length === 0;
   };
@@ -298,18 +278,8 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
       e.preventDefault();
     }
     
-    console.log("[AddAddressModal] 🚀 Iniciando processo de salvamento");
-    console.log("[AddAddressModal] 📋 Dados do formulário:", {
-      formData,
-      isEditMode,
-      cepValidatedForEdit,
-      hasCepData: !!cepData,
-      userId: user?.id
-    });
-    
     // Validate form
     if (!validateForm()) {
-      console.error("[AddAddressModal] ❌ Validação do formulário falhou:", validationErrors);
       toast({
         variant: "destructive",
         title: "Campos obrigatórios",
@@ -320,7 +290,6 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
     
     // Check authentication again before submitting
     if (!isAuthenticated) {
-      console.error("[AddAddressModal] ❌ Usuário não autenticado durante envio");
       toast({
         variant: "destructive",
         title: "Erro de autenticação",
@@ -332,23 +301,15 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
     setIsSaving(true);
     
     try {
-      console.log("[AddAddressModal] 📤 Preparando dados para envio");
-      
-      // Preparar dados finais para salvamento
+      // Prepare final data for saving
       const addressToSave = {
         ...formData,
         user_id: user?.id || formData.user_id,
-        cep: formData.cep.replace(/\D/g, '') // Garantir que o CEP está sem formatação
+        cep: formData.cep.replace(/\D/g, '') // Ensure CEP is without formatting
       };
       
-      console.log("[AddAddressModal] 📦 Dados preparados para salvamento:", addressToSave);
-      console.log("[AddAddressModal] 🔄 Chamando onSave...");
-      
       await onSave(addressToSave);
-      
-      console.log("[AddAddressModal] ✅ onSave executado com sucesso!");
     } catch (error) {
-      console.error('[AddAddressModal] ❌ Erro durante salvamento:', error);
       toast({
         variant: "destructive",
         title: "Erro ao salvar",
@@ -356,7 +317,6 @@ const AddAddressModal: React.FC<AddAddressModalProps> = ({
       });
     } finally {
       setIsSaving(false);
-      console.log("[AddAddressModal] 🏁 Processo de salvamento finalizado");
     }
   };
 
