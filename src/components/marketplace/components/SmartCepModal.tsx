@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { MapPin, Plus, ChevronRight, Loader2 } from 'lucide-react';
 import CustomModal from '@/components/common/CustomModal';
@@ -23,7 +22,7 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
   currentCep
 }) => {
   const { isAuthenticated, user, refreshProfile } = useAuth();
-  const { addresses, isLoading, refetch, handleSaveAddress } = useAddresses();
+  const { addresses, isLoading, refetch, handleSaveAddress, invalidateAddressesCache } = useAddresses();
   const [showAddAddressModal, setShowAddAddressModal] = useState(false);
   const [isChangingCep, setIsChangingCep] = useState(false);
   const [changingAddressId, setChangingAddressId] = useState<string | null>(null);
@@ -161,18 +160,21 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
     setShowAddAddressModal(true);
   };
 
-  // CORRIGIDO: Função para salvar endereço de verdade
+  // MELHORADO: Função para salvar endereço e garantir sincronização
   const handleAddressAdded = async (savedAddress: any) => {
     console.log('[SmartCepModal] 💾 Salvando novo endereço:', savedAddress);
     
     try {
-      // Usar o hook useAddresses para salvar
-      await handleSaveAddress(savedAddress);
+      // Usar o hook useAddresses para salvar (que já dispara eventos)
+      const result = await handleSaveAddress(savedAddress);
       
-      console.log('[SmartCepModal] ✅ Endereço salvo com sucesso');
+      console.log('[SmartCepModal] ✅ Endereço salvo com sucesso:', result);
       
-      // Atualizar a lista de endereços
-      await refetch();
+      // MELHORADO: Aguardar invalidação do cache
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // MELHORADO: Forçar invalidação manual se necessário
+      await invalidateAddressesCache();
       
       // Fechar o modal de adicionar endereço
       setShowAddAddressModal(false);
@@ -183,7 +185,11 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
         duration: 3000
       });
       
-      // Não fechar o modal principal automaticamente - deixar usuário escolher
+      // NOVO: Se for o primeiro endereço, definir como selecionado automaticamente
+      if (addresses.length === 0 && result?.cep) {
+        console.log('[SmartCepModal] 🎯 Primeiro endereço, definindo como ativo...');
+        await handleAddressSelect(result.cep, result.id);
+      }
       
     } catch (error) {
       console.error('[SmartCepModal] ❌ Erro ao salvar endereço:', error);

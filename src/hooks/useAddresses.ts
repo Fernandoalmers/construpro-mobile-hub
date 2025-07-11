@@ -5,6 +5,17 @@ import { addressService, Address } from '@/services/addressService';
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/context/AuthContext';
 
+// NOVO: Função para disparar evento global de endereço adicionado
+const dispatchAddressAddedEvent = (address: Address) => {
+  console.log('[useAddresses] 🚀 Disparando evento address-added:', address);
+  
+  const event = new CustomEvent('address-added', {
+    detail: { address }
+  });
+  
+  window.dispatchEvent(event);
+};
+
 export function useAddresses() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
@@ -41,7 +52,8 @@ export function useAddresses() {
     },
     onSuccess: async () => {
       await refreshProfile();
-      queryClient.invalidateQueries({ queryKey: ['addresses'] });
+      // MELHORADO: Invalidação global mais robusta
+      await queryClient.invalidateQueries({ queryKey: ['addresses'] });
       
       toast({
         title: "✅ Endereço principal atualizado",
@@ -78,7 +90,7 @@ export function useAddresses() {
     }
   });
 
-  // Save address mutation
+  // Save address mutation - MELHORADO
   const saveAddressMutation = useMutation({
     mutationFn: async (data: { address: Address, isEdit: boolean }) => {
       const cleanedAddress = {
@@ -93,8 +105,21 @@ export function useAddresses() {
         return await addressService.addAddress(cleanedAddress);
       }
     },
-    onSuccess: (result, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['addresses'] });
+    onSuccess: async (result, variables) => {
+      console.log('[useAddresses] ✅ Endereço salvo com sucesso:', result);
+      
+      // MELHORADO: Invalidação global mais robusta
+      await queryClient.invalidateQueries({ queryKey: ['addresses'] });
+      
+      // NOVO: Disparar evento global para outros componentes
+      if (result) {
+        dispatchAddressAddedEvent(result);
+      }
+      
+      // MELHORADO: Refresh do perfil para sincronizar endereco_principal
+      if (!variables.isEdit || result?.principal) {
+        await refreshProfile();
+      }
       
       toast({
         title: variables.isEdit ? "✅ Endereço atualizado" : "✅ Endereço adicionado",
@@ -107,6 +132,7 @@ export function useAddresses() {
       setEditingAddress(null);
     },
     onError: (error: any) => {
+      console.error('[useAddresses] ❌ Erro ao salvar endereço:', error);
       toast({
         variant: "destructive",
         title: "❌ Erro ao salvar endereço",
@@ -127,8 +153,23 @@ export function useAddresses() {
       principal: addressData.principal ?? false
     } as Omit<Address, 'id' | 'created_at' | 'updated_at'>;
 
-    return await addressService.addAddress(addressToAdd);
-  }, [user?.id]);
+    const result = await addressService.addAddress(addressToAdd);
+    
+    // NOVO: Invalidação manual após addAddress
+    await queryClient.invalidateQueries({ queryKey: ['addresses'] });
+    
+    // NOVO: Disparar evento global
+    if (result) {
+      dispatchAddressAddedEvent(result);
+    }
+    
+    // NOVO: Refresh do perfil se for endereço principal
+    if (result?.principal) {
+      await refreshProfile();
+    }
+    
+    return result;
+  }, [user?.id, queryClient, refreshProfile]);
 
   const retryOperation = useCallback(async () => {
     toast({
@@ -202,6 +243,13 @@ export function useAddresses() {
     return addresses.find(address => address.principal);
   };
 
+  // NOVO: Função para invalidar cache globalmente
+  const invalidateAddressesCache = useCallback(async () => {
+    console.log('[useAddresses] 🗂️ Invalidando cache de endereços globalmente');
+    await queryClient.invalidateQueries({ queryKey: ['addresses'] });
+    await refetch();
+  }, [queryClient, refetch]);
+
   return {
     addresses,
     isLoading,
@@ -222,5 +270,8 @@ export function useAddresses() {
     isSaving: saveAddressMutation.isPending,
     saveError: saveAddressMutation.error,
     isSettingPrimary: setPrimaryAddressMutation.isPending,
+    
+    // NOVO: Função para invalidação manual
+    invalidateAddressesCache,
   };
 }

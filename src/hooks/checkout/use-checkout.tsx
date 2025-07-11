@@ -24,7 +24,8 @@ export function useCheckout() {
   const { 
     addresses, 
     isLoading: addressesLoading, 
-    addAddress 
+    addAddress,
+    invalidateAddressesCache
   } = useAddresses();
   
   // Extract store IDs from cart items for fetching store info
@@ -174,6 +175,55 @@ export function useCheckout() {
     }
   }, [isAuthenticated, user, navigate]);
   
+  // NOVO: Função para atualizar endereços automaticamente
+  const refreshAddressList = useCallback(async () => {
+    console.log('[useCheckout] 🔄 Atualizando lista de endereços automaticamente');
+    
+    try {
+      // Invalidar cache e refrescar
+      await invalidateAddressesCache();
+      
+      // Se não há endereço selecionado e existem endereços, selecionar o principal
+      if (!selectedAddress && addresses.length > 0) {
+        const primaryAddress = addresses.find(addr => addr.principal) || addresses[0];
+        console.log('[useCheckout] 🎯 Selecionando endereço automaticamente:', primaryAddress);
+        setSelectedAddress(primaryAddress);
+      }
+      
+    } catch (error) {
+      console.error('[useCheckout] ❌ Erro ao atualizar lista de endereços:', error);
+    }
+  }, [invalidateAddressesCache, addresses, selectedAddress]);
+  
+  // NOVO: Listener para eventos de endereços adicionados
+  useEffect(() => {
+    const handleAddressAdded = async (event: CustomEvent) => {
+      console.log('[useCheckout] 📬 Recebido evento address-added:', event.detail);
+      
+      const newAddress = event.detail.address;
+      
+      // Aguardar um pouco para garantir que o banco foi atualizado
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Atualizar lista de endereços
+      await refreshAddressList();
+      
+      // Se é o primeiro endereço ou é um endereço principal, definir como selecionado
+      if (!selectedAddress || newAddress.principal) {
+        console.log('[useCheckout] 🎯 Definindo novo endereço como selecionado');
+        setSelectedAddress(newAddress);
+      }
+      
+      toast.success('✅ Endereço adicionado e selecionado para entrega!');
+    };
+    
+    window.addEventListener('address-added', handleAddressAdded as EventListener);
+    
+    return () => {
+      window.removeEventListener('address-added', handleAddressAdded as EventListener);
+    };
+  }, [selectedAddress, refreshAddressList]);
+  
   // Set default address on load
   useEffect(() => {
     if (addresses && addresses.length > 0 && !selectedAddress) {
@@ -200,8 +250,15 @@ export function useCheckout() {
   const addNewAddress = useCallback(async (formData: Partial<Address>) => {
     try {
       if (addAddress) {
-        await addAddress(formData);
+        const newAddress = await addAddress(formData);
         toast.success('Endereço adicionado com sucesso');
+        
+        // NOVO: Definir como selecionado automaticamente
+        if (newAddress) {
+          setSelectedAddress(newAddress);
+        }
+        
+        return newAddress;
       } else {
         console.error('addAddress function is not available');
         toast.error('Não foi possível adicionar o endereço');
@@ -463,7 +520,7 @@ export function useCheckout() {
     isAuthenticated,
     activateReferralInBackground,
     isSubmitting,
-    allDeliveryAvailable // Added to dependencies
+    allDeliveryAvailable
   ]);
   
   // Handle retry
@@ -517,6 +574,9 @@ export function useCheckout() {
     setShowStockModal,
     handleRemoveInvalidItems,
     handleAdjustItemQuantities,
-    handleStockModalContinue
+    handleStockModalContinue,
+    
+    // NOVO: Função para atualizar endereços
+    refreshAddressList
   };
 }
