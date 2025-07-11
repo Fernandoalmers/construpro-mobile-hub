@@ -1,9 +1,10 @@
 
-import React, { memo, useCallback, useRef } from 'react';
+import React, { memo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import OptimizedProductCard from './components/OptimizedProductCard';
 import OptimizedSkeleton from '../common/OptimizedSkeleton';
 import EmptyProductState from './components/EmptyProductState';
+import { useInfiniteScroll } from '@/hooks/use-infinite-scroll';
 import LoadingIndicator from './components/LoadingIndicator';
 
 interface ProductListSectionProps {
@@ -30,7 +31,13 @@ const ProductListSection = memo<ProductListSectionProps>(({
   viewType = 'grid'
 }) => {
   const navigate = useNavigate();
-  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  const { observerRef } = useInfiniteScroll({
+    hasMore,
+    isLoading: isLoadingMore,
+    onLoadMore: loadMoreProducts,
+    threshold: 200
+  });
 
   const handleProductClick = useCallback((productId: string) => {
     if (productId) {
@@ -73,21 +80,14 @@ const ProductListSection = memo<ProductListSectionProps>(({
         ))}
       </div>
 
-      {/* Load More Button */}
+      {/* Infinite Scroll Observer */}
       {hasMore && safeDisplayedProducts.length > 0 && (
-        <div className="flex justify-center py-4">
-          <button
-            onClick={loadMoreProducts}
-            disabled={isLoadingMore}
-            className="bg-construPro-blue text-white px-6 py-2 rounded-lg disabled:opacity-50"
-          >
-            {isLoadingMore ? 'Carregando...' : 'Carregar mais produtos'}
-          </button>
-        </div>
+        <LoadingIndicator
+          loadMoreRef={observerRef}
+          isVisible={isLoadingMore}
+          text="Carregando mais produtos..."
+        />
       )}
-
-      {/* Loading indicator for infinite scroll */}
-      {isLoadingMore && <LoadingIndicator loadMoreRef={loadMoreRef} />}
     </div>
   );
 });

@@ -22,6 +22,14 @@ const ProductsDisplay: React.FC<ProductsDisplayProps> = ({
   loadMoreProducts,
   onLojaClick
 }) => {
+  console.log('[ProductsDisplay] Rendering with:', {
+    viewType,
+    totalProducts: products.length,
+    displayedProducts: displayedProducts.length,
+    hasMore,
+    isLoadingMore
+  });
+
   if (products.length === 0) {
     return null;
   }
