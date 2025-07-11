@@ -163,7 +163,7 @@ export function useAddresses() {
     console.log('[useAddresses] 💾 Salvando endereço:', address);
     
     // Determinar se é edição ou novo endereço baseado em ID válido
-    const hasValidId = address.id && address.id !== '' && editingAddress?.id;
+    const hasValidId = address.id && address.id !== '' && Boolean(editingAddress?.id);
     const isEdit = hasValidId;
     
     // Garantir que tem user_id
