@@ -51,9 +51,9 @@ const LandingPage = () => {
         "@context": "https://schema.org",
         "@type": "LocalBusiness",
         "name": "Matershop",
-        "description": "Marketplace de negócios locais começando pela construção",
+        "description": "Para negócios locais",
         "url": "https://www.matershop.com.br",
-        "telephone": "+55-11-99999-9999",
+        "telephone": "+55-33-99950-9191",
         "address": {
           "@type": "PostalAddress",
           "addressCountry": "BR"
@@ -148,7 +148,7 @@ const LandingPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              {showMultisegmentHero ? 'Por que escolher nosso marketplace?' : 'Por que escolher a Matershop?'}
+              {showMultisegmentHero ? 'Por que escolher a Matershop?' : 'Por que escolher a Matershop?'}
             </h2>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
