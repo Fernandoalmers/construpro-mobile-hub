@@ -9,7 +9,7 @@ const WelcomeSection: React.FC = () => {
       <h2 className="text-xl font-bold text-gray-900 mb-1">
         Olá, {profile?.nome || user?.user_metadata?.name || 'Usuário'}!
       </h2>
-      <p className="text-gray-600 text-sm">Bem-vindo de volta ao seu Clube Matershop!</p>
+      <p className="text-gray-600 text-sm">Bem-vindo de volta ao seu Clube Matershop! (Fase Beta)</p>
     </div>;
 };
 export default WelcomeSection;
