@@ -37,17 +37,42 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
   const [formData, setFormData] = useState({
     nome: '',
     numero: '',
-    complemento: ''
+    complemento: '',
+    logradouro: '',
+    bairro: '',
+    cidade: '',
+    estado: ''
   });
 
   useEffect(() => {
     if (!open) {
       setCepInput('');
-      setFormData({ nome: '', numero: '', complemento: '' });
+      setFormData({ 
+        nome: '', 
+        numero: '', 
+        complemento: '',
+        logradouro: '',
+        bairro: '',
+        cidade: '',
+        estado: ''
+      });
       setShowFullForm(false);
       clearData();
     }
   }, [open, clearData]);
+
+  // Auto-fill fields when CEP data is found
+  useEffect(() => {
+    if (cepData) {
+      setFormData(prev => ({
+        ...prev,
+        logradouro: cepData.logradouro || '',
+        bairro: cepData.bairro || '',
+        cidade: cepData.localidade || '',
+        estado: cepData.uf || ''
+      }));
+    }
+  }, [cepData]);
 
   const handleCepSearch = async () => {
     if (!cepInput.trim()) {
@@ -73,10 +98,10 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
     console.log('[QuickAddressModal] Buscando CEP com sistema aprimorado:', sanitizedCep);
     const result = await lookupAddress(sanitizedCep);
     
+    setShowFullForm(true);
+    setFormData(prev => ({ ...prev, nome: 'Endereço Principal' }));
+    
     if (result) {
-      setShowFullForm(true);
-      setFormData(prev => ({ ...prev, nome: 'Endereço Principal' }));
-      
       toast({
         title: "CEP encontrado!",
         description: `${result.localidade} - ${result.uf} (fonte: ${result.source})`
@@ -97,6 +122,8 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
   const handleRetry = async () => {
     console.log('[QuickAddressModal] Tentando novamente com sistema aprimorado...');
     await retryLookup();
+    setShowFullForm(true);
+    setFormData(prev => ({ ...prev, nome: 'Endereço Principal' }));
   };
 
   const handleManualEntry = () => {
@@ -108,19 +135,20 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
   const handleCepSuggestion = async (suggestedCep: string) => {
     console.log('[QuickAddressModal] Usando CEP sugerido:', suggestedCep);
     setCepInput(suggestedCep);
-    await lookupAddress(suggestedCep);
+    const result = await lookupAddress(suggestedCep);
+    setShowFullForm(true);
+    setFormData(prev => ({ ...prev, nome: 'Endereço Principal' }));
+    
+    if (result) {
+      toast({
+        title: "CEP encontrado!",
+        description: `${result.localidade} - ${result.uf}`
+      });
+    }
   };
 
   const handleSaveAddress = async () => {
-    if (!cepData) {
-      toast({
-        variant: "destructive",
-        title: "CEP não encontrado",
-        description: "Por favor, busque um CEP válido primeiro"
-      });
-      return;
-    }
-
+    // Validate required fields
     if (!formData.numero.trim()) {
       toast({
         variant: "destructive",
@@ -130,18 +158,54 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
       return;
     }
 
+    if (!formData.logradouro.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Logradouro obrigatório",
+        description: "Por favor, preencha o logradouro"
+      });
+      return;
+    }
+
+    if (!formData.bairro.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Bairro obrigatório",
+        description: "Por favor, preencha o bairro"
+      });
+      return;
+    }
+
+    if (!formData.cidade.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Cidade obrigatória",
+        description: "Por favor, preencha a cidade"
+      });
+      return;
+    }
+
+    if (!formData.estado.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Estado obrigatório",
+        description: "Por favor, preencha o estado"
+      });
+      return;
+    }
+
     setIsSaving(true);
 
     try {
       await addAddress({
         nome: formData.nome || 'Endereço Principal',
-        cep: cepData.cep,
-        logradouro: cepData.logradouro,
+        cep: cepInput.replace(/\D/g, ''),
+        logradouro: formData.logradouro,
         numero: formData.numero,
         complemento: formData.complemento,
-        bairro: cepData.bairro,
-        cidade: cepData.localidade,
-        estado: cepData.uf,
+        bairro: formData.bairro,
+        cidade: formData.cidade,
+        estado: formData.estado.toUpperCase(),
         principal: true
       });
 
@@ -244,8 +308,8 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
             )}
           </div>
 
-          {/* Additional fields when CEP is found */}
-          {showFullForm && (cepData || error) && (
+          {/* Additional fields when form is shown */}
+          {showFullForm && (
             <div className="space-y-4 pt-4 border-t">
               <div className="space-y-2">
                 <Label htmlFor="nome">Nome do endereço</Label>
@@ -254,6 +318,18 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
                   value={formData.nome}
                   onChange={(e) => setFormData(prev => ({ ...prev, nome: e.target.value }))}
                   placeholder="Ex: Casa, Trabalho"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="logradouro">Logradouro*</Label>
+                <Input
+                  id="logradouro"
+                  value={formData.logradouro}
+                  onChange={(e) => setFormData(prev => ({ ...prev, logradouro: e.target.value }))}
+                  placeholder="Rua, Avenida, etc"
+                  required
+                  className={cepData ? "bg-green-50" : ""}
                 />
               </div>
               
@@ -280,6 +356,45 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
                   />
                 </div>
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="bairro">Bairro*</Label>
+                <Input
+                  id="bairro"
+                  value={formData.bairro}
+                  onChange={(e) => setFormData(prev => ({ ...prev, bairro: e.target.value }))}
+                  placeholder="Bairro"
+                  required
+                  className={cepData ? "bg-green-50" : ""}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="cidade">Cidade*</Label>
+                  <Input
+                    id="cidade"
+                    value={formData.cidade}
+                    onChange={(e) => setFormData(prev => ({ ...prev, cidade: e.target.value }))}
+                    placeholder="Cidade"
+                    required
+                    className={cepData ? "bg-green-50" : ""}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="estado">Estado*</Label>
+                  <Input
+                    id="estado"
+                    value={formData.estado}
+                    onChange={(e) => setFormData(prev => ({ ...prev, estado: e.target.value.toUpperCase() }))}
+                    placeholder="UF"
+                    maxLength={2}
+                    required
+                    className={cepData ? "bg-green-50" : ""}
+                  />
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -295,11 +410,11 @@ const QuickAddressModal: React.FC<QuickAddressModalProps> = ({
               Cancelar
             </Button>
             
-            {showFullForm && (cepData || error) && (
+            {showFullForm && (
               <Button
                 type="button"
                 onClick={handleSaveAddress}
-                disabled={isSaving || !formData.numero.trim() || !cepData}
+                disabled={isSaving || !formData.numero.trim()}
                 className="bg-green-600 hover:bg-green-700 flex items-center gap-2"
               >
                 {isSaving ? (
