@@ -158,7 +158,45 @@ export function useAddresses() {
     setIsAddModalOpen(true);
   };
 
-  const handleSaveAddress = (address: Address) => {
+  // NOVA função para salvar endereços (usada pelo SmartCepModal)
+  const handleSaveAddress = async (address: Address) => {
+    console.log('[useAddresses] 💾 Salvando endereço:', address);
+    
+    // Determinar se é edição ou novo endereço
+    const isEdit = Boolean(address.id && editingAddress);
+    
+    // Garantir que tem user_id
+    if (!user?.id) {
+      throw new Error('Usuário não autenticado');
+    }
+    
+    const addressToSave = {
+      ...address,
+      user_id: user.id,
+      cep: address.cep.replace(/\D/g, '') // Limpar CEP
+    };
+    
+    console.log('[useAddresses] 📋 Dados para salvar:', addressToSave);
+    
+    return new Promise((resolve, reject) => {
+      saveAddressMutation.mutate(
+        { address: addressToSave, isEdit },
+        {
+          onSuccess: (data) => {
+            console.log('[useAddresses] ✅ Endereço salvo com sucesso:', data);
+            resolve(data);
+          },
+          onError: (error) => {
+            console.error('[useAddresses] ❌ Erro ao salvar endereço:', error);
+            reject(error);
+          }
+        }
+      );
+    });
+  };
+
+  // Função original mantida para compatibilidade
+  const handleSaveAddressOriginal = (address: Address) => {
     const isEdit = Boolean(editingAddress);
     saveAddressMutation.mutate({ address, isEdit });
   };
@@ -181,7 +219,8 @@ export function useAddresses() {
     handleEditAddress,
     handleDeleteAddress,
     handleAddAddress,
-    handleSaveAddress,
+    handleSaveAddress, // NOVA função para uso externo
+    handleSaveAddressOriginal, // Original para uso interno
     addAddress, // Restored for compatibility
     isSaving: saveAddressMutation.isPending,
     saveError: saveAddressMutation.error,

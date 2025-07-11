@@ -23,7 +23,7 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
   currentCep
 }) => {
   const { isAuthenticated, user, refreshProfile } = useAuth();
-  const { addresses, isLoading, refetch } = useAddresses();
+  const { addresses, isLoading, refetch, handleSaveAddress } = useAddresses();
   const [showAddAddressModal, setShowAddAddressModal] = useState(false);
   const [isChangingCep, setIsChangingCep] = useState(false);
   const [changingAddressId, setChangingAddressId] = useState<string | null>(null);
@@ -161,12 +161,40 @@ const SmartCepModal: React.FC<SmartCepModalProps> = ({
     setShowAddAddressModal(true);
   };
 
-  const handleAddressAdded = async () => {
-    console.log('[SmartCepModal] 📝 Novo endereço adicionado, atualizando lista...');
-    await refetch();
-    setShowAddAddressModal(false);
+  // CORRIGIDO: Função para salvar endereço de verdade
+  const handleAddressAdded = async (savedAddress: any) => {
+    console.log('[SmartCepModal] 💾 Salvando novo endereço:', savedAddress);
     
-    // Não fechar o modal principal automaticamente - deixar usuário escolher
+    try {
+      // Usar o hook useAddresses para salvar
+      await handleSaveAddress(savedAddress);
+      
+      console.log('[SmartCepModal] ✅ Endereço salvo com sucesso');
+      
+      // Atualizar a lista de endereços
+      await refetch();
+      
+      // Fechar o modal de adicionar endereço
+      setShowAddAddressModal(false);
+      
+      toast({
+        title: "✅ Endereço adicionado",
+        description: "Novo endereço cadastrado com sucesso!",
+        duration: 3000
+      });
+      
+      // Não fechar o modal principal automaticamente - deixar usuário escolher
+      
+    } catch (error) {
+      console.error('[SmartCepModal] ❌ Erro ao salvar endereço:', error);
+      
+      toast({
+        variant: "destructive",
+        title: "❌ Erro ao salvar endereço",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        duration: 4000
+      });
+    }
   };
 
   if (!isAuthenticated) {
