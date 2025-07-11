@@ -5,19 +5,23 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Smartphone, Gift, Settings, CheckCircle, Star, ArrowRight, Users, TrendingUp, Award, MapPin, Truck, ShieldCheck } from 'lucide-react';
 import LazyImage from '@/components/common/LazyImage';
 import { useSiteLogo } from '@/hooks/useSiteLogo';
+
 const LandingPage = () => {
   const navigate = useNavigate();
-  const showMultisegmentHero = process.env.NEXT_PUBLIC_SHOW_MULTISEGMENT_HERO !== 'false';
+  const showMultisegmentHero = import.meta.env.VITE_SHOW_MULTISEGMENT_HERO !== 'false';
   const {
     logoUrl,
     isLoading: logoLoading
   } = useSiteLogo();
+
   const handleSignUp = () => {
     navigate('/signup');
   };
+
   const handleLogin = () => {
     navigate('/login');
   };
+
   const renderLogo = () => {
     // Se ainda está carregando, mostrar espaço reservado
     if (logoLoading) {
@@ -39,6 +43,7 @@ const LandingPage = () => {
       };
     }} />;
   };
+
   return <div className="min-h-screen bg-white" itemScope itemType="https://schema.org/LocalBusiness">
       {/* Schema.org structured data */}
       <script type="application/ld+json">
@@ -370,4 +375,5 @@ const LandingPage = () => {
       </footer>
     </div>;
 };
+
 export default LandingPage;
