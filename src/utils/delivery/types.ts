@@ -1,4 +1,3 @@
-
 export interface DeliveryInfo {
   isLocal: boolean;
   message: string;
@@ -26,11 +25,14 @@ export interface StoreLocationInfo {
   zona?: string;
 }
 
-// Updated interface to match the new database function
-export interface DeliveryZoneResult {
+// Updated DeliveryZone interface to include vendor_id
+export interface DeliveryZone {
   zone_id: string;
   vendor_id: string;
   zone_name: string;
   delivery_fee: number;
   delivery_time: string;
 }
+
+// Keep DeliveryZoneResult for backward compatibility
+export interface DeliveryZoneResult extends DeliveryZone {}
