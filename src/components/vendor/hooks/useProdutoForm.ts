@@ -230,7 +230,7 @@ export const useProdutoForm = ({ isEditing = false, productId, initialData }: Us
         segmento: values.segmento,
         segmento_id: segmentId,
         sku: values.sku?.trim() || undefined,
-        codigo_barras: values.codigo_barras?.trim() || undefined,
+        codigo_barras: values.codigo_barras?.trim() || null,
         preco_normal: values.preco,
         preco_promocional: values.promocaoAtiva ? values.precoPromocional : null,
         promocao_ativa: values.promocaoAtiva,
