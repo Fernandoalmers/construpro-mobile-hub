@@ -12,6 +12,17 @@ import { referralService } from '@/services/pointsService';
 
 type ProfileType = 'consumidor' | 'lojista' | 'profissional';
 
+interface SignupData {
+  email: string;
+  password: string;
+  nome: string;
+  telefone: string;
+  tipo_perfil: ProfileType;
+  cpf?: string;
+  cnpj?: string;
+  especialidade_profissional?: string;
+}
+
 const ESPECIALIDADES_PROFISSIONAIS = [
   'Pedreiro',
   'Eletricista', 
@@ -217,12 +228,12 @@ const SignupScreen: React.FC = () => {
       console.log('🔄 [SignupScreen] Starting signup process with edge function');
 
       // Preparar dados para o edge function auth-signup
-      const signupData = {
+      const signupData: SignupData = {
         email: formData.email,
         password: formData.password,
         nome: formData.nome,
         telefone: formData.telefone.replace(/\D/g, ''),
-        tipo_perfil: formData.tipo_perfil,
+        tipo_perfil: formData.tipo_perfil as ProfileType,
       };
 
       // Adicionar documento correto baseado no tipo
