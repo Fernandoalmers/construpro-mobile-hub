@@ -21,6 +21,7 @@ interface SignupData {
   cpf?: string;
   cnpj?: string;
   especialidade_profissional?: string;
+  nome_loja?: string;
 }
 
 const ESPECIALIDADES_PROFISSIONAIS = [
@@ -54,6 +55,7 @@ const SignupScreen: React.FC = () => {
     telefone: '',
     referralCode: '',
     especialidade_profissional: '',
+    nome_loja: '',
     tipo_perfil: '' as ProfileType | ''
   });
   const [showPassword, setShowPassword] = useState(false);
@@ -144,7 +146,8 @@ const SignupScreen: React.FC = () => {
       // Limpar campos quando trocar tipo
       cpf: '',
       cnpj: '',
-      especialidade_profissional: ''
+      especialidade_profissional: '',
+      nome_loja: ''
     }));
   };
 
@@ -187,11 +190,15 @@ const SignupScreen: React.FC = () => {
     // Validação de documento baseada no tipo de perfil
     if (formData.tipo_perfil === 'lojista') {
       if (!formData.cnpj.trim()) {
-        toast.error('CNPJ é obrigatório para vendedores');
+        toast.error('CNPJ é obrigatório para lojistas');
         return false;
       }
       if (!validateCNPJ(formData.cnpj)) {
         toast.error('CNPJ deve ter 14 dígitos');
+        return false;
+      }
+      if (!formData.nome_loja.trim()) {
+        toast.error('Nome da loja é obrigatório para lojistas');
         return false;
       }
     } else {
@@ -239,6 +246,7 @@ const SignupScreen: React.FC = () => {
       // Adicionar documento correto baseado no tipo
       if (formData.tipo_perfil === 'lojista') {
         signupData.cnpj = formData.cnpj.replace(/\D/g, '');
+        signupData.nome_loja = formData.nome_loja;
       } else {
         signupData.cpf = formData.cpf.replace(/\D/g, '');
       }
@@ -258,6 +266,8 @@ const SignupScreen: React.FC = () => {
         body: signupData
       });
 
+      console.log('📥 [SignupScreen] Edge function response:', { signupResult, signupError });
+
       if (signupError) {
         console.error('❌ [SignupScreen] Edge function error:', signupError);
         throw new Error(signupError.message || 'Erro no servidor durante o cadastro');
@@ -265,7 +275,9 @@ const SignupScreen: React.FC = () => {
 
       if (!signupResult?.success) {
         console.error('❌ [SignupScreen] Signup failed:', signupResult);
-        throw new Error(signupResult?.error || 'Falha no cadastro');
+        const errorMessage = signupResult?.error || 'Falha no cadastro';
+        const errorDetails = signupResult?.details ? ` (${signupResult.details})` : '';
+        throw new Error(errorMessage + errorDetails);
       }
 
       console.log('✅ [SignupScreen] Signup successful:', signupResult);
@@ -346,7 +358,7 @@ const SignupScreen: React.FC = () => {
       } else if (error.message?.includes('Password should be at least 6 characters')) {
         errorMessage = 'Senha deve ter pelo menos 6 caracteres';
       } else if (error.message?.includes('CNPJ é obrigatório')) {
-        errorMessage = 'CNPJ é obrigatório para vendedores';
+        errorMessage = 'CNPJ é obrigatório para lojistas';
       } else if (error.message?.includes('CPF é obrigatório')) {
         errorMessage = 'CPF é obrigatório';
       } else if (error.message?.includes('Server configuration error')) {
@@ -521,6 +533,18 @@ const SignupScreen: React.FC = () => {
             maxLength={15}
             required
           />
+
+          {/* Campo de Nome da Loja para Lojistas */}
+          {formData.tipo_perfil === 'lojista' && (
+            <CustomInput
+              label="Nome da Loja"
+              name="nome_loja"
+              value={formData.nome_loja}
+              onChange={handleInputChange}
+              placeholder="Digite o nome da sua loja"
+              required
+            />
+          )}
 
           {/* Campo de Especialidade para Profissionais */}
           {formData.tipo_perfil === 'profissional' && (

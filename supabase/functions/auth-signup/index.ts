@@ -2,7 +2,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-type UserRole = 'consumidor' | 'profissional' | 'lojista' | 'vendedor';
+type UserRole = 'consumidor' | 'profissional' | 'lojista';
 
 interface SignupData {
   email: string;
@@ -97,7 +97,7 @@ serve(async (req) => {
   }
   
   try {
-    console.log("🚀 Auth signup function called - v4.0 with enhanced professional support");
+    console.log("🚀 Auth signup function called - v5.0 with corrected professional support");
     
     // Parse request body
     let userData: SignupData;
@@ -117,7 +117,8 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: 'Dados inválidos no corpo da requisição' 
+          error: 'Dados inválidos no corpo da requisição',
+          details: parseError.message 
         }),
         { status: 400, headers }
       );
@@ -142,7 +143,7 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({ 
             success: false,
-            error: 'CNPJ é obrigatório para vendedores' 
+            error: 'CNPJ é obrigatório para lojistas' 
           }),
           { status: 400, headers }
         )
@@ -230,7 +231,7 @@ serve(async (req) => {
       console.log("👨‍🔧 Professional signup with specialty:", userData.especialidade_profissional);
     }
 
-    if (userData.tipo_perfil === 'vendedor' && userData.nome_loja) {
+    if (userData.tipo_perfil === 'lojista' && userData.nome_loja) {
       userMetadata.nome_loja = userData.nome_loja;
     }
 
@@ -270,7 +271,8 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: errorMessage 
+          error: errorMessage,
+          details: error.message
         }),
         { status: statusCode, headers }
       );
@@ -318,19 +320,14 @@ serve(async (req) => {
 
         if (profileError) {
           console.error("❌ Error creating profile:", profileError);
-          // For professionals, this is critical, so we should return an error
-          if (userData.tipo_perfil === 'profissional') {
-            return new Response(
-              JSON.stringify({ 
-                success: false,
-                error: 'Erro ao criar perfil profissional: ' + profileError.message 
-              }),
-              { status: 500, headers }
-            );
-          } else {
-            // Don't fail the signup for other types, but log it
-            console.warn("⚠️ Profile creation failed, trigger should handle it");
-          }
+          return new Response(
+            JSON.stringify({ 
+              success: false,
+              error: 'Erro ao criar perfil: ' + profileError.message,
+              details: profileError
+            }),
+            { status: 500, headers }
+          );
         } else {
           console.log("✅ Profile created successfully with referral code:", referralCode);
           
@@ -341,16 +338,14 @@ serve(async (req) => {
         }
       } catch (profileCreateError) {
         console.error("❌ Exception creating profile:", profileCreateError);
-        // For professionals, return error
-        if (userData.tipo_perfil === 'profissional') {
-          return new Response(
-            JSON.stringify({ 
-              success: false,
-              error: 'Erro ao criar perfil profissional' 
-            }),
-            { status: 500, headers }
-          );
-        }
+        return new Response(
+          JSON.stringify({ 
+            success: false,
+            error: 'Erro ao criar perfil',
+            details: profileCreateError.message
+          }),
+          { status: 500, headers }
+        );
       }
     }
     
@@ -372,7 +367,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: false,
-        error: error.message || "Erro interno do servidor" 
+        error: error.message || "Erro interno do servidor",
+        details: error.stack
       }),
       { status: 500, headers }
     );
