@@ -15,16 +15,21 @@ export const getPromotionInfo = (product: any): PromotionInfo => {
   const originalPrice = product.preco_normal || product.preco || 0;
   const promotionalPrice = product.preco_promocional;
   const promotionEndDate = product.promocao_fim;
+  const promotionStartDate = product.promocao_inicio;
   const promotionActive = product.promocao_ativa;
   
   // Check if promotion is expired using Brazil timezone
   const isPromotionExpired = promotionEndDate ? 
     new Date(promotionEndDate).getTime() < now.getTime() : false;
   
+  // Check if promotion has started using Brazil timezone
+  const hasPromotionStarted = !promotionStartDate || 
+    new Date(promotionStartDate).getTime() <= now.getTime();
+  
   const hasValidPromotionalPrice = promotionalPrice && promotionalPrice > 0 && promotionalPrice < originalPrice;
   
-  // Check if promotion is explicitly active and not expired
-  const hasActivePromotion = Boolean(promotionActive) && hasValidPromotionalPrice && !isPromotionExpired;
+  // Check if promotion is explicitly active, not expired, and has started
+  const hasActivePromotion = Boolean(promotionActive) && hasValidPromotionalPrice && !isPromotionExpired && hasPromotionStarted;
   
   const discountPercentage = hasActivePromotion && promotionalPrice
     ? Math.round(((originalPrice - promotionalPrice) / originalPrice) * 100)
@@ -37,7 +42,9 @@ export const getPromotionInfo = (product: any): PromotionInfo => {
       promocao_ativa: promotionActive,
       preco_normal: originalPrice,
       preco_promocional: promotionalPrice,
+      promocao_inicio: promotionStartDate,
       promocao_fim: promotionEndDate,
+      hasPromotionStarted,
       isPromotionExpired,
       hasValidPromotionalPrice,
       hasActivePromotion,

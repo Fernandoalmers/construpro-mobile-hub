@@ -27,15 +27,15 @@ const OfferCountdown: React.FC<OfferCountdownProps> = ({
   const isUrgent = countdown.days === 0 && countdown.hours < 6;
   
   const sizeClasses = {
-    sm: 'text-xs px-1.5 py-0.5 sm:px-2 sm:py-1',
-    md: 'text-sm px-2 py-1 sm:px-3 sm:py-1.5',
-    lg: 'text-base px-3 py-1.5 sm:px-4 sm:py-2'
+    sm: 'text-[10px] px-1 py-0.5 sm:px-1.5 sm:py-0.5 sm:text-xs',
+    md: 'text-xs px-1 py-0.5 sm:px-2 sm:py-1 sm:text-sm',
+    lg: 'text-sm px-1.5 py-0.5 sm:px-3 sm:py-1.5 sm:text-base'
   };
 
   const iconSizes = {
-    sm: 10,
-    md: 12,
-    lg: 14
+    sm: 8,
+    md: 10,
+    lg: 12
   };
 
   if (variant === 'compact') {
@@ -57,8 +57,8 @@ const OfferCountdown: React.FC<OfferCountdownProps> = ({
     return (
       <div className={`inline-flex items-center gap-0.5 sm:gap-1 bg-red-500 text-white rounded-full ${sizeClasses[size]} font-medium ${isUrgent ? 'animate-pulse' : ''} ${className}`}>
         <Flame size={iconSizes[size]} className="flex-shrink-0" />
-        <span className="hidden sm:inline text-xs sm:text-sm">{timeDisplay}</span>
-        <span className="inline sm:hidden text-xs font-mono">{mobileTimeDisplay}</span>
+        <span className="hidden sm:inline">{timeDisplay}</span>
+        <span className="inline sm:hidden font-mono">{mobileTimeDisplay}</span>
       </div>
     );
   }
