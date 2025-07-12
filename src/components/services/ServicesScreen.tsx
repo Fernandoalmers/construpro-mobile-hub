@@ -63,7 +63,7 @@ const ServicesScreen: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-20">
       {/* Header */}
       <div className="bg-construPro-blue px-4 py-6 flex items-center text-white shadow-md">
         <button 
