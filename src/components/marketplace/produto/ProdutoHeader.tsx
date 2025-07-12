@@ -18,7 +18,7 @@ const ProdutoHeader: React.FC<ProdutoHeaderProps> = ({
   const navigate = useNavigate();
   
   const handleGoBack = () => {
-    navigate('/marketplace'); // Navigate to marketplace to trigger scroll position restoration
+    navigate(-1); // Navigate to previous page
   };
 
   return (
