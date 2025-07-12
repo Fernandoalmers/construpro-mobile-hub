@@ -44,7 +44,7 @@ const ProdutoContent: React.FC<ProdutoContentProps> = ({
   const navigate = useNavigate();
 
   const handleGoBack = () => {
-    navigate(-1); // Navigate to previous page
+    navigate('/marketplace'); // Navigate to marketplace to trigger scroll position restoration
   };
 
   const hasDiscount = (produto.preco_anterior || 0) > (produto.preco || 0);

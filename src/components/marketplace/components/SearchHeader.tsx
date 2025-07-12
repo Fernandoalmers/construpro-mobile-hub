@@ -17,7 +17,7 @@ const SearchHeader: React.FC<SearchHeaderProps> = ({ onGoBack }) => {
     if (onGoBack) {
       onGoBack();
     } else {
-      navigate(-1);
+      navigate('/marketplace');
     }
   };
 
