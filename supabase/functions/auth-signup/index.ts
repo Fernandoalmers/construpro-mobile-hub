@@ -97,7 +97,7 @@ serve(async (req) => {
   }
   
   try {
-    console.log("🚀 Auth signup function called - v3.0 with CPF/CNPJ distinction");
+    console.log("🚀 Auth signup function called - v4.0 with enhanced professional support");
     
     // Parse request body
     let userData: SignupData;
@@ -115,15 +115,22 @@ serve(async (req) => {
     } catch (parseError) {
       console.error("❌ Error parsing request body:", parseError);
       return new Response(
-        JSON.stringify({ error: 'Invalid JSON in request body' }),
+        JSON.stringify({ 
+          success: false,
+          error: 'Dados inválidos no corpo da requisição' 
+        }),
         { status: 400, headers }
       );
     }
     
     // Validate required fields
     if (!userData.email || !userData.password || !userData.nome) {
+      console.error("❌ Missing required fields");
       return new Response(
-        JSON.stringify({ error: 'Email, senha e nome são obrigatórios' }),
+        JSON.stringify({ 
+          success: false,
+          error: 'Email, senha e nome são obrigatórios' 
+        }),
         { status: 400, headers }
       )
     }
@@ -131,18 +138,38 @@ serve(async (req) => {
     // Validate document based on profile type
     if (userData.tipo_perfil === 'lojista') {
       if (!userData.cnpj) {
+        console.error("❌ Missing CNPJ for lojista");
         return new Response(
-          JSON.stringify({ error: 'CNPJ é obrigatório para vendedores' }),
+          JSON.stringify({ 
+            success: false,
+            error: 'CNPJ é obrigatório para vendedores' 
+          }),
           { status: 400, headers }
         )
       }
     } else {
       if (!userData.cpf) {
+        console.error("❌ Missing CPF for non-lojista");
         return new Response(
-          JSON.stringify({ error: 'CPF é obrigatório' }),
+          JSON.stringify({ 
+            success: false,
+            error: 'CPF é obrigatório' 
+          }),
           { status: 400, headers }
         )
       }
+    }
+
+    // Validate specialty for professionals
+    if (userData.tipo_perfil === 'profissional' && !userData.especialidade_profissional) {
+      console.error("❌ Missing especialidade for profissional");
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: 'Especialidade é obrigatória para profissionais' 
+        }),
+        { status: 400, headers }
+      )
     }
     
     // Set default role if not provided
@@ -157,7 +184,10 @@ serve(async (req) => {
     if (!supabaseUrl || !supabaseServiceKey) {
       console.error("❌ Missing environment variables: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
       return new Response(
-        JSON.stringify({ error: 'Server configuration error' }),
+        JSON.stringify({ 
+          success: false,
+          error: 'Erro de configuração do servidor' 
+        }),
         { status: 500, headers }
       );
     }
@@ -197,6 +227,7 @@ serve(async (req) => {
     // Add specific fields based on profile type
     if (userData.tipo_perfil === 'profissional' && userData.especialidade_profissional) {
       userMetadata.especialidade_profissional = userData.especialidade_profissional;
+      console.log("👨‍🔧 Professional signup with specialty:", userData.especialidade_profissional);
     }
 
     if (userData.tipo_perfil === 'vendedor' && userData.nome_loja) {
@@ -220,16 +251,27 @@ serve(async (req) => {
     if (error) {
       console.error("❌ Error creating user:", error);
       let statusCode = 500;
-      let errorMessage = error.message;
+      let errorMessage = 'Erro interno do servidor';
       
       // Handle specific error cases
-      if (error.message.includes('already registered')) {
+      if (error.message.includes('already registered') || error.message.includes('already been registered')) {
         statusCode = 409;
         errorMessage = 'Este email já está cadastrado';
+      } else if (error.message.includes('Invalid email')) {
+        statusCode = 400;
+        errorMessage = 'Email inválido';
+      } else if (error.message.includes('Password should be at least')) {
+        statusCode = 400;
+        errorMessage = 'Senha deve ter pelo menos 6 caracteres';
+      } else if (error.message) {
+        errorMessage = error.message;
       }
       
       return new Response(
-        JSON.stringify({ error: errorMessage }),
+        JSON.stringify({ 
+          success: false,
+          error: errorMessage 
+        }),
         { status: statusCode, headers }
       );
     }
@@ -249,7 +291,9 @@ serve(async (req) => {
           especialidade_profissional: userData.especialidade_profissional || null,
           status: 'ativo',
           saldo_pontos: 0,
-          codigo: referralCode // Ensure the referral code is saved
+          codigo: referralCode, // Ensure the referral code is saved
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         };
 
         // Add document fields to profile
@@ -263,6 +307,8 @@ serve(async (req) => {
           id: profileData.id, 
           nome: profileData.nome,
           codigo: profileData.codigo,
+          tipo_perfil: profileData.tipo_perfil,
+          especialidade_profissional: profileData.especialidade_profissional,
           documento_tipo: userData.tipo_perfil === 'lojista' ? 'CNPJ' : 'CPF'
         });
 
@@ -272,13 +318,39 @@ serve(async (req) => {
 
         if (profileError) {
           console.error("❌ Error creating profile:", profileError);
-          // Don't fail the signup if profile creation fails, but log it
-          console.warn("⚠️ Profile creation failed, trigger should handle it");
+          // For professionals, this is critical, so we should return an error
+          if (userData.tipo_perfil === 'profissional') {
+            return new Response(
+              JSON.stringify({ 
+                success: false,
+                error: 'Erro ao criar perfil profissional: ' + profileError.message 
+              }),
+              { status: 500, headers }
+            );
+          } else {
+            // Don't fail the signup for other types, but log it
+            console.warn("⚠️ Profile creation failed, trigger should handle it");
+          }
         } else {
           console.log("✅ Profile created successfully with referral code:", referralCode);
+          
+          // For professionals, log the successful creation
+          if (userData.tipo_perfil === 'profissional') {
+            console.log("👨‍🔧 Professional profile created successfully with specialty:", userData.especialidade_profissional);
+          }
         }
       } catch (profileCreateError) {
         console.error("❌ Exception creating profile:", profileCreateError);
+        // For professionals, return error
+        if (userData.tipo_perfil === 'profissional') {
+          return new Response(
+            JSON.stringify({ 
+              success: false,
+              error: 'Erro ao criar perfil profissional' 
+            }),
+            { status: 500, headers }
+          );
+        }
       }
     }
     
@@ -287,7 +359,10 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         user: data.user,
-        referralCode: referralCode
+        referralCode: referralCode,
+        message: userData.tipo_perfil === 'profissional' 
+          ? 'Cadastro profissional realizado com sucesso!' 
+          : 'Cadastro realizado com sucesso!'
       }),
       { status: 201, headers }
     );
@@ -295,7 +370,10 @@ serve(async (req) => {
   } catch (error) {
     console.error("❌ Unexpected error in auth-signup:", error);
     return new Response(
-      JSON.stringify({ error: error.message || "Erro interno do servidor" }),
+      JSON.stringify({ 
+        success: false,
+        error: error.message || "Erro interno do servidor" 
+      }),
       { status: 500, headers }
     );
   }

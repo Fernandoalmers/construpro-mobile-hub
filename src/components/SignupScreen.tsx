@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,7 +14,7 @@ type ProfileType = 'consumidor' | 'lojista' | 'profissional';
 
 const ESPECIALIDADES_PROFISSIONAIS = [
   'Pedreiro',
-  'Eletricista',
+  'Eletricista', 
   'Encanador',
   'Pintor',
   'Marceneiro',
@@ -215,55 +214,59 @@ const SignupScreen: React.FC = () => {
 
     setIsLoading(true);
     try {
-      console.log('🔄 [SignupScreen] Starting signup process v3.0');
+      console.log('🔄 [SignupScreen] Starting signup process with edge function');
 
-      // Preparar dados do usuário baseado no tipo de perfil
-      const userData: any = {
+      // Preparar dados para o edge function auth-signup
+      const signupData = {
+        email: formData.email,
+        password: formData.password,
         nome: formData.nome,
         telefone: formData.telefone.replace(/\D/g, ''),
-        papel: formData.tipo_perfil,
         tipo_perfil: formData.tipo_perfil,
-        status: 'ativo',
-        saldo_pontos: 0
       };
 
       // Adicionar documento correto baseado no tipo
       if (formData.tipo_perfil === 'lojista') {
-        userData.cnpj = formData.cnpj.replace(/\D/g, '');
+        signupData.cnpj = formData.cnpj.replace(/\D/g, '');
       } else {
-        userData.cpf = formData.cpf.replace(/\D/g, '');
+        signupData.cpf = formData.cpf.replace(/\D/g, '');
       }
 
       // Adicionar especialidade para profissionais
       if (formData.tipo_perfil === 'profissional' && formData.especialidade_profissional) {
-        userData.especialidade_profissional = formData.especialidade_profissional;
+        signupData.especialidade_profissional = formData.especialidade_profissional;
       }
 
-      // Step 1: Create auth user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: userData
-        }
+      console.log('📤 [SignupScreen] Calling auth-signup edge function with data:', {
+        ...signupData,
+        password: '[HIDDEN]'
       });
 
-      if (authError) {
-        console.error('❌ [SignupScreen] Auth error:', authError);
-        throw authError;
+      // Chamar a edge function auth-signup
+      const { data: signupResult, error: signupError } = await supabase.functions.invoke('auth-signup', {
+        body: signupData
+      });
+
+      if (signupError) {
+        console.error('❌ [SignupScreen] Edge function error:', signupError);
+        throw new Error(signupError.message || 'Erro no servidor durante o cadastro');
       }
 
-      if (!authData.user) {
-        throw new Error('Falha ao criar usuário');
+      if (!signupResult?.success) {
+        console.error('❌ [SignupScreen] Signup failed:', signupResult);
+        throw new Error(signupResult?.error || 'Falha no cadastro');
       }
 
-      console.log('✅ [SignupScreen] User created successfully:', authData.user.id);
+      console.log('✅ [SignupScreen] Signup successful:', signupResult);
 
-      // Step 2: Process referral code if provided
-      if (formData.referralCode.trim()) {
+      // Processar código de referência se fornecido
+      if (formData.referralCode.trim() && signupResult.user?.id) {
         console.log('🎁 [SignupScreen] Processing referral code:', formData.referralCode);
         try {
-          const referralSuccess = await referralService.processReferral(authData.user.id, formData.referralCode.trim());
+          const referralSuccess = await referralService.processReferral(
+            signupResult.user.id, 
+            formData.referralCode.trim()
+          );
           if (referralSuccess) {
             console.log('✅ [SignupScreen] Referral processed successfully');
             toast.success('Código de referência aplicado! Você ganhará 50 pontos na primeira compra.');
@@ -277,33 +280,35 @@ const SignupScreen: React.FC = () => {
         }
       }
 
-      // Step 3: Clear referral code from localStorage
+      // Limpar código de referência do localStorage
       localStorage.removeItem('referralCode');
 
-      // Step 4: Get user profile to show referral code
-      try {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('codigo')
-          .eq('id', authData.user.id)
-          .single();
-
-        if (profile?.codigo) {
-          console.log('🎯 [SignupScreen] User referral code:', profile.codigo);
-          toast.success(`Cadastro realizado! Seu código de indicação é: ${profile.codigo}`);
-        } else {
-          console.log('✅ [SignupScreen] Cadastro realizado (código será gerado)');
-          toast.success('Cadastro realizado com sucesso!');
-        }
-      } catch (profileError) {
-        console.warn('⚠️ [SignupScreen] Não foi possível obter código:', profileError);
+      // Mostrar código de referência do usuário se disponível
+      if (signupResult.referralCode) {
+        console.log('🎯 [SignupScreen] User referral code:', signupResult.referralCode);
+        toast.success(`Cadastro realizado! Seu código de indicação é: ${signupResult.referralCode}`);
+      } else {
         toast.success('Cadastro realizado com sucesso!');
       }
 
-      if (authData.session) {
-        console.log('✅ [SignupScreen] User logged in automatically');
+      // Fazer login automático após cadastro bem-sucedido
+      console.log('🔐 [SignupScreen] Attempting automatic login');
+      const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
 
-        // Redirect based on profile type
+      if (loginError) {
+        console.error('❌ [SignupScreen] Auto-login failed:', loginError);
+        toast.info('Cadastro realizado! Faça login para continuar.');
+        navigate('/login');
+        return;
+      }
+
+      if (loginData.session) {
+        console.log('✅ [SignupScreen] Auto-login successful');
+        
+        // Redirecionar baseado no tipo de perfil
         if (formData.tipo_perfil === 'lojista') {
           navigate('/vendor');
         } else if (formData.tipo_perfil === 'profissional') {
@@ -316,15 +321,30 @@ const SignupScreen: React.FC = () => {
         toast.info('Confirme seu email para fazer login');
         navigate('/login');
       }
+
     } catch (error: any) {
       console.error('❌ [SignupScreen] Signup error:', error);
-      if (error.message?.includes('already been registered')) {
-        toast.error('Este email já está cadastrado');
+      
+      // Tratamento de erros mais específico
+      let errorMessage = 'Erro ao criar conta';
+      
+      if (error.message?.includes('already been registered') || error.message?.includes('already registered')) {
+        errorMessage = 'Este email já está cadastrado';
       } else if (error.message?.includes('Invalid email')) {
-        toast.error('Email inválido');
-      } else {
-        toast.error(error.message || 'Erro ao criar conta');
+        errorMessage = 'Email inválido';
+      } else if (error.message?.includes('Password should be at least 6 characters')) {
+        errorMessage = 'Senha deve ter pelo menos 6 caracteres';
+      } else if (error.message?.includes('CNPJ é obrigatório')) {
+        errorMessage = 'CNPJ é obrigatório para vendedores';
+      } else if (error.message?.includes('CPF é obrigatório')) {
+        errorMessage = 'CPF é obrigatório';
+      } else if (error.message?.includes('Server configuration error')) {
+        errorMessage = 'Erro de configuração do servidor. Tente novamente em alguns minutos.';
+      } else if (error.message) {
+        errorMessage = error.message;
       }
+      
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
