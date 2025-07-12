@@ -43,7 +43,7 @@ const GridProductView: React.FC<GridProductViewProps> = ({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
         {products.map(produto => (
           <ProdutoCard
             key={produto.id}
