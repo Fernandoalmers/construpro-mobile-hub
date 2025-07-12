@@ -1,43 +1,59 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
-export function useScrollPosition() {
+export function useScrollPosition(isLoading?: boolean) {
   const location = useLocation();
 
   // Save scroll position when leaving the page
   useEffect(() => {
     const saveScrollPosition = () => {
       const scrollPosition = window.pageYOffset;
-      sessionStorage.setItem(`scroll-${location.pathname}`, scrollPosition.toString());
-    };
-
-    const handleBeforeUnload = () => {
-      saveScrollPosition();
+      // Include query parameters in the key to handle different product filters
+      const storageKey = `scroll-${location.pathname}${location.search}`;
+      sessionStorage.setItem(storageKey, scrollPosition.toString());
     };
 
     // Save position on route change
     return () => {
       saveScrollPosition();
     };
-  }, [location.pathname]);
+  }, [location.pathname, location.search]);
 
   // Restore scroll position when entering the page
   useEffect(() => {
+    // Don't restore if still loading
+    if (isLoading) return;
+
     const restoreScrollPosition = () => {
-      const savedPosition = sessionStorage.getItem(`scroll-${location.pathname}`);
+      const storageKey = `scroll-${location.pathname}${location.search}`;
+      const savedPosition = sessionStorage.getItem(storageKey);
+      
       if (savedPosition) {
-        // Use setTimeout to ensure DOM is fully rendered
-        setTimeout(() => {
-          window.scrollTo({
-            top: parseInt(savedPosition, 10),
-            behavior: 'smooth'
-          });
-        }, 100);
+        const position = parseInt(savedPosition, 10);
+        
+        // Validate position is reasonable
+        if (position >= 0 && position <= document.documentElement.scrollHeight) {
+          // Temporarily disable smooth scroll for precise restoration
+          const originalBehavior = document.documentElement.style.scrollBehavior;
+          document.documentElement.style.scrollBehavior = 'auto';
+          
+          setTimeout(() => {
+            window.scrollTo({
+              top: position,
+              behavior: 'auto'
+            });
+            
+            // Restore smooth scroll behavior after a brief delay
+            setTimeout(() => {
+              document.documentElement.style.scrollBehavior = originalBehavior;
+            }, 50);
+          }, 300); // Increased timeout to ensure content is fully loaded
+        }
       }
     };
 
     restoreScrollPosition();
-  }, [location.pathname]);
+  }, [location.pathname, location.search, isLoading]);
 
   return null;
 }

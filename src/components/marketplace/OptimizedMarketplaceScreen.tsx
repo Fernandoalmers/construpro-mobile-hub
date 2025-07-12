@@ -9,7 +9,6 @@ import LoadingState from '../common/LoadingState';
 
 const OptimizedMarketplaceScreen: React.FC = () => {
   const { hideHeader } = useScrollBehavior();
-  useScrollPosition();
   
   const {
     // State
@@ -56,8 +55,12 @@ const OptimizedMarketplaceScreen: React.FC = () => {
     getCurrentDisplayName
   } = useMarketplaceScreenLogic();
   
+  // Use scroll position hook after isLoading is available
+  useScrollPosition(isLoading);
+  
   const currentCategoryName = getCurrentDisplayName();
-  const dynamicPaddingTop = hideHeader ? 0 : headerHeight;
+  // Always use headerHeight to prevent "logo jump" - header space is preserved even when visually hidden
+  const dynamicPaddingTop = headerHeight;
   
   // Show loading state
   if (isLoading) {
