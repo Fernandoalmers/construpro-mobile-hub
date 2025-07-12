@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -233,6 +234,13 @@ const SignupScreen: React.FC = () => {
     setIsLoading(true);
     try {
       console.log('🔄 [SignupScreen] Starting signup process with edge function');
+      console.log('📋 [SignupScreen] Form data validation:', {
+        tipo_perfil: formData.tipo_perfil,
+        especialidade_profissional: formData.especialidade_profissional,
+        cpf_length: formData.cpf ? formData.cpf.replace(/\D/g, '').length : 0,
+        cnpj_length: formData.cnpj ? formData.cnpj.replace(/\D/g, '').length : 0,
+        has_nome_loja: !!formData.nome_loja
+      });
 
       // Preparar dados para o edge function auth-signup
       const signupData: SignupData = {
@@ -258,7 +266,9 @@ const SignupScreen: React.FC = () => {
 
       console.log('📤 [SignupScreen] Calling auth-signup edge function with data:', {
         ...signupData,
-        password: '[HIDDEN]'
+        password: '[HIDDEN]',
+        cpf: signupData.cpf ? `[${signupData.cpf.length} digits]` : undefined,
+        cnpj: signupData.cnpj ? `[${signupData.cnpj.length} digits]` : undefined
       });
 
       // Chamar a edge function auth-signup
@@ -266,7 +276,11 @@ const SignupScreen: React.FC = () => {
         body: signupData
       });
 
-      console.log('📥 [SignupScreen] Edge function response:', { signupResult, signupError });
+      console.log('📥 [SignupScreen] Edge function response:', { 
+        success: signupResult?.success,
+        error: signupError?.message || signupResult?.error,
+        details: signupResult?.details
+      });
 
       if (signupError) {
         console.error('❌ [SignupScreen] Edge function error:', signupError);
@@ -311,7 +325,7 @@ const SignupScreen: React.FC = () => {
         console.log('🎯 [SignupScreen] User referral code:', signupResult.referralCode);
         toast.success(`Cadastro realizado! Seu código de indicação é: ${signupResult.referralCode}`);
       } else {
-        toast.success('Cadastro realizado com sucesso!');
+        toast.success(signupResult.message || 'Cadastro realizado com sucesso!');
       }
 
       // Fazer login automático após cadastro bem-sucedido
@@ -361,6 +375,12 @@ const SignupScreen: React.FC = () => {
         errorMessage = 'CNPJ é obrigatório para lojistas';
       } else if (error.message?.includes('CPF é obrigatório')) {
         errorMessage = 'CPF é obrigatório';
+      } else if (error.message?.includes('CPF deve ter 11 dígitos')) {
+        errorMessage = 'CPF deve ter 11 dígitos';
+      } else if (error.message?.includes('CNPJ deve ter 14 dígitos')) {
+        errorMessage = 'CNPJ deve ter 14 dígitos';
+      } else if (error.message?.includes('Especialidade é obrigatória')) {
+        errorMessage = 'Especialidade é obrigatória para profissionais';
       } else if (error.message?.includes('Server configuration error')) {
         errorMessage = 'Erro de configuração do servidor. Tente novamente em alguns minutos.';
       } else if (error.message) {

@@ -74,6 +74,24 @@ async function generateUniqueReferralCode(supabase: any): Promise<string> {
   return fallbackCode;
 }
 
+/**
+ * Validate CPF format (11 digits)
+ */
+function validateCPF(cpf: string): boolean {
+  if (!cpf) return false;
+  const cleanCPF = cpf.replace(/\D/g, '');
+  return cleanCPF.length === 11;
+}
+
+/**
+ * Validate CNPJ format (14 digits)
+ */
+function validateCNPJ(cnpj: string): boolean {
+  if (!cnpj) return false;
+  const cleanCNPJ = cnpj.replace(/\D/g, '');
+  return cleanCNPJ.length === 14;
+}
+
 serve(async (req) => {
   // Set CORS headers
   const headers = {
@@ -97,7 +115,7 @@ serve(async (req) => {
   }
   
   try {
-    console.log("🚀 Auth signup function called - v5.0 with corrected professional support");
+    console.log("🚀 Auth signup function called - v6.0 with detailed professional signup debugging");
     
     // Parse request body
     let userData: SignupData;
@@ -110,7 +128,9 @@ serve(async (req) => {
         especialidade_profissional: userData.especialidade_profissional,
         nome_loja: userData.nome_loja,
         has_cpf: !!userData.cpf,
-        has_cnpj: !!userData.cnpj
+        has_cnpj: !!userData.cnpj,
+        cpf_length: userData.cpf ? userData.cpf.replace(/\D/g, '').length : 0,
+        cnpj_length: userData.cnpj ? userData.cnpj.replace(/\D/g, '').length : 0
       });
     } catch (parseError) {
       console.error("❌ Error parsing request body:", parseError);
@@ -126,7 +146,7 @@ serve(async (req) => {
     
     // Validate required fields
     if (!userData.email || !userData.password || !userData.nome) {
-      console.error("❌ Missing required fields");
+      console.error("❌ Missing required basic fields");
       return new Response(
         JSON.stringify({ 
           success: false,
@@ -136,8 +156,11 @@ serve(async (req) => {
       )
     }
     
-    // Validate document based on profile type
+    // Detailed validation based on profile type
+    console.log(`🔍 Validating fields for profile type: ${userData.tipo_perfil}`);
+    
     if (userData.tipo_perfil === 'lojista') {
+      console.log("🏪 Validating lojista fields...");
       if (!userData.cnpj) {
         console.error("❌ Missing CNPJ for lojista");
         return new Response(
@@ -148,26 +171,96 @@ serve(async (req) => {
           { status: 400, headers }
         )
       }
-    } else {
-      if (!userData.cpf) {
-        console.error("❌ Missing CPF for non-lojista");
+      if (!validateCNPJ(userData.cnpj)) {
+        console.error(`❌ Invalid CNPJ format for lojista: ${userData.cnpj} (length: ${userData.cnpj.replace(/\D/g, '').length})`);
         return new Response(
           JSON.stringify({ 
             success: false,
-            error: 'CPF é obrigatório' 
+            error: 'CNPJ deve ter 14 dígitos' 
           }),
           { status: 400, headers }
         )
       }
-    }
-
-    // Validate specialty for professionals
-    if (userData.tipo_perfil === 'profissional' && !userData.especialidade_profissional) {
-      console.error("❌ Missing especialidade for profissional");
+      if (!userData.nome_loja) {
+        console.error("❌ Missing nome_loja for lojista");
+        return new Response(
+          JSON.stringify({ 
+            success: false,
+            error: 'Nome da loja é obrigatório para lojistas' 
+          }),
+          { status: 400, headers }
+        )
+      }
+      console.log("✅ Lojista validation passed");
+    } else if (userData.tipo_perfil === 'profissional') {
+      console.log("👨‍🔧 Validating profissional fields...");
+      
+      if (!userData.cpf) {
+        console.error("❌ Missing CPF for profissional");
+        return new Response(
+          JSON.stringify({ 
+            success: false,
+            error: 'CPF é obrigatório para profissionais' 
+          }),
+          { status: 400, headers }
+        )
+      }
+      
+      if (!validateCPF(userData.cpf)) {
+        console.error(`❌ Invalid CPF format for profissional: ${userData.cpf} (length: ${userData.cpf.replace(/\D/g, '').length})`);
+        return new Response(
+          JSON.stringify({ 
+            success: false,
+            error: 'CPF deve ter 11 dígitos' 
+          }),
+          { status: 400, headers }
+        )
+      }
+      
+      if (!userData.especialidade_profissional) {
+        console.error("❌ Missing especialidade_profissional for profissional");
+        return new Response(
+          JSON.stringify({ 
+            success: false,
+            error: 'Especialidade é obrigatória para profissionais' 
+          }),
+          { status: 400, headers }
+        )
+      }
+      
+      console.log("✅ Profissional validation passed");
+    } else if (userData.tipo_perfil === 'consumidor') {
+      console.log("👤 Validating consumidor fields...");
+      
+      if (!userData.cpf) {
+        console.error("❌ Missing CPF for consumidor");
+        return new Response(
+          JSON.stringify({ 
+            success: false,
+            error: 'CPF é obrigatório para consumidores' 
+          }),
+          { status: 400, headers }
+        )
+      }
+      
+      if (!validateCPF(userData.cpf)) {
+        console.error(`❌ Invalid CPF format for consumidor: ${userData.cpf} (length: ${userData.cpf.replace(/\D/g, '').length})`);
+        return new Response(
+          JSON.stringify({ 
+            success: false,
+            error: 'CPF deve ter 11 dígitos' 
+          }),
+          { status: 400, headers }
+        )
+      }
+      
+      console.log("✅ Consumidor validation passed");
+    } else {
+      console.error(`❌ Invalid profile type: ${userData.tipo_perfil}`);
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: 'Especialidade é obrigatória para profissionais' 
+          error: 'Tipo de perfil inválido' 
         }),
         { status: 400, headers }
       )
@@ -221,6 +314,7 @@ serve(async (req) => {
     // Add document fields based on profile type
     if (userData.tipo_perfil === 'lojista') {
       userMetadata.cnpj = userData.cnpj;
+      userMetadata.nome_loja = userData.nome_loja;
     } else {
       userMetadata.cpf = userData.cpf;
     }
@@ -229,10 +323,6 @@ serve(async (req) => {
     if (userData.tipo_perfil === 'profissional' && userData.especialidade_profissional) {
       userMetadata.especialidade_profissional = userData.especialidade_profissional;
       console.log("👨‍🔧 Professional signup with specialty:", userData.especialidade_profissional);
-    }
-
-    if (userData.tipo_perfil === 'lojista' && userData.nome_loja) {
-      userMetadata.nome_loja = userData.nome_loja;
     }
 
     console.log("👤 Creating user with metadata:", { 
@@ -357,6 +447,8 @@ serve(async (req) => {
         referralCode: referralCode,
         message: userData.tipo_perfil === 'profissional' 
           ? 'Cadastro profissional realizado com sucesso!' 
+          : userData.tipo_perfil === 'lojista'
+          ? 'Cadastro de lojista realizado com sucesso!'
           : 'Cadastro realizado com sucesso!'
       }),
       { status: 201, headers }
