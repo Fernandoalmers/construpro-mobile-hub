@@ -45,7 +45,7 @@ const OfferCountdown: React.FC<OfferCountdownProps> = ({
     
     if (countdown.days > 0) {
       timeDisplay = `${countdown.days}d ${countdown.hours}h ${countdown.minutes}m ${countdown.seconds}s`;
-      mobileTimeDisplay = `${countdown.days * 24 + countdown.hours}:${countdown.minutes.toString().padStart(2, '0')}:${countdown.seconds.toString().padStart(2, '0')}`;
+      mobileTimeDisplay = `${countdown.days}d ${countdown.hours}:${countdown.minutes.toString().padStart(2, '0')}:${countdown.seconds.toString().padStart(2, '0')}`;
     } else if (countdown.hours > 0) {
       timeDisplay = `${countdown.hours}h ${countdown.minutes}m ${countdown.seconds}s`;
       mobileTimeDisplay = `${countdown.hours}:${countdown.minutes.toString().padStart(2, '0')}:${countdown.seconds.toString().padStart(2, '0')}`;
