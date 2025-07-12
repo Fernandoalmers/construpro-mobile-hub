@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { useScrollBehavior } from '@/hooks/use-scroll-behavior';
+import { useScrollPosition } from '@/hooks/useScrollPosition';
 import { useMarketplaceScreenLogic } from './hooks/useMarketplaceScreenLogic';
 import MarketplaceHeader from './MarketplaceHeader';
 import MarketplaceContent from './components/MarketplaceContent';
@@ -8,6 +9,7 @@ import LoadingState from '../common/LoadingState';
 
 const OptimizedMarketplaceScreen: React.FC = () => {
   const { hideHeader } = useScrollBehavior();
+  useScrollPosition();
   
   const {
     // State
