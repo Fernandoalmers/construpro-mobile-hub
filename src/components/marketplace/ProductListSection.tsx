@@ -70,7 +70,7 @@ const ProductListSection = memo<ProductListSectionProps>(({
   return (
     <div className="space-y-4">
       {/* Products Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 px-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-4 px-4">
         {safeDisplayedProducts.map((product) => (
           <OptimizedProductCard
             key={product?.id || Math.random()}
