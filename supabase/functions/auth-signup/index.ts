@@ -370,73 +370,10 @@ serve(async (req) => {
 
     console.log("✅ User created successfully:", data.user?.id);
 
-    // Create profile directly to ensure it exists with referral code
-    if (data.user) {
-      try {
-        const profileData = {
-          id: data.user.id,
-          nome: userData.nome,
-          email: userData.email,
-          telefone: userData.telefone || null,
-          papel: userData.tipo_perfil,
-          tipo_perfil: userData.tipo_perfil,
-          especialidade_profissional: userData.especialidade_profissional || null,
-          status: 'ativo',
-          saldo_pontos: 0,
-          codigo: referralCode, // Ensure the referral code is saved
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-
-        // Add document fields to profile
-        if (userData.tipo_perfil === 'lojista') {
-          profileData.cnpj = userData.cnpj;
-        } else {
-          profileData.cpf = userData.cpf;
-        }
-
-        console.log("📝 Creating profile directly with referral code:", { 
-          id: profileData.id, 
-          nome: profileData.nome,
-          codigo: profileData.codigo,
-          tipo_perfil: profileData.tipo_perfil,
-          especialidade_profissional: profileData.especialidade_profissional,
-          documento_tipo: userData.tipo_perfil === 'lojista' ? 'CNPJ' : 'CPF'
-        });
-
-        const { error: profileError } = await supabaseAdmin
-          .from('profiles')
-          .insert(profileData);
-
-        if (profileError) {
-          console.error("❌ Error creating profile:", profileError);
-          return new Response(
-            JSON.stringify({ 
-              success: false,
-              error: 'Erro ao criar perfil: ' + profileError.message,
-              details: profileError
-            }),
-            { status: 500, headers }
-          );
-        } else {
-          console.log("✅ Profile created successfully with referral code:", referralCode);
-          
-          // For professionals, log the successful creation
-          if (userData.tipo_perfil === 'profissional') {
-            console.log("👨‍🔧 Professional profile created successfully with specialty:", userData.especialidade_profissional);
-          }
-        }
-      } catch (profileCreateError) {
-        console.error("❌ Exception creating profile:", profileCreateError);
-        return new Response(
-          JSON.stringify({ 
-            success: false,
-            error: 'Erro ao criar perfil',
-            details: profileCreateError.message
-          }),
-          { status: 500, headers }
-        );
-      }
+    // Log successful professional creation
+    if (userData.tipo_perfil === 'profissional') {
+      console.log("👨‍🔧 Professional user created successfully with specialty:", userData.especialidade_profissional);
+      console.log("✅ Profile will be created by trigger with referral code:", referralCode);
     }
     
     // Return success response with referral code
